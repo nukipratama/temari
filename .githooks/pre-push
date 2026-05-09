@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# pre-push: block direct pushes to `main` on `origin`, force or not.
+# Workflow: branch + PR + CI green + merge via GitHub UI.
+# Bypass with `git push --no-verify` only if you genuinely mean to skirt this.
+set -euo pipefail
+
+remote="$1"
+PROTECTED_BRANCH="main"
+PROTECTED_REMOTE="origin"
+
+if [ "$remote" != "$PROTECTED_REMOTE" ]; then
+  exit 0  # pushing to a different remote (e.g. homelab fork later) — fine
+fi
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/$PROTECTED_BRANCH" ]; then
+    cat >&2 <<EOF
+pre-push: direct push to '$PROTECTED_BRANCH' on '$PROTECTED_REMOTE' is blocked.
+
+  → Create a feature branch:   git switch -c feat/your-change
+  → Push it:                   git push -u origin feat/your-change
+  → Open a PR + let CI run:    gh pr create --fill
+  → Merge via the GitHub UI once green.
+
+Bypass once (e.g. emergency hotfix) with: git push --no-verify
+EOF
+    exit 1
+  fi
+done
+
+exit 0

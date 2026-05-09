@@ -183,3 +183,9 @@ Files touched:
 Files touched:
 - `.github/workflows/ci.yml`
 
+## 2026-05-09 14:24 +0700 — chore(hooks): add pre-push that blocks direct pushes to main
+
+Files touched:
+- `.githooks/pre-push`
+- `README.md`
+

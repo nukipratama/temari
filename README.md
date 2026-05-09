@@ -71,9 +71,24 @@ CI uses GitHub Actions service containers (mysql:8.4 + redis:alpine) — every w
 | pre-commit   | `pint` (auto-format staged PHP) + `phpstan` (whole `app/`)            |
 | commit-msg   | Conventional Commits format check                                     |
 | post-commit  | Append entry to `CHANGELOG.md` and amend into HEAD                    |
-| CI           | `pint --test`, `phpstan`, `rector --dry-run`, `pest --coverage`, `infection` |
+| pre-push     | Block direct pushes to `main` on `origin` (force or not). Use feature branch + PR + GitHub UI merge |
+| CI           | `pint --test`, `phpstan`, `rector --dry-run`, `pest --coverage --min=100`, `pest --mutate` |
 
 100% line coverage gate is enforced in CI (`pest --coverage --min=100`). `TelescopeServiceProvider` and `HorizonServiceProvider` are excluded in `phpunit.xml` — both are framework-wiring with closures that only fire under runtime conditions and aren't meaningfully testable in isolation.
+
+## Branch workflow
+
+Direct pushes to `main` are blocked client-side by `.githooks/pre-push`. To land a change:
+
+```bash
+git switch -c feat/your-change
+# ... edit + commit ...
+git push -u origin feat/your-change
+gh pr create --fill           # or open in the GitHub UI
+# CI runs; merge once green via the GitHub UI
+```
+
+Bypass once with `git push --no-verify` (only for genuine emergencies — there's no server-side enforcement on GitHub Free private repos).
 
 ## Deploy
 
