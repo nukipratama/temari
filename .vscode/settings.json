@@ -1,0 +1,4 @@
+{
+    "Laravel.phpEnvironment": "sail",
+    "php.version": "8.4"
+}

@@ -213,3 +213,9 @@ Files touched:
 - `.claude/settings.json`
 - `README.md`
 
+## 2026-05-09 15:51 +0700 — chore(vscode): track shared settings, pin Laravel ext to Sail + PHP 8.4
+
+Files touched:
+- `.gitignore`
+- `.vscode/settings.json`
+
