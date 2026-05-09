@@ -7,6 +7,8 @@ on:
 
 env:
   PHP_VERSION: '8.4'
+  # Test stack — overrides phpunit.xml's `mysql_test`/`redis_test` (compose-network names)
+  # with 127.0.0.1 since GH Actions exposes service containers on the runner host.
   DB_CONNECTION: mysql
   DB_HOST: 127.0.0.1
   DB_PORT: 3306
@@ -17,7 +19,7 @@ env:
   REDIS_PORT: 6379
 
 jobs:
-  quality:
+  ci:
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -39,51 +41,37 @@ jobs:
           --health-interval=5s --health-timeout=2s --health-retries=10
     steps:
       - uses: actions/checkout@v6
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ env.PHP_VERSION }}
-          coverage: pcov
-      - uses: actions/cache@v5
-        with:
-          path: vendor
-          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
-      - run: composer install --prefer-dist --no-interaction --no-progress
-      - run: ./vendor/bin/pint --test
-      - run: ./vendor/bin/phpstan analyse --no-progress
-      - run: ./vendor/bin/rector --dry-run --no-progress-bar
-      - run: ./vendor/bin/pest --coverage --min=100
 
-  mutation:
-    runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: teman_lari_testing
-          MYSQL_USER: sail
-          MYSQL_PASSWORD: password
-        ports: ['3306:3306']
-        options: >-
-          --health-cmd="mysqladmin ping -ppassword"
-          --health-interval=5s --health-timeout=2s --health-retries=10
-      redis:
-        image: redis:alpine
-        ports: ['6379:6379']
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=5s --health-timeout=2s --health-retries=10
-    steps:
-      - uses: actions/checkout@v6
-      - uses: shivammathur/setup-php@v2
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
           coverage: pcov
-      - uses: actions/cache@v5
+
+      - name: Cache composer vendor
+        uses: actions/cache@v5
         with:
           path: vendor
           key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
           restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
-      - run: composer install --prefer-dist --no-interaction --no-progress
-      - run: ./vendor/bin/pest --mutate --everything --covered-only
+
+      - name: Install composer deps
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Lint — Pint (PSR-12)
+        run: ./vendor/bin/pint --test
+
+      - name: Static analysis — PHPStan / Larastan level 8
+        run: ./vendor/bin/phpstan analyse --no-progress
+
+      - name: Refactor check — Rector dry-run
+        run: ./vendor/bin/rector --dry-run --no-progress-bar
+
+      # Tests boot Laravel against the mysql + redis service containers above.
+      # `RefreshDatabase` trait (used in tests/Unit/Models/UserTest.php) migrates
+      # the schema per-test class — that's where the DB actually gets exercised.
+      - name: Tests + 100% line coverage — Pest
+        run: ./vendor/bin/pest --coverage --min=100
+
+      - name: Mutation testing — Pest --mutate
+        run: ./vendor/bin/pest --mutate --everything --covered-only

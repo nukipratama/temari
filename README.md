@@ -72,7 +72,7 @@ CI uses GitHub Actions service containers (mysql:8.4 + redis:alpine) — every w
 | commit-msg   | Conventional Commits format check                                     |
 | post-commit  | Append entry to `CHANGELOG.md` and amend into HEAD                    |
 | pre-push     | Block direct pushes to `main` on `origin` (force or not). Use feature branch + PR + GitHub UI merge |
-| CI           | `pint --test`, `phpstan`, `rector --dry-run`, `pest --coverage --min=100`, `pest --mutate` |
+| CI (single `ci` job) | `pint --test` → `phpstan` → `rector --dry-run` → `pest --coverage --min=100` → `pest --mutate` (all sequential, sharing one `mysql:8.4` + `redis:alpine` service container per run) |
 
 100% line coverage gate is enforced in CI (`pest --coverage --min=100`). `TelescopeServiceProvider` and `HorizonServiceProvider` are excluded in `phpunit.xml` — both are framework-wiring with closures that only fire under runtime conditions and aren't meaningfully testable in isolation.
 

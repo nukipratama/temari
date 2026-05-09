@@ -195,3 +195,9 @@ Files touched:
 - `.githooks/pre-push`
 - `README.md`
 
+## 2026-05-09 14:36 +0700 — ci: collapse quality+mutation into one named-step job
+
+Files touched:
+- `.github/workflows/ci.yml`
+- `README.md`
+
