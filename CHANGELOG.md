@@ -207,3 +207,9 @@ Files touched:
 - `.github/workflows/ci.yml`
 - `README.md`
 
+## 2026-05-09 14:50 +0700 — chore(claude): enable laravel/claude-code plugin per-project
+
+Files touched:
+- `.claude/settings.json`
+- `README.md`
+
