@@ -16,6 +16,12 @@
         <include>
             <directory>app</directory>
         </include>
+        <exclude>
+            <!-- Framework wiring with closures that only fire under Telescope/Horizon
+                 runtime conditions; not meaningfully testable in isolation. -->
+            <file>app/Providers/TelescopeServiceProvider.php</file>
+            <file>app/Providers/HorizonServiceProvider.php</file>
+        </exclude>
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>

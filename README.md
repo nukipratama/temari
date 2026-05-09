@@ -73,7 +73,7 @@ CI uses GitHub Actions service containers (mysql:8.4 + redis:alpine) — every w
 | post-commit  | Append entry to `CHANGELOG.md` and amend into HEAD                    |
 | CI           | `pint --test`, `phpstan`, `rector --dry-run`, `pest --coverage`, `infection` |
 
-To enforce 100% line coverage: change `./vendor/bin/pest --coverage` in `.github/workflows/ci.yml` to `--coverage --min=100`. Either write the missing tests (`User`, `Controller`, `AppServiceProvider`, `*ServiceProvider`) or add `<source><exclude>` entries in `phpunit.xml` first.
+100% line coverage gate is enforced in CI (`pest --coverage --min=100`). `TelescopeServiceProvider` and `HorizonServiceProvider` are excluded in `phpunit.xml` — both are framework-wiring with closures that only fire under runtime conditions and aren't meaningfully testable in isolation.
 
 ## Deploy
 

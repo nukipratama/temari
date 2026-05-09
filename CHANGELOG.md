@@ -151,3 +151,12 @@ Files touched:
 - `CLAUDE.md`
 - `boost.json`
 
+## 2026-05-09 13:42 +0700 — test: enable --min=100 coverage gate, cover User model
+
+Files touched:
+- `.github/workflows/ci.yml`
+- `README.md`
+- `phpunit.xml`
+- `tests/Pest.php`
+- `tests/Unit/Models/UserTest.php`
+
