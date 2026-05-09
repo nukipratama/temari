@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# post-commit: append a context entry to CHANGELOG.md and amend it into the
+# just-created commit. CHANGELOG_HOOK_SKIP guards against recursion since
+# `git commit --amend` re-fires post-commit hooks (--no-verify only skips
+# pre-commit + commit-msg, not post-commit).
+set -euo pipefail
+
+if [ -n "${CHANGELOG_HOOK_SKIP:-}" ]; then
+  exit 0
+fi
+
+# Skip mid-merge / mid-rebase / mid-cherry-pick — those aren't fresh authored work.
+if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ] \
+    || [ -f .git/MERGE_HEAD ] || [ -f .git/CHERRY_PICK_HEAD ]; then
+  exit 0
+fi
+
+SUBJECT=$(git log -1 --pretty=%s)
+if [ -z "$SUBJECT" ]; then
+  exit 0
+fi
+
+CHANGELOG="CHANGELOG.md"
+TIMESTAMP=$(git log -1 --pretty=%ad --date=format:'%Y-%m-%d %H:%M %z')
+FILES=$(git show --name-only --diff-filter=ACMRTD --pretty=format: HEAD \
+        | grep -v '^CHANGELOG\.md$' | grep -v '^$' || true)
+
+if [ ! -f "$CHANGELOG" ]; then
+  printf "# Changelog\n\nAuto-generated context log for vibe-coded commits.\n\n" > "$CHANGELOG"
+fi
+
+{
+  printf "## %s — %s\n\n" "$TIMESTAMP" "$SUBJECT"
+  if [ -n "$FILES" ]; then
+    printf "Files touched:\n"
+    while IFS= read -r f; do
+      printf -- "- \`%s\`\n" "$f"
+    done <<< "$FILES"
+  else
+    printf "_No file changes._\n"
+  fi
+  printf "\n"
+} >> "$CHANGELOG"
+
+git add "$CHANGELOG"
+CHANGELOG_HOOK_SKIP=1 git commit --amend --no-edit --no-verify >/dev/null

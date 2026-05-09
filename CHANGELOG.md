@@ -87,7 +87,20 @@ Files touched:
 - `tests/Unit/ExampleTest.php`
 - `vite.config.js`
 
-## 2026-05-09 12:42 +0700 — bad message no prefix
 
-_No file changes._
+## 2026-05-09 12:49 +0700 — chore: drop laravel cloud cli, defer deploy to homelab
+
+Files touched:
+- `.claude/skills/deploying-laravel-cloud/SKILL.md`
+- `.claude/skills/deploying-laravel-cloud/reference/checklists.md`
+- `.env.example`
+- `README.md`
+- `composer.json`
+- `composer.lock`
+
+## 2026-05-09 13:17 +0700 — fix(hooks): move CHANGELOG append from prepare-commit-msg to post-commit+amend
+
+Files touched:
+- `.githooks/post-commit`
+- `.githooks/prepare-commit-msg`
 
