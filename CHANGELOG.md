@@ -116,3 +116,38 @@ Files touched:
 - `composer.json`
 - `tests/Feature/ArchTest.php`
 
+## 2026-05-09 13:40 +0700 — chore(boost): install AI agent guidelines + skills for Claude Code
+
+Files touched:
+- `.claude/skills/configuring-horizon/SKILL.md`
+- `.claude/skills/configuring-horizon/references/metrics.md`
+- `.claude/skills/configuring-horizon/references/notifications.md`
+- `.claude/skills/configuring-horizon/references/supervisors.md`
+- `.claude/skills/configuring-horizon/references/tags.md`
+- `.claude/skills/laravel-best-practices/SKILL.md`
+- `.claude/skills/laravel-best-practices/rules/advanced-queries.md`
+- `.claude/skills/laravel-best-practices/rules/architecture.md`
+- `.claude/skills/laravel-best-practices/rules/blade-views.md`
+- `.claude/skills/laravel-best-practices/rules/caching.md`
+- `.claude/skills/laravel-best-practices/rules/collections.md`
+- `.claude/skills/laravel-best-practices/rules/config.md`
+- `.claude/skills/laravel-best-practices/rules/db-performance.md`
+- `.claude/skills/laravel-best-practices/rules/eloquent.md`
+- `.claude/skills/laravel-best-practices/rules/error-handling.md`
+- `.claude/skills/laravel-best-practices/rules/events-notifications.md`
+- `.claude/skills/laravel-best-practices/rules/http-client.md`
+- `.claude/skills/laravel-best-practices/rules/mail.md`
+- `.claude/skills/laravel-best-practices/rules/migrations.md`
+- `.claude/skills/laravel-best-practices/rules/queue-jobs.md`
+- `.claude/skills/laravel-best-practices/rules/routing.md`
+- `.claude/skills/laravel-best-practices/rules/scheduling.md`
+- `.claude/skills/laravel-best-practices/rules/security.md`
+- `.claude/skills/laravel-best-practices/rules/style.md`
+- `.claude/skills/laravel-best-practices/rules/testing.md`
+- `.claude/skills/laravel-best-practices/rules/validation.md`
+- `.claude/skills/pest-testing/SKILL.md`
+- `.claude/skills/pulse-development/SKILL.md`
+- `.claude/skills/tailwindcss-development/SKILL.md`
+- `CLAUDE.md`
+- `boost.json`
+
