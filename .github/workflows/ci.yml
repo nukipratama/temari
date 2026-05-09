@@ -56,6 +56,24 @@ jobs:
 
   mutation:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: teman_lari_testing
+          MYSQL_USER: sail
+          MYSQL_PASSWORD: password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ppassword"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+      redis:
+        image: redis:alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=2s --health-retries=10
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -68,4 +86,4 @@ jobs:
           key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
           restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
       - run: composer install --prefer-dist --no-interaction --no-progress
-      - run: ./vendor/bin/infection --threads=max --no-interaction --no-progress
+      - run: ./vendor/bin/pest --mutate --everything --covered-only --parallel

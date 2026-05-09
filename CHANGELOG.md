@@ -165,3 +165,11 @@ Files touched:
 Files touched:
 - `phpunit.xml`
 
+## 2026-05-09 13:51 +0700 — fix(ci): swap Infection for Pest's native --mutate (Infection broke on Pest tests)
+
+Files touched:
+- `.github/workflows/ci.yml`
+- `composer.json`
+- `composer.lock`
+- `infection.json5`
+
