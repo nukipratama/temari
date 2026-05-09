@@ -15,23 +15,21 @@ Personal Laravel app, vibe-coded end-to-end. Fully containerized via Laravel Sai
 ## First-time setup
 
 ```bash
-# 1. Wire up the project's git hooks dir (one-off per clone)
-bin/setup-hooks.sh
+# 1. Set Sail file ownership env vars (match your host UID/GID)
+echo "WWWUSER=$(id -u)"  >> .env
+echo "WWWGROUP=$(id -g)" >> .env
 
 # 2. Bring up the Sail stack (first run pulls images, ~2-5 min)
 ./vendor/bin/sail up -d
 
-# 3. Set Sail file ownership env vars (adjust to your host UID/GID)
-echo "WWWUSER=$(id -u)" >> .env
-echo "WWWGROUP=$(id -g)" >> .env
-
-# 4. App setup
+# 3. App setup (composer install auto-wires git hooks via post-install-cmd)
+./vendor/bin/sail composer install
 ./vendor/bin/sail artisan key:generate
 ./vendor/bin/sail artisan migrate
 ./vendor/bin/sail npm install
 ./vendor/bin/sail npm run build
 
-# 5. (Optional) Install Boost agent guidance (interactive)
+# 4. (Optional) Install Boost agent guidance (interactive)
 ./vendor/bin/sail artisan boost:install
 ```
 
@@ -72,10 +70,10 @@ CI uses GitHub Actions service containers (mysql:8.4 + redis:alpine) — every w
 |:-------------|:----------------------------------------------------------------------|
 | pre-commit   | `pint` (auto-format staged PHP) + `phpstan` (whole `app/`)            |
 | commit-msg   | Conventional Commits format check                                     |
-| prepare-commit-msg | Auto-append entry to `CHANGELOG.md`                             |
+| post-commit  | Append entry to `CHANGELOG.md` and amend into HEAD                    |
 | CI           | `pint --test`, `phpstan`, `rector --dry-run`, `pest --coverage`, `infection` |
 
-100% line coverage gate (`pest --min=100`) is wired in CI from commit #2 onwards (commit #1 ships skeleton classes that aren't fully covered yet).
+To enforce 100% line coverage: change `./vendor/bin/pest --coverage` in `.github/workflows/ci.yml` to `--coverage --min=100`. Either write the missing tests (`User`, `Controller`, `AppServiceProvider`, `*ServiceProvider`) or add `<source><exclude>` entries in `phpunit.xml` first.
 
 ## Deploy
 

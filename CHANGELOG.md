@@ -104,3 +104,15 @@ Files touched:
 - `.githooks/post-commit`
 - `.githooks/prepare-commit-msg`
 
+## 2026-05-09 13:25 +0700 — refactor: simplify hooks, compose, ci, and bin per /simplify pass
+
+Files touched:
+- `.githooks/post-commit`
+- `.githooks/pre-commit`
+- `.github/workflows/ci.yml`
+- `README.md`
+- `bin/setup-hooks.sh`
+- `compose.yaml`
+- `composer.json`
+- `tests/Feature/ArchTest.php`
+

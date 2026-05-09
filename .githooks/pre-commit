@@ -1,31 +1,19 @@
 #!/usr/bin/env bash
 # Pre-commit gate: format staged PHP with Pint, then static-analyse app/ with PHPStan.
-# Test suite + coverage live in CI (slow), not here.
+# Tests + coverage live in CI.
 set -euo pipefail
 
 STAGED_PHP=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.php$' || true)
-[ -z "$STAGED_PHP" ] && exit 0  # no PHP touched, nothing to gate
+[ -z "$STAGED_PHP" ] && exit 0
 
-# Use Sail container if it's already running (fast), else spin an ephemeral one.
-if docker compose ps --status running --services 2>/dev/null | grep -qx 'laravel.test'; then
-  RUN_PREFIX="./vendor/bin/sail exec -T laravel.test"
-else
-  RUN_PREFIX="docker run --rm -u $(id -u):$(id -g) -v $PWD:/var/www/html -w /var/www/html laravelsail/php84-composer:latest"
+if ! docker compose ps --status running --services 2>/dev/null | grep -qx 'laravel.test'; then
+  echo "pre-commit: sail not running — run './vendor/bin/sail up -d'" >&2
+  exit 1
 fi
 
-if [ -x ./vendor/bin/pint ]; then
-  echo "==> Pint (PSR-12, staged PHP only)"
-  # shellcheck disable=SC2086  # intentional word-splitting; PHP filenames don't contain spaces
-  $RUN_PREFIX ./vendor/bin/pint $STAGED_PHP
-  # shellcheck disable=SC2086
-  git add $STAGED_PHP
-else
-  echo "(skip) Pint not installed yet"
-fi
+# shellcheck disable=SC2086  # intentional word-splitting; PHP filenames don't contain spaces
+./vendor/bin/sail exec -T laravel.test ./vendor/bin/pint $STAGED_PHP
+# shellcheck disable=SC2086
+git add $STAGED_PHP
 
-if [ -x ./vendor/bin/phpstan ]; then
-  echo "==> PHPStan (Larastan, level 8)"
-  $RUN_PREFIX ./vendor/bin/phpstan analyse --no-progress
-else
-  echo "(skip) PHPStan not installed yet"
-fi
+./vendor/bin/sail exec -T laravel.test ./vendor/bin/phpstan analyse --no-progress

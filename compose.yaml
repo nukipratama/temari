@@ -1,3 +1,21 @@
+x-mysql-base: &mysql-base
+    image: 'mysql:8.4'
+    networks:
+        - sail
+    healthcheck:
+        test: ['CMD', 'mysqladmin', 'ping', '-p${DB_PASSWORD}']
+        retries: 3
+        timeout: 5s
+
+x-redis-base: &redis-base
+    image: 'redis:alpine'
+    networks:
+        - sail
+    healthcheck:
+        test: ['CMD', 'redis-cli', 'ping']
+        retries: 3
+        timeout: 5s
+
 services:
     laravel.test:
         build:
@@ -26,7 +44,7 @@ services:
             - redis
             - mailpit
     mysql:
-        image: 'mysql:8.4'
+        <<: *mysql-base
         command:
             - '--innodb-buffer-pool-size=128M'
             - '--innodb-log-buffer-size=16M'
@@ -44,32 +62,12 @@ services:
             MYSQL_EXTRA_OPTIONS: '${MYSQL_EXTRA_OPTIONS:-}'
         volumes:
             - 'sail-mysql:/var/lib/mysql'
-            - './vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
-        networks:
-            - sail
-        healthcheck:
-            test:
-                - CMD
-                - mysqladmin
-                - ping
-                - '-p${DB_PASSWORD}'
-            retries: 3
-            timeout: 5s
     redis:
-        image: 'redis:alpine'
+        <<: *redis-base
         ports:
             - '${FORWARD_REDIS_PORT:-6379}:6379'
         volumes:
             - 'sail-redis:/data'
-        networks:
-            - sail
-        healthcheck:
-            test:
-                - CMD
-                - redis-cli
-                - ping
-            retries: 3
-            timeout: 5s
     mailpit:
         image: 'axllent/mailpit:latest'
         ports:
@@ -78,12 +76,15 @@ services:
         networks:
             - sail
     mysql_test:
-        image: 'mysql:8.4'
+        <<: *mysql-base
+        # Test workload: tmpfs storage, no durability, minimal connections.
         command:
-            - '--innodb-buffer-pool-size=128M'
-            - '--innodb-log-buffer-size=16M'
-            - '--max-connections=50'
+            - '--innodb-buffer-pool-size=32M'
+            - '--max-connections=20'
             - '--performance-schema=OFF'
+            - '--innodb-flush-log-at-trx-commit=0'
+            - '--innodb-doublewrite=0'
+            - '--skip-log-bin'
         environment:
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
             MYSQL_ROOT_HOST: '%'
@@ -93,28 +94,9 @@ services:
             MYSQL_ALLOW_EMPTY_PASSWORD: 1
         tmpfs:
             - /var/lib/mysql
-        networks:
-            - sail
-        healthcheck:
-            test:
-                - CMD
-                - mysqladmin
-                - ping
-                - '-p${DB_PASSWORD}'
-            retries: 3
-            timeout: 5s
     redis_test:
-        image: 'redis:alpine'
+        <<: *redis-base
         command: ['redis-server', '--save', '', '--appendonly', 'no']
-        networks:
-            - sail
-        healthcheck:
-            test:
-                - CMD
-                - redis-cli
-                - ping
-            retries: 3
-            timeout: 5s
 networks:
     sail:
         driver: bridge
