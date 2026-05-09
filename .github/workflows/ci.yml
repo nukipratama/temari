@@ -38,7 +38,7 @@ jobs:
           --health-cmd="redis-cli ping"
           --health-interval=5s --health-timeout=2s --health-retries=10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
@@ -75,7 +75,7 @@ jobs:
           --health-cmd="redis-cli ping"
           --health-interval=5s --health-timeout=2s --health-retries=10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
