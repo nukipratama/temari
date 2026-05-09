@@ -201,3 +201,9 @@ Files touched:
 - `.github/workflows/ci.yml`
 - `README.md`
 
+## 2026-05-09 14:40 +0700 — ci: split into lint + pest + mutate jobs (3-tile layout)
+
+Files touched:
+- `.github/workflows/ci.yml`
+- `README.md`
+
