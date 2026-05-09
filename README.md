@@ -5,6 +5,7 @@ Personal Laravel app, vibe-coded end-to-end. Fully containerized via Laravel Sai
 ## Stack
 
 - Laravel 13.5.0 + Blade + Tailwind (via `@tailwindcss/vite`)
+- Laravel Boost (CLAUDE.md + `.claude/skills/*` for AI agents) and the official `laravel/claude-code` Claude Code plugin (enabled in `.claude/settings.json`)
 - PHP 8.4 (pinned in compose.yaml)
 - MySQL 8.4 (dev + isolated test container)
 - Redis (dev + isolated test container)
