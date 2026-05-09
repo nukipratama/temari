@@ -160,3 +160,8 @@ Files touched:
 - `tests/Pest.php`
 - `tests/Unit/Models/UserTest.php`
 
+## 2026-05-09 13:46 +0700 — fix(ci): set test APP_KEY in phpunit.xml so CI tests can boot
+
+Files touched:
+- `phpunit.xml`
+
