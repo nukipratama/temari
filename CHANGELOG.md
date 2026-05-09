@@ -213,3 +213,9 @@ Files touched:
 - `.claude/settings.json`
 - `README.md`
 
+## 2026-05-09 14:55 +0700 — chore: add bin/safe-merge wrapper that waits for CI green before merging
+
+Files touched:
+- `README.md`
+- `bin/safe-merge`
+

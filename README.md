@@ -87,9 +87,11 @@ Direct pushes to `main` are blocked client-side by `.githooks/pre-push`. To land
 git switch -c feat/your-change
 # ... edit + commit ...
 git push -u origin feat/your-change
-gh pr create --fill           # or open in the GitHub UI
-# CI runs; merge once green via the GitHub UI
+gh pr create --fill        # or open in the GitHub UI
+bin/safe-merge             # waits for CI green, then squash-merges + deletes branch
 ```
+
+`bin/safe-merge` exists because GitHub Free private repos can't enforce required checks server-side — the merge button is always enabled regardless of CI state. The wrapper calls `gh pr checks --watch --fail-fast` first and refuses to merge if anything's red.
 
 ## Deploy
 
