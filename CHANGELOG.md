@@ -256,3 +256,12 @@ Files touched:
 - `tests/Pest.php`
 - `tests/Unit/Models/StravaConnectionTest.php`
 
+## 2026-05-09 17:36 +0700 — test: tighten Strava auth + client tests, MSI 72→93%
+
+Files touched:
+- `app/Http/Controllers/Auth/StravaAuthController.php`
+- `app/Services/Strava/StravaClient.php`
+- `tests/Feature/Auth/StravaAuthTest.php`
+- `tests/Unit/Models/StravaConnectionTest.php`
+- `tests/Unit/Services/Strava/StravaClientTest.php`
+

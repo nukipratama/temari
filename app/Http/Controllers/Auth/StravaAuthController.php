@@ -71,7 +71,7 @@ class StravaAuthController extends Controller
 
     private function upsertUser(SocialiteUser $stravaUser): User
     {
-        $athleteId = (int) $stravaUser->getId();
+        $athleteId = $stravaUser->getId();
         $userAttributes = [
             'name' => $stravaUser->getName() ?: 'Strava Athlete',
             'email' => $stravaUser->getEmail(),
@@ -80,7 +80,7 @@ class StravaAuthController extends Controller
         $connectionAttributes = [
             'access_token' => $stravaUser->token,
             'refresh_token' => $stravaUser->refreshToken,
-            'token_expires_at' => Carbon::now()->addSeconds((int) $stravaUser->expiresIn),
+            'token_expires_at' => Carbon::now()->addSeconds($stravaUser->expiresIn),
             'scopes' => implode(',', self::SCOPES),
         ];
 

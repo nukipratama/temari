@@ -38,11 +38,13 @@ it('returns the connection unchanged when token is comfortably valid', function 
 });
 
 it('refreshes the token when it has already expired', function (): void {
+    $expiresAt = Carbon::now()->addHours(6)->startOfSecond();
+
     Http::fake([
         'strava.com/oauth/token' => Http::response([
             'access_token' => 'fresh-access',
             'refresh_token' => 'fresh-refresh',
-            'expires_at' => Carbon::now()->addHours(6)->timestamp,
+            'expires_at' => $expiresAt->timestamp,
             'expires_in' => 21600,
             'token_type' => 'Bearer',
         ]),
@@ -58,7 +60,7 @@ it('refreshes the token when it has already expired', function (): void {
 
     expect($result->access_token)->toBe('fresh-access')
         ->and($result->refresh_token)->toBe('fresh-refresh')
-        ->and($result->token_expires_at->isFuture())->toBeTrue();
+        ->and($result->token_expires_at->timestamp)->toBe($expiresAt->timestamp);
 
     Http::assertSent(fn ($request) => $request->url() === 'https://www.strava.com/oauth/token'
         && $request['client_id'] === 'test-client-id'
@@ -138,7 +140,7 @@ it('refreshes the token before making a GET when it is expired', function (): vo
         && $request->hasHeader('Authorization', 'Bearer fresh-access'));
 });
 
-it('throws StravaRateLimitedException when the 15-minute bucket is exhausted', function (): void {
+it('throws StravaRateLimitedException naming the exhausted bucket and retry-after seconds', function (): void {
     Http::fake();
 
     for ($i = 0; $i < 200; $i++) {
@@ -149,8 +151,13 @@ it('throws StravaRateLimitedException when the 15-minute bucket is exhausted', f
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    expect(fn () => (new StravaClient())->get($connection, 'athlete'))
-        ->toThrow(StravaRateLimitedException::class);
+    try {
+        (new StravaClient())->get($connection, 'athlete');
+        $this->fail('Expected StravaRateLimitedException to be thrown.');
+    } catch (StravaRateLimitedException $e) {
+        expect($e->getMessage())
+            ->toMatch('/^Strava rate limit exhausted for bucket \[strava-api:15min\]; retry in \d+s\.$/');
+    }
 
     Http::assertNothingSent();
 });

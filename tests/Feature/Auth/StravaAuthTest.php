@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -54,21 +56,30 @@ it('creates a new user from the strava callback and logs them in', function (): 
 
     mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
 
-    $this->get(route('auth.strava.callback'))
-        ->assertRedirect(route('dashboard'));
+    $this->startSession();
+    $sessionIdBefore = session()->getId();
 
+    $response = $this->get(route('auth.strava.callback'));
+
+    $response->assertRedirect(route('dashboard'))
+        ->assertCookie(Auth::guard()->getRecallerName());
+
+    expect(session()->getId())->not->toBe($sessionIdBefore);
     $this->assertAuthenticated();
 
     $connection = StravaConnection::where('strava_athlete_id', 987654)->firstOrFail();
     $user = $connection->user;
+
+    expect($connection->strava_athlete_id)->toBe(987654)
+        ->and(Carbon::now()->addSeconds(21600)->diffInSeconds($connection->token_expires_at, true))
+        ->toBeLessThan(5);
 
     expect($user->name)->toBe('Ada Lovelace')
         ->and($user->email)->toBe('athlete@example.test')
         ->and($user->avatar_url)->toBe('https://strava.test/avatar.png')
         ->and($connection->access_token)->toBe('access-token-xyz')
         ->and($connection->refresh_token)->toBe('refresh-token-xyz')
-        ->and($connection->scopes)->toBe('read,activity:read_all')
-        ->and($connection->token_expires_at->isFuture())->toBeTrue();
+        ->and($connection->scopes)->toBe('read,activity:read_all');
 });
 
 it('updates an existing user on subsequent strava callbacks', function (): void {
@@ -105,7 +116,7 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
 it('redirects back to login when strava returns an error', function (): void {
     $this->get(route('auth.strava.callback', ['error' => 'access_denied']))
         ->assertRedirect(route('login'))
-        ->assertSessionHasErrors('strava');
+        ->assertSessionHasErrors(['strava' => 'Strava authorization was cancelled or denied.']);
 
     $this->assertGuest();
 });
@@ -115,16 +126,20 @@ it('redirects back to login when fetching the strava user fails', function (): v
 
     $this->get(route('auth.strava.callback'))
         ->assertRedirect(route('login'))
-        ->assertSessionHasErrors('strava');
+        ->assertSessionHasErrors(['strava' => 'We could not complete the Strava sign-in. Please try again.']);
 
     $this->assertGuest();
 });
 
-it('logs the user out and redirects to login', function (): void {
-    $this->actingAs(User::factory()->create())
-        ->post(route('auth.logout'))
-        ->assertRedirect(route('login'));
+it('logs the user out, rotates session id, and redirects to login', function (): void {
+    $this->actingAs(User::factory()->create())->startSession();
+    $sessionIdBefore = session()->getId();
+    $tokenBefore = session()->token();
 
+    $this->post(route('auth.logout'))->assertRedirect(route('login'));
+
+    expect(session()->getId())->not->toBe($sessionIdBefore)
+        ->and(session()->token())->not->toBe($tokenBefore);
     $this->assertGuest();
 });
 

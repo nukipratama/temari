@@ -38,6 +38,13 @@ it('casts token_expires_at to a Carbon instance', function (): void {
         ->and($connection->token_expires_at->toDateTimeString())->toBe('2026-01-01 00:00:00');
 });
 
+it('casts strava_athlete_id to an integer on read', function (): void {
+    $connection = new StravaConnection();
+    $connection->strava_athlete_id = '987654';
+
+    expect($connection->strava_athlete_id)->toBe(987654);
+});
+
 it('hides sensitive tokens from array serialization', function (): void {
     $connection = StravaConnection::factory()->create();
 
