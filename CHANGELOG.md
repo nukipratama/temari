@@ -173,3 +173,8 @@ Files touched:
 - `composer.lock`
 - `infection.json5`
 
+## 2026-05-09 13:53 +0700 — fix(ci): drop --parallel from pest --mutate (per-process DBs need extra grants)
+
+Files touched:
+- `.github/workflows/ci.yml`
+

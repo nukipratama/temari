@@ -86,4 +86,4 @@ jobs:
           key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
           restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
       - run: composer install --prefer-dist --no-interaction --no-progress
-      - run: ./vendor/bin/pest --mutate --everything --covered-only --parallel
+      - run: ./vendor/bin/pest --mutate --everything --covered-only
