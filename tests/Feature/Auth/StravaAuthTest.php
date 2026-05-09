@@ -131,15 +131,16 @@ it('redirects back to login when fetching the strava user fails', function (): v
     $this->assertGuest();
 });
 
-it('logs the user out, rotates session id, and redirects to login', function (): void {
-    $this->actingAs(User::factory()->create())->startSession();
+it('logs the user out, clears session data, and redirects to login', function (): void {
+    $this->actingAs(User::factory()->create())
+        ->withSession(['carry_over' => 'pre-logout'])
+        ->startSession();
     $sessionIdBefore = session()->getId();
-    $tokenBefore = session()->token();
 
     $this->post(route('auth.logout'))->assertRedirect(route('login'));
 
     expect(session()->getId())->not->toBe($sessionIdBefore)
-        ->and(session()->token())->not->toBe($tokenBefore);
+        ->and(session('carry_over'))->toBeNull();
     $this->assertGuest();
 });
 

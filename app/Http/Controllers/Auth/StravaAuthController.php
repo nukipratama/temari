@@ -47,7 +47,6 @@ class StravaAuthController extends Controller
         $user = $this->upsertUser($stravaUser);
 
         Auth::login($user, remember: true);
-        $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard'));
     }
@@ -56,7 +55,6 @@ class StravaAuthController extends Controller
     {
         Auth::logout();
         $request->session()->invalidate();
-        $request->session()->regenerateToken();
 
         return redirect()->route('login');
     }

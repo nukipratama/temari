@@ -287,3 +287,11 @@ Files touched:
 Files touched:
 - `.github/workflows/ci.yml`
 
+## 2026-05-09 19:46 +0700 — test(strava): kill all surviving mutations, MSI 93→100%
+
+Files touched:
+- `.github/workflows/ci.yml`
+- `app/Http/Controllers/Auth/StravaAuthController.php`
+- `app/Providers/AppServiceProvider.php`
+- `tests/Feature/Auth/StravaAuthTest.php`
+

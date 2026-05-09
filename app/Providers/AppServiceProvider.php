@@ -26,9 +26,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Event::listen(
-            SocialiteWasCalled::class,
-            StravaExtendSocialite::class.'@handle',
-        );
+        Event::listen(SocialiteWasCalled::class, StravaExtendSocialite::class);
     }
 }

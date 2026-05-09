@@ -154,4 +154,4 @@ jobs:
         run: cp .env.example .env
 
       - name: Mutation testing
-        run: ./vendor/bin/pest --mutate --everything --covered-only --min=90
+        run: ./vendor/bin/pest --mutate --everything --covered-only --min=100
