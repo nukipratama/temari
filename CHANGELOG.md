@@ -403,3 +403,8 @@ Files touched:
 - `.github/workflows/ci.yml`
 - `README.md`
 
+## 2026-05-10 23:05 +0700 — chore(deploy): tagline APP_NAME for browser tab
+
+Files touched:
+- `compose.prod.yaml`
+
