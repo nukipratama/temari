@@ -1,0 +1,58 @@
+# syntax=docker/dockerfile:1.7
+
+# ─── Stage 1: vendor ────────────────────────────────────────────────────────
+# Composer install (no dev deps), then dump optimized autoloader. The second
+# composer call also fires post-autoload-dump → `php artisan package:discover`,
+# which writes bootstrap/cache/{packages,services}.php.
+FROM composer:2 AS vendor
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+RUN composer install \
+        --no-dev --no-scripts --no-autoloader \
+        --prefer-dist --no-interaction --no-progress
+
+COPY . .
+RUN composer dump-autoload --optimize --classmap-authoritative
+
+# ─── Stage 2: assets ────────────────────────────────────────────────────────
+# Build Vite bundle (tailwind via @tailwindcss/vite). Vendor dir is needed
+# because some Laravel packages publish CSS/JS that Vite picks up.
+FROM node:22-alpine AS assets
+WORKDIR /app
+
+COPY package.json package-lock.json vite.config.js ./
+RUN npm ci --no-audit --no-fund
+
+COPY resources ./resources
+COPY public ./public
+COPY --from=vendor /app/vendor ./vendor
+RUN npm run build
+
+# ─── Stage 3: runtime ───────────────────────────────────────────────────────
+# FrankenPHP serves on :7001 (not :80) — auto_https is disabled in the
+# Caddyfile because Cloudflare terminates TLS at the edge.
+FROM dunglas/frankenphp:1-php8.4-alpine
+WORKDIR /app
+
+ENV FRANKENPHP_NUM_THREADS=auto \
+    SERVER_NAME=:7001
+
+RUN install-php-extensions \
+        pdo_mysql \
+        redis \
+        intl \
+        bcmath \
+        opcache
+
+COPY --from=vendor /app /app
+COPY --from=assets /app/public/build /app/public/build
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+
+RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
+
+USER www-data
+EXPOSE 7001
+
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:7001/up || exit 1
