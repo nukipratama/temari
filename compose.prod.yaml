@@ -102,10 +102,14 @@ services:
       - mysql_data:/var/lib/mysql
     networks: [internal]
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
-      interval: 10s
+      # `-h 127.0.0.1` forces TCP rather than the local UNIX socket so the
+      # check fails until the network listener is up. `start_period` covers
+      # mysql:8.4's first-boot init (~30-60s).
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 10
+      start_period: 60s
     deploy:
       resources:
         limits:
