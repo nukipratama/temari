@@ -370,3 +370,8 @@ Files touched:
 - `compose.prod.yaml`
 - `docker/Caddyfile`
 
+## 2026-05-10 20:27 +0700 — fix(deploy): add pcntl for Horizon
+
+Files touched:
+- `Dockerfile`
+

@@ -10,7 +10,8 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install \
         --no-dev --no-scripts --no-autoloader \
-        --prefer-dist --no-interaction --no-progress
+        --prefer-dist --no-interaction --no-progress \
+        --ignore-platform-req=ext-pcntl
 
 COPY . .
 RUN composer dump-autoload --optimize --classmap-authoritative
@@ -43,7 +44,8 @@ RUN install-php-extensions \
         redis \
         intl \
         bcmath \
-        opcache
+        opcache \
+        pcntl
 
 COPY --from=vendor /app /app
 COPY --from=assets /app/public/build /app/public/build
