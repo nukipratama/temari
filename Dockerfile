@@ -49,7 +49,10 @@ RUN install-php-extensions \
 
 COPY --from=vendor /app /app
 COPY --from=assets /app/public/build /app/public/build
-COPY docker/Caddyfile /etc/caddy/Caddyfile
+# FrankenPHP loads /etc/frankenphp/Caddyfile, NOT /etc/caddy/Caddyfile.
+# Copying to the wrong path silently falls back to the image's default
+# Caddyfile (no Cache-Control headers, no worker directive, etc.).
+COPY docker/Caddyfile /etc/frankenphp/Caddyfile
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 
 # /data/caddy and /config/caddy are Caddy's data + config dirs (used by the
