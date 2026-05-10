@@ -73,7 +73,6 @@ CI uses GitHub Actions service containers (`mysql:8.4` + `redis:alpine`) — eve
 |:--------------|:-----------------------------------------------------------------------|
 | pre-commit    | `pint` (auto-format staged PHP) + `phpstan` (whole `app/`)             |
 | commit-msg    | Conventional Commits format check                                      |
-| post-commit   | Append entry to `CHANGELOG.md` and amend into HEAD                     |
 | pre-push      | Block direct pushes to `main` (force or not). Use feature branch + PR  |
 | CI — `lint`   | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
 | CI — `pest`   | `pest --coverage --min=100` against mysql:8.4 + redis:alpine services  |

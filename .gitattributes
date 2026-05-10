@@ -25,5 +25,4 @@
 /pint.json          export-ignore
 /rector.php         export-ignore
 /infection.json5    export-ignore
-/CHANGELOG.md       export-ignore
 /renovate.json      export-ignore
