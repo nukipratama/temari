@@ -18,18 +18,28 @@
 
 :7001 {
 	root * /app/public
-
 	encode zstd br gzip
 
-	# Long-lived caching for hashed Vite assets.
+	# Per-path `handle` blocks instead of free-standing `header` directives:
+	# the latter don't reliably reach the wire when `php_server` runs after
+	# them — the worker chain bypasses Caddy's response-header middleware.
+	# `handle` terminates the request inside the block, so headers + the
+	# bound file_server are guaranteed to compose.
+
 	@vite path /build/*
-	header @vite Cache-Control "public, max-age=31536000, immutable"
+	handle @vite {
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
 
-	# Moderate TTL for small unhashed static files (icons, robots.txt).
 	@static path /favicon.ico /favicon.svg /robots.txt /apple-touch-icon.png
-	header @static Cache-Control "public, max-age=604800"
+	handle @static {
+		header Cache-Control "public, max-age=604800"
+		file_server
+	}
 
-	header -Server
-
-	php_server
+	handle {
+		header -Server
+		php_server
+	}
 }
