@@ -128,8 +128,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Tag current :latest as :previous (rollback target)
+        run: |
+          if docker image inspect teman-lari/app:latest >/dev/null 2>&1; then
+            docker tag teman-lari/app:latest teman-lari/app:previous
+          fi
+
       - name: Build new image
         run: $COMPOSE build app
+
+      - name: Tag new image with git SHA
+        run: docker tag teman-lari/app:latest teman-lari/app:${{ github.sha }}
 
       - name: Migrate (one-shot, on the new image)
         run: $COMPOSE run --rm app php artisan migrate --force
@@ -153,7 +162,7 @@ jobs:
           done
           echo "Healthcheck failed"; exit 1
 
-      - name: Prune old images (best-effort, 7-day retention)
+      - name: Prune old images (-a includes SHA-tagged but unused; respects in-use)
         if: always()
         continue-on-error: true
-        run: docker image prune -f --filter "until=168h"
+        run: docker image prune -a -f --filter "until=168h"

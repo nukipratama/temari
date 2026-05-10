@@ -397,3 +397,9 @@ Files touched:
 - `.github/workflows/ci.yml`
 - `compose.prod.yaml`
 
+## 2026-05-10 22:46 +0700 — feat(deploy): SHA-tagged images + :previous for fast rollback
+
+Files touched:
+- `.github/workflows/ci.yml`
+- `README.md`
+

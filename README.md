@@ -137,14 +137,21 @@ After all of the above, merging the PR triggers the first deploy: mysql initiali
 
 ### Manual rollback
 
-The previous image is still tagged on the host (until pruned, 7-day retention). On the homelab:
+Every successful deploy leaves the prior image tagged `teman-lari/app:previous` and the new image tagged with its git SHA (`teman-lari/app:<sha>`). All non-running images older than 7 days get pruned.
 
+**Roll back the most recent deploy** (most common case):
 ```bash
-docker image ls teman-lari/app
-docker tag <prior-image-id> teman-lari/app:latest
-# All env vars must be re-supplied since compose.prod.yaml uses ${VAR} substitution.
-# Easiest path: re-run the GitHub Actions deploy job manually (re-run failed jobs)
-# rather than fighting compose env locally.
+docker tag teman-lari/app:previous teman-lari/app:latest
+docker compose -f compose.prod.yaml up -d --no-deps app horizon scheduler
+docker compose -f compose.prod.yaml exec -T app php artisan horizon:terminate
 ```
 
-If the rollback truly has to happen offline (GitHub down), set the env vars in your shell before `docker compose -f compose.prod.yaml up -d --no-deps app horizon scheduler` — `compose.prod.yaml`'s required-vars list (`${VAR:?required}`) will tell you what's missing.
+**Roll back to a specific commit** (within the 7-day retention window):
+```bash
+docker image ls teman-lari/app                            # find the SHA you want
+docker tag teman-lari/app:<sha> teman-lari/app:latest
+docker compose -f compose.prod.yaml up -d --no-deps app horizon scheduler
+docker compose -f compose.prod.yaml exec -T app php artisan horizon:terminate
+```
+
+For both: env vars (`APP_KEY`, DB creds, etc.) must be in your shell before running compose — easiest path is to re-run the relevant GitHub Actions deploy job rather than fighting compose env locally. `compose.prod.yaml`'s `${VAR:?required}` markers will tell you what's missing if anything's unset.
