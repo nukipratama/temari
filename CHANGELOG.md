@@ -380,3 +380,9 @@ Files touched:
 Files touched:
 - `bootstrap/providers.php`
 
+## 2026-05-10 21:44 +0700 — fix(deploy): caddy data perms + worker healthchecks
+
+Files touched:
+- `Dockerfile`
+- `compose.prod.yaml`
+

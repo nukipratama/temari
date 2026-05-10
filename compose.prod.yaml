@@ -61,6 +61,7 @@ services:
       interval: 30s
       timeout: 3s
       retries: 3
+      start_period: 60s
     deploy:
       resources:
         limits:
@@ -71,6 +72,10 @@ services:
     <<: *app-base
     command: ["php", "artisan", "horizon"]
     stop_grace_period: 60s
+    # Inherits the Dockerfile's HEALTHCHECK (curl :7001) which doesn't apply
+    # to a queue worker. Disable so it doesn't show as perpetually unhealthy.
+    healthcheck:
+      disable: true
     deploy:
       resources:
         limits:
@@ -80,6 +85,8 @@ services:
   scheduler:
     <<: *app-base
     command: ["php", "artisan", "schedule:work"]
+    healthcheck:
+      disable: true
     deploy:
       resources:
         limits:

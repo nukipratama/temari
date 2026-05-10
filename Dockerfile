@@ -51,7 +51,12 @@ COPY --from=vendor /app /app
 COPY --from=assets /app/public/build /app/public/build
 COPY docker/Caddyfile /etc/caddy/Caddyfile
 
-RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
+# /data/caddy and /config/caddy are Caddy's data + config dirs (used by the
+# pki module even when auto_https is off). Must be writable by www-data.
+RUN mkdir -p /data/caddy /config/caddy \
+    && chown -R www-data:www-data \
+        /app/storage /app/bootstrap/cache \
+        /data/caddy /config/caddy
 
 USER www-data
 EXPOSE 7001
