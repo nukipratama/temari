@@ -391,3 +391,9 @@ Files touched:
 Files touched:
 - `bootstrap/app.php`
 
+## 2026-05-10 22:18 +0700 — chore(deploy): simplify post-shake-out
+
+Files touched:
+- `.github/workflows/ci.yml`
+- `compose.prod.yaml`
+

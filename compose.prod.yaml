@@ -11,7 +11,7 @@ name: teman-lari-prod
 x-app-image: &app-image teman-lari/app:latest
 
 x-app-env: &app-env
-  APP_NAME: teman-lari
+  APP_NAME: "Teman Lari"
   APP_ENV: production
   APP_DEBUG: "false"
   APP_KEY: ${APP_KEY:?required}

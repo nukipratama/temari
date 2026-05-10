@@ -138,11 +138,7 @@ jobs:
         run: $COMPOSE up -d --no-deps app horizon scheduler
 
       - name: Optimize caches
-        run: |
-          $COMPOSE exec -T app php artisan config:cache
-          $COMPOSE exec -T app php artisan route:cache
-          $COMPOSE exec -T app php artisan view:cache
-          $COMPOSE exec -T app php artisan event:cache
+        run: $COMPOSE exec -T app php artisan optimize
 
       - name: Recycle Horizon workers onto new code
         run: $COMPOSE exec -T app php artisan horizon:terminate
@@ -150,7 +146,7 @@ jobs:
       - name: Healthcheck
         run: |
           for i in 1 2 3 4 5; do
-            if curl -fsS http://localhost:7001/up; then
+            if curl -fsS http://127.0.0.1:7001/up; then
               echo "Healthcheck passed"; exit 0
             fi
             sleep 3
