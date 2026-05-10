@@ -386,3 +386,8 @@ Files touched:
 - `Dockerfile`
 - `compose.prod.yaml`
 
+## 2026-05-10 21:57 +0700 — fix(deploy): trust proxies so https is honored behind cloudflared
+
+Files touched:
+- `bootstrap/app.php`
+

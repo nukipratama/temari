@@ -11,7 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Behind Cloudflare Tunnel in prod: TLS terminates at the CF edge and
+        // cloudflared forwards plain HTTP with X-Forwarded-Proto: https.
+        // Trust all proxies so Laravel honors the header and generates https
+        // URLs (otherwise Strava OAuth fails with redirect_uri mismatch).
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
