@@ -76,7 +76,7 @@ CI uses GitHub Actions service containers (`mysql:8.4` + `redis:alpine`) — eve
 | pre-push      | Block direct pushes to `main` (force or not). Use feature branch + PR  |
 | CI — `lint`   | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
 | CI — `pest`   | `pest --coverage --min=100` against mysql:8.4 + redis:alpine services  |
-| Deploy workflow | Triggered by CI completion on `main`: builds prod image, migrates, rolls containers, recycles Horizon, healthchecks `/up`. Lives in `.github/workflows/deploy.yml`, gated on CI success via `workflow_run` |
+| CI — `deploy` | On push to `main`: build prod image, migrate, roll containers, recycle Horizon, healthcheck `/up` |
 
 ## Branch workflow
 
@@ -119,7 +119,7 @@ Defined in [compose.prod.yaml](compose.prod.yaml) + [Dockerfile](Dockerfile) + [
 ### How a deploy works
 
 1. PR merges to `main`.
-2. CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs `lint` + `pest`. On success, the [Deploy workflow](.github/workflows/deploy.yml) fires via `workflow_run`.
+2. The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) waits for `lint` + `pest` to pass.
 3. The job runs on the self-hosted runner registered for this repo (label `homelab`). The runner is a containerized wrapper around the official `actions/runner` binary, in `--ephemeral` mode, with `network_mode: host`. Sudo lives inside the runner image only — no `NOPASSWD` grant on the host. Outbound long-poll only — no inbound port.
 4. On the homelab box, the job: tags the current `:latest` as `:previous`, builds a new image, tags it with the git SHA, runs `migrate --force`, rolls `app`/`horizon`/`scheduler`, runs `artisan optimize`, recycles Horizon workers via `horizon:terminate`, healthchecks `/up`, and prunes images older than 7 days.
 
