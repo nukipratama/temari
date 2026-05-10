@@ -1,0 +1,139 @@
+# Homelab production stack. All env values come from the calling shell's
+# environment (the GitHub Actions `deploy` job sets them from repo Secrets).
+# Compose substitutes `${VAR}` at parse time. Vars marked `:?` are required
+# and compose fails fast if missing.
+#
+# Cloudflared is NOT in this project — it already runs at the homelab level
+# and reaches the app via host loopback (127.0.0.1:7001).
+
+name: teman-lari-prod
+
+x-app-image: &app-image teman-lari/app:latest
+
+x-app-env: &app-env
+  APP_NAME: teman-lari
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_KEY: ${APP_KEY:?required}
+  APP_URL: ${APP_URL:?required}
+  LOG_CHANNEL: daily
+  LOG_LEVEL: info
+  DB_CONNECTION: mysql
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_DATABASE: ${DB_DATABASE:?required}
+  DB_USERNAME: ${DB_USERNAME:?required}
+  DB_PASSWORD: ${DB_PASSWORD:?required}
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  QUEUE_CONNECTION: redis
+  SESSION_DRIVER: redis
+  CACHE_STORE: redis
+  TRUSTED_PROXIES: "*"
+  TELESCOPE_ENABLED: "false"
+  PULSE_ENABLED: "true"
+  STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:?required}
+  STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:?required}
+
+x-app-base: &app-base
+  image: *app-image
+  build:
+    context: .
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  environment: *app-env
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  networks: [internal]
+
+services:
+  app:
+    <<: *app-base
+    ports:
+      # Loopback only — the existing host-level cloudflared reaches the app via
+      # http://localhost:7001. The LAN cannot see this port.
+      - "127.0.0.1:7001:7001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7001/up"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1g
+
+  horizon:
+    <<: *app-base
+    command: ["php", "artisan", "horizon"]
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512m
+
+  scheduler:
+    <<: *app-base
+    command: ["php", "artisan", "schedule:work"]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256m
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
+      MYSQL_DATABASE: ${DB_DATABASE:?required}
+      MYSQL_USER: ${DB_USERNAME:?required}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?required}
+    command:
+      - "--innodb-buffer-pool-size=256M"
+      - "--max-connections=100"
+      - "--performance-schema=OFF"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1g
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256m
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  internal:
+    driver: bridge

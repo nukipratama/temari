@@ -305,3 +305,68 @@ Files touched:
 Files touched:
 - `.github/workflows/ci.yml`
 
+## 2026-05-10 15:13 +0700 — chore(ci): run CI jobs on self-hosted homelab runner
+
+Files touched:
+- `.github/workflows/ci.yml`
+
+## 2026-05-10 15:13 +0700 — feat(deploy): homelab prod stack with auto-deploy on main merge
+
+Files touched:
+- `.dockerignore`
+- `.github/workflows/ci.yml`
+- `Dockerfile`
+- `README.md`
+- `compose.prod.yaml`
+- `docker/Caddyfile`
+
+## 2026-05-10 15:13 +0700 — feat(deploy): homelab prod stack with auto-deploy on main merge
+
+Files touched:
+- `.dockerignore`
+- `.github/workflows/ci.yml`
+- `Dockerfile`
+- `README.md`
+- `compose.prod.yaml`
+- `docker/Caddyfile`
+
+## 2026-05-10 15:13 +0700 — feat(deploy): homelab prod stack with auto-deploy on main merge
+
+Files touched:
+- `.dockerignore`
+- `.github/workflows/ci.yml`
+- `Dockerfile`
+- `README.md`
+- `compose.prod.yaml`
+- `docker/Caddyfile`
+
+## 2026-05-10 15:13 +0700 — feat(deploy): homelab prod stack with auto-deploy on main merge
+
+Files touched:
+- `.dockerignore`
+- `.github/workflows/ci.yml`
+- `Dockerfile`
+- `README.md`
+- `compose.prod.yaml`
+- `docker/Caddyfile`
+
+## 2026-05-10 15:13 +0700 — feat(deploy): homelab prod stack with auto-deploy on main merge
+
+Files touched:
+- `.dockerignore`
+- `.github/workflows/ci.yml`
+- `Dockerfile`
+- `README.md`
+- `compose.prod.yaml`
+- `docker/Caddyfile`
+
+## 2026-05-10 15:13 +0700 — feat(deploy): homelab prod stack with auto-deploy on main merge
+
+Files touched:
+- `.dockerignore`
+- `.github/workflows/ci.yml`
+- `Dockerfile`
+- `README.md`
+- `compose.prod.yaml`
+- `docker/Caddyfile`
+

@@ -1,0 +1,25 @@
+# FrankenPHP serves the Laravel app on :7001 (matches the project's 7xxx
+# host-port convention). Cloudflare Tunnel terminates TLS at the edge and
+# proxies plain HTTP into the container, so auto_https is disabled here.
+{
+	auto_https off
+	frankenphp
+	admin off
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:7001 {
+	root * /app/public
+
+	encode zstd br gzip
+
+	# Long-lived caching for hashed Vite assets.
+	@vite path /build/*
+	header @vite Cache-Control "public, max-age=31536000, immutable"
+
+	header -Server
+
+	php_server
+}
