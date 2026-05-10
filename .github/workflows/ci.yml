@@ -11,7 +11,7 @@ env:
 jobs:
   # No DB / no redis — just static analysis + style.
   lint:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab]
     steps:
       - uses: actions/checkout@v6
 
@@ -42,7 +42,7 @@ jobs:
   # Test suite + 100% line-coverage gate. Boots Laravel against the mysql + redis
   # service containers; RefreshDatabase trait migrates the schema per-test class.
   pest:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab]
     services:
       mysql:
         image: mysql:8.4
