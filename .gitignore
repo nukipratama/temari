@@ -32,3 +32,9 @@ Thumbs.db
 
 # Infection log
 /storage/infection.log
+
+# Octane downloads a local FrankenPHP binary for dev runs — large + platform-
+# specific, stays out of git. The worker stub at public/frankenphp-worker.php
+# IS committed (the prod Docker build relies on it).
+**/caddy
+frankenphp

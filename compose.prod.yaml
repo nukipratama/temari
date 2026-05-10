@@ -32,6 +32,12 @@ x-app-env: &app-env
   TRUSTED_PROXIES: "*"
   TELESCOPE_ENABLED: "false"
   PULSE_ENABLED: "true"
+  # Octane + FrankenPHP worker mode. 4 workers fit under the 2 CPU / 1 GB
+  # container limit (each ~150-250 MB resident). Recycle every N requests
+  # to bound memory growth from any leak in long-running PHP.
+  OCTANE_SERVER: frankenphp
+  OCTANE_MAX_REQUESTS: "500"
+  FRANKENPHP_NUM_WORKERS: "4"
   STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:?required}
   STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:?required}
 

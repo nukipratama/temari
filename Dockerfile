@@ -50,6 +50,7 @@ RUN install-php-extensions \
 COPY --from=vendor /app /app
 COPY --from=assets /app/public/build /app/public/build
 COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 
 # /data/caddy and /config/caddy are Caddy's data + config dirs (used by the
 # pki module even when auto_https is off). Must be writable by www-data.
