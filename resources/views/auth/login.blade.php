@@ -7,20 +7,39 @@
         <div class="absolute -bottom-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-lime-500 opacity-10 blur-3xl"></div>
     </div>
 
-    <main class="relative mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-12">
-        <div class="mb-10">
-            <div class="flex items-center gap-3">
-                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-500 text-[#0a0a0a]">
-                    <iconify-icon icon="mdi:run-fast" width="24" height="24" aria-hidden="true"></iconify-icon>
-                </span>
-                <span class="text-xl font-semibold tracking-tight">Teman Lari</span>
-            </div>
+    <main class="relative mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-6 py-12">
+        <div class="mb-10 flex flex-col items-center text-center">
+            <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-lime-500 text-[#0a0a0a]">
+                <iconify-icon icon="mdi:run-fast" width="28" height="28" aria-hidden="true"></iconify-icon>
+            </span>
+            <h1 class="mt-4 text-3xl font-semibold tracking-tight">TemanLari</h1>
+            <p class="mt-2 text-base text-gray-600 dark:text-gray-300">
+                Setiap Langkah Berarti.
+            </p>
         </div>
 
-        <div class="rounded-3xl border border-black/5 bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)] dark:border-white/5 dark:bg-[#161615] dark:shadow-none">
-            <h1 class="text-2xl font-semibold tracking-tight">Selamat datang.</h1>
+        <section class="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            @foreach ([
+                ['icon' => 'mdi:cloud-download-outline', 'label' => 'Catat', 'desc' => 'Setiap lari, otomatis dari Strava.'],
+                ['icon' => 'mdi:chart-line', 'label' => 'Pantau', 'desc' => 'Lihat progress mingguan.'],
+                ['icon' => 'mdi:calendar-check', 'label' => 'Konsisten', 'desc' => 'Bangun kebiasaan, bukan target.'],
+            ] as $feature)
+                <div class="rounded-2xl border border-black/5 bg-white/60 p-5 backdrop-blur dark:border-white/5 dark:bg-[#161615]/60">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-500/15 text-lime-600 dark:text-lime-400">
+                        <iconify-icon icon="{{ $feature['icon'] }}" width="22" height="22" aria-hidden="true"></iconify-icon>
+                    </div>
+                    <h2 class="mt-4 text-sm font-semibold">{{ $feature['label'] }}</h2>
+                    <p class="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                        {{ $feature['desc'] }}
+                    </p>
+                </div>
+            @endforeach
+        </section>
+
+        <div class="mx-auto w-full max-w-md rounded-3xl border border-black/5 bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)] dark:border-white/5 dark:bg-[#161615] dark:shadow-none">
+            <h2 class="text-2xl font-semibold tracking-tight">Selamat datang.</h2>
             <p class="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-200">
-                Catat lari kamu. Lihat progress kamu. Tetap konsisten.
+                Masuk pakai Strava untuk mulai catat lari kamu.
             </p>
 
             @if ($errors->any())
