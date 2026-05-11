@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use Illuminate\Database\Eloquent\Collection;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
@@ -132,7 +133,7 @@ class Vibe
     {
         $cutoff = $asOf->copy()->subDays(self::DECOUPLING_WINDOW_DAYS);
 
-        /** @var \Illuminate\Database\Eloquent\Collection<int, ActivityDetail> $rows */
+        /** @var Collection<int, ActivityDetail> $rows */
         $rows = ActivityDetail::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
             ->where('start_date_local', '>=', $cutoff)

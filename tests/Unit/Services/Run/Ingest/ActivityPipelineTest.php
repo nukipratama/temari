@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\RunCard;
+use App\Models\StoryLine;
 use App\Models\PersonalRecord;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -277,10 +279,10 @@ it('produces a run card + post_run story line on a successful ingest', function 
 
     app(ActivityPipeline::class)->ingest($activity);
 
-    expect(\App\Models\RunCard::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
-        ->and(\App\Models\StoryLine::query()
+    expect(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
+        ->and(StoryLine::query()
             ->where('activity_id', $activity->id)
-            ->where('kind', \App\Models\StoryLine::KIND_POST_RUN)
+            ->where('kind', StoryLine::KIND_POST_RUN)
             ->exists())->toBeTrue();
 });
 

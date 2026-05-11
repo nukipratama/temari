@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\RunCard;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
@@ -160,5 +161,5 @@ it('is idempotent — rebuilding overwrites the same row', function (): void {
     app(RunCardFactory::class)->build($activity, $detail);
     app(RunCardFactory::class)->build($activity, $detail);
 
-    expect(\App\Models\RunCard::query()->where('activity_id', $activity->id)->count())->toBe(1);
+    expect(RunCard::query()->where('activity_id', $activity->id)->count())->toBe(1);
 });
