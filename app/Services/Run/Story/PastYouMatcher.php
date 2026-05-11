@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use Illuminate\Database\Eloquent\Collection;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 
@@ -26,6 +27,12 @@ use App\Models\ActivityDetail;
  */
 class PastYouMatcher
 {
+    public const string BAND_RECOVERY = 'recovery';
+
+    public const string BAND_EASY = 'easy';
+
+    public const string BAND_THRESHOLD = 'threshold';
+
     private const float DISTANCE_TOLERANCE = 0.20;
 
     private const int TEMP_TOLERANCE_C = 3;
@@ -57,13 +64,16 @@ class PastYouMatcher
 
         $band = $this->paceBand($currentPaceSec);
         $minDate = $startDate->copy()->subDays(self::MIN_GAP_DAYS)->endOfDay();
+        $distanceLo = $currentDistance * (1 - self::DISTANCE_TOLERANCE);
+        $distanceHi = $currentDistance * (1 + self::DISTANCE_TOLERANCE);
 
+        /** @var Collection<int, ActivityDetail> $candidates */
         $candidates = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $activity->user_id)
             ->where('activities.id', '!=', $activity->id)
             ->where('activity_details.start_date_local', '<=', $minDate)
-            ->whereNotNull('activity_details.distance')
+            ->whereBetween('activity_details.distance', [$distanceLo, $distanceHi])
             ->whereNotNull('activity_details.start_date_local')
             ->whereNotNull('activity_details.moving_time')
             ->orderBy('activity_details.start_date_local') // ASC — oldest first wins
@@ -71,9 +81,6 @@ class PastYouMatcher
             ->get();
 
         foreach ($candidates as $past) {
-            if (! $this->isWithinDistanceTolerance($past, $currentDistance)) {
-                continue;
-            }
             $pastPace = $this->paceSecPerKm($past);
             if ($pastPace === null || $this->paceBand($pastPace) !== $band) {
                 continue;
@@ -82,13 +89,16 @@ class PastYouMatcher
                 continue;
             }
 
-            // SQL already filtered out null start_date_local; null-safe chain
-            // keeps PHPStan satisfied without an unreachable runtime guard.
+            // The SQL above filters whereNotNull('start_date_local') — assert
+            // narrows the type for PHPStan without a misleading runtime guard.
+            assert($past->start_date_local !== null);
+
             return [
                 'past' => $past,
                 'pace_diff_sec' => round($pastPace - $currentPaceSec, 1),
                 'hr_diff_bpm' => $this->hrDiffBpm($detail, $past),
-                'days_ago' => (int) $past->start_date_local?->startOfDay()->diffInDays($startDate->copy()->startOfDay()),
+                'days_ago' => (int) $past->start_date_local->copy()->startOfDay()
+                    ->diffInDays($startDate->copy()->startOfDay()),
             ];
         }
 
@@ -98,9 +108,9 @@ class PastYouMatcher
     public function paceBand(float $secPerKm): string
     {
         return match (true) {
-            $secPerKm >= self::RECOVERY_PACE_FLOOR_SEC => 'recovery',
-            $secPerKm >= self::EASY_PACE_FLOOR_SEC => 'easy',
-            default => 'threshold',
+            $secPerKm >= self::RECOVERY_PACE_FLOOR_SEC => self::BAND_RECOVERY,
+            $secPerKm >= self::EASY_PACE_FLOOR_SEC => self::BAND_EASY,
+            default => self::BAND_THRESHOLD,
         };
     }
 
@@ -113,13 +123,6 @@ class PastYouMatcher
         }
 
         return $movingTime / ($distance / 1000);
-    }
-
-    private function isWithinDistanceTolerance(ActivityDetail $past, float $current): bool
-    {
-        $pastDistance = (float) ($past->distance ?? 0);
-
-        return abs($pastDistance - $current) / $current <= self::DISTANCE_TOLERANCE;
     }
 
     private function isWithinTempTolerance(ActivityDetail $current, ActivityDetail $past): bool

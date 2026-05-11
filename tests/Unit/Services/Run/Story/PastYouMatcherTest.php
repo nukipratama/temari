@@ -170,10 +170,10 @@ it('reports a null hr_diff when one side is missing average_heartrate', function
     expect($match['hr_diff_bpm'])->toBeNull();
 });
 
-it('exposes paceBand thresholds', function (): void {
+it('classifies pace into recovery, easy, and threshold bands', function (): void {
     $matcher = new PastYouMatcher();
 
-    expect($matcher->paceBand(460))->toBe('recovery')
-        ->and($matcher->paceBand(420))->toBe('easy')
-        ->and($matcher->paceBand(350))->toBe('threshold');
+    expect($matcher->paceBand(460))->toBe(PastYouMatcher::BAND_RECOVERY)
+        ->and($matcher->paceBand(420))->toBe(PastYouMatcher::BAND_EASY)
+        ->and($matcher->paceBand(350))->toBe(PastYouMatcher::BAND_THRESHOLD);
 });
