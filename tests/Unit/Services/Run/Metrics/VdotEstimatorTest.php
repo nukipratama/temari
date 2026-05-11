@@ -59,6 +59,20 @@ it('formula computes a believable VDOT for a known marathon time', function (): 
     expect($vdot)->toBeFloat()->toBeGreaterThan(50)->toBeLessThan(58);
 });
 
+it('skips PRs whose value yields a non-positive VO2 (impossibly slow time)', function (): void {
+    $user = User::factory()->create();
+    // A 5 km entry at absurdly slow pace (~3 hours): velocity ≈ 27 m/min →
+    // VO2 = -4.6 + 0.18*27 + 0.0001*27² ≈ 0.4, which is positive; but at
+    // even slower, VO2 trends negative. Use a very-slow pace just inside the
+    // realm where the Daniels VO2 polynomial crosses zero.
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 30_000.0, // ~5 hours for 5km → VO2 polynomial negative
+    ]);
+
+    expect((new VdotEstimator())->estimate($user))->toBeNull();
+});
+
 it('returns null for zero or negative inputs', function (): void {
     $est = new VdotEstimator();
     expect($est->vdotFromTimeAndDistance(0, 5_000))->toBeNull()

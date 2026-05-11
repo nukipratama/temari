@@ -171,6 +171,31 @@ it('caches and short-circuits the second call', function (): void {
     Http::assertSentCount(1);
 });
 
+it('returns null when the http client throws (timeout / connection failure)', function (): void {
+    $startedAt = CarbonImmutable::parse('2026-05-10 06:00:00');
+    Http::fake(function (): void {
+        throw new \Illuminate\Http\Client\ConnectionException('connection refused');
+    });
+
+    expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+});
+
+it('returns null when the matched hour bucket has null temp or humidity', function (): void {
+    $startedAt = CarbonImmutable::parse('2026-05-10 06:00:00');
+    Http::fake([
+        'api.open-meteo.com/*' => Http::response([
+            'hourly' => [
+                'time' => ['2026-05-10T06:00'],
+                'temperature_2m' => [null],
+                'relative_humidity_2m' => [80],
+                'precipitation' => [0],
+            ],
+        ]),
+    ]);
+
+    expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+});
+
 it('distinguishes cache keys by hour-bucket', function (): void {
     Http::fake([
         'api.open-meteo.com/*' => Http::sequence()

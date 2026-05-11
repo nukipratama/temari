@@ -149,6 +149,28 @@ it('computes Foster monotony and strain over the week', function (): void {
     Carbon::setTestNow();
 });
 
+it('reports zero weekly_trimp / monotony / strain on a fully rested current week', function (): void {
+    Carbon::setTestNow('2026-05-11 12:00:00');
+    $user = User::factory()->create();
+
+    // History exists but only OUTSIDE the last 7 days (so week_total == 0).
+    for ($i = 0; $i < 20; $i++) {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'trimp_edwards' => 60.0,
+            'start_date_local' => Carbon::today()->subDays(20 + $i), // 20-39 days ago
+        ]);
+    }
+
+    $summary = (new TrainingLoad())->summary($user);
+
+    expect($summary['weekly_trimp'])->toBe(0.0)
+        ->and($summary['monotony'])->toBe(0.0)
+        ->and($summary['strain'])->toBe(0.0);
+
+    Carbon::setTestNow();
+});
+
 it('only counts the requested user', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
     $userA = User::factory()->create();

@@ -85,6 +85,16 @@ it('ignores sessions outside the 60-day lookback', function (): void {
     expect((new ThresholdEstimator())->estimate($user))->toBeNull();
 });
 
+it('ignores stream summaries whose time_in_zone_pct is not an array', function (): void {
+    $user = User::factory()->create();
+    seedDetail($user, [
+        'time_in_zone_pct' => 'malformed-string-not-array',
+        'best_60min_pace' => '5:00',
+    ]);
+
+    expect((new ThresholdEstimator())->estimate($user))->toBeNull();
+});
+
 it('ignores stream summaries that have neither 30min nor 60min best paces', function (): void {
     $user = User::factory()->create();
     seedDetail($user, [

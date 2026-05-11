@@ -158,6 +158,85 @@ it('classifies cadence into <165, 165-175, >175 buckets and optimal pct', functi
         ->and($summary['optimal_cadence_pct'])->toBeFloat(); // SPM in 170..185 range
 });
 
+it('returns null best-effort pace when velocity array is shorter than time', function (): void {
+    expect((new StreamAnalysis())->bestEffortPace([0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300], [2.5, 2.5], 300))
+        ->toBeNull();
+});
+
+it('returns null best-effort pace when velocity is all zero (no distance covered)', function (): void {
+    $time = range(0, 600, 30);
+    $velocity = array_fill(0, count($time), 0.0);
+
+    expect((new StreamAnalysis())->bestEffortPace($time, $velocity, 300))->toBeNull();
+});
+
+it('skips zone summary when no second matches any zone band', function (): void {
+    // HR values all below Z1 lower bound → total in-zone seconds = 0.
+    $time = [0, 60, 120, 180];
+    $hr = [80, 80, 80, 80];
+    $summary = (new StreamAnalysis())->compute(
+        ['time' => ['data' => $time], 'heartrate' => ['data' => $hr]],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary)->not->toHaveKey('time_in_zone_min');
+});
+
+it('omits decoupling when every sample is stopped (no moving seconds)', function (): void {
+    $time = range(0, 600, 60);
+    $hr = array_fill(0, count($time), 150);
+    $velocity = array_fill(0, count($time), 0.0); // all stopped
+
+    $summary = (new StreamAnalysis())->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary)->not->toHaveKey('decoupling_pct');
+});
+
+it('omits decoupling when only one half has moving samples', function (): void {
+    // First half stopped, second half moving: avg helper returns null for half 1.
+    $time = range(0, 600, 60);
+    $hr = array_fill(0, count($time), 150);
+    $velocity = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.5, 2.5, 2.5, 2.5, 2.5];
+
+    $summary = (new StreamAnalysis())->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary)->not->toHaveKey('decoupling_pct');
+});
+
+it('omits cadence summary when all dt are zero (degenerate time array)', function (): void {
+    $time = [0, 0, 0, 0];
+    $cadence = [85, 85, 85, 85];
+
+    $summary = (new StreamAnalysis())->compute(
+        ['time' => ['data' => $time], 'cadence' => ['data' => $cadence]],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary)->not->toHaveKey('cadence_distribution_pct');
+});
+
 it('integrates altitude into ascent + descent meters', function (): void {
     $altitude = [100, 105, 110, 108, 115, 113];
     $summary = (new StreamAnalysis())->compute(

@@ -108,6 +108,24 @@ it('breaks an effort PR when stream_summary has a faster best-N pace', function 
         ])->value('value_sec'))->toBe(300.0);
 });
 
+it('ignores effort pace strings that do not match M:SS format', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5000,
+        'splits_metric' => [],
+        'stream_summary' => [
+            'best_5min_pace' => 'not-a-pace',  // malformed → parsePace returns null
+            'best_10min_pace' => '5:00',
+        ],
+    ]);
+
+    $broken = (new PersonalRecords())->detectAndStore($activity, $detail);
+
+    expect($broken)->toContain('best_10min')
+        ->and($broken)->not->toContain('best_5min');
+});
+
 it('respects per-user scoping (PR break for user A does not affect user B)', function (): void {
     $userA = User::factory()->create();
     $userB = User::factory()->create();
