@@ -67,11 +67,11 @@ class RunCardFactory
         $hasZoneData = is_array($summary['time_in_zone_pct'] ?? null);
 
         return match (true) {
-            $isLongest && $distance >= 21_097.5 => 'legendaris',
-            $prSet => 'epik',
-            $negativeSplit && $distance >= 5_000 => 'langka',
-            $hasZoneData && $distance >= 3_000 => 'jarang',
-            default => 'biasa',
+            $isLongest && $distance >= 21_097.5 => RunCard::RARITY_LEGENDARIS,
+            $prSet => RunCard::RARITY_EPIK,
+            $negativeSplit && $distance >= 5_000 => RunCard::RARITY_LANGKA,
+            $hasZoneData && $distance >= 3_000 => RunCard::RARITY_JARANG,
+            default => RunCard::RARITY_BIASA,
         };
     }
 
@@ -84,22 +84,22 @@ class RunCardFactory
         $badges = [];
 
         if (($detail->weather_temp_c ?? 0) >= 31) {
-            $badges[] = 'hari_panas';
+            $badges[] = RunCard::BADGE_HARI_PANAS;
         }
         if ($detail->weather_rain_detected === true) {
-            $badges[] = 'pejuang_hujan';
+            $badges[] = RunCard::BADGE_PEJUANG_HUJAN;
         }
         if ($detail->start_date_local !== null && (int) $detail->start_date_local->format('H') < 6) {
-            $badges[] = 'anak_pagi';
+            $badges[] = RunCard::BADGE_ANAK_PAGI;
         }
         if ($this->isLongSlowDistance($detail, $summary)) {
-            $badges[] = 'long_slow_distance';
+            $badges[] = RunCard::BADGE_LONG_SLOW_DISTANCE;
         }
         if (($summary['negative_split'] ?? false) === true) {
-            $badges[] = 'negative_split';
+            $badges[] = RunCard::BADGE_NEGATIVE_SPLIT;
         }
         if ($this->isAerobicDiscipline($detail, $summary)) {
-            $badges[] = 'tahan_diri';
+            $badges[] = RunCard::BADGE_TAHAN_DIRI;
         }
 
         return $badges;
