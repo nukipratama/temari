@@ -10,6 +10,8 @@ use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Story\RunCardFactory;
+use App\Services\Run\Story\Temari;
 use App\Services\Strava\StravaClient;
 use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
@@ -43,6 +45,8 @@ class ActivityPipeline
         private readonly TrainingLoad $trainingLoad,
         private readonly PersonalRecords $personalRecords,
         private readonly OpenMeteoClient $weather,
+        private readonly RunCardFactory $cardFactory,
+        private readonly Temari $temari,
     ) {
     }
 
@@ -83,6 +87,11 @@ class ActivityPipeline
         $this->computeAndStoreSummary($detailModel, $streams);
         $this->lookupWeather($detailModel, $streams);
         $this->personalRecords->detectAndStore($activity, $detailModel);
+
+        // Story layer reads the just-updated $detailModel (PR detection above
+        // may have inserted rows the card/Temari mood logic cares about).
+        $this->cardFactory->build($activity, $detailModel);
+        $this->temari->postRunLine($activity, $detailModel);
 
         $activity->update([
             'analyzed_at' => now(),

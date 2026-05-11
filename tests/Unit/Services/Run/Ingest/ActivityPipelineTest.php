@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\RunCard;
+use App\Models\StoryLine;
 use App\Models\PersonalRecord;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -255,6 +257,33 @@ it('leaves weather columns null when Open-Meteo returns nothing', function (): v
 
     $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
     expect($detail->weather_temp_c)->toBeNull();
+});
+
+it('produces a run card + post_run story line on a successful ingest', function (): void {
+    $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Easy 5K',
+            'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000,
+            'moving_time' => 1800,
+            'elapsed_time' => 1800,
+            'splits_metric' => [],
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => [0, 60, 120]],
+            'heartrate' => ['data' => [140, 145, 150]],
+        ]),
+    ]);
+
+    app(ActivityPipeline::class)->ingest($activity);
+
+    expect(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
+        ->and(StoryLine::query()
+            ->where('activity_id', $activity->id)
+            ->where('kind', StoryLine::KIND_POST_RUN)
+            ->exists())->toBeTrue();
 });
 
 it('inserts a PR row when the activity beats the user\'s ledger', function (): void {
