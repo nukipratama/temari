@@ -4,29 +4,46 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use App\Models\StravaConnection;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
+use App\Services\Run\Metrics\PersonalRecords;
+use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Strava\StravaClient;
+use App\Services\Weather\OpenMeteoClient;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
 /**
- * Per-activity ingest. Idempotent: re-running on an already-analyzed activity
- * is safe and refreshes the stored detail+stream.
+ * Per-activity ingest, end to end:
  *
- * v1 scope stops at storing raw detail+stream. The compute pipeline
- * (TRIMP, stream summary, PRs, weather, vibe, run card, story line) layers
- * on top in Phase 3 — see `App\Services\Run\Metrics\*` and Story services.
+ *   1. Fetch detail (mandatory)            → store onto activity_details
+ *   2. Fetch streams (best-effort)         → store onto activity_streams
+ *   3. Compute stream_summary              → time-in-zone, decoupling, best efforts, ...
+ *   4. Compute Edwards TRIMP               → trimp_edwards column
+ *   5. Look up weather (best-effort)       → weather_* columns
+ *   6. Detect personal records             → personal_records ledger
+ *   7. Mark analyzed_at                    → unlocks dashboards
+ *
+ * Idempotent: re-running on an already-analyzed activity refreshes all of
+ * the above. Each compute step is best-effort — a failure in one (no
+ * heartrate stream, weather API down, etc.) doesn't block the others.
  */
 class ActivityPipeline
 {
     private const int DETAIL_FETCH_MAX_ATTEMPTS = 5;
 
-    public function __construct(private readonly StravaClient $client)
-    {
+    public function __construct(
+        private readonly StravaClient $client,
+        private readonly StreamAnalysis $streamAnalysis,
+        private readonly TrainingLoad $trainingLoad,
+        private readonly PersonalRecords $personalRecords,
+        private readonly OpenMeteoClient $weather,
+    ) {
     }
 
     public function ingest(Activity $activity): void
@@ -56,27 +73,16 @@ class ActivityPipeline
             return;
         }
 
-        $this->storeDetail($activity, $detail);
+        $detailModel = $this->storeDetail($activity, $detail);
 
-        // Streams are best-effort. Some old activities have no stream data,
-        // others 404. Either way the run is still useful with detail alone.
-        try {
-            $streams = $this->client
-                ->get($connection, "/activities/{$activity->strava_external_id}/streams", [
-                    'keys' => 'time,distance,heartrate,cadence,velocity_smooth,altitude,latlng',
-                    'key_by_type' => 'true',
-                ])
-                ->json();
-
-            if (is_array($streams)) {
-                $this->storeStreams($activity, $streams);
-            }
-        } catch (Throwable $e) {
-            Log::info('streams fetch failed (non-fatal)', [
-                'activity_id' => $activity->id,
-                'error' => $e->getMessage(),
-            ]);
+        $streams = $this->fetchStreams($activity, $connection);
+        if ($streams !== null) {
+            $this->storeStreams($activity, $streams);
         }
+
+        $this->computeAndStoreSummary($detailModel, $streams);
+        $this->lookupWeather($detailModel, $streams);
+        $this->personalRecords->detectAndStore($activity, $detailModel);
 
         $activity->update([
             'analyzed_at' => now(),
@@ -87,11 +93,11 @@ class ActivityPipeline
     /**
      * @param  array<string, mixed>  $detail
      */
-    private function storeDetail(Activity $activity, array $detail): void
+    private function storeDetail(Activity $activity, array $detail): ActivityDetail
     {
         $start = $detail['start_date_local'] ?? $detail['start_date'] ?? null;
 
-        ActivityDetail::query()->updateOrCreate(
+        return ActivityDetail::query()->updateOrCreate(
             ['activity_id' => $activity->id],
             [
                 'name' => $detail['name'] ?? null,
@@ -113,6 +119,30 @@ class ActivityPipeline
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    private function fetchStreams(Activity $activity, StravaConnection $connection): ?array
+    {
+        try {
+            $streams = $this->client
+                ->get($connection, "/activities/{$activity->strava_external_id}/streams", [
+                    'keys' => 'time,distance,heartrate,cadence,velocity_smooth,altitude,latlng',
+                    'key_by_type' => 'true',
+                ])
+                ->json();
+
+            return is_array($streams) ? $streams : null;
+        } catch (Throwable $e) {
+            Log::info('streams fetch failed (non-fatal)', [
+                'activity_id' => $activity->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $streams
      */
     private function storeStreams(Activity $activity, array $streams): void
@@ -121,6 +151,70 @@ class ActivityPipeline
             ['activity_id' => $activity->id],
             ['data' => $streams],
         );
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $streams
+     */
+    private function computeAndStoreSummary(ActivityDetail $detail, ?array $streams): void
+    {
+        if ($streams === null) {
+            return;
+        }
+
+        /** @var array<string, array{lo: int, hi: int}> $hrZones */
+        $hrZones = config('runner.hr_zones');
+        $optimalCadence = (int) config('runner.optimal_cadence_spm');
+
+        $summary = $this->streamAnalysis->compute(
+            $streams,
+            $hrZones,
+            is_array($detail->splits_metric) ? $detail->splits_metric : null,
+            $optimalCadence,
+        );
+
+        $minutesInZone = $summary['time_in_zone_min'] ?? null;
+        $trimp = is_array($minutesInZone) ? $this->trainingLoad->edwardsTrimp($minutesInZone) : null;
+
+        $detail->update([
+            'stream_summary' => $summary === [] ? null : $summary,
+            'trimp_edwards' => $trimp,
+        ]);
+    }
+
+    /**
+     * Best-effort weather lookup. Reads first lat/lng from the streams blob;
+     * if either coords or start time are missing, no weather is stored.
+     *
+     * @param  array<string, mixed>|null  $streams
+     */
+    private function lookupWeather(ActivityDetail $detail, ?array $streams): void
+    {
+        if ($streams === null || $detail->start_date_local === null) {
+            return;
+        }
+
+        $latlng = $streams['latlng']['data'][0] ?? null;
+        if (! is_array($latlng) || count($latlng) !== 2) {
+            return;
+        }
+
+        $startedAt = CarbonImmutable::instance($detail->start_date_local);
+        $snapshot = $this->weather->fetchForActivity(
+            (float) $latlng[0],
+            (float) $latlng[1],
+            $startedAt,
+        );
+
+        if ($snapshot === null) {
+            return;
+        }
+
+        $detail->update([
+            'weather_temp_c' => $snapshot->tempC,
+            'weather_humidity_pct' => $snapshot->humidityPct,
+            'weather_rain_detected' => $snapshot->rainDetected,
+        ]);
     }
 
     private function handleDetailFailure(Activity $activity, Throwable $reason): void
