@@ -39,7 +39,9 @@ class SyncCommand extends Command
     {
         $userIdOption = $this->option('user');
 
-        $query = User::query()->whereHas('stravaConnection');
+        $query = User::query()
+            ->whereHas('stravaConnection')
+            ->with('stravaConnection');
 
         if ($userIdOption !== null) {
             $query->whereKey($userIdOption);

@@ -8,6 +8,7 @@ use App\Models\Activity;
 use App\Models\StoryLine;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @extends Factory<StoryLine>
@@ -21,13 +22,10 @@ class StoryLineFactory extends Factory
     {
         return [
             'activity_id' => Activity::factory(),
-            'user_id' => function (array $attributes): int {
-                // Match the activity's owner so we don't fork a second user
-                /** @var Activity $activity */
-                $activity = Activity::query()->findOrFail($attributes['activity_id']);
-
-                return $activity->user_id;
-            },
+            // Match the activity's owner without hydrating a full model.
+            'user_id' => fn (array $attributes): int => (int) DB::table('activities')
+                ->where('id', $attributes['activity_id'])
+                ->value('user_id'),
             'kind' => StoryLine::KIND_POST_RUN,
             'for_date' => null,
             'mood' => fake()->randomElement(['bouncy', 'glow', 'steady', 'wobble', 'dim', 'squished']),
