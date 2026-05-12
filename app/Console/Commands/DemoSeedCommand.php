@@ -20,7 +20,7 @@ class DemoSeedCommand extends Command
         $count = $seeder->seed($fresh, fn (string $line) => $this->line($line));
 
         $this->info("Demo seed complete: {$count} runs materialised.");
-        $this->line('Run `php artisan demo:login` to get a one-tap login URL.');
+        $this->line('Set DEMO_LOGIN_ENABLED=true in .env to expose the demo button on /login.');
 
         return self::SUCCESS;
     }
