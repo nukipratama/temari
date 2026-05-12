@@ -62,7 +62,51 @@ class TrainingLoad
     public function summary(User $user, ?Carbon $asOf = null): ?array
     {
         $today = ($asOf ?? Carbon::today())->copy()->startOfDay();
-        $cutoff = $today->copy()->subDays(self::LOAD_LOOKBACK_DAYS)->toDateString();
+        $dailyTrimp = $this->loadDailyTrimp($user, $today);
+        if ($dailyTrimp === []) {
+            return null;
+        }
+
+        return $this->summaryFromDailyMap($dailyTrimp, $today);
+    }
+
+    /**
+     * Same shape as `summary()` but operates on a pre-loaded daily TRIMP
+     * map keyed by `Y-m-d`. Lets callers like `WeeklyAggregator` query the
+     * source table once and compute snapshots at many as-of dates without
+     * re-querying per week.
+     *
+     * @param  array<string, float>  $dailyTrimp
+     * @return array<string, mixed>|null
+     */
+    public function summaryFromDailyMap(array $dailyTrimp, Carbon $asOf): ?array
+    {
+        if ($dailyTrimp === []) {
+            return null;
+        }
+
+        $today = $asOf->copy()->startOfDay();
+        [$atl, $ctl] = $this->rollLoads($dailyTrimp, $today);
+        $form = round($ctl - $atl, 1);
+        [$weeklyTrimp, $monotony, $strain] = $this->weekStats($dailyTrimp, $today);
+
+        return [
+            'weekly_trimp' => round($weeklyTrimp, 1),
+            'atl_7d' => round($atl, 1),
+            'ctl_42d' => round($ctl, 1),
+            'form' => $form,
+            'form_status' => $this->formStatus($form, $ctl),
+            'monotony' => $monotony,
+            'strain' => $strain,
+        ];
+    }
+
+    /**
+     * @return array<string, float>  date (Y-m-d) → summed TRIMP for that day
+     */
+    private function loadDailyTrimp(User $user, Carbon $asOf): array
+    {
+        $cutoff = $asOf->copy()->subDays(self::LOAD_LOOKBACK_DAYS)->toDateString();
 
         /** @var Collection<int, object{dt: string, trimp_sum: float}> $rows */
         $rows = ActivityDetail::query()
@@ -78,28 +122,9 @@ class TrainingLoad
                 DB::raw('SUM(activity_details.trimp_edwards) as trimp_sum'),
             ]);
 
-        if ($rows->isEmpty()) {
-            return null;
-        }
-
-        $dailyTrimp = $rows->mapWithKeys(fn (object $r): array => [
+        return $rows->mapWithKeys(fn (object $r): array => [
             $r->dt => (float) $r->trimp_sum,
         ])->all();
-
-        [$atl, $ctl] = $this->rollLoads($dailyTrimp, $today);
-        $form = round($ctl - $atl, 1);
-
-        [$weeklyTrimp, $monotony, $strain] = $this->weekStats($dailyTrimp, $today);
-
-        return [
-            'weekly_trimp' => round($weeklyTrimp, 1),
-            'atl_7d' => round($atl, 1),
-            'ctl_42d' => round($ctl, 1),
-            'form' => $form,
-            'form_status' => $this->formStatus($form, $ctl),
-            'monotony' => $monotony,
-            'strain' => $strain,
-        ];
     }
 
     /**

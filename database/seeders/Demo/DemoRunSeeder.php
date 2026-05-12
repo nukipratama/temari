@@ -41,6 +41,12 @@ class DemoRunSeeder
 {
     public const string DEMO_USER_EMAIL = 'demo@teman-lari.local';
 
+    /**
+     * Pre-encoded small loop near Jakarta — same shape for every GPS-enabled
+     * demo run, close enough to look like a real Strava polyline preview.
+     */
+    private const string DEMO_POLYLINE = '~kpvCggjpV??cAcA{@cAcA{@aA{@s@_@i@Sa@Ce@@a@P_@`@U`@AbAFr@\h@d@^h@Z`@Vd@LXLb@?j@';
+
     public function __construct(
         private readonly BlueprintLibrary $library,
         private readonly StreamSynthesizer $synthesizer,
@@ -100,22 +106,16 @@ class DemoRunSeeder
     {
         $user = User::query()->firstOrCreate(
             ['email' => self::DEMO_USER_EMAIL],
-            [
-                'name' => 'Demo Runner',
-                'password' => bcrypt('demo-password-not-used-oauth-only'),
-                'avatar_url' => null,
-            ],
+            User::factory()->raw(['name' => 'Demo Runner', 'email' => self::DEMO_USER_EMAIL]),
         );
 
         StravaConnection::query()->firstOrCreate(
             ['user_id' => $user->id],
-            [
-                'strava_athlete_id' => 99999999,
-                'access_token' => 'demo-mock-token',
-                'refresh_token' => 'demo-mock-refresh',
+            StravaConnection::factory()->raw([
+                'user_id' => $user->id,
+                'strava_athlete_id' => 99_999_999,
                 'token_expires_at' => Carbon::now()->addYear(),
-                'scopes' => 'read,activity:read',
-            ],
+            ]),
         );
 
         $log("Demo user ready: {$user->email} (id={$user->id})");
@@ -135,6 +135,8 @@ class DemoRunSeeder
         }
 
         PersonalRecord::query()->where('user_id', $user->id)->delete();
+        // StoryLine deleted twice on purpose: by activity_id above for post-run
+        // lines, by user_id here for daily greetings (which have null activity_id).
         StoryLine::query()->where('user_id', $user->id)->delete();
         WeeklySnapshot::query()->where('user_id', $user->id)->delete();
         Activity::query()->where('user_id', $user->id)->delete();
@@ -155,22 +157,26 @@ class DemoRunSeeder
             'detail_fail_count' => 0,
         ]);
 
+        $distanceStream = $streams['distance']['data'] ?? [];
+        $hrStream = $streams['heartrate']['data'] ?? [];
+        $cadenceStream = $streams['cadence']['data'] ?? [];
+
         $detail = ActivityDetail::query()->create([
             'activity_id' => $activity->id,
             'name' => $blueprint->name ?? 'Run',
             'start_date_local' => $blueprint->startsAt,
-            'distance' => $this->totalDistance($streams),
+            'distance' => $distanceStream === [] ? 0.0 : round((float) end($distanceStream), 1),
             'moving_time' => $blueprint->movingTimeSec(),
             'elapsed_time' => $blueprint->movingTimeSec(),
             'average_speed' => $blueprint->distanceM / max(1, $blueprint->movingTimeSec()),
             'total_elevation_gain' => $blueprint->elevationGainM,
             'has_heartrate' => $blueprint->hasHrSensor,
-            'average_heartrate' => $blueprint->hasHrSensor ? $this->meanOf($streams['heartrate']['data'] ?? []) : null,
-            'max_heartrate' => $blueprint->hasHrSensor ? $this->maxOf($streams['heartrate']['data'] ?? []) : null,
-            'average_cadence' => $blueprint->hasCadenceSensor ? $this->meanOf($streams['cadence']['data'] ?? []) : null,
+            'average_heartrate' => $blueprint->hasHrSensor ? StreamStats::mean($hrStream) : null,
+            'max_heartrate' => $blueprint->hasHrSensor ? StreamStats::max($hrStream) : null,
+            'average_cadence' => $blueprint->hasCadenceSensor ? StreamStats::mean($cadenceStream) : null,
             'calories' => round($blueprint->distanceM / 1000 * 65),
             'splits_metric' => $splits,
-            'summary_polyline' => $blueprint->hasGps ? $this->polylineFor($blueprint) : null,
+            'summary_polyline' => $blueprint->hasGps ? self::DEMO_POLYLINE : null,
             'weather_temp_c' => $blueprint->weatherTempC,
             'weather_humidity_pct' => $blueprint->weatherHumidityPct,
             'weather_rain_detected' => $blueprint->weatherRainDetected,
@@ -184,9 +190,9 @@ class DemoRunSeeder
         $this->computeStreamSummary($detail, $streams);
         $detail->refresh();
 
+        // PersonalRecords writes to its own table, not activity_details — no
+        // refresh needed before the card/Temari step.
         $this->personalRecords->detectAndStore($activity, $detail);
-        $detail->refresh();
-
         $this->cardFactory->build($activity, $detail);
         $this->temari->postRunLine($activity, $detail);
     }
@@ -216,54 +222,4 @@ class DemoRunSeeder
         ]);
     }
 
-    /**
-     * @param  array<string, array{data: list<int|float|array{float, float}>}>  $streams
-     */
-    private function totalDistance(array $streams): float
-    {
-        $data = $streams['distance']['data'] ?? [];
-        if ($data === []) {
-            return 0.0;
-        }
-
-        return round((float) end($data), 1);
-    }
-
-    /**
-     * @param  list<int|float|array{float, float}>  $values
-     */
-    private function meanOf(array $values): ?float
-    {
-        $scalars = array_filter($values, static fn ($v): bool => is_int($v) || is_float($v));
-        if ($scalars === []) {
-            return null;
-        }
-
-        return round(array_sum($scalars) / count($scalars), 1);
-    }
-
-    /**
-     * @param  list<int|float|array{float, float}>  $values
-     */
-    private function maxOf(array $values): ?float
-    {
-        $scalars = array_filter($values, static fn ($v): bool => is_int($v) || is_float($v));
-        if ($scalars === []) {
-            return null;
-        }
-
-        return (float) max($scalars);
-    }
-
-    /**
-     * Static canned polyline (a small loop). Real Strava `summary_polyline`
-     * is Google's encoded format; here we ship a believable-shaped string
-     * derived from the canned latlngs in `StreamSynthesizer`.
-     */
-    private function polylineFor(RunBlueprint $blueprint): string
-    {
-        // Pre-encoded small loop near Jakarta — same shape for every demo run,
-        // close enough to look like a real Strava polyline preview.
-        return '~kpvCggjpV??cAcA{@cAcA{@aA{@s@_@i@Sa@Ce@@a@P_@`@U`@AbAFr@\h@d@^h@Z`@Vd@LXLb@?j@';
-    }
 }

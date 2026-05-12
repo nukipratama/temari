@@ -8,6 +8,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+afterEach(fn () => app()->detectEnvironment(fn () => 'testing'));
+
 it('prints a signed login URL for the demo user', function (): void {
     User::factory()->create(['email' => DemoRunSeeder::DEMO_USER_EMAIL]);
 

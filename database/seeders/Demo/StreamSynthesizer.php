@@ -7,8 +7,6 @@ namespace Database\Seeders\Demo;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
 
-use function count;
-
 /**
  * Turns a `RunBlueprint` into Strava-shaped 1 Hz stream arrays. The output
  * keys match what `StreamAnalysis::compute()` reads:
@@ -92,30 +90,16 @@ class StreamSynthesizer
 
     private function velocityAt(RunBlueprint $b, float $progress, float $avg, Randomizer $rng): float
     {
-        $multiplier = match ($b->hrProfile) {
-            'neg_split' => $progress < 0.5 ? 0.96 : 1.07,
-            'intervals' => $this->intervalCycle($progress) === 0 ? 0.70 : 1.30,
-            'lsd_drift' => 1.04 - 0.08 * $progress,
-            'tempo', 'z2_steady' => 1.0,
-            default => 1.0,
-        };
+        $multiplier = $b->hrProfile->velocityMultiplier($progress, $this->intervalWork($progress));
 
         return max(0.5, $avg * $multiplier * $rng->getFloat(0.96, 1.04));
     }
 
     private function hrAt(RunBlueprint $b, float $progress, Randomizer $rng): int
     {
-        $base = match ($b->hrProfile) {
-            'z2_steady' => 148.0,
-            'tempo' => 164.0,
-            'intervals' => $this->intervalCycle($progress) === 0 ? 138.0 : 174.0,
-            'lsd_drift' => 145.0 + 22.0 * $progress,
-            'neg_split' => $progress < 0.5 ? 150.0 : 162.0 + 12.0 * ($progress - 0.5) * 2,
-            default => 148.0,
-        };
-        $noise = $rng->getFloat(-3.0, 3.0);
+        $base = $b->hrProfile->hrBase($progress, $this->intervalWork($progress));
 
-        return (int) round($base + $noise);
+        return (int) round($base + $rng->getFloat(-3.0, 3.0));
     }
 
     /**
@@ -127,13 +111,7 @@ class StreamSynthesizer
     {
         $velocityRatio = $avgVelocity > 0 ? $currentVelocity / $avgVelocity : 1.0;
         $velocityOffset = ($velocityRatio - 1.0) * 18.0;
-
-        $drift = match ($b->hrProfile) {
-            'lsd_drift' => -3.0 * $progress,
-            'neg_split' => 4.0 * $progress,
-            'intervals' => 0.0,
-            default => -1.0 * $progress,
-        };
+        $drift = $b->hrProfile->cadenceDrift($progress);
 
         $spm = $b->cadenceSpm + $velocityOffset + $drift + $rng->getFloat(-2.0, 2.0);
         $leg = (int) round($spm / 2);
@@ -160,33 +138,10 @@ class StreamSynthesizer
         ];
     }
 
-    /** Returns 0 (recovery) or 1 (work) for a 6-segment interval cycle. */
-    private function intervalCycle(float $progress): int
+    /** 6-segment cycle: odd thirds are the work bouts. */
+    private function intervalWork(float $progress): bool
     {
-        return ((int) floor($progress * 6)) % 2;
+        return ((int) floor($progress * 6)) % 2 === 1;
     }
 
-    /**
-     * Sanity-only assertion to ensure stream arrays match in length when
-     * tests want to verify the output shape.
-     *
-     * @param  array<string, mixed>  $streams
-     */
-    public static function lengthsMatch(array $streams): bool
-    {
-        $reference = null;
-        foreach ($streams as $stream) {
-            if (! is_array($stream) || ! isset($stream['data']) || ! is_array($stream['data'])) {
-                return false;
-            }
-            $length = count($stream['data']);
-            if ($reference === null) {
-                $reference = $length;
-            } elseif ($reference !== $length) {
-                return false;
-            }
-        }
-
-        return true;
-    }
 }

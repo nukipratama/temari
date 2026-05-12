@@ -15,30 +15,25 @@ use Illuminate\Support\Carbon;
  * on top — so the cards/PRs/story lines on screen are the actual product
  * output for the synthesised input.
  *
- * `hrProfile` shapes both velocity and heart-rate over the run:
+ * `hrProfile` shapes velocity, HR, and cadence over the run — see HrProfile
+ * for what each case means.
  *
- *   z2_steady   flat aerobic effort, hr in low Z2
- *   tempo       sustained Z3/low-Z4
- *   intervals   alternating Z2 / Z4 segments
- *   lsd_drift   long Z2 with hr drifting up over the second half
- *   neg_split   first half ~5% slower, second half 5–10% faster, hr rises
+ * `hasGps`, `hasHrSensor`, `hasCadenceSensor` produce intentionally
+ * incomplete data so the seed exercises real-Strava heterogeneity:
+ * treadmill runs (no GPS, no polyline), phone-only runs (no HR / no
+ * cadence sensors). The platform doesn't classify these — it just
+ * renders whatever fields are present.
  */
 final class RunBlueprint
 {
     /**
-     * `hasGps`, `hasHrSensor`, `hasCadenceSensor` produce intentionally
-     * incomplete data so the seed exercises real-Strava heterogeneity:
-     * treadmill runs (no GPS, no polyline), phone-only runs (no HR / no
-     * cadence sensors). The platform doesn't classify these — it just
-     * renders whatever fields are present.
-     *
      * @param  list<string>  $tags  human-readable annotations for debugging the seeded data
      */
     public function __construct(
         public readonly Carbon $startsAt,
         public readonly int $distanceM,
         public readonly int $targetPaceSecPerKm,
-        public readonly string $hrProfile,
+        public readonly HrProfile $hrProfile,
         public readonly int $cadenceSpm = 170,
         public readonly int $elevationGainM = 30,
         public readonly ?int $weatherTempC = 27,
@@ -60,6 +55,6 @@ final class RunBlueprint
     /** Stable seed for deterministic stream synthesis. */
     public function seed(): int
     {
-        return (int) abs(crc32($this->startsAt->toDateString().':'.$this->distanceM.':'.$this->hrProfile));
+        return (int) abs(crc32($this->startsAt->toDateString().':'.$this->distanceM.':'.$this->hrProfile->value));
     }
 }

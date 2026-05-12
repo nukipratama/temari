@@ -38,9 +38,10 @@ it('upserts one snapshot per ISO week from first run through today', function ()
 
     $written = app(WeeklyAggregator::class)->rebuildFor($user);
 
-    // 21 days back → 4 weeks of coverage inclusive.
-    expect($written)->toBeGreaterThanOrEqual(3)
-        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe($written);
+    // With test-now frozen at 2026-05-11 (Monday), 21 days back is 2026-04-20.
+    // Week-ending Sundays span 04-26 / 05-03 / 05-10 / 05-17 → exactly 4 weeks.
+    expect($written)->toBe(4)
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(4);
 });
 
 it('aggregates distance, runs, and avg decoupling per week', function (): void {

@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\URL;
 
 uses(RefreshDatabase::class);
 
+// Restore env after the production-env test so it doesn't leak into other
+// tests in the same Pest worker (Pest re-bootstraps per-test, but mutating
+// app state still warrants explicit cleanup).
+afterEach(fn () => app()->detectEnvironment(fn () => 'testing'));
+
 it('logs in the demo user and redirects to the dashboard with a valid signed URL', function (): void {
     $user = User::factory()->create();
 

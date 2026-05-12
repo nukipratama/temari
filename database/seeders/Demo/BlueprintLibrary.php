@@ -21,6 +21,15 @@ class BlueprintLibrary
     /** Deterministic seed for filler-run jitter. */
     private const int FILLER_SEED = 4242;
 
+    /** % of non-scripted days in the window that get a filler run. */
+    private const int FILLER_RATE_PCT = 65;
+
+    /** Filler RNG buckets controlling the data-shape mix. Disjoint ranges
+     *  on a 0–99 roll: a filler is either treadmill OR phone-only OR full. */
+    private const int TREADMILL_BUCKET_HI = 8;   // [0,8)  → ~8% treadmill (no GPS)
+
+    private const int PHONE_ONLY_BUCKET_HI = 13; // [8,13) → ~5% phone-only (no HR/cadence)
+
     /**
      * @return list<RunBlueprint>
      */
@@ -43,7 +52,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(87)->setTime(6, 30),
                 distanceM: 5_000,
                 targetPaceSecPerKm: 420, // 7:00/km
-                hrProfile: 'z2_steady',
+                hrProfile: HrProfile::Z2Steady,
                 name: 'First proper 5K',
                 tags: ['first_5k', 'baseline'],
             ),
@@ -52,7 +61,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(74)->setTime(6, 0),
                 distanceM: 14_000,
                 targetPaceSecPerKm: 480, // 8:00/km — easy
-                hrProfile: 'z2_steady',
+                hrProfile: HrProfile::Z2Steady,
                 elevationGainM: 80,
                 name: 'Sunday LSD',
                 tags: ['long_slow_distance'],
@@ -62,7 +71,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(65)->setTime(6, 45),
                 distanceM: 5_200,
                 targetPaceSecPerKm: 410, // 6:50/km — slightly faster than #1
-                hrProfile: 'z2_steady',
+                hrProfile: HrProfile::Z2Steady,
                 name: 'Morning 5K loop',
                 tags: ['past_you_anchor'],
             ),
@@ -71,7 +80,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(58)->setTime(11, 0),
                 distanceM: 10_000,
                 targetPaceSecPerKm: 410, // 6:50/km, expect drift
-                hrProfile: 'lsd_drift',
+                hrProfile: HrProfile::LsdDrift,
                 weatherTempC: 32,
                 weatherHumidityPct: 88,
                 name: 'Midday tropical 10K',
@@ -82,7 +91,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(51)->setTime(17, 30),
                 distanceM: 8_000,
                 targetPaceSecPerKm: 430,
-                hrProfile: 'z2_steady',
+                hrProfile: HrProfile::Z2Steady,
                 weatherTempC: 25,
                 weatherHumidityPct: 95,
                 weatherRainDetected: true,
@@ -94,7 +103,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(44)->setTime(5, 10),
                 distanceM: 9_000,
                 targetPaceSecPerKm: 380, // 6:20/km avg with hard reps
-                hrProfile: 'intervals',
+                hrProfile: HrProfile::Intervals,
                 cadenceSpm: 178,
                 name: 'Dawn 6×800m',
                 tags: ['anak_pagi', 'intervals'],
@@ -104,7 +113,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(37)->setTime(6, 30),
                 distanceM: 10_000,
                 targetPaceSecPerKm: 380, // 6:20/km avg
-                hrProfile: 'neg_split',
+                hrProfile: HrProfile::NegSplit,
                 name: 'Negative split tempo',
                 tags: ['negative_split', 'pembalik_keadaan'],
             ),
@@ -113,7 +122,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(30)->setTime(17, 0),
                 distanceM: 4_000,
                 targetPaceSecPerKm: 510, // 8:30/km — proper recovery
-                hrProfile: 'z2_steady',
+                hrProfile: HrProfile::Z2Steady,
                 cadenceSpm: 168,
                 name: 'Recovery jog',
                 tags: ['recovery'],
@@ -123,7 +132,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(23)->setTime(6, 0),
                 distanceM: 18_000,
                 targetPaceSecPerKm: 470,
-                hrProfile: 'lsd_drift',
+                hrProfile: HrProfile::LsdDrift,
                 elevationGainM: 120,
                 name: 'Sunday long 18K',
                 tags: ['long_slow_distance', 'big_volume'],
@@ -133,7 +142,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(16)->setTime(6, 30),
                 distanceM: 8_000,
                 targetPaceSecPerKm: 400,
-                hrProfile: 'lsd_drift',
+                hrProfile: HrProfile::LsdDrift,
                 weatherTempC: 31,
                 weatherHumidityPct: 85,
                 name: 'Heavy legs tempo',
@@ -144,7 +153,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(9)->setTime(6, 30),
                 distanceM: 8_000,
                 targetPaceSecPerKm: 360,
-                hrProfile: 'tempo',
+                hrProfile: HrProfile::Tempo,
                 name: 'Fresh tempo 8K',
                 tags: ['fresh'],
             ),
@@ -153,7 +162,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(4)->setTime(6, 0),
                 distanceM: 10_000,
                 targetPaceSecPerKm: 350, // 5:50/km — beats #4 cleanly
-                hrProfile: 'tempo',
+                hrProfile: HrProfile::Tempo,
                 cadenceSpm: 176,
                 weatherTempC: 26,
                 name: '10K race-pace effort',
@@ -164,7 +173,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(1)->setTime(17, 30),
                 distanceM: 5_000,
                 targetPaceSecPerKm: 470,
-                hrProfile: 'z2_steady',
+                hrProfile: HrProfile::Z2Steady,
                 name: 'Yesterday shakeout',
                 tags: ['recovery'],
             ),
@@ -173,7 +182,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->setTime(6, 30),
                 distanceM: 5_200,
                 targetPaceSecPerKm: 395, // faster than #3 → past-you flex
-                hrProfile: 'neg_split',
+                hrProfile: HrProfile::NegSplit,
                 name: 'Pagi negative split',
                 tags: ['negative_split', 'past_you_today'],
             ),
@@ -184,7 +193,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(68)->setTime(20, 0),
                 distanceM: 8_000,
                 targetPaceSecPerKm: 420,
-                hrProfile: 'tempo',
+                hrProfile: HrProfile::Tempo,
                 cadenceSpm: 174,
                 elevationGainM: 0,
                 weatherTempC: 24,
@@ -201,7 +210,7 @@ class BlueprintLibrary
                 startsAt: Carbon::today()->subDays(40)->setTime(6, 0),
                 distanceM: 5_500,
                 targetPaceSecPerKm: 440,
-                hrProfile: 'z2_steady',
+                hrProfile: HrProfile::Z2Steady,
                 name: 'Lari pagi tanpa jam',
                 tags: ['no_hr', 'no_cadence', 'phone_only'],
                 hasHrSensor: false,
@@ -234,8 +243,7 @@ class BlueprintLibrary
             if (in_array($date->toDateString(), $scriptedDates, true)) {
                 continue;
             }
-            // Roughly 65% of non-scripted days get a filler run.
-            if ($rng->getInt(0, 99) >= 65) {
+            if ($rng->getInt(0, 99) >= self::FILLER_RATE_PCT) {
                 continue;
             }
             $blueprints[] = $this->makeFiller($date, $rng);
@@ -254,18 +262,15 @@ class BlueprintLibrary
         $rain = $rng->getInt(0, 99) < 15;
         $humidity = $rain ? $rng->getInt(85, 95) : $rng->getInt(65, 85);
 
-        // ~8% treadmill (no GPS), ~5% phone-only (no HR/cadence). Buckets
-        // are disjoint — a single filler either drops GPS or drops sensors,
-        // never both.
         $dataRoll = $rng->getInt(0, 99);
-        $hasGps = $dataRoll >= 8;
-        $hasSensors = $dataRoll < 8 || $dataRoll >= 13;
+        $hasGps = $dataRoll >= self::TREADMILL_BUCKET_HI;
+        $hasSensors = $dataRoll < self::TREADMILL_BUCKET_HI || $dataRoll >= self::PHONE_ONLY_BUCKET_HI;
 
         return new RunBlueprint(
             startsAt: $date->copy()->setTime($startHour, $minute),
             distanceM: $distance,
             targetPaceSecPerKm: $pace,
-            hrProfile: 'z2_steady',
+            hrProfile: HrProfile::Z2Steady,
             cadenceSpm: 168 + $rng->getInt(0, 6),
             elevationGainM: $hasGps ? $rng->getInt(20, 70) : 0,
             weatherTempC: $temp,
