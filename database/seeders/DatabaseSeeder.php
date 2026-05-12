@@ -1,25 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
+        // When DEMO_SEED=true is set, also seed the full demo dataset
+        // (~75 runs, real story-layer output). Off by default so
+        // RefreshDatabase-using tests stay fast.
+        if (filter_var(env('DEMO_SEED', false), FILTER_VALIDATE_BOOLEAN)) {
+            Artisan::call('demo:seed', ['--fresh' => true], $this->command?->getOutput());
+        }
     }
 }
