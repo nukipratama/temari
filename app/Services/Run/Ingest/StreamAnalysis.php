@@ -49,6 +49,7 @@ class StreamAnalysis
         $velocity = $this->data($streams, 'velocity_smooth');
         $cadence = $this->data($streams, 'cadence');
         $altitude = $this->data($streams, 'altitude');
+        $distance = $this->data($streams, 'distance');
 
         $summary = $this->bestEffortPaces($time, $velocity)
             + $this->elevation($altitude)
@@ -59,7 +60,14 @@ class StreamAnalysis
             + $this->cadenceDistribution($time, $cadence, $optimalCadenceSpm);
 
         if (is_array($splitsMetric) && $splitsMetric !== []) {
-            $summary += $this->perKm($splitsMetric)
+            $perKm = $this->perKm($splitsMetric);
+            if (isset($perKm['per_km'])) {
+                $perKm['per_km'] = $this->attachStreamCadenceToRows(
+                    $perKm['per_km'],
+                    $this->perKmCadenceFromStream($time, $distance, $cadence),
+                );
+            }
+            $summary += $perKm
                 + $this->hrDriftFromSplits($splitsMetric)
                 + $this->cadenceDropFromSplits($splitsMetric)
                 + $this->negativeSplit($splitsMetric);
@@ -382,6 +390,81 @@ class StreamAnalysis
         }
 
         return $perKm === [] ? [] : ['per_km' => $perKm];
+    }
+
+    /**
+     * Bucket the cadence stream by km using cumulative distance from the
+     * `distance` stream. Strava's `splits_metric` payload doesn't carry
+     * cadence, so this is the only way to populate per-km cadence for the
+     * /runs/{id} splits table.
+     *
+     * Time-weighted (matching `cadenceDistribution()` line 317) and doubles
+     * the half-cadence values Strava ships in the stream.
+     *
+     * @param  list<float|int>  $time
+     * @param  list<float|int>  $distance
+     * @param  list<float|int>  $cadence
+     * @return array<int, int>  km index (1-based) → average spm
+     */
+    private function perKmCadenceFromStream(array $time, array $distance, array $cadence): array
+    {
+        if ($time === [] || $distance === [] || $cadence === []) {
+            return [];
+        }
+        $n = min(count($cadence), count($distance), count($time) - 1);
+        if ($n <= 0) {
+            return [];
+        }
+
+        /** @var array<int, array{sum: float, dt: float}> $buckets */
+        $buckets = [];
+        for ($i = 0; $i < $n; $i++) {
+            $dt = (float) $time[$i + 1] - (float) $time[$i];
+            if ($dt <= 0) {
+                continue;
+            }
+            $km = ((int) floor((float) $distance[$i] / 1000)) + 1;
+            $spm = (float) $cadence[$i] * 2;
+            $buckets[$km] ??= ['sum' => 0.0, 'dt' => 0.0];
+            $buckets[$km]['sum'] += $spm * $dt;
+            $buckets[$km]['dt'] += $dt;
+        }
+
+        $result = [];
+        foreach ($buckets as $km => $bucket) {
+            if ($bucket['dt'] > 0) {
+                $result[$km] = (int) round($bucket['sum'] / $bucket['dt']);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Decorate `per_km` rows with `avg_cadence_spm` from the per-km cadence
+     * map. Existing values (from a future Strava payload that adds cadence
+     * to splits_metric) are preserved.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @param  array<int, int>  $cadenceByKm
+     * @return array<int, array<string, mixed>>
+     */
+    private function attachStreamCadenceToRows(array $rows, array $cadenceByKm): array
+    {
+        if ($cadenceByKm === []) {
+            return $rows;
+        }
+        foreach ($rows as $i => $row) {
+            if (isset($row['avg_cadence_spm'])) {
+                continue;
+            }
+            $km = (int) ($row['km'] ?? 0);
+            if (isset($cadenceByKm[$km])) {
+                $rows[$i]['avg_cadence_spm'] = $cadenceByKm[$km];
+            }
+        }
+
+        return $rows;
     }
 
     /**

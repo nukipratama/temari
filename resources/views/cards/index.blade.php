@@ -6,9 +6,9 @@
 
     <main class="mx-auto max-w-6xl px-6 py-10">
         <div class="mb-6">
-            <h1 class="text-2xl font-semibold tracking-tight">Run Cards</h1>
+            <h1 class="text-2xl font-semibold tracking-tight">Kartu Aktivitas</h1>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                Setiap run dapat satu kartu. Rarity naik untuk PR, negative split, atau run terjauh.
+                Setiap aktivitas dapat satu kartu. Rarity naik untuk PR, negative split, atau aktivitas terjauh.
             </p>
         </div>
 

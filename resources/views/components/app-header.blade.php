@@ -1,9 +1,9 @@
 @php
     $links = [
-        ['route' => 'dashboard', 'icon' => 'mdi:home-outline', 'label' => 'Dashboard'],
-        ['route' => 'runs.index', 'icon' => 'mdi:run-fast', 'label' => 'Runs'],
-        ['route' => 'cards.index', 'icon' => 'mdi:cards-outline', 'label' => 'Cards'],
-        ['route' => 'progress', 'icon' => 'mdi:chart-line', 'label' => 'Progress'],
+        ['route' => 'dashboard', 'icon' => 'mdi:home-outline', 'label' => 'Beranda'],
+        ['route' => 'runs.index', 'icon' => 'mdi:run-fast', 'label' => 'Aktivitas'],
+        ['route' => 'cards.index', 'icon' => 'mdi:cards-outline', 'label' => 'Kartu'],
+        ['route' => 'progress', 'icon' => 'mdi:chart-line', 'label' => 'Catatan'],
     ];
     $current = request()->route()?->getName();
 @endphp
@@ -49,7 +49,7 @@
             <form method="POST" action="{{ route('auth.logout') }}">
                 @csrf
                 <button type="submit" class="rounded-lg border border-black/10 px-3 py-1.5 text-sm transition hover:border-black/40 dark:border-white/10 dark:hover:border-white/40">
-                    Log out
+                    Keluar
                 </button>
             </form>
         </div>

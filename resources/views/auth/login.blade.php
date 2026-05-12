@@ -58,6 +58,19 @@
                 Connect with Strava
             </a>
 
+            @if (config('demo.login_enabled'))
+                <form method="POST" action="{{ route('auth.demo') }}" class="mt-3">
+                    @csrf
+                    <button
+                        type="submit"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-black/[0.03] focus:outline-none focus:ring-4 focus:ring-black/10 dark:border-white/10 dark:bg-[#161615] dark:text-gray-200 dark:hover:bg-white/[0.04]"
+                    >
+                        <iconify-icon icon="mdi:play-circle-outline" width="18" height="18" aria-hidden="true"></iconify-icon>
+                        Coba versi demo
+                    </button>
+                </form>
+            @endif
+
             <p class="mt-5 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-300">
                 Kami hanya pakai Strava untuk login dan baca aktivitas lari kamu
             </p>

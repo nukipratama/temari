@@ -21,7 +21,7 @@ it('shows the user\'s cards on the gallery', function (): void {
 
     $this->actingAs($user)->get('/cards')
         ->assertSuccessful()
-        ->assertSeeText('Run Cards')
+        ->assertSeeText('Kartu Aktivitas')
         ->assertSeeText('Paru-paru Baja')
         ->assertSeeText('Epik');
 });

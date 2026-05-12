@@ -6,7 +6,7 @@
 
     <main class="mx-auto max-w-5xl px-6 py-10">
         <div class="mb-6">
-            <h1 class="text-2xl font-semibold tracking-tight">Progress</h1>
+            <h1 class="text-2xl font-semibold tracking-tight">Catatan</h1>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
                 Tren mingguan + ledger PR.
             </p>
@@ -24,7 +24,7 @@
                             <tr class="border-b border-black/5 text-left text-xs text-gray-500 dark:border-white/5 dark:text-gray-400">
                                 <th class="px-5 py-3 font-semibold">Week ending</th>
                                 <th class="px-5 py-3 font-semibold">Volume</th>
-                                <th class="px-5 py-3 font-semibold">Runs</th>
+                                <th class="px-5 py-3 font-semibold">Aktivitas</th>
                                 <th class="px-5 py-3 font-semibold">TRIMP</th>
                                 <th class="px-5 py-3 font-semibold">CTL</th>
                                 <th class="px-5 py-3 font-semibold">ATL</th>

@@ -31,7 +31,7 @@ it('renders the empty state when the user has no analyzed runs yet', function ()
 
     $this->actingAs($user)->get('/runs')
         ->assertSuccessful()
-        ->assertSeeText('Belum ada run yang dianalisis');
+        ->assertSeeText('Belum ada aktivitas yang dianalisis');
 });
 
 it('shows a single run detail with Temari speech + technical fold', function (): void {

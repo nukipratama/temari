@@ -80,6 +80,10 @@ it('returns null when the user has no TRIMP-bearing activities', function (): vo
     expect((new TrainingLoad())->summary($user))->toBeNull();
 });
 
+it('returns null from summaryFromDailyMap when the map is empty', function (): void {
+    expect((new TrainingLoad())->summaryFromDailyMap([], Carbon::today()))->toBeNull();
+});
+
 it('rolls TRIMP into ATL/CTL/form with sane magnitudes', function (): void {
     $user = User::factory()->create();
 

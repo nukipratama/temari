@@ -251,3 +251,115 @@ it('integrates altitude into ascent + descent meters', function (): void {
         'descent_m' => 4, // -2, -2
     ]);
 });
+
+/**
+ * Build a 1 Hz 3 km synthetic dataset where km 1 is 85 spm, km 2 is 88 spm,
+ * km 3 is 80 spm (single-leg values; the doubled output should land at
+ * 170 / 176 / 160). Pace is a constant 6:00/km (10 km/h ≈ 2.778 m/s).
+ *
+ * @return array{0: array<string, array{data: list<int|float>}>, 1: list<array<string, mixed>>}
+ */
+function buildCadenceTestRun(): array
+{
+    $duration = 1080; // 3 km @ 6:00/km = 1080s
+    $speedMs = 1000.0 / 360.0;
+    $time = [];
+    $distance = [];
+    $cadence = [];
+    for ($t = 0; $t <= $duration; $t++) {
+        $time[] = $t;
+        $distance[] = round($t * $speedMs, 2);
+        $km = (int) floor(($t * $speedMs) / 1000) + 1;
+        $cadence[] = match ($km) {
+            1 => 85,
+            2 => 88,
+            default => 80,
+        };
+    }
+
+    $splits = [
+        ['split' => 1, 'distance' => 1000.0, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.778, 'average_heartrate' => 150],
+        ['split' => 2, 'distance' => 1000.0, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.778, 'average_heartrate' => 152],
+        ['split' => 3, 'distance' => 1000.0, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.778, 'average_heartrate' => 154],
+    ];
+
+    return [[
+        'time' => ['data' => $time],
+        'distance' => ['data' => $distance],
+        'cadence' => ['data' => $cadence],
+        'velocity_smooth' => ['data' => array_fill(0, $duration + 1, $speedMs)],
+    ], $splits];
+}
+
+it('populates per-km avg_cadence_spm from the cadence stream + distance stream', function (): void {
+    [$streams, $splits] = buildCadenceTestRun();
+
+    $summary = (new StreamAnalysis())->compute($streams, defaultZones(), $splits, 170);
+
+    expect($summary['per_km'])->toHaveCount(3);
+    expect($summary['per_km'][0]['avg_cadence_spm'])->toBe(170)
+        ->and($summary['per_km'][1]['avg_cadence_spm'])->toBe(176)
+        ->and($summary['per_km'][2]['avg_cadence_spm'])->toBe(160);
+});
+
+it('skips per-km cadence when the distance stream is empty', function (): void {
+    [$streams, $splits] = buildCadenceTestRun();
+    unset($streams['distance']);
+
+    $summary = (new StreamAnalysis())->compute($streams, defaultZones(), $splits, 170);
+
+    expect($summary['per_km'])->toHaveCount(3);
+    expect($summary['per_km'][0])->not->toHaveKey('avg_cadence_spm');
+});
+
+it('omits avg_cadence_spm for km buckets with no cadence samples', function (): void {
+    [$streams, $splits] = buildCadenceTestRun();
+    // Truncate cadence stream so km 3 has no data — buckets are filled
+    // sample-by-sample, so cutting the last third drops only that km.
+    $streams['cadence']['data'] = array_slice($streams['cadence']['data'], 0, 720);
+
+    $summary = (new StreamAnalysis())->compute($streams, defaultZones(), $splits, 170);
+
+    expect($summary['per_km'][0])->toHaveKey('avg_cadence_spm')
+        ->and($summary['per_km'][1])->toHaveKey('avg_cadence_spm')
+        ->and($summary['per_km'][2])->not->toHaveKey('avg_cadence_spm');
+});
+
+it('skips per-km cadence when time stream has only one sample', function (): void {
+    [$streams, $splits] = buildCadenceTestRun();
+    $streams['time']['data'] = [0];
+    $streams['distance']['data'] = [0.0];
+    $streams['cadence']['data'] = [85];
+
+    $summary = (new StreamAnalysis())->compute($streams, defaultZones(), $splits, 170);
+
+    // per_km still emits rows from splits, but no avg_cadence_spm is attached
+    // because the cadence walker bails on n <= 0.
+    expect($summary['per_km'][0])->not->toHaveKey('avg_cadence_spm');
+});
+
+it('ignores cadence samples where dt <= 0 (degenerate time array)', function (): void {
+    // 720 samples but time stays at 0 — every dt is 0 so every sample is
+    // discarded; no buckets get populated; rows lack avg_cadence_spm.
+    [$streams, $splits] = buildCadenceTestRun();
+    $streams['time']['data'] = array_fill(0, 720, 0);
+    $streams['distance']['data'] = array_slice($streams['distance']['data'], 0, 720);
+    $streams['cadence']['data'] = array_slice($streams['cadence']['data'], 0, 720);
+
+    $summary = (new StreamAnalysis())->compute($streams, defaultZones(), $splits, 170);
+
+    expect($summary['per_km'][0])->not->toHaveKey('avg_cadence_spm')
+        ->and($summary['per_km'][1])->not->toHaveKey('avg_cadence_spm');
+});
+
+it('preserves a pre-existing avg_cadence_spm from splits_metric', function (): void {
+    // Future-proof: if Strava ever ships average_cadence on splits, the
+    // value from splits wins — the stream-walker fallback only fills gaps.
+    [$streams, $splits] = buildCadenceTestRun();
+    $splits[0]['average_cadence'] = 100; // forcibly different (would yield 200 spm)
+
+    $summary = (new StreamAnalysis())->compute($streams, defaultZones(), $splits, 170);
+
+    expect($summary['per_km'][0]['avg_cadence_spm'])->toBe(200) // from splits, not stream
+        ->and($summary['per_km'][1]['avg_cadence_spm'])->toBe(176); // from stream
+});
