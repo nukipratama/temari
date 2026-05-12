@@ -16,6 +16,7 @@
     <script src="https://code.iconify.design/iconify-icon/3.0.1/iconify-icon.min.js" defer></script>
 </head>
 <body class="min-h-screen bg-[#FDFDFC] text-[#1b1b18] antialiased dark:bg-[#0a0a0a] dark:text-white">
+    <x-demo-banner />
     {{ $slot ?? '' }}
     @yield('content')
 </body>
