@@ -9,7 +9,7 @@
     use App\Services\Run\Story\Temari;
 
     $mood = $line?->mood ?? Temari::MOOD_DIM;
-    $speech = $line?->speech ?? 'Hai! Temari belum punya cerita untuk run ini.';
+    $speech = $line?->speech ?? 'Hai! Temari belum punya cerita untuk aktivitas ini.';
     $sigil = $line?->sigil_pattern ?? 'dddd';
 
     $moodFace = match ($mood) {

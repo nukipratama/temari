@@ -32,12 +32,35 @@
                 <a href="{{ route('runs.index') }}"
                    class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-lime-600 dark:text-gray-400">
                     <iconify-icon icon="mdi:arrow-left" width="14" height="14" aria-hidden="true"></iconify-icon>
-                    Semua run
+                    Semua aktivitas
                 </a>
                 <h1 class="mt-2 text-2xl font-semibold tracking-tight">{{ $detail->name ?? 'Run' }}</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     {{ optional($detail->start_date_local)->translatedFormat('l, d F Y · H:i') }}
                 </p>
+                @if (isset($detail->weather_temp_c) || $detail->weather_rain_detected === true)
+                    {{-- Weather chip — verifiable anchor for Temari's speech when she mentions panas/hujan. --}}
+                    <div class="mt-2 inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                        @if (isset($detail->weather_temp_c))
+                            <span class="inline-flex items-center gap-1 {{ $detail->weather_temp_c >= 31 ? 'text-orange-600 dark:text-orange-300 font-semibold' : '' }}">
+                                <iconify-icon icon="mdi:thermometer" width="14" height="14" aria-hidden="true"></iconify-icon>
+                                {{ $detail->weather_temp_c }}°C
+                            </span>
+                        @endif
+                        @if (isset($detail->weather_humidity_pct))
+                            <span class="inline-flex items-center gap-1">
+                                <iconify-icon icon="mdi:water-percent" width="14" height="14" aria-hidden="true"></iconify-icon>
+                                {{ $detail->weather_humidity_pct }}%
+                            </span>
+                        @endif
+                        @if ($detail->weather_rain_detected === true)
+                            <span class="inline-flex items-center gap-1 text-sky-600 dark:text-sky-300 font-semibold">
+                                <iconify-icon icon="mdi:weather-rainy" width="14" height="14" aria-hidden="true"></iconify-icon>
+                                Hujan
+                            </span>
+                        @endif
+                    </div>
+                @endif
             </div>
         </div>
 
