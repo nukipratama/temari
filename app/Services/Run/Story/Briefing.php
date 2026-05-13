@@ -7,6 +7,7 @@ namespace App\Services\Run\Story;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Story\Contracts\BriefingNarrator;
 use Illuminate\Support\Carbon;
 
 /**
@@ -18,7 +19,7 @@ use Illuminate\Support\Carbon;
  * user will run next, so current weather at any single location is a weak
  * proxy. Accessory cues come from Temari's mood, not real conditions.
  */
-class Briefing
+class Briefing implements BriefingNarrator
 {
     public function __construct(
         private readonly Vibe $vibe,
@@ -41,8 +42,8 @@ class Briefing
             vibeEmoji: Vibe::emoji($vibeState),
             headlineLine: $this->headlineFor($vibeState),
             suggestionLine: $this->suggestionFor($vibeState, $daysSince),
-            recoveryLabel: $this->recoveryLabel($load),
-            recoveryTone: $this->recoveryTone($load),
+            recoveryLabel: FormStatus::label($load),
+            recoveryTone: FormStatus::tone($load),
             streakLabel: $this->streakLabel($daysSince),
             sigilPattern: $this->sigilForMood($mood),
             accessory: $this->accessoryForMood($mood),
@@ -63,42 +64,6 @@ class Briefing
         }
 
         return (int) Carbon::parse($lastRun)->startOfDay()->diffInDays($asOf->copy()->startOfDay());
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $load
-     */
-    private function recoveryLabel(?array $load): string
-    {
-        if ($load === null) {
-            return 'Form belum kebaca';
-        }
-
-        return match ($load['form_status']) {
-            'fresh' => 'Form Fresh',
-            'optimal' => 'Form Optimal',
-            'fatigued' => 'Lelah',
-            'overreaching' => 'Overreaching',
-            default => 'Form Optimal',
-        };
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $load
-     */
-    private function recoveryTone(?array $load): string
-    {
-        if ($load === null) {
-            return 'neutral';
-        }
-
-        return match ($load['form_status']) {
-            'fresh' => 'positive',
-            'optimal' => 'neutral',
-            'fatigued' => 'warning',
-            'overreaching' => 'alert',
-            default => 'neutral',
-        };
     }
 
     private function streakLabel(?int $daysSince): ?string
@@ -161,23 +126,11 @@ class Briefing
 
     private function sigilForMood(string $mood): string
     {
-        return match ($mood) {
-            Temari::MOOD_GLOW => 'ssss',
-            Temari::MOOD_BOUNCY => 'orct',
-            Temari::MOOD_WOBBLE => 'wvwv',
-            Temari::MOOD_SQUISHED => 'fhfh',
-            Temari::MOOD_SPINNING => 'splr',
-            default => 'dddd',
-        };
+        return Temari::sigilForMoodPublic($mood);
     }
 
     private function accessoryForMood(string $mood): ?string
     {
-        return match ($mood) {
-            Temari::MOOD_GLOW => 'headband',
-            Temari::MOOD_BOUNCY => 'pita',
-            Temari::MOOD_DIM => 'mata-ngantuk',
-            default => null,
-        };
+        return Temari::accessoryForMoodPublic($mood);
     }
 }

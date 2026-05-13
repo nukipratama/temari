@@ -7,6 +7,7 @@ namespace App\Services\Run\Story;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\Run\Story\Contracts\VerdictNarrator;
 
 /**
  * Pulls the latest N post-run StoryLines for a user and reshapes them
@@ -14,7 +15,7 @@ use App\Models\User;
  * strip. No write side — strip is a pure view onto data the ingest
  * pipeline already populates via `Temari::postRunLine()`.
  */
-class VerdictTimeline
+class VerdictTimeline implements VerdictNarrator
 {
     public const DEFAULT_LIMIT = 8;
 

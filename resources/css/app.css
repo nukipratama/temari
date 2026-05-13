@@ -3,9 +3,94 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
-@source '../**/*.js';
+@source '../**/*.tsx';
+@source '../**/*.ts';
 
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Brand scale — Forest (Hutan Pagi, Temari signature)
+       Picked to sit far from Strava orange in hue space — green/teal
+       family reads "park-run morning, embun di rumput" not "race app". */
+    --color-brand-50: #e8f4ed;
+    --color-brand-100: #c9e4d2;
+    --color-brand-200: #a2d0af;
+    --color-brand-300: #76b98a;
+    --color-brand-400: #4fa670;
+    --color-brand-500: #2e7d5c;
+    --color-brand-600: #235f47;
+    --color-brand-700: #194633;
+    --color-brand-800: #122f22;
+    --color-brand-900: #0a1d14;
+
+    /* Accent scale — Ochre (warm sunlit highlight) */
+    --color-accent-50: #fbf2dc;
+    --color-accent-100: #f5e1b0;
+    --color-accent-200: #eccb81;
+    --color-accent-300: #e2b556;
+    --color-accent-400: #dca844;
+    --color-accent-500: #d9a03c;
+    --color-accent-600: #b7842c;
+    --color-accent-700: #8e6722;
+    --color-accent-800: #644818;
+    --color-accent-900: #3f2d0e;
+
+    /* Pop scale — Jambu (deep berry, reserved for rare/premium signals
+       like PRs, legendaris rarity, achievement bursts). Forest green
+       brand reads "calm/steady"; jambu breaks the green monotony when
+       something genuinely deserves attention. */
+    --color-pop-50: #fbe9ef;
+    --color-pop-100: #f5c2d2;
+    --color-pop-200: #ea93ad;
+    --color-pop-300: #d96384;
+    --color-pop-400: #c44871;
+    --color-pop-500: #b1365e;
+    --color-pop-600: #8e2749;
+    --color-pop-700: #6a1c36;
+    --color-pop-800: #461224;
+    --color-pop-900: #2b0a16;
+
+    /* Surface & ink — warm-neutral paper tones (not mint-green) so the
+       brand-green doesn't bleed across the whole app. Bg + text stay
+       neutral; greens only show on intentional brand surfaces (logo chip,
+       primary CTA, fitness chart line). */
+    --color-surface: #fafaf7;
+    --color-surface-elev: #ffffff;
+    --color-surface-dark: #16140f;
+    --color-surface-dark-elev: #1f1c16;
+    --color-ink: #1f1b16;
+    --color-ink-soft: #5c544a;
+    --color-ink-dark: #f0ebe2;
+    --color-ink-soft-dark: #b8ae9f;
+    --color-line: #e5ded3;
+    --color-line-dark: #2a241d;
+
+    /* Mood swatches — Temari accent overlay. Spread across hue space so
+       mood cards/chips don't all read green. Bouncy = coral (clearly
+       separate from the forest brand) gives the palette warm energy when
+       the user is in good shape. */
+    --color-mood-glow: #f4a93b;
+    --color-mood-bouncy: #f08a6a;
+    --color-mood-cooked: #c84f4f;
+    --color-mood-squished: #e2783c;
+    --color-mood-hibernate: #8a8478;
+    --color-mood-spinning: #6e8aaf;
+
+    /* Strava brand (untouched, do not reskin) */
+    --color-strava-orange: #fc4c02;
+    --color-strava-orange-hover: #e34402;
+}
+
+/* Hide native scrollbar — used on horizontal strips where explicit
+   arrow buttons or swipe are the scroll affordance, so the native bar
+   would just be visual noise. */
+@layer utilities {
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
 }

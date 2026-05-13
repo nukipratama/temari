@@ -7,6 +7,7 @@ use App\Models\ActivityDetail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -15,7 +16,6 @@ afterEach(fn () => Carbon::setTestNow());
 
 it('renders the Briefing Temari hero on the dashboard', function (): void {
     $user = User::factory()->create();
-    // Single recent run so the briefing has a streak label and a vibe state.
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::today(),
@@ -24,9 +24,12 @@ it('renders the Briefing Temari hero on the dashboard', function (): void {
 
     $this->actingAs($user)->get('/dashboard')
         ->assertSuccessful()
-        ->assertSeeText('Briefing Temari')
-        ->assertSeeText('Vibe hari ini')
-        ->assertSeeText('Rencana');
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard')
+            ->has('briefing.headlineLine')
+            ->has('briefing.suggestionLine')
+            ->has('briefing.vibeState')
+            ->has('briefing.mood'));
 });
 
 it('shows "Lari hari ini" streak chip when there is a run today', function (): void {
@@ -39,7 +42,8 @@ it('shows "Lari hari ini" streak chip when there is a run today', function (): v
 
     $this->actingAs($user)->get('/dashboard')
         ->assertSuccessful()
-        ->assertSeeText('Lari hari ini');
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('briefing.streakLabel', 'Lari hari ini'));
 });
 
 it('escalates streak chip past 4 days away', function (): void {
@@ -52,7 +56,8 @@ it('escalates streak chip past 4 days away', function (): void {
 
     $this->actingAs($user)->get('/dashboard')
         ->assertSuccessful()
-        ->assertSeeText('Sudah 6 hari nih');
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('briefing.streakLabel', 'Sudah 6 hari nih'));
 });
 
 it('renders the hibernating briefing for a user with no runs', function (): void {
@@ -60,16 +65,17 @@ it('renders the hibernating briefing for a user with no runs', function (): void
 
     $this->actingAs($user)->get('/dashboard')
         ->assertSuccessful()
-        ->assertSeeText('Briefing Temari')
-        ->assertSeeText('Hibernasi')
-        ->assertSeeText('saatnya keluar pintu lagi');
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('briefing.vibeState', 'hibernating')
+            ->where('briefing.vibeLabel', 'Hibernasi'));
 });
 
-it('still renders the existing KPI + empty-state surfaces alongside the briefing', function (): void {
+it('still renders the empty-state alongside the briefing when no synced activities', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/dashboard')
         ->assertSuccessful()
-        ->assertSeeText('Briefing Temari')
-        ->assertSeeText('Belum ada aktivitas tersinkron');
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('briefing')
+            ->where('load', null));
 });

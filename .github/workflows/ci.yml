@@ -100,13 +100,32 @@ jobs:
           --fail-on-phpunit-warning --fail-on-phpunit-notice
           --fail-on-phpunit-deprecation
 
-  # Deploy to homelab. Only runs after lint+pest pass on a push to main.
+  # React unit + component tests via Vitest. Gates on the same 100% line+function
+  # coverage bar as the PHP suite. Pure FE — no DB, no PHP runtime.
+  vitest:
+    runs-on: [self-hosted, homelab]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Vitest + 100% line/function coverage
+        run: npm run test:coverage
+
+  # Deploy to homelab. Only runs after lint+pest+vitest pass on a push to main.
   # Skipped on PRs (visible as "skipping" in PR checks). All env values come
   # from repo Secrets — `compose.prod.yaml` uses `environment:` blocks with
   # `${VAR}` substitution so nothing is ever written to a host file.
   deploy:
     name: Deploy to homelab
-    needs: [lint, pest]
+    needs: [lint, pest, vitest]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: [self-hosted, homelab]
     concurrency:

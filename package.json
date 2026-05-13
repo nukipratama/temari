@@ -4,13 +4,35 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.2",
+        "@testing-library/user-event": "^14.6.1",
+        "@types/node": "^25.7.0",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^6.0.1",
+        "@vitest/coverage-v8": "^4.1.6",
         "concurrently": "^9.0.1",
+        "jsdom": "^29.1.1",
         "laravel-vite-plugin": "^3.1",
         "tailwindcss": "^4.0.0",
-        "vite": "^8.0.0"
+        "typescript": "^6.0.3",
+        "vite": "^8.0.0",
+        "vitest": "^4.1.6"
+    },
+    "dependencies": {
+        "@iconify/react": "^6.0.2",
+        "@inertiajs/react": "^3.1.1",
+        "chart.js": "^4.5.1",
+        "react": "^19.2.6",
+        "react-chartjs-2": "^5.3.1",
+        "react-dom": "^19.2.6"
     }
 }

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -27,11 +28,12 @@ it('renders weekly snapshots + PR ledger', function (): void {
 
     $this->actingAs($user)->get('/progress')
         ->assertSuccessful()
-        ->assertSeeText('Riwayat Mingguan')
-        ->assertSeeText('Personal Records')
-        ->assertSeeText('5km')
-        // 1500 elapsed seconds for 5K → 25:00 (no hours)
-        ->assertSeeText('25:00');
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Progress')
+            ->has('snapshots', 1)
+            ->where('snapshots.0.distance_km', 35)
+            ->has('personalRecords', 1)
+            ->where('personalRecords.0.category', '5km'));
 });
 
 it('shows empty states when the user has no data', function (): void {
@@ -39,5 +41,8 @@ it('shows empty states when the user has no data', function (): void {
 
     $this->actingAs($user)->get('/progress')
         ->assertSuccessful()
-        ->assertSeeText('Belum ada PR');
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Progress')
+            ->where('snapshots', [])
+            ->where('personalRecords', []));
 });

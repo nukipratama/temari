@@ -14,7 +14,9 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - laravel/horizon (HORIZON) - v5
 - laravel/prompts (PROMPTS) - v0
 - laravel/pulse (PULSE) - v1
-- livewire/livewire (LIVEWIRE) - v4
+- inertiajs/inertia-laravel (INERTIA) - v3 (Inertia 2 protocol)
+- openai-php/laravel (OPENAI) - v0 (Azure OpenAI client)
+- livewire/livewire (LIVEWIRE) - v4 (Pulse internal only — NOT used in app code)
 - larastan/larastan (LARASTAN) - v3
 - laravel/boost (BOOST) - v2
 - laravel/mcp (MCP) - v0
@@ -26,6 +28,16 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - phpunit/phpunit (PHPUNIT) - v12
 - rector/rector (RECTOR) - v2
 - tailwindcss (TAILWINDCSS) - v4
+- react - v19 + typescript (Inertia pages in resources/js/pages/**)
+- react-chartjs-2, chart.js, @iconify/react
+
+## Frontend Stack
+
+UI is **Inertia 2 + React 19 + TypeScript + Tailwind v4** following Laravel React Starter Kit conventions. Routes still go through controllers (`Inertia::render('PageName', $props)`); React pages live in `resources/js/pages/` and components in `resources/js/components/`. **Hutan Pagi** palette tokens live in `@theme` block of [resources/css/app.css](resources/css/app.css) — components use `brand-*`, `accent-*`, `surface*`, `ink*`, `mood-*` semantic classes, NOT raw Tailwind colors like `lime-500`. Brand color is forest green (`#2E7D5C`), intentionally far from Strava orange in hue space.
+
+## LLM Integration
+
+Briefing narration is LLM-backed via Azure OpenAI through openai-php/laravel ([AzureOpenAiClient](app/Services/Llm/AzureOpenAiClient.php) + [LlmBriefingNarrator](app/Services/Run/Story/Narrators/LlmBriefingNarrator.php)). Falls back to the rule-based [Briefing](app/Services/Run/Story/Briefing.php) on any error and flips `BriefingResult::degraded = true` so the UI surfaces a "mode darurat" chip ([DegradedChip.tsx](resources/js/components/temari/DegradedChip.tsx)). Empty `AZURE_OPENAI_URI` / `AZURE_OPENAI_API_KEY` env = rule-based silently with no chip (intended state, not failure).
 
 ## Skills Activation
 

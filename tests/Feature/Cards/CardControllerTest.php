@@ -7,6 +7,7 @@ use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -21,9 +22,11 @@ it('shows the user\'s cards on the gallery', function (): void {
 
     $this->actingAs($user)->get('/cards')
         ->assertSuccessful()
-        ->assertSeeText('Kartu Aktivitas')
-        ->assertSeeText('Paru-paru Baja')
-        ->assertSeeText('Epik');
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Cards/Index')
+            ->has('cards.data', 1)
+            ->where('cards.data.0.special_move', 'Paru-paru Baja')
+            ->where('cards.data.0.rarity', 'epik'));
 });
 
 it('renders the empty state when no cards match the filter', function (): void {
@@ -31,7 +34,10 @@ it('renders the empty state when no cards match the filter', function (): void {
 
     $this->actingAs($user)->get('/cards?rarity=legendaris')
         ->assertSuccessful()
-        ->assertSeeText('Belum ada kartu di rarity ini');
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Cards/Index')
+            ->where('cards.data', [])
+            ->where('selectedRarity', 'legendaris'));
 });
 
 it('filters by rarity', function (): void {
@@ -52,8 +58,9 @@ it('filters by rarity', function (): void {
 
     $this->actingAs($user)->get('/cards?rarity=epik')
         ->assertSuccessful()
-        ->assertSeeText('EpicMove')
-        ->assertDontSeeText('CommonMove');
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('cards.data', 1)
+            ->where('cards.data.0.special_move', 'EpicMove'));
 });
 
 it('hides other users\' cards', function (): void {
@@ -67,5 +74,5 @@ it('hides other users\' cards', function (): void {
     $me = User::factory()->create();
     $this->actingAs($me)->get('/cards')
         ->assertSuccessful()
-        ->assertDontSeeText('NotForMe');
+        ->assertInertia(fn (Assert $page) => $page->where('cards.data', []));
 });

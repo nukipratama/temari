@@ -9,6 +9,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -19,11 +20,13 @@ it('lists the user\'s analyzed runs in reverse chronological order', function ()
     ActivityDetail::factory()->for($older)->create(['name' => 'Older Run', 'start_date_local' => Carbon::now()->subDays(2)]);
     ActivityDetail::factory()->for($newer)->create(['name' => 'Newer Run', 'start_date_local' => Carbon::now()]);
 
-    $response = $this->actingAs($user)->get('/runs');
-
-    $response->assertSuccessful()
-        ->assertSeeText('Newer Run')
-        ->assertSeeText('Older Run');
+    $this->actingAs($user)->get('/runs')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Runs/Index')
+            ->has('runs.data', 2)
+            ->where('runs.data.0.detail.name', 'Newer Run')
+            ->where('runs.data.1.detail.name', 'Older Run'));
 });
 
 it('renders the empty state when the user has no analyzed runs yet', function (): void {
@@ -31,10 +34,12 @@ it('renders the empty state when the user has no analyzed runs yet', function ()
 
     $this->actingAs($user)->get('/runs')
         ->assertSuccessful()
-        ->assertSeeText('Belum ada aktivitas yang dianalisis');
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Runs/Index')
+            ->where('runs.data', []));
 });
 
-it('shows a single run detail with Temari speech + technical fold', function (): void {
+it('shows a single run detail with Temari speech + run card', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
@@ -54,15 +59,13 @@ it('shows a single run detail with Temari speech + technical fold', function ():
         'speech' => 'Run yang solid, paru-paru baja keluar.',
     ]);
 
-    $response = $this->actingAs($user)->get("/runs/{$activity->id}");
-
-    $response->assertSuccessful()
-        ->assertSeeText('Morning Run')
-        ->assertSeeText('Temari')
-        ->assertSeeText('Run yang solid, paru-paru baja keluar.')
-        ->assertSeeText('Paru-paru Baja')
-        ->assertSeeText('Detail teknis')
-        ->assertSeeText('Splits per KM');
+    $this->actingAs($user)->get("/runs/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Runs/Show')
+            ->where('detail.name', 'Morning Run')
+            ->where('storyLine.speech', 'Run yang solid, paru-paru baja keluar.')
+            ->where('card.special_move', 'Paru-paru Baja'));
 });
 
 it('404s when trying to view another user\'s run', function (): void {
@@ -76,7 +79,7 @@ it('404s when trying to view another user\'s run', function (): void {
 
 it('404s when the activity has not been analyzed yet', function (): void {
     $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create(); // no detail row
+    $activity = Activity::factory()->for($user)->create();
 
     $this->actingAs($user)->get("/runs/{$activity->id}")->assertNotFound();
 });

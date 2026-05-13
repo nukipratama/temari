@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trust all proxies so Laravel honors the header and generates https
         // URLs (otherwise Strava OAuth fails with redirect_uri mismatch).
         $middleware->trustProxies(at: '*');
+
+        $middleware->web(append: [
+            \App\Http\Middleware\HandleInertiaRequests::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -15,7 +16,7 @@ uses(RefreshDatabase::class);
 it('shows the login page to guests', function (): void {
     $this->get(route('login'))
         ->assertSuccessful()
-        ->assertSee('Connect with Strava');
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->has('authStravaUrl'));
 });
 
 it('redirects authenticated users away from login', function (): void {
@@ -158,6 +159,7 @@ it('shows the dashboard to authenticated users', function (): void {
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertSuccessful()
-        ->assertSee('Ada Lovelace')
-        ->assertSee('555111');
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard')
+            ->where('auth.user.name', 'Ada Lovelace'));
 });

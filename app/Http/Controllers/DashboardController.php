@@ -9,14 +9,15 @@ use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
-use App\Services\Run\Story\Briefing;
+use App\Services\Run\Story\Contracts\BriefingNarrator;
+use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\Temari;
-use App\Services\Run\Story\VerdictTimeline;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class DashboardController extends Controller
 {
@@ -25,24 +26,19 @@ class DashboardController extends Controller
         Vibe $vibe,
         Temari $temari,
         TrainingLoad $trainingLoad,
-        Briefing $briefingService,
-        VerdictTimeline $verdictTimeline,
-    ): View {
+        BriefingNarrator $briefingService,
+        VerdictNarrator $verdictTimeline,
+    ): Response {
         /** @var User $user */
         $user = $request->user();
         $today = Carbon::today();
 
-        // Persist today's StoryLine so "kata Temari hari ini" stays queryable
-        // historically; the rendered hero comes from Briefing, not this row.
         $this->resolveGreeting($user, $temari, $vibe->current($user, $today), $today);
 
         $load = $trainingLoad->summary($user, $today);
         $briefing = $briefingService->generate($user, $today);
         $verdicts = $verdictTimeline->recent($user);
 
-        // One query for both the chart (last 12 weeks ASC) and the headline
-        // snapshot (latest = last item) — saves one round-trip vs. fetching
-        // them separately.
         $weeks = WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->orderByDesc('week_ending')
@@ -58,7 +54,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        return view('dashboard', [
+        return Inertia::render('Dashboard', [
             'briefing' => $briefing,
             'verdicts' => $verdicts,
             'load' => $load,
@@ -84,8 +80,6 @@ class DashboardController extends Controller
     }
 
     /**
-     * Shape pre-fetched weekly snapshots (ASC) for the Chart.js line.
-     *
      * @param  Collection<int, WeeklySnapshot>  $rows
      * @return array{labels: array<int, string>, ctl: array<int, ?float>, atl: array<int, ?float>, form: array<int, ?float>, volume: array<int, ?float>}
      */

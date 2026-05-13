@@ -11,18 +11,16 @@ use App\Models\StoryLine;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class RunController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): Response
     {
         /** @var User $user */
         $user = $request->user();
 
-        // Project only the columns the list row renders — skipping the heavy
-        // stream_summary / splits_metric JSON columns shaves significant
-        // bytes per page when paginating.
         $runs = Activity::query()
             ->where('user_id', $user->id)
             ->whereNotNull('analyzed_at')
@@ -30,10 +28,10 @@ class RunController extends Controller
             ->orderByDesc('id')
             ->paginate(20);
 
-        return view('runs.index', ['runs' => $runs]);
+        return Inertia::render('Runs/Index', ['runs' => $runs]);
     }
 
-    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, Temari $temari): View
+    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, Temari $temari): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -57,7 +55,7 @@ class RunController extends Controller
 
         $pastYou = $matcher->findMatch($activity, $detail);
 
-        return view('runs.show', [
+        return Inertia::render('Runs/Show', [
             'activity' => $activity,
             'detail' => $detail,
             'card' => $activity->runCard,

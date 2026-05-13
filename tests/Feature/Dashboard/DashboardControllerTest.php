@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -21,8 +22,11 @@ it('renders for a user with no synced activities', function (): void {
 
     $this->actingAs($user)->get('/dashboard')
         ->assertSuccessful()
-        ->assertSeeText('Halo, ' . explode(' ', (string) $user->name)[0])
-        ->assertSeeText('Belum ada aktivitas tersinkron');
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard')
+            ->where('auth.user.first_name', explode(' ', (string) $user->name)[0])
+            ->where('load', null)
+            ->where('recentRuns', []));
 });
 
 it('renders KPIs + recent runs when the user has training-load history', function (): void {
@@ -43,12 +47,14 @@ it('renders KPIs + recent runs when the user has training-load history', functio
         'runs' => 4,
     ]);
 
-    $response = $this->actingAs($user)->get('/dashboard');
-
-    $response->assertSuccessful()
-        ->assertSeeText('Vibe hari ini')
-        ->assertSeeText('Weekly TRIMP')
-        ->assertSeeText('Aktivitas Terakhir');
+    $this->actingAs($user)->get('/dashboard')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard')
+            ->has('load.weekly_trimp')
+            ->has('load.form')
+            ->has('snapshot')
+            ->has('recentRuns', 5));
 
     Carbon::setTestNow();
 });

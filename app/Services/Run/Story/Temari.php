@@ -102,7 +102,30 @@ class Temari
 
     private function sigilFor(string $mood): string
     {
+        return self::sigilForMoodPublic($mood);
+    }
+
+    /**
+     * Exposed so LLM-generated briefings can still get a stable sigil pattern
+     * derived from the deterministic mood map. LLM picks the mood; we always
+     * pick the sigil to keep the visual mascot consistent.
+     */
+    public static function sigilForMoodPublic(string $mood): string
+    {
         return self::SIGIL_FOR_MOOD[$mood] ?? self::SIGIL_FOR_MOOD[self::MOOD_DIM];
+    }
+
+    /**
+     * @see sigilForMoodPublic() — same reasoning. Mood-driven accessory glyph.
+     */
+    public static function accessoryForMoodPublic(string $mood): ?string
+    {
+        return match ($mood) {
+            self::MOOD_GLOW => 'headband',
+            self::MOOD_BOUNCY => 'pita',
+            self::MOOD_DIM => 'mata-ngantuk',
+            default => null,
+        };
     }
 
     /**

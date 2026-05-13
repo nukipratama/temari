@@ -7,10 +7,13 @@ namespace App\Services\Run\Story;
 use Illuminate\Support\Carbon;
 
 /**
- * One row in the dashboard "Kata Temari" strip. Pre-rendered so the Blade
- * view does layout only.
+ * One row in the dashboard "Kata Temari" strip. Pre-rendered so the FE
+ * page does layout only.
+ *
+ * NB: not `readonly` because `FallbackVerdictNarrator` flips `degraded`
+ * after instantiation when the LLM primary fails.
  */
-final readonly class VerdictTimelineItem
+final class VerdictTimelineItem
 {
     public function __construct(
         public int $activityId,
@@ -19,6 +22,7 @@ final readonly class VerdictTimelineItem
         public string $oneline,
         public Carbon $startedAt,
         public float $distanceKm,
+        public bool $degraded = false,
     ) {
     }
 }

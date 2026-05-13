@@ -10,12 +10,14 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "inertiajs/inertia-laravel": "^3.1",
         "laravel/framework": "^13.7",
         "laravel/horizon": "^5.46",
         "laravel/octane": "^2.17",
         "laravel/pulse": "^1.7",
         "laravel/socialite": "^5.27",
         "laravel/tinker": "^3.0",
+        "openai-php/laravel": "^0.19.1",
         "socialiteproviders/strava": "^4.1"
     },
     "require-dev": {

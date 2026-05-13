@@ -7,11 +7,12 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\RunCard;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class CardController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -26,7 +27,7 @@ class CardController extends Controller
             $query->where('rarity', $rarity);
         }
 
-        return view('cards.index', [
+        return Inertia::render('Cards/Index', [
             'cards' => $query->paginate(24)->withQueryString(),
             'selectedRarity' => is_string($rarity) ? $rarity : null,
         ]);

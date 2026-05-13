@@ -60,4 +60,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(StoryLine::class);
     }
+
+    /**
+     * First word of the user's name — used wherever we greet the user
+     * informally (dashboard header, Temari prompts). Single source of
+     * truth so the rule (whitespace split, first token) stays consistent.
+     */
+    public function firstName(): string
+    {
+        return explode(' ', (string) $this->name)[0];
+    }
 }

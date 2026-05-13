@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -35,18 +36,18 @@ it('redirects back to login with an error when the demo user is missing', functi
     expect(auth()->check())->toBeFalse();
 });
 
-it('renders the demo button on the login page when the flag is on', function (): void {
+it('shares the demoLoginEnabled flag on the login page when the flag is on', function (): void {
     config()->set('demo.login_enabled', true);
 
     $this->get(route('login'))
         ->assertSuccessful()
-        ->assertSeeText('Coba versi demo');
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('demoLoginEnabled', true));
 });
 
-it('hides the demo button when the flag is off', function (): void {
+it('shares demoLoginEnabled false when the flag is off', function (): void {
     config()->set('demo.login_enabled', false);
 
     $this->get(route('login'))
         ->assertSuccessful()
-        ->assertDontSeeText('Coba versi demo');
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('demoLoginEnabled', false));
 });

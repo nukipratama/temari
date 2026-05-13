@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Run\Story\Temari;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -35,19 +36,20 @@ function seedDashboardVerdict(User $user, int $daysAgo, string $mood, string $sp
     return $activity;
 }
 
-it('shows "Kata Temari" strip when the user has post-run verdicts', function (): void {
+it('shows "Kata Temari" verdicts when the user has post-run StoryLines', function (): void {
     $user = User::factory()->create();
     seedDashboardVerdict($user, 0, Temari::MOOD_BOUNCY, 'Run yang mantap');
 
     $this->actingAs($user)->get('/dashboard')
         ->assertSuccessful()
-        ->assertSeeText('Kata Temari')
-        ->assertSeeText('Run yang mantap');
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard')
+            ->has('verdicts', 1)
+            ->where('verdicts.0.oneline', 'Run yang mantap'));
 });
 
-it('omits the strip when there are no post-run StoryLines', function (): void {
+it('omits verdicts when there are no post-run StoryLines', function (): void {
     $user = User::factory()->create();
-    // An activity but no StoryLine row.
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::today(),
@@ -56,25 +58,20 @@ it('omits the strip when there are no post-run StoryLines', function (): void {
 
     $this->actingAs($user)->get('/dashboard')
         ->assertSuccessful()
-        ->assertDontSeeText('Kata Temari');
+        ->assertInertia(fn (Assert $page) => $page->where('verdicts', []));
 });
 
-it('renders verdicts newest-first and links each to the run detail', function (): void {
+it('renders verdicts newest-first', function (): void {
     $user = User::factory()->create();
-    $newest = seedDashboardVerdict($user, 0, Temari::MOOD_BOUNCY, 'verdict newest');
-    $older = seedDashboardVerdict($user, 2, Temari::MOOD_DIM, 'verdict older');
+    seedDashboardVerdict($user, 0, Temari::MOOD_BOUNCY, 'verdict newest');
+    seedDashboardVerdict($user, 2, Temari::MOOD_DIM, 'verdict older');
 
-    $response = $this->actingAs($user)->get('/dashboard')->assertSuccessful();
-
-    // Both links present.
-    $response->assertSeeText('verdict newest')
-        ->assertSeeText('verdict older')
-        ->assertSee(route('runs.show', $newest->id), false)
-        ->assertSee(route('runs.show', $older->id), false);
-
-    // Newest must appear before older in the rendered HTML.
-    $html = $response->getContent();
-    expect(strpos((string) $html, 'verdict newest'))->toBeLessThan(strpos((string) $html, 'verdict older'));
+    $this->actingAs($user)->get('/dashboard')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('verdicts', 2)
+            ->where('verdicts.0.oneline', 'verdict newest')
+            ->where('verdicts.1.oneline', 'verdict older'));
 });
 
 it('does not leak verdicts across users', function (): void {
@@ -84,5 +81,5 @@ it('does not leak verdicts across users', function (): void {
 
     $this->actingAs($b)->get('/dashboard')
         ->assertSuccessful()
-        ->assertDontSeeText('a-only line');
+        ->assertInertia(fn (Assert $page) => $page->where('verdicts', []));
 });
