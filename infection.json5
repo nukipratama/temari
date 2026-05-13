@@ -9,7 +9,7 @@
     "mutators": {
         "@default": true
     },
-    "minMsi": 80,
-    "minCoveredMsi": 85,
+    "minMsi": 100,
+    "minCoveredMsi": 100,
     "threads": 4
 }
