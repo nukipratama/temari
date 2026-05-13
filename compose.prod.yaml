@@ -1,11 +1,3 @@
-# Homelab production stack. All env values come from the calling shell's
-# environment (the GitHub Actions `deploy` job sets them from repo Secrets).
-# Compose substitutes `${VAR}` at parse time. Vars marked `:?` are required
-# and compose fails fast if missing.
-#
-# Cloudflared is NOT in this project — it already runs at the homelab level
-# and reaches the app via host loopback (127.0.0.1:7001).
-
 name: teman-lari-prod
 
 x-app-image: &app-image teman-lari/app:latest
@@ -32,21 +24,12 @@ x-app-env: &app-env
   TRUSTED_PROXIES: "*"
   TELESCOPE_ENABLED: "false"
   PULSE_ENABLED: "true"
-  # Octane + FrankenPHP worker mode. 4 workers fit under the 2 CPU / 1 GB
-  # container limit (each ~150-250 MB resident). Recycle every N requests
-  # to bound memory growth from any leak in long-running PHP.
   OCTANE_SERVER: frankenphp
   OCTANE_MAX_REQUESTS: "500"
   FRANKENPHP_NUM_WORKERS: "4"
   STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:?required}
   STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:?required}
-  # Optional. When "true" the login page renders a "Coba versi demo" button
-  # that signs in as the seeded demo user. Defaults to off so prod is opt-in.
   DEMO_LOGIN_ENABLED: ${DEMO_LOGIN_ENABLED:-false}
-  # Optional. When "true" the dashboard first-run tooltip ignores the
-  # localStorage dismissal flag and always re-renders on each mount —
-  # used for QA / demos. Off by default so first-run UX behaves
-  # normally in prod.
   ONBOARDING_FORCE_SHOW: ${ONBOARDING_FORCE_SHOW:-false}
 
 x-app-base: &app-base
@@ -67,8 +50,7 @@ services:
   app:
     <<: *app-base
     ports:
-      # Loopback only — the existing host-level cloudflared reaches the app via
-      # http://localhost:7001. The LAN cannot see this port.
+      # Loopback only — cloudflared on the host reaches it via 127.0.0.1:7001.
       - "127.0.0.1:7001:7001"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7001/up"]
@@ -86,8 +68,7 @@ services:
     <<: *app-base
     command: ["php", "artisan", "horizon"]
     stop_grace_period: 60s
-    # Inherits the Dockerfile's HEALTHCHECK (curl :7001) which doesn't apply
-    # to a queue worker. Disable so it doesn't show as perpetually unhealthy.
+    # Image healthcheck is HTTP — disable on the queue worker.
     healthcheck:
       disable: true
     deploy:
@@ -123,9 +104,7 @@ services:
       - mysql_data:/var/lib/mysql
     networks: [internal]
     healthcheck:
-      # `-h 127.0.0.1` forces TCP rather than the local UNIX socket so the
-      # check fails until the network listener is up. `start_period` covers
-      # mysql:8.4's first-boot init (~30-60s).
+      # -h 127.0.0.1 forces TCP — UNIX socket is up before the listener.
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
       timeout: 3s

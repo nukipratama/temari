@@ -64,10 +64,7 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * One greeting per (user, day) — generate on first dashboard open, reuse
-     * for the rest of the day.
-     */
+    // One greeting per (user, day); reuse for the rest of the day.
     private function resolveGreeting(User $user, Temari $temari, string $vibeState, Carbon $today): StoryLine
     {
         $existing = StoryLine::query()

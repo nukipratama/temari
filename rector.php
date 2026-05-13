@@ -17,9 +17,7 @@ return RectorConfig::configure()
         LaravelSetList::LARAVEL_120,
     ])
     ->withSkip([
-        // Misfires when the bind closure returns a non-trivial graph
-        // (interface → CachingNarrator(FallbackNarrator(Llm, Rules)))
-        // — the rule assumes the closure returns the concrete class.
+        // Misfires on closures that return a decorator graph, not a concrete.
         ContainerBindConcreteWithClosureOnlyRector::class,
     ])
     ->withCache(cacheDirectory: __DIR__.'/.rector-cache')

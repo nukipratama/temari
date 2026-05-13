@@ -9,12 +9,6 @@ use App\Services\Run\Story\RunCardFactory;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-/**
- * Standalone re-generation of a `run_cards` row for an activity, useful
- * after tweaking the rarity ladder or special-move library without
- * wanting to re-ingest from Strava. The main pipeline calls
- * `RunCardFactory` inline; this job exists for manual / bulk rebuilds.
- */
 class GenerateRunCardJob implements ShouldQueue
 {
     use Queueable;

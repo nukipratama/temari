@@ -12,19 +12,8 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Carbon;
 
-/**
- * Reverse-geocodes a single [[ActivityDetail]] via [[NominatimResolver]]
- * and writes the result back to the row. Always stamps
- * `location_resolved_at` — even on miss — so callers can distinguish
- * "never tried" from "tried and got nothing", preventing endless retries
- * for activities Nominatim genuinely has no data for.
- *
- * Concurrency: Nominatim's TOS allows 1 req/sec. We serialise jobs via
- * `WithoutOverlapping` keyed on the global resolver — Horizon runs them
- * one at a time even though the queue has multiple workers. The job is
- * cheap enough that a global lock is fine; the alternative (one queue
- * worker dedicated to geocoding) is more infra to maintain.
- */
+// Stamps location_resolved_at even on miss so we don't retry forever.
+// WithoutOverlapping serialises to honor Nominatim's 1 req/sec TOS.
 class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;

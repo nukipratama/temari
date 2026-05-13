@@ -10,11 +10,6 @@ use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 
-/**
- * One-tap sign-in as the seeded demo user. The login page renders a button
- * that posts here when `config('demo.login_enabled')` is true; production
- * deployments leave the flag off so the endpoint 404s.
- */
 class DemoAuthController extends Controller
 {
     public function login(): RedirectResponse

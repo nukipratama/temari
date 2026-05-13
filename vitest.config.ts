@@ -24,9 +24,6 @@ export default defineConfig({
                 'resources/js/types/**',
                 'resources/js/app.tsx',
             ],
-            // PHP CI gates on line coverage (`pest --min=100`) — mirror it here.
-            // Branches relaxed because hitting every `??` / `?.` fallback in
-            // defensive code is contortionist, not signal.
             thresholds: {
                 lines: 100,
                 functions: 100,

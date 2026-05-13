@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Pre-commit gate: block commits on main, lint staged files.
-# PHP  → Pint (staged) + PHPStan (full — cross-file type safety) + Rector dry-run (staged).
-# TS   → tsc --noEmit (full — cross-file type safety) + ESLint (staged).
-# Tests + coverage live in CI.
 set -euo pipefail
 
 CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
@@ -33,15 +29,13 @@ if [ -n "$STAGED_PHP" ]; then
   ./vendor/bin/sail exec -T app ./vendor/bin/pint $STAGED_PHP
   # shellcheck disable=SC2086
   git add $STAGED_PHP
-  # phpstan analyses full codebase — partial checks silently miss cross-file errors
-  # (e.g. refactoring a util breaks unstaged callers).
+  # phpstan + tsc run full — partial checks miss cross-file errors.
   ./vendor/bin/sail exec -T app ./vendor/bin/phpstan analyse --no-progress
   # shellcheck disable=SC2086
   ./vendor/bin/sail exec -T app ./vendor/bin/rector --dry-run --no-progress-bar $STAGED_PHP
 fi
 
 if [ -n "$STAGED_TS" ]; then
-  # tsc checks all files — partial checks silently miss cross-file errors.
   ./vendor/bin/sail exec -T app npm run typecheck
   # shellcheck disable=SC2086
   ./vendor/bin/sail exec -T app ./node_modules/.bin/eslint $STAGED_TS --max-warnings 0

@@ -9,14 +9,6 @@ use App\Services\Run\Story\Temari;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-/**
- * Standalone re-generation of a `story_lines` row for an activity (the
- * post-run mascot speech). Use after editing Temari's templates or mood
- * logic without re-ingesting from Strava.
- *
- * Daily greetings have their own caller — they fire on first dashboard
- * open per day, not via this job.
- */
 class GenerateStoryLineJob implements ShouldQueue
 {
     use Queueable;

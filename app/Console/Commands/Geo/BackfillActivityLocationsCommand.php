@@ -32,11 +32,6 @@ class BackfillActivityLocationsCommand extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * Extract start lat/lng from `summary_polyline` for rows synced before
-     * the coord columns existed. Strava's `summary_polyline` is the canonical
-     * source; no Strava round-trip needed.
-     */
     private function backfillCoordsFromPolyline(PolylineDecoder $decoder, int $limit): int
     {
         $query = ActivityDetail::query()
