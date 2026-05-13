@@ -52,6 +52,7 @@ it('stores detail and streams on successful fetch', function (): void {
             'calories' => 600.0,
             'splits_metric' => [['split' => 1]],
             'map' => ['summary_polyline' => 'poly123'],
+            'start_latlng' => [-6.2253, 106.8090],
         ]),
         'strava.com/api/v3/activities/999/streams*' => Http::response([
             'time' => ['data' => [0, 60, 120]],
@@ -65,7 +66,9 @@ it('stores detail and streams on successful fetch', function (): void {
     expect($detail)->not->toBeNull()
         ->and($detail->name)->toBe('Morning Run')
         ->and($detail->distance)->toEqualWithDelta(10000.0, 0.01)
-        ->and($detail->summary_polyline)->toBe('poly123');
+        ->and($detail->summary_polyline)->toBe('poly123')
+        ->and($detail->start_lat)->toEqualWithDelta(-6.2253, 1e-5)
+        ->and($detail->start_lng)->toEqualWithDelta(106.8090, 1e-5);
 
     $stream = ActivityStream::query()->where('activity_id', $activity->id)->first();
     expect($stream)->not->toBeNull()
