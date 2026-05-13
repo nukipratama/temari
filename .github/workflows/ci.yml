@@ -5,9 +5,6 @@ on:
     branches: [main]
   pull_request:
 
-# One run per ref. New pushes to a PR cancel the older run so the single
-# self-hosted runner doesn't queue stale work. main is exempt — we never want
-# to cancel a deploy mid-flight.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -16,10 +13,6 @@ env:
   PHP_VERSION: '8.4'
 
 jobs:
-  # Backend gate: PHP tests + 100% line coverage, then mutation testing (100%
-  # MSI). Both run pest against the same mysql + redis services, so we share
-  # composer install + service boot between them. Mutation step runs after
-  # tests pass — a broken suite fails fast without paying the mutation cost.
   backend-tests:
     runs-on: [self-hosted, homelab]
     services:
@@ -66,13 +59,10 @@ jobs:
       - name: Stub .env so Laravel doesn't warn on bootstrap
         run: cp .env.example .env
 
-      # NOTE: invoke pest directly, not `php artisan test --parallel --coverage`
-      # — the artisan wrapper silently drops --coverage in parallel mode, so the
-      # 100% gate would never run. Pest 4's own --parallel uses paratest and
-      # honors --coverage end-to-end. Laravel's ParallelTesting (triggered by
-      # the TEST_TOKEN paratest sets) still handles per-process DB creation.
-      # NOTE: env is set at step level because `job.services.*.ports` context is
-      # only available at step scope, not job-level env.
+      # Invoke pest directly, not `php artisan test --parallel --coverage` —
+      # the artisan wrapper silently drops --coverage in parallel mode.
+      # env is set at step level because job.services.*.ports is only
+      # available there, not at job-level env.
       - name: Tests + 100% line coverage
         id: pest
         env:
@@ -109,10 +99,6 @@ jobs:
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Mutation testing via Pest's native --mutate. Infection 0.32 launches
-      # the initial test suite via `vendor/bin/phpunit`, which Pest 4 refuses
-      # ("Please run [./vendor/bin/pest] instead") — so Infection is unusable
-      # on this codebase. Pest's plugin-mutate boots through pest itself.
       - name: Mutation tests (Pest)
         id: mutate
         env:
@@ -125,10 +111,7 @@ jobs:
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
         run: |
-          # --processes=2 (half the homelab's 4 cores) leaves headroom for the
-          # runner agent + service containers; --processes=4 saturates the box
-          # and stalls runner cancellation signals.
-          ./vendor/bin/pest --mutate --everything --covered-only --parallel --processes=2 --min=100 \
+          ./vendor/bin/pest --mutate --everything --covered-only --parallel --min=100 \
             --ignore='App\Console' --ignore='App\Providers' \
             2>&1 | tee /tmp/mutate-output.txt
           exit ${PIPESTATUS[0]}
@@ -147,13 +130,8 @@ jobs:
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Frontend gate: React unit + component tests via Vitest with 100% line +
-  # function coverage. Pure FE — no DB, no PHP runtime.
-  #
-  # Serialized behind backend-tests so the homelab (4 cores) only runs one
-  # heavy job at a time. Parallel jobs hammer vitest workers + pest --parallel
-  # at once and saturate every core, which has hung the runner agent in the
-  # past. Wall-time cost of serializing is negligible (vitest takes ~30s).
+  # needs: backend-tests serializes the two heavy jobs onto the single
+  # homelab runner — parallel execution oversubscribes its 4 cores.
   frontend-tests:
     needs: backend-tests
     runs-on: [self-hosted, homelab]
@@ -169,13 +147,9 @@ jobs:
       - name: Install npm deps
         run: npm ci --prefer-offline --no-audit --no-fund
 
-      # Coverage gate runs on every event — PR + main. Skipping it on PRs let
-      # coverage drift merge before the gate fired, defeating the gate.
       - name: Vitest + 100% line/function coverage
         run: npm run test:coverage
 
-      # vitest.config.ts writes coverage-summary.json (v8 json-summary reporter)
-      # — parse that for a clean markdown table instead of grepping stdout.
       - name: Vitest summary
         if: always()
         run: |
