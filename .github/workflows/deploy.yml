@@ -70,7 +70,7 @@ jobs:
       - name: Mutation tests (Infection)
         id: infection
         run: |
-          ./vendor/bin/infection --only-covered --no-progress --logger-github 2>&1 | tee /tmp/infection-output.txt
+          ./vendor/bin/infection --no-progress --logger-github 2>&1 | tee /tmp/infection-output.txt
           exit ${PIPESTATUS[0]}
 
       - name: Mutation summary
