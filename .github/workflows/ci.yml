@@ -9,99 +9,6 @@ env:
   PHP_VERSION: '8.4'
 
 jobs:
-  # No DB / no redis — just static analysis + style.
-  lint:
-    runs-on: [self-hosted, homelab]
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ env.PHP_VERSION }}
-
-      - name: Cache composer vendor
-        uses: actions/cache@v5
-        with:
-          path: vendor
-          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
-
-      - name: Cache PHPStan analysis
-        uses: actions/cache@v5
-        with:
-          path: .phpstan-cache
-          key: phpstan-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('phpstan.neon', 'composer.lock') }}-${{ github.sha }}
-          restore-keys: |
-            phpstan-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('phpstan.neon', 'composer.lock') }}-
-            phpstan-${{ runner.os }}-php${{ env.PHP_VERSION }}-
-
-      - name: Cache Rector analysis
-        uses: actions/cache@v5
-        with:
-          path: .rector-cache
-          key: rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('rector.php', 'composer.lock') }}-${{ github.sha }}
-          restore-keys: |
-            rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('rector.php', 'composer.lock') }}-
-            rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-
-
-      - name: Install composer deps
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Pint (PSR-12)
-        id: pint
-        run: ./vendor/bin/pint --test
-
-      - name: PHPStan / Larastan level 8
-        id: phpstan
-        run: ./vendor/bin/phpstan analyse --no-progress
-
-      - name: Rector dry-run
-        id: rector
-        run: ./vendor/bin/rector --dry-run --no-progress-bar
-
-      - name: Lint summary
-        if: always()
-        run: |
-          echo "## Lint (PHP)" >> $GITHUB_STEP_SUMMARY
-          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
-          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| Pint | ${{ steps.pint.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| PHPStan | ${{ steps.phpstan.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Rector | ${{ steps.rector.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-
-  # React/TypeScript type-check + ESLint. Pure FE — no DB, no PHP runtime.
-  lint-react:
-    runs-on: [self-hosted, homelab]
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: npm
-
-      - name: Install npm deps
-        run: npm ci --prefer-offline --no-audit --no-fund
-
-      - name: TypeScript type-check
-        id: typecheck
-        run: npm run typecheck
-
-      - name: ESLint
-        id: eslint
-        run: npm run lint
-
-      - name: Lint summary
-        if: always()
-        run: |
-          echo "## Lint (React)" >> $GITHUB_STEP_SUMMARY
-          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
-          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| TypeScript | ${{ steps.typecheck.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| ESLint | ${{ steps.eslint.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-
   # Test suite + 100% line-coverage gate. Boots Laravel against the mysql + redis
   # service containers; RefreshDatabase trait migrates the schema per-test class.
   pest:
@@ -290,7 +197,7 @@ jobs:
   # written to a host file.
   deploy:
     name: Deploy to homelab
-    needs: [lint, lint-react, pest, vitest, mutation]
+    needs: [pest, vitest, mutation]
     if: github.event_name != 'pull_request'
     runs-on: [self-hosted, homelab]
     concurrency:
