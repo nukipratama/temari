@@ -1,0 +1,158 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  PHP_VERSION: '8.4'
+
+jobs:
+  # Mutation testing via Infection. Runs after CI passes on main (branch
+  # protection ensures lint+pest+vitest are green before merge). Blocks deploy:
+  # a low MSI means the test suite is brittle regardless of line coverage.
+  mutation:
+    runs-on: [self-hosted, homelab]
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: teman_lari_testing
+          MYSQL_USER: sail
+          MYSQL_PASSWORD: password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ppassword"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+          --tmpfs /var/lib/mysql:rw
+      redis:
+        image: redis:alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: teman_lari_testing
+      DB_USERNAME: root
+      DB_PASSWORD: password
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: pcov
+
+      - name: Cache composer vendor
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
+      - name: Install composer deps
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Stub .env
+        run: cp .env.example .env
+
+      - name: Mutation tests (Infection)
+        id: infection
+        run: |
+          ./vendor/bin/infection --only-covered --no-progress --logger-github 2>&1 | tee /tmp/infection-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Mutation summary
+        if: always()
+        run: |
+          echo "## Mutation Testing (Infection)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "MSI|Killed|Escaped|Not covered|Mutation Score|Covered Code" /tmp/infection-output.txt >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # Deploy to homelab. Runs after mutation passes. All env values come from
+  # repo Secrets — `compose.prod.yaml` uses `environment:` blocks with
+  # `${VAR}` substitution so nothing is ever written to a host file.
+  deploy:
+    name: Deploy to homelab
+    needs: [mutation]
+    runs-on: [self-hosted, homelab]
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    timeout-minutes: 15
+    env:
+      COMPOSE: docker compose -f compose.prod.yaml
+      APP_KEY: ${{ secrets.APP_KEY }}
+      APP_URL: ${{ secrets.APP_URL }}
+      DB_DATABASE: ${{ secrets.DB_DATABASE }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+      STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+      STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+      DEMO_LOGIN_ENABLED: ${{ secrets.DEMO_LOGIN_ENABLED }}
+      ONBOARDING_FORCE_SHOW: ${{ secrets.ONBOARDING_FORCE_SHOW }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Tag current :latest as :previous (rollback target)
+        run: |
+          if docker image inspect teman-lari/app:latest >/dev/null 2>&1; then
+            docker tag teman-lari/app:latest teman-lari/app:previous
+          fi
+
+      - name: Build new image
+        run: $COMPOSE build app
+
+      - name: Tag new image with git SHA
+        run: docker tag teman-lari/app:latest teman-lari/app:${{ github.sha }}
+
+      - name: Migrate (one-shot, on the new image)
+        run: $COMPOSE run --rm app php artisan migrate --force
+
+      - name: Roll app, horizon, scheduler onto the new image
+        run: $COMPOSE up -d --no-deps app horizon scheduler
+
+      - name: Optimize caches
+        run: $COMPOSE exec -T app php artisan optimize
+
+      - name: Recycle Horizon workers onto new code
+        run: $COMPOSE exec -T app php artisan horizon:terminate
+
+      - name: Healthcheck
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:7001/up; then
+              echo "Healthcheck passed"; exit 0
+            fi
+            sleep 3
+          done
+          echo "Healthcheck failed"; exit 1
+
+      - name: Prune old teman-lari images
+        if: always()
+        continue-on-error: true
+        # Remove teman-lari/app SHA-tagged images that aren't :latest or :previous.
+        # Avoids docker image prune -a which would evict unrelated images on the runner.
+        run: |
+          docker images "teman-lari/app" --format "{{.Tag}}\t{{.ID}}" \
+            | grep -vE "^(latest|previous)" \
+            | awk '{print $2}' \
+            | xargs --no-run-if-empty docker rmi --force 2>/dev/null || true
+
+      - name: Deploy summary
+        if: always()
+        run: |
+          echo "## Deploy" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| SHA | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ${{ job.status == 'success' && '✅ Deployed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY

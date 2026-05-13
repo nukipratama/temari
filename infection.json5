@@ -1,0 +1,15 @@
+{
+    "source": {
+        "directories": ["app"],
+        "excludeDirectories": ["app/Console", "app/Providers"]
+    },
+    "phpUnit": {
+        "configDir": "."
+    },
+    "mutators": {
+        "@default": true
+    },
+    "minMsi": 100,
+    "minCoveredMsi": 100,
+    "threads": 4
+}

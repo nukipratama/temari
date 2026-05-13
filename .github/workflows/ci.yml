@@ -49,13 +49,26 @@ jobs:
         run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Pint (PSR-12)
+        id: pint
         run: ./vendor/bin/pint --test
 
       - name: PHPStan / Larastan level 8
+        id: phpstan
         run: ./vendor/bin/phpstan analyse --no-progress
 
       - name: Rector dry-run
+        id: rector
         run: ./vendor/bin/rector --dry-run --no-progress-bar
+
+      - name: Lint summary
+        if: always()
+        run: |
+          echo "## Lint" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Pint | ${{ steps.pint.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PHPStan | ${{ steps.phpstan.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rector | ${{ steps.rector.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
 
   # Test suite + 100% line-coverage gate. Boots Laravel against the mysql + redis
   # service containers; RefreshDatabase trait migrates the schema per-test class.
@@ -123,12 +136,24 @@ jobs:
       # honors --coverage end-to-end. Laravel's ParallelTesting (triggered by
       # the TEST_TOKEN paratest sets) still handles per-process DB creation.
       - name: Tests + 100% line coverage
-        run: >-
-          ./vendor/bin/pest --parallel --processes=4 --coverage --min=100
-          --fail-on-warning --fail-on-notice
-          --fail-on-deprecation --fail-on-risky
-          --fail-on-phpunit-warning --fail-on-phpunit-notice
-          --fail-on-phpunit-deprecation
+        id: pest
+        run: |
+          ./vendor/bin/pest --parallel --processes=4 --coverage --min=100 \
+            --fail-on-warning --fail-on-notice \
+            --fail-on-deprecation --fail-on-risky \
+            --fail-on-phpunit-warning --fail-on-phpunit-notice \
+            --fail-on-phpunit-deprecation 2>&1 | tee /tmp/pest-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Pest summary
+        if: always()
+        run: |
+          echo "## Tests (Pest)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "Tests:|Duration:|FAILED|PASSED" /tmp/pest-output.txt \
+            | sed 's/\x1b\[[0-9;]*[mGKHF]//g' \
+            | tail -5 >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   # React unit + component tests via Vitest. Gates on the same 100% line+function
   # coverage bar as the PHP suite. Pure FE — no DB, no PHP runtime.
@@ -156,69 +181,3 @@ jobs:
         if: github.event_name != 'pull_request'
         run: npm run test:coverage
 
-  # Deploy to homelab. Only runs after lint+pest+vitest pass on a push to main.
-  # Skipped on PRs (visible as "skipping" in PR checks). All env values come
-  # from repo Secrets — `compose.prod.yaml` uses `environment:` blocks with
-  # `${VAR}` substitution so nothing is ever written to a host file.
-  deploy:
-    name: Deploy to homelab
-    needs: [lint, pest, vitest]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: [self-hosted, homelab]
-    concurrency:
-      group: deploy-prod
-      cancel-in-progress: false
-    timeout-minutes: 15
-    env:
-      COMPOSE: docker compose -f compose.prod.yaml
-      APP_KEY: ${{ secrets.APP_KEY }}
-      APP_URL: ${{ secrets.APP_URL }}
-      DB_DATABASE: ${{ secrets.DB_DATABASE }}
-      DB_USERNAME: ${{ secrets.DB_USERNAME }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-      STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
-      STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
-      DEMO_LOGIN_ENABLED: ${{ secrets.DEMO_LOGIN_ENABLED }}
-      ONBOARDING_FORCE_SHOW: ${{ secrets.ONBOARDING_FORCE_SHOW }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Tag current :latest as :previous (rollback target)
-        run: |
-          if docker image inspect teman-lari/app:latest >/dev/null 2>&1; then
-            docker tag teman-lari/app:latest teman-lari/app:previous
-          fi
-
-      - name: Build new image
-        run: $COMPOSE build app
-
-      - name: Tag new image with git SHA
-        run: docker tag teman-lari/app:latest teman-lari/app:${{ github.sha }}
-
-      - name: Migrate (one-shot, on the new image)
-        run: $COMPOSE run --rm app php artisan migrate --force
-
-      - name: Roll app, horizon, scheduler onto the new image
-        run: $COMPOSE up -d --no-deps app horizon scheduler
-
-      - name: Optimize caches
-        run: $COMPOSE exec -T app php artisan optimize
-
-      - name: Recycle Horizon workers onto new code
-        run: $COMPOSE exec -T app php artisan horizon:terminate
-
-      - name: Healthcheck
-        run: |
-          for i in 1 2 3 4 5; do
-            if curl -fsS http://127.0.0.1:7001/up; then
-              echo "Healthcheck passed"; exit 0
-            fi
-            sleep 3
-          done
-          echo "Healthcheck failed"; exit 1
-
-      - name: Prune old images (-a includes SHA-tagged but unused; respects in-use)
-        if: always()
-        continue-on-error: true
-        run: docker image prune -a -f --filter "until=168h"

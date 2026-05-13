@@ -127,6 +127,16 @@ it('converts meters to kilometers in the item DTO', function (): void {
     expect($items[0]->distanceKm)->toBe(7.3);
 });
 
+it('maps an unknown mood to the default rain face', function (): void {
+    $user = User::factory()->create();
+    seedVerdict($user, Carbon::today(), Temari::MOOD_DIM, 'dim verdict', 5000.0);
+
+    $items = app(VerdictTimeline::class)->recent($user);
+
+    expect($items)->toHaveCount(1)
+        ->and($items[0]->moodFace)->toBe('🌧️');
+});
+
 it('does not leak verdicts across users', function (): void {
     $a = User::factory()->create();
     $b = User::factory()->create();
