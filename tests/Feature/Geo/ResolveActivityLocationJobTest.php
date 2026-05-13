@@ -91,10 +91,16 @@ it('stamps and exits when the detail has no coords', function (): void {
 });
 
 it('is a no-op when the detail row was deleted before the job ran', function (): void {
+    // Mockery's `shouldNotReceive` registers a tear-down assertion, so we
+    // can't pair it with `throwsNoExceptions()` — PHPUnit's strict mode
+    // would flag the run as risky. The expectation is enforced via the
+    // mock, the missing-row branch returns silently.
     $this->mock(NominatimResolver::class, fn ($m) => $m->shouldNotReceive('reverse'));
 
     (new ResolveActivityLocationJob(999_999))->handle(app(NominatimResolver::class));
-})->throwsNoExceptions();
+
+    expect(true)->toBeTrue();
+});
 
 it('declares a WithoutOverlapping middleware on the geo:nominatim:reverse key', function (): void {
     $job = new ResolveActivityLocationJob(1);

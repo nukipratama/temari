@@ -164,8 +164,14 @@ describe('Dashboard', () => {
             />,
         );
         expect(screen.getByText('Tren 30 hari')).toBeInTheDocument();
-        await waitFor(() => expect(screen.getByTestId('line-chart')).toBeInTheDocument());
-        expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
+        // Charts are lazy-loaded; CI under coverage instrumentation can
+        // take well past the 1s default to resolve the dynamic import.
+        await waitFor(() => expect(screen.getByTestId('line-chart')).toBeInTheDocument(), {
+            timeout: 5000,
+        });
+        await waitFor(() => expect(screen.getByTestId('bar-chart')).toBeInTheDocument(), {
+            timeout: 5000,
+        });
     });
 
     it('shows verdict strip when items present', () => {
