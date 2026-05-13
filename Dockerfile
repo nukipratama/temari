@@ -22,7 +22,7 @@ RUN composer dump-autoload --optimize --classmap-authoritative
 FROM node:22-alpine AS assets
 WORKDIR /app
 
-COPY package.json package-lock.json vite.config.js ./
+COPY package.json package-lock.json vite.config.ts tsconfig.json ./
 RUN npm ci --no-audit --no-fund
 
 COPY resources ./resources
