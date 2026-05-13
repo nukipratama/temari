@@ -1,4 +1,9 @@
 @import 'tailwindcss';
+/* Leaflet tile + zoom-control styles. Imported here (eagerly) instead
+   of inside [resources/js/components/run/RouteMap.tsx] because RouteMap
+   is lazy-loaded — racing the CSS via dynamic import left tile <img>
+   elements unpositioned on first render. */
+@import 'leaflet/dist/leaflet.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -54,15 +59,24 @@
     /* Surface & ink — warm-neutral paper tones (not mint-green) so the
        brand-green doesn't bleed across the whole app. Bg + text stay
        neutral; greens only show on intentional brand surfaces (logo chip,
-       primary CTA, fitness chart line). */
+       primary CTA, fitness chart line).
+
+       Contrast tiers (3-stop, semantic):
+         ink       — primary text: body, headings, button labels, KPI values
+         ink-soft  — supporting body: subtitles, suggestion lines
+         ink-meta  — labels-above-values, timestamps, footnotes, table headers
+       Each has a *-dark counterpart for dark mode. ink-soft was bumped
+       darker (was #5c544a) after WCAG audit; ink-meta is new. */
     --color-surface: #fafaf7;
     --color-surface-elev: #ffffff;
     --color-surface-dark: #16140f;
     --color-surface-dark-elev: #1f1c16;
     --color-ink: #1f1b16;
-    --color-ink-soft: #5c544a;
+    --color-ink-soft: #3d372e;
+    --color-ink-meta: #6f6358;
     --color-ink-dark: #f0ebe2;
-    --color-ink-soft-dark: #b8ae9f;
+    --color-ink-soft-dark: #d0c6b5;
+    --color-ink-meta-dark: #9a8e80;
     --color-line: #e5ded3;
     --color-line-dark: #2a241d;
 
@@ -92,5 +106,22 @@
     }
     .scrollbar-hide::-webkit-scrollbar {
         display: none;
+    }
+}
+
+/* Mobile sidebar drawer — overrides default `<dialog>` centered-modal
+   layout to a slide-from-left full-height drawer. Native `<dialog>`
+   provides focus trap + Esc-close + backdrop click for free; we only
+   reposition + restyle the backdrop. */
+@layer components {
+    dialog.sidebar-drawer {
+        position: fixed;
+        inset: 0 auto 0 0;
+        height: 100dvh;
+        max-height: 100dvh;
+        border: 0;
+    }
+    dialog.sidebar-drawer::backdrop {
+        background: rgba(15, 12, 9, 0.45);
     }
 }

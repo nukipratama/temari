@@ -13,6 +13,7 @@ use App\Models\StoryLine;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Geo\PolylineEncoder;
 use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -41,11 +42,19 @@ class DemoRunSeeder
 {
     public const string DEMO_USER_EMAIL = 'demo@teman-lari.local';
 
-    /**
-     * Pre-encoded small loop near Jakarta — same shape for every GPS-enabled
-     * demo run, close enough to look like a real Strava polyline preview.
-     */
-    private const string DEMO_POLYLINE = '~kpvCggjpV??cAcA{@cAcA{@aA{@s@_@i@Sa@Ce@@a@P_@`@U`@AbAFr@\h@d@^h@Z`@Vd@LXLb@?j@';
+    // Demo run start coords: Senayan / SCBD, Jakarta. Hardcoded so the
+    // resolved location below stays accurate. Real users get coords from
+    // Strava's `start_latlng` on sync, then Nominatim resolves the chip.
+    private const float DEMO_START_LAT = -6.2253;
+
+    private const float DEMO_START_LNG = 106.8090;
+
+    // Pre-resolved location for demo data — skips the Nominatim call
+    // entirely on seed so `demo:seed --fresh` produces a page that renders
+    // the location chip immediately without waiting on a queue worker.
+    private const string DEMO_LOCATION_NAME = 'Senayan, Jakarta Pusat, DKI Jakarta, Indonesia';
+
+    private const string DEMO_LOCATION_COUNTRY = 'ID';
 
     public function __construct(
         private readonly BlueprintLibrary $library,
@@ -58,7 +67,38 @@ class DemoRunSeeder
         private readonly Temari $temari,
         private readonly Vibe $vibe,
         private readonly WeeklyAggregator $weeklyAggregator,
+        private readonly PolylineEncoder $polylineEncoder = new PolylineEncoder(),
     ) {
+    }
+
+    /**
+     * Builds an encoded polyline for a small loop around the demo start
+     * coordinates so the route map and the resolved location chip agree.
+     * Returns the same encoded string for every call — `static` cache so
+     * the encoder runs once per seeder lifetime, not per activity.
+     */
+    private function demoPolyline(): string
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $lat = self::DEMO_START_LAT;
+        $lng = self::DEMO_START_LNG;
+
+        // Loose square loop ~500m on each side, returning to the start.
+        $points = [
+            [$lat, $lng],
+            [$lat + 0.0045, $lng + 0.0010],
+            [$lat + 0.0050, $lng + 0.0055],
+            [$lat + 0.0020, $lng + 0.0070],
+            [$lat - 0.0010, $lng + 0.0055],
+            [$lat - 0.0015, $lng + 0.0015],
+            [$lat, $lng],
+        ];
+
+        return $cached = $this->polylineEncoder->encode($points);
     }
 
     /**
@@ -181,7 +221,12 @@ class DemoRunSeeder
             'average_cadence' => $blueprint->hasCadenceSensor ? StreamStats::mean($cadenceStream) : null,
             'calories' => round($blueprint->distanceM / 1000 * 65),
             'splits_metric' => $splits,
-            'summary_polyline' => $blueprint->hasGps ? self::DEMO_POLYLINE : null,
+            'summary_polyline' => $blueprint->hasGps ? $this->demoPolyline() : null,
+            'start_lat' => $blueprint->hasGps ? self::DEMO_START_LAT : null,
+            'start_lng' => $blueprint->hasGps ? self::DEMO_START_LNG : null,
+            'location_name' => $blueprint->hasGps ? self::DEMO_LOCATION_NAME : null,
+            'location_country' => $blueprint->hasGps ? self::DEMO_LOCATION_COUNTRY : null,
+            'location_resolved_at' => $blueprint->hasGps ? $blueprint->startsAt->copy()->addMinutes(2) : null,
             'weather_temp_c' => $blueprint->weatherTempC,
             'weather_humidity_pct' => $blueprint->weatherHumidityPct,
             'weather_rain_detected' => $blueprint->weatherRainDetected,

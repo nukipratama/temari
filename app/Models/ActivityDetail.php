@@ -34,6 +34,11 @@ use Override;
  * @property int|null $weather_temp_c
  * @property int|null $weather_humidity_pct
  * @property bool|null $weather_rain_detected
+ * @property float|null $start_lat
+ * @property float|null $start_lng
+ * @property string|null $location_name
+ * @property string|null $location_country
+ * @property Carbon|null $location_resolved_at
  * @property string|null $vibe_state
  * @property-read Activity $activity
  */
@@ -58,6 +63,11 @@ use Override;
     'weather_temp_c',
     'weather_humidity_pct',
     'weather_rain_detected',
+    'start_lat',
+    'start_lng',
+    'location_name',
+    'location_country',
+    'location_resolved_at',
     'vibe_state',
 ])]
 class ActivityDetail extends Model
@@ -97,6 +107,9 @@ class ActivityDetail extends Model
             'weather_temp_c' => 'integer',
             'weather_humidity_pct' => 'integer',
             'weather_rain_detected' => 'boolean',
+            'start_lat' => 'float',
+            'start_lng' => 'float',
+            'location_resolved_at' => 'datetime',
         ];
     }
 }

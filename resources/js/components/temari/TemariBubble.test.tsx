@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import TemariBubble from './TemariBubble';
 import type { StoryLine } from '@/types/inertia';
@@ -29,17 +28,27 @@ describe('TemariBubble', () => {
         expect(screen.getByText('static speech')).toBeInTheDocument();
     });
 
-    it('cycles through variations on click', async () => {
-        const user = userEvent.setup();
-        render(<TemariBubble line={makeLine()} variations={['first', 'second', 'third']} />);
-        expect(screen.getByText('first')).toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: /ganti kata temari/i }));
-        expect(screen.getByText('second')).toBeInTheDocument();
-        await user.click(screen.getByRole('button'));
-        expect(screen.getByText('third')).toBeInTheDocument();
-        // wraps back to first
-        await user.click(screen.getByRole('button'));
-        expect(screen.getByText('first')).toBeInTheDocument();
+    it('renders all variations inline as alt-takes (no longer cycle-on-tap)', () => {
+        render(
+            <TemariBubble
+                line={makeLine({ speech: 'primary speech' })}
+                variations={['alt one', 'alt two']}
+            />,
+        );
+        expect(screen.getByText('primary speech')).toBeInTheDocument();
+        expect(screen.getByText('alt one')).toBeInTheDocument();
+        expect(screen.getByText('alt two')).toBeInTheDocument();
+    });
+
+    it('deduplicates a variation that matches the primary line', () => {
+        render(
+            <TemariBubble
+                line={makeLine({ speech: 'same line' })}
+                variations={['same line', 'different']}
+            />,
+        );
+        expect(screen.getAllByText('same line')).toHaveLength(1);
+        expect(screen.getByText('different')).toBeInTheDocument();
     });
 
     it('renders sm size variant', () => {

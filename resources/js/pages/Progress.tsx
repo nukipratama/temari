@@ -1,7 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatIdDate } from '@/lib/pace';
 import AppShell from '@/layouts/AppShell';
+import { fadeInUp } from '@/lib/motion';
 import type { FormStatus, PersonalRecord, WeeklySnapshot } from '@/types/inertia';
 
 interface ExtendedSnapshot extends WeeklySnapshot {
@@ -26,21 +28,26 @@ export default function Progress({ snapshots, personalRecords }: Readonly<Progre
     return (
         <AppShell>
             <Head title="Catatan" />
-            <main className="mx-auto max-w-5xl px-6 py-10">
+            <motion.main
+                variants={fadeInUp}
+                initial="hidden"
+                animate="visible"
+                className="mx-auto max-w-5xl px-6 py-10"
+            >
                 <div className="mb-6">
                     <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-ink-dark">Catatan</h1>
-                    <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">Tren mingguan + ledger PR.</p>
+                    <p className="mt-1 text-base leading-relaxed text-ink dark:text-ink-dark">Tren mingguan + ledger PR.</p>
                 </div>
 
                 {snapshots.length > 0 && (
                     <section className="mb-10">
-                        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-soft dark:text-ink-soft-dark">
+                        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                             Riwayat Mingguan
                         </h2>
                         <div className="overflow-x-auto rounded-2xl border border-line bg-surface-elev dark:border-line-dark dark:bg-surface-dark-elev">
                             <table className="w-full text-sm tabular-nums">
                                 <thead>
-                                    <tr className="border-b border-line text-left text-xs text-ink-soft dark:border-line-dark dark:text-ink-soft-dark">
+                                    <tr className="border-b border-line text-left text-xs text-ink-meta dark:border-line-dark dark:text-ink-meta-dark">
                                         <th className="px-5 py-3 font-semibold">Week ending</th>
                                         <th className="px-5 py-3 font-semibold">Volume</th>
                                         <th className="px-5 py-3 font-semibold">Aktivitas</th>
@@ -85,12 +92,12 @@ export default function Progress({ snapshots, personalRecords }: Readonly<Progre
                 )}
 
                 <section>
-                    <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-soft dark:text-ink-soft-dark">
+                    <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                         Personal Records
                     </h2>
                     {personalRecords.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-line bg-surface-elev/40 p-10 text-center dark:border-line-dark dark:bg-surface-dark-elev/40">
-                            <p className="text-sm text-ink-soft dark:text-ink-soft-dark">
+                            <p className="text-base leading-relaxed text-ink dark:text-ink-dark">
                                 Belum ada PR. Run yang dianalisis dengan splits + best-effort paces akan mengisi ledger di sini.
                             </p>
                         </div>
@@ -98,7 +105,7 @@ export default function Progress({ snapshots, personalRecords }: Readonly<Progre
                         <div className="overflow-x-auto rounded-2xl border border-line bg-surface-elev dark:border-line-dark dark:bg-surface-dark-elev">
                             <table className="w-full text-sm tabular-nums">
                                 <thead>
-                                    <tr className="border-b border-line text-left text-xs text-ink-soft dark:border-line-dark dark:text-ink-soft-dark">
+                                    <tr className="border-b border-line text-left text-xs text-ink-meta dark:border-line-dark dark:text-ink-meta-dark">
                                         <th className="px-5 py-3 font-semibold">Category</th>
                                         <th className="px-5 py-3 font-semibold">Value</th>
                                         <th className="px-5 py-3 font-semibold">Activity</th>
@@ -121,10 +128,10 @@ export default function Progress({ snapshots, personalRecords }: Readonly<Progre
                                                         {pr.activity?.detail?.name ?? 'Run'}
                                                     </Link>
                                                 ) : (
-                                                    <span className="text-ink-soft dark:text-ink-soft-dark">—</span>
+                                                    <span className="text-ink-meta dark:text-ink-meta-dark">—</span>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-2.5 text-right text-xs text-ink-soft dark:text-ink-soft-dark">
+                                            <td className="px-5 py-2.5 text-right text-xs text-ink-meta dark:text-ink-meta-dark">
                                                 {formatIdDate(pr.set_at, 'long')}
                                             </td>
                                         </tr>
@@ -134,7 +141,7 @@ export default function Progress({ snapshots, personalRecords }: Readonly<Progre
                         </div>
                     )}
                 </section>
-            </main>
+            </motion.main>
         </AppShell>
     );
 }

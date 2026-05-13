@@ -1,4 +1,6 @@
 import type { SVGProps } from 'react';
+import { motion } from 'framer-motion';
+import { accessoryPop } from '@/lib/motion';
 
 interface Position {
     x: number;
@@ -154,7 +156,21 @@ export default function TemariSigil({
             {POSITIONS.map((pos, i) => (
                 <Stitch key={i} op={chars[i] ?? 'd'} pos={pos} color={color} />
             ))}
-            <Accessory kind={accessory} color={color} />
+            {accessory !== null && (
+                // `key={accessory}` re-mounts (and re-plays the pop) when the
+                // accessory itself changes — e.g. the user unlocks a new one.
+                // `style={{ transformOrigin: 'center' }}` keeps the SVG scale
+                // anchored at the centre of the viewBox, not 0,0.
+                <motion.g
+                    key={accessory}
+                    variants={accessoryPop}
+                    initial="hidden"
+                    animate="visible"
+                    style={{ transformOrigin: '50% 50%' }}
+                >
+                    <Accessory kind={accessory} color={color} />
+                </motion.g>
+            )}
         </svg>
     );
 }

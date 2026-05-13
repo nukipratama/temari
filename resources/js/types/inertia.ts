@@ -20,6 +20,7 @@ export interface SharedProps {
     auth: { user: AuthUser | null };
     flash: { success: string | null; error: string | null; info: string | null };
     demoLoginEnabled: boolean;
+    onboarding: { forceShow: boolean };
 }
 
 export interface BriefingResult {
@@ -56,6 +57,9 @@ export interface ActivityDetail {
     moving_time: number | null;
     average_heartrate: number | null;
     trimp_edwards: number | null;
+    location_name?: string | null;
+    location_country?: string | null;
+    summary_polyline?: string | null;
 }
 
 export interface Activity {

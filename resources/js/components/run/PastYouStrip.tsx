@@ -24,7 +24,7 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
                 className,
             )}
         >
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-soft dark:text-ink-soft-dark">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                 Kamu vs Kamu Dulu
             </h3>
             {match === null ? (
@@ -45,7 +45,7 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
                             </span>
                         )}
                     </div>
-                    <p className="mt-3 text-[11px] text-ink-soft dark:text-ink-soft-dark">
+                    <p className="mt-3 text-[11px] text-ink-meta dark:text-ink-meta-dark">
                         {formatIdDate(match.past.start_date_local, 'long')}
                     </p>
                 </>

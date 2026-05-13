@@ -1,18 +1,19 @@
 # TemanLari
 
-A self-hosted, Strava-connected personal running dashboard. UI in Bahasa Indonesia. Containerized end-to-end — Laravel Sail in dev, FrankenPHP behind a Cloudflare Tunnel in prod — and continuously deployed to a homelab on every merge to `main`.
+A self-hosted, Strava-connected personal running dashboard with a built-in companion (**Temari**) that narrates each run. UI in Bahasa Indonesia. Containerized end-to-end — Laravel Sail in dev, FrankenPHP behind a Cloudflare Tunnel in prod — and continuously deployed to a homelab on every merge to `main`.
 
-> **Status**: Strava OAuth and the dashboard shell are live. Activity sync from Strava is the next thing being wired.
+> **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and the Temari mascot are all shipping. Hutan Pagi palette (forest green + warm-neutral) — intentionally far from Strava orange. Default UI follows system light/dark.
 
 ## Stack
 
-- Laravel 13.5 + Blade + Tailwind v4 (`@tailwindcss/vite`)
-- PHP 8.4 (FrankenPHP in prod, Sail's PHP image in dev)
-- MySQL 8.4 + Redis (separate dev / test / prod stacks for parity)
-- Mailpit (dev mail catcher)
-- Pest 4 + Larastan level 8 + Pint + Rector
-- Telescope (dev), Horizon (queues), Pulse (perf)
-- Laravel Boost — `CLAUDE.md` + `.claude/skills/*` for AI-paired work; `laravel/claude-code` plugin enabled in `.claude/settings.json`
+- **Backend**: Laravel 13 · PHP 8.4 (FrankenPHP + Octane in prod, Sail's PHP image in dev) · Larastan L8 · Pint · Rector
+- **Frontend**: Inertia 2 + React 19 + TypeScript · Tailwind v4 (`@tailwindcss/vite`) · Framer Motion · Vitest
+- **Data**: MySQL 8.4 + Redis (separate dev / test / prod stacks for parity)
+- **Async**: Horizon (queues) · Scheduler
+- **Observability**: Telescope (dev) · Pulse (perf) · Mailpit (dev mail catcher)
+- **LLM**: Azure OpenAI via `openai-php/laravel` for briefing/verdict narration; rule-based fallback flips a "mode darurat" chip in the UI
+- **Tests**: Pest 4 (100% line coverage gate) · Vitest (100% lines + functions gate)
+- **AI dev**: Laravel Boost — `CLAUDE.md` + `.claude/skills/*` for AI-paired work; `laravel/claude-code` plugin enabled in `.claude/settings.json`
 
 ## Quick start
 
@@ -40,11 +41,15 @@ Day-to-day commands (all inside Sail):
 
 ```bash
 ./vendor/bin/sail composer run dev   # Vite + queue listener + log watcher
-./vendor/bin/sail pest               # tests
-./vendor/bin/sail pint               # format
-./vendor/bin/sail phpstan analyse    # static analysis
-./vendor/bin/sail rector --dry-run   # refactor suggestions
+./vendor/bin/sail bin pest           # PHP tests
+./vendor/bin/sail npm run test       # FE tests (Vitest)
+./vendor/bin/sail npm run test:coverage  # FE tests with 100% line+function gate
+./vendor/bin/sail bin pint           # format
+./vendor/bin/sail bin phpstan analyse    # static analysis
+./vendor/bin/sail bin rector --dry-run   # refactor suggestions
 ```
+
+Frontend pages live in [resources/js/pages/](resources/js/pages/), components in [resources/js/components/](resources/js/components/). Routes still go through Laravel controllers (`Inertia::render('PageName', $props)`).
 
 ### Ports
 
@@ -61,22 +66,25 @@ The test stack (`mysql_test`, `redis_test`) runs on the compose network only —
 
 ## Testing
 
-Pest 4 against a dedicated test stack: `mysql_test` (tmpfs-backed, ephemeral) and `redis_test`, configured in `phpunit.xml`. Same image versions as prod for parity. `RefreshDatabase` resets schema per test class.
+**PHP** — Pest 4 against a dedicated test stack: `mysql_test` (tmpfs-backed, ephemeral) and `redis_test`, configured in `phpunit.xml`. Same image versions as prod for parity. `RefreshDatabase` resets schema per test class. 1:1 class↔test convention — every class file has its own test (mocking siblings is encouraged).
 
-CI uses GitHub Actions service containers (`mysql:8.4` + `redis:alpine`) — every workflow run gets a fresh DB.
+**Frontend** — Vitest with jsdom against React 19 + Inertia components. Same 1:1 convention. Gates: 100% lines + 100% functions ([vitest.config.ts](vitest.config.ts)). Branches relaxed because hitting every `?? null` fallback in defensive code is contortionist, not signal.
 
-100% line coverage is enforced in CI (`pest --coverage --min=100`). `TelescopeServiceProvider` and `HorizonServiceProvider` are excluded in `phpunit.xml` — both are framework-wiring with closures that only fire under runtime conditions and aren't meaningfully testable in isolation.
+CI uses GitHub Actions service containers (`mysql:8.4` + `redis:alpine`) for the PHP suite — every workflow run gets a fresh DB. FE suite is pure-node, no services.
+
+`TelescopeServiceProvider` and `HorizonServiceProvider` are excluded from coverage in `phpunit.xml` — both are framework-wiring with closures that only fire under runtime conditions and aren't meaningfully testable in isolation.
 
 ## Quality gates
 
-| Where         | What runs                                                              |
-|:--------------|:-----------------------------------------------------------------------|
-| pre-commit    | `pint` (auto-format staged PHP) + `phpstan` (whole `app/`)             |
-| commit-msg    | Conventional Commits format check                                      |
-| pre-push      | Block direct pushes to `main` (force or not). Use feature branch + PR  |
-| CI — `lint`   | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
-| CI — `pest`   | `pest --coverage --min=100` against mysql:8.4 + redis:alpine services  |
-| CI — `deploy` | On push to `main`: build prod image, migrate, roll containers, recycle Horizon, healthcheck `/up` |
+| Where           | What runs                                                              |
+|:----------------|:-----------------------------------------------------------------------|
+| pre-commit      | `pint` (auto-format staged PHP) + `phpstan` (whole `app/`)             |
+| commit-msg      | Conventional Commits format check                                      |
+| pre-push        | Block direct pushes to `main` (force or not). Use feature branch + PR  |
+| CI — `lint`     | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
+| CI — `pest`     | `pest --coverage --min=100` against mysql:8.4 + redis:alpine services  |
+| CI — `vitest`   | `npm run test:coverage` — 100% lines + functions, jsdom only           |
+| CI — `deploy`   | On push to `main`: build prod image, migrate, roll containers, recycle Horizon, healthcheck `/up` |
 
 ## Branch workflow
 
@@ -139,6 +147,10 @@ In **repo Settings → Secrets and variables → Actions → Secrets**, add:
 | `MYSQL_ROOT_PASSWORD` | strong random — used on first mysql init only; cannot be changed after the volume exists            |
 | `STRAVA_CLIENT_ID`    | from your Strava developer app                                                                       |
 | `STRAVA_CLIENT_SECRET`| from your Strava developer app                                                                       |
+| `AZURE_OPENAI_URI`    | Optional. Full Azure OpenAI deployment URL (incl. api-version). Empty = rule-based narration silently |
+| `AZURE_OPENAI_API_KEY`| Optional. Pairs with `AZURE_OPENAI_URI`. Empty = rule-based silently. Failures flip "mode darurat" chip in UI |
+| `DEMO_LOGIN_ENABLED`  | Optional. `true` renders the "Coba versi demo" button on `/login`. Default `false`                  |
+| `ONBOARDING_FORCE_SHOW` | Optional. `true` re-renders the dashboard first-run tooltip on every mount (QA / demos). Default `false` |
 
 The Strava redirect URL is derived from `APP_URL` + the `auth.strava.callback` route — no separate secret. Make sure your Strava app's "Authorization Callback Domain" matches the host portion of `APP_URL`.
 

@@ -26,7 +26,7 @@ export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
     const submitDemo = () => demoForm.post('/auth/demo');
 
     return (
-        <AppShell showHeader={false}>
+        <AppShell showSidebar={false}>
             <Head title="Masuk" />
             <div className="relative min-h-screen overflow-hidden">
                 <div className="pointer-events-none absolute inset-0 -z-10">
@@ -47,14 +47,14 @@ export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
                                     <Icon icon={feature.icon} width={22} height={22} aria-hidden />
                                 </div>
                                 <h2 className="mt-4 text-sm font-semibold text-ink dark:text-ink-dark">{feature.label}</h2>
-                                <p className="mt-1 text-xs leading-relaxed text-ink-soft dark:text-ink-soft-dark">{feature.desc}</p>
+                                <p className="mt-1 text-xs leading-relaxed text-ink dark:text-ink-dark">{feature.desc}</p>
                             </div>
                         ))}
                     </section>
 
                     <div className="mx-auto w-full max-w-md rounded-3xl border border-line bg-surface-elev p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)] dark:border-line-dark dark:bg-surface-dark-elev dark:shadow-none">
                         <h2 className="text-2xl font-semibold tracking-tight text-ink dark:text-ink-dark">Selamat datang</h2>
-                        <p className="mt-2 text-sm leading-relaxed text-ink-soft dark:text-ink-soft-dark">
+                        <p className="mt-2 text-sm leading-relaxed text-ink dark:text-ink-dark">
                             Masuk pakai Strava untuk mulai catat lari kamu
                         </p>
 
@@ -73,19 +73,19 @@ export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
                                 type="button"
                                 onClick={submitDemo}
                                 disabled={demoForm.processing}
-                                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-surface-elev px-5 py-3 text-sm font-semibold text-ink-soft transition hover:bg-surface focus:outline-none focus:ring-4 focus:ring-brand-500/20 dark:border-line-dark dark:bg-surface-dark-elev dark:text-ink-soft-dark dark:hover:bg-surface-dark"
+                                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-surface-elev px-5 py-3 text-sm font-semibold text-ink transition hover:bg-surface focus:outline-none focus:ring-4 focus:ring-brand-500/20 dark:border-line-dark dark:bg-surface-dark-elev dark:text-ink-dark dark:hover:bg-surface-dark"
                             >
                                 <Icon icon="mdi:play-circle-outline" width={18} height={18} aria-hidden />
                                 Coba versi demo
                             </button>
                         )}
 
-                        <p className="mt-5 text-center text-xs leading-relaxed text-ink-soft dark:text-ink-soft-dark">
+                        <p className="mt-5 text-center text-xs leading-relaxed text-ink-meta dark:text-ink-meta-dark">
                             Kami hanya pakai Strava untuk login dan baca aktivitas lari kamu
                         </p>
                     </div>
 
-                    <p className="mt-6 text-center text-xs text-ink-soft dark:text-ink-soft-dark">
+                    <p className="mt-6 text-center text-xs text-ink-meta dark:text-ink-meta-dark">
                         Made with <span className="text-pop-500">♥</span> by a runner, for runners
                     </p>
                 </main>

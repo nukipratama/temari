@@ -7,8 +7,10 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\RunController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -30,5 +32,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/runs/{activity}', [RunController::class, 'show'])->name('runs.show');
     Route::get('/cards', [CardController::class, 'index'])->name('cards.index');
     Route::get('/progress', ProgressController::class)->name('progress');
+    Route::get('/settings', SettingsController::class)->name('settings');
+    Route::get('/profile', ProfileController::class)->name('profile');
     Route::post('/logout', [StravaAuthController::class, 'logout'])->name('auth.logout');
 });

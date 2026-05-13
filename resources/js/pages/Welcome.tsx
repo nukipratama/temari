@@ -9,7 +9,7 @@ import BrandMark from '@/components/BrandMark';
  */
 export default function Welcome() {
     return (
-        <AppShell showHeader={false}>
+        <AppShell showSidebar={false}>
             <Head title="TemanLari" />
             <main className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-6 py-12 text-center">
                 <BrandMark tagline />

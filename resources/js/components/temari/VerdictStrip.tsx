@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
-import { MASCOT_GRADIENT, moodRing } from '@/lib/mood';
 import { formatIdDate } from '@/lib/pace';
+import { pressShrink } from '@/lib/motion';
+import MotionLink from '@/components/MotionLink';
+import TemariMascot from './TemariMascot';
 import DegradedChip from './DegradedChip';
 import type { VerdictTimelineItem } from '@/types/inertia';
 
@@ -56,10 +57,9 @@ export default function VerdictStrip({ items }: Readonly<VerdictStripProps>) {
     };
 
     return (
-        <section className="mt-6">
-            <div className="flex items-baseline justify-between">
-                <h2 className="text-lg font-bold tracking-tight">Kata Temari</h2>
-                <span className="text-xs text-ink-soft dark:text-ink-soft-dark">{items.length} run terakhir</span>
+        <div className="mt-3">
+            <div className="flex justify-end">
+                <span className="text-xs text-ink-meta dark:text-ink-meta-dark">{items.length} run terakhir</span>
             </div>
 
             {/* `-mx-6` on the wrapper (not the scroller) so the arrow buttons,
@@ -73,38 +73,36 @@ export default function VerdictStrip({ items }: Readonly<VerdictStripProps>) {
                 <div ref={scrollerRef} className="scrollbar-hide overflow-x-auto px-6">
                     <div className="flex gap-3 pb-1">
                         {items.map((item) => (
-                            <Link
+                            <MotionLink
                                 key={item.activityId}
                                 href={`/runs/${item.activityId}`}
+                                whileTap={pressShrink}
                                 className="group flex w-64 shrink-0 flex-col gap-2 rounded-2xl border border-line bg-surface-elev p-4 transition hover:border-brand-400/60 hover:shadow-sm dark:border-line-dark dark:bg-surface-dark-elev dark:hover:border-brand-500/40"
                             >
                                 <div className="flex items-center gap-2">
-                                    <span
-                                        className={cn(
-                                            'flex h-9 w-9 items-center justify-center rounded-full text-base ring-2',
-                                            MASCOT_GRADIENT,
-                                            moodRing(item.mood),
-                                        )}
-                                    >
-                                        {item.moodFace}
-                                    </span>
+                                    <TemariMascot
+                                        mood={item.mood}
+                                        sizeClass="h-10 w-10 shrink-0"
+                                        sigilPixels={40}
+                                        ringClass="ring-2"
+                                    />
                                     <div className="min-w-0 flex-1">
                                         <div className="truncate text-xs font-semibold text-ink dark:text-ink-dark">
                                             {item.distanceKm.toFixed(1)} km
                                         </div>
-                                        <div className="text-[10px] uppercase tracking-wider text-ink-soft dark:text-ink-soft-dark">
+                                        <div className="text-[10px] uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                                             {formatIdDate(item.startedAt)}
                                         </div>
                                     </div>
                                     {item.degraded && <DegradedChip />}
                                 </div>
                                 <p className="line-clamp-3 text-xs leading-relaxed text-ink dark:text-ink-dark">{item.oneline}</p>
-                            </Link>
+                            </MotionLink>
                         ))}
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
     );
 }
 

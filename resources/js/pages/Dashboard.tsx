@@ -1,12 +1,15 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { lazy, Suspense } from 'react';
+import { motion } from 'framer-motion';
+import { lazy, Suspense, useRef } from 'react';
 import AppShell from '@/layouts/AppShell';
 import BriefingCard from '@/components/temari/BriefingCard';
+import TemariFollow from '@/components/temari/TemariFollow';
 import VerdictStrip from '@/components/temari/VerdictStrip';
 import KpiTile from '@/components/dashboard/KpiTile';
-import RunListRow from '@/components/run/RunListRow';
+import FirstRunTooltip from '@/components/onboarding/FirstRunTooltip';
 import { formStatusLabel, formStatusTone } from '@/lib/formStatus';
+import { fadeInUp } from '@/lib/motion';
 import type {
     ActivityDetail,
     BriefingResult,
@@ -41,9 +44,9 @@ export default function Dashboard({
 }: Readonly<DashboardProps>) {
     const { props } = usePage<SharedProps & DashboardProps>();
     const firstName = props.auth.user?.first_name ?? '';
+    const briefingRef = useRef<HTMLElement>(null);
 
     const hasCharts = chartData.labels.length > 1;
-    const hasRuns = recentRuns.length > 0;
 
     const volumeValue = snapshot?.distance_km != null ? `${snapshot.distance_km.toFixed(1)} km` : '—';
     const volumeSub = snapshot?.runs != null ? `${snapshot.runs} run` : null;
@@ -52,46 +55,49 @@ export default function Dashboard({
     return (
         <AppShell>
             <Head title="Beranda" />
-            <main className="mx-auto max-w-6xl px-6 py-10">
+            <motion.main
+                variants={fadeInUp}
+                initial="hidden"
+                animate="visible"
+                className="mx-auto max-w-6xl px-6 py-10"
+            >
+                <FirstRunTooltip recentRunCount={recentRuns.length} verdictCount={verdicts.length} />
+
                 <header className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-ink-dark">Halo, {firstName}.</h1>
-                        <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">Berikut ringkasan lari kamu.</p>
+                        <p className="mt-1 text-base leading-relaxed text-ink dark:text-ink-dark">Berikut ringkasan lari kamu.</p>
                     </div>
                 </header>
 
-                <section className="mt-8">
+                <section ref={briefingRef} className="mt-8">
                     <BriefingCard briefing={briefing} />
                 </section>
 
-                <VerdictStrip items={verdicts} />
+                <TemariFollow
+                    sentinelRef={briefingRef}
+                    mood={briefing.mood}
+                    sigilPattern={briefing.sigilPattern}
+                />
+
+                {/* Tier 3 — VerdictStrip with section heading + helper line */}
+                {verdicts.length > 0 && (
+                    <section className="mt-10">
+                        <h2 className="text-lg font-bold tracking-tight text-ink dark:text-ink-dark">Kata Temari</h2>
+                        <p className="mt-1 text-sm text-ink-soft leading-relaxed dark:text-ink-soft-dark">
+                            Komentar Temari tiap kelar lari.
+                        </p>
+                        <VerdictStrip items={verdicts} />
+                    </section>
+                )}
 
                 {load === null ? (
                     <EmptyState />
                 ) : (
                     <>
-                        {(() => {
-                            const monotony = monotonySignal(load.monotony);
-                            return (
-                                <section className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                    <KpiTile
-                                        label="Vibe"
-                                        value={load.form.toFixed(1)}
-                                        sub={formStatusLabel(load.form_status)}
-                                        tone={formStatusTone(load.form_status)}
-                                    />
-                                    <KpiTile
-                                        label="Beban minggu ini"
-                                        value={Math.round(load.weekly_trimp).toString()}
-                                        sub={`Monotony ${load.monotony.toFixed(2)} ${monotony.emoji}`}
-                                        tone={monotony.tone}
-                                    />
-                                    <KpiTile label="Volume minggu ini" value={volumeValue} sub={volumeSub} />
-                                </section>
-                            );
-                        })()}
+                        <KpiSection load={load} volumeValue={volumeValue} volumeSub={volumeSub} />
 
-                        <Disclosure icon="mdi:chart-bell-curve" label="Rincian coach mode" className="mt-4">
+                        <Disclosure icon="mdi:chart-bell-curve" label="Rincian coach mode" className="mt-6">
                             <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
                                 <KpiTile label="Fitness (CTL)" value={load.ctl_42d.toFixed(1)} sub="42 hari" />
                                 <KpiTile label="Fatigue (ATL)" value={load.atl_7d.toFixed(1)} sub="7 hari" tone="warning" />
@@ -100,22 +106,6 @@ export default function Dashboard({
                             </div>
                         </Disclosure>
                     </>
-                )}
-
-                {hasRuns && (
-                    <section className="mt-10">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-bold tracking-tight text-ink dark:text-ink-dark">Aktivitas Terakhir</h2>
-                            <Link href="/runs" className="text-sm text-ink-soft transition hover:text-brand-600 dark:text-ink-soft-dark">
-                                Lihat semua →
-                            </Link>
-                        </div>
-                        <div className="mt-3 overflow-hidden rounded-2xl border border-line bg-surface-elev dark:border-line-dark dark:bg-surface-dark-elev">
-                            {recentRuns.map((detail) => (
-                                <RunListRow key={detail.id} detail={detail} />
-                            ))}
-                        </div>
-                    </section>
                 )}
 
                 {hasCharts && (
@@ -128,11 +118,40 @@ export default function Dashboard({
                         </Suspense>
                     </Disclosure>
                 )}
-            </main>
+            </motion.main>
         </AppShell>
     );
 }
 
+function KpiSection({
+    load,
+    volumeValue,
+    volumeSub,
+}: Readonly<{ load: TrainingLoad; volumeValue: string; volumeSub: string | null }>) {
+    const monotony = monotonySignal(load.monotony);
+    return (
+        <section className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <KpiTile
+                label="Vibe"
+                value={load.form.toFixed(1)}
+                sub={formStatusLabel(load.form_status)}
+                tone={formStatusTone(load.form_status)}
+            />
+            <KpiTile
+                label="Beban minggu ini"
+                value={Math.round(load.weekly_trimp).toString()}
+                sub={`Monotony ${load.monotony.toFixed(2)} ${monotony.emoji}`}
+                tone={monotony.tone}
+            />
+            <KpiTile label="Volume minggu ini" value={volumeValue} sub={volumeSub} />
+        </section>
+    );
+}
+
+/**
+ * Tier 5 — visually demoted disclosure: no outer border, subtle indented
+ * background instead. Reads as a "fold-open extra", not a peer section.
+ */
 function Disclosure({
     icon,
     label,
@@ -140,8 +159,8 @@ function Disclosure({
     children,
 }: Readonly<{ icon: string; label: string; className: string; children: React.ReactNode }>) {
     return (
-        <details className={`group rounded-2xl border border-line bg-surface-elev p-4 dark:border-line-dark dark:bg-surface-dark-elev ${className}`}>
-            <summary className="flex cursor-pointer items-center justify-between text-xs font-semibold uppercase tracking-wider text-ink-soft dark:text-ink-soft-dark">
+        <details className={`group rounded-2xl bg-line/20 p-4 transition hover:bg-line/30 dark:bg-line-dark/40 dark:hover:bg-line-dark/60 ${className}`}>
+            <summary className="flex cursor-pointer items-center justify-between text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                 <span className="flex items-center gap-2">
                     <Icon icon={icon} width={14} height={14} aria-hidden />
                     {label}
@@ -155,12 +174,12 @@ function Disclosure({
 
 function EmptyState() {
     return (
-        <section className="mt-6 rounded-2xl border border-dashed border-line bg-surface-elev/40 p-10 text-center dark:border-line-dark dark:bg-surface-dark-elev/40">
+        <section className="mt-10 rounded-2xl border border-dashed border-line bg-surface-elev/40 p-10 text-center dark:border-line-dark dark:bg-surface-dark-elev/40">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/15 text-brand-600 dark:text-brand-400">
                 <Icon icon="mdi:run-fast" width={28} height={28} aria-hidden />
             </div>
             <h2 className="mt-4 text-base font-semibold text-ink dark:text-ink-dark">Belum ada aktivitas tersinkron</h2>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft dark:text-ink-soft-dark">
+            <p className="mx-auto mt-2 max-w-sm text-base leading-relaxed text-ink dark:text-ink-dark">
                 Jalankan <code className="rounded bg-line/40 px-1 py-0.5 text-xs dark:bg-line-dark">php artisan strava:sync</code> atau tunggu sync terjadwal untuk mengisi dashboard.
             </p>
         </section>

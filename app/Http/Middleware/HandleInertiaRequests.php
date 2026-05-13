@@ -38,6 +38,9 @@ class HandleInertiaRequests extends Middleware
                 'info' => fn () => $request->session()->get('info'),
             ],
             'demoLoginEnabled' => (bool) config('demo.login_enabled'),
+            'onboarding' => [
+                'forceShow' => (bool) config('onboarding.force_show'),
+            ],
         ];
     }
 }

@@ -16,13 +16,15 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText('child content')).toBeInTheDocument();
-        expect(screen.getByText('TemanLari')).toBeInTheDocument();
+        // BrandMark renders in both the persistent sidebar (hidden on `<lg`)
+        // and the mobile topbar — getAllByText handles both being in DOM.
+        expect(screen.getAllByText('TemanLari').length).toBeGreaterThan(0);
     });
 
-    it('omits header when showHeader is false', () => {
+    it('omits sidebar when showSidebar is false', () => {
         setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
         render(
-            <AppShell showHeader={false}>
+            <AppShell showSidebar={false}>
                 <p>only child</p>
             </AppShell>,
         );

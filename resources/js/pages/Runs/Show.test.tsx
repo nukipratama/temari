@@ -194,4 +194,37 @@ describe('Runs/Show', () => {
         );
         expect(screen.getByText('—')).toBeInTheDocument();
     });
+
+    it('renders the location chip when location_name is set', () => {
+        const withLoc = { ...detail, location_name: 'Bogor, Jawa Barat, Indonesia' };
+        render(
+            <RunsShow
+                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withLoc }}
+                detail={withLoc}
+                card={null}
+                storyLine={null}
+                storyVariations={[]}
+                pastYou={null}
+            />,
+        );
+        expect(screen.getByText('Bogor, Jawa Barat, Indonesia')).toBeInTheDocument();
+    });
+
+    it('shows the map fallback area when a summary_polyline is present', () => {
+        const withPolyline = { ...detail, summary_polyline: 'abc123' };
+        const { container } = render(
+            <RunsShow
+                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withPolyline }}
+                detail={withPolyline}
+                card={null}
+                storyLine={null}
+                storyVariations={[]}
+                pastYou={null}
+            />,
+        );
+        // RouteMap is lazy — under jsdom the Suspense fallback renders.
+        // Confirm we hit the lazy-import branch by checking the
+        // placeholder skeleton is mounted.
+        expect(container.querySelector('.animate-pulse')).not.toBeNull();
+    });
 });

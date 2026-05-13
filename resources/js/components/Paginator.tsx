@@ -1,5 +1,6 @@
-import { Link } from '@inertiajs/react';
 import { cn } from '@/lib/cn';
+import MotionLink from '@/components/MotionLink';
+import { pressShrink } from '@/lib/motion';
 
 interface PaginatorLink {
     url: string | null;
@@ -26,16 +27,17 @@ function PaginatorPill({ link }: Readonly<{ link: PaginatorLink }>) {
     if (link.url === null) {
         return (
             <span
-                className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-soft dark:border-line-dark dark:text-ink-soft-dark"
+                className="rounded-lg border border-line px-4 py-2 text-sm text-ink-meta dark:border-line-dark dark:text-ink-meta-dark"
                 dangerouslySetInnerHTML={{ __html: link.label }}
             />
         );
     }
     return (
-        <Link
+        <MotionLink
             href={link.url}
+            whileTap={pressShrink}
             className={cn(
-                'rounded-lg border px-3 py-1.5 text-xs transition',
+                'rounded-lg border px-4 py-2 text-sm transition',
                 link.active
                     ? 'border-brand-500 bg-brand-500 font-semibold text-white'
                     : 'border-line text-ink hover:border-ink-soft dark:border-line-dark dark:text-ink-dark',

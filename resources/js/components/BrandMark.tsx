@@ -37,7 +37,7 @@ export default function BrandMark({ size = 'hero', tagline = false, className }:
             </span>
             <h1 className="mt-5 text-4xl font-semibold tracking-tight text-ink dark:text-ink-dark">TemanLari</h1>
             {tagline && (
-                <p className="mt-2 text-base text-ink-soft dark:text-ink-soft-dark">Setiap Langkah Berarti</p>
+                <p className="mt-2 text-base text-ink dark:text-ink-dark">Setiap Langkah Berarti</p>
             )}
         </div>
     );

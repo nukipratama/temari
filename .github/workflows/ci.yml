@@ -143,6 +143,7 @@ jobs:
       STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
       STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
       DEMO_LOGIN_ENABLED: ${{ secrets.DEMO_LOGIN_ENABLED }}
+      ONBOARDING_FORCE_SHOW: ${{ secrets.ONBOARDING_FORCE_SHOW }}
     steps:
       - uses: actions/checkout@v6
 

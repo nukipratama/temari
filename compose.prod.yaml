@@ -43,6 +43,11 @@ x-app-env: &app-env
   # Optional. When "true" the login page renders a "Coba versi demo" button
   # that signs in as the seeded demo user. Defaults to off so prod is opt-in.
   DEMO_LOGIN_ENABLED: ${DEMO_LOGIN_ENABLED:-false}
+  # Optional. When "true" the dashboard first-run tooltip ignores the
+  # localStorage dismissal flag and always re-renders on each mount —
+  # used for QA / demos. Off by default so first-run UX behaves
+  # normally in prod.
+  ONBOARDING_FORCE_SHOW: ${ONBOARDING_FORCE_SHOW:-false}
 
 x-app-base: &app-base
   image: *app-image

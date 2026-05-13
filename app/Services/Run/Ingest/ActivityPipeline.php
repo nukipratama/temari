@@ -105,6 +105,11 @@ class ActivityPipeline
     private function storeDetail(Activity $activity, array $detail): ActivityDetail
     {
         $start = $detail['start_date_local'] ?? $detail['start_date'] ?? null;
+        // Strava `start_latlng` is `[lat, lng]` — null/empty when the
+        // activity wasn't GPS-recorded (treadmill, manual entry).
+        $latlng = is_array($detail['start_latlng'] ?? null) && count($detail['start_latlng']) === 2
+            ? $detail['start_latlng']
+            : null;
 
         return ActivityDetail::query()->updateOrCreate(
             ['activity_id' => $activity->id],
@@ -123,6 +128,8 @@ class ActivityPipeline
                 'calories' => $detail['calories'] ?? null,
                 'splits_metric' => $detail['splits_metric'] ?? null,
                 'summary_polyline' => $detail['map']['summary_polyline'] ?? null,
+                'start_lat' => $latlng === null ? null : (float) $latlng[0],
+                'start_lng' => $latlng === null ? null : (float) $latlng[1],
             ],
         );
     }

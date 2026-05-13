@@ -13,12 +13,12 @@ export default function KpiTile({ label, value, sub, tone = 'neutral' }: Readonl
     const toneClass = toneToClass(tone);
     return (
         <div className="rounded-2xl border border-line bg-surface-elev p-4 dark:border-line-dark dark:bg-surface-dark-elev">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft dark:text-ink-soft-dark">
+            <div className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                 {label}
             </div>
-            <div className={cn('mt-2 text-2xl font-black tabular-nums', toneClass)}>{value}</div>
+            <div className={cn('mt-2 text-3xl font-black tabular-nums', toneClass)}>{value}</div>
             {sub != null && (
-                <div className="mt-1 text-[11px] text-ink-soft dark:text-ink-soft-dark">{sub}</div>
+                <div className="mt-1 text-xs text-ink-meta dark:text-ink-meta-dark">{sub}</div>
             )}
         </div>
     );

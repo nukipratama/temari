@@ -1,7 +1,8 @@
-import { Link } from '@inertiajs/react';
 import { cn } from '@/lib/cn';
 import { formatIdDate, formatPace } from '@/lib/pace';
-import { MOOD_FACE, MASCOT_GRADIENT, moodRing } from '@/lib/mood';
+import MotionLink from '@/components/MotionLink';
+import { pressShrink } from '@/lib/motion';
+import TemariMascot from '@/components/temari/TemariMascot';
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
 interface RunListRowProps {
@@ -26,23 +27,21 @@ export default function RunListRow({ detail, mood = null }: Readonly<RunListRowP
     const safeMood: Mood = mood ?? 'dim';
 
     return (
-        <Link
+        <MotionLink
             href={`/runs/${detail.activity_id}`}
+            whileTap={pressShrink}
             className="flex items-center gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface dark:border-line-dark dark:hover:bg-surface-dark-elev"
         >
-            <span
-                className={cn(
-                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm ring-2',
-                    MASCOT_GRADIENT,
-                    moodRing(safeMood),
-                )}
+            <TemariMascot
+                mood={safeMood}
+                sizeClass="h-10 w-10 shrink-0"
+                sigilPixels={40}
+                ringClass="ring-2"
                 aria-label={`mood ${safeMood}`}
-            >
-                {MOOD_FACE[safeMood]}
-            </span>
+            />
             <div className="min-w-0 flex-1">
                 <div className="truncate font-medium text-ink dark:text-ink-dark">{detail.name ?? 'Run'}</div>
-                <div className="text-xs text-ink-soft dark:text-ink-soft-dark">{formatIdDate(detail.start_date_local)}</div>
+                <div className="text-xs text-ink-meta dark:text-ink-meta-dark">{formatIdDate(detail.start_date_local)}</div>
             </div>
             <div className="flex items-center gap-5 tabular-nums">
                 <Cell value={km} unit="km" emphasize />
@@ -50,7 +49,7 @@ export default function RunListRow({ detail, mood = null }: Readonly<RunListRowP
                 <Cell value={hr ?? '—'} unit="bpm" hideOnNarrow="md" tone="alert" />
                 <Cell value={trimp ?? '—'} unit="TRIMP" hideOnNarrow="md" />
             </div>
-        </Link>
+        </MotionLink>
     );
 }
 
@@ -72,7 +71,7 @@ function Cell({
     return (
         <div className={cn('text-center', hideClass)}>
             <div className={cn(emphasize ? 'font-bold text-ink dark:text-ink-dark' : '', toneClass)}>{value}</div>
-            <div className="text-[10px] uppercase tracking-wide text-ink-soft dark:text-ink-soft-dark">{unit}</div>
+            <div className="text-[10px] uppercase tracking-wide text-ink-meta dark:text-ink-meta-dark">{unit}</div>
         </div>
     );
 }

@@ -35,9 +35,46 @@ This application is a Laravel application and its main Laravel ecosystems packag
 
 UI is **Inertia 2 + React 19 + TypeScript + Tailwind v4** following Laravel React Starter Kit conventions. Routes still go through controllers (`Inertia::render('PageName', $props)`); React pages live in `resources/js/pages/` and components in `resources/js/components/`. **Hutan Pagi** palette tokens live in `@theme` block of [resources/css/app.css](resources/css/app.css) — components use `brand-*`, `accent-*`, `surface*`, `ink*`, `mood-*` semantic classes, NOT raw Tailwind colors like `lime-500`. Brand color is forest green (`#2E7D5C`), intentionally far from Strava orange in hue space.
 
+### Text contrast tiers
+
+3-stop semantic system — use the tier that matches the text role, not "pick whichever color looks right":
+
+- `text-ink` (+ `dark:text-ink-dark`) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
+- `text-ink-soft` (+ `dark:text-ink-soft-dark`) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
+- `text-ink-meta` (+ `dark:text-ink-meta-dark`) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier — never use for body prose.
+
+Sweep `grep text-ink-soft` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
+
+### Typography scale
+
+| Role | Class |
+|---|---|
+| Hero title (pre-auth landing) | `text-4xl font-semibold tracking-tight` |
+| Page title (`<h1>`) | `text-2xl font-semibold tracking-tight` |
+| Section heading (`<h2>`) | `text-lg font-bold tracking-tight` |
+| Sub-label (KPI/table cap) | `text-xs font-semibold uppercase tracking-wider text-ink-meta` |
+| Body paragraph | `text-base leading-relaxed text-ink` |
+| Caption / supporting | `text-sm text-ink-soft leading-relaxed` |
+| Meta / timestamp | `text-xs text-ink-meta` |
+| KPI value | `text-3xl font-black tabular-nums text-ink` |
+| Card stat (RunCard) | `text-2xl font-black tabular-nums text-ink` |
+
+### Section spacing rhythm
+
+- Major section → next major: `mt-10`
+- Subsection → next: `mt-6`
+- `<h2>` → content: `mt-3`
+- Page header → first section: `mt-8`
+- Hero card padding: `p-6`; data card padding: `p-4`; chip/pill: `px-3 py-1`
+
 ## LLM Integration
 
 Briefing narration is LLM-backed via Azure OpenAI through openai-php/laravel ([AzureOpenAiClient](app/Services/Llm/AzureOpenAiClient.php) + [LlmBriefingNarrator](app/Services/Run/Story/Narrators/LlmBriefingNarrator.php)). Falls back to the rule-based [Briefing](app/Services/Run/Story/Briefing.php) on any error and flips `BriefingResult::degraded = true` so the UI surfaces a "mode darurat" chip ([DegradedChip.tsx](resources/js/components/temari/DegradedChip.tsx)). Empty `AZURE_OPENAI_URI` / `AZURE_OPENAI_API_KEY` env = rule-based silently with no chip (intended state, not failure).
+
+## Environment toggles
+
+- `DEMO_LOGIN_ENABLED` (default `false`) — renders the "Coba versi demo" button on `/login` that signs in as the seeded demo user. Plumbed via [config/demo.php](config/demo.php) → Inertia shared `demoLoginEnabled`. Wired in [compose.prod.yaml](compose.prod.yaml) + [ci.yml](.github/workflows/ci.yml) deploy env.
+- `ONBOARDING_FORCE_SHOW` (default `false`) — forces the dashboard first-run tooltip to render on every mount regardless of run count or the localStorage dismissal flag. Used for QA / demos in prod. Plumbed via [config/onboarding.php](config/onboarding.php) → Inertia shared `onboarding.forceShow`. Wired in [compose.prod.yaml](compose.prod.yaml) + [ci.yml](.github/workflows/ci.yml) deploy env.
 
 ## Skills Activation
 

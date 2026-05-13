@@ -1,5 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { motion } from 'framer-motion';
+import { lazy, Suspense } from 'react';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatIdDate, formatPace } from '@/lib/pace';
 import AppShell from '@/layouts/AppShell';
@@ -7,7 +9,21 @@ import TemariBubble from '@/components/temari/TemariBubble';
 import KpiTile from '@/components/dashboard/KpiTile';
 import RunCard from '@/components/card/RunCard';
 import PastYouStrip from '@/components/run/PastYouStrip';
+import { fadeInUp } from '@/lib/motion';
 import type { Activity, ActivityDetail, RunCard as RunCardModel, StoryLine } from '@/types/inertia';
+
+// Leaflet + react-leaflet ~120KB combined. Defer until the page actually
+// has a polyline to render.
+const RouteMap = lazy(() => import('@/components/run/RouteMap'));
+
+const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
+const HR_ZONE_COLORS: Record<(typeof HR_ZONES)[number], string> = {
+    Z1: '#5b9c7c',
+    Z2: '#a3e635',
+    Z3: '#f4a93b',
+    Z4: '#e2783c',
+    Z5: '#c84f4f',
+};
 
 interface RunsShowProps {
     activity: Activity & {
@@ -74,19 +90,30 @@ export default function RunsShow({ activity, detail, card, storyLine, storyVaria
     return (
         <AppShell>
             <Head title={detail.name ?? 'Run'} />
-            <main className="mx-auto max-w-4xl px-6 py-10">
+            <motion.main
+                variants={fadeInUp}
+                initial="hidden"
+                animate="visible"
+                className="w-full px-6 py-10"
+            >
                 <div className="mb-4">
                     <Link
                         href="/runs"
-                        className="inline-flex items-center gap-1 text-sm text-ink-soft transition hover:text-brand-600 dark:text-ink-soft-dark"
+                        className="inline-flex items-center gap-1 text-sm text-ink-meta transition hover:text-brand-600 dark:text-ink-meta-dark"
                     >
                         <Icon icon="mdi:arrow-left" width={14} height={14} aria-hidden />
                         Semua aktivitas
                     </Link>
                     <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-ink-dark">{detail.name ?? 'Run'}</h1>
-                    <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">{startDateLabel}</p>
+                    <p className="mt-1 text-sm text-ink-meta dark:text-ink-meta-dark">{startDateLabel}</p>
+                    {detail.location_name != null && (
+                        <p className="mt-1 flex items-center gap-1 text-sm text-ink dark:text-ink-dark">
+                            <Icon icon="mdi:map-marker" width={14} height={14} aria-hidden />
+                            {detail.location_name}
+                        </p>
+                    )}
                     {(detail.weather_temp_c != null || detail.weather_rain_detected === true) && (
-                        <div className="mt-2 inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-soft dark:text-ink-soft-dark">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-meta dark:text-ink-meta-dark">
                             {detail.weather_temp_c != null && (
                                 <span
                                     className={cn(
@@ -114,59 +141,75 @@ export default function RunsShow({ activity, detail, card, storyLine, storyVaria
                     )}
                 </div>
 
-                <TemariBubble line={storyLine} variations={storyVariations} size="lg" className="mb-6" />
+                {/* Two-column split on lg+:
+                      LEFT  — LLM/mascot narrative pane: Temari's verdict +
+                              alt takes, "Past You" comparison story, the
+                              RunCard achievement artifact.
+                      RIGHT — raw-data pane: GPS route map, KPI metric tiles,
+                              detail-teknis (HR zones, splits, etc.).
+                    On `< lg` the columns stack so mobile reads top-to-bottom. */}
+                <div className="grid items-start gap-6 lg:grid-cols-2">
+                    <div className="space-y-6">
+                        <TemariBubble line={storyLine} variations={storyVariations} size="lg" />
+                        <PastYouStrip match={pastYou} currentDistance={detail.distance} />
+                        {card !== null && <RunCard card={card} detail={detail} />}
+                    </div>
 
-                <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-                    <KpiTile label="Jarak" value={km} sub="km" />
-                    <KpiTile label="Pace" value={paceLabel} sub="per km" />
-                    <KpiTile label="Durasi" value={durationLabel} sub="moving" />
-                    <KpiTile
-                        label="TRIMP"
-                        value={detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : '—'}
-                        sub="Edwards"
-                    />
-                </section>
+                    <div className="space-y-6">
+                        {detail.summary_polyline != null && detail.summary_polyline.length > 0 && (
+                            <Suspense
+                                fallback={
+                                    <div className="h-[280px] animate-pulse rounded-2xl bg-line/40 dark:bg-line-dark" />
+                                }
+                            >
+                                <RouteMap polyline={detail.summary_polyline} />
+                            </Suspense>
+                        )}
 
-                <section className="mb-6 grid gap-4 md:grid-cols-2">
-                    {card !== null && <RunCard card={card} detail={detail} />}
-                    <PastYouStrip match={pastYou} currentDistance={detail.distance} />
-                </section>
+                        <section className="grid grid-cols-2 gap-3">
+                            <KpiTile label="Jarak" value={km} sub="km" />
+                            <KpiTile label="Pace" value={paceLabel} sub="per km" />
+                            <KpiTile label="Durasi" value={durationLabel} sub="moving" />
+                            <KpiTile
+                                label="TRIMP"
+                                value={detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : '—'}
+                                sub="Edwards"
+                            />
+                        </section>
 
-                <details className="rounded-2xl border border-line bg-surface-elev dark:border-line-dark dark:bg-surface-dark-elev">
-                    <summary className="flex cursor-pointer items-center justify-between gap-2 px-5 py-4 text-sm font-semibold text-ink dark:text-ink-dark">
-                        <span>Detail teknis</span>
-                        <Icon icon="mdi:chevron-down" width={20} height={20} aria-hidden />
-                    </summary>
-                    <div className="space-y-6 border-t border-line px-5 py-5 dark:border-line-dark">
+                        <section
+                            aria-labelledby="detail-teknis-heading"
+                            className="rounded-2xl border border-line bg-surface-elev dark:border-line-dark dark:bg-surface-dark-elev"
+                        >
+                    <h2
+                        id="detail-teknis-heading"
+                        className="border-b border-line px-5 py-4 text-xs font-semibold uppercase tracking-wider text-ink-meta dark:border-line-dark dark:text-ink-meta-dark"
+                    >
+                        Detail Teknis
+                    </h2>
+                    <div className="space-y-6 px-5 py-5">
                         {Object.keys(zonePct).length > 0 && (
                             <div>
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-soft dark:text-ink-soft-dark">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                                     HR Zones
                                 </h3>
                                 <div className="mt-3 flex h-3 overflow-hidden rounded-full">
-                                    {(['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const).map((zone) => {
+                                    {HR_ZONES.map((zone) => {
                                         const width = Number(zonePct[zone] ?? 0);
                                         if (width <= 0) return null;
-                                        const colors: Record<typeof zone, string> = {
-                                            Z1: '#5b9c7c',
-                                            Z2: '#a3e635',
-                                            Z3: '#f4a93b',
-                                            Z4: '#e2783c',
-                                            Z5: '#c84f4f',
-                                        };
                                         return (
                                             <div
                                                 key={zone}
-                                                style={{ width: `${width}%`, background: colors[zone] }}
+                                                style={{ width: `${width}%`, background: HR_ZONE_COLORS[zone] }}
                                                 title={`${zone}: ${width}%`}
                                             />
                                         );
                                     })}
                                 </div>
                                 <dl className="mt-3 grid grid-cols-5 gap-2 text-xs tabular-nums">
-                                    {(['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const).map((zone) => (
+                                    {HR_ZONES.map((zone) => (
                                         <div key={zone}>
-                                            <dt className="text-ink-soft dark:text-ink-soft-dark">{zone}</dt>
+                                            <dt className="text-ink-meta dark:text-ink-meta-dark">{zone}</dt>
                                             <dd className="font-semibold text-ink dark:text-ink-dark">
                                                 {zonePct[zone] ?? 0}%
                                             </dd>
@@ -223,38 +266,42 @@ export default function RunsShow({ activity, detail, card, storyLine, storyVaria
 
                         {perKm.length > 0 && (
                             <div>
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-soft dark:text-ink-soft-dark">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                                     Splits per KM
                                 </h3>
-                                <table className="mt-3 w-full text-sm tabular-nums">
-                                    <thead>
-                                        <tr className="text-left text-xs text-ink-soft dark:text-ink-soft-dark">
-                                            <th className="py-2 pr-3 font-semibold">KM</th>
-                                            <th className="py-2 pr-3 font-semibold">Pace</th>
-                                            <th className="py-2 pr-3 font-semibold">HR</th>
-                                            <th className="py-2 pr-3 font-semibold">Cadence</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {perKm.map((row, i) => (
-                                            <tr key={i} className="border-t border-line dark:border-line-dark">
-                                                <td className="py-1.5 pr-3 font-medium text-ink dark:text-ink-dark">{row.km ?? '—'}</td>
-                                                <td className="py-1.5 pr-3 text-ink dark:text-ink-dark">{row.pace ?? '—'}</td>
-                                                <td className="py-1.5 pr-3 text-ink dark:text-ink-dark">{row.avg_hr ?? '—'}</td>
-                                                <td className="py-1.5 pr-3 text-ink dark:text-ink-dark">{row.avg_cadence_spm ?? '—'}</td>
+                                <div className="mt-3 overflow-x-auto">
+                                    <table className="w-full min-w-[420px] text-sm tabular-nums">
+                                        <thead>
+                                            <tr className="text-left text-xs text-ink-meta dark:text-ink-meta-dark">
+                                                <th className="py-2 pr-3 font-semibold">KM</th>
+                                                <th className="py-2 pr-3 font-semibold">Pace</th>
+                                                <th className="py-2 pr-3 font-semibold">HR</th>
+                                                <th className="py-2 pr-3 font-semibold">Cadence</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {perKm.map((row) => (
+                                                <tr key={row.km ?? `${row.pace}-${row.avg_hr}`} className="border-t border-line dark:border-line-dark">
+                                                    <td className="py-1.5 pr-3 font-medium text-ink dark:text-ink-dark">{row.km ?? '—'}</td>
+                                                    <td className="py-1.5 pr-3 text-ink dark:text-ink-dark">{row.pace ?? '—'}</td>
+                                                    <td className="py-1.5 pr-3 text-ink dark:text-ink-dark">{row.avg_hr ?? '—'}</td>
+                                                    <td className="py-1.5 pr-3 text-ink dark:text-ink-dark">{row.avg_cadence_spm ?? '—'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
-                        <p className="text-[11px] text-ink-soft dark:text-ink-soft-dark">
+                        <p className="text-[11px] text-ink-meta dark:text-ink-meta-dark">
                             Strava activity ID {activity.strava_external_id ?? '—'} · ingested {formatIdDate(activity.analyzed_at ?? null, 'long')}
                         </p>
                     </div>
-                </details>
-            </main>
+                </section>
+                    </div>
+                </div>
+            </motion.main>
         </AppShell>
     );
 }

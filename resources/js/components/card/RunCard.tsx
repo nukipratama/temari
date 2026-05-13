@@ -21,7 +21,7 @@ export default function RunCard({ card, detail, className }: Readonly<RunCardPro
             <header className="flex items-start justify-between gap-3">
                 <div>
                     <h3 className="text-lg font-black tracking-tight text-ink dark:text-ink-dark">{card.special_move}</h3>
-                    <p className="mt-1 text-sm text-ink-soft dark:text-ink-soft-dark">{detail.name ?? 'Run'}</p>
+                    <p className="mt-1 text-sm text-ink-meta dark:text-ink-meta-dark">{detail.name ?? 'Run'}</p>
                 </div>
                 <span className={cn('rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-widest', chipClass)}>
                     {RARITY_LABELS[card.rarity] ?? card.rarity}
@@ -54,7 +54,7 @@ function Stat({ value, unit }: Readonly<{ value: string | number; unit: string }
     return (
         <div>
             <div className="text-2xl font-black tabular-nums text-ink dark:text-ink-dark">{value}</div>
-            <div className="text-[10px] uppercase tracking-wide text-ink-soft dark:text-ink-soft-dark">{unit}</div>
+            <div className="text-[10px] uppercase tracking-wide text-ink-meta dark:text-ink-meta-dark">{unit}</div>
         </div>
     );
 }
