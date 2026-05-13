@@ -27,6 +27,24 @@ jobs:
           key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
           restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
 
+      - name: Cache PHPStan analysis
+        uses: actions/cache@v5
+        with:
+          path: .phpstan-cache
+          key: phpstan-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('phpstan.neon', 'composer.lock') }}-${{ github.sha }}
+          restore-keys: |
+            phpstan-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('phpstan.neon', 'composer.lock') }}-
+            phpstan-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
+      - name: Cache Rector analysis
+        uses: actions/cache@v5
+        with:
+          path: .rector-cache
+          key: rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('rector.php', 'composer.lock') }}-${{ github.sha }}
+          restore-keys: |
+            rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('rector.php', 'composer.lock') }}-
+            rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
       - name: Install composer deps
         run: composer install --prefer-dist --no-interaction --no-progress
 
@@ -52,9 +70,13 @@ jobs:
           MYSQL_USER: sail
           MYSQL_PASSWORD: password
         ports: ['3306:3306']
+        # tmpfs on /var/lib/mysql makes the data dir RAM-backed — service cold
+        # boot drops from ~30s to a few seconds and per-test DB churn under
+        # paratest stops touching disk.
         options: >-
           --health-cmd="mysqladmin ping -ppassword"
           --health-interval=5s --health-timeout=2s --health-retries=10
+          --tmpfs /var/lib/mysql:rw
       redis:
         image: redis:alpine
         ports: ['6379:6379']
@@ -66,7 +88,10 @@ jobs:
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
       DB_DATABASE: teman_lari_testing
-      DB_USERNAME: sail
+      # paratest auto-creates per-process DBs (teman_lari_testing_test_N) — the
+      # sail user only owns its own DB, so the test runner uses root for the
+      # CREATE DATABASE privilege.
+      DB_USERNAME: root
       DB_PASSWORD: password
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: 6379
@@ -92,9 +117,14 @@ jobs:
       - name: Stub .env so Laravel doesn't warn on bootstrap
         run: cp .env.example .env
 
+      # NOTE: invoke pest directly, not `php artisan test --parallel --coverage`
+      # — the artisan wrapper silently drops --coverage in parallel mode, so the
+      # 100% gate would never run. Pest 4's own --parallel uses paratest and
+      # honors --coverage end-to-end. Laravel's ParallelTesting (triggered by
+      # the TEST_TOKEN paratest sets) still handles per-process DB creation.
       - name: Tests + 100% line coverage
         run: >-
-          ./vendor/bin/pest --coverage --min=100
+          ./vendor/bin/pest --parallel --processes=4 --coverage --min=100
           --fail-on-warning --fail-on-notice
           --fail-on-deprecation --fail-on-risky
           --fail-on-phpunit-warning --fail-on-phpunit-notice
@@ -114,9 +144,16 @@ jobs:
           cache: npm
 
       - name: Install npm deps
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
-      - name: Vitest + 100% line/function coverage
+      # Coverage instrumentation roughly doubles vitest wall time. PRs run the
+      # fast suite; the 100% gate still blocks merges via the push-to-main run.
+      - name: Vitest (PR — no coverage)
+        if: github.event_name == 'pull_request'
+        run: npm test
+
+      - name: Vitest + 100% line/function coverage (main)
+        if: github.event_name != 'pull_request'
         run: npm run test:coverage
 
   # Deploy to homelab. Only runs after lint+pest+vitest pass on a push to main.
