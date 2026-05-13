@@ -149,7 +149,13 @@ jobs:
 
   # Frontend gate: React unit + component tests via Vitest with 100% line +
   # function coverage. Pure FE — no DB, no PHP runtime.
+  #
+  # Serialized behind backend-tests so the homelab (4 cores) only runs one
+  # heavy job at a time. Parallel jobs hammer vitest workers + pest --parallel
+  # at once and saturate every core, which has hung the runner agent in the
+  # past. Wall-time cost of serializing is negligible (vitest takes ~30s).
   frontend-tests:
+    needs: backend-tests
     runs-on: [self-hosted, homelab]
     steps:
       - uses: actions/checkout@v6
