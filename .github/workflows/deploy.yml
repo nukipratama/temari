@@ -1,18 +1,22 @@
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
 
 env:
   PHP_VERSION: '8.4'
 
 jobs:
-  # Mutation testing via Infection. Runs after CI passes on main (branch
-  # protection ensures lint+pest+vitest are green before merge). Blocks deploy:
-  # a low MSI means the test suite is brittle regardless of line coverage.
+  # Mutation testing via Infection. Only runs when the CI workflow (lint+pest+vitest)
+  # completed successfully — workflow_run fires on both success and failure, so we
+  # gate explicitly. Blocks deploy: a low MSI means the suite is brittle regardless
+  # of line coverage.
   mutation:
     runs-on: [self-hosted, homelab]
+    if: github.event.workflow_run.conclusion == 'success'
     services:
       mysql:
         image: mysql:8.4
