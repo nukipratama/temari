@@ -30,6 +30,9 @@ Thumbs.db
 # PHPStan tmp dir
 /.phpstan-cache/
 
+# Rector cache dir
+/.rector-cache/
+
 # Infection log
 /storage/infection.log
 

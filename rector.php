@@ -22,4 +22,5 @@ return RectorConfig::configure()
         // — the rule assumes the closure returns the concrete class.
         ContainerBindConcreteWithClosureOnlyRector::class,
     ])
+    ->withCache(cacheDirectory: __DIR__.'/.rector-cache')
     ->withImportNames(removeUnusedImports: true);

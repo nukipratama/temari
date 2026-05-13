@@ -21,6 +21,7 @@
         "socialiteproviders/strava": "^4.1"
     },
     "require-dev": {
+        "brianium/paratest": "^7.20",
         "driftingly/rector-laravel": "^2.3",
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.9",
