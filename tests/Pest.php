@@ -21,6 +21,12 @@ pest()->extend(TestCase::class)->in('Feature', 'Unit');
 
 pest()->beforeEach(function (): void {
     Http::preventStrayRequests();
+    // Feature tests render Inertia pages whose root template uses @vite(...).
+    // We don't run `npm run build` in the pest CI job (deploy's healthcheck
+    // verifies the actual built page works), so neutralize the directive
+    // here. Tests assert on Inertia props via assertInertia, not on JS/CSS
+    // tag presence.
+    $this->withoutVite();
 })->in('Feature', 'Unit');
 
 /*
