@@ -216,6 +216,8 @@ jobs:
   # Mutation testing via Infection. Runs in parallel with other CI jobs so the
   # full pipeline result is available faster. Blocks deploy: a low MSI means the
   # suite is brittle regardless of line coverage.
+  # Uses ports 33062/63792 to avoid colliding with pest (3306/6379) on the same
+  # self-hosted runner when both jobs run simultaneously.
   mutation:
     runs-on: [self-hosted, homelab]
     services:
@@ -226,26 +228,26 @@ jobs:
           MYSQL_DATABASE: teman_lari_testing
           MYSQL_USER: sail
           MYSQL_PASSWORD: password
-        ports: ['3306:3306']
+        ports: ['33062:3306']
         options: >-
           --health-cmd="mysqladmin ping -ppassword"
           --health-interval=5s --health-timeout=2s --health-retries=10
           --tmpfs /var/lib/mysql:rw
       redis:
         image: redis:alpine
-        ports: ['6379:6379']
+        ports: ['63792:6379']
         options: >-
           --health-cmd="redis-cli ping"
           --health-interval=5s --health-timeout=2s --health-retries=10
     env:
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
-      DB_PORT: 3306
+      DB_PORT: 33062
       DB_DATABASE: teman_lari_testing
       DB_USERNAME: root
       DB_PASSWORD: password
       REDIS_HOST: 127.0.0.1
-      REDIS_PORT: 6379
+      REDIS_PORT: 63792
     steps:
       - uses: actions/checkout@v6
 

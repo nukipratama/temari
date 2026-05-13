@@ -27,6 +27,9 @@ RUN mkdir -p /data/caddy /config/caddy \
 COPY docker/Caddyfile.dev /etc/frankenphp/Caddyfile
 COPY docker/php.dev.ini /usr/local/etc/php/conf.d/zz-app.ini
 
+# admin off in Caddyfile.dev disables port 2019 — silence the inherited healthcheck.
+HEALTHCHECK NONE
+
 USER www-data
 EXPOSE 80
 
