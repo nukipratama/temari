@@ -34,18 +34,6 @@ jobs:
         options: >-
           --health-cmd="redis-cli ping"
           --health-interval=5s --health-timeout=2s --health-retries=10
-    env:
-      DB_CONNECTION: mysql
-      DB_HOST: 127.0.0.1
-      DB_PORT: "${{ job.services.mysql.ports['3306'] }}"
-      DB_DATABASE: teman_lari_testing
-      # paratest auto-creates per-process DBs (teman_lari_testing_test_N) — the
-      # sail user only owns its own DB, so the test runner uses root for the
-      # CREATE DATABASE privilege.
-      DB_USERNAME: root
-      DB_PASSWORD: password
-      REDIS_HOST: 127.0.0.1
-      REDIS_PORT: "${{ job.services.redis.ports['6379'] }}"
     steps:
       - uses: actions/checkout@v6
 
@@ -73,8 +61,22 @@ jobs:
       # 100% gate would never run. Pest 4's own --parallel uses paratest and
       # honors --coverage end-to-end. Laravel's ParallelTesting (triggered by
       # the TEST_TOKEN paratest sets) still handles per-process DB creation.
+      # NOTE: env is set at step level because `job.services.*.ports` context is
+      # only available at step scope, not job-level env.
       - name: Tests + 100% line coverage
         id: pest
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+          DB_DATABASE: teman_lari_testing
+          # paratest auto-creates per-process DBs (teman_lari_testing_test_N) — the
+          # sail user only owns its own DB, so the test runner uses root for the
+          # CREATE DATABASE privilege.
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
         run: |
           ./vendor/bin/pest --parallel --processes=4 --coverage --min=100 \
             --fail-on-warning --fail-on-notice \
@@ -143,15 +145,6 @@ jobs:
         options: >-
           --health-cmd="redis-cli ping"
           --health-interval=5s --health-timeout=2s --health-retries=10
-    env:
-      DB_CONNECTION: mysql
-      DB_HOST: 127.0.0.1
-      DB_PORT: "${{ job.services.mysql.ports['3306'] }}"
-      DB_DATABASE: teman_lari_testing
-      DB_USERNAME: root
-      DB_PASSWORD: password
-      REDIS_HOST: 127.0.0.1
-      REDIS_PORT: "${{ job.services.redis.ports['6379'] }}"
     steps:
       - uses: actions/checkout@v6
 
@@ -174,8 +167,19 @@ jobs:
       - name: Stub .env
         run: cp .env.example .env
 
+      # NOTE: env is set at step level because `job.services.*.ports` context is
+      # only available at step scope, not job-level env.
       - name: Mutation tests (Infection)
         id: infection
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+          DB_DATABASE: teman_lari_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
         run: |
           ./vendor/bin/infection --no-progress --logger-github 2>&1 | tee /tmp/infection-output.txt
           exit ${PIPESTATUS[0]}
