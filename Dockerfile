@@ -1,5 +1,35 @@
 # syntax=docker/dockerfile:1.7
 
+# ─── Stage: dev ─────────────────────────────────────────────────────────────
+# Local dev target — FrankenPHP traditional mode (no Octane worker).
+# Source code is volume-mounted at runtime; this stage only bakes in PHP
+# extensions and the dev Caddyfile. Run: `docker compose build --target dev`.
+FROM dunglas/frankenphp:1-php8.4-alpine AS dev
+WORKDIR /app
+
+RUN install-php-extensions \
+        pdo_mysql \
+        redis \
+        intl \
+        bcmath \
+        opcache \
+        pcntl
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Node + npm for `npm run dev` inside the container (composer dev script).
+RUN apk add --no-cache nodejs npm
+
+# Caddy needs writable dirs for its PKI module even when auto_https is off.
+RUN mkdir -p /data/caddy /config/caddy \
+    && chown -R www-data:www-data /data/caddy /config/caddy
+
+COPY docker/Caddyfile.dev /etc/frankenphp/Caddyfile
+COPY docker/php.dev.ini /usr/local/etc/php/conf.d/zz-app.ini
+
+USER www-data
+EXPOSE 80
+
 # ─── Stage 1: vendor ────────────────────────────────────────────────────────
 # Composer install (no dev deps), then dump optimized autoloader. The second
 # composer call also fires post-autoload-dump → `php artisan package:discover`,

@@ -14,13 +14,13 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 it('redirects unauthenticated users to login', function (): void {
-    $this->get('/dashboard')->assertRedirect('/login');
+    $this->get('/')->assertRedirect('/login');
 });
 
 it('renders for a user with no synced activities', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Dashboard')
@@ -47,7 +47,7 @@ it('renders KPIs + recent runs when the user has training-load history', functio
         'runs' => 4,
     ]);
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Dashboard')
@@ -63,8 +63,8 @@ it('reuses the same daily greeting on a second open within the day', function ()
     Carbon::setTestNow('2026-05-11 12:00:00');
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/dashboard')->assertSuccessful();
-    $this->actingAs($user)->get('/dashboard')->assertSuccessful();
+    $this->actingAs($user)->get('/')->assertSuccessful();
+    $this->actingAs($user)->get('/')->assertSuccessful();
 
     expect(StoryLine::query()
         ->where('user_id', $user->id)

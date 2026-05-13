@@ -29,10 +29,10 @@ it('redirects unauthenticated visitors from root to login', function (): void {
     $this->get('/')->assertRedirect(route('login'));
 });
 
-it('redirects authenticated visitors from root to dashboard', function (): void {
+it('renders dashboard for authenticated visitors at root', function (): void {
     $this->actingAs(User::factory()->create())
         ->get('/')
-        ->assertRedirect(route('dashboard'));
+        ->assertSuccessful();
 });
 
 it('redirects to strava on the redirect endpoint', function (): void {

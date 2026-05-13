@@ -32,7 +32,7 @@ it('shows degraded=true on the Dashboard briefing when the LLM throws and we fal
         return new FallbackBriefingNarrator($llm, $app->make(Briefing::class));
     });
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Dashboard')
@@ -48,7 +48,7 @@ it('shows degraded=false when LLM is disabled (env empty) so UI stays clean', fu
 
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Dashboard')

@@ -6,7 +6,7 @@ import { setMockPage } from '@/test/setup';
 
 const baseUser = { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null };
 
-function setupPage(url = '/dashboard', user: typeof baseUser | null = baseUser) {
+function setupPage(url = '/', user: typeof baseUser | null = baseUser) {
     setMockPage(
         {
             auth: { user },
@@ -60,7 +60,7 @@ describe('Sidebar', () => {
     });
 
     it('hides user chip when user is null', () => {
-        setupPage('/dashboard', null);
+        setupPage('/', null);
         renderSidebar();
         expect(screen.queryByText('Tap untuk menu')).not.toBeInTheDocument();
     });
@@ -106,7 +106,7 @@ describe('Sidebar', () => {
     });
 
     it('renders the avatar image when avatar_url is set', () => {
-        setupPage('/dashboard', { ...baseUser, avatar_url: 'https://example.com/a.jpg' });
+        setupPage('/', { ...baseUser, avatar_url: 'https://example.com/a.jpg' });
         renderSidebar();
         const imgs = screen.getAllByAltText('Ada') as HTMLImageElement[];
         expect(imgs[0].src).toBe('https://example.com/a.jpg');

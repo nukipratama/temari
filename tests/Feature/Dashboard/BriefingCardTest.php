@@ -22,7 +22,7 @@ it('renders the Briefing Temari hero on the dashboard', function (): void {
         'trimp_edwards' => 60.0,
     ]);
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Dashboard')
@@ -40,7 +40,7 @@ it('shows "Lari hari ini" streak chip when there is a run today', function (): v
         'trimp_edwards' => 60.0,
     ]);
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('briefing.streakLabel', 'Lari hari ini'));
@@ -54,7 +54,7 @@ it('escalates streak chip past 4 days away', function (): void {
         'trimp_edwards' => 60.0,
     ]);
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('briefing.streakLabel', 'Sudah 6 hari nih'));
@@ -63,7 +63,7 @@ it('escalates streak chip past 4 days away', function (): void {
 it('renders the hibernating briefing for a user with no runs', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('briefing.vibeState', 'hibernating')
@@ -73,7 +73,7 @@ it('renders the hibernating briefing for a user with no runs', function (): void
 it('still renders the empty-state alongside the briefing when no synced activities', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->has('briefing')

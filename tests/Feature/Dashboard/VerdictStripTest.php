@@ -40,7 +40,7 @@ it('shows "Kata Temari" verdicts when the user has post-run StoryLines', functio
     $user = User::factory()->create();
     seedDashboardVerdict($user, 0, Temari::MOOD_BOUNCY, 'Run yang mantap');
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Dashboard')
@@ -56,7 +56,7 @@ it('omits verdicts when there are no post-run StoryLines', function (): void {
         'trimp_edwards' => 60.0,
     ]);
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('verdicts', []));
 });
@@ -66,7 +66,7 @@ it('renders verdicts newest-first', function (): void {
     seedDashboardVerdict($user, 0, Temari::MOOD_BOUNCY, 'verdict newest');
     seedDashboardVerdict($user, 2, Temari::MOOD_DIM, 'verdict older');
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->has('verdicts', 2)
@@ -79,7 +79,7 @@ it('does not leak verdicts across users', function (): void {
     $b = User::factory()->create();
     seedDashboardVerdict($a, 0, Temari::MOOD_BOUNCY, 'a-only line');
 
-    $this->actingAs($b)->get('/dashboard')
+    $this->actingAs($b)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('verdicts', []));
 });

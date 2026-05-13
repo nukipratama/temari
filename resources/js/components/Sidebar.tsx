@@ -7,7 +7,7 @@ import { cn } from '@/lib/cn';
 import type { AuthUser, SharedProps } from '@/types/inertia';
 
 const LINKS: ReadonlyArray<{ route: string; href: string; icon: string; label: string }> = [
-    { route: 'dashboard', href: '/dashboard', icon: 'mdi:home-outline', label: 'Beranda' },
+    { route: 'dashboard', href: '/', icon: 'mdi:home-outline', label: 'Beranda' },
     { route: 'runs.index', href: '/runs', icon: 'mdi:run-fast', label: 'Aktivitas' },
     { route: 'cards.index', href: '/cards', icon: 'mdi:cards-outline', label: 'Kartu' },
     { route: 'progress', href: '/progress', icon: 'mdi:chart-line', label: 'Catatan' },
@@ -52,7 +52,7 @@ function SidebarContent({
     return (
         <div className="flex h-full flex-col">
             <div className="border-b border-line px-5 py-5 dark:border-line-dark">
-                <Link href="/dashboard" onClick={onNavigate} aria-label="Beranda">
+                <Link href='/' onClick={onNavigate} aria-label="Beranda">
                     <BrandMark size="compact" />
                 </Link>
             </div>

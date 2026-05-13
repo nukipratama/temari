@@ -34,16 +34,16 @@ export default function BriefingCard({ briefing }: Readonly<BriefingCardProps>) 
             variants={fadeInUp}
             initial="hidden"
             animate="visible"
-            className={cn('rounded-3xl border border-line p-6 shadow-sm transition-colors duration-300 dark:border-line-dark sm:p-8', vibeBg)}
+            className={cn('rounded-2xl border border-line p-4 shadow-sm transition-colors duration-300 dark:border-line-dark sm:p-5', vibeBg)}
         >
-            <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-8">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
                 <div className="relative shrink-0">
                     <TemariMascot
                         mood={briefing.mood}
                         sigilPattern={briefing.sigilPattern}
                         accessory={briefing.accessory}
-                        sizeClass="h-32 w-32 sm:h-36 sm:w-36"
-                        sigilPixels={144}
+                        sizeClass="h-24 w-24"
+                        sigilPixels={96}
                         idle="mood"
                         gazeTracking
                         interactive
@@ -63,14 +63,14 @@ export default function BriefingCard({ briefing }: Readonly<BriefingCardProps>) 
                         </span>
                         {briefing.degraded && <DegradedChip />}
                     </div>
-                    <p className="mt-3 text-2xl font-semibold leading-snug tracking-tight text-ink dark:text-ink-dark">
+                    <p className="mt-2 text-lg font-semibold leading-snug tracking-tight text-ink dark:text-ink-dark">
                         {briefing.headlineLine}
                     </p>
-                    <p className="mt-2 text-base leading-relaxed text-ink dark:text-ink-dark">
+                    <p className="mt-1 text-sm leading-relaxed text-ink-soft dark:text-ink-soft-dark">
                         {briefing.suggestionLine}
                     </p>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
                         <span className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold', recoveryClass)}>
                             <Icon icon="mdi:heart-pulse" width={14} height={14} aria-hidden />
                             {briefing.recoveryLabel}

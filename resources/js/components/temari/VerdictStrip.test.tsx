@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import VerdictStrip from './VerdictStrip';
 import type { VerdictTimelineItem } from '@/types/inertia';
 
@@ -49,59 +49,22 @@ describe('VerdictStrip', () => {
         expect(screen.getByText('7.2 km')).toBeInTheDocument();
     });
 
-    it('arrow buttons fade in when there is overflow + clicking right scrolls', async () => {
-        // jsdom doesn't lay out elements, so stub the geometry on every div
-        // before render. This makes the strip think there's content overflowing
-        // to the right (canRight = true) but nothing scrolled yet (canLeft = false).
-        vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(1000);
-        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(400);
-        const scrollBy = vi.fn();
-        // jsdom does not define scrollBy on HTMLElement; attach as a writable
-        // property so each test sees a fresh spy.
-        Object.defineProperty(HTMLElement.prototype, 'scrollBy', { value: scrollBy, configurable: true, writable: true });
-
-        render(<VerdictStrip items={[item({ activityId: 1 }), item({ activityId: 2 }), item({ activityId: 3 })]} />);
-
-        const right = screen.getByRole('button', { name: /Scroll kanan/i });
-        const left = screen.getByRole('button', { name: /Scroll kiri/i });
-        await waitFor(() => expect(right).toHaveClass(/opacity-100/));
-        expect(left).toHaveClass(/opacity-0/);
-
-        await userEvent.setup().click(right);
-        expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: 280, behavior: 'smooth' }));
-
-        vi.restoreAllMocks();
+    it('hides items beyond 6 and shows expand button when more exist', () => {
+        const items = Array.from({ length: 8 }, (_, i) => item({ activityId: i + 1, oneline: `verdict ${i + 1}` }));
+        render(<VerdictStrip items={items} />);
+        expect(screen.getByText('verdict 1')).toBeInTheDocument();
+        expect(screen.getByText('verdict 6')).toBeInTheDocument();
+        expect(screen.queryByText('verdict 7')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Lihat 2 lainnya/i })).toBeInTheDocument();
     });
 
-    it('left arrow becomes visible after scrolling and clicking it scrolls back', async () => {
-        vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(1000);
-        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(400);
-        // Start scrolled: 200px to the right.
-        let scrollLeft = 200;
-        vi.spyOn(HTMLElement.prototype, 'scrollLeft', 'get').mockImplementation(() => scrollLeft);
-        const scrollBy = vi.fn();
-        // jsdom does not define scrollBy on HTMLElement; attach as a writable
-        // property so each test sees a fresh spy.
-        Object.defineProperty(HTMLElement.prototype, 'scrollBy', { value: scrollBy, configurable: true, writable: true });
-
-        render(<VerdictStrip items={[item({ activityId: 1 }), item({ activityId: 2 })]} />);
-
-        // Trigger scroll listener so the component re-reads geometry.
-        const scroller = screen.getAllByRole('link')[0].parentElement?.parentElement;
-        if (scroller !== null && scroller !== undefined) {
-            fireEvent.scroll(scroller);
-        }
-
-        const left = await screen.findByRole('button', { name: /Scroll kiri/i });
-        await waitFor(() => expect(left).toHaveClass(/opacity-100/));
-
-        await userEvent.setup().click(left);
-        expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: -280, behavior: 'smooth' }));
-
-        // Also exercise the resize handler.
-        fireEvent(globalThis, new Event('resize'));
-
-        vi.restoreAllMocks();
+    it('reveals hidden items and toggles label on expand click', async () => {
+        const items = Array.from({ length: 8 }, (_, i) => item({ activityId: i + 1, oneline: `run ${i + 1}` }));
+        render(<VerdictStrip items={items} />);
+        await userEvent.setup().click(screen.getByRole('button', { name: /Lihat 2 lainnya/i }));
+        expect(screen.getByText('run 7')).toBeInTheDocument();
+        expect(screen.getByText('run 8')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Sembunyikan/i })).toBeInTheDocument();
     });
 
 });

@@ -1,0 +1,30 @@
+# Dev Caddyfile — FrankenPHP traditional mode (no Octane worker).
+# PHP runs per-request so file changes are picked up automatically
+# without restarting the container.
+{
+	auto_https off
+	admin off
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	root * /app/public
+	encode gzip
+
+	@vite path /build/*
+	handle @vite {
+		file_server
+	}
+
+	@static path /favicon.ico /favicon.svg /robots.txt /apple-touch-icon.png
+	handle @static {
+		file_server
+	}
+
+	handle {
+		header -Server
+		php_server
+	}
+}

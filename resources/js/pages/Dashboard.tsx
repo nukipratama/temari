@@ -59,18 +59,24 @@ export default function Dashboard({
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="mx-auto max-w-6xl px-6 py-10"
+                className="mx-auto max-w-7xl px-6 py-10"
             >
                 <FirstRunTooltip recentRunCount={recentRuns.length} verdictCount={verdicts.length} />
 
                 <header className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-ink-dark">Halo, {firstName}.</h1>
-                        <p className="mt-1 text-base leading-relaxed text-ink dark:text-ink-dark">Berikut ringkasan lari kamu.</p>
+                        <p className="mt-1 text-sm leading-relaxed text-ink-soft dark:text-ink-soft-dark">Berikut ringkasan lari kamu.</p>
                     </div>
                 </header>
 
-                <section ref={briefingRef} className="mt-8">
+                {/* KPI strip — most-checked numbers, shown first */}
+                {load !== null && (
+                    <KpiSection load={load} volumeValue={volumeValue} volumeSub={volumeSub} />
+                )}
+
+                {/* Briefing — AI commentary, below the numbers */}
+                <section ref={briefingRef} className="mt-6">
                     <BriefingCard briefing={briefing} />
                 </section>
 
@@ -80,9 +86,9 @@ export default function Dashboard({
                     sigilPattern={briefing.sigilPattern}
                 />
 
-                {/* Tier 3 — VerdictStrip with section heading + helper line */}
+                {/* Kata Temari — run-by-run verdicts */}
                 {verdicts.length > 0 && (
-                    <section className="mt-10">
+                    <section className="mt-8">
                         <h2 className="text-lg font-bold tracking-tight text-ink dark:text-ink-dark">Kata Temari</h2>
                         <p className="mt-1 text-sm text-ink-soft leading-relaxed dark:text-ink-soft-dark">
                             Komentar Temari tiap kelar lari.
@@ -94,22 +100,18 @@ export default function Dashboard({
                 {load === null ? (
                     <EmptyState />
                 ) : (
-                    <>
-                        <KpiSection load={load} volumeValue={volumeValue} volumeSub={volumeSub} />
-
-                        <Disclosure icon="mdi:chart-bell-curve" label="Rincian coach mode" className="mt-6">
-                            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-                                <KpiTile label="Fitness (CTL)" value={load.ctl_42d.toFixed(1)} sub="42 hari" />
-                                <KpiTile label="Fatigue (ATL)" value={load.atl_7d.toFixed(1)} sub="7 hari" tone="warning" />
-                                <KpiTile label="Strain" value={Math.round(load.strain).toString()} sub="TRIMP × monotony" />
-                                <KpiTile label="Avg decoupling" value={decouplingValue} sub="aerobic drift" />
-                            </div>
-                        </Disclosure>
-                    </>
+                    <Disclosure icon="mdi:chart-bell-curve" label="Rincian coach mode" className="mt-6">
+                        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                            <KpiTile label="Fitness (CTL)" value={load.ctl_42d.toFixed(1)} sub="42 hari" />
+                            <KpiTile label="Fatigue (ATL)" value={load.atl_7d.toFixed(1)} sub="7 hari" tone="warning" />
+                            <KpiTile label="Strain" value={Math.round(load.strain).toString()} sub="TRIMP × monotony" />
+                            <KpiTile label="Avg decoupling" value={decouplingValue} sub="aerobic drift" />
+                        </div>
+                    </Disclosure>
                 )}
 
                 {hasCharts && (
-                    <Disclosure icon="mdi:chart-line" label="Tren 30 hari" className="mt-10">
+                    <Disclosure icon="mdi:chart-line" label="Tren 30 hari" className="mt-4" defaultOpen>
                         <Suspense fallback={<div className="mt-4 h-56 animate-pulse rounded-2xl bg-line/40 dark:bg-line-dark" />}>
                             <div className="mt-4 grid gap-4 md:grid-cols-2">
                                 <FitnessChart data={chartData} />
@@ -130,7 +132,7 @@ function KpiSection({
 }: Readonly<{ load: TrainingLoad; volumeValue: string; volumeSub: string | null }>) {
     const monotony = monotonySignal(load.monotony);
     return (
-        <section className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <section className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <KpiTile
                 label="Vibe"
                 value={load.form.toFixed(1)}
@@ -148,18 +150,18 @@ function KpiSection({
     );
 }
 
-/**
- * Tier 5 — visually demoted disclosure: no outer border, subtle indented
- * background instead. Reads as a "fold-open extra", not a peer section.
- */
 function Disclosure({
     icon,
     label,
     className,
+    defaultOpen = false,
     children,
-}: Readonly<{ icon: string; label: string; className: string; children: React.ReactNode }>) {
+}: Readonly<{ icon: string; label: string; className: string; defaultOpen?: boolean; children: React.ReactNode }>) {
     return (
-        <details className={`group rounded-2xl bg-line/20 p-4 transition hover:bg-line/30 dark:bg-line-dark/40 dark:hover:bg-line-dark/60 ${className}`}>
+        <details
+            open={defaultOpen}
+            className={`group rounded-2xl bg-line/20 p-4 transition hover:bg-line/30 dark:bg-line-dark/40 dark:hover:bg-line-dark/60 ${className}`}
+        >
             <summary className="flex cursor-pointer items-center justify-between text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                 <span className="flex items-center gap-2">
                     <Icon icon={icon} width={14} height={14} aria-hidden />
