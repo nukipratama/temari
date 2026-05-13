@@ -49,13 +49,26 @@ jobs:
         run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Pint (PSR-12)
+        id: pint
         run: ./vendor/bin/pint --test
 
       - name: PHPStan / Larastan level 8
+        id: phpstan
         run: ./vendor/bin/phpstan analyse --no-progress
 
       - name: Rector dry-run
+        id: rector
         run: ./vendor/bin/rector --dry-run --no-progress-bar
+
+      - name: Lint summary
+        if: always()
+        run: |
+          echo "## Lint" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Pint | ${{ steps.pint.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PHPStan | ${{ steps.phpstan.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rector | ${{ steps.rector.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
 
   # Test suite + 100% line-coverage gate. Boots Laravel against the mysql + redis
   # service containers; RefreshDatabase trait migrates the schema per-test class.
@@ -123,12 +136,22 @@ jobs:
       # honors --coverage end-to-end. Laravel's ParallelTesting (triggered by
       # the TEST_TOKEN paratest sets) still handles per-process DB creation.
       - name: Tests + 100% line coverage
-        run: >-
-          ./vendor/bin/pest --parallel --processes=4 --coverage --min=100
-          --fail-on-warning --fail-on-notice
-          --fail-on-deprecation --fail-on-risky
-          --fail-on-phpunit-warning --fail-on-phpunit-notice
-          --fail-on-phpunit-deprecation
+        id: pest
+        run: |
+          ./vendor/bin/pest --parallel --processes=4 --coverage --min=100 \
+            --fail-on-warning --fail-on-notice \
+            --fail-on-deprecation --fail-on-risky \
+            --fail-on-phpunit-warning --fail-on-phpunit-notice \
+            --fail-on-phpunit-deprecation 2>&1 | tee /tmp/pest-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Pest summary
+        if: always()
+        run: |
+          echo "## Tests (Pest)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "Tests:|Duration:|FAILED|PASSED" /tmp/pest-output.txt | tail -5 >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   # React unit + component tests via Vitest. Gates on the same 100% line+function
   # coverage bar as the PHP suite. Pure FE — no DB, no PHP runtime.
@@ -149,20 +172,100 @@ jobs:
       # Coverage instrumentation roughly doubles vitest wall time. PRs run the
       # fast suite; the 100% gate still blocks merges via the push-to-main run.
       - name: Vitest (PR — no coverage)
+        id: vitest_pr
         if: github.event_name == 'pull_request'
-        run: npm test
+        run: npm test 2>&1 | tee /tmp/vitest-output.txt; exit ${PIPESTATUS[0]}
 
       - name: Vitest + 100% line/function coverage (main)
+        id: vitest_main
         if: github.event_name != 'pull_request'
-        run: npm run test:coverage
+        run: npm run test:coverage 2>&1 | tee /tmp/vitest-output.txt; exit ${PIPESTATUS[0]}
 
-  # Deploy to homelab. Only runs after lint+pest+vitest pass on a push to main.
+      - name: Vitest summary
+        if: always()
+        run: |
+          echo "## Tests (Vitest)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "Test Files|Tests |Duration|Coverage" /tmp/vitest-output.txt | tail -6 >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # Mutation testing via Infection. Only on push to main — running the full
+  # mutation matrix on every PR would block fast feedback. Blocks deploy: a low
+  # MSI means the suite is brittle regardless of line coverage.
+  mutation:
+    runs-on: [self-hosted, homelab]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: teman_lari_testing
+          MYSQL_USER: sail
+          MYSQL_PASSWORD: password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ppassword"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+          --tmpfs /var/lib/mysql:rw
+      redis:
+        image: redis:alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: teman_lari_testing
+      DB_USERNAME: root
+      DB_PASSWORD: password
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: pcov
+
+      - name: Cache composer vendor
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
+      - name: Install composer deps
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Stub .env
+        run: cp .env.example .env
+
+      - name: Mutation tests (Infection)
+        id: infection
+        run: |
+          ./vendor/bin/infection --only-covered --no-progress --logger-github 2>&1 | tee /tmp/infection-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Mutation summary
+        if: always()
+        run: |
+          echo "## Mutation Testing (Infection)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "MSI|Killed|Escaped|Not covered|Mutation Score|Covered Code" /tmp/infection-output.txt >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # Deploy to homelab. Only runs after lint+pest+vitest+mutation pass on push to main.
   # Skipped on PRs (visible as "skipping" in PR checks). All env values come
   # from repo Secrets — `compose.prod.yaml` uses `environment:` blocks with
   # `${VAR}` substitution so nothing is ever written to a host file.
   deploy:
     name: Deploy to homelab
-    needs: [lint, pest, vitest]
+    needs: [lint, pest, vitest, mutation]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: [self-hosted, homelab]
     concurrency:
@@ -210,7 +313,7 @@ jobs:
 
       - name: Healthcheck
         run: |
-          for i in 1 2 3 4 5; do
+          for i in $(seq 1 20); do
             if curl -fsS http://127.0.0.1:7001/up; then
               echo "Healthcheck passed"; exit 0
             fi
@@ -218,7 +321,22 @@ jobs:
           done
           echo "Healthcheck failed"; exit 1
 
-      - name: Prune old images (-a includes SHA-tagged but unused; respects in-use)
+      - name: Prune old teman-lari images
         if: always()
         continue-on-error: true
-        run: docker image prune -a -f --filter "until=168h"
+        # Remove teman-lari/app SHA-tagged images that aren't :latest or :previous.
+        # Avoids docker image prune -a which would evict unrelated images on the runner.
+        run: |
+          docker images "teman-lari/app" --format "{{.Tag}}\t{{.ID}}" \
+            | grep -vE "^(latest|previous)" \
+            | awk '{print $2}' \
+            | xargs --no-run-if-empty docker rmi --force 2>/dev/null || true
+
+      - name: Deploy summary
+        if: always()
+        run: |
+          echo "## Deploy" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| SHA | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ${{ job.status == 'success' && '✅ Deployed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
