@@ -51,8 +51,8 @@ export default function Settings() {
                             Demo Mode
                         </h2>
                         <p className="mt-3 text-sm leading-relaxed text-ink dark:text-ink-dark">
-                            Build ini punya tombol "Coba versi demo" di layar login. Demo user dibuat ulang tiap login dengan
-                            data Strava sintetis — bukan untuk pemakaian sehari-hari.
+                            Build ini punya tombol &ldquo;Coba versi demo&rdquo; di layar login. Demo user dibuat ulang tiap login dengan
+                            data Strava sintetis &mdash; bukan untuk pemakaian sehari-hari.
                         </p>
                     </section>
                 )}

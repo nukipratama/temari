@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import Profile from './Profile';
 import { setMockPage } from '@/test/setup';
 
-const baseUser = { id: 1, name: 'Andi Runner', first_name: 'Andi', avatar_url: null };
+const baseUser = { id: 1, name: 'Andi Runner', first_name: 'Andi', avatar_url: null as string | null };
 const baseStats = { total_runs: 12, total_km: 75.4, member_since: '2025-08-10T00:00:00+07:00' };
 const baseStrava = { athlete_id: 999, scopes: 'read,activity:read', token_expires_at: '2026-01-01T00:00:00+07:00' };
 

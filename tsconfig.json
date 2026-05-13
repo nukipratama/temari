@@ -17,9 +17,8 @@
     "isolatedModules": true,
     "allowImportingTsExtensions": false,
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["resources/js/*"]
+      "@/*": ["./resources/js/*"]
     },
     "types": ["node", "vite/client", "vitest/globals", "@testing-library/jest-dom"]
   },

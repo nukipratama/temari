@@ -21,6 +21,7 @@ export interface SharedProps {
     flash: { success: string | null; error: string | null; info: string | null };
     demoLoginEnabled: boolean;
     onboarding: { forceShow: boolean };
+    [key: string]: unknown;
 }
 
 export interface BriefingResult {

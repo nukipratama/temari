@@ -11,7 +11,7 @@ interface ExtendedSnapshot extends WeeklySnapshot {
     form_status: FormStatus | null;
 }
 
-interface ExtendedPR extends PersonalRecord {
+interface ExtendedPR extends Omit<PersonalRecord, 'activity'> {
     value_sec: number;
     set_at: string;
     activity?: { detail?: { name?: string | null } | null };

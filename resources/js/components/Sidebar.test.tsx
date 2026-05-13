@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import { SidebarProvider } from '@/contexts/SidebarContext';
 import { setMockPage } from '@/test/setup';
 
-const baseUser = { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null };
+const baseUser = { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null as string | null };
 
 function setupPage(url = '/', user: typeof baseUser | null = baseUser) {
     setMockPage(

@@ -60,7 +60,6 @@ export default function RouteMap({ polyline }: Readonly<RouteMapProps>) {
                            server returns an error; surfaces a console hint
                            if the map still won't load. */
                         tileerror: (e) =>
-                            // eslint-disable-next-line no-console
                             console.warn('[RouteMap] tile load failed', e.tile?.src ?? '(no src)'),
                     }}
                 />
