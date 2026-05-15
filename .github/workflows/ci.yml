@@ -171,7 +171,7 @@ jobs:
           mkdir -p "$BACKUP_DIR"
           out="$BACKUP_DIR/pre-deploy-${{ github.sha }}.sql.gz"
           $COMPOSE exec -T mysql sh -c \
-            'mysqldump -h 127.0.0.1 --single-transaction --quick -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' \
+            'mysqldump -h 127.0.0.1 --single-transaction --quick -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
             | gzip > "$out"
           size=$(stat -c%s "$out")
           if [ "$size" -lt 1024 ]; then
