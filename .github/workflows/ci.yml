@@ -142,17 +142,11 @@ jobs:
       cancel-in-progress: false
     timeout-minutes: 15
     env:
+      # All app secrets + per-host config live in /opt/teman-lari/.env on the
+      # homelab runner, loaded by compose via `env_file:`. The workflow no
+      # longer needs GitHub Secrets for these — see compose.prod.yaml.
       COMPOSE: docker compose -f compose.prod.yaml
-      APP_KEY: ${{ secrets.APP_KEY }}
-      APP_URL: ${{ secrets.APP_URL }}
-      DB_DATABASE: ${{ secrets.DB_DATABASE }}
-      DB_USERNAME: ${{ secrets.DB_USERNAME }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-      STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
-      STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
-      DEMO_LOGIN_ENABLED: ${{ secrets.DEMO_LOGIN_ENABLED }}
-      ONBOARDING_FORCE_SHOW: ${{ secrets.ONBOARDING_FORCE_SHOW }}
+      BACKUP_DIR: /var/lib/teman-lari-backups
     steps:
       - uses: actions/checkout@v6
 
@@ -167,6 +161,18 @@ jobs:
 
       - name: Tag new image with git SHA
         run: docker tag teman-lari/app:latest teman-lari/app:${{ github.sha }}
+
+      - name: Backup DB before migrate
+        # Dumps the live DB to a gzipped file on the host so a destructive
+        # migration can be undone separately from the code rollback workflow.
+        # Password and DB name come from the container's env (loaded via
+        # env_file from /opt/teman-lari/.env), not from the workflow.
+        run: |
+          mkdir -p "$BACKUP_DIR"
+          $COMPOSE exec -T mysql sh -c \
+            'mysqldump --single-transaction --quick --routines --triggers -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' \
+            | gzip > "$BACKUP_DIR/pre-deploy-${{ github.sha }}.sql.gz"
+          ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz | tail -n +11 | xargs -r rm
 
       - name: Migrate (one-shot, on the new image)
         run: $COMPOSE run --rm app php artisan migrate --force
@@ -189,6 +195,13 @@ jobs:
             sleep 3
           done
           echo "Healthcheck failed"; exit 1
+
+      - name: Smoke test
+        # /login is a public Inertia page that exercises session driver (redis-cache)
+        # and the Vite manifest. /up only proves the framework booted.
+        run: |
+          curl -fsS -o /dev/null -w "HTTP %{http_code} in %{time_total}s\n" \
+            http://127.0.0.1:7001/login
 
       - name: Prune old teman-lari images
         if: always()

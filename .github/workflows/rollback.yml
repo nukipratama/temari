@@ -1,0 +1,79 @@
+name: Rollback prod
+
+# Manual code rollback: re-tag :previous → :latest and re-roll services.
+# This does NOT undo migrations. If the broken deploy ran a destructive
+# migration, restore the matching gzip from /var/lib/teman-lari-backups
+# separately after this workflow completes.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  # Shares the deploy-prod group so a rollback cannot race a deploy.
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: [self-hosted, homelab]
+    timeout-minutes: 10
+    env:
+      COMPOSE: docker compose -f compose.prod.yaml
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Verify :previous image exists
+        run: |
+          if ! docker image inspect teman-lari/app:previous >/dev/null 2>&1; then
+            echo "::error::teman-lari/app:previous not found on this runner — nothing to roll back to."
+            exit 1
+          fi
+          echo "Rolling back to:"
+          docker image inspect teman-lari/app:previous --format '  id: {{.Id}}  created: {{.Created}}'
+
+      - name: Capture current :latest SHA (for the summary)
+        id: current
+        run: |
+          sha=$(docker image inspect teman-lari/app:latest --format '{{.Id}}' 2>/dev/null || echo "unknown")
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Re-tag :previous as :latest
+        run: docker tag teman-lari/app:previous teman-lari/app:latest
+
+      - name: Roll app, horizon, scheduler onto rolled-back image
+        run: $COMPOSE up -d --no-deps app horizon scheduler
+
+      - name: Optimize caches
+        run: $COMPOSE exec -T app php artisan optimize
+
+      - name: Recycle Horizon workers
+        run: $COMPOSE exec -T app php artisan horizon:terminate
+
+      - name: Healthcheck
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:7001/up; then
+              echo "Healthcheck passed"; exit 0
+            fi
+            sleep 3
+          done
+          echo "Healthcheck failed"; exit 1
+
+      - name: Smoke test
+        run: |
+          curl -fsS -o /dev/null -w "HTTP %{http_code} in %{time_total}s\n" \
+            http://127.0.0.1:7001/login
+
+      - name: Rollback summary
+        if: always()
+        run: |
+          {
+            echo "## Rollback"
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Rolled from | \`${{ steps.current.outputs.sha }}\` |"
+            echo "| Status | ${{ job.status == 'success' && '✅ Rolled back' || '❌ Failed' }} |"
+            echo ""
+            echo "⚠️ This rolls back **code only**. Migrations from the failed deploy are still applied."
+            echo "If the failed deploy ran a destructive migration, restore the matching gzip from \`/var/lib/teman-lari-backups\`."
+          } >> "$GITHUB_STEP_SUMMARY"
