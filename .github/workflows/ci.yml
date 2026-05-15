@@ -170,8 +170,11 @@ jobs:
           set -o pipefail
           mkdir -p "$BACKUP_DIR"
           out="$BACKUP_DIR/pre-deploy-${{ github.sha }}.sql.gz"
+          # The mysql container's env_file gives it DB_USERNAME / DB_PASSWORD /
+          # DB_DATABASE (Laravel names) — the official MYSQL_USER etc. names
+          # only existed when the old compose interpolated them explicitly.
           $COMPOSE exec -T mysql sh -c \
-            'mysqldump -h 127.0.0.1 --single-transaction --quick -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+            'mysqldump -h 127.0.0.1 --single-transaction --quick -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE"' \
             | gzip > "$out"
           size=$(stat -c%s "$out")
           if [ "$size" -lt 1024 ]; then
