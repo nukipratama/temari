@@ -1,9 +1,7 @@
 name: Rollback prod
 
-# Manual code rollback: re-tag :previous → :latest and re-roll services.
-# This does NOT undo migrations. If the broken deploy ran a destructive
-# migration, restore the matching gzip from /var/lib/teman-lari-backups
-# separately after this workflow completes.
+# Manual code-only rollback. Re-tags :previous → :latest and re-rolls services.
+# Migrations are out of scope — see the run summary if a DB restore is needed.
 
 on:
   workflow_dispatch:
@@ -41,10 +39,9 @@ jobs:
         run: docker tag teman-lari/app:previous teman-lari/app:latest
 
       - name: Roll app, horizon, scheduler onto rolled-back image
+        # Caches were already baked when :previous was first deployed — image
+        # is immutable, no need to re-run `artisan optimize`.
         run: $COMPOSE up -d --no-deps app horizon scheduler
-
-      - name: Optimize caches
-        run: $COMPOSE exec -T app php artisan optimize
 
       - name: Recycle Horizon workers
         run: $COMPOSE exec -T app php artisan horizon:terminate

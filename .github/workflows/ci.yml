@@ -170,7 +170,7 @@ jobs:
         run: |
           mkdir -p "$BACKUP_DIR"
           $COMPOSE exec -T mysql sh -c \
-            'mysqldump --single-transaction --quick --routines --triggers -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' \
+            'mysqldump --single-transaction --quick -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' \
             | gzip > "$BACKUP_DIR/pre-deploy-${{ github.sha }}.sql.gz"
           ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz | tail -n +11 | xargs -r rm
 
