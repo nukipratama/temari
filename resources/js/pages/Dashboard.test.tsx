@@ -252,6 +252,41 @@ describe('Dashboard', () => {
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
 
+    it.each(['fresh', 'fatigued', 'overreaching', 'optimal'] as const)(
+        'renders the AtGlance Vibe hint for form_status %s',
+        (status) => {
+            render(
+                <Dashboard
+                    briefing={briefing}
+                    verdicts={[]}
+                    load={{ ...load, form_status: status }}
+                    snapshot={snapshot}
+                    recentRuns={[]}
+                    chartData={chartData}
+                />,
+            );
+            expect(screen.getByText('Vibe')).toBeInTheDocument();
+        },
+    );
+
+    it.each([
+        [2.5, 'Monotony 2.50 🚨'],
+        [1.7, 'Monotony 1.70 ⚠️'],
+        [1.2, 'Monotony 1.20 ok'],
+    ] as const)('colors AtGlance Beban hint for monotony=%s', (monotony, expected) => {
+        render(
+            <Dashboard
+                briefing={briefing}
+                verdicts={[]}
+                load={{ ...load, monotony }}
+                snapshot={snapshot}
+                recentRuns={[]}
+                chartData={chartData}
+            />,
+        );
+        expect(screen.getByText(expected)).toBeInTheDocument();
+    });
+
     it('renders empty first_name when user has no name', () => {
         setMockPage({
             auth: { user: { id: 1, name: '', first_name: '', avatar_url: null } },

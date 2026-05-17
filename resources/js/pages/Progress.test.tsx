@@ -212,4 +212,71 @@ describe('Progress', () => {
         expect(screen.getAllByText('Form').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('Volume minggu ini')).toBeInTheDocument();
     });
+
+    it('renders positive/negative/flat delta chips when prior week exists', () => {
+        // Latest CTL grew (+2) and ATL dropped (-3) vs the prior week; Form
+        // delta is < 0.05 so the chip renders the ±0 flat marker.
+        render(
+            <Progress
+                snapshots={[
+                    {
+                        id: 2,
+                        user_id: 1,
+                        week_ending: '2026-05-11',
+                        runs: 5,
+                        distance_km: 40,
+                        weekly_trimp: 340,
+                        ctl_42d: 45,
+                        atl_7d: 40,
+                        form: 5,
+                        avg_decoupling: 1,
+                        form_status: 'fresh',
+                    },
+                    {
+                        id: 1,
+                        user_id: 1,
+                        week_ending: '2026-05-04',
+                        runs: 4,
+                        distance_km: 35.5,
+                        weekly_trimp: 320,
+                        ctl_42d: 43,
+                        atl_7d: 43,
+                        form: 5.02,
+                        avg_decoupling: 1,
+                        form_status: 'optimal',
+                    },
+                ]}
+                personalRecords={[]}
+            />,
+        );
+        expect(screen.getByText('+2.0')).toBeInTheDocument();
+        expect(screen.getByText('-3.0')).toBeInTheDocument();
+        expect(screen.getByText('±0')).toBeInTheDocument();
+    });
+
+    it('renders dashes when latest snapshot has nullable metrics', () => {
+        // delta() must return null when either side is null.
+        render(
+            <Progress
+                snapshots={[
+                    {
+                        id: 1,
+                        user_id: 1,
+                        week_ending: '2026-05-04',
+                        runs: 4,
+                        distance_km: null,
+                        weekly_trimp: 0,
+                        ctl_42d: null,
+                        atl_7d: null,
+                        form: null,
+                        avg_decoupling: null,
+                        form_status: null,
+                    },
+                ]}
+                personalRecords={[]}
+            />,
+        );
+        // Three hero KPI tiles + the row's metrics all render `—`.
+        expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(3);
+    });
 });

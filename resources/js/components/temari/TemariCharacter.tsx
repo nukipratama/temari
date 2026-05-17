@@ -558,6 +558,7 @@ function Accessory({ kind, moodColor }: Readonly<AccessoryProps>) {
             </g>
         );
     }
+    /* v8 ignore next — every mood currently declares an accessory; the null fallback is here for the type. */
     return null;
 }
 
@@ -685,6 +686,7 @@ function Particles({ kind, moodColor, motionOff }: Readonly<ParticlesProps>) {
             </g>
         );
     }
+    /* v8 ignore next — every mood currently declares particles; null fallback is here for the type. */
     return null;
 }
 

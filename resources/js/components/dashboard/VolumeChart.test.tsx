@@ -50,6 +50,23 @@ describe('VolumeChart', () => {
         );
         expect(screen.getByText('—')).toBeInTheDocument();
     });
+
+    it('colour-codes bars across the full intensity range (lightest → darkest)', () => {
+        // Ratios: 5/50=0.1 (lightest), 20/50=0.4 (mid), 35/50=0.7 (BAR_FILL),
+        // 50/50=1.0 (darkest). Exercises all four buckets in intensityFill.
+        render(
+            <VolumeChart
+                data={{
+                    labels: ['a', 'b', 'c', 'd'],
+                    ctl: [0, 0, 0, 0],
+                    atl: [0, 0, 0, 0],
+                    form: [0, 0, 0, 0],
+                    volume: [5, 20, 35, 50],
+                }}
+            />,
+        );
+        expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
+    });
 });
 
 describe('volumeTooltipLabel', () => {

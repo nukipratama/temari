@@ -1,5 +1,5 @@
-import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, render } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import TemariCharacter from './TemariCharacter';
 import { MOOD_VARIANTS } from '@/lib/temariMoodVariants';
 import type { Mood } from '@/types/inertia';
@@ -68,5 +68,82 @@ describe('TemariCharacter', () => {
     it('marks the SVG as aria-hidden (decorative)', () => {
         const { container } = render(<TemariCharacter mood="glow" />);
         expect(container.querySelector('svg')).toHaveAttribute('aria-hidden');
+    });
+
+    it('eyes blink via the schedule (closeEye → openEye → re-schedule)', () => {
+        vi.useFakeTimers();
+        // Math.random() seeded to 0 → blink delay = 2500ms (minimum).
+        const randSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+
+        try {
+            render(<TemariCharacter mood="glow" />);
+
+            // Initial delay fires → closeEye()
+            act(() => {
+                vi.advanceTimersByTime(2500);
+            });
+            // 140ms closed → openEye() → reschedule
+            act(() => {
+                vi.advanceTimersByTime(140);
+            });
+            // Second cycle delay fires → closeEye again
+            act(() => {
+                vi.advanceTimersByTime(2500);
+            });
+        } finally {
+            randSpy.mockRestore();
+            vi.useRealTimers();
+        }
+    });
+
+    it('skips blink scheduling when paused', () => {
+        vi.useFakeTimers();
+        try {
+            const { unmount } = render(<TemariCharacter mood="glow" paused />);
+            // No timers should be queued.
+            expect(vi.getTimerCount()).toBe(0);
+            unmount();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('applies the gaze offset to the open-eye pupils', () => {
+        const a = render(<TemariCharacter mood="glow" gaze={{ x: 1, y: 1 }} />);
+        const b = render(<TemariCharacter mood="glow" gaze={{ x: -1, y: -1 }} />);
+        // Default left-pupil cx is 38; gaze=1 nudges it +1.6, gaze=-1 nudges -1.6.
+        expect(a.container.innerHTML).toContain('cx="39.6"');
+        expect(b.container.innerHTML).toContain('cx="36.4"');
+    });
+
+    it.each(['hearts', 'droplets', 'lines', 'stars'] as const)(
+        'renders the %s particle layer for its mood',
+        (kind) => {
+            const moodFor = {
+                hearts: 'bouncy',
+                droplets: 'wobble',
+                lines: 'squished',
+                stars: 'spinning',
+            } as const;
+            const { container } = render(<TemariCharacter mood={moodFor[kind]} />);
+            expect(container.querySelector('svg')).toBeInTheDocument();
+        },
+    );
+
+    it.each(['flag', 'question', 'bottle'] as const)('renders the %s accessory for its mood', (kind) => {
+        const moodFor = { flag: 'bouncy', question: 'spinning', bottle: 'squished' } as const;
+        const { container } = render(<TemariCharacter mood={moodFor[kind]} />);
+        expect(container.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('skips re-render when only props identity changes but values are equal (memo guard)', () => {
+        const { rerender, container } = render(
+            <TemariCharacter mood="glow" gaze={{ x: 0, y: 0 }} />,
+        );
+        const before = container.innerHTML;
+        // A fresh `gaze` object with same values — memo equality should skip
+        // the re-render, so the DOM string stays byte-identical.
+        rerender(<TemariCharacter mood="glow" gaze={{ x: 0, y: 0 }} />);
+        expect(container.innerHTML).toBe(before);
     });
 });

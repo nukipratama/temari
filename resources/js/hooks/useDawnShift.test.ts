@@ -60,4 +60,14 @@ describe('useDawnShift', () => {
         });
         expect(result.current).toBe('morning');
     });
+
+    it('keeps the same state when the tick lands inside the same bucket', () => {
+        vi.setSystemTime(new Date(2026, 4, 15, 12, 0, 0));
+        const { result } = renderHook(() => useDawnShift());
+        const ref = result.current;
+        act(() => {
+            vi.advanceTimersByTime(5 * 60 * 1000);
+        });
+        expect(result.current).toBe(ref);
+    });
 });
