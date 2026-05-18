@@ -5,7 +5,6 @@ import { formatIdDate } from '@/lib/pace';
 import { pressShrink } from '@/lib/motion';
 import MotionLink from '@/components/MotionLink';
 import TemariMascot from './TemariMascot';
-import DegradedChip from './DegradedChip';
 import type { VerdictTimelineItem } from '@/types/inertia';
 
 const VISIBLE_DEFAULT = 6;
@@ -32,7 +31,7 @@ export default function VerdictStrip({ items }: Readonly<VerdictStripProps>) {
                 {visible.map((item) => (
                     <MotionLink
                         key={item.activityId}
-                        href={`/runs/${item.activityId}`}
+                        href={`/aktivitas/${item.activityId}`}
                         whileTap={pressShrink}
                         className="group flex flex-col gap-2 rounded-2xl border border-line bg-surface-elev p-4 transition hover:border-brand-400/60 hover:shadow-sm dark:border-line-dark dark:bg-surface-dark-elev dark:hover:border-brand-500/40"
                     >
@@ -49,7 +48,6 @@ export default function VerdictStrip({ items }: Readonly<VerdictStripProps>) {
                                     {formatIdDate(item.startedAt)}
                                 </div>
                             </div>
-                            {item.degraded && <DegradedChip />}
                         </div>
                         <p className="line-clamp-2 text-xs leading-relaxed text-ink dark:text-ink-dark">{item.oneline}</p>
                     </MotionLink>

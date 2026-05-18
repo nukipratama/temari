@@ -3,7 +3,10 @@ import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { lazy, Suspense, useRef } from 'react';
 import AppShell from '@/layouts/AppShell';
+import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import BriefingCard from '@/components/temari/BriefingCard';
+import ConfettiBurst from '@/components/ConfettiBurst';
+import DecorativeBlur from '@/components/DecorativeBlur';
 import SectionHeading from '@/components/SectionHeading';
 import TemariFollow from '@/components/temari/TemariFollow';
 import VerdictStrip from '@/components/temari/VerdictStrip';
@@ -15,6 +18,7 @@ import { cn } from '@/lib/cn';
 import { ICON_TONE, type Tone } from '@/lib/tones';
 import type {
     ActivityDetail,
+    AnalysisPayload,
     BriefingResult,
     FitnessChartData,
     FormStatus,
@@ -35,6 +39,8 @@ interface DashboardProps {
     snapshot: WeeklySnapshot | null;
     recentRuns: ActivityDetail[];
     chartData: FitnessChartData;
+    trendAnalysis?: AnalysisPayload;
+    hasNewPr?: boolean;
 }
 
 export default function Dashboard({
@@ -44,6 +50,8 @@ export default function Dashboard({
     snapshot,
     recentRuns,
     chartData,
+    trendAnalysis,
+    hasNewPr = false,
 }: Readonly<DashboardProps>) {
     const { props } = usePage<SharedProps & DashboardProps>();
     const firstName = props.auth.user?.first_name ?? '';
@@ -55,6 +63,7 @@ export default function Dashboard({
     return (
         <AppShell>
             <Head title="Beranda" />
+            <ConfettiBurst burstKey={hasNewPr ? 'pr-detected' : null} />
             <motion.main
                 variants={fadeInUp}
                 initial="hidden"
@@ -65,9 +74,9 @@ export default function Dashboard({
 
                 <HeroHeader firstName={firstName} briefing={briefing} snapshot={snapshot} />
 
-                <div className="mt-6 grid gap-6 lg:grid-cols-3">
-                    <section ref={briefingRef} className="lg:col-span-2">
-                        <BriefingCard briefing={briefing} />
+                <div className="mt-6 grid items-stretch gap-6 lg:grid-cols-3">
+                    <section ref={briefingRef} className="flex lg:col-span-2">
+                        <BriefingCard briefing={briefing} className="w-full" />
                     </section>
                     <AtGlance load={load} decouplingValue={decouplingValue} />
                 </div>
@@ -82,6 +91,35 @@ export default function Dashboard({
                             subtitle="Beban, fitness, dan volume mingguan."
                             tone="brand"
                         />
+                        {trendAnalysis && (
+                            <section
+                                aria-labelledby="trend-narrative-heading"
+                                className="relative mt-4 overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-surface-elev to-accent-50/40 p-5 shadow-md"
+                            >
+                                <DecorativeBlur intensity="md" className="-right-8 -top-8 h-24 w-24 bg-brand-200/40" />
+                                <div className="relative flex items-start gap-3">
+                                    <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-sm ring-2 ring-white">
+                                        <Icon icon="mdi:trending-up" width={20} height={20} />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <h3
+                                            id="trend-narrative-heading"
+                                            className="text-xs font-semibold uppercase tracking-wider text-brand-700"
+                                        >
+                                            Catatan Tren
+                                        </h3>
+                                        <p className="mt-0.5 text-xs text-ink-meta">Bagaimana 30 hari terakhir lo terlihat dari mata Temari.</p>
+                                        <div className="mt-3">
+                                            <AnalysisStatus
+                                                analysis={trendAnalysis}
+                                                inertiaReloadProps={['trendAnalysis']}
+                                                size="md"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
                         {load !== null && <CoachStatStrip load={load} />}
                         <Suspense
                             fallback={
@@ -174,18 +212,20 @@ interface AtGlanceProps {
 function AtGlance({ load, decouplingValue }: Readonly<AtGlanceProps>) {
     if (load === null) {
         return (
-            <aside className="rounded-3xl border border-dashed border-line bg-surface-elev/40 p-5 text-sm text-ink-meta">
+            <aside className="flex h-full items-center rounded-3xl border border-dashed border-line bg-surface-elev/40 p-5 text-sm text-ink-meta">
                 Belum cukup data untuk ringkasan kondisi. Sync lari terbaru dulu.
             </aside>
         );
     }
     const monotony = monotonySignal(load.monotony);
     return (
-        <aside className="rounded-3xl border border-line bg-surface-elev p-5 shadow-sm">
-            <div className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
+        <aside className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-brand-200 bg-gradient-to-br from-brand-50/80 via-surface-elev to-accent-50/60 p-5 shadow-md">
+            <DecorativeBlur className="-right-10 -top-10 h-32 w-32 bg-accent-200/40" />
+            <DecorativeBlur className="-bottom-12 -left-10 h-28 w-28 bg-brand-200/40" />
+            <div className="relative text-xs font-semibold uppercase tracking-wider text-brand-700">
                 Kondisi
             </div>
-            <div className="mt-3 divide-y divide-line">
+            <div className="relative mt-3 divide-y divide-brand-200/60">
                 <StatRow
                     icon="mdi:scale-balance"
                     iconTone="brand"
@@ -298,22 +338,42 @@ interface CoachStatProps {
     hint: string;
 }
 
+const COACH_TILE_TONE: Record<Tone, string> = {
+    brand: 'border-brand-200 bg-gradient-to-br from-brand-50 via-surface-elev to-brand-100/60 shadow-brand-200/40',
+    accent: 'border-accent-200 bg-gradient-to-br from-accent-50 via-surface-elev to-accent-100/60 shadow-accent-200/40',
+    pop: 'border-pop-200 bg-gradient-to-br from-pop-50 via-surface-elev to-pop-100/70 shadow-pop-200/40',
+    neutral: 'border-line bg-surface-elev shadow-sm',
+};
+
+const COACH_VALUE_TONE: Record<Tone, string> = {
+    brand: 'text-brand-700',
+    accent: 'text-accent-700',
+    pop: 'text-pop-700',
+    neutral: 'text-ink',
+};
+
 function CoachStat({ icon, iconTone, label, value, hint }: Readonly<CoachStatProps>) {
     return (
-        <div className="rounded-2xl border border-line bg-surface-elev p-4 shadow-sm">
-            <div className="flex items-center justify-between">
+        <div
+            className={cn(
+                'relative overflow-hidden rounded-2xl border p-4 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg',
+                COACH_TILE_TONE[iconTone],
+            )}
+        >
+            <DecorativeBlur intensity="md" className="-right-6 -top-6 h-16 w-16 bg-white/40" />
+            <div className="relative flex items-center justify-between">
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-meta">
                     {label}
                 </div>
                 <span
                     aria-hidden
-                    className={cn('flex h-7 w-7 items-center justify-center rounded-lg', ICON_TONE[iconTone])}
+                    className={cn('flex h-8 w-8 items-center justify-center rounded-lg shadow-sm ring-1 ring-white/60', ICON_TONE[iconTone])}
                 >
-                    <Icon icon={icon} width={14} height={14} />
+                    <Icon icon={icon} width={16} height={16} />
                 </span>
             </div>
-            <div className="mt-2 text-2xl font-black tabular-nums text-ink">{value}</div>
-            <div className="text-[10px] text-ink-meta">{hint}</div>
+            <div className={cn('relative mt-2 text-3xl font-black tabular-nums', COACH_VALUE_TONE[iconTone])}>{value}</div>
+            <div className="relative text-[11px] font-medium text-ink-meta">{hint}</div>
         </div>
     );
 }

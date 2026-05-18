@@ -1,5 +1,5 @@
 // Shared "icon tile" tone → Tailwind classes lookup. Used by
-// SectionHeading + Dashboard hero stats + Progress hero stats so the
+// SectionHeading + Dashboard hero stats + Catatan hero stats so the
 // brand/accent/pop colour roles render identically wherever they
 // appear. Extend with new tones (e.g. mood-coded) only here.
 

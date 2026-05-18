@@ -54,9 +54,9 @@ describe('formatIdDate', () => {
         expect(formatIdDate(null)).toBe('—');
     });
 
-    it('returns short format by default', () => {
+    it('returns short format by default with weekday', () => {
         const result = formatIdDate('2026-05-11T08:00:00');
-        expect(result).toMatch(/^\d{2}\s\w+$/);
+        expect(result).toMatch(/^\w+,\s\d{2}\s\w+$/);
     });
 
     it('returns long format when requested', () => {

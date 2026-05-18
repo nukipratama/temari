@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import RunsShow from './Show';
 import { setMockPage } from '@/test/setup';
-import type { ActivityDetail, RunCard, StoryLine } from '@/types/inertia';
+import type { ActivityDetail, AnalysisPayload, RunCard, StoryLine } from '@/types/inertia';
 
 beforeEach(() => {
     setMockPage({
@@ -57,20 +57,52 @@ const storyLine: StoryLine = {
     activity_id: 99,
     kind: 'post_run',
     mood: 'glow',
-    speech: 'Run solid banget',
+    speech: null,
     sigil_pattern: 'ssss',
     for_date: null,
 };
 
+function speechAnalysis(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
+    return {
+        id: 1,
+        status: 'done',
+        content: 'Run solid banget',
+        type: 'post_run_speech',
+        subject_type: String.raw`App\Models\Activity`,
+        subject_id: 99,
+        discriminator: null,
+        ...overrides,
+    };
+}
+
+function insight(type: AnalysisPayload['type'], status: AnalysisPayload['status'] = 'pending'): AnalysisPayload {
+    return {
+        id: null,
+        status,
+        content: null,
+        type,
+        subject_type: String.raw`App\Models\Activity`,
+        subject_id: 99,
+        discriminator: null,
+    };
+}
+
+const insightDefaults = {
+    insightTechnical: insight('run_insight_technical'),
+    insightSplits: insight('run_insight_splits'),
+    insightZones: insight('run_insight_zones'),
+} as const;
+
 describe('Runs/Show', () => {
-    it('renders headline + Temari speech', () => {
+    it('renders headline + Temari speech (done)', () => {
         render(
             <RunsShow
                 activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail }}
                 detail={detail}
                 card={card}
                 storyLine={storyLine}
-                storyVariations={[]}
+                speechAnalysis={speechAnalysis()}
+                {...insightDefaults}
                 pastYou={null}
             />,
         );
@@ -79,29 +111,32 @@ describe('Runs/Show', () => {
         expect(screen.getByText('Paru-paru Baja')).toBeInTheDocument();
     });
 
-    it('renders weather chip with hot temp + rain', () => {
+    it('renders weather hero card with hot temp + rain', () => {
         render(
             <RunsShow
                 activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail }}
                 detail={detail}
                 card={null}
                 storyLine={null}
-                storyVariations={[]}
+                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
+                {...insightDefaults}
                 pastYou={null}
             />,
         );
-        expect(screen.getAllByText(/32°C/).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(/80%/).length).toBeGreaterThan(0);
-        expect(screen.getByText('Hujan')).toBeInTheDocument();
+        expect(screen.getByText('Cuaca lari')).toBeInTheDocument();
+        expect(screen.getAllByText(/32/).length).toBeGreaterThan(0);
+        expect(screen.getByText(/80% humidity/)).toBeInTheDocument();
+        expect(screen.getByText(/hujan saat lari/)).toBeInTheDocument();
     });
 
-    it('omits weather chip when no weather data', () => {
+    it('omits weather hero card when no weather data', () => {
         const minDetail = {
             ...detail,
             stream_summary: null,
             weather_temp_c: null,
             weather_humidity_pct: null,
             weather_rain_detected: null,
+            location_name: null,
         };
         render(
             <RunsShow
@@ -109,11 +144,12 @@ describe('Runs/Show', () => {
                 detail={minDetail}
                 card={null}
                 storyLine={null}
-                storyVariations={[]}
+                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
+                {...insightDefaults}
                 pastYou={null}
             />,
         );
-        expect(screen.queryByText('Hujan')).not.toBeInTheDocument();
+        expect(screen.queryByText('Cuaca lari')).not.toBeInTheDocument();
     });
 
     it('renders past-you strip with pace + hr diff', () => {
@@ -123,7 +159,8 @@ describe('Runs/Show', () => {
                 detail={detail}
                 card={null}
                 storyLine={null}
-                storyVariations={[]}
+                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
+                {...insightDefaults}
                 pastYou={{
                     past: { start_date_local: '2026-04-01T07:00' },
                     pace_diff_sec: 10,
@@ -142,7 +179,8 @@ describe('Runs/Show', () => {
                 detail={detail}
                 card={null}
                 storyLine={null}
-                storyVariations={[]}
+                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
+                {...insightDefaults}
                 pastYou={null}
             />,
         );
@@ -158,7 +196,8 @@ describe('Runs/Show', () => {
                 detail={noDist}
                 card={null}
                 storyLine={null}
-                storyVariations={[]}
+                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
+                {...insightDefaults}
                 pastYou={null}
             />,
         );
@@ -173,7 +212,8 @@ describe('Runs/Show', () => {
                 detail={noName}
                 card={null}
                 storyLine={null}
-                storyVariations={[]}
+                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
+                {...insightDefaults}
                 pastYou={null}
             />,
         );
@@ -188,7 +228,8 @@ describe('Runs/Show', () => {
                 detail={noDate}
                 card={null}
                 storyLine={null}
-                storyVariations={[]}
+                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
+                {...insightDefaults}
                 pastYou={null}
             />,
         );
@@ -203,7 +244,8 @@ describe('Runs/Show', () => {
                 detail={withLoc}
                 card={null}
                 storyLine={null}
-                storyVariations={[]}
+                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
+                {...insightDefaults}
                 pastYou={null}
             />,
         );
@@ -218,13 +260,11 @@ describe('Runs/Show', () => {
                 detail={withPolyline}
                 card={null}
                 storyLine={null}
-                storyVariations={[]}
+                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
+                {...insightDefaults}
                 pastYou={null}
             />,
         );
-        // RouteMap is lazy — under jsdom the Suspense fallback renders.
-        // Confirm we hit the lazy-import branch by checking the
-        // placeholder skeleton is mounted.
         expect(container.querySelector('.animate-pulse')).not.toBeNull();
     });
 });

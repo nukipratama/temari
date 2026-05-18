@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Collection;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 
-// Match rules: same pace-band, distance ±20%, temp ±3°C (missing on
-// either side passes), ≥21 days apart. Of qualifying candidates, prefer
+// Match rules: same pace-band, distance ±500m absolute, temp ±3°C (missing
+// on either side passes), ≥21 days apart. Of qualifying candidates, prefer
 // the oldest.
 class PastYouMatcher
 {
@@ -19,7 +19,7 @@ class PastYouMatcher
 
     public const string BAND_THRESHOLD = 'threshold';
 
-    private const float DISTANCE_TOLERANCE = 0.20;
+    private const float DISTANCE_TOLERANCE_M = 500.0;
 
     private const int TEMP_TOLERANCE_C = 3;
 
@@ -34,6 +34,7 @@ class PastYouMatcher
      * @return array{
      *   past: ActivityDetail,
      *   pace_diff_sec: float,
+     *   time_diff_sec: float,
      *   hr_diff_bpm: float|null,
      *   days_ago: int,
      * }|null
@@ -50,8 +51,10 @@ class PastYouMatcher
 
         $band = $this->paceBand($currentPaceSec);
         $minDate = $startDate->copy()->subDays(self::MIN_GAP_DAYS)->endOfDay();
-        $distanceLo = $currentDistance * (1 - self::DISTANCE_TOLERANCE);
-        $distanceHi = $currentDistance * (1 + self::DISTANCE_TOLERANCE);
+        $distanceLo = $currentDistance - self::DISTANCE_TOLERANCE_M;
+        $distanceHi = $currentDistance + self::DISTANCE_TOLERANCE_M;
+
+        $paceExpr = '(activity_details.moving_time * 1000.0 / activity_details.distance)';
 
         /** @var Collection<int, ActivityDetail> $candidates */
         $candidates = ActivityDetail::query()
@@ -62,13 +65,32 @@ class PastYouMatcher
             ->whereBetween('activity_details.distance', [$distanceLo, $distanceHi])
             ->whereNotNull('activity_details.start_date_local')
             ->whereNotNull('activity_details.moving_time')
+            ->where('activity_details.moving_time', '>', 0)
+            ->where('activity_details.distance', '>', 0)
+            ->when(
+                $band === self::BAND_RECOVERY,
+                fn ($q) => $q->whereRaw("$paceExpr >= ?", [self::RECOVERY_PACE_FLOOR_SEC]),
+            )
+            ->when(
+                $band === self::BAND_EASY,
+                fn ($q) => $q
+                    ->whereRaw("$paceExpr >= ?", [self::EASY_PACE_FLOOR_SEC])
+                    ->whereRaw("$paceExpr < ?", [self::RECOVERY_PACE_FLOOR_SEC]),
+            )
+            ->when(
+                $band === self::BAND_THRESHOLD,
+                fn ($q) => $q->whereRaw("$paceExpr < ?", [self::EASY_PACE_FLOOR_SEC]),
+            )
             ->orderBy('activity_details.start_date_local') // ASC — oldest first wins
             ->select('activity_details.*')
+            ->limit(50)
             ->get();
+
+        $currentKm = $currentDistance / 1000;
 
         foreach ($candidates as $past) {
             $pastPace = $this->paceSecPerKm($past);
-            if ($pastPace === null || $this->paceBand($pastPace) !== $band) {
+            if ($pastPace === null) {
                 continue;
             }
             if (! $this->isWithinTempTolerance($detail, $past)) {
@@ -79,9 +101,12 @@ class PastYouMatcher
             // narrows the type for PHPStan without a misleading runtime guard.
             assert($past->start_date_local !== null);
 
+            $paceDiffSec = $pastPace - $currentPaceSec;
+
             return [
                 'past' => $past,
-                'pace_diff_sec' => round($pastPace - $currentPaceSec, 1),
+                'pace_diff_sec' => round($paceDiffSec, 1),
+                'time_diff_sec' => round($paceDiffSec * $currentKm, 1),
                 'hr_diff_bpm' => $this->hrDiffBpm($detail, $past),
                 'days_ago' => (int) $past->start_date_local->copy()->startOfDay()
                     ->diffInDays($startDate->copy()->startOfDay()),

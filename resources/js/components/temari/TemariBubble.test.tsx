@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import TemariBubble from './TemariBubble';
-import type { StoryLine } from '@/types/inertia';
+import type { AnalysisPayload, StoryLine } from '@/types/inertia';
 
 function makeLine(overrides: Partial<StoryLine> = {}): StoryLine {
     return {
@@ -10,54 +10,65 @@ function makeLine(overrides: Partial<StoryLine> = {}): StoryLine {
         activity_id: 1,
         kind: 'post_run',
         mood: 'bouncy',
-        speech: 'default speech',
+        speech: null,
         sigil_pattern: 'orct',
         for_date: null,
         ...overrides,
     };
 }
 
+function makeAnalysis(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
+    return {
+        id: 1,
+        status: 'done',
+        content: 'Run solid banget',
+        type: 'post_run_speech',
+        subject_type: String.raw`App\Models\Activity`,
+        subject_id: 1,
+        discriminator: null,
+        ...overrides,
+    };
+}
+
 describe('TemariBubble', () => {
-    it('renders default fallback speech when line is null', () => {
-        render(<TemariBubble line={null} />);
-        expect(screen.getByText(/belum punya cerita/i)).toBeInTheDocument();
+    it('renders the resolved content when analysis status is done', () => {
+        render(<TemariBubble line={makeLine()} speechAnalysis={makeAnalysis()} />);
+        expect(screen.getByText('Run solid banget')).toBeInTheDocument();
     });
 
-    it('renders the line speech when no variations', () => {
-        render(<TemariBubble line={makeLine({ speech: 'static speech' })} variations={[]} />);
-        expect(screen.getByText('static speech')).toBeInTheDocument();
-    });
-
-    it('renders all variations inline as alt-takes (no longer cycle-on-tap)', () => {
+    it('renders the manual trigger CTA when status is pending', () => {
         render(
             <TemariBubble
-                line={makeLine({ speech: 'primary speech' })}
-                variations={['alt one', 'alt two']}
+                line={makeLine()}
+                speechAnalysis={makeAnalysis({ status: 'pending', content: null })}
             />,
         );
-        expect(screen.getByText('primary speech')).toBeInTheDocument();
-        expect(screen.getByText('alt one')).toBeInTheDocument();
-        expect(screen.getByText('alt two')).toBeInTheDocument();
+        expect(screen.getByText(/Belum dianalisis Temari/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Analisis sekarang/ })).toBeInTheDocument();
     });
 
-    it('deduplicates a variation that matches the primary line', () => {
+    it('renders UnavailableNote + retry CTA when status is failed', () => {
         render(
             <TemariBubble
-                line={makeLine({ speech: 'same line' })}
-                variations={['same line', 'different']}
+                line={makeLine()}
+                speechAnalysis={makeAnalysis({ status: 'failed', content: null })}
             />,
         );
-        expect(screen.getAllByText('same line')).toHaveLength(1);
-        expect(screen.getByText('different')).toBeInTheDocument();
+        expect(screen.getByText(/belum tersedia/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Coba lagi/ })).toBeInTheDocument();
     });
 
     it('renders sm size variant', () => {
-        const { container } = render(<TemariBubble line={makeLine()} size="sm" />);
+        const { container } = render(
+            <TemariBubble line={makeLine()} speechAnalysis={makeAnalysis()} size="sm" />,
+        );
         expect(container.querySelector('.h-20')).toBeTruthy();
     });
 
     it('renders the mascot SVG inside the bubble', () => {
-        const { container } = render(<TemariBubble line={makeLine()} />);
+        const { container } = render(
+            <TemariBubble line={makeLine()} speechAnalysis={makeAnalysis()} />,
+        );
         expect(container.querySelector('svg')).toBeTruthy();
     });
 });

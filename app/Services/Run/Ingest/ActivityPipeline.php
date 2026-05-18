@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
-use App\Models\StravaConnection;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
+use App\Models\StravaConnection;
+use App\Services\AI\AnalysisType;
+use App\Services\AI\AnalysisService;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\RunCardFactory;
@@ -35,6 +37,7 @@ class ActivityPipeline
         private readonly OpenMeteoClient $weather,
         private readonly RunCardFactory $cardFactory,
         private readonly Temari $temari,
+        private readonly AnalysisService $analysisService,
     ) {
     }
 
@@ -79,11 +82,27 @@ class ActivityPipeline
         // Story layer must run after PR detection — Temari mood reads PR rows.
         $this->cardFactory->build($activity, $detailModel);
         $this->temari->postRunLine($activity, $detailModel);
+        $this->dispatchRunInsights($activity);
 
         $activity->update([
             'analyzed_at' => now(),
             'detail_fail_count' => 0,
         ]);
+    }
+
+    private function dispatchRunInsights(Activity $activity): void
+    {
+        foreach ([
+            AnalysisType::RunInsightTechnical,
+            AnalysisType::RunInsightSplits,
+            AnalysisType::RunInsightZones,
+        ] as $type) {
+            $this->analysisService->request(
+                subjectOrType: Activity::class,
+                subjectId: $activity->id,
+                type: $type,
+            );
+        }
     }
 
     /**

@@ -31,7 +31,7 @@ it('renders Profile with computed stats + strava info', function (): void {
     $unanalyzed = Activity::factory()->for($user)->create(['analyzed_at' => null]);
     ActivityDetail::factory()->for($unanalyzed)->create(['distance' => 99000]);
 
-    $this->actingAs($user)->get('/profile')
+    $this->actingAs($user)->get('/profil')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Profile')
@@ -43,7 +43,7 @@ it('renders Profile with computed stats + strava info', function (): void {
 it('returns null strava when the user has no connection', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/profile')
+    $this->actingAs($user)->get('/profil')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Profile')
@@ -52,5 +52,5 @@ it('returns null strava when the user has no connection', function (): void {
 });
 
 it('requires auth', function (): void {
-    $this->get('/profile')->assertRedirect('/login');
+    $this->get('/profil')->assertRedirect('/login');
 });

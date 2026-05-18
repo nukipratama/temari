@@ -22,7 +22,7 @@ it('lists the user\'s analyzed runs in reverse chronological order', function ()
     ActivityDetail::factory()->for($older)->create(['name' => 'Older Run', 'start_date_local' => Carbon::now()->subDays(2)]);
     ActivityDetail::factory()->for($newer)->create(['name' => 'Newer Run', 'start_date_local' => Carbon::now()]);
 
-    $this->actingAs($user)->get('/runs')
+    $this->actingAs($user)->get('/aktivitas')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Runs/Index')
@@ -34,7 +34,7 @@ it('lists the user\'s analyzed runs in reverse chronological order', function ()
 it('renders the empty state when the user has no analyzed runs yet', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/runs')
+    $this->actingAs($user)->get('/aktivitas')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Runs/Index')
@@ -61,7 +61,7 @@ it('shows a single run detail with Temari speech + run card', function (): void 
         'speech' => 'Run yang solid, paru-paru baja keluar.',
     ]);
 
-    $this->actingAs($user)->get("/runs/{$activity->id}")
+    $this->actingAs($user)->get("/aktivitas/{$activity->id}")
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Runs/Show')
@@ -76,14 +76,14 @@ it('404s when trying to view another user\'s run', function (): void {
     ActivityDetail::factory()->for($activity)->create();
 
     $me = User::factory()->create();
-    $this->actingAs($me)->get("/runs/{$activity->id}")->assertNotFound();
+    $this->actingAs($me)->get("/aktivitas/{$activity->id}")->assertNotFound();
 });
 
 it('404s when the activity has not been analyzed yet', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
 
-    $this->actingAs($user)->get("/runs/{$activity->id}")->assertNotFound();
+    $this->actingAs($user)->get("/aktivitas/{$activity->id}")->assertNotFound();
 });
 
 it('dispatches a ResolveActivityLocationJob when the run has coords but no resolved_at', function (): void {
@@ -96,7 +96,7 @@ it('dispatches a ResolveActivityLocationJob when the run has coords but no resol
         'location_resolved_at' => null,
     ]);
 
-    $this->actingAs($user)->get("/runs/{$activity->id}")->assertSuccessful();
+    $this->actingAs($user)->get("/aktivitas/{$activity->id}")->assertSuccessful();
 
     Queue::assertPushed(ResolveActivityLocationJob::class, 1);
 });
@@ -112,7 +112,7 @@ it('does not dispatch a ResolveActivityLocationJob when already resolved', funct
         'location_resolved_at' => now(),
     ]);
 
-    $this->actingAs($user)->get("/runs/{$activity->id}")->assertSuccessful();
+    $this->actingAs($user)->get("/aktivitas/{$activity->id}")->assertSuccessful();
 
     Queue::assertNothingPushed();
 });
@@ -126,7 +126,7 @@ it('does not dispatch when the run lacks coords', function (): void {
         'start_lng' => null,
     ]);
 
-    $this->actingAs($user)->get("/runs/{$activity->id}")->assertSuccessful();
+    $this->actingAs($user)->get("/aktivitas/{$activity->id}")->assertSuccessful();
 
     Queue::assertNothingPushed();
 });

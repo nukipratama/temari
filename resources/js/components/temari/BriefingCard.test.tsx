@@ -1,22 +1,33 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import BriefingCard from './BriefingCard';
-import type { BriefingResult, Mood } from '@/types/inertia';
+import type { AnalysisPayload, BriefingResult, Mood } from '@/types/inertia';
+
+function analysisPayload(content: string | null, status: AnalysisPayload['status'] = 'done', type: AnalysisPayload['type'] = 'briefing_headline'): AnalysisPayload {
+    return {
+        id: 1,
+        status,
+        content,
+        type,
+        subject_type: 'briefing_user_day',
+        subject_id: 1,
+        discriminator: '2026-05-18',
+    };
+}
 
 function makeBriefing(overrides: Partial<BriefingResult> = {}): BriefingResult {
     return {
         vibeState: 'fresh',
         vibeLabel: 'Segar',
         vibeEmoji: '✨',
-        headlineLine: 'Pagi yang oke',
-        suggestionLine: 'Easy run aja dulu',
+        headline: analysisPayload('Pagi yang oke', 'done', 'briefing_headline'),
+        suggestion: analysisPayload('Easy run aja dulu', 'done', 'briefing_suggestion'),
         recoveryLabel: 'Pemulihan: cukup',
         recoveryTone: 'positive',
         streakLabel: 'Lari hari ini',
         sigilPattern: 'orct',
         accessory: 'headband',
         mood: 'glow',
-        degraded: false,
         ...overrides,
     };
 }
@@ -35,9 +46,26 @@ describe('BriefingCard', () => {
         expect(screen.queryByText(/Lari hari ini/)).not.toBeInTheDocument();
     });
 
-    it('shows the degraded chip when LLM fallback triggered', () => {
-        render(<BriefingCard briefing={makeBriefing({ degraded: true })} />);
-        expect(screen.getByText(/mode darurat/i)).toBeInTheDocument();
+    it('shows UnavailableNote when LLM analysis failed', () => {
+        render(
+            <BriefingCard
+                briefing={makeBriefing({
+                    headline: analysisPayload(null, 'failed', 'briefing_headline'),
+                })}
+            />,
+        );
+        expect(screen.getByText(/belum tersedia/i)).toBeInTheDocument();
+    });
+
+    it('shows manual trigger CTA when LLM analysis pending', () => {
+        render(
+            <BriefingCard
+                briefing={makeBriefing({
+                    headline: analysisPayload(null, 'pending', 'briefing_headline'),
+                })}
+            />,
+        );
+        expect(screen.getByText(/Belum dianalisis Temari/)).toBeInTheDocument();
     });
 
     it.each([

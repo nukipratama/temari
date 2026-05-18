@@ -20,7 +20,7 @@ it('shows the user\'s cards on the gallery', function (): void {
         'special_move' => 'Paru-paru Baja',
     ]);
 
-    $this->actingAs($user)->get('/cards')
+    $this->actingAs($user)->get('/kartu')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Cards/Index')
@@ -32,7 +32,7 @@ it('shows the user\'s cards on the gallery', function (): void {
 it('renders the empty state when no cards match the filter', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/cards?rarity=legendaris')
+    $this->actingAs($user)->get('/kartu?rarity=legendaris')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Cards/Index')
@@ -56,7 +56,7 @@ it('filters by rarity', function (): void {
         'special_move' => 'CommonMove',
     ]);
 
-    $this->actingAs($user)->get('/cards?rarity=epik')
+    $this->actingAs($user)->get('/kartu?rarity=epik')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->has('cards.data', 1)
@@ -72,7 +72,7 @@ it('hides other users\' cards', function (): void {
     ]);
 
     $me = User::factory()->create();
-    $this->actingAs($me)->get('/cards')
+    $this->actingAs($me)->get('/kartu')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('cards.data', []));
 });

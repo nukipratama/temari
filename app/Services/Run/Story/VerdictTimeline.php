@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
-use Illuminate\Database\Eloquent\Collection;
+use App\Models\Activity;
+use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
+use Illuminate\Database\Eloquent\Collection;
+use Override;
 
 class VerdictTimeline implements VerdictNarrator
 {
@@ -16,6 +21,7 @@ class VerdictTimeline implements VerdictNarrator
     /**
      * @return list<VerdictTimelineItem>
      */
+    #[Override]
     public function recent(User $user, int $limit = self::DEFAULT_LIMIT): array
     {
         /** @var Collection<int, StoryLine> $lines */
@@ -26,6 +32,18 @@ class VerdictTimeline implements VerdictNarrator
             ->whereNotNull('activity_id')
             ->get();
 
+        if ($lines->isEmpty()) {
+            return [];
+        }
+
+        $activityIds = $lines->pluck('activity_id')->all();
+        $speechByActivity = Analysis::query()
+            ->where('subject_type', Activity::class)
+            ->where('analysis_type', AnalysisType::PostRunSpeech)
+            ->where('status', AnalysisStatus::Done)
+            ->whereIn('subject_id', $activityIds)
+            ->pluck('content', 'subject_id');
+
         $items = [];
         foreach ($lines as $line) {
             $activity = $line->activity;
@@ -34,11 +52,16 @@ class VerdictTimeline implements VerdictNarrator
                 continue;
             }
 
+            $speech = $speechByActivity->get($line->activity_id);
+            if ($speech === null || $speech === '') {
+                continue;
+            }
+
             $items[] = new VerdictTimelineItem(
                 activityId: (int) $line->activity_id,
                 mood: $line->mood,
                 moodFace: $this->moodFace($line->mood),
-                oneline: $line->speech,
+                oneline: $speech,
                 startedAt: $detail->start_date_local,
                 distanceKm: round((float) ($detail->distance ?? 0) / 1000, 1),
             );

@@ -16,22 +16,47 @@ export interface SharedProps {
     flash: { success: string | null; error: string | null; info: string | null };
     demoLoginEnabled: boolean;
     onboarding: { forceShow: boolean };
+    aiActivity?: { pending: number; queued: number; processing: number };
     [key: string]: unknown;
+}
+
+export type AnalysisStatus = 'pending' | 'queued' | 'processing' | 'done' | 'failed';
+
+export type AnalysisType =
+    | 'briefing_headline'
+    | 'briefing_suggestion'
+    | 'post_run_speech'
+    | 'daily_greeting'
+    | 'run_insight_technical'
+    | 'run_insight_splits'
+    | 'run_insight_zones'
+    | 'weekly_recap'
+    | 'pr_context'
+    | 'trend_caption'
+    | 'card_flavor';
+
+export interface AnalysisPayload {
+    id: number | null;
+    status: AnalysisStatus;
+    content: string | null;
+    type: AnalysisType;
+    subject_type: string;
+    subject_id: number;
+    discriminator: string | null;
 }
 
 export interface BriefingResult {
     vibeState: string;
     vibeLabel: string;
     vibeEmoji: string;
-    headlineLine: string;
-    suggestionLine: string;
+    headline: AnalysisPayload;
+    suggestion: AnalysisPayload;
     recoveryLabel: string;
     recoveryTone: RecoveryTone;
     streakLabel: string | null;
     sigilPattern: string;
     accessory: string | null;
     mood: Mood;
-    degraded?: boolean;
 }
 
 export interface VerdictTimelineItem {
@@ -41,7 +66,6 @@ export interface VerdictTimelineItem {
     oneline: string;
     startedAt: string;
     distanceKm: number;
-    degraded?: boolean;
 }
 
 export interface ActivityDetail {
@@ -84,7 +108,7 @@ export interface StoryLine {
     activity_id: number | null;
     kind: string;
     mood: Mood;
-    speech: string;
+    speech: string | null;
     sigil_pattern: string;
     for_date: string | null;
 }

@@ -5,6 +5,9 @@ import { cn } from '@/lib/cn';
 import AppShell from '@/layouts/AppShell';
 import MotionLink from '@/components/MotionLink';
 import Paginator from '@/components/Paginator';
+import { useState } from 'react';
+import ConfettiBurst from '@/components/ConfettiBurst';
+import DecorativeBlur from '@/components/DecorativeBlur';
 import RunCard from '@/components/card/RunCard';
 import { fadeInUp, pressShrink } from '@/lib/motion';
 import { RARITY_LABELS, RARITY_ORDER } from '@/lib/runcard';
@@ -43,6 +46,8 @@ function pickFeatured(items: CardWithRel[]): CardWithRel | null {
 }
 
 export default function CardsIndex({ cards, selectedRarity }: Readonly<CardsIndexProps>) {
+    const [burstKey, setBurstKey] = useState<string | null>(null);
+
     const totalLabel =
         selectedRarity === null
             ? `${cards.total} kartu total`
@@ -51,30 +56,44 @@ export default function CardsIndex({ cards, selectedRarity }: Readonly<CardsInde
     const featured = selectedRarity === null && cards.current_page === 1 ? pickFeatured(cards.data) : null;
     const gridItems = featured === null ? cards.data : cards.data.filter((c) => c.id !== featured.id);
 
+    const triggerBurstFor = (card: CardWithRel) => {
+        if (card.rarity === 'epik' || card.rarity === 'legendaris') {
+            setBurstKey(`card-${card.id}-${Date.now()}`);
+        }
+    };
+
     return (
         <AppShell>
             <Head title="Kartu Aktivitas" />
+            <ConfettiBurst burstKey={burstKey} />
             <motion.main
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
                 className="w-full px-6 py-10"
             >
-                <header className="rounded-3xl border border-line bg-surface-warm p-6 shadow-sm">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
-                                Koleksi
-                            </p>
-                            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink">
-                                Kartu Aktivitas
-                            </h1>
-                            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
-                                Setiap lari dapat satu kartu. Rarity naik untuk PR, negative split,
-                                atau aktivitas terjauh.
-                            </p>
+                <header className="relative overflow-hidden rounded-3xl border border-pop-200 bg-gradient-to-br from-pop-50 via-surface-warm to-accent-50 p-6 shadow-md">
+                    <DecorativeBlur className="-right-16 -top-16 h-56 w-56 bg-pop-300/40" />
+                    <DecorativeBlur className="-bottom-16 -left-10 h-48 w-48 bg-accent-200/40" />
+                    <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pop-500 text-white shadow-md ring-2 ring-white">
+                                <Icon icon="mdi:cards" width={24} height={24} />
+                            </span>
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-pop-700">
+                                    Koleksi
+                                </p>
+                                <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink">
+                                    Kartu Aktivitas
+                                </h1>
+                                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
+                                    Setiap lari dapat satu kartu. Rarity naik untuk PR, negative split,
+                                    atau aktivitas terjauh.
+                                </p>
+                            </div>
                         </div>
-                        <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-pop-100 px-3 py-1 text-sm font-semibold text-pop-700">
+                        <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-pop-500 px-3 py-1.5 text-sm font-bold text-white shadow-sm ring-2 ring-white">
                             <Icon icon="mdi:cards" width={14} height={14} aria-hidden />
                             {totalLabel}
                         </span>
@@ -85,11 +104,11 @@ export default function CardsIndex({ cards, selectedRarity }: Readonly<CardsInde
                     <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-ink-meta">
                         Rarity
                     </span>
-                    <RarityPill href="/cards" label="Semua" rarity={null} active={selectedRarity === null} />
+                    <RarityPill href="/kartu" label="Semua" rarity={null} active={selectedRarity === null} />
                     {RARITY_ORDER.map((r) => (
                         <RarityPill
                             key={r}
-                            href={`/cards?rarity=${r}`}
+                            href={`/kartu?rarity=${r}`}
                             label={RARITY_LABELS[r]}
                             rarity={r}
                             active={selectedRarity === r}
@@ -99,14 +118,15 @@ export default function CardsIndex({ cards, selectedRarity }: Readonly<CardsInde
 
                 {featured?.activity?.detail && (
                     <section className="mt-6">
-                        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-meta">
-                            <Icon icon="mdi:star-shooting" width={14} height={14} className="text-pop-500" aria-hidden />
+                        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-pop-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-pop-700 ring-1 ring-pop-300">
+                            <Icon icon="mdi:star-shooting" width={14} height={14} className="text-pop-600" aria-hidden />
                             Spotlight kartu
                         </div>
                         <MotionLink
-                            href={`/runs/${featured.activity_id}`}
+                            href={`/aktivitas/${featured.activity_id}`}
                             whileTap={pressShrink}
-                            className="block transition hover:-translate-y-0.5"
+                            onClick={() => triggerBurstFor(featured)}
+                            className="block transition hover:-translate-y-1 hover:drop-shadow-xl"
                         >
                             <RunCard card={featured} detail={featured.activity.detail} size="hero" />
                         </MotionLink>
@@ -134,8 +154,9 @@ export default function CardsIndex({ cards, selectedRarity }: Readonly<CardsInde
                                     card.activity?.detail ? (
                                         <MotionLink
                                             key={card.id}
-                                            href={`/runs/${card.activity_id}`}
+                                            href={`/aktivitas/${card.activity_id}`}
                                             whileTap={pressShrink}
+                                            onClick={() => triggerBurstFor(card)}
                                             className="block h-full transition hover:-translate-y-0.5"
                                         >
                                             <RunCard card={card} detail={card.activity.detail} />

@@ -8,8 +8,13 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Bus::fake();
+});
 
 it('interpolates time at distance from splits (no walk-past inflation)', function (): void {
     // Half-marathon hit mid-run; later walk splits must not inflate the PR.
@@ -23,7 +28,7 @@ it('interpolates time at distance from splits (no walk-past inflation)', functio
     $splits[] = ['split' => 25, 'distance' => 1000.0, 'elapsed_time' => 900.0];
 
     // 21 km × 480s + 97.5m of the slow km 22 ≈ 10167.75s.
-    $secs = (new PersonalRecords())->timeAtDistance($splits, 21097.5);
+    $secs = (app(PersonalRecords::class))->timeAtDistance($splits, 21097.5);
 
     expect($secs)->toBeFloat()->toEqualWithDelta(10167.75, 1.0);
 });
@@ -34,7 +39,7 @@ it('returns null when splits do not cover the target distance', function (): voi
         ['split' => 2, 'distance' => 1000, 'elapsed_time' => 410],
     ];
 
-    expect((new PersonalRecords())->timeAtDistance($splits, 10_000))->toBeNull();
+    expect((app(PersonalRecords::class))->timeAtDistance($splits, 10_000))->toBeNull();
 });
 
 it('inserts a fresh distance PR when none exists', function (): void {
@@ -50,7 +55,7 @@ it('inserts a fresh distance PR when none exists', function (): void {
         'stream_summary' => null,
     ]);
 
-    $broken = (new PersonalRecords())->detectAndStore($activity, $detail);
+    $broken = (app(PersonalRecords::class))->detectAndStore($activity, $detail);
 
     expect($broken)->toContain('5km')
         ->and(PersonalRecord::query()->where([
@@ -77,7 +82,7 @@ it('does not break a PR when the new time is slower', function (): void {
         'stream_summary' => null,
     ]);
 
-    $broken = (new PersonalRecords())->detectAndStore($activity, $detail);
+    $broken = (app(PersonalRecords::class))->detectAndStore($activity, $detail);
 
     expect($broken)->not->toContain('5km');
 });
@@ -98,7 +103,7 @@ it('breaks an effort PR when stream_summary has a faster best-N pace', function 
         ],
     ]);
 
-    $broken = (new PersonalRecords())->detectAndStore($activity, $detail);
+    $broken = (app(PersonalRecords::class))->detectAndStore($activity, $detail);
 
     expect($broken)->toContain('best_5min')
         ->and(PersonalRecord::query()->where([
@@ -119,7 +124,7 @@ it('ignores effort pace strings that do not match M:SS format', function (): voi
         ],
     ]);
 
-    $broken = (new PersonalRecords())->detectAndStore($activity, $detail);
+    $broken = (app(PersonalRecords::class))->detectAndStore($activity, $detail);
 
     expect($broken)->toContain('best_10min')
         ->and($broken)->not->toContain('best_5min');
@@ -144,7 +149,7 @@ it('respects per-user scoping (PR break for user A does not affect user B)', fun
         'stream_summary' => null,
     ]);
 
-    $broken = (new PersonalRecords())->detectAndStore($activity, $detail);
+    $broken = (app(PersonalRecords::class))->detectAndStore($activity, $detail);
 
     expect($broken)->toContain('5km')
         ->and(PersonalRecord::query()->where('user_id', $userB->id)->where('category', '5km')->value('value_sec'))

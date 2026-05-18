@@ -7,6 +7,9 @@ namespace App\Services\Run\Metrics;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Gamification\UnlockEngine;
+use App\Services\AI\AnalysisType;
+use App\Services\AI\AnalysisService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
@@ -15,8 +18,11 @@ use function is_array;
 
 class WeeklyAggregator
 {
-    public function __construct(private readonly TrainingLoad $trainingLoad)
-    {
+    public function __construct(
+        private readonly TrainingLoad $trainingLoad,
+        private readonly AnalysisService $analysisService,
+        private readonly UnlockEngine $unlockEngine,
+    ) {
     }
 
     public function rebuildFor(User $user): int
@@ -48,6 +54,8 @@ class WeeklyAggregator
             $count++;
         }
 
+        $this->unlockEngine->grantEligible($user);
+
         return $count;
     }
 
@@ -71,7 +79,7 @@ class WeeklyAggregator
 
         $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $weekEnding);
 
-        WeeklySnapshot::query()->updateOrCreate(
+        $snapshot = WeeklySnapshot::query()->updateOrCreate(
             [
                 'user_id' => $user->id,
                 'week_ending' => $weekEnding->toDateString(),
@@ -89,6 +97,16 @@ class WeeklyAggregator
                 'strain' => $summary['strain'] ?? 0.0,
             ],
         );
+
+        // Auto-request LLM recap only for completed past weeks (skip the
+        // current in-progress week so we don't churn LLM on every ingest).
+        if ($weekEnding->lt(Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay()) && $runs > 0) {
+            $this->analysisService->request(
+                subjectOrType: WeeklySnapshot::class,
+                subjectId: $snapshot->id,
+                type: AnalysisType::WeeklyRecap,
+            );
+        }
     }
 
     /**

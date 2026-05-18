@@ -27,26 +27,26 @@ function renderSidebar() {
 }
 
 describe('Sidebar', () => {
-    it('renders all 4 main nav links', () => {
+    it('renders all main nav links', () => {
         setupPage();
         renderSidebar();
         // Each link appears twice (persistent + dialog drawer). Use
         // getAllByText to assert at least one of each exists.
-        ['Beranda', 'Aktivitas', 'Kartu', 'Catatan'].forEach((label) => {
+        ['Beranda', 'Aktivitas', 'Kartu', 'Catatan', 'Rekor'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
     });
 
     it('marks the active link based on current url', () => {
-        setupPage('/runs');
+        setupPage('/aktivitas');
         const { container } = renderSidebar();
         const activeLink = container.querySelector('a.border-brand-500');
         expect(activeLink).not.toBeNull();
         expect(activeLink?.textContent).toContain('Aktivitas');
     });
 
-    it('treats nested url as still active for parent link (/runs/123)', () => {
-        setupPage('/runs/123');
+    it('treats nested url as still active for parent link (/aktivitas/123)', () => {
+        setupPage('/aktivitas/123');
         const { container } = renderSidebar();
         const activeLink = container.querySelector('a.border-brand-500');
         expect(activeLink?.textContent).toContain('Aktivitas');

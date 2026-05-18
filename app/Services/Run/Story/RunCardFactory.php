@@ -8,6 +8,9 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
+use App\Services\Gamification\UnlockEngine;
+use App\Services\AI\AnalysisType;
+use App\Services\AI\AnalysisService;
 use App\Services\Run\Metrics\StreamSummary;
 
 use function is_array;
@@ -18,8 +21,11 @@ class RunCardFactory
 
     private const int LONG_SLOW_DISTANCE_DURATION_S = 3_600;
 
-    public function __construct(private readonly SpecialMoves $specialMoves)
-    {
+    public function __construct(
+        private readonly SpecialMoves $specialMoves,
+        private readonly AnalysisService $analysisService,
+        private readonly UnlockEngine $unlockEngine,
+    ) {
     }
 
     public function build(Activity $activity, ActivityDetail $detail): RunCard
@@ -35,7 +41,7 @@ class RunCardFactory
             'pr_set' => $prSet,
         ]);
 
-        return RunCard::query()->updateOrCreate(
+        $card = RunCard::query()->updateOrCreate(
             ['activity_id' => $activity->id],
             [
                 'rarity' => $rarity,
@@ -43,6 +49,19 @@ class RunCardFactory
                 'special_move' => $move,
             ],
         );
+
+        $this->analysisService->request(
+            subjectOrType: RunCard::class,
+            subjectId: $card->id,
+            type: AnalysisType::CardFlavor,
+            force: true,
+        );
+
+        if (in_array($card->rarity, [RunCard::RARITY_EPIK, RunCard::RARITY_LEGENDARIS], strict: true)) {
+            $this->unlockEngine->grantEligible($activity->user);
+        }
+
+        return $card;
     }
 
     /**

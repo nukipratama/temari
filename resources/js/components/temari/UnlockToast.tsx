@@ -1,0 +1,62 @@
+import { AnimatePresence, motion } from 'framer-motion';
+import { Icon } from '@iconify/react';
+import { useEffect, useState } from 'react';
+import { usePage } from '@inertiajs/react';
+import ConfettiBurst from '@/components/ConfettiBurst';
+import type { SharedProps } from '@/types/inertia';
+
+interface UnlockFlash {
+    unlock_key: string;
+    name: string;
+    icon: string;
+}
+
+interface UnlockFlashProps extends SharedProps {
+    flash: SharedProps['flash'] & { unlock?: UnlockFlash | null };
+}
+
+const DISMISS_MS = 5000;
+
+export default function UnlockToast() {
+    const { props } = usePage<UnlockFlashProps>();
+    const unlock = props.flash?.unlock ?? null;
+    const [active, setActive] = useState<UnlockFlash | null>(null);
+
+    useEffect(() => {
+        if (unlock === null) return;
+        setActive(unlock);
+        const t = window.setTimeout(() => setActive(null), DISMISS_MS);
+        return () => window.clearTimeout(t);
+    }, [unlock]);
+
+    return (
+        <>
+            <ConfettiBurst burstKey={active?.unlock_key ?? null} count={20} />
+            <AnimatePresence>
+                {active && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-pop-200 bg-surface-elev px-5 py-3 shadow-lg"
+                        role="status"
+                    >
+                        <Icon icon={active.icon} width={24} height={24} className="text-pop-600" aria-hidden />
+                        <div>
+                            <div className="text-xs font-semibold uppercase tracking-wider text-ink-meta">Unlock baru</div>
+                            <div className="text-sm font-semibold text-ink">{active.name}</div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setActive(null)}
+                            aria-label="Tutup notifikasi"
+                            className="ml-2 rounded-full p-1 text-ink-meta hover:bg-line/40 hover:text-ink"
+                        >
+                            <Icon icon="mdi:close" width={14} height={14} aria-hidden />
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
+    );
+}

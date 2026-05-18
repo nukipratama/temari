@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Jobs\Geo\ResolveActivityLocationJob;
-use App\Models\User;
 use App\Models\Activity;
-use App\Models\PersonalRecord;
+use App\Models\AI\Analysis;
 use App\Models\StoryLine;
+use App\Models\User;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\PastYouMatcher;
-use App\Services\Run\Story\Temari;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,19 +27,19 @@ class RunController extends Controller
             ->whereNotNull('analyzed_at')
             ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards'])])
             ->orderByDesc('id')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Runs/Index', ['runs' => $runs]);
     }
 
-    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, Temari $temari): Response
+    public function show(Request $request, Activity $activity, PastYouMatcher $matcher): Response
     {
         /** @var User $user */
         $user = $request->user();
         abort_unless($activity->user_id === $user->id, 404);
 
         $activity->loadMissing(['detail', 'runCard']);
-
         $detail = $activity->detail;
         abort_if($detail === null, 404, 'Activity not yet analyzed.');
 
@@ -48,26 +48,39 @@ class RunController extends Controller
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->first();
 
-        $variations = [];
-        if ($storyLine !== null) {
-            $hasPr = PersonalRecord::query()->where('activity_id', $activity->id)->exists();
-            $variations = $temari->variationsForActivity($detail, $hasPr, $storyLine->mood);
-        }
+        $analyses = Analysis::query()
+            ->where('subject_type', Activity::class)
+            ->where('subject_id', $activity->id)
+            ->whereIn('analysis_type', [
+                AnalysisType::PostRunSpeech,
+                AnalysisType::RunInsightTechnical,
+                AnalysisType::RunInsightSplits,
+                AnalysisType::RunInsightZones,
+            ])
+            ->get()
+            ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
 
-        $pastYou = $matcher->findMatch($activity, $detail);
-
-        // Lazy reverse-geocode — chip appears on next visit after job stamps the row.
         if ($detail->start_lat !== null && $detail->location_resolved_at === null) {
             ResolveActivityLocationJob::dispatch($detail->id);
         }
+
+        $payloadFor = fn (AnalysisType $type): array => Analysis::toPayload(
+            $analyses->get($type->value),
+            $type,
+            Activity::class,
+            $activity->id,
+        );
 
         return Inertia::render('Runs/Show', [
             'activity' => $activity,
             'detail' => $detail,
             'card' => $activity->runCard,
             'storyLine' => $storyLine,
-            'storyVariations' => $variations,
-            'pastYou' => $pastYou,
+            'speechAnalysis' => $payloadFor(AnalysisType::PostRunSpeech),
+            'insightTechnical' => $payloadFor(AnalysisType::RunInsightTechnical),
+            'insightSplits' => $payloadFor(AnalysisType::RunInsightSplits),
+            'insightZones' => $payloadFor(AnalysisType::RunInsightZones),
+            'pastYou' => $matcher->findMatch($activity, $detail),
         ]);
     }
 }

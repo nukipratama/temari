@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\Temari;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -29,8 +31,14 @@ function seedDashboardVerdict(User $user, int $daysAgo, string $mood, string $sp
         'activity_id' => $activity->id,
         'kind' => StoryLine::KIND_POST_RUN,
         'mood' => $mood,
-        'speech' => $speech,
+        'speech' => null,
         'sigil_pattern' => 'dddd',
+    ]);
+    Analysis::factory()->done($speech)->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
     ]);
 
     return $activity;

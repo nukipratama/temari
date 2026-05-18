@@ -2,9 +2,22 @@ import { Head, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import AppShell from '@/layouts/AppShell';
+import TemariMascot from '@/components/temari/TemariMascot';
 import { fadeInUp } from '@/lib/motion';
 import { formatIdDate } from '@/lib/pace';
 import type { SharedProps } from '@/types/inertia';
+
+interface UnlockEntry {
+    unlock_key: string;
+    unlocked_at: string;
+}
+
+interface UnlockCatalogEntry {
+    name: string;
+    icon: string;
+    description: string;
+    criteria: string;
+}
 
 interface ProfileProps {
     stats: {
@@ -17,9 +30,11 @@ interface ProfileProps {
         scopes: string;
         token_expires_at: string | null;
     } | null;
+    unlocks?: UnlockEntry[];
+    unlockCatalog?: Record<string, UnlockCatalogEntry>;
 }
 
-export default function Profile({ stats, strava }: Readonly<ProfileProps>) {
+export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {} }: Readonly<ProfileProps>) {
     const { props } = usePage<SharedProps & ProfileProps>();
     const user = props.auth.user;
 
@@ -32,11 +47,14 @@ export default function Profile({ stats, strava }: Readonly<ProfileProps>) {
                 animate="visible"
                 className="w-full px-6 py-10"
             >
-                <header className="mb-8">
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-ink-dark">Profil</h1>
-                    <p className="mt-1 text-base leading-relaxed text-ink dark:text-ink-dark">
-                        Identitas, koneksi Strava, dan ringkasan singkat.
-                    </p>
+                <header className="mb-8 flex items-start gap-4">
+                    <TemariMascot mood="glow" sizeClass="h-24 w-24 shrink-0 hidden sm:block" idle="breath" ornaments />
+                    <div className="flex-1">
+                        <h1 className="text-2xl font-semibold tracking-tight text-ink">Profil</h1>
+                        <p className="mt-1 text-base leading-relaxed text-ink">
+                            Identitas, koneksi Strava, dan ringkasan singkat — total {stats.total_km.toFixed(1)} km dari {stats.total_runs} lari.
+                        </p>
+                    </div>
                 </header>
 
                 {user !== null && (
@@ -95,9 +113,47 @@ export default function Profile({ stats, strava }: Readonly<ProfileProps>) {
                         />
                     </div>
                 </section>
+
+                {Object.keys(unlockCatalog).length > 0 && (
+                    <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-6">
+                        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">Koleksi Aksesori</h2>
+                        <p className="mt-2 text-sm text-ink-soft">
+                            Aksesori yang Temari kenakan, unlock dari milestones kamu.
+                        </p>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {Object.entries(unlockCatalog).map(([key, def]) => {
+                                const unlocked = unlocks.some((u) => u.unlock_key === key);
+                                return (
+                                    <div
+                                        key={key}
+                                        className={cnUnlock(unlocked)}
+                                    >
+                                        <Icon
+                                            icon={def.icon}
+                                            width={28}
+                                            height={28}
+                                            className={unlocked ? 'text-pop-600' : 'text-ink-meta/40'}
+                                            aria-hidden
+                                        />
+                                        <div className="mt-2 text-sm font-semibold text-ink">{def.name}</div>
+                                        <div className="mt-1 text-xs leading-relaxed text-ink-soft">
+                                            {unlocked ? def.description : def.criteria}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
             </motion.main>
         </AppShell>
     );
+}
+
+function cnUnlock(unlocked: boolean): string {
+    return unlocked
+        ? 'rounded-xl border border-pop-200 bg-pop-50/40 p-4'
+        : 'rounded-xl border border-dashed border-line bg-surface-sunken/40 p-4 opacity-60';
 }
 
 function Field({ label, value }: Readonly<{ label: string; value: string }>) {

@@ -12,14 +12,28 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
+use Override;
 
-#[Fillable(['name', 'email', 'avatar_url'])]
+/**
+ * @property Carbon|null $last_seen_pr_ledger_at
+ */
+#[Fillable(['name', 'email', 'avatar_url', 'last_seen_pr_ledger_at'])]
 #[Hidden(['remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory;
     use Notifiable;
+
+    /** @return array<string, string> */
+    #[Override]
+    protected function casts(): array
+    {
+        return [
+            'last_seen_pr_ledger_at' => 'datetime',
+        ];
+    }
 
     /**
      * @return HasOne<StravaConnection, $this>

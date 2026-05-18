@@ -16,6 +16,8 @@ interface TemariCharacterProps {
     gaze?: { x: number; y: number };
     /** When true, idle animations (blink + wiggle + tail wag) are suppressed. */
     paused?: boolean;
+    /** Unlocked accessory keys from `config/temari_unlocks.php`. */
+    unlockedAccessories?: ReadonlyArray<string>;
     className?: string;
 }
 
@@ -85,6 +87,7 @@ function TemariCharacterImpl({
     size = 100,
     gaze = { x: 0, y: 0 },
     paused = false,
+    unlockedAccessories = [],
     className,
 }: Readonly<TemariCharacterProps>) {
     const v = variantFor(mood);
@@ -259,6 +262,7 @@ function TemariCharacterImpl({
             </g>
 
             <Accessory kind={v.accessory} moodColor={v.moodColor} />
+            <UnlockedExtras unlocks={unlockedAccessories} />
             <Particles kind={v.particles} moodColor={v.moodColor} motionOff={motionOff} />
         </svg>
     );
@@ -712,7 +716,78 @@ const TemariCharacter = memo(TemariCharacterImpl, (prev, next) => {
     if (prev.className !== next.className) return false;
     const pg = prev.gaze ?? { x: 0, y: 0 };
     const ng = next.gaze ?? { x: 0, y: 0 };
-    return pg.x === ng.x && pg.y === ng.y;
+    if (pg.x !== ng.x || pg.y !== ng.y) return false;
+    const pu = prev.unlockedAccessories ?? [];
+    const nu = next.unlockedAccessories ?? [];
+    if (pu.length !== nu.length) return false;
+    for (let i = 0; i < pu.length; i++) {
+        if (pu[i] !== nu[i]) return false;
+    }
+    return true;
 });
 
 export default TemariCharacter;
+
+// === Unlocked accessory extras (layered on top of mood accessory) =====
+
+interface UnlockedExtrasProps {
+    unlocks: ReadonlyArray<string>;
+}
+
+const UNLOCK_HEADBAND_LEGENDARIS = 'accessory.headband_legendaris';
+const UNLOCK_HEADBAND_EPIK = 'accessory.headband_epik';
+const UNLOCK_MEDAL_FIRST_PR = 'accessory.medal_first_pr';
+const UNLOCK_MEDAL_GOLD = 'accessory.medal_gold';
+const UNLOCK_WEEKLY_STREAK_4 = 'accessory.weekly_streak_4';
+
+function UnlockedExtras({ unlocks }: Readonly<UnlockedExtrasProps>) {
+    if (unlocks.length === 0) return null;
+    const has = (k: string): boolean => unlocks.includes(k);
+
+    return (
+        <g>
+            {has(UNLOCK_HEADBAND_LEGENDARIS) && (
+                <rect
+                    x={26}
+                    y={20.5}
+                    width={48}
+                    height={1.2}
+                    rx={0.6}
+                    fill="#e0a639"
+                    stroke={OUTLINE}
+                    strokeWidth={0.4}
+                />
+            )}
+            {has(UNLOCK_HEADBAND_EPIK) && (
+                <path
+                    d="M 70 22 L 80 22 L 78 27 L 74 27 Z"
+                    fill="#7c4baf"
+                    stroke={OUTLINE}
+                    strokeWidth={0.5}
+                />
+            )}
+            {has(UNLOCK_MEDAL_FIRST_PR) && (
+                <g>
+                    <line x1={43} y1={51} x2={43} y2={58} stroke={MEDAL_RIBBON} strokeWidth={0.8} />
+                    <circle cx={43} cy={60} r={2.2} fill={MEDAL_COLOR} stroke={OUTLINE} strokeWidth={0.5} />
+                </g>
+            )}
+            {has(UNLOCK_MEDAL_GOLD) && (
+                <g>
+                    <line x1={48} y1={51} x2={48} y2={58} stroke="#0e7a4c" strokeWidth={0.8} />
+                    <circle cx={48} cy={60} r={2.2} fill="#f4d160" stroke={OUTLINE} strokeWidth={0.5} />
+                </g>
+            )}
+            {has(UNLOCK_WEEKLY_STREAK_4) && (
+                <g>
+                    <path
+                        d="M 32 70 L 30 76 L 34 74 L 32 70 Z"
+                        fill="#D9764A"
+                        stroke={OUTLINE}
+                        strokeWidth={0.4}
+                    />
+                </g>
+            )}
+        </g>
+    );
+}

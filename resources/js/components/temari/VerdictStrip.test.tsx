@@ -12,7 +12,6 @@ function item(overrides: Partial<VerdictTimelineItem> = {}): VerdictTimelineItem
         oneline: 'verdict line',
         startedAt: '2026-05-10T08:00:00',
         distanceKm: 5.5,
-        degraded: false,
         ...overrides,
     };
 }
@@ -33,15 +32,10 @@ describe('VerdictStrip', () => {
         expect(screen.getByText('second')).toBeInTheDocument();
     });
 
-    it('shows degraded chip on items that fell back', () => {
-        render(<VerdictStrip items={[item({ degraded: true })]} />);
-        expect(screen.getByText(/mode darurat/i)).toBeInTheDocument();
-    });
-
-    it('links each card to /runs/{id}', () => {
+    it('links each card to /aktivitas/{id}', () => {
         render(<VerdictStrip items={[item({ activityId: 42 })]} />);
         const link = screen.getByRole('link');
-        expect(link.getAttribute('href')).toBe('/runs/42');
+        expect(link.getAttribute('href')).toBe('/aktivitas/42');
     });
 
     it('formats distance with 1 decimal place', () => {

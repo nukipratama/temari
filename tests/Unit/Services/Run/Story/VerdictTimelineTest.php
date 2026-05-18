@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\VerdictTimeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,7 +18,7 @@ uses(RefreshDatabase::class);
 beforeEach(fn () => Carbon::setTestNow('2026-05-11 12:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
-function seedVerdict(User $user, Carbon $when, string $mood, string $speech, float $distanceMeters): void
+function seedVerdict(User $user, Carbon $when, string $mood, ?string $speech, float $distanceMeters): Activity
 {
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -28,9 +30,20 @@ function seedVerdict(User $user, Carbon $when, string $mood, string $speech, flo
         'activity_id' => $activity->id,
         'kind' => StoryLine::KIND_POST_RUN,
         'mood' => $mood,
-        'speech' => $speech,
+        'speech' => null,
         'sigil_pattern' => 'dddd',
     ]);
+
+    if ($speech !== null) {
+        Analysis::factory()->done($speech)->create([
+            'subject_type' => Activity::class,
+            'subject_id' => $activity->id,
+            'analysis_type' => AnalysisType::PostRunSpeech,
+            'discriminator' => null,
+        ]);
+    }
+
+    return $activity;
 }
 
 it('returns an empty list when the user has no verdicts', function (): void {
@@ -67,7 +80,7 @@ it('ignores daily-greeting story lines', function (): void {
         'for_date' => Carbon::today()->toDateString(),
         'kind' => StoryLine::KIND_DAILY_GREETING,
         'mood' => Temari::MOOD_GLOW,
-        'speech' => 'Pagi!',
+        'speech' => null,
         'sigil_pattern' => 'ssss',
     ]);
     seedVerdict($user, Carbon::today(), Temari::MOOD_BOUNCY, 'Real verdict', 5000.0);
@@ -106,14 +119,37 @@ it('skips story lines whose activity has no detail', function (): void {
         'activity_id' => $orphan->id,
         'kind' => StoryLine::KIND_POST_RUN,
         'mood' => Temari::MOOD_DIM,
-        'speech' => 'orphan verdict',
+        'speech' => null,
         'sigil_pattern' => 'dddd',
+    ]);
+    Analysis::factory()->done('orphan verdict')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $orphan->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
     ]);
 
     $items = app(VerdictTimeline::class)->recent($user);
 
     expect($items)->toHaveCount(1)
         ->and($items[0]->oneline)->toBe('real verdict');
+});
+
+it('skips story lines whose LLM speech analysis is not yet done', function (): void {
+    $user = User::factory()->create();
+    seedVerdict($user, Carbon::today(), Temari::MOOD_BOUNCY, 'done speech', 5000.0);
+    $pending = seedVerdict($user, Carbon::today()->subDay(), Temari::MOOD_DIM, null, 5000.0);
+    Analysis::factory()->queued()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $pending->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $items = app(VerdictTimeline::class)->recent($user);
+
+    expect($items)->toHaveCount(1)
+        ->and($items[0]->oneline)->toBe('done speech');
 });
 
 it('converts meters to kilometers in the item DTO', function (): void {
