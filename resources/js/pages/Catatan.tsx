@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
 import AppShell from '@/layouts/AppShell';
 import DecorativeBlur from '@/components/DecorativeBlur';
+import PageHero from '@/components/PageHero';
 import SectionHeading from '@/components/SectionHeading';
 import { fadeInUp } from '@/lib/motion';
 import { ICON_TONE, type Tone } from '@/lib/tones';
@@ -21,6 +22,18 @@ interface CatatanProps {
     snapshots: ExtendedSnapshot[];
 }
 
+const SNAPSHOT_COLUMNS = [
+    'Minggu',
+    'Volume',
+    'Run',
+    'TRIMP',
+    'CTL',
+    'ATL',
+    'Form',
+    'Status',
+    'Catatan Temari',
+] as const;
+
 export default function Catatan({ snapshots }: Readonly<CatatanProps>) {
     const latest = snapshots[0] ?? null;
     const prior = snapshots[1] ?? null;
@@ -34,21 +47,12 @@ export default function Catatan({ snapshots }: Readonly<CatatanProps>) {
                 animate="visible"
                 className="w-full px-6 py-10"
             >
-                <header className="relative mb-6 overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-brand-50 via-surface-warm to-accent-50 p-6 shadow-md">
-                    <DecorativeBlur className="-right-16 -top-16 h-48 w-48 bg-pop-200/50" />
-                    <DecorativeBlur className="-bottom-12 -left-10 h-40 w-40 bg-brand-200/40" />
-                    <div className="relative flex items-center gap-3">
-                        <span aria-hidden className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white shadow-md ring-2 ring-white">
-                            <Icon icon="mdi:notebook-outline" width={24} height={24} />
-                        </span>
-                        <div>
-                            <h1 className="text-2xl font-semibold tracking-tight text-ink">Catatan</h1>
-                            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-                                Ringkasan kondisi tubuh + beban mingguan.
-                            </p>
-                        </div>
-                    </div>
-                </header>
+                <PageHero
+                    icon="mdi:notebook-outline"
+                    title="Catatan"
+                    subtitle="Ringkasan kondisi tubuh + beban mingguan."
+                    className="mb-6"
+                />
 
                 {latest !== null && <HeroStats latest={latest} prior={prior} />}
 
@@ -64,66 +68,16 @@ export default function Catatan({ snapshots }: Readonly<CatatanProps>) {
                             <table className="w-full text-sm tabular-nums">
                                 <thead>
                                     <tr className="border-b border-line text-left text-xs text-ink-meta">
-                                        <th className="px-5 py-3 font-semibold">Minggu</th>
-                                        <th className="px-5 py-3 font-semibold">Volume</th>
-                                        <th className="px-5 py-3 font-semibold">Run</th>
-                                        <th className="px-5 py-3 font-semibold">TRIMP</th>
-                                        <th className="px-5 py-3 font-semibold">CTL</th>
-                                        <th className="px-5 py-3 font-semibold">ATL</th>
-                                        <th className="px-5 py-3 font-semibold">Form</th>
-                                        <th className="px-5 py-3 font-semibold">Status</th>
-                                        <th className="px-5 py-3 font-semibold">Catatan Temari</th>
+                                        {SNAPSHOT_COLUMNS.map((label) => (
+                                            <th key={label} className="px-5 py-3 font-semibold">
+                                                {label}
+                                            </th>
+                                        ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {snapshots.map((snap, i) => (
-                                        <tr
-                                            key={snap.id}
-                                            className={cn(
-                                                'border-b border-line last:border-b-0 transition',
-                                                i === 0 && 'bg-gradient-to-r from-accent-50/70 via-surface-warm to-surface-elev',
-                                                i !== 0 && rowToneByStatus(snap.form_status),
-                                            )}
-                                        >
-                                            <td className="px-5 py-3">
-                                                <div className="font-medium text-ink">
-                                                    {weekRangeLabel(snap.week_ending)}
-                                                </div>
-                                                {i === 0 && (
-                                                    <div className="text-[10px] uppercase tracking-wider text-accent-700">
-                                                        Minggu ini
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-5 py-3 text-ink">
-                                                {snap.distance_km != null ? `${snap.distance_km.toFixed(1)} km` : '—'}
-                                            </td>
-                                            <td className="px-5 py-3 text-ink">{snap.runs ?? '—'}</td>
-                                            <td className="px-5 py-3 text-ink">
-                                                {snap.weekly_trimp != null ? Math.round(snap.weekly_trimp) : '—'}
-                                            </td>
-                                            <td className="px-5 py-3 font-medium text-ink">
-                                                {snap.ctl_42d != null ? snap.ctl_42d.toFixed(1) : '—'}
-                                            </td>
-                                            <td className="px-5 py-3 text-ink-soft">
-                                                {snap.atl_7d != null ? snap.atl_7d.toFixed(1) : '—'}
-                                            </td>
-                                            <td className="px-5 py-3 text-ink-soft">
-                                                {snap.form != null ? snap.form.toFixed(1) : '—'}
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                <StatusChip status={snap.form_status} />
-                                            </td>
-                                            <td className="px-5 py-3 align-top">
-                                                {snap.recap_analysis && (
-                                                    <AnalysisStatus
-                                                        analysis={snap.recap_analysis}
-                                                        inertiaReloadProps={['snapshots']}
-                                                        size="sm"
-                                                    />
-                                                )}
-                                            </td>
-                                        </tr>
+                                        <SnapshotRow key={snap.id} snap={snap} isCurrent={i === 0} />
                                     ))}
                                 </tbody>
                             </table>
@@ -132,6 +86,42 @@ export default function Catatan({ snapshots }: Readonly<CatatanProps>) {
                 )}
             </motion.main>
         </AppShell>
+    );
+}
+
+function SnapshotRow({ snap, isCurrent }: Readonly<{ snap: ExtendedSnapshot; isCurrent: boolean }>) {
+    const rowClass = isCurrent
+        ? 'bg-gradient-to-r from-accent-50/70 via-surface-warm to-surface-elev'
+        : rowToneByStatus(snap.form_status);
+    return (
+        <tr className={cn('border-b border-line last:border-b-0 transition', rowClass)}>
+            <td className="px-5 py-3">
+                <div className="font-medium text-ink">{weekRangeLabel(snap.week_ending)}</div>
+                {isCurrent && (
+                    <div className="text-[10px] uppercase tracking-wider text-accent-700">
+                        Minggu ini
+                    </div>
+                )}
+            </td>
+            <td className="px-5 py-3 text-ink">{fmtKm(snap.distance_km)}</td>
+            <td className="px-5 py-3 text-ink">{snap.runs ?? '—'}</td>
+            <td className="px-5 py-3 text-ink">{fmtInt(snap.weekly_trimp)}</td>
+            <td className="px-5 py-3 font-medium text-ink">{fmtOne(snap.ctl_42d)}</td>
+            <td className="px-5 py-3 text-ink-soft">{fmtOne(snap.atl_7d)}</td>
+            <td className="px-5 py-3 text-ink-soft">{fmtOne(snap.form)}</td>
+            <td className="px-5 py-3">
+                <StatusChip status={snap.form_status} />
+            </td>
+            <td className="px-5 py-3 align-top">
+                {snap.recap_analysis && (
+                    <AnalysisStatus
+                        analysis={snap.recap_analysis}
+                        inertiaReloadProps={['snapshots']}
+                        size="sm"
+                    />
+                )}
+            </td>
+        </tr>
     );
 }
 
@@ -145,7 +135,7 @@ function HeroStats({ latest, prior }: Readonly<HeroStatsProps>) {
         <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             <HeroStat
                 label="Fitness"
-                value={fmt(latest.ctl_42d)}
+                value={fmtOne(latest.ctl_42d)}
                 delta={delta(latest.ctl_42d, prior?.ctl_42d ?? null)}
                 hint="CTL · 42 hari"
                 icon="mdi:lightning-bolt"
@@ -153,7 +143,7 @@ function HeroStats({ latest, prior }: Readonly<HeroStatsProps>) {
             />
             <HeroStat
                 label="Fatigue"
-                value={fmt(latest.atl_7d)}
+                value={fmtOne(latest.atl_7d)}
                 delta={delta(latest.atl_7d, prior?.atl_7d ?? null)}
                 hint="ATL · 7 hari"
                 icon="mdi:battery-low"
@@ -162,7 +152,7 @@ function HeroStats({ latest, prior }: Readonly<HeroStatsProps>) {
             />
             <HeroStat
                 label="Form"
-                value={fmt(latest.form)}
+                value={fmtOne(latest.form)}
                 delta={delta(latest.form, prior?.form ?? null)}
                 hint={latest.form_status ?? '—'}
                 icon="mdi:scale-balance"
@@ -170,9 +160,9 @@ function HeroStats({ latest, prior }: Readonly<HeroStatsProps>) {
             />
             <HeroStat
                 label="Volume minggu ini"
-                value={latest.distance_km != null ? `${latest.distance_km.toFixed(1)} km` : '—'}
+                value={fmtKm(latest.distance_km)}
                 delta={null}
-                hint={latest.runs != null ? `${latest.runs} run` : null}
+                hint={latest.runs == null ? null : `${latest.runs} run`}
                 icon="mdi:run-fast"
                 tone="pop"
             />
@@ -206,6 +196,7 @@ const HERO_VALUE_TONE: Record<Tone, string> = {
 };
 
 function HeroStat({ label, value, delta, hint, icon, tone, invertDelta = false }: Readonly<HeroStatProps>) {
+    const showHint = hint != null && hint !== '';
     return (
         <div className={cn('relative overflow-hidden rounded-2xl border p-5 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg', HERO_RING_TONE[tone])}>
             <DecorativeBlur intensity="md" className="-right-6 -top-6 h-20 w-20 bg-white/50" />
@@ -219,7 +210,7 @@ function HeroStat({ label, value, delta, hint, icon, tone, invertDelta = false }
                 <span className={cn('text-3xl font-black tabular-nums', HERO_VALUE_TONE[tone])}>{value}</span>
                 {delta !== null && <DeltaChip delta={delta} invert={invertDelta} />}
             </div>
-            {hint !== null && hint !== undefined && hint !== '' && (
+            {showHint && (
                 <div className="relative mt-1 text-xs font-medium text-ink-meta capitalize">{hint}</div>
             )}
         </div>
@@ -247,11 +238,18 @@ function DeltaChip({ delta, invert }: Readonly<DeltaChipProps>) {
     );
 }
 
+const STATUS_CHIP: Record<FormStatus, { label: string; classes: string }> = {
+    fresh: { label: 'Fresh', classes: 'bg-brand-100 text-brand-700' },
+    optimal: { label: 'Optimal', classes: 'bg-mood-bouncy/15 text-mood-bouncy' },
+    fatigued: { label: 'Fatigued', classes: 'bg-mood-glow/20 text-pop-700' },
+    overreaching: { label: 'Overreaching', classes: 'bg-mood-cooked/15 text-mood-cooked' },
+};
+
 function StatusChip({ status }: Readonly<{ status: FormStatus | null }>) {
     if (status === null) {
         return <span className="text-xs text-ink-meta">—</span>;
     }
-    const { label, classes } = statusChipDef(status);
+    const { label, classes } = STATUS_CHIP[status];
     return (
         <span
             className={cn(
@@ -264,36 +262,27 @@ function StatusChip({ status }: Readonly<{ status: FormStatus | null }>) {
     );
 }
 
+const ROW_TONE: Record<FormStatus, string> = {
+    fresh: 'hover:bg-brand-50/60',
+    optimal: 'hover:bg-mood-bouncy/5',
+    fatigued: 'bg-pop-50/30 hover:bg-pop-50/60',
+    overreaching: 'bg-mood-cooked/5 hover:bg-mood-cooked/10',
+};
+
 function rowToneByStatus(status: FormStatus | null): string {
-    switch (status) {
-        case 'fresh':
-            return 'hover:bg-brand-50/60';
-        case 'optimal':
-            return 'hover:bg-mood-bouncy/5';
-        case 'fatigued':
-            return 'bg-pop-50/30 hover:bg-pop-50/60';
-        case 'overreaching':
-            return 'bg-mood-cooked/5 hover:bg-mood-cooked/10';
-        default:
-            return 'hover:bg-surface-sunken/40';
-    }
+    return status === null ? 'hover:bg-surface-sunken/40' : ROW_TONE[status];
 }
 
-function statusChipDef(status: FormStatus): { label: string; classes: string } {
-    switch (status) {
-        case 'fresh':
-            return { label: 'Fresh', classes: 'bg-brand-100 text-brand-700' };
-        case 'optimal':
-            return { label: 'Optimal', classes: 'bg-mood-bouncy/15 text-mood-bouncy' };
-        case 'fatigued':
-            return { label: 'Fatigued', classes: 'bg-mood-glow/20 text-pop-700' };
-        case 'overreaching':
-            return { label: 'Overreaching', classes: 'bg-mood-cooked/15 text-mood-cooked' };
-    }
+function fmtOne(n: number | null): string {
+    return n == null ? '—' : n.toFixed(1);
 }
 
-function fmt(n: number | null): string {
-    return n != null ? n.toFixed(1) : '—';
+function fmtKm(km: number | null): string {
+    return km == null ? '—' : `${km.toFixed(1)} km`;
+}
+
+function fmtInt(n: number | null): string {
+    return n == null ? '—' : Math.round(n).toString();
 }
 
 function delta(a: number | null, b: number | null): number | null {

@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { useMemo } from 'react';
 import AppShell from '@/layouts/AppShell';
 import TemariMascot from '@/components/temari/TemariMascot';
 import { fadeInUp } from '@/lib/motion';
@@ -35,8 +36,9 @@ interface ProfileProps {
 }
 
 export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {} }: Readonly<ProfileProps>) {
-    const { props } = usePage<SharedProps & ProfileProps>();
-    const user = props.auth.user;
+    const user = usePage<SharedProps>().props.auth.user;
+    const unlockedKeys = useMemo(() => new Set(unlocks.map((u) => u.unlock_key)), [unlocks]);
+    const catalogEntries = Object.entries(unlockCatalog);
 
     return (
         <AppShell>
@@ -114,34 +116,16 @@ export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {
                     </div>
                 </section>
 
-                {Object.keys(unlockCatalog).length > 0 && (
+                {catalogEntries.length > 0 && (
                     <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-6">
                         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">Koleksi Aksesori</h2>
                         <p className="mt-2 text-sm text-ink-soft">
                             Aksesori yang Temari kenakan, unlock dari milestones kamu.
                         </p>
                         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            {Object.entries(unlockCatalog).map(([key, def]) => {
-                                const unlocked = unlocks.some((u) => u.unlock_key === key);
-                                return (
-                                    <div
-                                        key={key}
-                                        className={cnUnlock(unlocked)}
-                                    >
-                                        <Icon
-                                            icon={def.icon}
-                                            width={28}
-                                            height={28}
-                                            className={unlocked ? 'text-pop-600' : 'text-ink-meta/40'}
-                                            aria-hidden
-                                        />
-                                        <div className="mt-2 text-sm font-semibold text-ink">{def.name}</div>
-                                        <div className="mt-1 text-xs leading-relaxed text-ink-soft">
-                                            {unlocked ? def.description : def.criteria}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                            {catalogEntries.map(([key, def]) => (
+                                <UnlockTile key={key} def={def} unlocked={unlockedKeys.has(key)} />
+                            ))}
                         </div>
                     </section>
                 )}
@@ -150,10 +134,27 @@ export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {
     );
 }
 
-function cnUnlock(unlocked: boolean): string {
-    return unlocked
-        ? 'rounded-xl border border-pop-200 bg-pop-50/40 p-4'
-        : 'rounded-xl border border-dashed border-line bg-surface-sunken/40 p-4 opacity-60';
+const UNLOCK_TILE = {
+    locked: 'rounded-xl border border-dashed border-line bg-surface-sunken/40 p-4 opacity-60',
+    unlocked: 'rounded-xl border border-pop-200 bg-pop-50/40 p-4',
+} as const;
+
+function UnlockTile({ def, unlocked }: Readonly<{ def: UnlockCatalogEntry; unlocked: boolean }>) {
+    return (
+        <div className={unlocked ? UNLOCK_TILE.unlocked : UNLOCK_TILE.locked}>
+            <Icon
+                icon={def.icon}
+                width={28}
+                height={28}
+                className={unlocked ? 'text-pop-600' : 'text-ink-meta/40'}
+                aria-hidden
+            />
+            <div className="mt-2 text-sm font-semibold text-ink">{def.name}</div>
+            <div className="mt-1 text-xs leading-relaxed text-ink-soft">
+                {unlocked ? def.description : def.criteria}
+            </div>
+        </div>
+    );
 }
 
 function Field({ label, value }: Readonly<{ label: string; value: string }>) {

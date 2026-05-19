@@ -296,36 +296,17 @@ function StatRow({ icon, iconTone, label, value, hint, hintTone }: Readonly<Stat
 // === Coach stat strip (4-tile row at top of Tren 30 Hari section) ===
 
 function CoachStatStrip({ load }: Readonly<{ load: TrainingLoad }>) {
+    const tiles: ReadonlyArray<CoachStatProps> = [
+        { icon: 'mdi:lightning-bolt', iconTone: 'brand', label: 'Fitness (CTL)', value: load.ctl_42d.toFixed(1), hint: '42 hari' },
+        { icon: 'mdi:battery-low', iconTone: 'accent', label: 'Fatigue (ATL)', value: load.atl_7d.toFixed(1), hint: '7 hari' },
+        { icon: 'mdi:fire', iconTone: 'pop', label: 'Strain', value: Math.round(load.strain).toString(), hint: 'TRIMP × monotony' },
+        { icon: 'mdi:repeat-variant', iconTone: 'brand', label: 'Monotony', value: load.monotony.toFixed(2), hint: '≥ 2 = terlalu seragam' },
+    ];
     return (
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <CoachStat
-                icon="mdi:lightning-bolt"
-                iconTone="brand"
-                label="Fitness (CTL)"
-                value={load.ctl_42d.toFixed(1)}
-                hint="42 hari"
-            />
-            <CoachStat
-                icon="mdi:battery-low"
-                iconTone="accent"
-                label="Fatigue (ATL)"
-                value={load.atl_7d.toFixed(1)}
-                hint="7 hari"
-            />
-            <CoachStat
-                icon="mdi:fire"
-                iconTone="pop"
-                label="Strain"
-                value={Math.round(load.strain).toString()}
-                hint="TRIMP × monotony"
-            />
-            <CoachStat
-                icon="mdi:repeat-variant"
-                iconTone="brand"
-                label="Monotony"
-                value={load.monotony.toFixed(2)}
-                hint="≥ 2 = terlalu seragam"
-            />
+            {tiles.map((t) => (
+                <CoachStat key={t.label} {...t} />
+            ))}
         </div>
     );
 }

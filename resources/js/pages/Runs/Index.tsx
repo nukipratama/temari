@@ -3,7 +3,7 @@ import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import AppShell from '@/layouts/AppShell';
-import DecorativeBlur from '@/components/DecorativeBlur';
+import PageHero from '@/components/PageHero';
 import Paginator from '@/components/Paginator';
 import RunListRow from '@/components/run/RunListRow';
 import { formatIdDate } from '@/lib/pace';
@@ -39,21 +39,12 @@ export default function RunsIndex({ runs }: Readonly<RunsIndexProps>) {
                 animate="visible"
                 className="w-full px-6 py-10"
             >
-                <header className="relative mb-6 overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-brand-50 via-surface-warm to-accent-50 p-6 shadow-md">
-                    <DecorativeBlur className="-right-16 -top-16 h-48 w-48 bg-pop-200/40" />
-                    <DecorativeBlur className="-bottom-12 -left-10 h-40 w-40 bg-brand-200/40" />
-                    <div className="relative flex items-center gap-3">
-                        <span aria-hidden className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white shadow-md ring-2 ring-white">
-                            <Icon icon="mdi:run-fast" width={24} height={24} />
-                        </span>
-                        <div>
-                            <h1 className="text-2xl font-semibold tracking-tight text-ink">Aktivitas</h1>
-                            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-                                Lari kamu dirapikan per minggu — klik satu buat lihat detail.
-                            </p>
-                        </div>
-                    </div>
-                </header>
+                <PageHero
+                    icon="mdi:run-fast"
+                    title="Aktivitas"
+                    subtitle="Lari kamu dirapikan per minggu — klik satu buat lihat detail."
+                    className="mb-6"
+                />
 
                 {hasRuns ? (
                     <>

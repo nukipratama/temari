@@ -18,7 +18,7 @@ const FEATURES: ReadonlyArray<{ icon: string; label: string; desc: string }> = [
 
 // Strava button keeps #FC4C02 brand orange per Strava brand guidelines.
 export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
-    const { props } = usePage<SharedProps & LoginProps>();
+    const { demoLoginEnabled } = usePage<SharedProps>().props;
     const demoForm = useForm({});
     const submitDemo = () => demoForm.post('/auth/demo');
 
@@ -65,7 +65,7 @@ export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
                             Connect with Strava
                         </a>
 
-                        {props.demoLoginEnabled && (
+                        {demoLoginEnabled && (
                             <button
                                 type="button"
                                 onClick={submitDemo}

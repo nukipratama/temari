@@ -6,11 +6,9 @@ import { fadeInUp } from '@/lib/motion';
 import type { SharedProps } from '@/types/inertia';
 
 export default function Settings() {
-    const { props } = usePage<SharedProps>();
+    const { demoLoginEnabled } = usePage<SharedProps>().props;
 
-    const onLogout = () => {
-        router.post('/logout');
-    };
+    const onLogout = () => router.post('/logout');
 
     return (
         <AppShell>
@@ -45,7 +43,7 @@ export default function Settings() {
                     </button>
                 </section>
 
-                {props.demoLoginEnabled && (
+                {demoLoginEnabled && (
                     <section className="mt-6 rounded-2xl border border-dashed border-line bg-surface-elev/60 p-6 dark:border-line-dark dark:bg-surface-dark-elev/60">
                         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                             Demo Mode
