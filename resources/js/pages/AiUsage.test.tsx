@@ -64,15 +64,32 @@ describe('AiUsage page', () => {
         );
     });
 
-    it('navigates via preset buttons', () => {
+    it.each([
+        ['hari ini', /hari ini/i],
+        ['7 hari', /7 hari/i],
+        ['30 hari', /30 hari/i],
+        ['bulan ini', /bulan ini/i],
+    ])('preset "%s" navigates with a from/to date pair', (_label, pattern) => {
         routerGet.mockClear();
         render(<AiUsage {...baseProps} />);
 
-        fireEvent.click(screen.getByRole('button', { name: /hari ini/i }));
+        fireEvent.click(screen.getByRole('button', { name: pattern }));
 
         expect(routerGet).toHaveBeenCalledTimes(1);
         const [path, params] = routerGet.mock.calls[0];
         expect(path).toBe('/ai-usage');
-        expect(params).toMatchObject({ from: expect.any(String), to: expect.any(String) });
+        expect(params).toMatchObject({
+            from: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+            to: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        });
+    });
+
+    it('typing into a date field updates the form value', () => {
+        const { container } = render(<AiUsage {...baseProps} />);
+        const fromInput = container.querySelector('#from') as HTMLInputElement;
+
+        fireEvent.change(fromInput, { target: { value: '2026-04-15' } });
+
+        expect(fromInput.value).toBe('2026-04-15');
     });
 });
