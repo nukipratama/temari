@@ -200,11 +200,11 @@ return [
         'supervisor-1' => [
             'connection' => 'redis',
             'queue' => ['default'],
-            // Only one supervisor + one queue, so balance=auto's bookkeeping
-            // (re-evaluating shifts every cooldown) is pure overhead. simple
-            // just fans out processes evenly.
-            'balance' => 'simple',
+            'balance' => 'auto',
+            'minProcesses' => 1,
             'maxProcesses' => 1,
+            'balanceMaxShift' => 1,
+            'balanceCooldown' => 3,
             'maxTime' => 0,
             'maxJobs' => 0,
             'memory' => 128,
@@ -218,12 +218,14 @@ return [
     'environments' => [
         'production' => [
             'supervisor-1' => [
-                'maxProcesses' => 10,
+                'minProcesses' => 1,
+                'maxProcesses' => 5,
             ],
         ],
 
         'local' => [
             'supervisor-1' => [
+                'minProcesses' => 1,
                 'maxProcesses' => 3,
             ],
         ],
