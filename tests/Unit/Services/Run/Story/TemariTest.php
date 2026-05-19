@@ -157,6 +157,15 @@ it('upserts the daily greeting (no dup on second call)', function (): void {
         ->count())->toBe(1);
 });
 
+it('maps each mood to its public accessory token', function (): void {
+    expect(Temari::accessoryForMoodPublic(Temari::MOOD_GLOW))->toBe('headband')
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_BOUNCY))->toBe('pita')
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_DIM))->toBe('mata-ngantuk')
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_WOBBLE))->toBeNull()
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_SPINNING))->toBeNull()
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_SQUISHED))->toBeNull();
+});
+
 it('picks bouncy mood when the run had a negative split', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([

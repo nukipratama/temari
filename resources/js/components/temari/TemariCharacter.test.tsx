@@ -136,6 +136,30 @@ describe('TemariCharacter', () => {
         expect(container.querySelector('svg')).toBeInTheDocument();
     });
 
+    it('renders unlocked accessory overlay when unlocks include a known key', () => {
+        const { container } = render(
+            <TemariCharacter
+                mood="glow"
+                unlockedAccessories={['accessory.headband_legendaris', 'accessory.medal_gold']}
+            />,
+        );
+        // Headband legendaris draws a rect with fill="#e0a639" at y=20.5
+        expect(container.innerHTML).toContain('y="20.5"');
+        // Medal gold draws a circle at cx=48 cy=60
+        expect(container.innerHTML).toContain('cx="48"');
+    });
+
+    it('re-renders when unlockedAccessories array changes content', () => {
+        const { container, rerender } = render(
+            <TemariCharacter mood="glow" unlockedAccessories={['accessory.headband_legendaris']} />,
+        );
+        const before = container.innerHTML;
+        rerender(
+            <TemariCharacter mood="glow" unlockedAccessories={['accessory.medal_gold']} />,
+        );
+        expect(container.innerHTML).not.toBe(before);
+    });
+
     it('skips re-render when only props identity changes but values are equal (memo guard)', () => {
         const { rerender, container } = render(
             <TemariCharacter mood="glow" gaze={{ x: 0, y: 0 }} />,

@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { router } from '@inertiajs/react';
 import FloatingTemari from './FloatingTemari';
 import { setMockPage } from '@/test/setup';
 
@@ -72,6 +73,26 @@ describe('FloatingTemari', () => {
         });
         // Bubble shows page tip; default '/' tip mentions Temari
         expect(screen.getByRole('status')).toBeInTheDocument();
+    });
+
+    it('fires router.reload on each poll tick while thinking', () => {
+        const reloadSpy = vi.mocked(router.reload);
+        reloadSpy.mockClear();
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+            aiActivity: { pending: 1, queued: 0, processing: 0 },
+        });
+        render(<FloatingTemari />);
+        act(() => {
+            vi.advanceTimersByTime(5000);
+        });
+        expect(reloadSpy).toHaveBeenCalledWith({ only: ['aiActivity'] });
+        act(() => {
+            vi.advanceTimersByTime(5000);
+        });
+        expect(reloadSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
     });
 
     it('stops polling when document is hidden and resumes on visibility', () => {

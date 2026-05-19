@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -55,6 +56,26 @@ it('renders KPIs + recent runs when the user has training-load history', functio
             ->has('load.form')
             ->has('snapshot')
             ->has('recentRuns', 5));
+
+    Carbon::setTestNow();
+});
+
+it('flags hasNewPr=true when a fresh PR is unseen, then false once user revisits', function (): void {
+    Carbon::setTestNow('2026-05-11 12:00:00');
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'activity_id' => $activity->id,
+        'set_at' => Carbon::today()->subHour(),
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->where('hasNewPr', true));
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->where('hasNewPr', false));
 
     Carbon::setTestNow();
 });

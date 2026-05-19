@@ -2,20 +2,24 @@
 
 declare(strict_types=1);
 
-use App\Models\WeeklySnapshot;
-use Illuminate\Support\Carbon;
-use App\Models\PersonalRecord;
-use App\Models\ActivityDetail;
-use App\Models\RunCard;
+use App\Http\Controllers\Api\AnalysisController;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzePostRunSpeechJob;
 use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\PersonalRecord;
+use App\Models\RunCard;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\BriefingComposer;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
@@ -174,4 +178,12 @@ it('authorizes card_flavor only for the card activity owner', function (): void 
     $this->actingAs($owner)
         ->postJson("/api/analyses/card_flavor/{$card->id}/trigger")
         ->assertOk();
+});
+
+it('throws Unauthenticated when the request has no user (defensive guard)', function (): void {
+    $controller = new AnalysisController();
+    $request = Request::create('/api/analyses/briefing_headline/1/trigger', 'POST');
+
+    expect(fn () => $controller->trigger($request, app(AnalysisService::class), 'briefing_headline', 1))
+        ->toThrow(AuthorizationException::class, 'Unauthenticated');
 });

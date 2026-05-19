@@ -46,6 +46,24 @@ describe('PastYouStrip', () => {
         expect(screen.getByText(/lebih tinggi/)).toBeInTheDocument();
     });
 
+    it('renders as an anchor linking to the past activity when activity_id is set', () => {
+        const { container } = render(
+            <PastYouStrip
+                match={{
+                    past: { start_date_local: '2026-04-01T07:00:00', activity_id: 42, name: 'Easy 5k' },
+                    pace_diff_sec: 8,
+                    hr_diff_bpm: -2,
+                    days_ago: 21,
+                }}
+                currentDistance={5000}
+            />,
+        );
+        const link = container.querySelector('a');
+        expect(link).not.toBeNull();
+        expect(link?.getAttribute('href')).toBe('/aktivitas/42');
+        expect(screen.getByText('Easy 5k')).toBeInTheDocument();
+    });
+
     it('hides HR row when hr_diff_bpm is null', () => {
         render(
             <PastYouStrip

@@ -83,6 +83,53 @@ it('does not re-dispatch when one piece is done and the other is queued', functi
     Bus::assertNotDispatched(AnalyzeBriefingJob::class);
 });
 
+it('shows the "Kemarin lari" streak label when last run was yesterday', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-05-17'),
+        'trimp_edwards' => 50.0,
+    ]);
+
+    $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
+
+    expect($result->streakLabel)->toBe('Kemarin lari');
+});
+
+it('shows the "Sudah N hari" label when last run was 2-3 days ago', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-05-15'),
+        'trimp_edwards' => 50.0,
+    ]);
+
+    $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
+
+    expect($result->streakLabel)->toBe('Sudah 3 hari');
+});
+
+it('shows the "Sudah N hari nih" label when last run was more than 3 days ago', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-05-10'),
+        'trimp_edwards' => 50.0,
+    ]);
+
+    $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
+
+    expect($result->streakLabel)->toBe('Sudah 8 hari nih');
+});
+
+it('returns a null streak label when the user has never run', function (): void {
+    $user = User::factory()->create();
+
+    $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
+
+    expect($result->streakLabel)->toBeNull();
+});
+
 it('computes non-LLM fields (vibe label, streak, mood) without an LLM call', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

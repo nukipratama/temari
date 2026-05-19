@@ -81,6 +81,35 @@ describe('useGaze', () => {
         expect(result.current.x).toBeCloseTo(0, 1);
     });
 
+    it('keeps gaze at zero when cursor sits exactly on the element centre', () => {
+        mockMatchMedia({ '(prefers-reduced-motion: reduce)': false, '(pointer: fine)': true });
+        const ref = makeRef();
+        const { result } = renderHook(() => useGaze(ref, { range: 200, falloff: 100 }));
+        act(() => {
+            // centre is (150, 150) per makeRef
+            document.dispatchEvent(new MouseEvent('mousemove', { clientX: 150, clientY: 150 }));
+        });
+        expect(result.current).toEqual({ x: 0, y: 0 });
+        act(() => {
+            document.dispatchEvent(new MouseEvent('mousemove', { clientX: 150, clientY: 150 }));
+        });
+        expect(result.current).toEqual({ x: 0, y: 0 });
+    });
+
+    it('returns to zero from a non-zero gaze when cursor moves to centre', () => {
+        mockMatchMedia({ '(prefers-reduced-motion: reduce)': false, '(pointer: fine)': true });
+        const ref = makeRef();
+        const { result } = renderHook(() => useGaze(ref, { range: 200, falloff: 100 }));
+        act(() => {
+            document.dispatchEvent(new MouseEvent('mousemove', { clientX: 200, clientY: 150 }));
+        });
+        expect(result.current.x).toBeCloseTo(1, 5);
+        act(() => {
+            document.dispatchEvent(new MouseEvent('mousemove', { clientX: 150, clientY: 150 }));
+        });
+        expect(result.current).toEqual({ x: 0, y: 0 });
+    });
+
     it('falls back to zero when ref has no element', () => {
         mockMatchMedia({ '(prefers-reduced-motion: reduce)': false, '(pointer: fine)': true });
         const { result } = renderHook(() => {

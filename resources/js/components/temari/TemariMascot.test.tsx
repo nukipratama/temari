@@ -1,5 +1,6 @@
 import { act, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import * as inertia from '@inertiajs/react';
 import TemariMascot from './TemariMascot';
 
 describe('TemariMascot', () => {
@@ -57,5 +58,38 @@ describe('TemariMascot', () => {
     it('accepts ornaments prop without crashing', () => {
         const { container } = render(<TemariMascot mood="glow" ornaments />);
         expect(container.firstElementChild).toBeTruthy();
+    });
+
+    it('falls back to empty unlocks when usePage throws (non-Inertia context)', () => {
+        const spy = vi.spyOn(inertia, 'usePage').mockImplementation(() => {
+            throw new Error('outside Inertia');
+        });
+        try {
+            const { container } = render(<TemariMascot mood="glow" />);
+            expect(container.querySelector('svg')).toBeInTheDocument();
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
+    it('honours an explicit unlockedAccessories prop override', () => {
+        const { container } = render(
+            <TemariMascot
+                mood="glow"
+                unlockedAccessories={['accessory.headband_legendaris']}
+            />,
+        );
+        expect(container.innerHTML).toContain('y="20.5"');
+    });
+
+    it('skips unlock overlays when showUnlocks is false', () => {
+        const { container } = render(
+            <TemariMascot
+                mood="glow"
+                showUnlocks={false}
+                unlockedAccessories={['accessory.headband_legendaris']}
+            />,
+        );
+        expect(container.innerHTML).not.toContain('y="20.5"');
     });
 });
