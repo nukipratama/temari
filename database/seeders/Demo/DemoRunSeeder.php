@@ -223,6 +223,19 @@ class DemoRunSeeder
             );
             $count++;
         }
+        // WeeklyAggregator skips the current in-progress week to avoid LLM
+        // churn on real ingest. For demo we want the Catatan page populated
+        // end-to-end, so cover every snapshot explicitly.
+        foreach ($weeklyIds as $weeklyId) {
+            $this->analysisService->request(
+                subjectOrType: WeeklySnapshot::class,
+                subjectId: $weeklyId,
+                type: AnalysisType::WeeklyRecap,
+                force: true,
+                delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
+            );
+            $count++;
+        }
 
         return $count;
     }
