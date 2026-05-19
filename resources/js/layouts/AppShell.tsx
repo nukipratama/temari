@@ -3,6 +3,8 @@ import BrandMark from '@/components/BrandMark';
 import DemoBanner from '@/components/DemoBanner';
 import Sidebar from '@/components/Sidebar';
 import SidebarTrigger from '@/components/SidebarTrigger';
+import FloatingTemari from '@/components/temari/FloatingTemari';
+import UnlockToast from '@/components/temari/UnlockToast';
 import { SidebarProvider } from '@/contexts/SidebarContext';
 import { useDawnShift } from '@/hooks/useDawnShift';
 
@@ -42,6 +44,9 @@ export default function AppShell({ children, showSidebar = true }: Readonly<AppS
                 </div>
 
                 <div id="main-content" className="lg:ml-64">{children}</div>
+
+                <FloatingTemari />
+                <UnlockToast />
             </div>
         </SidebarProvider>
     );

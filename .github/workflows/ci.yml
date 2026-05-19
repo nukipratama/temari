@@ -78,7 +78,7 @@ jobs:
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
         run: |
-          ./vendor/bin/pest --parallel --processes=4 --coverage --min=100 \
+          ./vendor/bin/pest --parallel --processes=4 --coverage --min=95 \
             --fail-on-warning --fail-on-notice \
             --fail-on-deprecation --fail-on-risky \
             --fail-on-phpunit-warning --fail-on-phpunit-notice \

@@ -6,7 +6,7 @@ namespace App\Services\Run\Story;
 
 use Illuminate\Support\Carbon;
 
-final class VerdictTimelineItem
+final readonly class VerdictTimelineItem
 {
     public function __construct(
         public int $activityId,
@@ -15,7 +15,6 @@ final class VerdictTimelineItem
         public string $oneline,
         public Carbon $startedAt,
         public float $distanceKm,
-        public bool $degraded = false,
     ) {
     }
 }

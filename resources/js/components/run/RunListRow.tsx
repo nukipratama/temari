@@ -26,7 +26,7 @@ export default function RunListRow({ detail, mood = null }: Readonly<RunListRowP
 
     return (
         <MotionLink
-            href={`/runs/${detail.activity_id}`}
+            href={`/aktivitas/${detail.activity_id}`}
             whileTap={pressShrink}
             className="flex items-center gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface dark:border-line-dark dark:hover:bg-surface-dark-elev"
         >

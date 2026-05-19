@@ -30,7 +30,7 @@ export function formatIdDate(iso: string | null, format: 'short' | 'long' = 'sho
     if (!iso) return '—';
     const d = new Date(iso);
     if (format === 'long') {
-        return d.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+        return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
     }
-    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+    return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'short' });
 }

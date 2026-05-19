@@ -46,5 +46,9 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="INERTIA_SSR_ENABLED" value="false"/>
+        <!-- Fake Azure config so AnalysisService::autoDispatchEnabled() lets
+             dispatch tests fake the bus instead of silently no-op'ing. -->
+        <env name="AZURE_OPENAI_URI" value="https://x.openai.azure.com/openai/deployments/x/chat/completions?api-version=2024-10-21"/>
+        <env name="AZURE_OPENAI_API_KEY" value="fake-test-key"/>
     </php>
 </phpunit>

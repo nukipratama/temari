@@ -8,9 +8,10 @@ import type { AuthUser, SharedProps } from '@/types/inertia';
 
 const LINKS: ReadonlyArray<{ route: string; href: string; icon: string; label: string }> = [
     { route: 'dashboard', href: '/', icon: 'mdi:home-outline', label: 'Beranda' },
-    { route: 'runs.index', href: '/runs', icon: 'mdi:run-fast', label: 'Aktivitas' },
-    { route: 'cards.index', href: '/cards', icon: 'mdi:cards-outline', label: 'Kartu' },
-    { route: 'progress', href: '/progress', icon: 'mdi:chart-line', label: 'Catatan' },
+    { route: 'aktivitas.index', href: '/aktivitas', icon: 'mdi:run-fast', label: 'Aktivitas' },
+    { route: 'kartu.index', href: '/kartu', icon: 'mdi:cards-outline', label: 'Kartu' },
+    { route: 'catatan', href: '/catatan', icon: 'mdi:chart-line', label: 'Catatan' },
+    { route: 'rekor', href: '/rekor', icon: 'mdi:trophy-variant-outline', label: 'Rekor' },
 ];
 
 export default function Sidebar() {
@@ -139,8 +140,8 @@ function UserChip({ user, onNavigate }: Readonly<{ user: AuthUser; onNavigate: (
 
             {open && (
                 <MenuList>
-                    <MenuItem href="/profile" icon="mdi:account-outline" label="Profil" onSelect={onNavigate} />
-                    <MenuItem href="/settings" icon="mdi:cog-outline" label="Pengaturan" onSelect={onNavigate} />
+                    <MenuItem href="/profil" icon="mdi:account-outline" label="Profil" onSelect={onNavigate} />
+                    <MenuItem href="/pengaturan" icon="mdi:cog-outline" label="Pengaturan" onSelect={onNavigate} />
                     <MenuButton onClick={logout} icon="mdi:logout" label="Keluar" />
                 </MenuList>
             )}

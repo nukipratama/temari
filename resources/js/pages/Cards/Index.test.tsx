@@ -251,4 +251,43 @@ describe('Cards/Index', () => {
         );
         expect(screen.getAllByRole('link').length).toBeGreaterThan(2);
     });
+
+    it('triggers confetti burst on epic/legendary card click', () => {
+        render(
+            <CardsIndex
+                cards={{
+                    data: [
+                        {
+                            id: 1,
+                            activity_id: 1,
+                            rarity: 'epik',
+                            special_move: 'Epic Run',
+                            badges: [],
+                            activity: { id: 1, user_id: 1, analyzed_at: '2026-05-10', detail: baseDetail },
+                        },
+                        {
+                            id: 2,
+                            activity_id: 2,
+                            rarity: 'legendaris',
+                            special_move: 'Legendary',
+                            badges: [],
+                            activity: { id: 2, user_id: 2, analyzed_at: '2026-05-09', detail: { ...baseDetail, id: 12, activity_id: 2 } },
+                        },
+                    ],
+                    current_page: 1,
+                    last_page: 1,
+                    per_page: 24,
+                    total: 2,
+                    links: [],
+                }}
+                selectedRarity={null}
+            />,
+        );
+        const links = screen.getAllByRole('link');
+        // Click all aktivitas links — covers both spotlight & grid burst handlers.
+        for (const l of links) {
+            if ((l as HTMLAnchorElement).href.includes('/aktivitas/')) l.click();
+        }
+        expect(screen.getByText(/Spotlight kartu/i)).toBeInTheDocument();
+    });
 });

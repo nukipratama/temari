@@ -8,15 +8,30 @@ const briefing: BriefingResult = {
     vibeState: 'fresh',
     vibeLabel: 'Fresh',
     vibeEmoji: '✨',
-    headlineLine: 'Pagi yang oke',
-    suggestionLine: 'Run sebentar',
+    headline: {
+        id: 1,
+        status: 'done',
+        content: 'Pagi yang oke',
+        type: 'briefing_headline',
+        subject_type: 'briefing_user_day',
+        subject_id: 1,
+        discriminator: '2026-05-18',
+    },
+    suggestion: {
+        id: 2,
+        status: 'done',
+        content: 'Run sebentar',
+        type: 'briefing_suggestion',
+        subject_type: 'briefing_user_day',
+        subject_id: 1,
+        discriminator: '2026-05-18',
+    },
     recoveryLabel: 'Pemulihan: oke',
     recoveryTone: 'positive',
     streakLabel: 'Lari hari ini',
     sigilPattern: 'orct',
     accessory: 'headband',
     mood: 'glow',
-    degraded: false,
 };
 
 const chartData: FitnessChartData = {
@@ -75,7 +90,6 @@ const verdict: VerdictTimelineItem = {
     oneline: 'Solid',
     startedAt: '2026-05-10T07:00',
     distanceKm: 5,
-    degraded: false,
 };
 
 beforeEach(() => {

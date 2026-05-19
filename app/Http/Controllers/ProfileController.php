@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityDetail;
 use App\Models\User;
+use App\Models\UserUnlock;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,6 +28,16 @@ class ProfileController extends Controller
             )
             ->sum('distance');
 
+        $unlocks = UserUnlock::query()
+            ->where('user_id', $user->id)
+            ->orderBy('unlocked_at')
+            ->get()
+            ->map(fn (UserUnlock $row): array => [
+                'unlock_key' => $row->unlock_key,
+                'unlocked_at' => $row->unlocked_at->toIso8601String(),
+            ])
+            ->all();
+
         return Inertia::render('Profile', [
             'stats' => [
                 'total_runs' => $totalRuns,
@@ -38,6 +49,8 @@ class ProfileController extends Controller
                 'scopes' => $connection->scopes,
                 'token_expires_at' => $connection->token_expires_at->toIso8601String(),
             ],
+            'unlocks' => $unlocks,
+            'unlockCatalog' => config('temari_unlocks'),
         ]);
     }
 }

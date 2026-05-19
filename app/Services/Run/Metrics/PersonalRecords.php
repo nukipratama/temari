@@ -7,10 +7,19 @@ namespace App\Services\Run\Metrics;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Services\Gamification\UnlockEngine;
+use App\Services\AI\AnalysisType;
+use App\Services\AI\AnalysisService;
 use Illuminate\Support\Carbon;
 
 class PersonalRecords
 {
+    public function __construct(
+        private readonly AnalysisService $analysisService,
+        private readonly UnlockEngine $unlockEngine,
+    ) {
+    }
+
     private const array DISTANCE_CATEGORIES = [
         '1km' => 1_000,
         '5km' => 5_000,
@@ -39,6 +48,10 @@ class PersonalRecords
 
         $broken = array_merge($broken, $this->checkDistancePrs($activity, $detail, $setAt));
         $broken = array_merge($broken, $this->checkEffortPrs($activity, $detail, $setAt));
+
+        if ($broken !== []) {
+            $this->unlockEngine->grantEligible($activity->user);
+        }
 
         return $broken;
     }
@@ -131,7 +144,7 @@ class PersonalRecords
             return false;
         }
 
-        PersonalRecord::query()->updateOrCreate(
+        $pr = PersonalRecord::query()->updateOrCreate(
             [
                 'user_id' => $activity->user_id,
                 'category' => $category,
@@ -141,6 +154,13 @@ class PersonalRecords
                 'activity_id' => $activity->id,
                 'set_at' => $setAt,
             ],
+        );
+
+        $this->analysisService->request(
+            subjectOrType: PersonalRecord::class,
+            subjectId: $pr->id,
+            type: AnalysisType::PrContext,
+            force: true, // PR refreshed, regenerate flavor with new delta context
         );
 
         return true;

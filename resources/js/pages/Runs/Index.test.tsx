@@ -28,7 +28,7 @@ describe('Runs/Index', () => {
         expect(screen.getByText(/Belum ada aktivitas/)).toBeInTheDocument();
     });
 
-    it('renders rows when runs exist', () => {
+    it('renders rows grouped under a week header', () => {
         render(
             <RunsIndex
                 runs={{
@@ -58,6 +58,10 @@ describe('Runs/Index', () => {
             />,
         );
         expect(screen.getByText('Morning Run')).toBeInTheDocument();
+        // Week range header reads "Senin, … — Minggu, …".
+        expect(screen.getAllByText(/Senin/).length).toBeGreaterThan(0);
+        expect(screen.getByText(/1 run/)).toBeInTheDocument();
+        expect(screen.getByText(/5\.0 km/)).toBeInTheDocument();
     });
 
     it('skips runs missing detail', () => {
@@ -74,11 +78,10 @@ describe('Runs/Index', () => {
                 }}
             />,
         );
-        // Renders without crashing, no row produced.
         expect(screen.queryByRole('link', { name: /run/i })).not.toBeInTheDocument();
     });
 
-    it('renders pagination links (active + inactive + disabled) when last_page > 1', () => {
+    it('renders pagination links when last_page > 1', () => {
         render(
             <RunsIndex
                 runs={{
@@ -105,15 +108,45 @@ describe('Runs/Index', () => {
                     total: 40,
                     links: [
                         { url: null, label: '&laquo; Previous', active: false },
-                        { url: '/runs?page=1', label: '1', active: true },
-                        { url: '/runs?page=2', label: '2', active: false },
-                        { url: '/runs?page=2', label: 'Next &raquo;', active: false },
+                        { url: '/aktivitas?page=1', label: '1', active: true },
+                        { url: '/aktivitas?page=2', label: '2', active: false },
+                        { url: '/aktivitas?page=2', label: 'Next &raquo;', active: false },
                     ],
                 }}
             />,
         );
-        // Includes AppShell nav + brand + run row + active/inactive pagination links
-        // (disabled "Previous" renders as a span, not a link).
         expect(screen.getAllByRole('link').length).toBeGreaterThan(3);
+    });
+
+    it('buckets activities without start_date_local under "Tanpa tanggal"', () => {
+        render(
+            <RunsIndex
+                runs={{
+                    data: [
+                        {
+                            id: 1,
+                            user_id: 1,
+                            analyzed_at: '2026-05-18',
+                            detail: {
+                                id: 11,
+                                activity_id: 1,
+                                name: 'Orphan run',
+                                start_date_local: null,
+                                distance: 5000,
+                                moving_time: 1800,
+                                average_heartrate: 150,
+                                trimp_edwards: 60,
+                            },
+                        },
+                    ],
+                    current_page: 1,
+                    last_page: 1,
+                    per_page: 20,
+                    total: 1,
+                    links: [],
+                }}
+            />,
+        );
+        expect(screen.getByText('Tanpa tanggal')).toBeInTheDocument();
     });
 });

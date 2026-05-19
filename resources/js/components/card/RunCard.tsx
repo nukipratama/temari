@@ -26,44 +26,44 @@ function rarityStyle(rarity: string): RarityStyle {
         case 'legendaris':
             return {
                 icon: 'mdi:crown',
-                ringClass: 'ring-pop-500',
-                chipClass: 'bg-pop-500 text-white',
-                bgClass: 'bg-gradient-to-br from-pop-50 via-surface-elev to-pop-100/60',
+                ringClass: 'ring-pop-500 shadow-pop-300/40',
+                chipClass: 'bg-pop-500 text-white ring-2 ring-white',
+                bgClass: 'bg-gradient-to-br from-pop-100 via-pop-50 to-accent-100/60',
                 cornerClass: 'from-pop-300 to-pop-500',
                 holographic: true,
             };
         case 'epik':
             return {
                 icon: 'mdi:star-four-points',
-                ringClass: 'ring-accent-500',
-                chipClass: 'bg-accent-500 text-white',
-                bgClass: 'bg-gradient-to-br from-accent-50 via-surface-elev to-accent-100/60',
-                cornerClass: 'from-accent-200 to-accent-400',
+                ringClass: 'ring-accent-500 shadow-accent-300/40',
+                chipClass: 'bg-accent-500 text-white ring-2 ring-white',
+                bgClass: 'bg-gradient-to-br from-accent-100 via-accent-50 to-pop-50/60',
+                cornerClass: 'from-accent-300 to-accent-500',
                 holographic: false,
             };
         case 'langka':
             return {
                 icon: 'mdi:star',
-                ringClass: 'ring-mood-spinning',
-                chipClass: 'bg-mood-spinning text-white',
-                bgClass: 'bg-gradient-to-br from-mood-spinning/10 via-surface-elev to-mood-spinning/15',
-                cornerClass: 'from-mood-spinning/40 to-mood-spinning/70',
+                ringClass: 'ring-mood-spinning shadow-mood-spinning/30',
+                chipClass: 'bg-mood-spinning text-white ring-2 ring-white',
+                bgClass: 'bg-gradient-to-br from-mood-spinning/20 via-surface-elev to-mood-spinning/10',
+                cornerClass: 'from-mood-spinning/50 to-mood-spinning',
                 holographic: false,
             };
         case 'jarang':
             return {
                 icon: 'mdi:star-outline',
-                ringClass: 'ring-brand-400',
-                chipClass: 'bg-brand-400 text-white',
-                bgClass: 'bg-gradient-to-br from-brand-50 via-surface-elev to-brand-100/40',
-                cornerClass: 'from-brand-200 to-brand-400',
+                ringClass: 'ring-brand-400 shadow-brand-200/40',
+                chipClass: 'bg-brand-500 text-white ring-2 ring-white',
+                bgClass: 'bg-gradient-to-br from-brand-100 via-surface-elev to-brand-50',
+                cornerClass: 'from-brand-300 to-brand-500',
                 holographic: false,
             };
         default:
             return {
                 icon: 'mdi:circle-outline',
                 ringClass: 'ring-line',
-                chipClass: 'bg-ink-meta text-white',
+                chipClass: 'bg-ink-meta text-white ring-2 ring-white',
                 bgClass: 'bg-surface-elev',
                 cornerClass: 'from-line to-line',
                 holographic: false,
@@ -81,8 +81,8 @@ export default function RunCard({ card, detail, className, size = 'normal' }: Re
     return (
         <article
             className={cn(
-                'group relative flex h-full flex-col overflow-hidden rounded-3xl ring-2 transition',
-                isHero ? 'p-7 ring-4' : 'p-5 ring-2',
+                'group relative flex h-full flex-col overflow-hidden rounded-3xl shadow-md ring-2 transition hover:shadow-xl',
+                isHero ? 'p-7 ring-4 shadow-lg' : 'p-5 ring-2',
                 r.ringClass,
                 r.bgClass,
                 className,

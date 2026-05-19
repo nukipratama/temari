@@ -2,10 +2,10 @@ import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
+import AnalysisStatus from './AnalysisStatus';
 import TemariMascot from './TemariMascot';
 import TemariPeek from './TemariPeek';
-import DegradedChip from './DegradedChip';
-import type { BriefingResult, RecoveryTone } from '@/types/inertia';
+import type { AnalysisPayload, BriefingResult, RecoveryTone } from '@/types/inertia';
 
 const PEEK_LINES = [
     'Lagi nungguin lari berikutnya nih',
@@ -17,11 +17,17 @@ const PEEK_LINES = [
 
 interface BriefingCardProps {
     briefing: BriefingResult;
+    className?: string;
 }
 
-export default function BriefingCard({ briefing }: Readonly<BriefingCardProps>) {
+export default function BriefingCard({ briefing, className }: Readonly<BriefingCardProps>) {
     const ruleClass = vibeLeftRule(briefing.vibeState);
     const recoveryClass = recoveryChipClass(briefing.recoveryTone);
+    const bothDone =
+        briefing.headline.status === 'done' &&
+        briefing.suggestion.status === 'done' &&
+        briefing.headline.content !== null &&
+        briefing.suggestion.content !== null;
 
     return (
         <motion.div
@@ -29,40 +35,42 @@ export default function BriefingCard({ briefing }: Readonly<BriefingCardProps>) 
             initial="hidden"
             animate="visible"
             className={cn(
-                'rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5',
-                // Mood-coded 3px left rule replaces the old pastel swirl.
+                'flex h-full flex-col rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5',
                 'border-l-[3px]',
                 ruleClass,
+                className,
             )}
         >
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
+            <div className="flex flex-1 flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
                 <div className="relative shrink-0">
                     <TemariMascot
                         mood={briefing.mood}
-                        sizeClass="h-44 w-44"
+                        sizeClass="h-52 w-52 sm:h-56 sm:w-56"
                         idle="mood"
                         gazeTracking
+                        ornaments
                         aria-label={`Temari — mood ${briefing.mood}`}
                     />
                     <TemariPeek lines={PEEK_LINES} />
                 </div>
 
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 self-center">
                     <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
                             Briefing Temari
                         </span>
-                        <span className="text-xs font-semibold text-ink dark:text-ink-dark">
+                        <span className="text-xs font-semibold text-ink">
                             {briefing.vibeEmoji} {briefing.vibeLabel}
                         </span>
-                        {briefing.degraded && <DegradedChip />}
                     </div>
-                    <p className="mt-2 text-lg font-semibold leading-snug tracking-tight text-ink dark:text-ink-dark">
-                        {briefing.headlineLine}
-                    </p>
-                    <p className="mt-1 text-sm leading-relaxed text-ink-soft dark:text-ink-soft-dark">
-                        {briefing.suggestionLine}
-                    </p>
+
+                    <div className="mt-2">
+                        {bothDone ? (
+                            <BriefingDone headline={briefing.headline} suggestion={briefing.suggestion} />
+                        ) : (
+                            <BriefingPending headline={briefing.headline} />
+                        )}
+                    </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
                         <span className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold', recoveryClass)}>
@@ -70,7 +78,7 @@ export default function BriefingCard({ briefing }: Readonly<BriefingCardProps>) 
                             {briefing.recoveryLabel}
                         </span>
                         {briefing.streakLabel !== null && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-elev/70 px-3 py-1 text-xs font-semibold text-ink dark:bg-surface-dark-elev/70 dark:text-ink-dark">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-elev/70 px-3 py-1 text-xs font-semibold text-ink">
                                 <Icon icon="mdi:run" width={14} height={14} aria-hidden />
                                 {briefing.streakLabel}
                             </span>
@@ -79,6 +87,49 @@ export default function BriefingCard({ briefing }: Readonly<BriefingCardProps>) 
                 </div>
             </div>
         </motion.div>
+    );
+}
+
+function BriefingDone({ headline, suggestion }: Readonly<{ headline: AnalysisPayload; suggestion: AnalysisPayload }>) {
+    return (
+        <div className="space-y-1">
+            <AnalysisStatus
+                analysis={headline}
+                inertiaReloadProps={['briefing']}
+                size="md"
+                allowReanalyze={false}
+                renderContent={(content) => (
+                    <p className="text-lg font-semibold leading-snug tracking-tight text-ink">{content}</p>
+                )}
+            />
+            <AnalysisStatus
+                analysis={suggestion}
+                inertiaReloadProps={['briefing']}
+                size="sm"
+                renderContent={(content) => (
+                    <p className="text-sm leading-relaxed text-ink-soft">{content}</p>
+                )}
+            />
+        </div>
+    );
+}
+
+/**
+ * When at least one side is still pending/queued/failed, render a single
+ * `AnalysisStatus` on the headline so the user sees one CTA instead of two
+ * stacked "Coba lagi" buttons. Triggering it kicks the shared LLM call that
+ * fills both rows (the job-side cache de-dupes the Azure round-trip).
+ */
+function BriefingPending({ headline }: Readonly<{ headline: AnalysisPayload }>) {
+    return (
+        <AnalysisStatus
+            analysis={headline}
+            inertiaReloadProps={['briefing']}
+            size="md"
+            renderContent={(content) => (
+                <p className="text-lg font-semibold leading-snug tracking-tight text-ink">{content}</p>
+            )}
+        />
     );
 }
 
@@ -109,6 +160,6 @@ function recoveryChipClass(tone: RecoveryTone): string {
         case 'alert':
             return 'bg-mood-cooked/15 text-mood-cooked';
         default:
-            return 'bg-surface-elev/70 text-ink dark:bg-surface-dark-elev/70 dark:text-ink-dark';
+            return 'bg-surface-elev/70 text-ink';
     }
 }

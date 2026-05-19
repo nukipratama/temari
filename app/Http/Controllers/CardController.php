@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\RunCard;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,8 +27,10 @@ class CardController extends Controller
             $query->where('rarity', $rarity);
         }
 
+        $page = $query->paginate(24)->withQueryString();
+
         return Inertia::render('Cards/Index', [
-            'cards' => $query->paginate(24)->withQueryString(),
+            'cards' => $page,
             'selectedRarity' => is_string($rarity) ? $rarity : null,
         ]);
     }

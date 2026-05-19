@@ -1,5 +1,5 @@
-import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, render } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import TemariMascot from './TemariMascot';
 
 describe('TemariMascot', () => {
@@ -37,6 +37,25 @@ describe('TemariMascot', () => {
         const { container } = render(
             <TemariMascot mood={'mystery' as unknown as 'glow'} idle="mood" />,
         );
+        expect(container.firstElementChild).toBeTruthy();
+    });
+
+    it('schedules + fires the idle fidget tick when timers advance', () => {
+        vi.useFakeTimers();
+        try {
+            const { container, unmount } = render(<TemariMascot mood="glow" idle="breath" />);
+            act(() => {
+                vi.advanceTimersByTime(25_000);
+            });
+            expect(container.firstElementChild).toBeTruthy();
+            unmount();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('accepts ornaments prop without crashing', () => {
+        const { container } = render(<TemariMascot mood="glow" ornaments />);
         expect(container.firstElementChild).toBeTruthy();
     });
 });

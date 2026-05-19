@@ -2,13 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\CardController;
+use App\Http\Controllers\CatatanController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ProgressController;
+use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
@@ -22,11 +24,34 @@ Route::middleware('guest')->group(function (): void {
 
 Route::middleware('auth')->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
-    Route::get('/runs', [RunController::class, 'index'])->name('runs.index');
-    Route::get('/runs/{activity}', [RunController::class, 'show'])->name('runs.show');
-    Route::get('/cards', [CardController::class, 'index'])->name('cards.index');
-    Route::get('/progress', ProgressController::class)->name('progress');
-    Route::get('/settings', SettingsController::class)->name('settings');
-    Route::get('/profile', ProfileController::class)->name('profile');
+
+    Route::get('/aktivitas', [RunController::class, 'index'])->name('aktivitas.index');
+    Route::get('/aktivitas/{activity}', [RunController::class, 'show'])->name('aktivitas.show');
+
+    Route::get('/kartu', [CardController::class, 'index'])->name('kartu.index');
+
+    Route::get('/catatan', CatatanController::class)->name('catatan');
+    Route::get('/rekor', RekorController::class)->name('rekor');
+
+    Route::get('/pengaturan', SettingsController::class)->name('pengaturan');
+    Route::get('/profil', ProfileController::class)->name('profil');
+
     Route::post('/logout', [StravaAuthController::class, 'logout'])->name('auth.logout');
+
+    // Legacy 301 redirects — keep deep links working from external bookmarks.
+    Route::permanentRedirect('/runs', '/aktivitas');
+    Route::redirect('/runs/{activity}', '/aktivitas/{activity}', 301);
+    Route::permanentRedirect('/cards', '/kartu');
+    Route::permanentRedirect('/progress', '/catatan');
+    Route::permanentRedirect('/settings', '/pengaturan');
+    Route::permanentRedirect('/profile', '/profil');
+
+    Route::middleware('throttle:ai-analysis')->group(function (): void {
+        Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
+            ->whereNumber('subjectId')
+            ->name('api.analyses.show');
+        Route::post('/api/analyses/{type}/{subjectId}/trigger', [AnalysisController::class, 'trigger'])
+            ->whereNumber('subjectId')
+            ->name('api.analyses.trigger');
+    });
 });

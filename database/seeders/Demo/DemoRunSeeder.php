@@ -7,12 +7,15 @@ namespace Database\Seeders\Demo;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
+use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use App\Services\Geo\PolylineEncoder;
 use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PersonalRecords;
@@ -23,6 +26,8 @@ use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
 use Closure;
 use Illuminate\Support\Carbon;
+use Random\Engine\Mt19937;
+use Random\Randomizer;
 
 use function count;
 use function is_array;
@@ -56,27 +61,32 @@ class DemoRunSeeder
     ) {
     }
 
-    private function demoPolyline(): string
+    private function demoPolyline(int $distanceM, int $seed): string
     {
-        static $cached = null;
-        if ($cached !== null) {
-            return $cached;
-        }
+        $rng = new Randomizer(new Mt19937($seed));
 
         $lat = self::DEMO_START_LAT;
         $lng = self::DEMO_START_LNG;
 
-        $points = [
-            [$lat, $lng],
-            [$lat + 0.0045, $lng + 0.0010],
-            [$lat + 0.0050, $lng + 0.0055],
-            [$lat + 0.0020, $lng + 0.0070],
-            [$lat - 0.0010, $lng + 0.0055],
-            [$lat - 0.0015, $lng + 0.0015],
-            [$lat, $lng],
-        ];
+        $radiusM = max(250, (int) round($distanceM / (2 * M_PI)));
+        $latPerM = 1.0 / 111_320.0;
+        $lngPerM = 1.0 / (111_320.0 * cos(deg2rad($lat)));
 
-        return $cached = $this->polylineEncoder->encode($points);
+        $vertices = $rng->getInt(10, 16);
+        $rotationRad = $rng->getInt(0, 359) * M_PI / 180;
+
+        $points = [];
+        for ($i = 0; $i <= $vertices; $i++) {
+            $angle = ($i / $vertices) * 2 * M_PI + $rotationRad;
+            $jitter = 0.75 + $rng->getInt(0, 50) / 100;
+            $r = $radiusM * $jitter;
+            $points[] = [
+                $lat + sin($angle) * $r * $latPerM,
+                $lng + cos($angle) * $r * $lngPerM,
+            ];
+        }
+
+        return $this->polylineEncoder->encode($points);
     }
 
     /**
@@ -87,35 +97,73 @@ class DemoRunSeeder
     {
         $log ??= static fn (string $_): null => null;
 
-        $user = $this->ensureDemoUser($log);
-        if ($fresh) {
-            $this->wipeDemoData($user, $log);
-        }
+        // Demo seed dispatches hundreds of analyses; skip the queue and mark
+        // them failed at the end so users retry via the UI on demand.
+        $previousAutoDispatch = (bool) config('ai.auto_dispatch', true);
+        config(['ai.auto_dispatch' => false]);
 
-        $blueprints = $this->library->all();
-        usort($blueprints, fn (RunBlueprint $a, RunBlueprint $b): int => $a->startsAt <=> $b->startsAt);
-
-        $log(sprintf('Seeding %d runs for %s...', count($blueprints), $user->email));
-
-        $count = 0;
-        foreach ($blueprints as $blueprint) {
-            $this->seedOne($user, $blueprint);
-            $count++;
-            if ($count % 20 === 0) {
-                $log(sprintf('  ...%d/%d runs materialised', $count, count($blueprints)));
+        try {
+            $user = $this->ensureDemoUser($log);
+            if ($fresh) {
+                $this->wipeDemoData($user, $log);
             }
+
+            $blueprints = $this->library->all();
+            usort($blueprints, fn (RunBlueprint $a, RunBlueprint $b): int => $a->startsAt <=> $b->startsAt);
+
+            $log(sprintf('Seeding %d runs for %s...', count($blueprints), $user->email));
+
+            $count = 0;
+            foreach ($blueprints as $blueprint) {
+                $this->seedOne($user, $blueprint);
+                $count++;
+                if ($count % 20 === 0) {
+                    $log(sprintf('  ...%d/%d runs materialised', $count, count($blueprints)));
+                }
+            }
+
+            $log('Rebuilding weekly snapshots...');
+            $weeks = $this->weeklyAggregator->rebuildFor($user);
+            $log(sprintf('  %d weekly snapshots written', $weeks));
+
+            $log("Generating today's Temari greeting...");
+            $vibeState = $this->vibe->current($user);
+            $this->temari->dailyGreeting($user, $vibeState);
+            $log("  Today's vibe: {$vibeState}");
+
+            $marked = $this->markPendingAsFailed($user);
+            $log(sprintf('  %d AI analyses marked as failed (retry from UI to generate).', $marked));
+
+            return $count;
+        } finally {
+            config(['ai.auto_dispatch' => $previousAutoDispatch]);
         }
+    }
 
-        $log('Rebuilding weekly snapshots...');
-        $weeks = $this->weeklyAggregator->rebuildFor($user);
-        $log(sprintf('  %d weekly snapshots written', $weeks));
+    private function markPendingAsFailed(User $user): int
+    {
+        $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
+        $weeklyIds = WeeklySnapshot::query()->where('user_id', $user->id)->pluck('id');
+        $prIds = PersonalRecord::query()->where('user_id', $user->id)->pluck('id');
+        $cardIds = RunCard::query()->whereIn('activity_id', $activityIds)->pluck('id');
 
-        $log("Generating today's Temari greeting...");
-        $vibeState = $this->vibe->current($user);
-        $this->temari->dailyGreeting($user, $vibeState);
-        $log("  Today's vibe: {$vibeState}");
-
-        return $count;
+        return Analysis::query()
+            ->where('status', AnalysisStatus::Pending)
+            ->where(function ($q) use ($user, $activityIds, $weeklyIds, $prIds, $cardIds): void {
+                $q->where(fn ($qq) => $qq->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
+                    ->orWhere(fn ($qq) => $qq->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $weeklyIds))
+                    ->orWhere(fn ($qq) => $qq->where('subject_type', PersonalRecord::class)->whereIn('subject_id', $prIds))
+                    ->orWhere(fn ($qq) => $qq->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
+                    ->orWhere(fn ($qq) => $qq->whereIn('subject_type', [
+                        AnalysisType::BRIEFING_SUBJECT_TYPE,
+                        AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+                        AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
+                    ])->where('subject_id', $user->id));
+            })
+            ->update([
+                'status' => AnalysisStatus::Failed,
+                'error' => 'Demo data — klik retry buat generate narasi Temari.',
+            ]);
     }
 
     private function ensureDemoUser(Closure $log): User
@@ -196,7 +244,9 @@ class DemoRunSeeder
             'average_cadence' => $blueprint->hasCadenceSensor ? StreamStats::mean($cadenceStream) : null,
             'calories' => round($blueprint->distanceM / 1000 * 65),
             'splits_metric' => $splits,
-            'summary_polyline' => $blueprint->hasGps ? $this->demoPolyline() : null,
+            'summary_polyline' => $blueprint->hasGps
+                ? $this->demoPolyline($blueprint->distanceM, $blueprint->seed())
+                : null,
             'start_lat' => $blueprint->hasGps ? self::DEMO_START_LAT : null,
             'start_lng' => $blueprint->hasGps ? self::DEMO_START_LNG : null,
             'location_name' => $blueprint->hasGps ? self::DEMO_LOCATION_NAME : null,

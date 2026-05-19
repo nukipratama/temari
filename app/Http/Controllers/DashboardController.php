@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
+use App\Models\PersonalRecord;
 use App\Models\StoryLine;
+use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\TrainingLoad;
-use App\Services\Run\Story\Contracts\BriefingNarrator;
+use App\Services\Run\Story\BriefingComposer;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
@@ -26,8 +30,9 @@ class DashboardController extends Controller
         Vibe $vibe,
         Temari $temari,
         TrainingLoad $trainingLoad,
-        BriefingNarrator $briefingService,
+        BriefingComposer $briefingComposer,
         VerdictNarrator $verdictTimeline,
+        AnalysisService $analysisService,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -36,7 +41,7 @@ class DashboardController extends Controller
         $this->resolveGreeting($user, $temari, $vibe->current($user, $today), $today);
 
         $load = $trainingLoad->summary($user, $today);
-        $briefing = $briefingService->generate($user, $today);
+        $briefing = $briefingComposer->compose($user, $today);
         $verdicts = $verdictTimeline->recent($user);
 
         $weeks = WeeklySnapshot::query()
@@ -61,10 +66,66 @@ class DashboardController extends Controller
             'snapshot' => $weeks->last(),
             'recentRuns' => $recentRuns,
             'chartData' => $this->fitnessChartData($weeks),
+            'trendAnalysis' => $this->resolveTrendCaption($user, $today, $analysisService),
+            'hasNewPr' => $this->detectNewPr($user),
         ]);
     }
 
-    // One greeting per (user, day); reuse for the rest of the day.
+    private function detectNewPr(User $user): bool
+    {
+        $latest = PersonalRecord::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('set_at')
+            ->value('set_at');
+
+        if ($latest === null) {
+            return false;
+        }
+
+        $latestAt = Carbon::parse($latest);
+        $seenAt = $user->last_seen_pr_ledger_at;
+
+        if ($seenAt !== null && $seenAt->gte($latestAt)) {
+            return false;
+        }
+
+        $user->forceFill(['last_seen_pr_ledger_at' => $latestAt])->save();
+
+        return true;
+    }
+
+    /**
+     * @return array{
+     *     id: int|null,
+     *     status: string,
+     *     content: string|null,
+     *     type: string,
+     *     subject_type: string,
+     *     subject_id: int,
+     *     discriminator: string|null,
+     * }
+     */
+    private function resolveTrendCaption(User $user, Carbon $today, AnalysisService $analysisService): array
+    {
+        $discriminator = $today->toDateString();
+        $subjectType = AnalysisType::TREND_CAPTION_SUBJECT_TYPE;
+
+        $row = Analysis::query()
+            ->forSubject($subjectType, $user->id, AnalysisType::TrendCaption, $discriminator)
+            ->first();
+
+        if ($row === null) {
+            $row = $analysisService->request(
+                subjectOrType: $subjectType,
+                subjectId: $user->id,
+                type: AnalysisType::TrendCaption,
+                discriminator: $discriminator,
+            );
+        }
+
+        return Analysis::toPayload($row, AnalysisType::TrendCaption, $subjectType, $user->id, $discriminator);
+    }
+
     private function resolveGreeting(User $user, Temari $temari, string $vibeState, Carbon $today): StoryLine
     {
         $existing = StoryLine::query()
