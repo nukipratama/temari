@@ -1,15 +1,11 @@
 <?php
 
-$providers = [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\HorizonServiceProvider::class,
+use App\Providers\AppServiceProvider;
+use App\Providers\HorizonServiceProvider;
+use App\Providers\TelescopeServiceProvider;
+
+return [
+    AppServiceProvider::class,
+    HorizonServiceProvider::class,
+    TelescopeServiceProvider::class,
 ];
-
-// Telescope is a dev dependency and is not installed in prod (composer
-// install --no-dev). Register its provider only when the package's parent
-// class is present.
-if (class_exists(Laravel\Telescope\TelescopeApplicationServiceProvider::class)) {
-    $providers[] = App\Providers\TelescopeServiceProvider::class;
-}
-
-return $providers;

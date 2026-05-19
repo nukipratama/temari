@@ -46,8 +46,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     #[Override]
     protected function gate(): void
     {
-        Gate::define('viewTelescope', fn (User $user) => in_array($user->email, [
-            //
-        ]));
+        Gate::define('viewTelescope', fn (User $user): bool => ($id = $user->stravaConnection?->strava_athlete_id)
+            && in_array((int) $id, config('devtools.admin_strava_ids'), true));
     }
 }

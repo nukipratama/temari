@@ -13,8 +13,8 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     #[Override]
     protected function gate(): void
     {
-        Gate::define('viewHorizon', fn ($user = null) => in_array(optional($user)->email, [
-            //
-        ]));
+        Gate::define('viewHorizon', fn ($user = null): bool => $user
+            && ($id = $user->stravaConnection?->strava_athlete_id)
+            && in_array((int) $id, config('devtools.admin_strava_ids'), true));
     }
 }

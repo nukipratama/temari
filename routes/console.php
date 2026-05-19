@@ -12,3 +12,5 @@ Artisan::command('inspire', function () {
 
 // 05:00 local time: refresh trend caption for active users (last 7 days).
 Schedule::command('ai:daily-trend')->dailyAt('05:00');
+
+Schedule::command('telescope:prune --hours=72')->daily();
