@@ -53,4 +53,35 @@ describe('Profile', () => {
         const dashes = screen.getAllByText('—');
         expect(dashes.length).toBeGreaterThanOrEqual(2);
     });
+
+    it('renders Koleksi section with unlocked + locked items', () => {
+        setup();
+        render(
+            <Profile
+                stats={baseStats}
+                strava={null}
+                unlocks={[{ unlock_key: 'accessory.medal_gold', unlocked_at: '2026-04-01T00:00:00+07:00' }]}
+                unlockCatalog={{
+                    'accessory.medal_gold': {
+                        name: 'Medali Emas',
+                        icon: 'mdi:medal',
+                        description: 'Diraih dari PR pertama.',
+                        criteria: 'Unlocked saat PR pertama.',
+                    },
+                    'accessory.scarf_winter': {
+                        name: 'Syal Winter',
+                        icon: 'mdi:scarf',
+                        description: 'Setia lari di musim dingin.',
+                        criteria: 'Lari 5x di temp <15°C.',
+                    },
+                }}
+            />,
+        );
+        // Both names appear in the catalog grid
+        expect(screen.getByText('Medali Emas')).toBeInTheDocument();
+        expect(screen.getByText('Syal Winter')).toBeInTheDocument();
+        // Locked item shows criteria; unlocked shows description
+        expect(screen.getByText('Lari 5x di temp <15°C.')).toBeInTheDocument();
+        expect(screen.getByText('Diraih dari PR pertama.')).toBeInTheDocument();
+    });
 });

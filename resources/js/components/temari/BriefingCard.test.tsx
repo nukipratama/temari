@@ -92,4 +92,16 @@ describe('BriefingCard', () => {
             render(<BriefingCard briefing={makeBriefing({ mood })} />);
         },
     );
+
+    it('renders headline done content via renderContent when suggestion still pending', () => {
+        render(
+            <BriefingCard
+                briefing={makeBriefing({
+                    headline: analysisPayload('Pagi yang oke', 'done', 'briefing_headline'),
+                    suggestion: analysisPayload(null, 'pending', 'briefing_suggestion'),
+                })}
+            />,
+        );
+        expect(screen.getByText('Pagi yang oke')).toBeInTheDocument();
+    });
 });

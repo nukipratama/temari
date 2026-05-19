@@ -117,4 +117,36 @@ describe('Runs/Index', () => {
         );
         expect(screen.getAllByRole('link').length).toBeGreaterThan(3);
     });
+
+    it('buckets activities without start_date_local under "Tanpa tanggal"', () => {
+        render(
+            <RunsIndex
+                runs={{
+                    data: [
+                        {
+                            id: 1,
+                            user_id: 1,
+                            analyzed_at: '2026-05-18',
+                            detail: {
+                                id: 11,
+                                activity_id: 1,
+                                name: 'Orphan run',
+                                start_date_local: null,
+                                distance: 5000,
+                                moving_time: 1800,
+                                average_heartrate: 150,
+                                trimp_edwards: 60,
+                            },
+                        },
+                    ],
+                    current_page: 1,
+                    last_page: 1,
+                    per_page: 20,
+                    total: 1,
+                    links: [],
+                }}
+            />,
+        );
+        expect(screen.getByText('Tanpa tanggal')).toBeInTheDocument();
+    });
 });

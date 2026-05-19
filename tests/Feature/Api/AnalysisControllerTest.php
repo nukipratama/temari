@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Models\WeeklySnapshot;
+use Illuminate\Support\Carbon;
+use App\Models\PersonalRecord;
+use App\Models\ActivityDetail;
+use App\Models\RunCard;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzePostRunSpeechJob;
 use App\Models\Activity;
@@ -113,4 +118,60 @@ it('returns a pending pseudo-row when no analysis exists yet', function (): void
         ->assertJsonPath('status', AnalysisStatus::Pending->value)
         ->assertJsonPath('content', null)
         ->assertJsonPath('id', null);
+});
+
+it('GET show rejects unknown analysis types with 422', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user)
+        ->getJson('/api/analyses/nonsense/1')
+        ->assertStatus(422)
+        ->assertJson(['error' => 'unknown_analysis_type']);
+});
+
+it('authorizes weekly_recap only for the snapshot owner', function (): void {
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $snap = WeeklySnapshot::factory()->for($owner)->create([
+        'week_ending' => Carbon::today()->endOfWeek()->toDateString(),
+    ]);
+
+    $this->actingAs($other)
+        ->postJson("/api/analyses/weekly_recap/{$snap->id}/trigger")
+        ->assertForbidden();
+
+    $this->actingAs($owner)
+        ->postJson("/api/analyses/weekly_recap/{$snap->id}/trigger")
+        ->assertOk();
+});
+
+it('authorizes pr_context only for the personal record owner', function (): void {
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $pr = PersonalRecord::factory()->for($owner)->create();
+
+    $this->actingAs($other)
+        ->postJson("/api/analyses/pr_context/{$pr->id}/trigger")
+        ->assertForbidden();
+
+    $this->actingAs($owner)
+        ->postJson("/api/analyses/pr_context/{$pr->id}/trigger")
+        ->assertOk();
+});
+
+it('authorizes card_flavor only for the card activity owner', function (): void {
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $activity = Activity::factory()->for($owner)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today(),
+    ]);
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    $this->actingAs($other)
+        ->postJson("/api/analyses/card_flavor/{$card->id}/trigger")
+        ->assertForbidden();
+
+    $this->actingAs($owner)
+        ->postJson("/api/analyses/card_flavor/{$card->id}/trigger")
+        ->assertOk();
 });

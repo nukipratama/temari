@@ -98,4 +98,59 @@ describe('Rekor', () => {
         );
         expect(screen.getByText('Run')).toBeInTheDocument();
     });
+
+    it('renders context_analysis status panel when present', () => {
+        render(
+            <Rekor
+                personalRecords={[
+                    {
+                        id: 1,
+                        user_id: 1,
+                        activity_id: 99,
+                        category: '5km',
+                        value: 1500,
+                        value_sec: 1500,
+                        set_at: '2026-05-01',
+                        activity: { detail: { name: '5K' } },
+                        context_analysis: {
+                            id: 1,
+                            status: 'done',
+                            content: 'PR baru, mantap!',
+                            type: 'pr_context',
+                            subject_type: 'personal_record',
+                            subject_id: 1,
+                            discriminator: null,
+                        },
+                    },
+                ]}
+            />,
+        );
+        expect(screen.getByText('PR baru, mantap!')).toBeInTheDocument();
+    });
+
+    it.each([
+        ['1km', '1 KM'],
+        ['10km', '10 KM'],
+        ['15km', '15 KM'],
+        ['half_marathon', 'Half Marathon'],
+        ['marathon', 'Marathon'],
+    ])('renders %s PR with accent/pop variant label %s', (category, label) => {
+        render(
+            <Rekor
+                personalRecords={[
+                    {
+                        id: 1,
+                        user_id: 1,
+                        activity_id: 99,
+                        category,
+                        value: 1500,
+                        value_sec: 1500,
+                        set_at: '2026-05-01',
+                        activity: { detail: { name: 'Run' } },
+                    },
+                ]}
+            />,
+        );
+        expect(screen.getByText(label)).toBeInTheDocument();
+    });
 });

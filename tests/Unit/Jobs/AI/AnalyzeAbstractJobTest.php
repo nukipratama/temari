@@ -92,3 +92,44 @@ it('no-ops when the row id no longer exists', function (): void {
 
     expect(Analysis::query()->count())->toBe(0);
 });
+
+it('skips re-execution when status is already Done (idempotent)', function (): void {
+    $row = makeRow();
+    $row->update(['status' => AnalysisStatus::Done, 'content' => 'previous']);
+    (new FakeSuccessJob($row->id))->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('previous');
+});
+
+it('modelVersion falls back to azure_openai.deployment config', function (): void {
+    config()->set('azure_openai.deployment', 'gpt-test');
+    $row = makeRow();
+    (new class ($row->id) extends AnalyzeAbstractJob {
+        protected function generateContent(Analysis $row): string
+        {
+            return 'narrative';
+        }
+    })->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->model_version)->toBe('gpt-test');
+});
+
+it('modelVersion is null when azure_openai.deployment is empty', function (): void {
+    config()->set('azure_openai.deployment', '');
+    $row = makeRow();
+    (new class ($row->id) extends AnalyzeAbstractJob {
+        protected function generateContent(Analysis $row): string
+        {
+            return 'narrative';
+        }
+    })->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->model_version)->toBeNull();
+});
+
+it('exposes middleware via the middleware() method', function (): void {
+    $row = makeRow();
+    $job = new FakeSuccessJob($row->id);
+    $middleware = $job->middleware();
+    expect($middleware)->toBeArray()->and(count($middleware))->toBeGreaterThan(0);
+});
