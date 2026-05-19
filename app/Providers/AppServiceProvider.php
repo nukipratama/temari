@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\User;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\VerdictTimeline;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Override;
@@ -34,5 +36,10 @@ class AppServiceProvider extends ServiceProvider
             'ai-jobs',
             fn () => Limit::perMinute((int) config('ai.rate_limit_per_minute', 20)),
         );
+
+        Gate::define('viewPulse', fn (?User $user = null): bool => $this->app->environment('local')
+            || ($user
+                && ($id = $user->stravaConnection?->strava_athlete_id)
+                && in_array((int) $id, config('devtools.admin_strava_ids'), true)));
     }
 }

@@ -26,7 +26,7 @@ x-app-env: &app-env
   SESSION_CONNECTION: cache
   CACHE_STORE: redis
   TRUSTED_PROXIES: "127.0.0.1"
-  TELESCOPE_ENABLED: "false"
+  TELESCOPE_ENABLED: "true"
   PULSE_ENABLED: "true"
   OCTANE_SERVER: frankenphp
   OCTANE_MAX_REQUESTS: "500"
