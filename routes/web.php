@@ -46,12 +46,10 @@ Route::middleware('auth')->group(function (): void {
     Route::permanentRedirect('/settings', '/pengaturan');
     Route::permanentRedirect('/profile', '/profil');
 
-    Route::middleware('throttle:ai-analysis')->group(function (): void {
-        Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
-            ->whereNumber('subjectId')
-            ->name('api.analyses.show');
-        Route::post('/api/analyses/{type}/{subjectId}/trigger', [AnalysisController::class, 'trigger'])
-            ->whereNumber('subjectId')
-            ->name('api.analyses.trigger');
-    });
+    Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
+        ->whereNumber('subjectId')
+        ->name('api.analyses.show');
+    Route::post('/api/analyses/{type}/{subjectId}/trigger', [AnalysisController::class, 'trigger'])
+        ->whereNumber('subjectId')
+        ->name('api.analyses.trigger');
 });

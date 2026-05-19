@@ -3,7 +3,6 @@ import { Icon } from '@iconify/react';
 import AppShell from '@/layouts/AppShell';
 import BrandMark from '@/components/BrandMark';
 import MeshBackdrop from '@/components/MeshBackdrop';
-import TemariMascot from '@/components/temari/TemariMascot';
 import type { SharedProps } from '@/types/inertia';
 
 interface LoginProps {
@@ -28,13 +27,12 @@ export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
             <div className="relative min-h-screen overflow-hidden">
                 <MeshBackdrop variant="dawn" className="-z-10" />
 
-                <main className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center px-6 py-12">
-                    <div className="mb-10 flex items-center gap-4">
+                <main className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col items-center justify-center px-6 py-12 text-center">
+                    <div className="mb-10 flex justify-center">
                         <BrandMark tagline />
-                        <TemariMascot mood="bouncy" sizeClass="h-20 w-20 hidden sm:block" idle="mood" aria-label="Temari menyapa" />
                     </div>
 
-                    <section className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <section className="mb-10 grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
                         {FEATURES.map((feature) => (
                             <div
                                 key={feature.label}

@@ -1,17 +1,24 @@
 import { cn } from '@/lib/cn';
 import { formatIdDate, formatPace } from '@/lib/pace';
 import MotionLink from '@/components/MotionLink';
+import { Icon } from '@iconify/react';
 import { pressShrink } from '@/lib/motion';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import TemariMascot from '@/components/temari/TemariMascot';
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
+export interface RunNote {
+    oneline: string;
+    mood: Mood;
+}
+
 interface RunListRowProps {
     detail: ActivityDetail;
     mood?: Mood | null;
+    note?: RunNote | null;
 }
 
-export default function RunListRow({ detail, mood = null }: Readonly<RunListRowProps>) {
+export default function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowProps>) {
     const km = detail.distance != null ? (detail.distance / 1000).toFixed(2) : '—';
     const paceSec =
         detail.moving_time != null && detail.distance != null && detail.distance > 0
@@ -20,30 +27,44 @@ export default function RunListRow({ detail, mood = null }: Readonly<RunListRowP
     const paceLabel = paceSec != null ? formatPace(paceSec) : '—';
     const hr = detail.average_heartrate != null ? Math.round(detail.average_heartrate) : null;
     const trimp = detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
-    // Fall back to a TRIMP-derived mood when the backend hasn't attached
-    // a mood — keeps the list visually varied instead of every row dim.
-    const safeMood: Mood = mood ?? moodFromActivity(detail);
+    const safeMood: Mood = note?.mood ?? mood ?? moodFromActivity(detail);
 
     return (
         <MotionLink
             href={`/aktivitas/${detail.activity_id}`}
             whileTap={pressShrink}
-            className="flex items-center gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface dark:border-line-dark dark:hover:bg-surface-dark-elev"
+            className="flex items-start gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface dark:border-line-dark dark:hover:bg-surface-dark-elev"
         >
             <TemariMascot
                 mood={safeMood}
                 sizeClass="h-16 w-16 shrink-0"
                 aria-label={`mood ${safeMood}`}
             />
-            <div className="min-w-0 flex-1">
-                <div className="truncate font-medium text-ink dark:text-ink-dark">{detail.name ?? 'Run'}</div>
-                <div className="text-xs text-ink-meta dark:text-ink-meta-dark">{formatIdDate(detail.start_date_local)}</div>
-            </div>
-            <div className="flex items-center gap-5 tabular-nums">
-                <Cell value={km} unit="km" emphasize />
-                <Cell value={paceLabel} unit="/km" hideOnNarrow="sm" />
-                <Cell value={hr ?? '—'} unit="bpm" hideOnNarrow="md" tone="alert" />
-                <Cell value={trimp ?? '—'} unit="TRIMP" hideOnNarrow="md" />
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <div className="flex items-center gap-4">
+                    <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-ink dark:text-ink-dark">{detail.name ?? 'Run'}</div>
+                        <div className="text-xs text-ink-meta dark:text-ink-meta-dark">{formatIdDate(detail.start_date_local)}</div>
+                    </div>
+                    <div className="flex items-center gap-5 tabular-nums">
+                        <Cell value={km} unit="km" emphasize />
+                        <Cell value={paceLabel} unit="/km" hideOnNarrow="sm" />
+                        <Cell value={hr ?? '—'} unit="bpm" hideOnNarrow="md" tone="alert" />
+                        <Cell value={trimp ?? '—'} unit="TRIMP" hideOnNarrow="md" />
+                    </div>
+                </div>
+                {note && (
+                    <div className="flex items-start gap-2 rounded-xl bg-surface-warm/60 px-3 py-2 text-xs leading-relaxed text-ink dark:bg-surface-dark-elev/60 dark:text-ink-dark">
+                        <Icon
+                            icon="mdi:comment-quote-outline"
+                            width={14}
+                            height={14}
+                            aria-hidden
+                            className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-400"
+                        />
+                        <p className="min-w-0">{note.oneline}</p>
+                    </div>
+                )}
             </div>
         </MotionLink>
     );

@@ -8,10 +8,9 @@ const STORAGE_KEY = 'tl.onboarding.dismissed';
 
 interface FirstRunTooltipProps {
     recentRunCount: number;
-    verdictCount: number;
 }
 
-export default function FirstRunTooltip({ recentRunCount, verdictCount }: Readonly<FirstRunTooltipProps>) {
+export default function FirstRunTooltip({ recentRunCount }: Readonly<FirstRunTooltipProps>) {
     const { props } = usePage<SharedProps>();
     const forceShow = props.onboarding.forceShow;
     const [visible, setVisible] = useState(false);
@@ -21,10 +20,10 @@ export default function FirstRunTooltip({ recentRunCount, verdictCount }: Readon
             setVisible(true);
             return;
         }
-        if (recentRunCount > 0 || verdictCount > 0) return;
+        if (recentRunCount > 0) return;
         const dismissed = globalThis.localStorage?.getItem(STORAGE_KEY) === '1';
         if (!dismissed) setVisible(true);
-    }, [forceShow, recentRunCount, verdictCount]);
+    }, [forceShow, recentRunCount]);
 
     const dismiss = () => {
         setVisible(false);

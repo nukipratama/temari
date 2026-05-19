@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import Dashboard from './Dashboard';
 import { setMockPage } from '@/test/setup';
-import type { ActivityDetail, BriefingResult, FitnessChartData, TrainingLoad, VerdictTimelineItem, WeeklySnapshot } from '@/types/inertia';
+import type { ActivityDetail, BriefingResult, FitnessChartData, TrainingLoad, WeeklySnapshot } from '@/types/inertia';
 
 const briefing: BriefingResult = {
     vibeState: 'fresh',
@@ -83,15 +83,6 @@ const detail: ActivityDetail = {
     trimp_edwards: 60,
 };
 
-const verdict: VerdictTimelineItem = {
-    activityId: 99,
-    mood: 'bouncy',
-    moodFace: '🦘',
-    oneline: 'Solid',
-    startedAt: '2026-05-10T07:00',
-    distanceKm: 5,
-};
-
 beforeEach(() => {
     setMockPage({
         auth: { user: { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null } },
@@ -106,7 +97,6 @@ describe('Dashboard', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={null}
                 snapshot={null}
                 recentRuns={[]}
@@ -121,7 +111,6 @@ describe('Dashboard', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={load}
                 snapshot={snapshot}
                 recentRuns={[]}
@@ -141,7 +130,6 @@ describe('Dashboard', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={load}
                 snapshot={snapshot}
                 recentRuns={[]}
@@ -154,11 +142,10 @@ describe('Dashboard', () => {
         expect(screen.getByText('Monotony')).toBeInTheDocument();
     });
 
-    it('does not render a "recent runs" block (VerdictStrip already covers it)', () => {
+    it('does not render a "recent runs" block on Beranda', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={load}
                 snapshot={snapshot}
                 recentRuns={[detail]}
@@ -168,7 +155,7 @@ describe('Dashboard', () => {
         expect(screen.queryByText('Aktivitas Terakhir')).not.toBeInTheDocument();
     });
 
-    it.each([
+it.each([
         { monotony: 2.5, expected: 'Monotony 2.50 🚨' },
         { monotony: 1.7, expected: 'Monotony 1.70 ⚠️' },
         { monotony: 1.0, expected: 'Monotony 1.00 ok' },
@@ -176,7 +163,6 @@ describe('Dashboard', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={{ ...load, monotony }}
                 snapshot={snapshot}
                 recentRuns={[]}
@@ -190,7 +176,6 @@ describe('Dashboard', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={load}
                 snapshot={snapshot}
                 recentRuns={[]}
@@ -208,27 +193,12 @@ describe('Dashboard', () => {
         });
     });
 
-    it('shows verdict strip when items present', () => {
-        render(
-            <Dashboard
-                briefing={briefing}
-                verdicts={[verdict]}
-                load={load}
-                snapshot={snapshot}
-                recentRuns={[]}
-                chartData={chartData}
-            />,
-        );
-        expect(screen.getByText('Kata Temari')).toBeInTheDocument();
-    });
-
-    it('omits the hero week-volume KPI when snapshot is null', () => {
+it('omits the hero week-volume KPI when snapshot is null', () => {
         // Volume now lives only in the hero header (no duplicate tile).
         // With snapshot=null the hero's "Minggu ini" block is skipped.
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={load}
                 snapshot={null}
                 recentRuns={[]}
@@ -242,7 +212,6 @@ describe('Dashboard', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={load}
                 snapshot={{ ...snapshot, avg_decoupling: -2.5 }}
                 recentRuns={[]}
@@ -256,7 +225,6 @@ describe('Dashboard', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={load}
                 snapshot={{ ...snapshot, avg_decoupling: null }}
                 recentRuns={[]}
@@ -272,7 +240,6 @@ describe('Dashboard', () => {
             render(
                 <Dashboard
                     briefing={briefing}
-                    verdicts={[]}
                     load={{ ...load, form_status: status }}
                     snapshot={snapshot}
                     recentRuns={[]}
@@ -291,7 +258,6 @@ describe('Dashboard', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={{ ...load, monotony }}
                 snapshot={snapshot}
                 recentRuns={[]}
@@ -311,7 +277,6 @@ describe('Dashboard', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={null}
                 snapshot={null}
                 recentRuns={[]}
@@ -326,7 +291,6 @@ describe('Dashboard', () => {
         render(
             <Dashboard
                 briefing={briefing}
-                verdicts={[]}
                 load={null}
                 snapshot={null}
                 recentRuns={[]}

@@ -14,7 +14,6 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingComposer;
-use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Database\Eloquent\Collection;
@@ -31,7 +30,6 @@ class DashboardController extends Controller
         Temari $temari,
         TrainingLoad $trainingLoad,
         BriefingComposer $briefingComposer,
-        VerdictNarrator $verdictTimeline,
         AnalysisService $analysisService,
     ): Response {
         /** @var User $user */
@@ -42,7 +40,6 @@ class DashboardController extends Controller
 
         $load = $trainingLoad->summary($user, $today);
         $briefing = $briefingComposer->compose($user, $today);
-        $verdicts = $verdictTimeline->recent($user);
 
         $weeks = WeeklySnapshot::query()
             ->where('user_id', $user->id)
@@ -61,7 +58,6 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'briefing' => $briefing,
-            'verdicts' => $verdicts,
             'load' => $load,
             'snapshot' => $weeks->last(),
             'recentRuns' => $recentRuns,

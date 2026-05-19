@@ -12,7 +12,6 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Support\Carbon;
 use Throwable;
 
@@ -27,12 +26,6 @@ abstract class AnalyzeAbstractJob implements ShouldQueue
 
     public function __construct(public readonly int $analysisId)
     {
-    }
-
-    /** @return array<int, object> */
-    public function middleware(): array
-    {
-        return [(new RateLimited('ai-jobs'))->releaseAfter(60)];
     }
 
     final public function handle(AnalysisService $service): void

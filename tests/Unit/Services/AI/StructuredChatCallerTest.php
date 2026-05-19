@@ -10,7 +10,7 @@ use OpenAI\Testing\ClientFake;
 
 beforeEach(function (): void {
     config()->set('azure_openai.deployment', 'x');
-    config()->set('azure_openai.max_tokens', 200);
+    config()->set('azure_openai.max_completion_tokens', 200);
 });
 
 function structuredCaller(string $content): StructuredChatCaller

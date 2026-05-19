@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import BrandMark from '@/components/BrandMark';
 import { useSidebar } from '@/contexts/SidebarContext';
@@ -13,12 +12,17 @@ interface NavLink {
     label: string;
 }
 
-const LINKS: ReadonlyArray<NavLink> = [
+const PRIMARY_LINKS: ReadonlyArray<NavLink> = [
     { route: 'dashboard', href: '/', icon: 'mdi:home-outline', label: 'Beranda' },
     { route: 'aktivitas.index', href: '/aktivitas', icon: 'mdi:run-fast', label: 'Aktivitas' },
     { route: 'kartu.index', href: '/kartu', icon: 'mdi:cards-outline', label: 'Kartu' },
     { route: 'catatan', href: '/catatan', icon: 'mdi:chart-line', label: 'Catatan' },
     { route: 'rekor', href: '/rekor', icon: 'mdi:trophy-variant-outline', label: 'Rekor' },
+];
+
+const SECONDARY_LINKS: ReadonlyArray<NavLink> = [
+    { route: 'profil', href: '/profil', icon: 'mdi:account-outline', label: 'Profil' },
+    { route: 'pengaturan', href: '/pengaturan', icon: 'mdi:cog-outline', label: 'Pengaturan' },
 ];
 
 export default function Sidebar() {
@@ -60,142 +64,70 @@ function SidebarContent({
                 </Link>
             </div>
 
-            <nav className="flex-1 px-3 py-4">
-                <ul className="space-y-1">
-                    {LINKS.map((link) => {
-                        const active = url === link.href || url.startsWith(`${link.href}/`);
-                        return (
-                            <li key={link.route}>
-                                <Link
-                                    href={link.href}
-                                    onClick={onNavigate}
-                                    className={cn(
-                                        'flex items-center gap-3 rounded-lg border-l-4 px-3 py-2.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
-                                        active
-                                            ? 'border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300'
-                                            : 'border-transparent text-ink-soft hover:bg-line/40 hover:text-ink dark:text-ink-soft-dark dark:hover:bg-line-dark dark:hover:text-ink-dark',
-                                    )}
-                                >
-                                    <Icon icon={link.icon} width={18} height={18} aria-hidden />
-                                    <span>{link.label}</span>
-                                </Link>
-                            </li>
-                        );
-                    })}
-                </ul>
+            <nav className="flex flex-1 flex-col px-3 py-4">
+                <NavList links={PRIMARY_LINKS} url={url} onNavigate={onNavigate} />
+                <NavList
+                    links={SECONDARY_LINKS}
+                    url={url}
+                    onNavigate={onNavigate}
+                    className="mt-auto border-t border-line pt-3 dark:border-line-dark"
+                />
             </nav>
 
-            {user !== null && <UserChip user={user} onNavigate={onNavigate} />}
+            {user !== null && <UserChip user={user} />}
         </div>
     );
 }
 
-function UserChip({ user, onNavigate }: Readonly<{ user: AuthUser; onNavigate: () => void }>) {
-    const [open, setOpen] = useState(false);
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (!open) return;
-        const handler = (e: MouseEvent) => {
-            if (containerRef.current !== null && !containerRef.current.contains(e.target as Node)) {
-                setOpen(false);
-            }
-        };
-        const escape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setOpen(false);
-        };
-        document.addEventListener('mousedown', handler);
-        document.addEventListener('keydown', escape);
-        return () => {
-            document.removeEventListener('mousedown', handler);
-            document.removeEventListener('keydown', escape);
-        };
-    }, [open]);
-
-    const logout = () => {
-        setOpen(false);
-        onNavigate();
-        router.post('/logout');
-    };
-
+function NavList({
+    links,
+    url,
+    onNavigate,
+    className,
+}: Readonly<{ links: ReadonlyArray<NavLink>; url: string; onNavigate: () => void; className?: string }>) {
     return (
-        <div ref={containerRef} className="relative border-t border-line p-3 dark:border-line-dark">
-            <button
-                type="button"
-                onClick={() => setOpen((v) => !v)}
-                aria-expanded={open}
-                aria-haspopup="menu"
-                className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-line/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:hover:bg-line-dark"
-            >
-                {user.avatar_url !== null ? (
-                    <img
-                        src={user.avatar_url}
-                        alt={user.name}
-                        className="h-10 w-10 rounded-full ring-2 ring-line dark:ring-line-dark"
-                    />
-                ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/15 text-sm font-semibold text-brand-600 dark:text-brand-400">
-                        {user.name.charAt(0).toUpperCase()}
-                    </div>
-                )}
-                <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-ink dark:text-ink-dark">{user.name}</div>
-                    <div className="text-xs text-ink-meta dark:text-ink-meta-dark">Tap untuk menu</div>
+        <ul className={cn('space-y-1', className)}>
+            {links.map((link) => {
+                const active = url === link.href || url.startsWith(`${link.href}/`);
+                return (
+                    <li key={link.route}>
+                        <Link
+                            href={link.href}
+                            onClick={onNavigate}
+                            className={cn(
+                                'flex items-center gap-3 rounded-lg border-l-4 px-3 py-2.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+                                active
+                                    ? 'border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300'
+                                    : 'border-transparent text-ink-soft hover:bg-line/40 hover:text-ink dark:text-ink-soft-dark dark:hover:bg-line-dark dark:hover:text-ink-dark',
+                            )}
+                        >
+                            <Icon icon={link.icon} width={18} height={18} aria-hidden />
+                            <span>{link.label}</span>
+                        </Link>
+                    </li>
+                );
+            })}
+        </ul>
+    );
+}
+
+function UserChip({ user }: Readonly<{ user: AuthUser }>) {
+    return (
+        <div className="flex items-center gap-3 border-t border-line p-4 dark:border-line-dark">
+            {user.avatar_url === null ? (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/15 text-sm font-semibold text-brand-600 dark:text-brand-400">
+                    {user.name.charAt(0).toUpperCase()}
                 </div>
-                <Icon icon="mdi:chevron-up" width={18} height={18} className={cn('transition', open ? 'rotate-0' : 'rotate-180')} aria-hidden />
-            </button>
-
-            {open && (
-                <MenuList>
-                    <MenuRow href="/profil" icon="mdi:account-outline" label="Profil" onSelect={onNavigate} />
-                    <MenuRow href="/pengaturan" icon="mdi:cog-outline" label="Pengaturan" onSelect={onNavigate} />
-                    <MenuRow icon="mdi:logout" label="Keluar" onSelect={logout} divided />
-                </MenuList>
+            ) : (
+                <img
+                    src={user.avatar_url}
+                    alt={user.name}
+                    className="h-10 w-10 rounded-full ring-2 ring-line dark:ring-line-dark"
+                />
             )}
+            <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-ink dark:text-ink-dark">{user.name}</div>
+            </div>
         </div>
-    );
-}
-
-function MenuList({ children }: Readonly<{ children: ReactNode }>) {
-    return (
-        <div
-            role="menu"
-            className="absolute bottom-full left-3 right-3 mb-2 overflow-hidden rounded-xl border border-line bg-surface-elev shadow-lg dark:border-line-dark dark:bg-surface-dark-elev"
-        >
-            {children}
-        </div>
-    );
-}
-
-interface MenuRowProps {
-    icon: string;
-    label: string;
-    onSelect: () => void;
-    href?: string;
-    divided?: boolean;
-}
-
-function MenuRow({ icon, label, onSelect, href, divided = false }: Readonly<MenuRowProps>) {
-    const className = cn(
-        'flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-ink transition hover:bg-line/40 focus-visible:bg-line/40 focus-visible:outline-none dark:text-ink-dark dark:hover:bg-line-dark',
-        divided && 'border-t border-line dark:border-line-dark',
-    );
-    const body = (
-        <>
-            <Icon icon={icon} width={18} height={18} aria-hidden />
-            {label}
-        </>
-    );
-    if (href !== undefined) {
-        return (
-            <Link href={href} role="menuitem" onClick={onSelect} className={className}>
-                {body}
-            </Link>
-        );
-    }
-    return (
-        <button type="button" role="menuitem" onClick={onSelect} className={className}>
-            {body}
-        </button>
     );
 }

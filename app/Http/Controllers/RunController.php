@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\PastYouMatcher;
 use Illuminate\Http\Request;
@@ -37,7 +38,47 @@ class RunController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return Inertia::render('Runs/Index', ['runs' => $runs]);
+        $activityIds = collect($runs->items())->pluck('id')->all();
+
+        return Inertia::render('Runs/Index', [
+            'runs' => $runs,
+            'notes' => $this->notesForActivities($activityIds),
+        ]);
+    }
+
+    /**
+     * @param  array<int, int>  $activityIds
+     * @return array<int, array{oneline: string, mood: string}>
+     */
+    private function notesForActivities(array $activityIds): array
+    {
+        if ($activityIds === []) {
+            return [];
+        }
+
+        $moodByActivity = StoryLine::query()
+            ->where('kind', StoryLine::KIND_POST_RUN)
+            ->whereIn('activity_id', $activityIds)
+            ->pluck('mood', 'activity_id');
+
+        $speechByActivity = Analysis::query()
+            ->where('subject_type', Activity::class)
+            ->where('analysis_type', AnalysisType::PostRunSpeech)
+            ->where('status', AnalysisStatus::Done)
+            ->whereIn('subject_id', $activityIds)
+            ->pluck('content', 'subject_id');
+
+        $notes = [];
+        foreach ($activityIds as $id) {
+            $speech = $speechByActivity->get($id);
+            $mood = $moodByActivity->get($id);
+            if ($speech === null || $speech === '' || $mood === null) {
+                continue;
+            }
+            $notes[$id] = ['oneline' => $speech, 'mood' => $mood];
+        }
+
+        return $notes;
     }
 
     public function show(Request $request, Activity $activity, PastYouMatcher $matcher): Response

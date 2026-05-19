@@ -126,10 +126,3 @@ it('modelVersion is null when azure_openai.deployment is empty', function (): vo
 
     expect($row->fresh()->model_version)->toBeNull();
 });
-
-it('exposes middleware via the middleware() method', function (): void {
-    $row = makeRow();
-    $job = new FakeSuccessJob($row->id);
-    $middleware = $job->middleware();
-    expect($middleware)->toBeArray()->and(count($middleware))->toBeGreaterThan(0);
-});

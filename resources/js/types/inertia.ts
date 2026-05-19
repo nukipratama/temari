@@ -59,15 +59,6 @@ export interface BriefingResult {
     mood: Mood;
 }
 
-export interface VerdictTimelineItem {
-    activityId: number;
-    mood: Mood;
-    moodFace: string;
-    oneline: string;
-    startedAt: string;
-    distanceKm: number;
-}
-
 export interface ActivityDetail {
     id: number;
     activity_id: number;

@@ -13,6 +13,6 @@ return [
     'uri' => $uri,
     'api_key' => (string) env('AZURE_OPENAI_API_KEY', ''),
     'timeout' => (int) env('AZURE_OPENAI_TIMEOUT', 8),
-    'max_tokens' => 400,
+    'max_completion_tokens' => 400,
     'deployment' => $matches[1] ?? '',
 ];

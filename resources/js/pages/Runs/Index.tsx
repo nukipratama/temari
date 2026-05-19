@@ -5,13 +5,14 @@ import { useMemo } from 'react';
 import AppShell from '@/layouts/AppShell';
 import PageHero from '@/components/PageHero';
 import Paginator from '@/components/Paginator';
-import RunListRow from '@/components/run/RunListRow';
+import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import { formatIdDate } from '@/lib/pace';
 import { fadeInUp } from '@/lib/motion';
 import type { Activity, ActivityDetail, PaginatedResponse } from '@/types/inertia';
 
 interface RunsIndexProps {
     runs: PaginatedResponse<Activity & { detail: ActivityDetail }>;
+    notes?: Record<number, RunNote>;
 }
 
 type RunWithDetail = Activity & { detail: ActivityDetail };
@@ -26,7 +27,7 @@ interface WeekBucket {
     totalTrimp: number;
 }
 
-export default function RunsIndex({ runs }: Readonly<RunsIndexProps>) {
+export default function RunsIndex({ runs, notes = {} }: Readonly<RunsIndexProps>) {
     const buckets = useMemo<WeekBucket[]>(() => groupByWeek(runs.data), [runs.data]);
     const hasRuns = runs.data.length > 0;
 
@@ -50,7 +51,7 @@ export default function RunsIndex({ runs }: Readonly<RunsIndexProps>) {
                     <>
                         <div className="space-y-8">
                             {buckets.map((bucket) => (
-                                <WeekSection key={bucket.weekStart} bucket={bucket} />
+                                <WeekSection key={bucket.weekStart} bucket={bucket} notes={notes} />
                             ))}
                         </div>
 
@@ -64,7 +65,7 @@ export default function RunsIndex({ runs }: Readonly<RunsIndexProps>) {
     );
 }
 
-function WeekSection({ bucket }: Readonly<{ bucket: WeekBucket }>) {
+function WeekSection({ bucket, notes }: Readonly<{ bucket: WeekBucket; notes: Record<number, RunNote> }>) {
     const trimpLabel = Math.round(bucket.totalTrimp);
     return (
         <section className="overflow-hidden rounded-2xl border border-line bg-surface-elev shadow-sm">
@@ -78,7 +79,7 @@ function WeekSection({ bucket }: Readonly<{ bucket: WeekBucket }>) {
             </header>
             <div>
                 {bucket.runs.map((activity) => (
-                    <RunListRow key={activity.id} detail={activity.detail} />
+                    <RunListRow key={activity.id} detail={activity.detail} note={notes[activity.id] ?? null} />
                 ))}
             </div>
         </section>

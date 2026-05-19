@@ -30,7 +30,7 @@ beforeEach(function (): void {
     config()->set('azure_openai.api_key', 'fake-key');
     config()->set('azure_openai.deployment', 'x');
     config()->set('azure_openai.timeout', 8);
-    config()->set('azure_openai.max_tokens', 400);
+    config()->set('azure_openai.max_completion_tokens', 400);
 });
 
 function fakeAzureClient(string $content): AzureOpenAIClient

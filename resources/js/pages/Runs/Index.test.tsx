@@ -118,6 +118,39 @@ describe('Runs/Index', () => {
         expect(screen.getAllByRole('link').length).toBeGreaterThan(3);
     });
 
+    it('renders the note line when a matching note is passed', () => {
+        render(
+            <RunsIndex
+                runs={{
+                    data: [
+                        {
+                            id: 7,
+                            user_id: 1,
+                            analyzed_at: '2026-05-10',
+                            detail: {
+                                id: 11,
+                                activity_id: 7,
+                                name: 'With note',
+                                start_date_local: '2026-05-10T07:00',
+                                distance: 5000,
+                                moving_time: 1800,
+                                average_heartrate: 150,
+                                trimp_edwards: 60,
+                            },
+                        },
+                    ],
+                    current_page: 1,
+                    last_page: 1,
+                    per_page: 20,
+                    total: 1,
+                    links: [],
+                }}
+                notes={{ 7: { oneline: 'Solid run, keren tahanin pace-nya.', mood: 'bouncy' } }}
+            />,
+        );
+        expect(screen.getByText('Solid run, keren tahanin pace-nya.')).toBeInTheDocument();
+    });
+
     it('buckets activities without start_date_local under "Tanpa tanggal"', () => {
         render(
             <RunsIndex

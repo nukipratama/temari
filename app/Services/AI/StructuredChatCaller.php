@@ -16,6 +16,12 @@ use Throwable;
  */
 final readonly class StructuredChatCaller
 {
+    private const string GLOBAL_STYLE_RULES = <<<'RULES'
+
+Aturan gaya tulisan (WAJIB):
+- JANGAN PERNAH pakai em dash (—) atau en dash (–) di output. Kalau mau jeda, pakai koma, titik, atau kata sambung biasa.
+RULES;
+
     public function __construct(private AzureOpenAIClient $azure)
     {
     }
@@ -39,10 +45,10 @@ final readonly class StructuredChatCaller
             $response = $this->azure->client()->chat()->create([
                 'model' => (string) config('azure_openai.deployment'),
                 'messages' => [
-                    ['role' => 'system', 'content' => $systemPrompt],
+                    ['role' => 'system', 'content' => $systemPrompt.self::GLOBAL_STYLE_RULES],
                     ['role' => 'user', 'content' => json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)],
                 ],
-                'max_tokens' => (int) config('azure_openai.max_tokens'),
+                'max_completion_tokens' => (int) config('azure_openai.max_completion_tokens'),
                 'temperature' => $temperature,
                 'response_format' => self::responseFormat($schemaName, $requiredKeys),
             ]);

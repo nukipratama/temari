@@ -9,7 +9,6 @@ import ConfettiBurst from '@/components/ConfettiBurst';
 import DecorativeBlur from '@/components/DecorativeBlur';
 import SectionHeading from '@/components/SectionHeading';
 import TemariFollow from '@/components/temari/TemariFollow';
-import VerdictStrip from '@/components/temari/VerdictStrip';
 import FirstRunTooltip from '@/components/onboarding/FirstRunTooltip';
 import { formStatusLabel } from '@/lib/formStatus';
 import { fadeInUp } from '@/lib/motion';
@@ -24,7 +23,6 @@ import type {
     FormStatus,
     SharedProps,
     TrainingLoad,
-    VerdictTimelineItem,
     WeeklySnapshot,
 } from '@/types/inertia';
 
@@ -34,7 +32,6 @@ const VolumeChart = lazy(() => import('@/components/dashboard/VolumeChart'));
 
 interface DashboardProps {
     briefing: BriefingResult;
-    verdicts: VerdictTimelineItem[];
     load: TrainingLoad | null;
     snapshot: WeeklySnapshot | null;
     recentRuns: ActivityDetail[];
@@ -45,7 +42,6 @@ interface DashboardProps {
 
 export default function Dashboard({
     briefing,
-    verdicts,
     load,
     snapshot,
     recentRuns,
@@ -70,7 +66,7 @@ export default function Dashboard({
                 animate="visible"
                 className="w-full px-6 py-10"
             >
-                <FirstRunTooltip recentRunCount={recentRuns.length} verdictCount={verdicts.length} />
+                <FirstRunTooltip recentRunCount={recentRuns.length} />
 
                 <HeroHeader firstName={firstName} briefing={briefing} snapshot={snapshot} />
 
@@ -131,18 +127,6 @@ export default function Dashboard({
                                 <VolumeChart data={chartData} />
                             </div>
                         </Suspense>
-                    </section>
-                )}
-
-                {verdicts.length > 0 && (
-                    <section className="mt-10">
-                        <SectionHeading
-                            icon="mdi:comment-quote-outline"
-                            title="Kata Temari"
-                            subtitle="Komentar Temari tiap kelar lari."
-                            tone="brand"
-                        />
-                        <VerdictStrip items={verdicts} />
                     </section>
                 )}
 
