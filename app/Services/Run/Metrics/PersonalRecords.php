@@ -160,7 +160,7 @@ class PersonalRecords
             subjectOrType: PersonalRecord::class,
             subjectId: $pr->id,
             type: AnalysisType::PrContext,
-            force: true, // PR refreshed, regenerate flavor with new delta context
+            invalidate: true,
         );
 
         return true;

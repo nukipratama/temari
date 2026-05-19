@@ -52,7 +52,7 @@ class Temari
         $hasPr = PersonalRecord::query()->where('activity_id', $activity->id)->exists();
         $mood = $this->moodForActivity($detail, $hasPr);
 
-        $line = StoryLine::query()->updateOrCreate(
+        return StoryLine::query()->updateOrCreate(
             [
                 'user_id' => $activity->user_id,
                 'activity_id' => $activity->id,
@@ -65,14 +65,6 @@ class Temari
                 'sigil_pattern' => self::sigilForMoodPublic($mood),
             ],
         );
-
-        $this->analysisService->request(
-            subjectOrType: Activity::class,
-            subjectId: $activity->id,
-            type: AnalysisType::PostRunSpeech,
-        );
-
-        return $line;
     }
 
     public function dailyGreeting(User $user, string $vibe, ?Carbon $forDate = null): StoryLine

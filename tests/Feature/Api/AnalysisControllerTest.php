@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\AnalysisController;
 use App\Jobs\AI\AnalyzeBriefingJob;
-use App\Jobs\AI\AnalyzePostRunSpeechJob;
+use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -94,7 +94,7 @@ it('authorizes post-run speech only for the activity owner', function (): void {
         ->postJson("/api/analyses/post_run_speech/{$activity->id}/trigger")
         ->assertSuccessful();
 
-    Bus::assertDispatched(AnalyzePostRunSpeechJob::class);
+    Bus::assertDispatched(AnalyzeActivityJob::class);
 });
 
 it('returns the current state via GET show', function (): void {

@@ -6,17 +6,11 @@ namespace App\Services\AI\Narrators;
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\StreamSummary;
 
 use function is_array;
 
-/**
- * One LLM call generates three short interpretations of an activity. Callers
- * cache the result for ~5 minutes so three parallel jobs (one per analysis
- * type) only pay for the Azure round-trip once.
- */
 class RunInsightNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
@@ -34,11 +28,8 @@ Z1-Z5, easy, tempo, long run, negative split).
 JANGAN preachy, JANGAN data dump tanpa konteks. Jangan judging.
 PROMPT;
 
-    private readonly StructuredChatCaller $caller;
-
-    public function __construct(AzureOpenAIClient $azure)
+    public function __construct(private readonly StructuredChatCaller $caller)
     {
-        $this->caller = new StructuredChatCaller($azure);
     }
 
     /**

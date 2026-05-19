@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\WeeklySnapshot;
-use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 
 class WeeklyRecapNarrator
@@ -21,11 +20,8 @@ fatigued=empati + saran istirahat, overreaching=warning halus.
 JANGAN preachy, JANGAN data dump. Cuma 1-2 kalimat hangat yang merangkum.
 PROMPT;
 
-    private readonly StructuredChatCaller $caller;
-
-    public function __construct(AzureOpenAIClient $azure)
+    public function __construct(private readonly StructuredChatCaller $caller)
     {
-        $this->caller = new StructuredChatCaller($azure);
     }
 
     public function generate(WeeklySnapshot $snapshot): string

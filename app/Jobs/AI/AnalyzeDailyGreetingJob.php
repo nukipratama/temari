@@ -11,7 +11,7 @@ use App\Services\AI\Narrators\DailyGreetingNarrator;
 use App\Services\Run\Story\Vibe;
 use Override;
 
-class AnalyzeDailyGreetingJob extends AnalyzeAbstractJob
+class AnalyzeDailyGreetingJob extends AnalyzeRowJob
 {
     #[Override]
     protected function generateContent(Analysis $row): string

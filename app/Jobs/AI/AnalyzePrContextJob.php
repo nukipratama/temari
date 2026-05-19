@@ -10,7 +10,7 @@ use App\Models\PersonalRecord;
 use App\Services\AI\Narrators\PrContextNarrator;
 use Override;
 
-class AnalyzePrContextJob extends AnalyzeAbstractJob
+class AnalyzePrContextJob extends AnalyzeRowJob
 {
     #[Override]
     protected function generateContent(Analysis $row): string

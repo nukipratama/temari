@@ -10,7 +10,7 @@ use App\Models\RunCard;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use Override;
 
-class AnalyzeCardFlavorJob extends AnalyzeAbstractJob
+class AnalyzeCardFlavorJob extends AnalyzeRowJob
 {
     #[Override]
     protected function generateContent(Analysis $row): string

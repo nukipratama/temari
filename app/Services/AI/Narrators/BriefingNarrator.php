@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\User;
-use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
@@ -30,15 +29,12 @@ JANGAN judging — lo temenin, bukan menilai. Suarakan vibes-nya dia
 hari ini, kayak temen yang nungguin di garis start.
 PROMPT;
 
-    private readonly StructuredChatCaller $caller;
-
     public function __construct(
         private readonly Vibe $vibe,
         private readonly TrainingLoad $trainingLoad,
         private readonly VerdictNarrator $verdictNarrator,
-        AzureOpenAIClient $azure,
+        private readonly StructuredChatCaller $caller,
     ) {
-        $this->caller = new StructuredChatCaller($azure);
     }
 
     /**

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
+import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import AnalysisStatus from './AnalysisStatus';
 import TemariMascot from './TemariMascot';
 import type { AnalysisPayload, Mood } from '@/types/inertia';
@@ -48,6 +49,8 @@ export default function TemariThread({
     inertiaReloadProps = [],
     className,
 }: Readonly<TemariThreadProps>) {
+    const grouped = entries.length > 1;
+
     return (
         <motion.section
             variants={fadeInUp}
@@ -112,12 +115,40 @@ export default function TemariThread({
                                     analysis={entry.analysis}
                                     inertiaReloadProps={inertiaReloadProps}
                                     size="sm"
+                                    allowReanalyze={!grouped}
                                 />
                             </div>
                         </li>
                     );
                 })}
             </ol>
+
+            {grouped && (
+                <GroupedReanalyzeButton
+                    analysis={entries[0].analysis}
+                    inertiaReloadProps={inertiaReloadProps}
+                />
+            )}
         </motion.section>
+    );
+}
+
+function GroupedReanalyzeButton({
+    analysis,
+    inertiaReloadProps,
+}: Readonly<{ analysis: AnalysisPayload; inertiaReloadProps: string[] }>) {
+    const { trigger, pending } = useAnalysisTrigger(analysis, inertiaReloadProps);
+    return (
+        <div className="relative z-10 mt-5 flex justify-end">
+            <button
+                type="button"
+                onClick={trigger}
+                disabled={pending}
+                className="inline-flex items-center gap-1 text-xs text-ink-meta hover:text-brand-700 transition-colors disabled:opacity-50"
+            >
+                <Icon icon="mdi:refresh" aria-hidden />
+                <span>Analisis ulang</span>
+            </button>
+        </div>
     );
 }

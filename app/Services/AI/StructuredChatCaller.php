@@ -22,8 +22,10 @@ Aturan gaya tulisan (WAJIB):
 - JANGAN PERNAH pakai em dash (—) atau en dash (–) di output. Kalau mau jeda, pakai koma, titik, atau kata sambung biasa.
 RULES;
 
-    public function __construct(private AzureOpenAIClient $azure)
-    {
+    public function __construct(
+        private AzureOpenAIClient $azure,
+        private TokenUsageRecorder $usageRecorder,
+    ) {
     }
 
     /**
@@ -79,16 +81,28 @@ RULES;
             throw new UnavailableException("Azure OpenAI structured output missing {$missingLabel}");
         }
 
+        $promptTokens = (int) ($response->usage->promptTokens ?? 0);
+        $completionTokens = (int) ($response->usage->completionTokens ?? 0);
+        $totalTokens = (int) ($response->usage->totalTokens ?? 0);
+
         Log::info('narrator.ai.call', [
             'kind' => $kind,
             'status' => 'ok',
             'latency_ms' => self::latencyMs($startedAt),
             'usage' => [
-                'prompt' => $response->usage->promptTokens ?? null,
-                'completion' => $response->usage->completionTokens ?? null,
-                'total' => $response->usage->totalTokens ?? null,
+                'prompt' => $promptTokens,
+                'completion' => $completionTokens,
+                'total' => $totalTokens,
             ],
         ]);
+
+        $this->usageRecorder->record(
+            $kind,
+            $promptTokens,
+            $completionTokens,
+            $totalTokens,
+            (string) config('azure_openai.deployment') ?: null,
+        );
 
         return $decoded;
     }

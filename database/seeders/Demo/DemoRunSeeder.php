@@ -14,7 +14,6 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Geo\PolylineEncoder;
 use App\Services\Run\Ingest\StreamAnalysis;
@@ -102,12 +101,9 @@ class DemoRunSeeder
     {
         $log ??= static fn (string $_): null => null;
 
-        // Demo seed dispatches hundreds of analyses; skip the queue and mark
-        // them failed at the end so users retry via the UI on demand.
-        $previousAutoDispatch = (bool) config('ai.auto_dispatch', true);
-        config(['ai.auto_dispatch' => false]);
+        $count = 0;
 
-        try {
+        $this->analysisService->withoutDispatching(function () use ($fresh, $log, &$count): void {
             if ($fresh) {
                 $this->nukeDemoUser($log);
             }
@@ -118,7 +114,6 @@ class DemoRunSeeder
 
             $log(sprintf('Seeding %d runs for %s...', count($blueprints), $user->email));
 
-            $count = 0;
             foreach ($blueprints as $blueprint) {
                 $this->seedOne($user, $blueprint);
                 $count++;
@@ -135,80 +130,39 @@ class DemoRunSeeder
             $vibeState = $this->vibe->current($user);
             $this->temari->dailyGreeting($user, $vibeState);
             $log("  Today's vibe: {$vibeState}");
+        });
 
-            $dispatched = $this->dispatchPendingAnalyses($user);
-            $log(sprintf('  %d AI analyses dispatched to Horizon (narasi akan muncul saat job selesai).', $dispatched));
+        $user = User::query()->where('email', self::DEMO_USER_EMAIL)->firstOrFail();
+        $dispatched = $this->dispatchPendingAnalyses($user);
+        $log(sprintf('  %d AI analyses dispatched to Horizon (narasi akan muncul saat job selesai).', $dispatched));
 
-            return $count;
-        } finally {
-            config(['ai.auto_dispatch' => $previousAutoDispatch]);
-        }
+        return $count;
     }
 
     private function dispatchPendingAnalyses(User $user): int
     {
-        $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id')->all();
+        $activities = Activity::query()->where('user_id', $user->id)->get();
         $weeklyIds = WeeklySnapshot::query()->where('user_id', $user->id)->pluck('id')->all();
         $prIds = PersonalRecord::query()->where('user_id', $user->id)->pluck('id')->all();
-        $cardIds = RunCard::query()->whereIn('activity_id', $activityIds)->pluck('id')->all();
-
-        // 1) Re-dispatch any analysis that was created during seeding but
-        // left Pending (e.g. PostRunSpeech via Temari).
-        $pending = Analysis::query()
-            ->where('status', AnalysisStatus::Pending)
-            ->where(function ($q) use ($user, $activityIds, $weeklyIds, $prIds, $cardIds): void {
-                $q->where(fn ($qq) => $qq->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
-                    ->orWhere(fn ($qq) => $qq->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $weeklyIds))
-                    ->orWhere(fn ($qq) => $qq->where('subject_type', PersonalRecord::class)->whereIn('subject_id', $prIds))
-                    ->orWhere(fn ($qq) => $qq->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
-                    ->orWhere(fn ($qq) => $qq->whereIn('subject_type', [
-                        AnalysisType::BRIEFING_SUBJECT_TYPE,
-                        AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
-                        AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
-                    ])->where('subject_id', $user->id));
-            })
-            ->get();
+        $cardIds = RunCard::query()->whereIn('activity_id', $activities->pluck('id'))->pluck('id')->all();
 
         $count = 0;
+        $today = Carbon::today()->toDateString();
 
-        foreach ($pending as $row) {
+        foreach ($activities as $activity) {
             $this->analysisService->request(
-                subjectOrType: $row->subject_type,
-                subjectId: $row->subject_id,
-                type: $row->analysis_type,
-                discriminator: $row->discriminator,
-                force: true,
+                subjectOrType: Activity::class,
+                subjectId: $activity->id,
+                type: AnalysisType::PostRunSpeech,
                 delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
             );
             $count++;
-        }
-
-        // 2) Pre-warm insights that are normally created lazily on the UI side
-        // (RunInsight technical/splits/zones per activity, CardFlavor per card,
-        // PrContext per PR). request() is idempotent — existing rows are skipped.
-        $perActivityTypes = [
-            [Activity::class, AnalysisType::RunInsightTechnical],
-            [Activity::class, AnalysisType::RunInsightSplits],
-            [Activity::class, AnalysisType::RunInsightZones],
-        ];
-        foreach ($activityIds as $activityId) {
-            foreach ($perActivityTypes as [$subjectType, $type]) {
-                $this->analysisService->request(
-                    subjectOrType: $subjectType,
-                    subjectId: $activityId,
-                    type: $type,
-                    force: true,
-                    delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
-                );
-                $count++;
-            }
         }
         foreach ($cardIds as $cardId) {
             $this->analysisService->request(
                 subjectOrType: RunCard::class,
                 subjectId: $cardId,
                 type: AnalysisType::CardFlavor,
-                force: true,
                 delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
             );
             $count++;
@@ -218,24 +172,43 @@ class DemoRunSeeder
                 subjectOrType: PersonalRecord::class,
                 subjectId: $prId,
                 type: AnalysisType::PrContext,
-                force: true,
                 delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
             );
             $count++;
         }
-        // WeeklyAggregator skips the current in-progress week to avoid LLM
-        // churn on real ingest. For demo we want the Catatan page populated
-        // end-to-end, so cover every snapshot explicitly.
         foreach ($weeklyIds as $weeklyId) {
             $this->analysisService->request(
                 subjectOrType: WeeklySnapshot::class,
                 subjectId: $weeklyId,
                 type: AnalysisType::WeeklyRecap,
-                force: true,
                 delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
             );
             $count++;
         }
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
+            subjectId: $user->id,
+            type: AnalysisType::BriefingHeadline,
+            discriminator: $today,
+            delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
+        );
+        $count++;
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+            subjectId: $user->id,
+            type: AnalysisType::DailyGreeting,
+            discriminator: $today,
+            delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
+        );
+        $count++;
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
+            subjectId: $user->id,
+            type: AnalysisType::TrendCaption,
+            discriminator: $today,
+            delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
+        );
+        $count++;
 
         return $count;
     }

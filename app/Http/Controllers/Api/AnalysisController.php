@@ -39,7 +39,7 @@ class AnalysisController extends Controller
             subjectId: $subjectId,
             type: $analysisType,
             discriminator: $discriminator,
-            force: true,
+            invalidate: true,
         );
 
         return $this->payload($row, $analysisType, $subjectId, $discriminator);

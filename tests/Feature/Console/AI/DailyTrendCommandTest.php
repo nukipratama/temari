@@ -28,8 +28,8 @@ it('dispatches trend caption analysis for each active user in the last 7 days', 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('request')
         ->twice()
-        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $jobClass = null, ?string $discriminator = null, bool $force = false) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'force');
+        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
+            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'invalidate');
 
             return new Analysis();
         });
@@ -50,7 +50,7 @@ it('dispatches trend caption analysis for each active user in the last 7 days', 
         expect($args['subjectOrType'])->toBe(AnalysisType::TREND_CAPTION_SUBJECT_TYPE)
             ->and($args['type'])->toBe(AnalysisType::TrendCaption)
             ->and($args['discriminator'])->toBe($today)
-            ->and($args['force'])->toBeTrue();
+            ->and($args['invalidate'])->toBeTrue();
     }
 
     Carbon::setTestNow();

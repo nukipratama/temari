@@ -69,15 +69,17 @@ export default function AnalysisStatus({
         return (
             <div className="flex flex-col gap-1.5">
                 <UnavailableNote size={size} />
-                <button
-                    type="button"
-                    onClick={trigger}
-                    disabled={pending}
-                    className="inline-flex items-center self-start gap-1 text-xs text-brand-700 hover:text-brand-800 transition-colors disabled:opacity-50"
-                >
-                    <Icon icon="mdi:reload" aria-hidden />
-                    <span>Coba lagi</span>
-                </button>
+                {allowReanalyze && (
+                    <button
+                        type="button"
+                        onClick={trigger}
+                        disabled={pending}
+                        className="inline-flex items-center self-start gap-1 text-xs text-brand-700 hover:text-brand-800 transition-colors disabled:opacity-50"
+                    >
+                        <Icon icon="mdi:reload" aria-hidden />
+                        <span>Coba lagi</span>
+                    </button>
+                )}
             </div>
         );
     }
@@ -88,15 +90,17 @@ export default function AnalysisStatus({
                 <Icon icon="mdi:sparkles-outline" aria-hidden />
                 <span>Belum dianalisis Temari.</span>
             </span>
-            <button
-                type="button"
-                onClick={trigger}
-                disabled={pending}
-                className="inline-flex items-center self-start gap-1 rounded-full bg-brand-700 text-white text-xs px-3 py-1 font-semibold hover:bg-brand-800 transition-colors disabled:opacity-50"
-            >
-                <Icon icon="mdi:auto-fix" aria-hidden />
-                <span>Analisis sekarang</span>
-            </button>
+            {allowReanalyze && (
+                <button
+                    type="button"
+                    onClick={trigger}
+                    disabled={pending}
+                    className="inline-flex items-center self-start gap-1 rounded-full bg-brand-700 text-white text-xs px-3 py-1 font-semibold hover:bg-brand-800 transition-colors disabled:opacity-50"
+                >
+                    <Icon icon="mdi:auto-fix" aria-hidden />
+                    <span>Analisis sekarang</span>
+                </button>
+            )}
         </div>
     );
 }

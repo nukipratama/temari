@@ -10,7 +10,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use Override;
 
-class AnalyzeWeeklyRecapJob extends AnalyzeAbstractJob
+class AnalyzeWeeklyRecapJob extends AnalyzeRowJob
 {
     #[Override]
     protected function generateContent(Analysis $row): string

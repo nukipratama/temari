@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Services\AI\StructuredChatCaller;
+use App\Services\AI\TokenUsageRecorder;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
@@ -50,7 +52,7 @@ function bootNarrator(string $jsonContent): array
         app(Vibe::class),
         app(TrainingLoad::class),
         app(VerdictNarrator::class),
-        $azure,
+        new StructuredChatCaller($azure, app(TokenUsageRecorder::class)),
     );
 
     return ['user' => $user, 'narrator' => $narrator, 'client' => $client];
@@ -88,7 +90,7 @@ it('throws UnavailableException when the Azure HTTP call itself throws', functio
         app(Vibe::class),
         app(TrainingLoad::class),
         app(VerdictNarrator::class),
-        $azure,
+        new StructuredChatCaller($azure, app(TokenUsageRecorder::class)),
     );
     $narrator->generate($user, Carbon::today());
 })->throws(UnavailableException::class, 'Azure OpenAI call failed');

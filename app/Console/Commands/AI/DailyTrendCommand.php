@@ -33,7 +33,7 @@ class DailyTrendCommand extends Command
                 subjectId: (int) $userId,
                 type: AnalysisType::TrendCaption,
                 discriminator: $today,
-                force: true,
+                invalidate: true,
             );
         }
 

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeDailyGreetingJob;
-use App\Jobs\AI\AnalyzePostRunSpeechJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -53,13 +52,9 @@ it('persists a post_run story line with mood + sigil + null speech (LLM async)',
             Temari::MOOD_SQUISHED,
         ]);
 
-    Bus::assertDispatched(AnalyzePostRunSpeechJob::class);
-
-    $analysis = Analysis::query()
-        ->forSubject(Activity::class, $activity->id, AnalysisType::PostRunSpeech)
-        ->first();
-    expect($analysis)->not->toBeNull()
-        ->and($analysis->status)->toBe(AnalysisStatus::Queued);
+    // Temari no longer dispatches the post-run analysis — ActivityPipeline's
+    // cascadeAfterIngest owns that, tested separately.
+    expect(Analysis::query()->count())->toBe(0);
 });
 
 it('picks glow mood when this activity broke a PR', function (): void {

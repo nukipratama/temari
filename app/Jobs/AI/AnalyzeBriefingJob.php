@@ -5,33 +5,50 @@ declare(strict_types=1);
 namespace App\Jobs\AI;
 
 use App\Exceptions\AI\UnavailableException;
-use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\BriefingNarrator;
+use Illuminate\Support\Carbon;
 use Override;
 
-class AnalyzeBriefingJob extends AnalyzeAbstractJob
+class AnalyzeBriefingJob extends AnalyzeGroupJob
 {
     #[Override]
-    protected function generateContent(Analysis $row): string
+    public static function groupedTypes(): array
     {
-        $user = User::query()->find($row->subject_id);
+        return [
+            AnalysisType::BriefingHeadline,
+            AnalysisType::BriefingSuggestion,
+        ];
+    }
+
+    #[Override]
+    public static function subjectType(): string
+    {
+        return AnalysisType::BRIEFING_SUBJECT_TYPE;
+    }
+
+    #[Override]
+    protected function resolveSubject(int $id): User
+    {
+        $user = User::query()->find($id);
         if ($user === null) {
-            throw new UnavailableException("User {$row->subject_id} not found");
+            throw new UnavailableException("User {$id} not found");
         }
 
-        $asOf = $this->discriminatorDate($row);
-        $narrator = app(BriefingNarrator::class);
-        $cacheKey = sprintf('briefing-llm:%d:%s', $user->id, $asOf->toDateString());
+        return $user;
+    }
 
-        /** @var array{headline: string, suggestion: string} $payload */
-        $payload = cache()->remember($cacheKey, now()->addMinutes(5), fn (): array => $narrator->generate($user, $asOf));
+    #[Override]
+    protected function generateAll(mixed $subject): array
+    {
+        /** @var User $subject */
+        $asOf = $this->discriminator !== null ? Carbon::parse($this->discriminator) : Carbon::today();
+        $payload = app(BriefingNarrator::class)->generate($subject, $asOf);
 
-        return match ($row->analysis_type) {
-            AnalysisType::BriefingHeadline => $payload['headline'],
-            AnalysisType::BriefingSuggestion => $payload['suggestion'],
-            default => throw new UnavailableException("Unsupported analysis_type for briefing job: {$row->analysis_type->value}"),
-        };
+        return [
+            AnalysisType::BriefingHeadline->value => $payload['headline'],
+            AnalysisType::BriefingSuggestion->value => $payload['suggestion'],
+        ];
     }
 }

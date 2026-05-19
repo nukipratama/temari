@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
-use App\Jobs\AI\AnalyzeAbstractJob;
+use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeDailyGreetingJob;
-use App\Jobs\AI\AnalyzePostRunSpeechJob;
 use App\Jobs\AI\AnalyzePrContextJob;
-use App\Jobs\AI\AnalyzeRunInsightJob;
 use App\Jobs\AI\AnalyzeTrendCaptionJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
@@ -36,16 +35,16 @@ enum AnalysisType: string
     public const string DAILY_GREETING_SUBJECT_TYPE = 'daily_greeting_user_day';
     public const string TREND_CAPTION_SUBJECT_TYPE = 'trend_caption_user_day';
 
-    /** @return class-string<AnalyzeAbstractJob> */
+    /** @return class-string<AnalyzeBaseJob> */
     public function jobClass(): string
     {
         return match ($this) {
             self::BriefingHeadline, self::BriefingSuggestion => AnalyzeBriefingJob::class,
-            self::PostRunSpeech => AnalyzePostRunSpeechJob::class,
-            self::DailyGreeting => AnalyzeDailyGreetingJob::class,
+            self::PostRunSpeech,
             self::RunInsightTechnical,
             self::RunInsightSplits,
-            self::RunInsightZones => AnalyzeRunInsightJob::class,
+            self::RunInsightZones => AnalyzeActivityJob::class,
+            self::DailyGreeting => AnalyzeDailyGreetingJob::class,
             self::WeeklyRecap => AnalyzeWeeklyRecapJob::class,
             self::PrContext => AnalyzePrContextJob::class,
             self::TrendCaption => AnalyzeTrendCaptionJob::class,

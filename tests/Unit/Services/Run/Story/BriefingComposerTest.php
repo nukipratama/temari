@@ -31,7 +31,8 @@ it('queues both headline + suggestion jobs on first compose', function (): void 
         ->and($result->headline['content'])->toBeNull()
         ->and($result->suggestion['content'])->toBeNull();
 
-    Bus::assertDispatched(AnalyzeBriefingJob::class, 2);
+    // Briefing is now grouped — one job produces both rows.
+    Bus::assertDispatched(AnalyzeBriefingJob::class, 1);
 });
 
 it('returns stored content when analyses are done', function (): void {

@@ -54,7 +54,7 @@ class RunCardFactory
             subjectOrType: RunCard::class,
             subjectId: $card->id,
             type: AnalysisType::CardFlavor,
-            force: true,
+            invalidate: true,
         );
 
         if (in_array($card->rarity, [RunCard::RARITY_EPIK, RunCard::RARITY_LEGENDARIS], strict: true)) {

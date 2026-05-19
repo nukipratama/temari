@@ -8,8 +8,6 @@ use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\UnlockEngine;
-use App\Services\AI\AnalysisType;
-use App\Services\AI\AnalysisService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
@@ -20,9 +18,36 @@ class WeeklyAggregator
 {
     public function __construct(
         private readonly TrainingLoad $trainingLoad,
-        private readonly AnalysisService $analysisService,
         private readonly UnlockEngine $unlockEngine,
     ) {
+    }
+
+    public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot
+    {
+        $weekEnding = $when->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        // 49 days = 7 weeks, comfortably covers the 42-day CTL window.
+        $windowStart = $weekEnding->copy()->subDays(49)->startOfDay();
+
+        /** @var Collection<int, ActivityDetail> $details */
+        $details = ActivityDetail::query()
+            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+            ->where('activities.user_id', $user->id)
+            ->whereBetween('activity_details.start_date_local', [$windowStart, $weekEnding->copy()->endOfDay()])
+            ->orderBy('activity_details.start_date_local')
+            ->select('activity_details.*')
+            ->get();
+
+        if ($details->isEmpty()) {
+            return null;
+        }
+
+        $dailyTrimp = $this->dailyTrimpMap($details);
+        $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp);
+
+        return WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('week_ending', $weekEnding->toDateString())
+            ->first();
     }
 
     public function rebuildFor(User $user): int
@@ -79,7 +104,7 @@ class WeeklyAggregator
 
         $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $weekEnding);
 
-        $snapshot = WeeklySnapshot::query()->updateOrCreate(
+        WeeklySnapshot::query()->updateOrCreate(
             [
                 'user_id' => $user->id,
                 'week_ending' => $weekEnding->toDateString(),
@@ -97,16 +122,6 @@ class WeeklyAggregator
                 'strain' => $summary['strain'] ?? 0.0,
             ],
         );
-
-        // Auto-request LLM recap only for completed past weeks (skip the
-        // current in-progress week so we don't churn LLM on every ingest).
-        if ($weekEnding->lt(Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay()) && $runs > 0) {
-            $this->analysisService->request(
-                subjectOrType: WeeklySnapshot::class,
-                subjectId: $snapshot->id,
-                type: AnalysisType::WeeklyRecap,
-            );
-        }
     }
 
     /**

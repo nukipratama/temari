@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\RunCard;
-use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 
 class CardFlavorNarrator
@@ -21,11 +20,8 @@ Sebut kombinasi badge / pacing / cuaca jadi 1 kalimat naratif yang menarik.
 JANGAN preachy, JANGAN data dump.
 PROMPT;
 
-    private readonly StructuredChatCaller $caller;
-
-    public function __construct(AzureOpenAIClient $azure)
+    public function __construct(private readonly StructuredChatCaller $caller)
     {
-        $this->caller = new StructuredChatCaller($azure);
     }
 
     public function generate(RunCard $card): string

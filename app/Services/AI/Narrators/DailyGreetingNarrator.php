@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\User;
-use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Story\Vibe;
 
@@ -23,11 +22,8 @@ warning halus, hibernating=ngajakin keluar lagi.
 JANGAN preachy, JANGAN data dump. Cuma 1 kalimat hangat yang nyapa.
 PROMPT;
 
-    private readonly StructuredChatCaller $caller;
-
-    public function __construct(AzureOpenAIClient $azure)
+    public function __construct(private readonly StructuredChatCaller $caller)
     {
-        $this->caller = new StructuredChatCaller($azure);
     }
 
     public function generate(User $user, string $vibeState): string

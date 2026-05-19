@@ -122,3 +122,30 @@ it('is idempotent — re-running upserts the same week without duplicating', fun
 
     expect($second)->toBe($first);
 });
+
+it('rebuildForWeekOf rebuilds only the snapshot covering the given date', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 6000,
+        'moving_time' => 1800,
+        'trimp_edwards' => 50.0,
+        'start_date_local' => Carbon::today()->subDays(2),
+    ]);
+
+    $snap = app(WeeklyAggregator::class)->rebuildForWeekOf($user, Carbon::today()->subDays(2));
+
+    expect($snap)->not->toBeNull()
+        ->and($snap->user_id)->toBe($user->id)
+        ->and(Carbon::parse($snap->week_ending)->toDateString())
+            ->toBe(Carbon::today()->subDays(2)->endOfWeek(Carbon::SUNDAY)->toDateString())
+        ->and((float) $snap->distance_km)->toBe(6.0);
+});
+
+it('rebuildForWeekOf returns null when user has no runs', function (): void {
+    $user = User::factory()->create();
+
+    $snap = app(WeeklyAggregator::class)->rebuildForWeekOf($user, Carbon::today());
+
+    expect($snap)->toBeNull();
+});

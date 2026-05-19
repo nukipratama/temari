@@ -7,7 +7,6 @@ namespace App\Services\AI\Narrators;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
-use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\StreamSummary;
 
@@ -31,11 +30,8 @@ JANGAN preachy, JANGAN data dump, JANGAN ngoreksi. Cuma 1 kalimat
 hangat yang nyambungin angka ke perasaan.
 PROMPT;
 
-    private readonly StructuredChatCaller $caller;
-
-    public function __construct(AzureOpenAIClient $azure)
+    public function __construct(private readonly StructuredChatCaller $caller)
     {
-        $this->caller = new StructuredChatCaller($azure);
     }
 
     public function generate(Activity $activity, ActivityDetail $detail, string $mood): string

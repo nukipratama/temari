@@ -8,10 +8,12 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
+use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Strava\StravaClient;
@@ -38,6 +40,7 @@ class ActivityPipeline
         private readonly RunCardFactory $cardFactory,
         private readonly Temari $temari,
         private readonly AnalysisService $analysisService,
+        private readonly WeeklyAggregator $weeklyAggregator,
     ) {
     }
 
@@ -82,7 +85,7 @@ class ActivityPipeline
         // Story layer must run after PR detection — Temari mood reads PR rows.
         $this->cardFactory->build($activity, $detailModel);
         $this->temari->postRunLine($activity, $detailModel);
-        $this->dispatchRunInsights($activity);
+        $this->cascadeAfterIngest($activity, $detailModel);
 
         $activity->update([
             'analyzed_at' => now(),
@@ -90,17 +93,38 @@ class ActivityPipeline
         ]);
     }
 
-    private function dispatchRunInsights(Activity $activity): void
+    private function cascadeAfterIngest(Activity $activity, ActivityDetail $detail): void
     {
-        foreach ([
-            AnalysisType::RunInsightTechnical,
-            AnalysisType::RunInsightSplits,
-            AnalysisType::RunInsightZones,
-        ] as $type) {
+        $user = $activity->user;
+        $today = Carbon::today()->toDateString();
+
+        $this->analysisService->requestActivityGroup($activity);
+        $this->analysisService->requestBriefingGroup($user, $today, invalidate: true);
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+            subjectId: $user->id,
+            type: AnalysisType::DailyGreeting,
+            discriminator: $today,
+            invalidate: true,
+        );
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
+            subjectId: $user->id,
+            type: AnalysisType::TrendCaption,
+            discriminator: $today,
+            invalidate: true,
+        );
+
+        if ($detail->start_date_local === null) {
+            return;
+        }
+        $snapshot = $this->weeklyAggregator->rebuildForWeekOf($user, $detail->start_date_local);
+        if ($snapshot !== null) {
             $this->analysisService->request(
-                subjectOrType: Activity::class,
-                subjectId: $activity->id,
-                type: $type,
+                subjectOrType: WeeklySnapshot::class,
+                subjectId: $snapshot->id,
+                type: AnalysisType::WeeklyRecap,
+                invalidate: true,
             );
         }
     }

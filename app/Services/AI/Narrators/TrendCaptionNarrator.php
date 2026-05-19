@@ -6,7 +6,6 @@ namespace App\Services\AI\Narrators;
 
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
@@ -24,13 +23,10 @@ recovery week, taper).
 JANGAN preachy, JANGAN data dump.
 PROMPT;
 
-    private readonly StructuredChatCaller $caller;
-
     public function __construct(
-        AzureOpenAIClient $azure,
+        private readonly StructuredChatCaller $caller,
         private readonly TrainingLoad $trainingLoad,
     ) {
-        $this->caller = new StructuredChatCaller($azure);
     }
 
     public function generate(User $user, Carbon $asOf): string

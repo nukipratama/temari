@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Services\AI\Narrators\TrendCaptionNarrator;
 use Override;
 
-class AnalyzeTrendCaptionJob extends AnalyzeAbstractJob
+class AnalyzeTrendCaptionJob extends AnalyzeRowJob
 {
     #[Override]
     protected function generateContent(Analysis $row): string

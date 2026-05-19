@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\PersonalRecord;
-use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 
 class PrContextNarrator
@@ -21,11 +20,8 @@ bilang "PR pertama!" atau yang setara. Tone selalu bangga + supportive.
 JANGAN preachy, JANGAN data dump.
 PROMPT;
 
-    private readonly StructuredChatCaller $caller;
-
-    public function __construct(AzureOpenAIClient $azure)
+    public function __construct(private readonly StructuredChatCaller $caller)
     {
-        $this->caller = new StructuredChatCaller($azure);
     }
 
     public function generate(PersonalRecord $pr): string

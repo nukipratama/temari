@@ -13,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TokenUsageController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function (): void {
@@ -52,4 +53,9 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/api/analyses/{type}/{subjectId}/trigger', [AnalysisController::class, 'trigger'])
         ->whereNumber('subjectId')
         ->name('api.analyses.trigger');
+
 });
+
+Route::middleware(['auth', 'can:viewAiUsage'])
+    ->get('/ai-usage', [TokenUsageController::class, 'show'])
+    ->name('ai-usage');
