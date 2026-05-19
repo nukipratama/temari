@@ -43,13 +43,13 @@ jobs:
         with:
           php-version: ${{ env.PHP_VERSION }}
           coverage: pcov
-          # Enable opcache + tracing JIT for the CLI run. Pest workers are long-
-          # lived PHP processes, so the JIT trace cache amortizes across tests.
+          # Enable CLI opcache for the pest workers. JIT is intentionally
+          # omitted — pcov overrides zend_execute_ex() to instrument lines,
+          # which forces JIT off and spams a warning to stderr on every CLI
+          # invocation.
           ini-values: >-
             opcache.enable=1,
             opcache.enable_cli=1,
-            opcache.jit=tracing,
-            opcache.jit_buffer_size=64M,
             opcache.memory_consumption=256,
             opcache.max_accelerated_files=20000,
             opcache.validate_timestamps=0
