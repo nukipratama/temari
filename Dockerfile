@@ -88,18 +88,17 @@ RUN install-php-extensions \
 
 COPY --from=vendor /app /app
 COPY --from=assets /app/public/build /app/public/build
-# Run the package:discover hook the vendor stage deferred (writes
-# bootstrap/cache/packages.php) and bake config/route/event/view caches
-# into the image so the first request after rollout doesn't pay the boot
-# cost. CACHE_STORE=array keeps the build offline; runtime env resolves
-# CACHE_STORE=redis from compose. APP_ENV=production forces the
-# production config branch into the cache.
-RUN CACHE_STORE=array APP_ENV=production APP_DEBUG=false \
-    sh -c 'php artisan package:discover --ansi \
-        && php artisan config:cache \
-        && php artisan event:cache \
-        && php artisan route:cache \
-        && php artisan view:cache'
+# Run the package:discover hook the vendor stage deferred. Writes
+# bootstrap/cache/packages.php. CACHE_STORE=array because no redis is
+# reachable at build time — runtime config still resolves to redis.
+# config:cache is deliberately NOT baked here: build time has no .env
+# loaded, so env() falls back to the PHP defaults (e.g. DB_CONNECTION
+# defaults to 'sqlite' in config/database.php) and freezes them into the
+# cache. Runtime env vars from compose.prod.yaml are then ignored because
+# Laravel reads from the cached config, not from env. The post-rollover
+# `php artisan optimize` step in ci.yml does the caching at deploy time
+# where the runtime env is actually loaded.
+RUN CACHE_STORE=array php artisan package:discover --ansi
 # FrankenPHP loads /etc/frankenphp/Caddyfile, NOT /etc/caddy/Caddyfile.
 # Copying to the wrong path silently falls back to the image's default
 # Caddyfile (no Cache-Control headers, no worker directive, etc.).

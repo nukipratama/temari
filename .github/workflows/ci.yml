@@ -219,9 +219,13 @@ jobs:
         run: $COMPOSE run --rm app php artisan migrate --force
 
       - name: Roll app, horizon, scheduler onto the new image
-        # config/route/event/view caches are baked into the image at build
-        # time — no post-rollout `artisan optimize` step needed.
         run: $COMPOSE up -d --no-deps app horizon scheduler
+
+      - name: Optimize caches
+        # Runs inside the running container where compose.prod.yaml's env
+        # is loaded — caching at build time would freeze .env-less defaults
+        # (e.g. DB_CONNECTION → sqlite) into the cached config.
+        run: $COMPOSE exec -T app php artisan optimize
 
       - name: Recycle Horizon workers onto new code
         run: $COMPOSE exec -T app php artisan horizon:terminate
