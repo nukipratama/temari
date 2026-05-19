@@ -16,6 +16,16 @@
 	# origin is wasted CPU. zstd for tunnel transport, gzip as fallback.
 	encode zstd gzip
 
+	# Edge basic auth for ops dashboards (defense-in-depth behind Cloudflare
+	# Access). Lives outside Laravel so bots/scrapers never even boot the app.
+	# User + bcrypt hash come from /opt/teman-lari/.env on the host
+	# (DEVTOOLS_BASIC_AUTH_USER / DEVTOOLS_BASIC_AUTH_PASS_HASH).
+	# Generate the hash with `caddy hash-password`.
+	@devtools path /horizon* /pulse* /ai-usage*
+	basicauth @devtools {
+		{$DEVTOOLS_BASIC_AUTH_USER} {$DEVTOOLS_BASIC_AUTH_PASS_HASH}
+	}
+
 	# `handle` blocks (not free-standing `header`) — php_server's worker
 	# chain bypasses Caddy's response-header middleware otherwise.
 	@vite path /build/*

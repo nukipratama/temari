@@ -56,6 +56,6 @@ Route::middleware('auth')->group(function (): void {
 
 });
 
-Route::middleware(['auth', 'can:viewAiUsage'])
-    ->get('/ai-usage', [TokenUsageController::class, 'show'])
-    ->name('ai-usage');
+// Edge basicauth (docker/Caddyfile) protects this in prod. No `auth` middleware
+// so ops can open it without a Strava session.
+Route::get('/ai-usage', [TokenUsageController::class, 'show'])->name('ai-usage');
