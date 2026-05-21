@@ -70,7 +70,7 @@ it('falls back to the default range when the query value is invalid', function (
         ->assertInertia(fn (Assert $page) => $page->where('rangeFilter', '8w'));
 });
 
-it('returns weekly snapshots inside the range + historical for the bottom table', function (): void {
+it('returns only weekly snapshots inside the range', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => Carbon::today()->toDateString(), 'distance_km' => 30.0]);
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => Carbon::today()->subDays(200)->toDateString(), 'distance_km' => 10.0]);
@@ -78,8 +78,7 @@ it('returns weekly snapshots inside the range + historical for the bottom table'
     $this->actingAs($user)->get('/aktivitas')
         ->assertInertia(fn (Assert $page) => $page
             ->has('weeklySnapshots', 1)
-            ->where('weeklySnapshots.0.distance_km', 30)
-            ->has('historicalSnapshots', 2));
+            ->where('weeklySnapshots.0.distance_km', 30));
 });
 
 it('redirects /catatan to /aktivitas', function (): void {

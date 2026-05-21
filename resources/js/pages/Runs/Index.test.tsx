@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import RunsIndex from './Index';
 import { setMockPage } from '@/test/setup';
@@ -21,7 +21,6 @@ const BASE_PROPS = {
     rangeFilter: '8w' as const,
     rangeStart: '2026-03-26',
     weeklySnapshots: [] as never[],
-    historicalSnapshots: [] as never[],
 };
 
 const runFixture: RunRow = {
@@ -119,70 +118,4 @@ describe('Runs/Index', () => {
         expect(screen.getByText('Tanpa tanggal')).toBeInTheDocument();
     });
 
-    it('shows the historical snapshots collapsible at the bottom', () => {
-        const historical = [
-            {
-                id: 100,
-                week_ending: '2026-05-10',
-                distance_km: 18.5,
-                runs: 3,
-                weekly_trimp: 240,
-                atl_7d: 30,
-                ctl_42d: 28.4,
-                form: 2.1,
-                form_status: 'fresh' as const,
-                avg_decoupling: 3.5,
-                monotony: 1.2,
-                strain: 288,
-                recap_analysis: PENDING_RECAP,
-            },
-        ];
-        render(<RunsIndex {...BASE_PROPS} runs={[runFixture]} historicalSnapshots={historical} />);
-        expect(screen.getByRole('button', { name: /Riwayat 1 minggu terakhir/i })).toBeInTheDocument();
-    });
-
-    it('expands the historical table and renders the snapshot row when clicked', () => {
-        const historical = [
-            {
-                id: 200,
-                week_ending: '2026-05-10',
-                distance_km: 18.5,
-                runs: 3,
-                weekly_trimp: 240,
-                atl_7d: 30,
-                ctl_42d: 28.4,
-                form: 2.1,
-                form_status: 'fresh' as const,
-                avg_decoupling: 3.5,
-                monotony: 1.2,
-                strain: 288,
-                recap_analysis: PENDING_RECAP,
-            },
-            {
-                id: 201,
-                week_ending: '2026-05-03',
-                distance_km: null,
-                runs: null,
-                weekly_trimp: null,
-                atl_7d: null,
-                ctl_42d: null,
-                form: null,
-                form_status: null,
-                avg_decoupling: null,
-                monotony: null,
-                strain: null,
-                recap_analysis: PENDING_RECAP,
-            },
-        ];
-        const { container } = render(<RunsIndex {...BASE_PROPS} runs={[runFixture]} historicalSnapshots={historical} />);
-        const toggle = screen.getByRole('button', { name: /Riwayat 2 minggu terakhir/i });
-        fireEvent.click(toggle);
-        // Table renders after expansion — scope assertions inside it.
-        const table = container.querySelector('table');
-        expect(table).not.toBeNull();
-        expect(table?.textContent).toContain('TRIMP');
-        expect(table?.textContent).toContain('28.4');
-        // Null-form row renders the em-dash status fallback.
-        expect(table?.textContent).toContain('—');
-    });
 });

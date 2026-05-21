@@ -39,8 +39,6 @@ class RunController extends Controller
         '1y' => 365,
     ];
 
-    private const int HISTORICAL_TABLE_ROWS = 14;
-
     public function index(Request $request): Response
     {
         /** @var User $user */
@@ -63,15 +61,7 @@ class RunController extends Controller
             ->orderByDesc('week_ending')
             ->get();
 
-        $historicalSnapshots = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->orderByDesc('week_ending')
-            ->limit(self::HISTORICAL_TABLE_ROWS)
-            ->get();
-
-        $recapAnalyses = $this->recapAnalysesFor(
-            $weeklySnapshots->merge($historicalSnapshots)->unique('id')->all(),
-        );
+        $recapAnalyses = $this->recapAnalysesFor($weeklySnapshots->all());
 
         return Inertia::render('Runs/Index', [
             'runs' => $runs->values(),
@@ -79,10 +69,6 @@ class RunController extends Controller
             'rangeFilter' => $range,
             'rangeStart' => $rangeStart->toDateString(),
             'weeklySnapshots' => $weeklySnapshots->map(fn (WeeklySnapshot $row): array => [
-                ...$row->toArray(),
-                'recap_analysis' => $recapAnalyses[$row->id] ?? Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, $row->id),
-            ])->values(),
-            'historicalSnapshots' => $historicalSnapshots->map(fn (WeeklySnapshot $row): array => [
                 ...$row->toArray(),
                 'recap_analysis' => $recapAnalyses[$row->id] ?? Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, $row->id),
             ])->values(),

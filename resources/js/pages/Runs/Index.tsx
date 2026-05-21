@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import AppShell from '@/layouts/AppShell';
 import DetailTeknisCollapsible, { type DetailStat } from '@/components/aktivitas/DetailTeknisCollapsible';
 import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/JourneyStrip';
@@ -36,7 +36,6 @@ interface RunsIndexProps {
     rangeFilter: RangeFilterValue;
     rangeStart: string;
     weeklySnapshots: ReadonlyArray<WeeklySnapshotRow>;
-    historicalSnapshots: ReadonlyArray<WeeklySnapshotRow>;
     journeyMatch?: JourneyMatchData | null;
 }
 
@@ -71,7 +70,6 @@ export default function RunsIndex({
     notes = {},
     rangeFilter,
     weeklySnapshots,
-    historicalSnapshots,
     journeyMatch = null,
 }: Readonly<RunsIndexProps>) {
     const buckets = useMemo<WeekBucket[]>(() => groupByWeek(runs), [runs]);
@@ -115,8 +113,6 @@ export default function RunsIndex({
                                 />
                             ))}
                         </div>
-
-                        <HistoricalTable snapshots={historicalSnapshots} />
                     </>
                 ) : (
                     <EmptyState />
@@ -205,62 +201,6 @@ function Stat({ icon, label }: Readonly<{ icon: string; label: string }>) {
     );
 }
 
-function HistoricalTable({ snapshots }: Readonly<{ snapshots: ReadonlyArray<WeeklySnapshotRow> }>) {
-    const [open, setOpen] = useState(false);
-    if (snapshots.length === 0) return null;
-
-    return (
-        <section className="mt-10 rounded-2xl border border-line bg-surface-elev shadow-sm">
-            <button
-                type="button"
-                onClick={() => setOpen((v) => !v)}
-                aria-expanded={open}
-                className="flex w-full min-h-[44px] items-center justify-between gap-3 px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-ink-meta transition hover:bg-surface-sunken/30"
-            >
-                <span>Riwayat {snapshots.length} minggu terakhir</span>
-                <Icon icon={open ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={16} height={16} aria-hidden />
-            </button>
-            {open && (
-                <div className="overflow-x-auto border-t border-line">
-                    <table className="w-full text-sm tabular-nums">
-                        <thead>
-                            <tr className="border-b border-line text-left text-xs text-ink-meta">
-                                {['Minggu', 'Volume', 'Run', 'TRIMP', 'CTL', 'ATL', 'Form', 'Status'].map((label) => (
-                                    <th key={label} className="px-5 py-3 font-semibold">
-                                        {label}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {snapshots.map((snap) => (
-                                <tr key={snap.id} className="border-b border-line last:border-b-0">
-                                    <td className="px-5 py-3 font-medium text-ink">{weekRangeLabel(mondayOfIso(snap.week_ending))}</td>
-                                    <td className="px-5 py-3 text-ink">{fmtKm(snap.distance_km)}</td>
-                                    <td className="px-5 py-3 text-ink">{snap.runs ?? '—'}</td>
-                                    <td className="px-5 py-3 text-ink">{fmtInt(snap.weekly_trimp)}</td>
-                                    <td className="px-5 py-3 font-medium text-ink">{fmtOne(snap.ctl_42d)}</td>
-                                    <td className="px-5 py-3 text-ink-soft">{fmtOne(snap.atl_7d)}</td>
-                                    <td className="px-5 py-3 text-ink-soft">{fmtOne(snap.form)}</td>
-                                    <td className="px-5 py-3">
-                                        {snap.form_status ? (
-                                            <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold', FORM_CHIP_CLASS[snap.form_status])}>
-                                                {FORM_CHIP_LABEL[snap.form_status]}
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-ink-meta">—</span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </section>
-    );
-}
-
 function EmptyState() {
     return (
         <div className="rounded-2xl border border-dashed border-line bg-surface-elev/40 p-10 text-center">
@@ -336,12 +276,12 @@ function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
             continue;
         }
         const monday = mondayOf(iso);
-        const key = monday.toISOString().slice(0, 10);
+        const key = isoDateLocal(monday);
         let bucket = byKey.get(key);
         if (!bucket) {
             bucket = {
                 weekStart: key,
-                weekEnding: sundayOf(monday).toISOString().slice(0, 10),
+                weekEnding: isoDateLocal(sundayOf(monday)),
                 label: weekRangeLabel(monday),
                 runs: [],
                 totalKm: 0,
@@ -380,8 +320,13 @@ function mondayOf(iso: string): Date {
     return d;
 }
 
-function mondayOfIso(iso: string): Date {
-    return mondayOf(iso);
+function isoDateLocal(d: Date): string {
+    // toISOString() converts to UTC and rolls the date for non-UTC zones.
+    // Compose YYYY-MM-DD from local fields so snapshot keys match.
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${day}`;
 }
 
 function sundayOf(monday: Date): Date {
