@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Story\BriefingContext;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\MetricsContext;
 use App\Services\Run\Story\Vibe;
@@ -23,6 +24,15 @@ class BriefingNarrator
         Tone-nya disesuain mood pengguna hari ini (lihat field `vibe`). Untuk mood
         spesifik briefing: glow=hype banget, bouncy=excited+ngajakin, wobble=empati,
         squished=concerned, dim=gentle, spinning=dreamy.
+
+        Pakai field `context` buat personalisasi:
+        - `this_week_runs` / `last_week_runs` → kalau minggu ini > minggu lalu,
+          apresiasi; kalau < minggu lalu, dorong satu lari kecil.
+        - `recovery_hours` → kalau < 24 jam dari lari terakhir, suggest easy/rest;
+          kalau > 48 jam, oke buat sesi quality lagi.
+        - `time_bucket` → "pagi"/"subuh" frame ajakan lari pagi; "sore" frame
+          lari sore atau cooldown; "malam" frame istirahat / nonton replay hari ini.
+        - `consecutive_weeks_active` → kalau 3+, kasih kredit konsistensi.
 
         Suarakan vibes hari ini, kayak temen yang nungguin di garis start. JANGAN
         ngebahas teori training. Cuma vibes + saran ringan.
@@ -79,6 +89,7 @@ class BriefingNarrator
             'load' => $ctx->load,
             'recent_runs' => $verdictSummary,
             'date' => $ctx->asOf->toDateString(),
+            'context' => BriefingContext::forUser($ctx->user, $ctx->asOf)->toArray(),
         ];
     }
 }
