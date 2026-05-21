@@ -106,6 +106,42 @@ it('redirects /catatan to /aktivitas', function (): void {
         ->assertRedirect('/aktivitas');
 });
 
+it('returns null journeyMatch when the user has less than 2 activities', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()->subDays(2)]);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertInertia(fn (Assert $page) => $page->where('journeyMatch', null));
+});
+
+it('builds journeyMatch comparing first-ever and most-recent activities', function (): void {
+    $user = User::factory()->create();
+    $first = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($first)->create([
+        'start_date_local' => Carbon::today()->subDays(60),
+        'distance' => 5000,
+        'moving_time' => 2100, // 7:00/km
+        'average_heartrate' => 165,
+        'name' => 'First Ever',
+    ]);
+    $latest = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($latest)->create([
+        'start_date_local' => Carbon::today()->subDays(1),
+        'distance' => 5000,
+        'moving_time' => 1800, // 6:00/km
+        'average_heartrate' => 150,
+        'name' => 'Latest',
+    ]);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('journeyMatch.first.name', 'First Ever')
+            ->where('journeyMatch.current.name', 'Latest')
+            ->where('journeyMatch.pace_improvement_sec', 60)
+            ->where('journeyMatch.hr_improvement_bpm', 15));
+});
+
 it('shows a single run detail with Temari speech + run card', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

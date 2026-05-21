@@ -66,7 +66,63 @@ class DashboardController extends Controller
             'trendAnalysis' => $this->resolveTrendCaption($user, $today, $analysisService),
             'hasNewPr' => $this->detectNewPr($user),
             'pendingMilestone' => $this->resolvePendingMilestone($user),
+            'weekVsLastWeek' => $this->resolveWeekVsLastWeek($weeks),
         ]);
+    }
+
+    /**
+     * @param  Collection<int, WeeklySnapshot>  $weeks  Chronological (oldest → newest).
+     * @return array{distance_delta_km: float, runs_delta: int, pace_delta_sec: float|null, this_week_km: float, this_week_runs: int}|null
+     */
+    private function resolveWeekVsLastWeek(Collection $weeks): ?array
+    {
+        if ($weeks->count() < 2) {
+            return null;
+        }
+
+        $thisWeek = $weeks->last();
+        $lastWeek = $weeks->slice(-2, 1)->first();
+
+        if ($thisWeek === null || $lastWeek === null) {
+            return null;
+        }
+
+        $paceDelta = null;
+        $thisPace = self::weekPaceSecPerKm($thisWeek);
+        $lastPace = self::weekPaceSecPerKm($lastWeek);
+        if ($thisPace !== null && $lastPace !== null) {
+            $paceDelta = $thisPace - $lastPace;
+        }
+
+        return [
+            'distance_delta_km' => (float) (($thisWeek->distance_km ?? 0) - ($lastWeek->distance_km ?? 0)),
+            'runs_delta' => (int) (($thisWeek->runs ?? 0) - ($lastWeek->runs ?? 0)),
+            'pace_delta_sec' => $paceDelta,
+            'this_week_km' => (float) ($thisWeek->distance_km ?? 0),
+            'this_week_runs' => (int) ($thisWeek->runs ?? 0),
+        ];
+    }
+
+    private static function weekPaceSecPerKm(WeeklySnapshot $snapshot): ?float
+    {
+        // Estimate weekly average pace from TRIMP + distance heuristic — falls
+        // back to null when snapshot lacks enough data.
+        $km = $snapshot->distance_km;
+        $runs = $snapshot->runs;
+        if ($km === null || $km <= 0 || $runs === null || $runs <= 0) {
+            return null;
+        }
+
+        // Rough estimate: 1 TRIMP ≈ 1 minute of moderate effort. Good enough
+        // for relative week-over-week comparison, not for absolute pace claims.
+        $trimp = $snapshot->weekly_trimp;
+        if ($trimp === null || $trimp <= 0) {
+            return null;
+        }
+
+        $estimatedMinutes = (float) $trimp;
+
+        return ($estimatedMinutes * 60) / $km;
     }
 
     /**

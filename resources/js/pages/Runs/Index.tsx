@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import DetailTeknisCollapsible, { type DetailStat } from '@/components/aktivitas/DetailTeknisCollapsible';
+import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/JourneyStrip';
 import PageHero from '@/components/PageHero';
 import RangeFilter, { type RangeFilterValue } from '@/components/aktivitas/RangeFilter';
 import RingkasanCard from '@/components/aktivitas/RingkasanCard';
@@ -38,6 +39,7 @@ interface RunsIndexProps {
     heatmap: ReadonlyArray<HeatmapCell>;
     weeklySnapshots: ReadonlyArray<WeeklySnapshotRow>;
     historicalSnapshots: ReadonlyArray<WeeklySnapshotRow>;
+    journeyMatch?: JourneyMatchData | null;
 }
 
 type RunWithDetail = Activity & { detail: ActivityDetail };
@@ -73,6 +75,7 @@ export default function RunsIndex({
     heatmap,
     weeklySnapshots,
     historicalSnapshots,
+    journeyMatch = null,
 }: Readonly<RunsIndexProps>) {
     const buckets = useMemo<WeekBucket[]>(() => groupByWeek(runs), [runs]);
     const snapshotsByWeek = useMemo(() => {
@@ -102,6 +105,8 @@ export default function RunsIndex({
                 <RangeFilter active={rangeFilter} className="mb-4" />
 
                 <RunHeatmap cells={heatmap} className="mb-6" />
+
+                <JourneyStrip match={journeyMatch} className="mb-6" />
 
                 {hasRuns ? (
                     <>

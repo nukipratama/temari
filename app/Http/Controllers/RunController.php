@@ -87,7 +87,89 @@ class RunController extends Controller
                 ...$row->toArray(),
                 'recap_analysis' => $recapAnalyses[$row->id] ?? Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, $row->id),
             ])->values(),
+            'journeyMatch' => $this->buildJourneyMatch($user),
         ]);
+    }
+
+    /**
+     * First-ever activity vs latest activity — surfaces an "all-time progress"
+     * delta. Hides for users with <2 activities. Pace/HR improvements use
+     * signed deltas (positive = faster / lower HR = improvement).
+     *
+     * @return array{
+     *     first: array{date: string|null, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: float|null},
+     *     current: array{date: string|null, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: float|null},
+     *     pace_improvement_sec: float|null,
+     *     hr_improvement_bpm: float|null,
+     *     total_km: float,
+     * }|null
+     */
+    private function buildJourneyMatch(User $user): ?array
+    {
+        $first = ActivityDetail::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
+            ->whereNotNull('start_date_local')
+            ->orderBy('start_date_local')
+            ->first();
+
+        $current = ActivityDetail::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
+            ->whereNotNull('start_date_local')
+            ->orderByDesc('start_date_local')
+            ->first();
+
+        if ($first === null || $current === null || $first->id === $current->id) {
+            return null;
+        }
+
+        $firstPace = self::paceSecPerKm($first);
+        $currentPace = self::paceSecPerKm($current);
+        $paceImprovement = ($firstPace !== null && $currentPace !== null)
+            ? $firstPace - $currentPace
+            : null;
+
+        $firstHr = $first->average_heartrate !== null ? (float) $first->average_heartrate : null;
+        $currentHr = $current->average_heartrate !== null ? (float) $current->average_heartrate : null;
+        $hrImprovement = ($firstHr !== null && $currentHr !== null)
+            ? $firstHr - $currentHr
+            : null;
+
+        $totalKm = (float) ActivityDetail::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
+            ->sum('distance');
+
+        return [
+            'first' => self::summariseDetail($first, $firstPace),
+            'current' => self::summariseDetail($current, $currentPace),
+            'pace_improvement_sec' => $paceImprovement,
+            'hr_improvement_bpm' => $hrImprovement,
+            'total_km' => round($totalKm / 1000, 1),
+        ];
+    }
+
+    private static function paceSecPerKm(ActivityDetail $detail): ?float
+    {
+        $distance = $detail->distance;
+        $moving = $detail->moving_time;
+        if ($distance === null || $distance <= 0 || $moving === null || $moving <= 0) {
+            return null;
+        }
+
+        return $moving / ($distance / 1000);
+    }
+
+    /**
+     * @return array{date: string|null, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: float|null}
+     */
+    private static function summariseDetail(ActivityDetail $detail, ?float $paceSec): array
+    {
+        return [
+            'date' => $detail->start_date_local?->toDateString(),
+            'name' => $detail->name,
+            'distance_km' => $detail->distance !== null ? round((float) $detail->distance / 1000, 2) : null,
+            'pace_sec_per_km' => $paceSec,
+            'avg_hr' => $detail->average_heartrate !== null ? (float) $detail->average_heartrate : null,
+        ];
     }
 
     private function resolveRange(mixed $raw): string

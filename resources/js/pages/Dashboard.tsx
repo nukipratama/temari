@@ -11,6 +11,7 @@ import MetricExplainer from '@/components/MetricExplainer';
 import MilestoneBanner, { type PendingMilestone } from '@/components/MilestoneBanner';
 import SectionHeading from '@/components/SectionHeading';
 import TemariFollow from '@/components/temari/TemariFollow';
+import WeekVsLastWeek, { type WeekVsLastWeekData } from '@/components/dashboard/WeekVsLastWeek';
 import FirstRunTooltip from '@/components/onboarding/FirstRunTooltip';
 import type { MetricKey } from '@/lib/metricGlossary';
 import { formStatusLabel } from '@/lib/formStatus';
@@ -42,6 +43,7 @@ interface DashboardProps {
     trendAnalysis?: AnalysisPayload;
     hasNewPr?: boolean;
     pendingMilestone?: PendingMilestone | null;
+    weekVsLastWeek?: WeekVsLastWeekData | null;
 }
 
 export default function Dashboard({
@@ -53,6 +55,7 @@ export default function Dashboard({
     trendAnalysis,
     hasNewPr = false,
     pendingMilestone = null,
+    weekVsLastWeek = null,
 }: Readonly<DashboardProps>) {
     const { props } = usePage<SharedProps & DashboardProps>();
     const firstName = props.auth.user?.first_name ?? '';
@@ -76,6 +79,8 @@ export default function Dashboard({
                 <MilestoneBanner pending={pendingMilestone} />
 
                 <HeroHeader firstName={firstName} briefing={briefing} snapshot={snapshot} />
+
+                <WeekVsLastWeek data={weekVsLastWeek} className="mt-6" />
 
                 <div className="mt-6 grid items-stretch gap-4 sm:gap-6 lg:grid-cols-3">
                     <section ref={briefingRef} className="flex lg:col-span-2">
