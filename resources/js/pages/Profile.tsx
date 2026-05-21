@@ -1,12 +1,38 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import AppShell from '@/layouts/AppShell';
+import DecorativeBlur from '@/components/DecorativeBlur';
 import PageHero from '@/components/PageHero';
 import { fadeInUp } from '@/lib/motion';
 import { formatIdDate } from '@/lib/pace';
+import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
+import { cn } from '@/lib/cn';
 import type { SharedProps } from '@/types/inertia';
+
+interface IdentityPayload {
+    name: string;
+    avatar_url: string | null;
+    first_run_at: string | null;
+    member_since: string | null;
+    strava_connected: boolean;
+}
+
+interface StatsPayload {
+    total_runs: number;
+    total_km: number;
+    longest_run_km: number;
+}
+
+interface TopPrEntry {
+    id: number;
+    category: string;
+    value_sec: number;
+    set_at: string;
+    activity_id: number | null;
+    activity_name: string | null;
+}
 
 interface UnlockEntry {
     unlock_key: string;
@@ -21,24 +47,18 @@ interface UnlockCatalogEntry {
 }
 
 interface ProfileProps {
-    stats: {
-        total_runs: number;
-        total_km: number;
-        member_since: string | null;
-    };
-    strava: {
-        athlete_id: number;
-        scopes: string;
-        token_expires_at: string | null;
-    } | null;
+    identity: IdentityPayload;
+    stats: StatsPayload;
+    topPrs?: TopPrEntry[];
     unlocks?: UnlockEntry[];
     unlockCatalog?: Record<string, UnlockCatalogEntry>;
 }
 
-export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {} }: Readonly<ProfileProps>) {
-    const user = usePage<SharedProps>().props.auth.user;
+export default function Profile({ identity, stats, topPrs = [], unlocks = [], unlockCatalog = {} }: Readonly<ProfileProps>) {
+    const sharedUser = usePage<SharedProps>().props.auth.user;
     const unlockedKeys = useMemo(() => new Set(unlocks.map((u) => u.unlock_key)), [unlocks]);
     const catalogEntries = Object.entries(unlockCatalog);
+    const unlockedCount = catalogEntries.filter(([key]) => unlockedKeys.has(key)).length;
 
     return (
         <AppShell>
@@ -52,82 +72,228 @@ export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {
                 <PageHero
                     icon="mdi:account-circle-outline"
                     title="Profil"
-                    subtitle={`Identitas dan koneksi Strava kamu. Total ${stats.total_km.toFixed(1)} km dari ${stats.total_runs} lari, sejauh ini.`}
+                    subtitle="Identitas + perjalanan lari kamu sejauh ini."
                     className="mb-6"
                 />
 
-                {user !== null && (
-                    <section className="rounded-2xl border border-line bg-surface-elev p-4 dark:border-line-dark dark:bg-surface-dark-elev sm:p-6">
-                        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
-                            Identitas
-                        </h2>
-                        <div className="mt-4 flex items-center gap-4">
-                            {user.avatar_url === null ? (
-                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-500/15 text-brand-600 dark:text-brand-400">
-                                    <Icon icon="mdi:account" width={28} height={28} aria-hidden />
-                                </div>
-                            ) : (
-                                <img
-                                    src={user.avatar_url}
-                                    alt={user.name}
-                                    className="h-14 w-14 rounded-full object-cover ring-2 ring-line dark:ring-line-dark"
-                                />
-                            )}
-                            <div>
-                                <div className="text-lg font-semibold text-ink dark:text-ink-dark">{user.name}</div>
-                                <div className="text-sm text-ink-meta dark:text-ink-meta-dark">
-                                    Login via Strava
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                )}
+                <IdentityCard identity={identity} fallbackAvatarUrl={sharedUser?.avatar_url ?? null} />
 
-                {strava !== null && (
-                    <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-4 dark:border-line-dark dark:bg-surface-dark-elev sm:p-6">
-                        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
-                            Strava
-                        </h2>
-                        <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-                            <Field label="Athlete ID" value={String(strava.athlete_id)} />
-                            <Field label="Scopes" value={strava.scopes} />
-                            <Field
-                                label="Token expires"
-                                value={strava.token_expires_at === null ? '—' : formatIdDate(strava.token_expires_at, 'long')}
-                            />
-                        </dl>
-                    </section>
-                )}
+                <HeroStats stats={stats} className="mt-6" />
 
-                <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-4 dark:border-line-dark dark:bg-surface-dark-elev sm:p-6">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
-                        Statistik singkat
-                    </h2>
-                    <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-                        <Stat label="Run dianalisis" value={stats.total_runs.toString()} />
-                        <Stat label="Total km" value={stats.total_km.toFixed(1)} />
-                        <Stat
-                            label="Member sejak"
-                            value={stats.member_since === null ? '—' : formatIdDate(stats.member_since)}
-                        />
-                    </div>
-                </section>
+                {topPrs.length > 0 && <TopPrsSection prs={topPrs} className="mt-6" />}
 
                 {catalogEntries.length > 0 && (
-                    <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-4 sm:p-6">
-                        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">Koleksi Aksesori</h2>
-                        <p className="mt-2 text-sm text-ink-soft">
-                            Aksesori yang aku kenakan, terbuka dari milestone kamu.
-                        </p>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            {catalogEntries.map(([key, def]) => (
-                                <UnlockTile key={key} def={def} unlocked={unlockedKeys.has(key)} />
-                            ))}
-                        </div>
-                    </section>
+                    <UnlocksSection
+                        catalog={catalogEntries}
+                        unlockedKeys={unlockedKeys}
+                        unlockedCount={unlockedCount}
+                        className="mt-6"
+                    />
                 )}
             </motion.main>
         </AppShell>
+    );
+}
+
+function IdentityCard({
+    identity,
+    fallbackAvatarUrl,
+}: Readonly<{ identity: IdentityPayload; fallbackAvatarUrl: string | null }>) {
+    const sinceLabel = runningSinceLabel(identity.first_run_at ?? identity.member_since);
+    const avatarUrl = identity.avatar_url ?? fallbackAvatarUrl;
+
+    return (
+        <section className="relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-brand-50 via-surface-warm to-accent-50 p-5 shadow-sm sm:p-6">
+            <DecorativeBlur className="-right-12 -top-12 h-32 w-32 bg-brand-200/40" />
+            <DecorativeBlur className="-bottom-16 -left-10 h-32 w-32 bg-accent-200/40" />
+            <div className="relative flex items-center gap-4">
+                {avatarUrl === null ? (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-500/20 text-brand-700 ring-2 ring-white">
+                        <Icon icon="mdi:account" width={32} height={32} aria-hidden />
+                    </div>
+                ) : (
+                    <img
+                        src={avatarUrl}
+                        alt={identity.name}
+                        className="h-16 w-16 rounded-full object-cover ring-2 ring-white shadow-sm"
+                    />
+                )}
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl">{identity.name}</h2>
+                    {sinceLabel && (
+                        <p className="mt-0.5 text-sm text-ink-soft">{sinceLabel}</p>
+                    )}
+                    {identity.strava_connected && (
+                        <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-strava-orange/15 px-2.5 py-1 text-xs font-semibold text-strava-orange">
+                            <Icon icon="simple-icons:strava" width={12} height={12} aria-hidden />
+                            Tersambung dengan Strava
+                        </span>
+                    )}
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function HeroStats({ stats, className }: Readonly<{ stats: StatsPayload; className?: string }>) {
+    return (
+        <section className={cn('grid grid-cols-3 gap-2 sm:gap-3', className)}>
+            <StatTile
+                label="Total km"
+                value={stats.total_km.toFixed(1)}
+                suffix="km"
+                icon="mdi:map-marker-distance"
+                tone="brand"
+            />
+            <StatTile
+                label="Total lari"
+                value={stats.total_runs.toString()}
+                suffix="lari"
+                icon="mdi:run"
+                tone="accent"
+            />
+            <StatTile
+                label="Lari terjauh"
+                value={stats.longest_run_km > 0 ? stats.longest_run_km.toFixed(2) : '—'}
+                suffix={stats.longest_run_km > 0 ? 'km' : null}
+                icon="mdi:trophy-variant-outline"
+                tone="pop"
+            />
+        </section>
+    );
+}
+
+interface StatTileProps {
+    label: string;
+    value: string;
+    suffix: string | null;
+    icon: string;
+    tone: 'brand' | 'accent' | 'pop';
+}
+
+const STAT_TILE_TONE: Record<StatTileProps['tone'], { bg: string; border: string; value: string; icon: string }> = {
+    brand: {
+        bg: 'bg-gradient-to-br from-brand-50 via-surface-elev to-brand-100/60',
+        border: 'border-brand-200',
+        value: 'text-brand-800',
+        icon: 'bg-brand-500',
+    },
+    accent: {
+        bg: 'bg-gradient-to-br from-accent-50 via-surface-elev to-accent-100/60',
+        border: 'border-accent-200',
+        value: 'text-accent-800',
+        icon: 'bg-accent-500',
+    },
+    pop: {
+        bg: 'bg-gradient-to-br from-pop-50 via-surface-elev to-pop-100/70',
+        border: 'border-pop-200',
+        value: 'text-pop-800',
+        icon: 'bg-pop-500',
+    },
+};
+
+function StatTile({ label, value, suffix, icon, tone }: Readonly<StatTileProps>) {
+    const cls = STAT_TILE_TONE[tone];
+    return (
+        <div className={cn('relative overflow-hidden rounded-2xl border p-3 shadow-md sm:p-4', cls.bg, cls.border)}>
+            <DecorativeBlur intensity="md" className="-right-6 -top-6 h-16 w-16 bg-white/40" />
+            <div className="relative flex items-center justify-between gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-meta">{label}</span>
+                <span
+                    aria-hidden
+                    className={cn('flex h-7 w-7 items-center justify-center rounded-lg text-white shadow-sm ring-1 ring-white/60 sm:h-8 sm:w-8', cls.icon)}
+                >
+                    <Icon icon={icon} width={14} height={14} />
+                </span>
+            </div>
+            <div className={cn('relative mt-2 text-2xl font-black tabular-nums sm:text-3xl', cls.value)}>{value}</div>
+            {suffix !== null && (
+                <div className="relative text-[11px] font-semibold uppercase tracking-wider text-ink-meta">{suffix}</div>
+            )}
+        </div>
+    );
+}
+
+function TopPrsSection({ prs, className }: Readonly<{ prs: TopPrEntry[]; className?: string }>) {
+    return (
+        <section className={cn('rounded-2xl border border-line bg-surface-elev p-4 shadow-sm sm:p-5', className)}>
+            <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">Rekor terbaru</h2>
+                <Link
+                    href="/rekor"
+                    className="inline-flex items-center gap-0.5 text-xs font-semibold text-brand-700 hover:text-brand-800"
+                >
+                    Semua rekor
+                    <Icon icon="mdi:chevron-right" width={14} height={14} aria-hidden />
+                </Link>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {prs.map((pr) => (
+                    <TopPrTile key={pr.id} pr={pr} />
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function TopPrTile({ pr }: Readonly<{ pr: TopPrEntry }>) {
+    const body = (
+        <>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-pop-700">
+                {PR_CATEGORY_LABELS[pr.category] ?? pr.category}
+            </div>
+            <div className="mt-1 text-xl font-black tabular-nums text-pop-800">
+                {formatPrValue(pr.category, pr.value_sec)}
+            </div>
+            <div className="mt-1 truncate text-xs text-ink-soft">{pr.activity_name ?? 'Aktivitas'}</div>
+            <div className="text-[11px] text-ink-meta">{formatIdDate(pr.set_at, 'long')}</div>
+        </>
+    );
+
+    const chrome = 'block rounded-xl border border-pop-200 bg-gradient-to-br from-pop-50 to-pop-100/40 p-3 transition';
+
+    if (pr.activity_id !== null) {
+        return (
+            <Link
+                href={`/aktivitas/${pr.activity_id}`}
+                className={cn(chrome, 'hover:-translate-y-0.5 hover:border-pop-400 hover:shadow-md')}
+            >
+                {body}
+            </Link>
+        );
+    }
+
+    return <div className={chrome}>{body}</div>;
+}
+
+function UnlocksSection({
+    catalog,
+    unlockedKeys,
+    unlockedCount,
+    className,
+}: Readonly<{
+    catalog: Array<[string, UnlockCatalogEntry]>;
+    unlockedKeys: Set<string>;
+    unlockedCount: number;
+    className?: string;
+}>) {
+    return (
+        <section className={cn('rounded-2xl border border-line bg-surface-elev p-4 shadow-sm sm:p-5', className)}>
+            <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">Koleksi Aksesori</h2>
+                <span className="text-xs font-semibold text-ink-meta">
+                    {unlockedCount}/{catalog.length}
+                </span>
+            </div>
+            <p className="mt-1 text-sm text-ink-soft">
+                Aksesori yang aku kenakan, terbuka dari milestone kamu.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {catalog.map(([key, def]) => (
+                    <UnlockTile key={key} def={def} unlocked={unlockedKeys.has(key)} />
+                ))}
+            </div>
+        </section>
     );
 }
 
@@ -154,20 +320,28 @@ function UnlockTile({ def, unlocked }: Readonly<{ def: UnlockCatalogEntry; unloc
     );
 }
 
-function Field({ label, value }: Readonly<{ label: string; value: string }>) {
-    return (
-        <div>
-            <dt className="text-xs text-ink-meta dark:text-ink-meta-dark">{label}</dt>
-            <dd className="mt-0.5 font-medium text-ink dark:text-ink-dark">{value}</dd>
-        </div>
-    );
-}
-
-function Stat({ label, value }: Readonly<{ label: string; value: string }>) {
-    return (
-        <div>
-            <div className="text-2xl font-black tabular-nums text-ink dark:text-ink-dark">{value}</div>
-            <div className="mt-1 text-xs text-ink-meta dark:text-ink-meta-dark">{label}</div>
-        </div>
-    );
+function runningSinceLabel(iso: string | null): string | null {
+    if (iso === null) return null;
+    try {
+        const first = new Date(iso);
+        if (Number.isNaN(first.getTime())) return null;
+        const now = new Date();
+        const diffMs = now.getTime() - first.getTime();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        if (diffDays < 7) {
+            return `Mulai berlari ${formatIdDate(iso, 'long')}`;
+        }
+        if (diffDays < 60) {
+            const weeks = Math.floor(diffDays / 7);
+            return `Berlari sejak ${weeks} minggu lalu`;
+        }
+        const months = Math.floor(diffDays / 30);
+        if (months < 24) {
+            return `Berlari sejak ${months} bulan lalu`;
+        }
+        const years = Math.floor(months / 12);
+        return `Berlari sejak ${years} tahun lalu`;
+    } catch {
+        return null;
+    }
 }

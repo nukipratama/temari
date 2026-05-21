@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\ActivityDetail;
+use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\UserUnlock;
 use Illuminate\Http\Request;
@@ -13,20 +14,26 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    private const int TOP_PR_COUNT = 3;
+
     public function __invoke(Request $request): Response
     {
         /** @var User $user */
         $user = $request->user();
-        $connection = $user->stravaConnection;
 
         $totalRuns = $user->activities()->whereNotNull('analyzed_at')->count();
 
-        $totalDistanceMeters = (float) ActivityDetail::query()
+        $detailAggregates = ActivityDetail::query()
             ->whereHas(
                 'activity',
                 fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'),
             )
-            ->sum('distance');
+            ->selectRaw('SUM(distance) AS total_distance, MAX(distance) AS longest_distance, MIN(start_date_local) AS first_run_at')
+            ->first();
+
+        $totalDistanceMeters = (float) ($detailAggregates?->getAttribute('total_distance') ?? 0);
+        $longestRunMeters = (float) ($detailAggregates?->getAttribute('longest_distance') ?? 0);
+        $firstRunAt = $detailAggregates?->getAttribute('first_run_at');
 
         $unlocks = UserUnlock::query()
             ->where('user_id', $user->id)
@@ -39,18 +46,48 @@ class ProfileController extends Controller
             ->all();
 
         return Inertia::render('Profile', [
+            'identity' => [
+                'name' => $user->name,
+                'avatar_url' => $user->avatar_url,
+                'first_run_at' => is_string($firstRunAt) ? $firstRunAt : $firstRunAt?->toIso8601String(),
+                'member_since' => $user->created_at?->toIso8601String(),
+                'strava_connected' => $user->stravaConnection !== null,
+            ],
             'stats' => [
                 'total_runs' => $totalRuns,
                 'total_km' => round($totalDistanceMeters / 1000, 1),
-                'member_since' => $user->created_at?->toIso8601String(),
+                'longest_run_km' => round($longestRunMeters / 1000, 2),
             ],
-            'strava' => $connection === null ? null : [
-                'athlete_id' => $connection->strava_athlete_id,
-                'scopes' => $connection->scopes,
-                'token_expires_at' => $connection->token_expires_at->toIso8601String(),
-            ],
+            'topPrs' => $this->topPrs($user),
             'unlocks' => $unlocks,
             'unlockCatalog' => config('temari_unlocks'),
         ]);
+    }
+
+    /**
+     * @return list<array{id: int, category: string, value_sec: int, set_at: string, activity_id: int|null, activity_name: string|null}>
+     */
+    private function topPrs(User $user): array
+    {
+        $rows = PersonalRecord::query()
+            ->where('user_id', $user->id)
+            ->with(['activity:id', 'activity.detail:id,activity_id,name'])
+            ->orderByDesc('set_at')
+            ->limit(self::TOP_PR_COUNT)
+            ->get();
+
+        $out = [];
+        foreach ($rows as $pr) {
+            $out[] = [
+                'id' => $pr->id,
+                'category' => $pr->category,
+                'value_sec' => (int) $pr->value_sec,
+                'set_at' => $pr->set_at->toIso8601String(),
+                'activity_id' => $pr->activity_id,
+                'activity_name' => $pr->activity?->detail?->name,
+            ];
+        }
+
+        return $out;
     }
 }
