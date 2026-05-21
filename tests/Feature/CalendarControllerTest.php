@@ -11,38 +11,69 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
-it('renders the Kalender page with default 12-month window', function (): void {
+it('renders the Kalender page for the current month by default', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/kalender')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Kalender')
-            ->where('months', 12)
+            ->where('month', Carbon::today()->format('Y-m'))
+            ->has('monthLabel')
             ->has('cells'));
 });
 
-it('returns one cell per day across the requested month window', function (): void {
+it('honors ?month=YYYY-MM when valid', function (): void {
     $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::today()->subDays(10),
-        'distance' => 6200,
-        'trimp_edwards' => 55.5,
-    ]);
 
-    $this->actingAs($user)->get('/kalender?months=1')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('months', 1)
-            ->has('cells', fn (Assert $cells) => $cells->etc()));
+    $this->actingAs($user)->get('/kalender?month=2026-01')
+        ->assertInertia(fn (Assert $page) => $page->where('month', '2026-01'));
 });
 
-it('clamps months query to 1..24', function (): void {
+it('falls back to today\'s month when ?month is invalid', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/kalender?months=999')
-        ->assertInertia(fn (Assert $page) => $page->where('months', 24));
+    $this->actingAs($user)->get('/kalender?month=bogus')
+        ->assertInertia(fn (Assert $page) => $page->where('month', Carbon::today()->format('Y-m')));
+});
 
-    $this->actingAs($user)->get('/kalender?months=-3')
-        ->assertInertia(fn (Assert $page) => $page->where('months', 1));
+it('exposes prev / next month strings for navigation', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/kalender?month=2026-05')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('prevMonth', '2026-04')
+            ->where('nextMonth', '2026-06'));
+});
+
+it('pads the grid to whole Mon-Sun weeks (divisible by 7)', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/kalender?month=2026-05')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('cells', fn (Assert $cells) => $cells->etc())
+            ->where('cells', fn ($cells) => count($cells) % 7 === 0));
+});
+
+it('aggregates multiple runs on the same day into one cell', function (): void {
+    $user = User::factory()->create();
+    foreach ([3000, 4000] as $distance) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => Carbon::create(2026, 5, 15),
+            'distance' => $distance,
+            'moving_time' => (int) ($distance / 1000 * 360),
+            'average_heartrate' => 150,
+            'trimp_edwards' => 20.0,
+        ]);
+    }
+
+    $this->actingAs($user)->get('/kalender?month=2026-05')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('cells', function ($cells) {
+                $cell = collect($cells)->firstWhere('date', '2026-05-15');
+                return $cell !== null
+                    && abs(((float) $cell['distance_km']) - 7.0) < 0.01
+                    && $cell['activity_id'] === null; // multi-run days don't link
+            }));
 });
