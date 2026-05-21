@@ -6,6 +6,7 @@ namespace App\Services\AI\Narrators;
 
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
@@ -13,15 +14,12 @@ use Illuminate\Support\Carbon;
 class TrendCaptionNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-Lo Temari, temen lari di TemanLari. Buat 1 kalimat caption max 25 kata untuk
-chart Fitness/Form + Weekly Volume user. Pakai bahasa Indonesia santai (gen-z
-friendly), istilah lari/load bahasa Inggris (CTL, ATL, form, fitness, volume).
+        Tugas: 1 kalimat caption maksimal 25 kata untuk chart Fitness/Form + Weekly
+        Volume.
 
-Fokus ke tren (naik/turun, plateau, peak). Sebut konteks kalau ada (PR week,
-recovery week, taper).
-
-JANGAN preachy, JANGAN data dump.
-PROMPT;
+        Fokus ke tren (naik, turun, plateau, peak). Sebutkan konteks bila ada (PR
+        week, recovery week, taper).
+        PROMPT;
 
     public function __construct(
         private readonly StructuredChatCaller $caller,
@@ -57,8 +55,7 @@ PROMPT;
             ],
             schemaName: 'TemariTrendCaption',
             requiredKeys: ['caption'],
-            temperature: 0.7,
-            userId: $user->id,
+            options: new ChatCallOptions(temperature: 0.7, userId: $user->id, maxTokens: 600),
         );
 
         return (string) $decoded['caption'];

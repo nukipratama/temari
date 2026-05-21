@@ -5,20 +5,19 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\WeeklySnapshot;
+use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 
 class WeeklyRecapNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-Lo Temari, temen lari di TemanLari. Buat 1-2 kalimat ringkas kondisi minggu
-user (max 35 kata), bahasa Indonesia santai (gen-z friendly), istilah lari
-bahasa Inggris (volume, fitness, form, CTL, ATL, TRIMP, monotony).
+        Tugas: 1-2 kalimat ringkas kondisi minggu pengguna, maksimal 35 kata.
 
-Tone disesuain status: fresh=playful + ngajakin, optimal=positive,
-fatigued=empati + saran istirahat, overreaching=warning halus.
+        Sesuaikan tone dengan status: fresh=energik dan mengajak; optimal=positif;
+        fatigued=empatik dengan saran istirahat; overreaching=warning halus.
 
-JANGAN preachy, JANGAN data dump. Cuma 1-2 kalimat hangat yang merangkum.
-PROMPT;
+        Rangkum vibe minggu ini, tidak perlu menjelaskan setiap angka.
+        PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)
     {
@@ -43,8 +42,7 @@ PROMPT;
             ],
             schemaName: 'TemariWeeklyRecap',
             requiredKeys: ['narrative'],
-            temperature: 0.7,
-            userId: $snapshot->user_id,
+            options: new ChatCallOptions(temperature: 0.7, userId: $snapshot->user_id, maxTokens: 1500),
         );
 
         return (string) $decoded['narrative'];

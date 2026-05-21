@@ -1,7 +1,44 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import RunsIndex from './Index';
 import { setMockPage } from '@/test/setup';
+import type { Activity, ActivityDetail, AnalysisPayload } from '@/types/inertia';
+
+type RunRow = Activity & { detail: ActivityDetail };
+
+const PENDING_RECAP: AnalysisPayload = {
+    id: null,
+    status: 'pending',
+    content: null,
+    type: 'weekly_recap',
+    subject_type: String.raw`App\Models\WeeklySnapshot`,
+    subject_id: 1,
+    discriminator: null,
+};
+
+const BASE_PROPS = {
+    notes: {},
+    rangeFilter: '8w' as const,
+    rangeStart: '2026-03-26',
+    weeklySnapshots: [] as never[],
+    historicalSnapshots: [] as never[],
+};
+
+const runFixture: RunRow = {
+    id: 1,
+    user_id: 1,
+    analyzed_at: '2026-05-10',
+    detail: {
+        id: 11,
+        activity_id: 1,
+        name: 'Morning Run',
+        start_date_local: '2026-05-10T07:00',
+        distance: 5000,
+        moving_time: 1800,
+        average_heartrate: 150,
+        trimp_edwards: 60,
+    },
+};
 
 beforeEach(() => {
     setMockPage({
@@ -13,138 +50,60 @@ beforeEach(() => {
 
 describe('Runs/Index', () => {
     it('renders empty state when no runs', () => {
-        render(
-            <RunsIndex
-                runs={{
-                    data: [],
-                    current_page: 1,
-                    last_page: 1,
-                    per_page: 20,
-                    total: 0,
-                    links: [],
-                }}
-            />,
-        );
-        expect(screen.getByText(/Belum ada aktivitas/)).toBeInTheDocument();
+        render(<RunsIndex {...BASE_PROPS} runs={[]} />);
+        expect(screen.getByText(/Belum ada lari yang tercatat/)).toBeInTheDocument();
     });
 
     it('renders rows grouped under a week header', () => {
-        render(
-            <RunsIndex
-                runs={{
-                    data: [
-                        {
-                            id: 1,
-                            user_id: 1,
-                            analyzed_at: '2026-05-10',
-                            detail: {
-                                id: 11,
-                                activity_id: 1,
-                                name: 'Morning Run',
-                                start_date_local: '2026-05-10T07:00',
-                                distance: 5000,
-                                moving_time: 1800,
-                                average_heartrate: 150,
-                                trimp_edwards: 60,
-                            },
-                        },
-                    ],
-                    current_page: 1,
-                    last_page: 1,
-                    per_page: 20,
-                    total: 1,
-                    links: [],
-                }}
-            />,
-        );
+        render(<RunsIndex {...BASE_PROPS} runs={[runFixture]} />);
         expect(screen.getByText('Morning Run')).toBeInTheDocument();
-        // Week range header reads "Senin, … — Minggu, …".
         expect(screen.getAllByText(/Senin/).length).toBeGreaterThan(0);
         expect(screen.getByText(/1 run/)).toBeInTheDocument();
         expect(screen.getByText(/5\.0 km/)).toBeInTheDocument();
     });
 
     it('skips runs missing detail', () => {
-        render(
-            <RunsIndex
-                runs={{
-                    // @ts-expect-error - detail intentionally missing
-                    data: [{ id: 1, user_id: 1, analyzed_at: '2026-05-10' }],
-                    current_page: 1,
-                    last_page: 1,
-                    per_page: 20,
-                    total: 1,
-                    links: [],
-                }}
-            />,
-        );
+        const orphan = { id: 1, user_id: 1, analyzed_at: '2026-05-10' } as unknown as RunRow;
+        render(<RunsIndex {...BASE_PROPS} runs={[orphan]} />);
         expect(screen.queryByRole('link', { name: /run/i })).not.toBeInTheDocument();
     });
 
-    it('renders pagination links when last_page > 1', () => {
-        render(
-            <RunsIndex
-                runs={{
-                    data: [
-                        {
-                            id: 1,
-                            user_id: 1,
-                            analyzed_at: '2026-05-10',
-                            detail: {
-                                id: 11,
-                                activity_id: 1,
-                                name: 'R',
-                                start_date_local: '2026-05-10T07:00',
-                                distance: 5000,
-                                moving_time: 1800,
-                                average_heartrate: 150,
-                                trimp_edwards: 60,
-                            },
-                        },
-                    ],
-                    current_page: 1,
-                    last_page: 2,
-                    per_page: 20,
-                    total: 40,
-                    links: [
-                        { url: null, label: '&laquo; Previous', active: false },
-                        { url: '/aktivitas?page=1', label: '1', active: true },
-                        { url: '/aktivitas?page=2', label: '2', active: false },
-                        { url: '/aktivitas?page=2', label: 'Next &raquo;', active: false },
-                    ],
-                }}
-            />,
-        );
-        expect(screen.getAllByRole('link').length).toBeGreaterThan(3);
+    it('renders the range filter chips', () => {
+        render(<RunsIndex {...BASE_PROPS} runs={[]} />);
+        expect(screen.getByRole('button', { name: '8 minggu', pressed: true })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '1 tahun', pressed: false })).toBeInTheDocument();
+    });
+
+    it('renders weekly stat chips when a matching snapshot exists for the week', () => {
+        // Morning Run is 2026-05-10 (Sunday). Week starts Mon 2026-05-04, ends Sun 2026-05-10.
+        const snapshot = {
+            id: 100,
+            week_ending: '2026-05-10',
+            distance_km: 18.5,
+            runs: 3,
+            weekly_trimp: 240,
+            atl_7d: 30,
+            ctl_42d: 28.4,
+            form: 2.1,
+            form_status: 'fresh' as const,
+            avg_decoupling: 3.5,
+            monotony: 1.2,
+            strain: 288,
+            recap_analysis: PENDING_RECAP,
+        };
+        render(<RunsIndex {...BASE_PROPS} runs={[runFixture]} weeklySnapshots={[snapshot]} />);
+        expect(screen.getByText(/Fit 28\.4/)).toBeInTheDocument();
+        // Form +2.1 appears in both the chip and the rule-based fallback prose.
+        expect(screen.getAllByText(/Form \+2\.1/).length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Segar').length).toBeGreaterThan(0);
     });
 
     it('renders the note line when a matching note is passed', () => {
+        const noteFixture = { ...runFixture, id: 7, detail: { ...runFixture.detail, activity_id: 7 } };
         render(
             <RunsIndex
-                runs={{
-                    data: [
-                        {
-                            id: 7,
-                            user_id: 1,
-                            analyzed_at: '2026-05-10',
-                            detail: {
-                                id: 11,
-                                activity_id: 7,
-                                name: 'With note',
-                                start_date_local: '2026-05-10T07:00',
-                                distance: 5000,
-                                moving_time: 1800,
-                                average_heartrate: 150,
-                                trimp_edwards: 60,
-                            },
-                        },
-                    ],
-                    current_page: 1,
-                    last_page: 1,
-                    per_page: 20,
-                    total: 1,
-                    links: [],
-                }}
+                {...BASE_PROPS}
+                runs={[noteFixture]}
                 notes={{ 7: { oneline: 'Solid run, keren tahanin pace-nya.', mood: 'bouncy' } }}
             />,
         );
@@ -152,34 +111,78 @@ describe('Runs/Index', () => {
     });
 
     it('buckets activities without start_date_local under "Tanpa tanggal"', () => {
-        render(
-            <RunsIndex
-                runs={{
-                    data: [
-                        {
-                            id: 1,
-                            user_id: 1,
-                            analyzed_at: '2026-05-18',
-                            detail: {
-                                id: 11,
-                                activity_id: 1,
-                                name: 'Orphan run',
-                                start_date_local: null,
-                                distance: 5000,
-                                moving_time: 1800,
-                                average_heartrate: 150,
-                                trimp_edwards: 60,
-                            },
-                        },
-                    ],
-                    current_page: 1,
-                    last_page: 1,
-                    per_page: 20,
-                    total: 1,
-                    links: [],
-                }}
-            />,
-        );
+        const orphan: RunRow = {
+            ...runFixture,
+            detail: { ...runFixture.detail, start_date_local: null },
+        };
+        render(<RunsIndex {...BASE_PROPS} runs={[orphan]} />);
         expect(screen.getByText('Tanpa tanggal')).toBeInTheDocument();
+    });
+
+    it('shows the historical snapshots collapsible at the bottom', () => {
+        const historical = [
+            {
+                id: 100,
+                week_ending: '2026-05-10',
+                distance_km: 18.5,
+                runs: 3,
+                weekly_trimp: 240,
+                atl_7d: 30,
+                ctl_42d: 28.4,
+                form: 2.1,
+                form_status: 'fresh' as const,
+                avg_decoupling: 3.5,
+                monotony: 1.2,
+                strain: 288,
+                recap_analysis: PENDING_RECAP,
+            },
+        ];
+        render(<RunsIndex {...BASE_PROPS} runs={[runFixture]} historicalSnapshots={historical} />);
+        expect(screen.getByRole('button', { name: /Riwayat 1 minggu terakhir/i })).toBeInTheDocument();
+    });
+
+    it('expands the historical table and renders the snapshot row when clicked', () => {
+        const historical = [
+            {
+                id: 200,
+                week_ending: '2026-05-10',
+                distance_km: 18.5,
+                runs: 3,
+                weekly_trimp: 240,
+                atl_7d: 30,
+                ctl_42d: 28.4,
+                form: 2.1,
+                form_status: 'fresh' as const,
+                avg_decoupling: 3.5,
+                monotony: 1.2,
+                strain: 288,
+                recap_analysis: PENDING_RECAP,
+            },
+            {
+                id: 201,
+                week_ending: '2026-05-03',
+                distance_km: null,
+                runs: null,
+                weekly_trimp: null,
+                atl_7d: null,
+                ctl_42d: null,
+                form: null,
+                form_status: null,
+                avg_decoupling: null,
+                monotony: null,
+                strain: null,
+                recap_analysis: PENDING_RECAP,
+            },
+        ];
+        const { container } = render(<RunsIndex {...BASE_PROPS} runs={[runFixture]} historicalSnapshots={historical} />);
+        const toggle = screen.getByRole('button', { name: /Riwayat 2 minggu terakhir/i });
+        fireEvent.click(toggle);
+        // Table renders after expansion — scope assertions inside it.
+        const table = container.querySelector('table');
+        expect(table).not.toBeNull();
+        expect(table?.textContent).toContain('TRIMP');
+        expect(table?.textContent).toContain('28.4');
+        // Null-form row renders the em-dash status fallback.
+        expect(table?.textContent).toContain('—');
     });
 });

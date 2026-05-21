@@ -12,6 +12,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Metrics\PersonalRecords;
+use App\Services\Gamification\MilestoneDetector;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\RunCardFactory;
@@ -46,6 +47,7 @@ class ActivityPipeline
         private readonly Temari $temari,
         private readonly AnalysisService $analysisService,
         private readonly WeeklyAggregator $weeklyAggregator,
+        private readonly MilestoneDetector $milestoneDetector,
     ) {
     }
 
@@ -85,11 +87,12 @@ class ActivityPipeline
 
         $this->computeAndStoreSummary($detailModel, $streams);
         $this->lookupWeather($detailModel, $streams);
-        $this->personalRecords->detectAndStore($activity, $detailModel);
+        $newPrCategories = $this->personalRecords->detectAndStore($activity, $detailModel);
 
         // Story layer must run after PR detection — Temari mood reads PR rows.
         $this->cardFactory->build($activity, $detailModel);
         $this->temari->postRunLine($activity, $detailModel);
+        $this->milestoneDetector->detect($activity, $detailModel, $newPrCategories);
         $this->cascadeAfterIngest($activity, $detailModel);
 
         $activity->update([

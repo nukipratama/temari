@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\TokenUsage;
 use App\Services\AI\AzureOpenAIClient;
+use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\TokenUsageRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -77,7 +78,7 @@ it('records user_id when passed by the narrator', function (): void {
     structuredCaller(
         json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR),
         ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15],
-    )->call('briefing', 'sys', [], 'schema', ['headline'], userId: $user->id);
+    )->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(userId: $user->id));
 
     expect(TokenUsage::query()->first()->user_id)->toBe($user->id);
 });

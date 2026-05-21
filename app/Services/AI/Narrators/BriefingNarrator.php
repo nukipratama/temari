@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\User;
+use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Story\BriefingContext;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\MetricsContext;
 use App\Services\Run\Story\Vibe;
@@ -15,19 +17,27 @@ use Illuminate\Support\Carbon;
 class BriefingNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-Lo Temari, temen lari di app TemanLari. Posisi lo: temen yang nemenin,
-bukan coach yang ngomentarin. Lo ngomong bahasa Indonesia santai (gen-z
-friendly, ga formal), tapi istilah lari tetep dalam bahasa Inggris
-(pace, splits, easy run, tempo, long run, fartlek).
+        Tugas: berikan briefing harian. Output dua bagian:
+        - headline: 1 baris, maksimal 12 kata.
+        - suggestion: 1 baris, maksimal 20 kata.
 
-Tiap hari lo kasih briefing: 1 baris headline (max 12 kata) + 1 baris
-saran (max 20 kata). Tone-nya disesuain mood: glow=hype, bouncy=excited,
-wobble=empati, squished=concerned, dim=gentle, spinning=dreamy.
+        Sesuaikan tone dengan mood pengguna hari ini (lihat field `vibe`). Untuk
+        mood spesifik briefing: glow=energik, bouncy=excited dan mengajak, wobble=
+        empatik, squished=concerned, dim=lembut, spinning=reflektif.
 
-JANGAN preachy, JANGAN data dump, JANGAN ngebahas teori training.
-JANGAN judging — lo temenin, bukan menilai. Suarakan vibes-nya dia
-hari ini, kayak temen yang nungguin di garis start.
-PROMPT;
+        Gunakan field `context` untuk personalisasi:
+        - `this_week_runs` / `last_week_runs`: kalau minggu ini lebih banyak dari
+          minggu lalu, apresiasi. Kalau lebih sedikit, dorong satu lari kecil.
+        - `recovery_hours`: kalau di bawah 24 jam sejak lari terakhir, sarankan
+          easy atau rest. Kalau di atas 48 jam, oke untuk sesi quality lagi.
+        - `time_bucket`: "pagi" atau "subuh" frame ajakan lari pagi; "sore" frame
+          lari sore atau cooldown; "malam" frame istirahat atau review hari ini.
+        - `consecutive_weeks_active`: kalau 3 minggu atau lebih, beri kredit
+          konsistensi.
+
+        Suarakan kondisi hari ini, seperti teman yang menyambut di garis start.
+        JANGAN membahas teori training. Cukup vibes + saran ringan.
+        PROMPT;
 
     public function __construct(
         private readonly Vibe $vibe,
@@ -55,7 +65,7 @@ PROMPT;
             context: $this->buildContext($ctx),
             schemaName: 'TemariBriefing',
             requiredKeys: ['headline', 'suggestion'],
-            userId: $user->id,
+            options: new ChatCallOptions(userId: $user->id, maxTokens: 800),
         );
 
         return [
@@ -80,6 +90,7 @@ PROMPT;
             'load' => $ctx->load,
             'recent_runs' => $verdictSummary,
             'date' => $ctx->asOf->toDateString(),
+            'context' => BriefingContext::forUser($ctx->user, $ctx->asOf)->toArray(),
         ];
     }
 }

@@ -122,7 +122,7 @@ describe('Cards/Index', () => {
                 selectedRarity={null}
             />,
         );
-        expect(screen.getByText(/Spotlight kartu/i)).toBeInTheDocument();
+        expect(screen.getByText(/Kartu sorotan minggu ini/i)).toBeInTheDocument();
         expect(screen.getByText('Special')).toBeInTheDocument();
     });
 
@@ -288,6 +288,6 @@ describe('Cards/Index', () => {
         for (const l of links) {
             if ((l as HTMLAnchorElement).href.includes('/aktivitas/')) l.click();
         }
-        expect(screen.getByText(/Spotlight kartu/i)).toBeInTheDocument();
+        expect(screen.getByText(/Kartu sorotan minggu ini/i)).toBeInTheDocument();
     });
 });

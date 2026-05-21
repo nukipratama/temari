@@ -104,7 +104,7 @@ describe('Dashboard', () => {
             />,
         );
         expect(screen.getByText('Halo, Ada.')).toBeInTheDocument();
-        expect(screen.getByText('Belum ada aktivitas tersinkron')).toBeInTheDocument();
+        expect(screen.getByText('Belum ada lari yang masuk')).toBeInTheDocument();
     });
 
     it('renders KPI tiles + coach disclosure when load is set', () => {

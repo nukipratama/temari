@@ -134,6 +134,7 @@ export default function AktivitasDetailPane({
                         label="TRIMP"
                         value={detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : '—'}
                         sub="Edwards"
+                        explainerKey="edwards_trimp"
                     />
                 </div>
             </div>
@@ -216,13 +217,19 @@ function TechnicalSection({
                         <KpiTile label="Max HR" value={detail.max_heartrate} sub="bpm" tone="alert" />
                     )}
                     {detail.average_cadence != null && (
-                        <KpiTile label="Cadence" value={Math.round(detail.average_cadence * 2)} sub="spm avg" />
+                        <KpiTile
+                            label="Cadence"
+                            value={Math.round(detail.average_cadence * 2)}
+                            sub="spm avg"
+                            explainerKey="cadence"
+                        />
                     )}
                     {summary.decoupling_pct != null && (
                         <KpiTile
                             label="Decoupling"
                             value={`${Number(summary.decoupling_pct) >= 0 ? '+' : ''}${Number(summary.decoupling_pct).toFixed(1)}%`}
                             sub="aerobic drift"
+                            explainerKey="decoupling"
                         />
                     )}
                     {summary.ascent_m != null && <KpiTile label="Ascent" value={Number(summary.ascent_m)} sub="m" />}

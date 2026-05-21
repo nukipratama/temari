@@ -5,22 +5,21 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\User;
+use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Story\Vibe;
 
 class DailyGreetingNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-Lo Temari, temen lari di TemanLari. Buat 1 kalimat greeting pagi
-buat user, max 20 kata. Bahasa Indonesia santai (gen-z friendly),
-istilah lari tetep bahasa Inggris.
+        Tugas: 1 kalimat greeting pagi, maksimal 20 kata.
 
-Tone disesuain vibe state: pumped/fresh/bouncy=hype + ngajakin,
-worn_down/cooked=lembut + permisif (rest gak apa-apa), stretched_thin=
-warning halus, hibernating=ngajakin keluar lagi.
+        Sesuaikan tone dengan vibe state pengguna: pumped/fresh/bouncy=energik dan
+        mengajak; worn_down/cooked=lembut dan permisif (rest tidak apa-apa);
+        stretched_thin=warning halus; hibernating=mengajak keluar lagi.
 
-JANGAN preachy, JANGAN data dump. Cuma 1 kalimat hangat yang nyapa.
-PROMPT;
+        Cukup 1 kalimat hangat yang menyapa, tidak perlu panjang.
+        PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)
     {
@@ -38,7 +37,7 @@ PROMPT;
             ],
             schemaName: 'TemariDailyGreeting',
             requiredKeys: ['speech'],
-            userId: $user->id,
+            options: new ChatCallOptions(userId: $user->id, maxTokens: 400),
         );
 
         return (string) $decoded['speech'];

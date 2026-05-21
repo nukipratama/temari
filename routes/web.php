@@ -6,9 +6,10 @@ use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CardController;
-use App\Http\Controllers\CatatanController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MilestoneController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
@@ -29,9 +30,13 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/aktivitas', [RunController::class, 'index'])->name('aktivitas.index');
     Route::get('/aktivitas/{activity}', [RunController::class, 'show'])->name('aktivitas.show');
 
+    Route::get('/kalender', CalendarController::class)->name('kalender');
+
     Route::get('/kartu', [CardController::class, 'index'])->name('kartu.index');
 
-    Route::get('/catatan', CatatanController::class)->name('catatan');
+    // Catatan merged into Aktivitas — keep deep links working.
+    Route::permanentRedirect('/catatan', '/aktivitas');
+
     Route::get('/rekor', RekorController::class)->name('rekor');
 
     Route::get('/pengaturan', SettingsController::class)->name('pengaturan');
@@ -43,9 +48,12 @@ Route::middleware('auth')->group(function (): void {
     Route::permanentRedirect('/runs', '/aktivitas');
     Route::redirect('/runs/{activity}', '/aktivitas/{activity}', 301);
     Route::permanentRedirect('/cards', '/kartu');
-    Route::permanentRedirect('/progress', '/catatan');
+    Route::permanentRedirect('/progress', '/aktivitas');
     Route::permanentRedirect('/settings', '/pengaturan');
     Route::permanentRedirect('/profile', '/profil');
+
+    Route::post('/api/milestones/{activity}/dismiss', [MilestoneController::class, 'dismiss'])
+        ->name('api.milestones.dismiss');
 
     Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
         ->whereNumber('subjectId')

@@ -2,12 +2,13 @@ import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
-import { formatDurationHMS, formatIdDate } from '@/lib/pace';
+import { formatIdDate } from '@/lib/pace';
 import AppShell from '@/layouts/AppShell';
 import DecorativeBlur from '@/components/DecorativeBlur';
 import PageHero from '@/components/PageHero';
 import { fadeInUp } from '@/lib/motion';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
 import type { AnalysisPayload, PersonalRecord } from '@/types/inertia';
 
 interface ExtendedPR extends Omit<PersonalRecord, 'activity'> {
@@ -20,21 +21,6 @@ interface ExtendedPR extends Omit<PersonalRecord, 'activity'> {
 interface RekorProps {
     personalRecords: ExtendedPR[];
 }
-
-const DISTANCE_CATEGORIES = new Set(['1km', '5km', '10km', '15km', 'half_marathon', 'marathon']);
-
-const PR_CATEGORY_LABELS: Record<string, string> = {
-    '1km': '1 KM',
-    '5km': '5 KM',
-    '10km': '10 KM',
-    '15km': '15 KM',
-    half_marathon: 'Half Marathon',
-    marathon: 'Marathon',
-    best_5min: 'Best 5 minutes',
-    best_10min: 'Best 10 minutes',
-    best_20min: 'Best 20 minutes',
-    best_60min: 'Best 60 minutes',
-};
 
 type PrTone = 'brand' | 'accent' | 'pop' | 'spinning';
 
@@ -126,7 +112,7 @@ export default function Rekor({ personalRecords }: Readonly<RekorProps>) {
                 <PageHero
                     icon="mdi:trophy-variant"
                     title="Rekor"
-                    subtitle="Catatan terbaik kamu. Tap nama run-nya buat lihat detail."
+                    subtitle="Catatan terbaik kamu, satu per kategori. Klik nama lari untuk melihat detail sesi yang memecahkan rekor."
                     tone="pop"
                     className="mb-6"
                 />
@@ -150,7 +136,7 @@ function EmptyState() {
         <div className="rounded-2xl border border-dashed border-line bg-surface-elev/40 p-10 text-center">
             <Icon icon="mdi:trophy-outline" width={32} height={32} className="mx-auto text-ink-meta" aria-hidden />
             <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                Belum ada PR. Run dengan splits + best-effort paces akan otomatis terkumpul di sini.
+                Belum ada PR yang tercatat. Lari dengan splits dan best-effort paces akan otomatis muncul di sini.
             </p>
         </div>
     );
@@ -209,9 +195,3 @@ function PrCard({ pr }: Readonly<{ pr: ExtendedPR }>) {
     );
 }
 
-function formatPrValue(category: string, secs: number): string {
-    if (DISTANCE_CATEGORIES.has(category)) {
-        return formatDurationHMS(secs);
-    }
-    return `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, '0')}/km`;
-}

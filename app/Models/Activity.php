@@ -21,6 +21,8 @@ use Override;
  * @property int $strava_external_id
  * @property Carbon|null $fetched_at
  * @property Carbon|null $analyzed_at
+ * @property Carbon|null $milestones_detected_at
+ * @property array<int, array<string, mixed>>|null $milestone_payload
  * @property int $detail_fail_count
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -36,6 +38,8 @@ use Override;
     'strava_external_id',
     'fetched_at',
     'analyzed_at',
+    'milestones_detected_at',
+    'milestone_payload',
     'detail_fail_count',
 ])]
 class Activity extends Model
@@ -101,6 +105,8 @@ class Activity extends Model
             'strava_external_id' => 'integer',
             'fetched_at' => 'datetime',
             'analyzed_at' => 'datetime',
+            'milestones_detected_at' => 'datetime',
+            'milestone_payload' => 'array',
             'detail_fail_count' => 'integer',
         ];
     }

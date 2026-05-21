@@ -5,20 +5,18 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\PersonalRecord;
+use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 
 class PrContextNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-Lo Temari, temen lari di TemanLari. Buat 1 kalimat flavor untuk Personal Record
-user (max 22 kata), bahasa Indonesia santai (gen-z friendly), istilah lari bahasa
-Inggris.
+        Tugas: 1 kalimat flavor untuk Personal Record, maksimal 22 kata.
 
-Highlight kalau ada delta dari PR sebelumnya. Kalau ini PR pertama di kategori,
-bilang "PR pertama!" atau yang setara. Tone selalu bangga + supportive.
-
-JANGAN preachy, JANGAN data dump.
-PROMPT;
+        Highlight delta dari PR sebelumnya jika ada. Kalau ini PR pertama di
+        kategori, sebutkan "PR pertama!" atau yang setara. Tone selalu bangga dan
+        suportif.
+        PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)
     {
@@ -46,8 +44,7 @@ PROMPT;
             ],
             schemaName: 'TemariPrContext',
             requiredKeys: ['flavor'],
-            temperature: 0.7,
-            userId: $pr->user_id,
+            options: new ChatCallOptions(temperature: 0.7, userId: $pr->user_id, maxTokens: 500),
         );
 
         return (string) $decoded['flavor'];

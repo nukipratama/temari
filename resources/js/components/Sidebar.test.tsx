@@ -32,7 +32,7 @@ describe('Sidebar', () => {
         renderSidebar();
         // Each link appears twice (persistent + dialog drawer). Use
         // getAllByText to assert at least one of each exists.
-        ['Beranda', 'Aktivitas', 'Kartu', 'Catatan', 'Rekor'].forEach((label) => {
+        ['Beranda', 'Aktivitas', 'Kalender', 'Kartu', 'Rekor'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
     });

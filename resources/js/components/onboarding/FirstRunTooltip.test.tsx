@@ -27,26 +27,26 @@ describe('FirstRunTooltip — normal mode', () => {
     it('shows the welcome card when user has zero runs and no dismissal flag', () => {
         setPage(false);
         render(<FirstRunTooltip recentRunCount={0} />);
-        expect(screen.getByText('Hai! Strava udah nyambung.')).toBeInTheDocument();
+        expect(screen.getByText('Halo! Strava kamu sudah tersambung.')).toBeInTheDocument();
     });
 
     it('hides when user has runs', () => {
         setPage(false);
         render(<FirstRunTooltip recentRunCount={3} />);
-        expect(screen.queryByText('Hai! Strava udah nyambung.')).not.toBeInTheDocument();
+        expect(screen.queryByText('Halo! Strava kamu sudah tersambung.')).not.toBeInTheDocument();
     });
 
 it('hides when localStorage dismissal flag is set', () => {
         globalThis.localStorage.setItem(STORAGE_KEY, '1');
         setPage(false);
         render(<FirstRunTooltip recentRunCount={0} />);
-        expect(screen.queryByText('Hai! Strava udah nyambung.')).not.toBeInTheDocument();
+        expect(screen.queryByText('Halo! Strava kamu sudah tersambung.')).not.toBeInTheDocument();
     });
 
     it('persists dismissal to localStorage on click', () => {
         setPage(false);
         render(<FirstRunTooltip recentRunCount={0} />);
-        fireEvent.click(screen.getByRole('button', { name: /Oke, ditunggu/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Baik, ditunggu/ }));
         expect(globalThis.localStorage.getItem(STORAGE_KEY)).toBe('1');
     });
 });
@@ -55,13 +55,13 @@ describe('FirstRunTooltip — force-show mode', () => {
     it('renders regardless of run count', () => {
         setPage(true);
         render(<FirstRunTooltip recentRunCount={99} />);
-        expect(screen.getByText('Hai! Strava udah nyambung.')).toBeInTheDocument();
+        expect(screen.getByText('Halo! Strava kamu sudah tersambung.')).toBeInTheDocument();
     });
 
     it('dismissal does NOT write to localStorage', () => {
         setPage(true);
         render(<FirstRunTooltip recentRunCount={5} />);
-        fireEvent.click(screen.getByRole('button', { name: /Oke, ditunggu/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Baik, ditunggu/ }));
         expect(globalThis.localStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 
@@ -69,6 +69,6 @@ describe('FirstRunTooltip — force-show mode', () => {
         globalThis.localStorage.setItem(STORAGE_KEY, '1');
         setPage(true);
         render(<FirstRunTooltip recentRunCount={0} />);
-        expect(screen.getByText('Hai! Strava udah nyambung.')).toBeInTheDocument();
+        expect(screen.getByText('Halo! Strava kamu sudah tersambung.')).toBeInTheDocument();
     });
 });

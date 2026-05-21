@@ -1,0 +1,146 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Run\Story;
+
+use App\Models\ActivityDetail;
+use App\Models\User;
+use App\Models\WeeklySnapshot;
+use Illuminate\Support\Carbon;
+
+/**
+ * Extra signals the Briefing LLM should know about so its output sounds
+ * personal instead of generic. Built once per Briefing call and injected
+ * as fields into the user message sent to {@see \App\Services\AI\Narrators\BriefingNarrator}.
+ *
+ * `timeBucket` lets the LLM frame its suggestion by the actual hour the
+ * user opened the dashboard (morning prompt vs evening prompt feel
+ * different). `consecutiveWeeksActive` substitutes for the consecutive-day
+ * streak we don't track; reuses WeeklySnapshot rows we already maintain.
+ */
+final readonly class BriefingContext
+{
+    public function __construct(
+        public ?int $thisWeekRuns,
+        public ?int $lastWeekRuns,
+        public ?float $thisWeekKm,
+        public ?float $lastWeekKm,
+        public ?int $recoveryHours,
+        public ?string $formStatus,
+        /** `subuh` (4-5) · `pagi` (6-10) · `siang` (11-14) · `sore` (15-18) · `malam` (19-3) */
+        public string $timeBucket,
+        /** Weeks in a row with at least 1 run, ending at the current week. */
+        public int $consecutiveWeeksActive,
+    ) {
+    }
+
+    public static function forUser(User $user, Carbon $asOf): self
+    {
+        $thisWeekEnd = $asOf->copy()->endOfWeek(Carbon::SUNDAY);
+        $lastWeekEnd = $thisWeekEnd->copy()->subWeek();
+
+        /** @var array<string, WeeklySnapshot> $byDate */
+        $byDate = WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('week_ending')
+            ->limit(12)
+            ->get()
+            ->keyBy(fn (WeeklySnapshot $row): string => $row->week_ending->toDateString())
+            ->all();
+
+        $thisWeek = $byDate[$thisWeekEnd->toDateString()] ?? null;
+        $lastWeek = $byDate[$lastWeekEnd->toDateString()] ?? null;
+
+        $formStatus = null;
+        if ($thisWeek !== null && $thisWeek->form_status !== null) {
+            $formStatus = $thisWeek->form_status;
+        } elseif ($lastWeek !== null) {
+            $formStatus = $lastWeek->form_status;
+        }
+
+        return new self(
+            thisWeekRuns: $thisWeek?->runs,
+            lastWeekRuns: $lastWeek?->runs,
+            thisWeekKm: $thisWeek?->distance_km,
+            lastWeekKm: $lastWeek?->distance_km,
+            recoveryHours: self::recoveryHoursForUser($user, $asOf),
+            formStatus: $formStatus,
+            timeBucket: self::bucketFor($asOf),
+            consecutiveWeeksActive: self::countConsecutiveActiveWeeks($byDate, $thisWeekEnd),
+        );
+    }
+
+    /**
+     * Hours since the user's most-recent activity start. Sharper than
+     * days-since when the briefing renders mid-day after a morning run.
+     */
+    private static function recoveryHoursForUser(User $user, Carbon $asOf): ?int
+    {
+        $lastStart = ActivityDetail::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->whereNotNull('start_date_local')
+            ->orderByDesc('start_date_local')
+            ->value('start_date_local');
+
+        if ($lastStart === null) {
+            return null;
+        }
+
+        $hours = Carbon::parse($lastStart)->diffInHours($asOf);
+
+        return max(0, (int) $hours);
+    }
+
+    /**
+     * @param  array<string, WeeklySnapshot>  $byDate  Keyed by week_ending ISO date.
+     */
+    private static function countConsecutiveActiveWeeks(array $byDate, Carbon $thisWeekEnd): int
+    {
+        $count = 0;
+        $cursor = $thisWeekEnd->copy();
+        while (true) {
+            $row = $byDate[$cursor->toDateString()] ?? null;
+            if ($row === null || ($row->runs ?? 0) <= 0) {
+                break;
+            }
+            $count++;
+            $cursor->subWeek();
+        }
+
+        return $count;
+    }
+
+    private static function bucketFor(Carbon $asOf): string
+    {
+        $hour = (int) $asOf->format('H');
+
+        return match (true) {
+            $hour >= 4 && $hour <= 5 => 'subuh',
+            $hour >= 6 && $hour <= 10 => 'pagi',
+            $hour >= 11 && $hour <= 14 => 'siang',
+            $hour >= 15 && $hour <= 18 => 'sore',
+            default => 'malam',
+        };
+    }
+
+    /**
+     * Sketch of the deltas, ready to JSON-encode straight into the user
+     * message context. Keys are short so they don't bloat token usage.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'this_week_runs' => $this->thisWeekRuns,
+            'last_week_runs' => $this->lastWeekRuns,
+            'this_week_km' => $this->thisWeekKm,
+            'last_week_km' => $this->lastWeekKm,
+            'recovery_hours' => $this->recoveryHours,
+            'form_status' => $this->formStatus,
+            'time_bucket' => $this->timeBucket,
+            'consecutive_weeks_active' => $this->consecutiveWeeksActive,
+        ];
+    }
+}

@@ -7,9 +7,13 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import BriefingCard from '@/components/temari/BriefingCard';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import DecorativeBlur from '@/components/DecorativeBlur';
+import MetricExplainer from '@/components/MetricExplainer';
+import MilestoneBanner, { type PendingMilestone } from '@/components/MilestoneBanner';
 import SectionHeading from '@/components/SectionHeading';
 import TemariFollow from '@/components/temari/TemariFollow';
+import WeekVsLastWeek, { type WeekVsLastWeekData } from '@/components/dashboard/WeekVsLastWeek';
 import FirstRunTooltip from '@/components/onboarding/FirstRunTooltip';
+import type { MetricKey } from '@/lib/metricGlossary';
 import { formStatusLabel } from '@/lib/formStatus';
 import { fadeInUp } from '@/lib/motion';
 import { formatIdDate } from '@/lib/pace';
@@ -38,6 +42,8 @@ interface DashboardProps {
     chartData: FitnessChartData;
     trendAnalysis?: AnalysisPayload;
     hasNewPr?: boolean;
+    pendingMilestone?: PendingMilestone | null;
+    weekVsLastWeek?: WeekVsLastWeekData | null;
 }
 
 export default function Dashboard({
@@ -48,6 +54,8 @@ export default function Dashboard({
     chartData,
     trendAnalysis,
     hasNewPr = false,
+    pendingMilestone = null,
+    weekVsLastWeek = null,
 }: Readonly<DashboardProps>) {
     const { props } = usePage<SharedProps & DashboardProps>();
     const firstName = props.auth.user?.first_name ?? '';
@@ -68,7 +76,11 @@ export default function Dashboard({
             >
                 <FirstRunTooltip recentRunCount={recentRuns.length} />
 
+                <MilestoneBanner pending={pendingMilestone} />
+
                 <HeroHeader firstName={firstName} briefing={briefing} snapshot={snapshot} />
+
+                <WeekVsLastWeek data={weekVsLastWeek} className="mt-6" />
 
                 <div className="mt-6 grid items-stretch gap-4 sm:gap-6 lg:grid-cols-3">
                     <section ref={briefingRef} className="flex lg:col-span-2">
@@ -84,7 +96,7 @@ export default function Dashboard({
                         <SectionHeading
                             icon="mdi:chart-line"
                             title="Tren 30 Hari"
-                            subtitle="Beban, fitness, dan volume mingguan."
+                            subtitle="Beban, fitness, dan volume mingguan kamu. Untuk melihat arah progress."
                             tone="brand"
                         />
                         {trendAnalysis && (
@@ -104,7 +116,7 @@ export default function Dashboard({
                                         >
                                             Catatan Tren
                                         </h3>
-                                        <p className="mt-0.5 text-xs text-ink-meta">Bagaimana 30 hari terakhir lo terlihat dari mata Temari.</p>
+                                        <p className="mt-0.5 text-xs text-ink-meta">30 hari terakhir kamu, dari sudut pandang aku.</p>
                                         <div className="mt-3">
                                             <AnalysisStatus
                                                 analysis={trendAnalysis}
@@ -157,7 +169,7 @@ function HeroHeader({ firstName, briefing, snapshot }: Readonly<HeroHeaderProps>
                     </h1>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                         <p className="text-sm leading-relaxed text-ink-soft">
-                            Berikut ringkasan lari kamu.
+                            Ini ringkasan kondisi kamu hari ini.
                         </p>
                         {briefing.streakLabel !== null && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
@@ -199,7 +211,7 @@ function AtGlance({ load, decouplingValue }: Readonly<AtGlanceProps>) {
     if (load === null) {
         return (
             <aside className="flex h-full items-center rounded-2xl border border-dashed border-line bg-surface-elev/40 p-4 text-sm text-ink-meta sm:rounded-3xl sm:p-5">
-                Belum cukup data untuk ringkasan kondisi. Sync lari terbaru dulu.
+                Aku belum bisa merangkum kondisi kamu, datanya masih kurang. Sinkronkan beberapa lari dulu ya.
             </aside>
         );
     }
@@ -219,6 +231,7 @@ function AtGlance({ load, decouplingValue }: Readonly<AtGlanceProps>) {
                     value={load.form.toFixed(1)}
                     hint={formStatusLabel(load.form_status)}
                     hintTone={statusHintTone(load.form_status)}
+                    explainerKey="vibe"
                 />
                 <StatRow
                     icon="mdi:lightning-bolt"
@@ -227,6 +240,7 @@ function AtGlance({ load, decouplingValue }: Readonly<AtGlanceProps>) {
                     value={Math.round(load.weekly_trimp).toString()}
                     hint={`Monotony ${load.monotony.toFixed(2)} ${monotony.emoji}`}
                     hintTone={monotonyHintTone(monotony.tone)}
+                    explainerKey="monotony"
                 />
                 <StatRow
                     icon="mdi:waves"
@@ -235,6 +249,7 @@ function AtGlance({ load, decouplingValue }: Readonly<AtGlanceProps>) {
                     value={decouplingValue}
                     hint="aerobic drift"
                     hintTone="meta"
+                    explainerKey="decoupling"
                 />
             </div>
         </aside>
@@ -248,6 +263,7 @@ interface StatRowProps {
     value: string;
     hint: string;
     hintTone: 'meta' | 'cooked' | 'glow' | 'bouncy';
+    explainerKey?: MetricKey;
 }
 
 const HINT_TONE_CLASSES: Record<StatRowProps['hintTone'], string> = {
@@ -257,7 +273,7 @@ const HINT_TONE_CLASSES: Record<StatRowProps['hintTone'], string> = {
     bouncy: 'text-mood-bouncy',
 };
 
-function StatRow({ icon, iconTone, label, value, hint, hintTone }: Readonly<StatRowProps>) {
+function StatRow({ icon, iconTone, label, value, hint, hintTone, explainerKey }: Readonly<StatRowProps>) {
     return (
         <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
             <span
@@ -267,8 +283,9 @@ function StatRow({ icon, iconTone, label, value, hint, hintTone }: Readonly<Stat
                 <Icon icon={icon} width={16} height={16} />
             </span>
             <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-meta">
-                    {label}
+                <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-ink-meta">
+                    <span>{label}</span>
+                    {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
                 </div>
                 <div className="mt-0.5 flex items-baseline gap-2">
                     <span className="text-2xl font-black tabular-nums text-ink">{value}</span>
@@ -283,10 +300,10 @@ function StatRow({ icon, iconTone, label, value, hint, hintTone }: Readonly<Stat
 
 function CoachStatStrip({ load }: Readonly<{ load: TrainingLoad }>) {
     const tiles: ReadonlyArray<CoachStatProps> = [
-        { icon: 'mdi:lightning-bolt', iconTone: 'brand', label: 'Fitness (CTL)', value: load.ctl_42d.toFixed(1), hint: '42 hari' },
-        { icon: 'mdi:battery-low', iconTone: 'accent', label: 'Fatigue (ATL)', value: load.atl_7d.toFixed(1), hint: '7 hari' },
-        { icon: 'mdi:fire', iconTone: 'pop', label: 'Strain', value: Math.round(load.strain).toString(), hint: 'TRIMP × monotony' },
-        { icon: 'mdi:repeat-variant', iconTone: 'brand', label: 'Monotony', value: load.monotony.toFixed(2), hint: '≥ 2 = terlalu seragam' },
+        { icon: 'mdi:lightning-bolt', iconTone: 'brand', label: 'Fitness (CTL)', value: load.ctl_42d.toFixed(1), hint: '42 hari', explainerKey: 'ctl' },
+        { icon: 'mdi:battery-low', iconTone: 'accent', label: 'Fatigue (ATL)', value: load.atl_7d.toFixed(1), hint: '7 hari', explainerKey: 'atl' },
+        { icon: 'mdi:fire', iconTone: 'pop', label: 'Strain', value: Math.round(load.strain).toString(), hint: 'TRIMP × monotony', explainerKey: 'strain' },
+        { icon: 'mdi:repeat-variant', iconTone: 'brand', label: 'Monotony', value: load.monotony.toFixed(2), hint: '≥ 2 = terlalu seragam', explainerKey: 'monotony' },
     ];
     return (
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -303,6 +320,7 @@ interface CoachStatProps {
     label: string;
     value: string;
     hint: string;
+    explainerKey?: MetricKey;
 }
 
 const COACH_TILE_TONE: Record<Tone, string> = {
@@ -319,7 +337,7 @@ const COACH_VALUE_TONE: Record<Tone, string> = {
     neutral: 'text-ink',
 };
 
-function CoachStat({ icon, iconTone, label, value, hint }: Readonly<CoachStatProps>) {
+function CoachStat({ icon, iconTone, label, value, hint, explainerKey }: Readonly<CoachStatProps>) {
     return (
         <div
             className={cn(
@@ -329,8 +347,9 @@ function CoachStat({ icon, iconTone, label, value, hint }: Readonly<CoachStatPro
         >
             <DecorativeBlur intensity="md" className="-right-6 -top-6 h-16 w-16 bg-white/40" />
             <div className="relative flex items-center justify-between gap-2">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-meta">
-                    {label}
+                <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-ink-meta">
+                    <span>{label}</span>
+                    {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
                 </div>
                 <span
                     aria-hidden
@@ -351,9 +370,9 @@ function EmptyState() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/15 text-brand-600">
                 <Icon icon="mdi:run-fast" width={28} height={28} aria-hidden />
             </div>
-            <h2 className="mt-4 text-base font-semibold text-ink">Belum ada aktivitas tersinkron</h2>
+            <h2 className="mt-4 text-base font-semibold text-ink">Belum ada lari yang masuk</h2>
             <p className="mx-auto mt-2 max-w-sm text-base leading-relaxed text-ink">
-                Jalankan <code className="rounded bg-line/40 px-1 py-0.5 text-xs">php artisan strava:sync</code> atau tunggu sync terjadwal untuk mengisi dashboard.
+                Strava kamu sudah tersambung. Begitu lari pertama selesai sinkron, dashboard ini akan terisi sendiri.
             </p>
         </section>
     );

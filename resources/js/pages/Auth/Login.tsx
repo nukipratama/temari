@@ -50,7 +50,7 @@ export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
                     <div className="mx-auto w-full max-w-md rounded-3xl border border-line bg-surface-elev p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)] dark:border-line-dark dark:bg-surface-dark-elev dark:shadow-none">
                         <h2 className="text-2xl font-semibold tracking-tight text-ink dark:text-ink-dark">Selamat datang</h2>
                         <p className="mt-2 text-sm leading-relaxed text-ink dark:text-ink-dark">
-                            Masuk pakai Strava untuk mulai catat lari kamu
+                            Masuk dengan Strava untuk mulai mencatat lari kamu
                         </p>
 
                         <a
@@ -76,7 +76,7 @@ export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
                         )}
 
                         <p className="mt-5 text-center text-xs leading-relaxed text-ink-meta dark:text-ink-meta-dark">
-                            Kami hanya pakai Strava untuk login dan baca aktivitas lari kamu
+                            Aku hanya menggunakan Strava untuk login dan membaca aktivitas lari kamu, tidak yang lain.
                         </p>
                     </div>
 

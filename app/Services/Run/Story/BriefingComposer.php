@@ -89,8 +89,7 @@ class BriefingComposer
             $daysSince === null => null,
             $daysSince === 0 => 'Lari hari ini',
             $daysSince === 1 => 'Kemarin lari',
-            $daysSince <= 3 => "Sudah {$daysSince} hari",
-            default => "Sudah {$daysSince} hari nih",
+            default => "Sudah {$daysSince} hari",
         };
     }
 }

@@ -33,20 +33,21 @@ final readonly class StructuredChatCaller
         array $context,
         string $schemaName,
         array $requiredKeys,
-        float $temperature = 0.8,
-        ?int $userId = null,
+        ?ChatCallOptions $options = null,
     ): array {
+        $options ??= new ChatCallOptions();
         $startedAt = microtime(true);
+        $effectiveMaxTokens = $options->maxTokens ?? (int) config('azure_openai.max_completion_tokens');
 
         try {
             $response = $this->azure->client()->chat()->create([
                 'model' => (string) config('azure_openai.deployment'),
                 'messages' => [
-                    ['role' => 'system', 'content' => $systemPrompt.TemariPersona::STYLE_RULES],
+                    ['role' => 'system', 'content' => TemariPersona::systemPrompt()."\n\n".$systemPrompt],
                     ['role' => 'user', 'content' => json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)],
                 ],
-                'max_completion_tokens' => (int) config('azure_openai.max_completion_tokens'),
-                'temperature' => $temperature,
+                'max_completion_tokens' => $effectiveMaxTokens,
+                'temperature' => $options->temperature,
                 'response_format' => self::responseFormat($schemaName, $requiredKeys),
             ]);
         } catch (Throwable $e) {
@@ -87,7 +88,7 @@ final readonly class StructuredChatCaller
             Log::warning('narrator.ai.truncated', [
                 'kind' => $kind,
                 'completion_tokens' => $completionTokens,
-                'max_completion_tokens' => (int) config('azure_openai.max_completion_tokens'),
+                'max_completion_tokens' => $effectiveMaxTokens,
             ]);
         }
 
@@ -111,7 +112,7 @@ final readonly class StructuredChatCaller
             (string) config('azure_openai.deployment') ?: null,
             $latencyMs,
             $truncated,
-            $userId,
+            $options->userId,
         );
 
         return $decoded;

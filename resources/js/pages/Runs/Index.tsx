@@ -1,35 +1,87 @@
 import { Head, Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
+import DetailTeknisCollapsible, { type DetailStat } from '@/components/aktivitas/DetailTeknisCollapsible';
+import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/JourneyStrip';
 import PageHero from '@/components/PageHero';
-import Paginator from '@/components/Paginator';
+import RangeFilter, { type RangeFilterValue } from '@/components/aktivitas/RangeFilter';
+import RingkasanCard from '@/components/aktivitas/RingkasanCard';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
+import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
 import { fadeInUp } from '@/lib/motion';
-import type { Activity, ActivityDetail, PaginatedResponse } from '@/types/inertia';
+import type { Activity, ActivityDetail, AnalysisPayload, FormStatus } from '@/types/inertia';
+
+interface WeeklySnapshotRow {
+    id: number;
+    week_ending: string;
+    distance_km: number | null;
+    runs: number | null;
+    weekly_trimp: number | null;
+    atl_7d: number | null;
+    ctl_42d: number | null;
+    form: number | null;
+    form_status: FormStatus | null;
+    avg_decoupling: number | null;
+    monotony: number | null;
+    strain: number | null;
+    recap_analysis: AnalysisPayload;
+}
 
 interface RunsIndexProps {
-    runs: PaginatedResponse<Activity & { detail: ActivityDetail }>;
+    runs: ReadonlyArray<Activity & { detail: ActivityDetail }>;
     notes?: Record<number, RunNote>;
+    rangeFilter: RangeFilterValue;
+    rangeStart: string;
+    weeklySnapshots: ReadonlyArray<WeeklySnapshotRow>;
+    historicalSnapshots: ReadonlyArray<WeeklySnapshotRow>;
+    journeyMatch?: JourneyMatchData | null;
 }
 
 type RunWithDetail = Activity & { detail: ActivityDetail };
 
 interface WeekBucket {
-    /** ISO Monday for the start of the week. */
     weekStart: string;
-    /** Display label, e.g. "11 — 17 Mei 2026". */
+    /** ISO date string for the Sunday of this week — matches WeeklySnapshot.week_ending. */
+    weekEnding: string;
     label: string;
     runs: RunWithDetail[];
     totalKm: number;
     totalTrimp: number;
 }
 
-export default function RunsIndex({ runs, notes = {} }: Readonly<RunsIndexProps>) {
-    const buckets = useMemo<WeekBucket[]>(() => groupByWeek(runs.data), [runs.data]);
-    const hasRuns = runs.data.length > 0;
+const FORM_CHIP_LABEL: Record<FormStatus, string> = {
+    fresh: 'Segar',
+    optimal: 'Pas',
+    fatigued: 'Lelah',
+    overreaching: 'Terlalu Diforsir',
+};
+
+const FORM_CHIP_CLASS: Record<FormStatus, string> = {
+    fresh: 'bg-brand-100 text-brand-700',
+    optimal: 'bg-mood-bouncy/15 text-mood-bouncy',
+    fatigued: 'bg-mood-glow/20 text-pop-700',
+    overreaching: 'bg-mood-cooked/15 text-mood-cooked',
+};
+
+export default function RunsIndex({
+    runs,
+    notes = {},
+    rangeFilter,
+    weeklySnapshots,
+    historicalSnapshots,
+    journeyMatch = null,
+}: Readonly<RunsIndexProps>) {
+    const buckets = useMemo<WeekBucket[]>(() => groupByWeek(runs), [runs]);
+    const snapshotsByWeek = useMemo(() => {
+        const map = new Map<string, WeeklySnapshotRow>();
+        for (const snap of weeklySnapshots) map.set(snap.week_ending.slice(0, 10), snap);
+        return map;
+    }, [weeklySnapshots]);
+
+    const hasRuns = runs.length > 0;
 
     return (
         <AppShell>
@@ -43,19 +95,28 @@ export default function RunsIndex({ runs, notes = {} }: Readonly<RunsIndexProps>
                 <PageHero
                     icon="mdi:run-fast"
                     title="Aktivitas"
-                    subtitle="Lari kamu dirapikan per minggu — klik satu buat lihat detail."
+                    subtitle="Aktivitas lari kamu, dirapikan per minggu. Klik satu untuk melihat detailnya."
                     className="mb-6"
                 />
+
+                <RangeFilter active={rangeFilter} className="mb-4" />
+
+                <JourneyStrip match={journeyMatch} className="mb-6" />
 
                 {hasRuns ? (
                     <>
                         <div className="space-y-8">
                             {buckets.map((bucket) => (
-                                <WeekSection key={bucket.weekStart} bucket={bucket} notes={notes} />
+                                <WeekSection
+                                    key={bucket.weekStart}
+                                    bucket={bucket}
+                                    snapshot={snapshotsByWeek.get(bucket.weekEnding) ?? null}
+                                    notes={notes}
+                                />
                             ))}
                         </div>
 
-                        {runs.last_page > 1 && <Paginator links={runs.links} />}
+                        <HistoricalTable snapshots={historicalSnapshots} />
                     </>
                 ) : (
                     <EmptyState />
@@ -65,7 +126,13 @@ export default function RunsIndex({ runs, notes = {} }: Readonly<RunsIndexProps>
     );
 }
 
-function WeekSection({ bucket, notes }: Readonly<{ bucket: WeekBucket; notes: Record<number, RunNote> }>) {
+interface WeekSectionProps {
+    bucket: WeekBucket;
+    snapshot: WeeklySnapshotRow | null;
+    notes: Record<number, RunNote>;
+}
+
+function WeekSection({ bucket, snapshot, notes }: Readonly<WeekSectionProps>) {
     const trimpLabel = Math.round(bucket.totalTrimp);
     return (
         <section className="overflow-hidden rounded-2xl border border-line bg-surface-elev shadow-sm">
@@ -75,14 +142,57 @@ function WeekSection({ bucket, notes }: Readonly<{ bucket: WeekBucket; notes: Re
                     <Stat icon="mdi:run" label={`${bucket.runs.length} run`} />
                     <Stat icon="mdi:map-marker-distance" label={`${bucket.totalKm.toFixed(1)} km`} />
                     <Stat icon="mdi:fire" label={`${trimpLabel} TRIMP`} />
+                    {snapshot && <WeeklyStatusChips snapshot={snapshot} />}
                 </div>
             </header>
+
+            {snapshot && (
+                <div className="space-y-3 border-b border-line bg-surface-warm/20 px-5 py-4">
+                    <RingkasanCard
+                        analysis={snapshot.recap_analysis}
+                        fallback={ruleBasedFallback(snapshot)}
+                    />
+                    <DetailTeknisCollapsible
+                        storageKey={snapshot.week_ending.slice(0, 10)}
+                        stats={detailStatsFor(snapshot)}
+                    />
+                </div>
+            )}
+
             <div>
                 {bucket.runs.map((activity) => (
                     <RunListRow key={activity.id} detail={activity.detail} note={notes[activity.id] ?? null} />
                 ))}
             </div>
         </section>
+    );
+}
+
+function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow }>) {
+    return (
+        <>
+            {snapshot.ctl_42d !== null && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
+                    Fit {snapshot.ctl_42d.toFixed(1)}
+                </span>
+            )}
+            {snapshot.form !== null && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent-100 px-2.5 py-0.5 text-xs font-semibold text-accent-700">
+                    Form {snapshot.form >= 0 ? '+' : ''}
+                    {snapshot.form.toFixed(1)}
+                </span>
+            )}
+            {snapshot.form_status && (
+                <span
+                    className={cn(
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                        FORM_CHIP_CLASS[snapshot.form_status],
+                    )}
+                >
+                    {FORM_CHIP_LABEL[snapshot.form_status]}
+                </span>
+            )}
+        </>
     );
 }
 
@@ -95,11 +205,67 @@ function Stat({ icon, label }: Readonly<{ icon: string; label: string }>) {
     );
 }
 
+function HistoricalTable({ snapshots }: Readonly<{ snapshots: ReadonlyArray<WeeklySnapshotRow> }>) {
+    const [open, setOpen] = useState(false);
+    if (snapshots.length === 0) return null;
+
+    return (
+        <section className="mt-10 rounded-2xl border border-line bg-surface-elev shadow-sm">
+            <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+                className="flex w-full min-h-[44px] items-center justify-between gap-3 px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-ink-meta transition hover:bg-surface-sunken/30"
+            >
+                <span>Riwayat {snapshots.length} minggu terakhir</span>
+                <Icon icon={open ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={16} height={16} aria-hidden />
+            </button>
+            {open && (
+                <div className="overflow-x-auto border-t border-line">
+                    <table className="w-full text-sm tabular-nums">
+                        <thead>
+                            <tr className="border-b border-line text-left text-xs text-ink-meta">
+                                {['Minggu', 'Volume', 'Run', 'TRIMP', 'CTL', 'ATL', 'Form', 'Status'].map((label) => (
+                                    <th key={label} className="px-5 py-3 font-semibold">
+                                        {label}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {snapshots.map((snap) => (
+                                <tr key={snap.id} className="border-b border-line last:border-b-0">
+                                    <td className="px-5 py-3 font-medium text-ink">{weekRangeLabel(mondayOfIso(snap.week_ending))}</td>
+                                    <td className="px-5 py-3 text-ink">{fmtKm(snap.distance_km)}</td>
+                                    <td className="px-5 py-3 text-ink">{snap.runs ?? '—'}</td>
+                                    <td className="px-5 py-3 text-ink">{fmtInt(snap.weekly_trimp)}</td>
+                                    <td className="px-5 py-3 font-medium text-ink">{fmtOne(snap.ctl_42d)}</td>
+                                    <td className="px-5 py-3 text-ink-soft">{fmtOne(snap.atl_7d)}</td>
+                                    <td className="px-5 py-3 text-ink-soft">{fmtOne(snap.form)}</td>
+                                    <td className="px-5 py-3">
+                                        {snap.form_status ? (
+                                            <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold', FORM_CHIP_CLASS[snap.form_status])}>
+                                                {FORM_CHIP_LABEL[snap.form_status]}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-ink-meta">—</span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </section>
+    );
+}
+
 function EmptyState() {
     return (
         <div className="rounded-2xl border border-dashed border-line bg-surface-elev/40 p-10 text-center">
             <Icon icon="mdi:run-fast" width={28} height={28} className="mx-auto text-brand-500" aria-hidden />
-            <p className="mt-3 text-base text-ink">Belum ada aktivitas yang dianalisis</p>
+            <p className="mt-3 text-base text-ink">Belum ada lari yang tercatat. Sinkronkan lari pertama kamu dari Strava dulu, ya.</p>
             <Link
                 href="/"
                 className="mt-3 inline-flex items-center gap-1 text-sm text-brand-700 hover:text-brand-800"
@@ -109,6 +275,48 @@ function EmptyState() {
             </Link>
         </div>
     );
+}
+
+function detailStatsFor(snap: WeeklySnapshotRow): DetailStat[] {
+    return [
+        { label: 'TRIMP', value: fmtInt(snap.weekly_trimp), explainerKey: 'trimp' },
+        { label: 'CTL', value: fmtOne(snap.ctl_42d), explainerKey: 'ctl' },
+        { label: 'ATL', value: fmtOne(snap.atl_7d), explainerKey: 'atl' },
+        { label: 'Form', value: fmtOne(snap.form), explainerKey: 'form' },
+        { label: 'Monotony', value: fmtTwo(snap.monotony), explainerKey: 'monotony' },
+        { label: 'Strain', value: fmtInt(snap.strain), explainerKey: 'strain' },
+        { label: 'Decoupling', value: snap.avg_decoupling !== null ? `${snap.avg_decoupling.toFixed(1)}%` : '—', explainerKey: 'decoupling' },
+        { label: 'Volume', value: fmtKm(snap.distance_km) },
+        { label: 'Run', value: snap.runs !== null ? `${snap.runs}` : '—' },
+    ];
+}
+
+function ruleBasedFallback(snap: WeeklySnapshotRow): string {
+    const parts: string[] = [];
+    if (snap.runs !== null && snap.distance_km !== null) {
+        parts.push(`Minggu ini kamu lari ${snap.runs}x sejauh ${snap.distance_km.toFixed(1)} km.`);
+    }
+    if (snap.form !== null && snap.form_status) {
+        const formLabel = FORM_CHIP_LABEL[snap.form_status];
+        parts.push(`Form ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, status ${formLabel.toLowerCase()}.`);
+    }
+    return parts.join(' ') || 'Belum ada data minggu ini, sabar ya.';
+}
+
+function fmtOne(n: number | null): string {
+    return n === null ? '—' : n.toFixed(1);
+}
+
+function fmtTwo(n: number | null): string {
+    return n === null ? '—' : n.toFixed(2);
+}
+
+function fmtKm(km: number | null): string {
+    return km === null ? '—' : `${km.toFixed(1)} km`;
+}
+
+function fmtInt(n: number | null): string {
+    return n === null ? '—' : Math.round(n).toString();
 }
 
 /**
@@ -133,6 +341,7 @@ function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
         if (!bucket) {
             bucket = {
                 weekStart: key,
+                weekEnding: sundayOf(monday).toISOString().slice(0, 10),
                 label: weekRangeLabel(monday),
                 runs: [],
                 totalKm: 0,
@@ -151,6 +360,7 @@ function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
     if (orphans.length > 0) {
         buckets.push({
             weekStart: 'orphans',
+            weekEnding: 'orphans',
             label: 'Tanpa tanggal',
             runs: orphans,
             totalKm: orphans.reduce((acc, r) => acc + (r.detail.distance ?? 0) / 1000, 0),
@@ -170,9 +380,18 @@ function mondayOf(iso: string): Date {
     return d;
 }
 
+function mondayOfIso(iso: string): Date {
+    return mondayOf(iso);
+}
+
+function sundayOf(monday: Date): Date {
+    const d = new Date(monday);
+    d.setDate(d.getDate() + 6);
+    return d;
+}
+
 function weekRangeLabel(monday: Date): string {
-    const sunday = new Date(monday);
-    sunday.setDate(sunday.getDate() + 6);
+    const sunday = sundayOf(monday);
     const start = formatIdDate(monday.toISOString(), 'long');
     const end = formatIdDate(sunday.toISOString(), 'long');
     return `${start} — ${end}`;

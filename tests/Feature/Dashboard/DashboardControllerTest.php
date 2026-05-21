@@ -80,6 +80,103 @@ it('flags hasNewPr=true when a fresh PR is unseen, then false once user revisits
     Carbon::setTestNow();
 });
 
+it('returns null weekVsLastWeek when the user has fewer than 2 weekly snapshots', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->toDateString(),
+        'distance_km' => 25,
+        'runs' => 3,
+        'weekly_trimp' => 150,
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page->where('weekVsLastWeek', null));
+});
+
+it('computes weekVsLastWeek deltas when two consecutive weekly snapshots exist', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->subWeek()->toDateString(),
+        'distance_km' => 20,
+        'runs' => 3,
+        'weekly_trimp' => 200,
+    ]);
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->toDateString(),
+        'distance_km' => 25,
+        'runs' => 4,
+        'weekly_trimp' => 220,
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('weekVsLastWeek.this_week_km', 25)
+            ->where('weekVsLastWeek.this_week_runs', 4)
+            ->where('weekVsLastWeek.distance_delta_km', 5)
+            ->where('weekVsLastWeek.runs_delta', 1));
+});
+
+it('falls back to null pace_delta when one snapshot lacks distance / runs / trimp', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->subWeek()->toDateString(),
+        'distance_km' => null,
+        'runs' => null,
+        'weekly_trimp' => null,
+    ]);
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->toDateString(),
+        'distance_km' => 25,
+        'runs' => 4,
+        'weekly_trimp' => 220,
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page->where('weekVsLastWeek.pace_delta_sec', null));
+});
+
+it('falls back to null pace_delta when a snapshot has distance + runs but zero trimp', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->subWeek()->toDateString(),
+        'distance_km' => 20,
+        'runs' => 3,
+        'weekly_trimp' => 0, // trips the zero-trimp branch in weekPaceSecPerKm
+    ]);
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->toDateString(),
+        'distance_km' => 25,
+        'runs' => 4,
+        'weekly_trimp' => 220,
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page->where('weekVsLastWeek.pace_delta_sec', null));
+});
+
+it('surfaces the latest activity with un-dismissed milestone payload', function (): void {
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->state(['analyzed_at' => now()])->create([
+        'milestone_payload' => [
+            ['kind' => 'pr', 'label' => 'PR!', 'body' => 'PR di 5km.', 'priority' => 100],
+        ],
+        'milestones_detected_at' => now(),
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('pendingMilestone.activity_id')
+            ->has('pendingMilestone.milestones', 1));
+});
+
+it('returns null pendingMilestone when payload is null', function (): void {
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->state(['analyzed_at' => now(), 'milestone_payload' => null])->create();
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page->where('pendingMilestone', null));
+});
+
 it('reuses the same daily greeting on a second open within the day', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
     $user = User::factory()->create();
