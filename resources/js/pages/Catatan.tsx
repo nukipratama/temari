@@ -5,9 +5,11 @@ import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
 import AppShell from '@/layouts/AppShell';
 import DecorativeBlur from '@/components/DecorativeBlur';
+import MetricExplainer from '@/components/MetricExplainer';
 import PageHero from '@/components/PageHero';
 import SectionHeading from '@/components/SectionHeading';
 import { fadeInUp } from '@/lib/motion';
+import type { MetricKey } from '@/lib/metricGlossary';
 import { ICON_TONE, type Tone } from '@/lib/tones';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import type { AnalysisPayload, FormStatus, WeeklySnapshot } from '@/types/inertia';
@@ -140,6 +142,7 @@ function HeroStats({ latest, prior }: Readonly<HeroStatsProps>) {
                 hint="CTL · 42 hari"
                 icon="mdi:lightning-bolt"
                 tone="brand"
+                explainerKey="ctl"
             />
             <HeroStat
                 label="Fatigue"
@@ -149,6 +152,7 @@ function HeroStats({ latest, prior }: Readonly<HeroStatsProps>) {
                 icon="mdi:battery-low"
                 tone="accent"
                 invertDelta
+                explainerKey="atl"
             />
             <HeroStat
                 label="Form"
@@ -157,6 +161,7 @@ function HeroStats({ latest, prior }: Readonly<HeroStatsProps>) {
                 hint={latest.form_status ?? '—'}
                 icon="mdi:scale-balance"
                 tone="brand"
+                explainerKey="form"
             />
             <HeroStat
                 label="Volume minggu ini"
@@ -179,6 +184,7 @@ interface HeroStatProps {
     tone: Tone;
     /** When true, a positive delta is *bad* (e.g. fatigue rising). */
     invertDelta?: boolean;
+    explainerKey?: MetricKey;
 }
 
 const HERO_RING_TONE: Record<Tone, string> = {
@@ -195,13 +201,16 @@ const HERO_VALUE_TONE: Record<Tone, string> = {
     neutral: 'text-ink',
 };
 
-function HeroStat({ label, value, delta, hint, icon, tone, invertDelta = false }: Readonly<HeroStatProps>) {
+function HeroStat({ label, value, delta, hint, icon, tone, invertDelta = false, explainerKey }: Readonly<HeroStatProps>) {
     const showHint = hint != null && hint !== '';
     return (
         <div className={cn('relative overflow-hidden rounded-2xl border p-3 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5', HERO_RING_TONE[tone])}>
             <DecorativeBlur intensity="md" className="-right-6 -top-6 h-20 w-20 bg-white/50" />
             <div className="relative flex items-start justify-between gap-2">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-meta sm:text-xs">{label}</div>
+                <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-ink-meta sm:text-xs">
+                    <span>{label}</span>
+                    {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
+                </div>
                 <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg shadow-sm ring-1 ring-white/60 sm:h-8 sm:w-8', ICON_TONE[tone])} aria-hidden>
                     <Icon icon={icon} width={14} height={14} />
                 </span>
