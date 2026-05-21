@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import AppShell from '@/layouts/AppShell';
+import PageHero from '@/components/PageHero';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatPace } from '@/lib/pace';
@@ -39,16 +40,58 @@ interface WeekRow {
 
 const WEEKDAY_LABELS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as const;
 
-const MOOD_TONE: Record<Mood, { dot: string; cellBg: string; cellBorder: string }> = {
-    glow: { dot: 'bg-pop-500', cellBg: 'bg-pop-50', cellBorder: 'border-pop-300' },
-    bouncy: { dot: 'bg-mood-bouncy', cellBg: 'bg-mood-bouncy/10', cellBorder: 'border-mood-bouncy/30' },
-    wobble: { dot: 'bg-mood-glow', cellBg: 'bg-mood-glow/10', cellBorder: 'border-mood-glow/30' },
-    squished: { dot: 'bg-mood-squished', cellBg: 'bg-mood-squished/10', cellBorder: 'border-mood-squished/30' },
-    spinning: { dot: 'bg-mood-spinning', cellBg: 'bg-mood-spinning/10', cellBorder: 'border-mood-spinning/30' },
-    dim: { dot: 'bg-ink-meta', cellBg: 'bg-surface-sunken/40', cellBorder: 'border-line' },
+interface MoodTone {
+    dot: string;
+    cellBg: string;
+    cellBorder: string;
+    text: string;
+}
+
+const MOOD_TONE: Record<Mood, MoodTone> = {
+    glow: {
+        dot: 'bg-pop-500',
+        cellBg: 'bg-gradient-to-br from-pop-50 via-pop-100/60 to-pop-50',
+        cellBorder: 'border-pop-300',
+        text: 'text-pop-800',
+    },
+    bouncy: {
+        dot: 'bg-mood-bouncy',
+        cellBg: 'bg-gradient-to-br from-mood-bouncy/10 via-mood-bouncy/15 to-mood-bouncy/5',
+        cellBorder: 'border-mood-bouncy/40',
+        text: 'text-mood-bouncy',
+    },
+    wobble: {
+        dot: 'bg-mood-glow',
+        cellBg: 'bg-gradient-to-br from-mood-glow/10 via-mood-glow/15 to-mood-glow/5',
+        cellBorder: 'border-mood-glow/40',
+        text: 'text-pop-700',
+    },
+    squished: {
+        dot: 'bg-mood-squished',
+        cellBg: 'bg-gradient-to-br from-mood-squished/10 via-mood-squished/15 to-mood-squished/5',
+        cellBorder: 'border-mood-squished/40',
+        text: 'text-mood-squished',
+    },
+    spinning: {
+        dot: 'bg-mood-spinning',
+        cellBg: 'bg-gradient-to-br from-mood-spinning/10 via-mood-spinning/15 to-mood-spinning/5',
+        cellBorder: 'border-mood-spinning/40',
+        text: 'text-mood-spinning',
+    },
+    dim: {
+        dot: 'bg-ink-meta',
+        cellBg: 'bg-gradient-to-br from-brand-50 via-brand-100/60 to-brand-50',
+        cellBorder: 'border-brand-200',
+        text: 'text-brand-800',
+    },
 };
 
-const DEFAULT_TONE = { dot: 'bg-brand-500', cellBg: 'bg-brand-50', cellBorder: 'border-brand-200' };
+const DEFAULT_TONE: MoodTone = {
+    dot: 'bg-brand-500',
+    cellBg: 'bg-gradient-to-br from-brand-50 via-brand-100/60 to-brand-50',
+    cellBorder: 'border-brand-200',
+    text: 'text-brand-800',
+};
 
 export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, month, todayMonth }: Readonly<KalenderProps>) {
     const weeks = useMemo<WeekRow[]>(() => groupByWeek(cells), [cells]);
@@ -64,16 +107,23 @@ export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, mont
                 animate="visible"
                 className="w-full px-4 py-6 sm:px-6 sm:py-10"
             >
-                <MonthHeader
+                <PageHero
+                    icon="mdi:calendar-month-outline"
+                    title="Kalender"
+                    subtitle="Lihat semua hari lari kamu dalam satu tampilan bulanan. Setiap warna mewakili mood lari hari itu."
+                    className="mb-6"
+                    trailing={<MonthlyStatsPill stats={monthlyStats} />}
+                />
+
+                <MonthNav
                     label={monthLabel}
                     prevMonth={prevMonth}
                     nextMonth={nextMonth}
                     showTodayButton={!isCurrentMonth}
+                    className="mb-4"
                 />
 
-                <MonthlyStats stats={monthlyStats} className="mt-3" />
-
-                <div className="mt-6 overflow-x-auto rounded-2xl border border-line bg-surface-elev shadow-sm">
+                <div className="overflow-x-auto rounded-2xl border border-line bg-surface-elev shadow-sm">
                     <div className="min-w-[840px]">
                         <CalendarHeader />
                         {weeks.map((week) => (
@@ -81,26 +131,51 @@ export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, mont
                         ))}
                     </div>
                 </div>
+
+                <Legend className="mt-4" />
             </motion.main>
         </AppShell>
     );
 }
 
-function MonthHeader({
+function MonthlyStatsPill({ stats }: Readonly<{ stats: { totalKm: number; runCount: number; totalTrimp: number } }>) {
+    if (stats.runCount === 0) {
+        return (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-elev px-3 py-1.5 text-xs font-semibold text-ink-meta ring-1 ring-line">
+                Belum ada lari
+            </span>
+        );
+    }
+
+    return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-500 px-3 py-1.5 text-sm font-bold text-white shadow-sm ring-2 ring-white">
+            <Icon icon="mdi:run-fast" width={14} height={14} aria-hidden />
+            {stats.totalKm.toFixed(1)} km · {stats.runCount} lari
+        </span>
+    );
+}
+
+function MonthNav({
     label,
     prevMonth,
     nextMonth,
     showTodayButton,
-}: Readonly<{ label: string; prevMonth: string; nextMonth: string; showTodayButton: boolean }>) {
+    className,
+}: Readonly<{ label: string; prevMonth: string; nextMonth: string; showTodayButton: boolean; className?: string }>) {
     return (
-        <header className="flex items-center justify-between gap-3">
+        <header
+            className={cn(
+                'flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev px-3 py-2 shadow-sm',
+                className,
+            )}
+        >
             <NavButton href={`/kalender?month=${prevMonth}`} icon="mdi:chevron-left" label="Bulan sebelumnya" />
-            <h1 className="flex-1 text-center text-lg font-bold tracking-tight text-ink sm:text-xl">{label}</h1>
+            <h2 className="flex-1 text-center text-lg font-bold tracking-tight text-ink sm:text-xl">{label}</h2>
             <div className="flex items-center gap-2">
                 {showTodayButton && (
                     <Link
                         href="/kalender"
-                        className="rounded-lg border border-line bg-surface-elev px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:border-brand-300 hover:text-ink"
+                        className="rounded-full border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 transition hover:border-brand-500 hover:bg-brand-100"
                     >
                         Hari ini
                     </Link>
@@ -117,50 +192,23 @@ function NavButton({ href, icon, label }: Readonly<{ href: string; icon: string;
             href={href}
             aria-label={label}
             preserveScroll
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-surface-elev text-ink-soft transition hover:border-brand-300 hover:text-ink"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-ink-soft transition hover:bg-line/50 hover:text-ink"
         >
             <Icon icon={icon} width={20} height={20} aria-hidden />
         </Link>
     );
 }
 
-function MonthlyStats({
-    stats,
-    className,
-}: Readonly<{ stats: { totalKm: number; runCount: number; totalTrimp: number }; className?: string }>) {
-    if (stats.runCount === 0) {
-        return (
-            <p className={cn('text-sm text-ink-meta', className)}>Belum ada lari di bulan ini.</p>
-        );
-    }
-
-    return (
-        <p className={cn('flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-ink-soft', className)}>
-            <span>
-                <span className="font-bold text-ink">{stats.totalKm.toFixed(1)}</span> km
-            </span>
-            <span aria-hidden className="text-ink-meta">·</span>
-            <span>
-                <span className="font-bold text-ink">{stats.runCount}</span> lari
-            </span>
-            <span aria-hidden className="text-ink-meta">·</span>
-            <span>
-                <span className="font-bold text-ink">{Math.round(stats.totalTrimp)}</span> TRIMP
-            </span>
-        </p>
-    );
-}
-
 function CalendarHeader() {
     return (
-        <div className="grid grid-cols-[7rem_repeat(7,minmax(0,1fr))] border-b border-line bg-surface-warm/40">
-            <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-ink-meta">
+        <div className="grid grid-cols-[6rem_repeat(7,minmax(0,1fr))] border-b border-line bg-gradient-to-b from-surface-warm/80 to-surface-warm/30">
+            <div className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-ink-meta">
                 Minggu
             </div>
             {WEEKDAY_LABELS.map((label) => (
                 <div
                     key={label}
-                    className="px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-ink-meta"
+                    className="border-l border-line/40 px-2 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-ink-meta"
                 >
                     {label}
                 </div>
@@ -171,7 +219,7 @@ function CalendarHeader() {
 
 function WeekRowView({ week }: Readonly<{ week: WeekRow }>) {
     return (
-        <div className="grid grid-cols-[7rem_repeat(7,minmax(0,1fr))] border-b border-line last:border-b-0">
+        <div className="grid grid-cols-[6rem_repeat(7,minmax(0,1fr))] border-b border-line last:border-b-0">
             <WeekSummary week={week} />
             {week.days.map((day) => (
                 <DayCellView key={day.date} cell={day} />
@@ -183,12 +231,22 @@ function WeekRowView({ week }: Readonly<{ week: WeekRow }>) {
 function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
     const hasRuns = week.runCount > 0;
     return (
-        <div className="flex flex-col gap-1 border-r border-line bg-surface-warm/30 p-3 text-xs">
+        <div
+            className={cn(
+                'flex flex-col items-start justify-center gap-0.5 border-r border-line p-3 text-xs',
+                hasRuns ? 'bg-gradient-to-br from-brand-50 to-brand-100/40' : 'bg-surface-sunken/30',
+            )}
+        >
             {hasRuns ? (
                 <>
-                    <span className="text-base font-black tabular-nums text-ink">{week.totalKm.toFixed(1)}</span>
-                    <span className="text-[10px] text-ink-meta">km</span>
-                    <span className="mt-1 text-[10px] font-medium text-ink-meta">{week.runCount} lari</span>
+                    <span className="text-2xl font-black leading-none tabular-nums text-brand-700">
+                        {week.totalKm.toFixed(1)}
+                    </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-600">km</span>
+                    <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-ink-meta">
+                        <Icon icon="mdi:run" width={10} height={10} aria-hidden />
+                        {week.runCount} lari
+                    </span>
                 </>
             ) : (
                 <span className="text-[10px] text-ink-meta">Tidak ada lari</span>
@@ -201,42 +259,34 @@ function DayCellView({ cell }: Readonly<{ cell: CalendarCell }>) {
     const hasRun = cell.distance_km !== null && cell.distance_km > 0;
     const tone = cell.mood ? MOOD_TONE[cell.mood] : DEFAULT_TONE;
     const muted = !cell.is_current_month;
+    const dayNumClass = dayNumberClassFor(cell.is_today, hasRun, tone);
 
-    const containerClass = cn(
-        'flex min-h-[88px] flex-col gap-1 border-r border-line p-2 last:border-r-0',
-        muted && 'opacity-50',
+    const cellChrome = cn(
+        'group relative flex min-h-[96px] flex-col gap-1.5 border-l border-line p-2 transition',
+        muted && 'opacity-40',
+        hasRun ? tone.cellBg : 'bg-surface-elev',
         cell.is_today && 'ring-2 ring-brand-500 ring-inset',
     );
 
     const inner = (
         <>
             <div className="flex items-start justify-between">
-                <span
-                    className={cn(
-                        'text-xs font-semibold tabular-nums',
-                        cell.is_today ? 'text-brand-700' : 'text-ink-soft',
-                    )}
-                >
-                    {cell.day}
-                </span>
+                <span className={dayNumClass}>{cell.day}</span>
                 {hasRun && <span aria-hidden className={cn('h-2 w-2 rounded-full', tone.dot)} />}
             </div>
             {hasRun && (
-                <div
-                    className={cn(
-                        'mt-auto rounded-md border px-1.5 py-1 text-[11px] leading-tight',
-                        tone.cellBg,
-                        tone.cellBorder,
-                    )}
-                >
-                    <div className="font-bold tabular-nums text-ink">{cell.distance_km?.toFixed(2)} km</div>
+                <div className="mt-auto">
+                    <div className={cn('text-[15px] font-black leading-none tabular-nums', tone.text)}>
+                        {cell.distance_km?.toFixed(2)}
+                        <span className="ml-0.5 text-[10px] font-bold opacity-70">km</span>
+                    </div>
                     {(cell.pace_sec_per_km !== null || cell.avg_hr !== null) && (
-                        <div className="mt-0.5 flex items-baseline gap-2 text-[10px] text-ink-meta">
+                        <div className="mt-1 flex items-baseline gap-1.5 text-[10px] tabular-nums">
                             {cell.pace_sec_per_km !== null && (
-                                <span className="tabular-nums">{formatPace(cell.pace_sec_per_km)}</span>
+                                <span className="font-semibold text-ink-soft">{formatPace(cell.pace_sec_per_km)}</span>
                             )}
                             {cell.avg_hr !== null && (
-                                <span className="tabular-nums text-mood-cooked">{cell.avg_hr}</span>
+                                <span className="font-semibold text-mood-cooked">{cell.avg_hr}♥</span>
                             )}
                         </div>
                     )}
@@ -249,7 +299,7 @@ function DayCellView({ cell }: Readonly<{ cell: CalendarCell }>) {
         return (
             <Link
                 href={`/aktivitas/${cell.activity_id}`}
-                className={cn(containerClass, 'transition hover:bg-surface-warm/60')}
+                className={cn(cellChrome, 'hover:scale-[1.02] hover:shadow-md')}
                 aria-label={`${cell.date}: ${cell.distance_km} km`}
             >
                 {inner}
@@ -257,7 +307,40 @@ function DayCellView({ cell }: Readonly<{ cell: CalendarCell }>) {
         );
     }
 
-    return <div className={containerClass}>{inner}</div>;
+    return <div className={cellChrome}>{inner}</div>;
+}
+
+function dayNumberClassFor(isToday: boolean, hasRun: boolean, tone: MoodTone): string {
+    if (isToday) {
+        return 'text-xs font-bold tabular-nums inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-white';
+    }
+    if (hasRun) {
+        return cn('text-xs font-bold tabular-nums', tone.text);
+    }
+    return 'text-xs font-bold tabular-nums text-ink-soft';
+}
+
+function Legend({ className }: Readonly<{ className?: string }>) {
+    const moods: ReadonlyArray<{ mood: Mood; label: string }> = [
+        { mood: 'glow', label: 'Glow' },
+        { mood: 'bouncy', label: 'Bouncy' },
+        { mood: 'wobble', label: 'Wobble' },
+        { mood: 'squished', label: 'Squished' },
+        { mood: 'spinning', label: 'Spinning' },
+        { mood: 'dim', label: 'Dim' },
+    ];
+
+    return (
+        <div className={cn('flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-line bg-surface-elev/40 px-4 py-2.5 text-xs text-ink-meta', className)}>
+            <span className="font-semibold uppercase tracking-wider">Mood</span>
+            {moods.map(({ mood, label }) => (
+                <span key={mood} className="inline-flex items-center gap-1.5">
+                    <span className={cn('h-2.5 w-2.5 rounded-full', MOOD_TONE[mood].dot)} aria-hidden />
+                    <span>{label}</span>
+                </span>
+            ))}
+        </div>
+    );
 }
 
 function groupByWeek(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
