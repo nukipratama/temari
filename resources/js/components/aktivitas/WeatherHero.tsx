@@ -45,7 +45,7 @@ export default function WeatherHero({ detail }: Readonly<WeatherHeroProps>) {
     const style = KIND_STYLES[weatherKind(temp, rain)];
 
     return (
-        <section className={cn('relative overflow-hidden rounded-2xl border border-line p-5 shadow-sm bg-gradient-to-br', style.gradient)}>
+        <section className={cn('relative overflow-hidden rounded-2xl border border-line p-4 shadow-sm bg-gradient-to-br sm:p-5', style.gradient)}>
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-meta">Cuaca lari</p>

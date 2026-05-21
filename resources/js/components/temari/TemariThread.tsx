@@ -57,14 +57,14 @@ export default function TemariThread({
             initial="hidden"
             animate="visible"
             className={cn(
-                'relative overflow-hidden rounded-3xl border border-line bg-surface-elev p-5 shadow-sm',
+                'relative overflow-hidden rounded-2xl border border-line bg-surface-elev p-4 shadow-sm sm:rounded-3xl sm:p-5',
                 'before:pointer-events-none before:absolute before:inset-x-0 before:-top-12 before:h-24 before:bg-gradient-to-b before:from-brand-500/10 before:to-transparent',
                 className,
             )}
             aria-label="Catatan Temari"
         >
-            <header className="relative z-10 flex items-start gap-4">
-                <TemariMascot mood={mood} sizeClass="h-28 w-28 shrink-0" idle="mood" gazeTracking ornaments />
+            <header className="relative z-10 flex items-start gap-3 sm:gap-4">
+                <TemariMascot mood={mood} sizeClass="h-20 w-20 shrink-0 sm:h-28 sm:w-28" idle="mood" gazeTracking ornaments />
                 <div className="min-w-0 flex-1 pt-2">
                     <div className="flex flex-wrap items-baseline gap-2">
                         <span className="text-xs font-semibold uppercase tracking-wider text-ink-meta">

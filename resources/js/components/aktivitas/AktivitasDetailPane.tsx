@@ -121,12 +121,12 @@ export default function AktivitasDetailPane({
     const hasZones = Object.keys(zonePct).length > 0;
 
     return (
-        <div className="space-y-6">
-            <div className="grid gap-4 lg:grid-cols-5 lg:items-stretch">
-                <div className="lg:col-span-2">
+        <div className="space-y-4 sm:space-y-6">
+            <div className="grid gap-3 sm:gap-4 lg:grid-cols-5 lg:items-stretch">
+                <div className="min-w-0 lg:col-span-2">
                     <DetailHeader detail={detail} />
                 </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:col-span-3">
+                <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 lg:col-span-3">
                     <KpiTile label="Jarak" value={km} sub="km" />
                     <KpiTile label="Pace" value={paceLabel} sub="per km" />
                     <KpiTile label="Durasi" value={durationLabel} sub="moving" />
@@ -138,8 +138,8 @@ export default function AktivitasDetailPane({
                 </div>
             </div>
 
-            <div className="grid items-start gap-6 lg:grid-cols-5">
-                <div className="space-y-6 lg:col-span-2">
+            <div className="grid items-start gap-4 sm:gap-6 lg:grid-cols-5">
+                <div className="min-w-0 space-y-6 lg:col-span-2">
                     {card !== null && <RunCard card={card} detail={detail} />}
                     {hasZones && <HrZoneCard zonePct={zonePct} />}
                     <PastYouStrip match={pastYou} currentDistance={detail.distance} />
@@ -151,7 +151,7 @@ export default function AktivitasDetailPane({
                     />
                 </div>
 
-                <div className="space-y-6 lg:col-span-3">
+                <div className="min-w-0 space-y-6 lg:col-span-3">
                     <WeatherHero detail={detail} />
                     {detail.summary_polyline != null && detail.summary_polyline.length > 0 && (
                         <Suspense
@@ -203,11 +203,11 @@ function TechnicalSection({
         >
             <h2
                 id="detail-teknis-heading"
-                className="border-b border-line px-5 py-4 text-xs font-semibold uppercase tracking-wider text-ink-meta"
+                className="border-b border-line px-4 py-3 text-xs font-semibold uppercase tracking-wider text-ink-meta sm:px-5 sm:py-4"
             >
                 Detail Teknis
             </h2>
-            <div className="space-y-6 px-5 py-5">
+            <div className="space-y-6 px-4 py-4 sm:px-5 sm:py-5">
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {detail.average_heartrate != null && (
                         <KpiTile label="Avg HR" value={Math.round(detail.average_heartrate)} sub="bpm" tone="alert" />

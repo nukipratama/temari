@@ -79,8 +79,8 @@ export default function RunCard({ card, detail, className, size = 'normal' }: Re
     return (
         <article
             className={cn(
-                'group relative flex h-full flex-col overflow-hidden rounded-3xl shadow-md ring-2 transition hover:shadow-xl',
-                isHero ? 'p-7 ring-4 shadow-lg' : 'p-5 ring-2',
+                'group relative flex h-full flex-col overflow-hidden rounded-2xl shadow-md ring-2 transition hover:shadow-xl sm:rounded-3xl',
+                isHero ? 'p-5 ring-4 shadow-lg sm:p-7' : 'p-4 ring-2 sm:p-5',
                 r.ringClass,
                 r.bgClass,
                 className,
@@ -167,8 +167,8 @@ interface StatProps {
 function Stat({ value, unit, size }: Readonly<StatProps>) {
     const valueClass = size === 'hero' ? 'text-3xl' : 'text-2xl';
     return (
-        <div>
-            <div className={cn('font-black tabular-nums text-ink', valueClass)}>{value}</div>
+        <div className="min-w-0">
+            <div className={cn('truncate font-black tabular-nums text-ink', valueClass)}>{value}</div>
             <div className="text-[10px] uppercase tracking-wide text-ink-meta">{unit}</div>
         </div>
     );

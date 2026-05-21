@@ -64,13 +64,13 @@ export default function Dashboard({
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="w-full px-6 py-10"
+                className="w-full px-4 py-6 sm:px-6 sm:py-10"
             >
                 <FirstRunTooltip recentRunCount={recentRuns.length} />
 
                 <HeroHeader firstName={firstName} briefing={briefing} snapshot={snapshot} />
 
-                <div className="mt-6 grid items-stretch gap-6 lg:grid-cols-3">
+                <div className="mt-6 grid items-stretch gap-4 sm:gap-6 lg:grid-cols-3">
                     <section ref={briefingRef} className="flex lg:col-span-2">
                         <BriefingCard briefing={briefing} className="w-full" />
                     </section>
@@ -90,7 +90,7 @@ export default function Dashboard({
                         {trendAnalysis && (
                             <section
                                 aria-labelledby="trend-narrative-heading"
-                                className="relative mt-4 overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-surface-elev to-accent-50/40 p-5 shadow-md"
+                                className="relative mt-4 overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-surface-elev to-accent-50/40 p-4 shadow-md sm:p-5"
                             >
                                 <DecorativeBlur intensity="md" className="-right-8 -top-8 h-24 w-24 bg-brand-200/40" />
                                 <div className="relative flex items-start gap-3">
@@ -146,13 +146,13 @@ interface HeroHeaderProps {
 
 function HeroHeader({ firstName, briefing, snapshot }: Readonly<HeroHeaderProps>) {
     return (
-        <section className="rounded-3xl border border-line bg-surface-warm p-6 shadow-sm">
+        <section className="rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:rounded-3xl sm:p-6">
             <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
                         {formatIdDate(new Date().toISOString(), 'long')}
                     </p>
-                    <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink">
+                    <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
                         Halo, {firstName}.
                     </h1>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -168,17 +168,19 @@ function HeroHeader({ firstName, briefing, snapshot }: Readonly<HeroHeaderProps>
                     </div>
                 </div>
                 {snapshot?.distance_km != null && (
-                    <div className="text-right">
+                    <div className="flex items-baseline justify-between gap-3 border-t border-line/60 pt-3 sm:block sm:border-0 sm:pt-0 sm:text-right">
                         <div className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
                             Minggu ini
                         </div>
-                        <div className="mt-1 text-5xl font-black leading-none text-accent-600 tabular-nums">
-                            {snapshot.distance_km.toFixed(1)}
-                            <span className="ml-1 text-xl font-semibold text-ink-soft">km</span>
+                        <div className="flex flex-col items-end sm:items-stretch">
+                            <div className="text-4xl font-black leading-none text-accent-600 tabular-nums sm:mt-1 sm:text-5xl">
+                                {snapshot.distance_km.toFixed(1)}
+                                <span className="ml-1 text-lg font-semibold text-ink-soft sm:text-xl">km</span>
+                            </div>
+                            {snapshot.runs != null && (
+                                <p className="mt-1 text-xs text-ink-meta">{snapshot.runs} run minggu ini</p>
+                            )}
                         </div>
-                        {snapshot.runs != null && (
-                            <p className="mt-1 text-xs text-ink-meta">{snapshot.runs} run minggu ini</p>
-                        )}
                     </div>
                 )}
             </header>
@@ -196,14 +198,14 @@ interface AtGlanceProps {
 function AtGlance({ load, decouplingValue }: Readonly<AtGlanceProps>) {
     if (load === null) {
         return (
-            <aside className="flex h-full items-center rounded-3xl border border-dashed border-line bg-surface-elev/40 p-5 text-sm text-ink-meta">
+            <aside className="flex h-full items-center rounded-2xl border border-dashed border-line bg-surface-elev/40 p-4 text-sm text-ink-meta sm:rounded-3xl sm:p-5">
                 Belum cukup data untuk ringkasan kondisi. Sync lari terbaru dulu.
             </aside>
         );
     }
     const monotony = monotonySignal(load.monotony);
     return (
-        <aside className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-brand-200 bg-gradient-to-br from-brand-50/80 via-surface-elev to-accent-50/60 p-5 shadow-md">
+        <aside className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50/80 via-surface-elev to-accent-50/60 p-4 shadow-md sm:rounded-3xl sm:p-5">
             <DecorativeBlur className="-right-10 -top-10 h-32 w-32 bg-accent-200/40" />
             <DecorativeBlur className="-bottom-12 -left-10 h-28 w-28 bg-brand-200/40" />
             <div className="relative text-xs font-semibold uppercase tracking-wider text-brand-700">
@@ -321,23 +323,23 @@ function CoachStat({ icon, iconTone, label, value, hint }: Readonly<CoachStatPro
     return (
         <div
             className={cn(
-                'relative overflow-hidden rounded-2xl border p-4 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg',
+                'relative overflow-hidden rounded-2xl border p-3 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg sm:p-4',
                 COACH_TILE_TONE[iconTone],
             )}
         >
             <DecorativeBlur intensity="md" className="-right-6 -top-6 h-16 w-16 bg-white/40" />
-            <div className="relative flex items-center justify-between">
+            <div className="relative flex items-center justify-between gap-2">
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-meta">
                     {label}
                 </div>
                 <span
                     aria-hidden
-                    className={cn('flex h-8 w-8 items-center justify-center rounded-lg shadow-sm ring-1 ring-white/60', ICON_TONE[iconTone])}
+                    className={cn('flex h-7 w-7 items-center justify-center rounded-lg shadow-sm ring-1 ring-white/60 sm:h-8 sm:w-8', ICON_TONE[iconTone])}
                 >
-                    <Icon icon={icon} width={16} height={16} />
+                    <Icon icon={icon} width={14} height={14} />
                 </span>
             </div>
-            <div className={cn('relative mt-2 text-3xl font-black tabular-nums', COACH_VALUE_TONE[iconTone])}>{value}</div>
+            <div className={cn('relative mt-1.5 text-2xl font-black tabular-nums sm:mt-2 sm:text-3xl', COACH_VALUE_TONE[iconTone])}>{value}</div>
             <div className="relative text-[11px] font-medium text-ink-meta">{hint}</div>
         </div>
     );

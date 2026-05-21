@@ -30,7 +30,7 @@ export default function HrZoneCard({ zonePct }: Readonly<HrZoneCardProps>) {
     );
 
     return (
-        <section className="rounded-2xl border border-line bg-surface-elev p-5 shadow-sm">
+        <section className="rounded-2xl border border-line bg-surface-elev p-4 shadow-sm sm:p-5">
             <div className="flex items-baseline justify-between gap-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">HR Zones</h3>
                 <p className="text-xs text-ink-meta">

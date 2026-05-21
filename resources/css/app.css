@@ -96,6 +96,16 @@
     --color-strava-orange-hover: #e34402;
 }
 
+/* Mobile horizontal-overflow safety net. Cards or decorative elements
+   that nudge past the viewport (rings, gradients, abs-positioned blobs)
+   would otherwise trigger horizontal page scroll on iPhone-SE-sized
+   devices. `overflow-x: clip` blocks the scroll without breaking
+   sticky/fixed descendants the way `overflow-x: hidden` would. */
+html,
+body {
+    overflow-x: clip;
+}
+
 /* Hide native scrollbar — used on horizontal strips where explicit
    arrow buttons or swipe are the scroll affordance, so the native bar
    would just be visual noise. */

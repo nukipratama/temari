@@ -55,7 +55,7 @@ export default function PageHero({
     return (
         <header
             className={cn(
-                'relative overflow-hidden rounded-3xl border p-6 shadow-md',
+                'relative overflow-hidden rounded-2xl border p-4 shadow-md sm:rounded-3xl sm:p-6',
                 TONE_SURFACE[tone],
                 className,
             )}
@@ -67,11 +67,11 @@ export default function PageHero({
                     <span
                         aria-hidden
                         className={cn(
-                            'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ring-2 ring-white',
+                            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-md ring-2 ring-white sm:h-12 sm:w-12 sm:rounded-2xl',
                             TONE_ICON_TILE[tone],
                         )}
                     >
-                        <Icon icon={icon} width={24} height={24} />
+                        <Icon icon={icon} width={22} height={22} />
                     </span>
                     <div>
                         {eyebrow !== undefined && eyebrow !== null && (
