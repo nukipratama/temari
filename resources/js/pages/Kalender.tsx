@@ -112,11 +112,11 @@ export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, mont
                     title="Kalender"
                     subtitle="Lihat semua hari lari kamu dalam satu tampilan bulanan. Setiap warna mewakili mood lari hari itu."
                     className="mb-6"
-                    trailing={<MonthlyStatsPill stats={monthlyStats} />}
                 />
 
                 <MonthNav
                     label={monthLabel}
+                    stats={monthlyStats}
                     prevMonth={prevMonth}
                     nextMonth={nextMonth}
                     showTodayButton={!isCurrentMonth}
@@ -138,30 +138,27 @@ export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, mont
     );
 }
 
-function MonthlyStatsPill({ stats }: Readonly<{ stats: { totalKm: number; runCount: number; totalTrimp: number } }>) {
-    if (stats.runCount === 0) {
-        return (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-elev px-3 py-1.5 text-xs font-semibold text-ink-meta ring-1 ring-line">
-                Belum ada lari
-            </span>
-        );
-    }
-
-    return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-500 px-3 py-1.5 text-sm font-bold text-white shadow-sm ring-2 ring-white">
-            <Icon icon="mdi:run-fast" width={14} height={14} aria-hidden />
-            {stats.totalKm.toFixed(1)} km · {stats.runCount} lari
-        </span>
-    );
+interface MonthlyStats {
+    totalKm: number;
+    runCount: number;
+    totalTrimp: number;
 }
 
 function MonthNav({
     label,
+    stats,
     prevMonth,
     nextMonth,
     showTodayButton,
     className,
-}: Readonly<{ label: string; prevMonth: string; nextMonth: string; showTodayButton: boolean; className?: string }>) {
+}: Readonly<{
+    label: string;
+    stats: MonthlyStats;
+    prevMonth: string;
+    nextMonth: string;
+    showTodayButton: boolean;
+    className?: string;
+}>) {
     return (
         <header
             className={cn(
@@ -170,7 +167,16 @@ function MonthNav({
             )}
         >
             <NavButton href={`/kalender?month=${prevMonth}`} icon="mdi:chevron-left" label="Bulan sebelumnya" />
-            <h2 className="flex-1 text-center text-lg font-bold tracking-tight text-ink sm:text-xl">{label}</h2>
+            <div className="flex flex-1 flex-wrap items-baseline justify-center gap-x-3 gap-y-0.5 text-center">
+                <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl">{label}</h2>
+                {stats.runCount > 0 ? (
+                    <span className="text-xs font-semibold text-ink-meta">
+                        <span className="text-brand-700">{stats.totalKm.toFixed(1)} km</span> · {stats.runCount} lari
+                    </span>
+                ) : (
+                    <span className="text-xs text-ink-meta">Belum ada lari</span>
+                )}
+            </div>
             <div className="flex items-center gap-2">
                 {showTodayButton && (
                     <Link
@@ -203,7 +209,7 @@ function CalendarHeader() {
     return (
         <div className="grid grid-cols-[6rem_repeat(7,minmax(0,1fr))] border-b border-line bg-gradient-to-b from-surface-warm/80 to-surface-warm/30">
             <div className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-ink-meta">
-                Minggu
+                Pekan
             </div>
             {WEEKDAY_LABELS.map((label) => (
                 <div
