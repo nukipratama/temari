@@ -121,7 +121,7 @@ export default function Rekor({ personalRecords }: Readonly<RekorProps>) {
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="w-full px-6 py-10"
+                className="w-full px-4 py-6 sm:px-6 sm:py-10"
             >
                 <PageHero
                     icon="mdi:trophy-variant"
@@ -167,7 +167,7 @@ function PrCard({ pr }: Readonly<{ pr: ExtendedPR }>) {
     );
 
     return (
-        <div className={cn('relative h-full overflow-hidden rounded-2xl border bg-gradient-to-br p-5 shadow-md transition hover:shadow-lg', v.border, v.bg)}>
+        <div className={cn('relative h-full overflow-hidden rounded-2xl border bg-gradient-to-br p-4 shadow-md transition hover:shadow-lg sm:p-5', v.border, v.bg)}>
             <span aria-hidden className={cn('absolute inset-x-0 top-0 h-1 bg-gradient-to-r', v.topRule)} />
             <DecorativeBlur className={cn('-right-8 -top-8 h-24 w-24', v.blob)} />
             <div className="relative flex items-start justify-between">

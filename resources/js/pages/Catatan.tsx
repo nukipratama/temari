@@ -45,7 +45,7 @@ export default function Catatan({ snapshots }: Readonly<CatatanProps>) {
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="w-full px-6 py-10"
+                className="w-full px-4 py-6 sm:px-6 sm:py-10"
             >
                 <PageHero
                     icon="mdi:notebook-outline"
@@ -132,7 +132,7 @@ interface HeroStatsProps {
 
 function HeroStats({ latest, prior }: Readonly<HeroStatsProps>) {
     return (
-        <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <section className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             <HeroStat
                 label="Fitness"
                 value={fmtOne(latest.ctl_42d)}
@@ -198,16 +198,16 @@ const HERO_VALUE_TONE: Record<Tone, string> = {
 function HeroStat({ label, value, delta, hint, icon, tone, invertDelta = false }: Readonly<HeroStatProps>) {
     const showHint = hint != null && hint !== '';
     return (
-        <div className={cn('relative overflow-hidden rounded-2xl border p-5 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg', HERO_RING_TONE[tone])}>
+        <div className={cn('relative overflow-hidden rounded-2xl border p-3 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg sm:p-5', HERO_RING_TONE[tone])}>
             <DecorativeBlur intensity="md" className="-right-6 -top-6 h-20 w-20 bg-white/50" />
-            <div className="relative flex items-start justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wider text-ink-meta">{label}</div>
-                <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg shadow-sm ring-1 ring-white/60', ICON_TONE[tone])} aria-hidden>
-                    <Icon icon={icon} width={16} height={16} />
+            <div className="relative flex items-start justify-between gap-2">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-meta sm:text-xs">{label}</div>
+                <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg shadow-sm ring-1 ring-white/60 sm:h-8 sm:w-8', ICON_TONE[tone])} aria-hidden>
+                    <Icon icon={icon} width={14} height={14} />
                 </span>
             </div>
-            <div className="relative mt-2 flex items-baseline gap-2">
-                <span className={cn('text-3xl font-black tabular-nums', HERO_VALUE_TONE[tone])}>{value}</span>
+            <div className="relative mt-1.5 flex items-baseline gap-2 sm:mt-2">
+                <span className={cn('text-2xl font-black tabular-nums sm:text-3xl', HERO_VALUE_TONE[tone])}>{value}</span>
                 {delta !== null && <DeltaChip delta={delta} invert={invertDelta} />}
             </div>
             {showHint && (

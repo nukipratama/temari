@@ -2,6 +2,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import AppShell from '@/layouts/AppShell';
+import PageHero from '@/components/PageHero';
 import { fadeInUp } from '@/lib/motion';
 import type { SharedProps } from '@/types/inertia';
 
@@ -17,16 +18,16 @@ export default function Settings() {
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="w-full px-6 py-10"
+                className="w-full px-4 py-6 sm:px-6 sm:py-10"
             >
-                <header className="mb-8">
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-ink-dark">Pengaturan</h1>
-                    <p className="mt-1 text-base leading-relaxed text-ink dark:text-ink-dark">
-                        Atur akun dan preferensi.
-                    </p>
-                </header>
+                <PageHero
+                    icon="mdi:cog-outline"
+                    title="Pengaturan"
+                    subtitle="Atur akun dan preferensi."
+                    className="mb-6"
+                />
 
-                <section className="rounded-2xl border border-line bg-surface-elev p-6 dark:border-line-dark dark:bg-surface-dark-elev">
+                <section className="rounded-2xl border border-line bg-surface-elev p-4 dark:border-line-dark dark:bg-surface-dark-elev sm:p-6">
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                         Akun
                     </h2>
@@ -44,7 +45,7 @@ export default function Settings() {
                 </section>
 
                 {demoLoginEnabled && (
-                    <section className="mt-6 rounded-2xl border border-dashed border-line bg-surface-elev/60 p-6 dark:border-line-dark dark:bg-surface-dark-elev/60">
+                    <section className="mt-6 rounded-2xl border border-dashed border-line bg-surface-elev/60 p-4 dark:border-line-dark dark:bg-surface-dark-elev/60 sm:p-6">
                         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                             Demo Mode
                         </h2>

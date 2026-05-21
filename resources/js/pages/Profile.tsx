@@ -3,7 +3,7 @@ import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import AppShell from '@/layouts/AppShell';
-import TemariMascot from '@/components/temari/TemariMascot';
+import PageHero from '@/components/PageHero';
 import { fadeInUp } from '@/lib/motion';
 import { formatIdDate } from '@/lib/pace';
 import type { SharedProps } from '@/types/inertia';
@@ -47,20 +47,17 @@ export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="w-full px-6 py-10"
+                className="w-full px-4 py-6 sm:px-6 sm:py-10"
             >
-                <header className="mb-8 flex items-start gap-4">
-                    <TemariMascot mood="glow" sizeClass="h-24 w-24 shrink-0 hidden sm:block" idle="breath" ornaments />
-                    <div className="flex-1">
-                        <h1 className="text-2xl font-semibold tracking-tight text-ink">Profil</h1>
-                        <p className="mt-1 text-base leading-relaxed text-ink">
-                            Identitas, koneksi Strava, dan ringkasan singkat — total {stats.total_km.toFixed(1)} km dari {stats.total_runs} lari.
-                        </p>
-                    </div>
-                </header>
+                <PageHero
+                    icon="mdi:account-circle-outline"
+                    title="Profil"
+                    subtitle={`Identitas, koneksi Strava, dan ringkasan singkat — total ${stats.total_km.toFixed(1)} km dari ${stats.total_runs} lari.`}
+                    className="mb-6"
+                />
 
                 {user !== null && (
-                    <section className="rounded-2xl border border-line bg-surface-elev p-6 dark:border-line-dark dark:bg-surface-dark-elev">
+                    <section className="rounded-2xl border border-line bg-surface-elev p-4 dark:border-line-dark dark:bg-surface-dark-elev sm:p-6">
                         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                             Identitas
                         </h2>
@@ -87,7 +84,7 @@ export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {
                 )}
 
                 {strava !== null && (
-                    <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-6 dark:border-line-dark dark:bg-surface-dark-elev">
+                    <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-4 dark:border-line-dark dark:bg-surface-dark-elev sm:p-6">
                         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                             Strava
                         </h2>
@@ -102,7 +99,7 @@ export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {
                     </section>
                 )}
 
-                <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-6 dark:border-line-dark dark:bg-surface-dark-elev">
+                <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-4 dark:border-line-dark dark:bg-surface-dark-elev sm:p-6">
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark">
                         Statistik singkat
                     </h2>
@@ -117,7 +114,7 @@ export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {
                 </section>
 
                 {catalogEntries.length > 0 && (
-                    <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-6">
+                    <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-4 sm:p-6">
                         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">Koleksi Aksesori</h2>
                         <p className="mt-2 text-sm text-ink-soft">
                             Aksesori yang Temari kenakan, unlock dari milestones kamu.
