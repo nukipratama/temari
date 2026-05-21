@@ -15,18 +15,19 @@ use function is_array;
 class RunInsightNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 3 catatan interpretasi sesi lari, masing-masing 1-2 kalimat max 30
-        kata:
+        Tugas: 3 catatan interpretasi sesi lari, masing-masing 1-2 kalimat,
+        maksimal 30 kata per catatan:
 
-        - technical: terjemahin cadence + decoupling + HR ke bahasa awam ("cadence
-          172 udah ideal", "decoupling +12% sinyal HR drift, base belum solid").
+        - technical: terjemahkan cadence, decoupling, dan HR ke bahasa awam
+          ("cadence 172 sudah ideal", "decoupling +12% menandakan HR drift, base
+          belum solid").
         - splits: highlight 1-2 km paling menarik dari splits ("split 4 di 6:09,
-          tercepat hari ini, push di tanjakan") atau pacing pattern.
+          tercepat hari ini, push di tanjakan") atau pola pacing.
         - zones: 1 kalimat interpretasi HR zone breakdown ("70% di Z2, base
           building proper").
 
-        Tetap dari sudut pandang Temari yang ngobservasi pengguna. Jangan data dump
-        tanpa konteks.
+        Tetap dari sudut pandang aku (Temari) yang mengamati pengguna. Jangan data
+        dump tanpa konteks.
         PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)

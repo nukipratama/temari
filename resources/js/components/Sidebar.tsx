@@ -15,6 +15,7 @@ interface NavLink {
 const PRIMARY_LINKS: ReadonlyArray<NavLink> = [
     { route: 'dashboard', href: '/', icon: 'mdi:home-outline', label: 'Beranda' },
     { route: 'aktivitas.index', href: '/aktivitas', icon: 'mdi:run-fast', label: 'Aktivitas' },
+    { route: 'kalender', href: '/kalender', icon: 'mdi:calendar-month-outline', label: 'Kalender' },
     { route: 'kartu.index', href: '/kartu', icon: 'mdi:cards-outline', label: 'Kartu' },
     { route: 'rekor', href: '/rekor', icon: 'mdi:trophy-variant-outline', label: 'Rekor' },
 ];

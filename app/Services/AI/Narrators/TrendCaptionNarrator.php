@@ -14,10 +14,11 @@ use Illuminate\Support\Carbon;
 class TrendCaptionNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 1 kalimat caption max 25 kata buat chart Fitness/Form + Weekly Volume.
+        Tugas: 1 kalimat caption maksimal 25 kata untuk chart Fitness/Form + Weekly
+        Volume.
 
-        Fokus ke tren (naik/turun, plateau, peak). Sebut konteks kalau ada (PR week,
-        recovery week, taper).
+        Fokus ke tren (naik, turun, plateau, peak). Sebutkan konteks bila ada (PR
+        week, recovery week, taper).
         PROMPT;
 
     public function __construct(

@@ -4,8 +4,8 @@
  * keyed by a stable slug. Components opt in via `<MetricExplainer
  * metricKey="ctl" />` next to the label they want to demystify.
  *
- * Voice matches the Temari persona — informal "lo" / "aku", running
- * domain terms stay English, no em-dash, no markdown.
+ * Voice matches the Temari persona — santai-formal, "kamu" address form,
+ * running domain terms stay English, no em-dash, no markdown, no slang.
  */
 
 export interface MetricGlossaryEntry {
@@ -21,91 +21,91 @@ export const METRIC_GLOSSARY = {
     ctl: {
         acronym: 'CTL',
         label: 'Fitness',
-        body: 'Kebugaran rata-rata 42 hari terakhir. Makin tinggi makin siap lari jauh atau intens. Naik pelan kalau lo konsisten.',
+        body: 'Kebugaran rata-rata 42 hari terakhir. Semakin tinggi, semakin siap kamu untuk lari jauh atau intens. Naiknya perlahan kalau kamu konsisten.',
     },
     atl: {
         acronym: 'ATL',
         label: 'Fatigue',
-        body: 'Beban 7 hari terakhir. Tinggi artinya lo baru habis kerja keras, perlu recovery sebelum push lagi.',
+        body: 'Beban 7 hari terakhir. Tinggi berarti kamu baru selesai kerja keras dan perlu recovery sebelum push lagi.',
     },
     form: {
         label: 'Form',
-        body: 'Selisih Fitness minus Fatigue. Positif berarti segar dan siap, negatif berarti lagi capek dari sesi keras.',
+        body: 'Selisih Fitness dikurangi Fatigue. Positif berarti segar dan siap, negatif berarti sedang lelah dari sesi keras.',
     },
     trimp: {
         acronym: 'TRIMP',
         label: 'TRIMP',
-        body: 'Skor usaha satu sesi lari. Gabungan durasi sama detak jantung — makin lama atau makin keras, makin tinggi skornya.',
+        body: 'Skor usaha satu sesi lari. Gabungan durasi dan detak jantung. Semakin lama atau semakin keras, semakin tinggi skornya.',
     },
     monotony: {
         label: 'Monotony',
-        body: 'Variasi intensitas mingguan. Di atas 2 artinya minggu lo terlalu seragam, riskan cedera. Selipin easy day buat turunin angka ini.',
+        body: 'Variasi intensitas mingguan. Di atas 2 berarti minggumu terlalu seragam dan rentan cedera. Selipkan easy day untuk menurunkan angka ini.',
     },
     strain: {
         label: 'Strain',
-        body: 'Total tekanan minggu ini, hitung dari TRIMP dikali Monotony. Strain tinggi sinyal beban menumpuk.',
+        body: 'Total tekanan minggu ini, dihitung dari TRIMP dikalikan Monotony. Strain tinggi menandakan beban menumpuk.',
     },
     decoupling: {
         label: 'Decoupling',
-        body: 'Selisih efisiensi paruh pertama sama paruh kedua lari. Di atas 5% artinya HR drift, base aerobic belum solid atau lo udah kepayahan.',
+        body: 'Selisih efisiensi paruh pertama dan paruh kedua lari. Di atas 5% berarti HR drift, base aerobic belum solid atau kamu sudah kepayahan.',
     },
     vibe: {
         label: 'Vibe',
-        body: 'Ringkasan kondisi lo hari ini, diambil dari Form sama tren mingguan. Aku pakai ini buat nentuin tone briefing.',
+        body: 'Ringkasan kondisi kamu hari ini, diambil dari Form dan tren mingguan. Aku pakai ini untuk menentukan tone briefing.',
     },
     cadence: {
         label: 'Cadence',
-        body: 'Langkah per menit (spm). 170 sampai 180 lazim buat distance runner, naik 5 sampai 10 pas sprint.',
+        body: 'Langkah per menit (spm). Rentang 170 sampai 180 lazim untuk distance runner, biasanya naik 5 sampai 10 saat sprint.',
     },
     edwards_trimp: {
         acronym: 'Edwards',
         label: 'Edwards TRIMP',
-        body: 'Metode hitung TRIMP-nya pakai bobot per HR zone. Z1 dapet 1 poin/menit, Z5 dapet 5 poin/menit. Skor lebih tinggi = sesi lebih keras.',
+        body: 'Metode hitung TRIMP yang menggunakan bobot per HR zone. Z1 dapat 1 poin per menit, Z5 dapat 5 poin per menit. Skor lebih tinggi berarti sesi lebih keras.',
     },
     hr_zones: {
         label: 'HR Zones',
-        body: 'Lima tingkat intensitas berdasar detak jantung. Z1 paling santai, Z5 paling keras. Distribusinya nentuin tipe sesi lo.',
+        body: 'Lima tingkat intensitas berdasarkan detak jantung. Z1 paling santai, Z5 paling keras. Distribusinya menentukan tipe sesi kamu.',
     },
     hr_z1: {
         acronym: 'Z1',
         label: 'Zone 1 — Recovery',
-        body: 'Santai banget, bisa nyanyi sambil lari. Buat recovery atau cooldown.',
+        body: 'Sangat santai, masih bisa bernyanyi sambil lari. Untuk recovery atau cooldown.',
     },
     hr_z2: {
         acronym: 'Z2',
         label: 'Zone 2 — Conversational',
-        body: 'Conversational pace — bisa ngobrol sambil lari. Zone andalan buat base building.',
+        body: 'Conversational pace, masih bisa mengobrol sambil lari. Zone andalan untuk base building.',
     },
     hr_z3: {
         acronym: 'Z3',
         label: 'Zone 3 — Tempo',
-        body: 'Tempo pace. Udah ngos-ngosan, masih bisa ngomong 1 sampai 2 kata aja.',
+        body: 'Tempo pace. Sudah terengah-engah, hanya bisa bicara satu sampai dua kata.',
     },
     hr_z4: {
         acronym: 'Z4',
         label: 'Zone 4 — Threshold',
-        body: 'Threshold pace. Udah keras, ngomong singkat doang. Buat sesi tempo atau interval.',
+        body: 'Threshold pace. Sudah keras, hanya bicara singkat. Untuk sesi tempo atau interval.',
     },
     hr_z5: {
         acronym: 'Z5',
         label: 'Zone 5 — Max',
-        body: 'Sprint mode, gak bisa ngomong sama sekali. Cuma dipake di interval pendek.',
+        body: 'Mode sprint, tidak bisa bicara sama sekali. Dipakai hanya untuk interval pendek.',
     },
     status_fresh: {
         label: 'Fresh',
-        body: 'Lagi segar, siap latihan berat. Form positif, fatigue rendah.',
+        body: 'Sedang segar dan siap untuk latihan berat. Form positif, fatigue rendah.',
     },
     status_optimal: {
         label: 'Optimal',
-        body: 'Pas — beban sama kebugaran balance. Sweet spot buat training konsisten.',
+        body: 'Pas, beban dan kebugaran seimbang. Sweet spot untuk training konsisten.',
     },
     status_fatigued: {
         label: 'Fatigued',
-        body: 'Lelah, perlu kurangin intensitas. Kasih easy day atau rest, biar fatigue turun.',
+        body: 'Lelah, perlu mengurangi intensitas. Kasih easy day atau rest agar fatigue turun.',
     },
     status_overreaching: {
         label: 'Overreaching',
-        body: 'Diforsir kelewatan. Wajib rest beberapa hari sebelum lanjut, kalau gak risiko cedera atau sakit naik.',
+        body: 'Terlalu diforsir. Wajib rest beberapa hari sebelum lanjut, kalau tidak risiko cedera atau sakit meningkat.',
     },
 } as const satisfies Record<string, MetricGlossaryEntry>;
 

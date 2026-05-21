@@ -25,7 +25,7 @@ interface RangeFilterProps {
  */
 export default function RangeFilter({
     active,
-    only = ['runs', 'rangeFilter', 'rangeStart', 'heatmap', 'weeklySnapshots', 'notes'],
+    only = ['runs', 'rangeFilter', 'rangeStart', 'weeklySnapshots', 'notes'],
     className,
 }: Readonly<RangeFilterProps>) {
     const onSelect = (value: RangeFilterValue) => {

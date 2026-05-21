@@ -44,7 +44,7 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
             )}
         >
             <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
-                Kamu vs Lari Pertama Lo
+                Kamu vs Lari Pertama Kamu
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-ink">
                 Total <span className="font-semibold">{total_km.toFixed(1)} km</span> kekumpul sejak lari pertama
@@ -80,8 +80,8 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                     </span>
                 )}
             </div>
-            <PaceLine label="Lari pertama lo" summary={first} />
-            <PaceLine label="Paling baru" summary={current} className="mt-1" />
+            <PaceLine label="Lari pertama kamu" summary={first} />
+            <PaceLine label="Lari terbaru" summary={current} className="mt-1" />
         </section>
     );
 }

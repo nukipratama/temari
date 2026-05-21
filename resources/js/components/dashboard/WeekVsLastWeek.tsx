@@ -75,16 +75,26 @@ interface DeltaProps {
 }
 
 function Delta({ value, higherIsBetter, suffix, fmt, labelOverride }: Readonly<DeltaProps>) {
-    const sign = value > 0 ? '+' : value < 0 ? '−' : '±';
+    let sign: string;
+    if (value > 0) {
+        sign = '+';
+    } else if (value < 0) {
+        sign = '−';
+    } else {
+        sign = '±';
+    }
     const good = higherIsBetter ? value > 0 : value < 0;
     const tone = value === 0 ? 'text-ink-meta' : good ? 'text-mood-bouncy' : 'text-mood-cooked';
-    const label = labelOverride
-        ? labelOverride(value)
-        : value > 0
-            ? 'lebih banyak'
-            : value < 0
-                ? 'lebih sedikit'
-                : 'sama';
+    let label: string;
+    if (labelOverride) {
+        label = labelOverride(value);
+    } else if (value > 0) {
+        label = 'lebih banyak';
+    } else if (value < 0) {
+        label = 'lebih sedikit';
+    } else {
+        label = 'sama';
+    }
 
     return (
         <span className={cn('font-bold tabular-nums', tone)}>

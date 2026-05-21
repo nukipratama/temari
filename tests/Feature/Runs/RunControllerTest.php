@@ -82,23 +82,6 @@ it('returns weekly snapshots inside the range + historical for the bottom table'
             ->has('historicalSnapshots', 2));
 });
 
-it('builds a heatmap cell per day in the range', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::today()->subDays(3),
-        'distance' => 5230,
-        'trimp_edwards' => 42.5,
-    ]);
-
-    $this->actingAs($user)->get('/aktivitas')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('heatmap', 56)
-            ->where('heatmap.52.distance_km', 5.23)
-            ->where('heatmap.52.trimp', 42.5)
-            ->where('heatmap.52.activity_id', $activity->id));
-});
-
 it('redirects /catatan to /aktivitas', function (): void {
     $user = User::factory()->create();
 

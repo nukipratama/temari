@@ -110,7 +110,7 @@ it('shows the "Sudah N hari" label when last run was 2-3 days ago', function ():
     expect($result->streakLabel)->toBe('Sudah 3 hari');
 });
 
-it('shows the "Sudah N hari nih" label when last run was more than 3 days ago', function (): void {
+it('shows the "Sudah N hari" label when last run was more than 1 day ago', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -120,7 +120,7 @@ it('shows the "Sudah N hari nih" label when last run was more than 3 days ago', 
 
     $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
 
-    expect($result->streakLabel)->toBe('Sudah 8 hari nih');
+    expect($result->streakLabel)->toBe('Sudah 8 hari');
 });
 
 it('returns a null streak label when the user has never run', function (): void {

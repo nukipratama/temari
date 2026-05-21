@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MilestoneController;
@@ -28,6 +29,8 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/aktivitas', [RunController::class, 'index'])->name('aktivitas.index');
     Route::get('/aktivitas/{activity}', [RunController::class, 'show'])->name('aktivitas.show');
+
+    Route::get('/kalender', CalendarController::class)->name('kalender');
 
     Route::get('/kartu', [CardController::class, 'index'])->name('kartu.index');
 

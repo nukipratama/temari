@@ -8,7 +8,6 @@ import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/Jour
 import PageHero from '@/components/PageHero';
 import RangeFilter, { type RangeFilterValue } from '@/components/aktivitas/RangeFilter';
 import RingkasanCard from '@/components/aktivitas/RingkasanCard';
-import RunHeatmap, { type HeatmapCell } from '@/components/aktivitas/RunHeatmap';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
@@ -36,7 +35,6 @@ interface RunsIndexProps {
     notes?: Record<number, RunNote>;
     rangeFilter: RangeFilterValue;
     rangeStart: string;
-    heatmap: ReadonlyArray<HeatmapCell>;
     weeklySnapshots: ReadonlyArray<WeeklySnapshotRow>;
     historicalSnapshots: ReadonlyArray<WeeklySnapshotRow>;
     journeyMatch?: JourneyMatchData | null;
@@ -72,7 +70,6 @@ export default function RunsIndex({
     runs,
     notes = {},
     rangeFilter,
-    heatmap,
     weeklySnapshots,
     historicalSnapshots,
     journeyMatch = null,
@@ -98,13 +95,11 @@ export default function RunsIndex({
                 <PageHero
                     icon="mdi:run-fast"
                     title="Aktivitas"
-                    subtitle="Lari lo, dirapiin per minggu. Tap satu buat lihat detailnya."
+                    subtitle="Aktivitas lari kamu, dirapikan per minggu. Klik satu untuk melihat detailnya."
                     className="mb-6"
                 />
 
                 <RangeFilter active={rangeFilter} className="mb-4" />
-
-                <RunHeatmap cells={heatmap} className="mb-6" />
 
                 <JourneyStrip match={journeyMatch} className="mb-6" />
 
@@ -270,13 +265,13 @@ function EmptyState() {
     return (
         <div className="rounded-2xl border border-dashed border-line bg-surface-elev/40 p-10 text-center">
             <Icon icon="mdi:run-fast" width={28} height={28} className="mx-auto text-brand-500" aria-hidden />
-            <p className="mt-3 text-base text-ink">Belum ada lari yang masuk. Sync run pertama lo dari Strava dulu, ya.</p>
+            <p className="mt-3 text-base text-ink">Belum ada lari yang tercatat. Sinkronkan lari pertama kamu dari Strava dulu, ya.</p>
             <Link
                 href="/"
                 className="mt-3 inline-flex items-center gap-1 text-sm text-brand-700 hover:text-brand-800"
             >
                 <Icon icon="mdi:arrow-left" width={14} height={14} aria-hidden />
-                Balik ke Beranda
+                Kembali ke Beranda
             </Link>
         </div>
     );
@@ -299,11 +294,11 @@ function detailStatsFor(snap: WeeklySnapshotRow): DetailStat[] {
 function ruleBasedFallback(snap: WeeklySnapshotRow): string {
     const parts: string[] = [];
     if (snap.runs !== null && snap.distance_km !== null) {
-        parts.push(`Minggu ini lo lari ${snap.runs}x sejauh ${snap.distance_km.toFixed(1)} km.`);
+        parts.push(`Minggu ini kamu lari ${snap.runs}x sejauh ${snap.distance_km.toFixed(1)} km.`);
     }
     if (snap.form !== null && snap.form_status) {
         const formLabel = FORM_CHIP_LABEL[snap.form_status];
-        parts.push(`Form ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)} — ${formLabel.toLowerCase()}.`);
+        parts.push(`Form ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, status ${formLabel.toLowerCase()}.`);
     }
     return parts.join(' ') || 'Belum ada data minggu ini, sabar ya.';
 }

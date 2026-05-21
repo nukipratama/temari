@@ -11,11 +11,11 @@ use App\Services\AI\StructuredChatCaller;
 class PrContextNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 1 kalimat flavor buat Personal Record, max 22 kata.
+        Tugas: 1 kalimat flavor untuk Personal Record, maksimal 22 kata.
 
-        Highlight delta dari PR sebelumnya kalau ada. Kalau ini PR pertama di
-        kategori, bilang "PR pertama!" atau yang setara. Tone selalu bangga +
-        supportive.
+        Highlight delta dari PR sebelumnya jika ada. Kalau ini PR pertama di
+        kategori, sebutkan "PR pertama!" atau yang setara. Tone selalu bangga dan
+        suportif.
         PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)

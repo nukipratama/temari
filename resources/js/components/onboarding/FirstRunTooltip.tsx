@@ -49,16 +49,16 @@ export default function FirstRunTooltip({ recentRunCount }: Readonly<FirstRunToo
                         <Icon icon="mdi:hand-wave" width={20} height={20} aria-hidden />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-ink dark:text-ink-dark">Hai! Strava lo udah nyambung.</p>
+                        <p className="text-sm font-semibold text-ink dark:text-ink-dark">Halo! Strava kamu sudah tersambung.</p>
                         <p className="mt-1 text-sm leading-relaxed text-ink dark:text-ink-dark">
-                            Begitu lari pertama lo masuk, aku mulai temenin di sini. Sync jalan otomatis tiap jam.
+                            Begitu lari pertama kamu masuk, aku akan mulai menemani di sini. Sinkronisasi berjalan otomatis setiap jam.
                         </p>
                         <button
                             type="button"
                             onClick={dismiss}
                             className="mt-3 inline-flex items-center gap-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/30"
                         >
-                            Oke, ditunggu
+                            Baik, ditunggu
                         </button>
                     </div>
                 </motion.aside>

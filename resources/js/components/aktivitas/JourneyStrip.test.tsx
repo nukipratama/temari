@@ -20,7 +20,7 @@ describe('JourneyStrip', () => {
                 }}
             />,
         );
-        expect(screen.getByText(/Kamu vs Lari Pertama Lo/i)).toBeInTheDocument();
+        expect(screen.getByText(/Kamu vs Lari Pertama Kamu/i)).toBeInTheDocument();
         expect(screen.getByText(/80\.4 km/)).toBeInTheDocument();
         expect(screen.getByText(/60 detik\/km lebih cepat/)).toBeInTheDocument();
         expect(screen.getByText(/15 bpm lebih rendah/)).toBeInTheDocument();

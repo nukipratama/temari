@@ -91,7 +91,7 @@ class MilestoneDetector
             $milestones[] = [
                 'kind' => 'pr',
                 'label' => 'Personal Record!',
-                'body' => sprintf('Lo baru bikin PR baru di %s. Aku catet.', $this->prCategoryLabel($category)),
+                'body' => sprintf('Kamu baru saja memecahkan PR di %s. Aku catat.', $this->prCategoryLabel($category)),
                 'priority' => 100,
             ];
         }
@@ -102,7 +102,7 @@ class MilestoneDetector
             $milestones[] = [
                 'kind' => 'longest_ever',
                 'label' => 'Lari terjauh sampai sekarang',
-                'body' => sprintf('%.2f km, lampaui rekor jarak lo sebelumnya.', $distanceMeters / 1000),
+                'body' => sprintf('%.2f km, melampaui rekor jarak kamu sebelumnya.', $distanceMeters / 1000),
                 'priority' => 90,
             ];
         }
@@ -162,8 +162,8 @@ class MilestoneDetector
 
         return [
             'kind' => 'first_ever_distance',
-            'label' => sprintf('%s pertama lo!', $this->formatKmLabel($thresholdReached)),
-            'body' => sprintf('Pertama kali lo lari sejauh %.2f km. Bookmark moment ini.', $distanceKm),
+            'label' => sprintf('%s pertama kamu!', $this->formatKmLabel($thresholdReached)),
+            'body' => sprintf('Pertama kali kamu lari sejauh %.2f km. Tandai momen ini.', $distanceKm),
             'priority' => 50 + (int) round($thresholdReached * 2),
         ];
     }
@@ -202,7 +202,7 @@ class MilestoneDetector
         return [
             'kind' => 'first_ever_pace',
             'label' => sprintf('Pace sub-%s pertama!', $label),
-            'body' => sprintf('Pace lo turun di bawah %s/km. Quality day!', $label),
+            'body' => sprintf('Pace kamu turun di bawah %s/km. Quality day!', $label),
             'priority' => 30 + (int) round((420 - $thresholdMatched) / 6),
         ];
     }

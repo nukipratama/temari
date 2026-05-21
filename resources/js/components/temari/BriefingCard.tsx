@@ -8,11 +8,11 @@ import TemariPeek from './TemariPeek';
 import type { AnalysisPayload, BriefingResult, RecoveryTone } from '@/types/inertia';
 
 const PEEK_LINES = [
-    'Lagi nungguin lari berikutnya nih',
-    'Coba liat pace minggu lalu, makin smooth lho',
-    'Inget istirahat ya, jangan ngebut terus',
-    'Form-mu lagi oke nih, manfaatin~',
-    'Tap aku buat reaksi 🌀',
+    'Sedang menunggu lari berikutnya',
+    'Coba lihat pace minggu lalu, semakin halus',
+    'Ingat istirahat ya, jangan dipaksa terus',
+    'Form kamu sedang bagus, manfaatkan',
+    'Ketuk aku untuk reaksi 🌀',
 ] as const;
 
 interface BriefingCardProps {

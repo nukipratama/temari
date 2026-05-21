@@ -94,14 +94,14 @@ export default function MilestoneBanner({ pending }: Readonly<MilestoneBannerPro
                                         onClick={() => setShowAll(true)}
                                         className="mt-2 text-xs font-semibold text-pop-700 underline-offset-2 hover:underline"
                                     >
-                                        + {extras.length} milestone lain
+                                        + {extras.length} milestone lainnya
                                     </button>
                                 )}
                                 {showAll && extras.length > 0 && (
                                     <ul className="mt-3 space-y-1.5 text-sm text-ink-soft">
                                         {extras.map((m) => (
                                             <li key={`${m.kind}-${m.label}`}>
-                                                <span className="font-semibold text-ink">{m.label}</span> — {m.body}
+                                                <span className="font-semibold text-ink">{m.label}</span>, {m.body}
                                             </li>
                                         ))}
                                     </ul>

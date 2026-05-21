@@ -20,7 +20,6 @@ const BASE_PROPS = {
     notes: {},
     rangeFilter: '8w' as const,
     rangeStart: '2026-03-26',
-    heatmap: [] as never[],
     weeklySnapshots: [] as never[],
     historicalSnapshots: [] as never[],
 };
@@ -52,7 +51,7 @@ beforeEach(() => {
 describe('Runs/Index', () => {
     it('renders empty state when no runs', () => {
         render(<RunsIndex {...BASE_PROPS} runs={[]} />);
-        expect(screen.getByText(/Belum ada lari yang masuk/)).toBeInTheDocument();
+        expect(screen.getByText(/Belum ada lari yang tercatat/)).toBeInTheDocument();
     });
 
     it('renders rows grouped under a week header', () => {

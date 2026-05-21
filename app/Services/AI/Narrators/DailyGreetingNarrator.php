@@ -12,13 +12,13 @@ use App\Services\Run\Story\Vibe;
 class DailyGreetingNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 1 kalimat greeting pagi, max 20 kata.
+        Tugas: 1 kalimat greeting pagi, maksimal 20 kata.
 
-        Tone disesuain vibe state pengguna: pumped/fresh/bouncy=hype + ngajakin,
-        worn_down/cooked=lembut + permisif (rest gak apa-apa), stretched_thin=warning
-        halus, hibernating=ngajakin keluar lagi.
+        Sesuaikan tone dengan vibe state pengguna: pumped/fresh/bouncy=energik dan
+        mengajak; worn_down/cooked=lembut dan permisif (rest tidak apa-apa);
+        stretched_thin=warning halus; hibernating=mengajak keluar lagi.
 
-        Cuma 1 kalimat hangat yang nyapa, gak usah panjang.
+        Cukup 1 kalimat hangat yang menyapa, tidak perlu panjang.
         PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)

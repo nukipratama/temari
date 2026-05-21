@@ -11,12 +11,12 @@ use App\Services\AI\StructuredChatCaller;
 class WeeklyRecapNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 1-2 kalimat ringkas kondisi minggu pengguna, max 35 kata.
+        Tugas: 1-2 kalimat ringkas kondisi minggu pengguna, maksimal 35 kata.
 
-        Tone disesuain status: fresh=playful + ngajakin, optimal=positive,
-        fatigued=empati + saran istirahat, overreaching=warning halus.
+        Sesuaikan tone dengan status: fresh=energik dan mengajak; optimal=positif;
+        fatigued=empatik dengan saran istirahat; overreaching=warning halus.
 
-        Rangkum vibe minggu ini, gak usah jelasin setiap angka.
+        Rangkum vibe minggu ini, tidak perlu menjelaskan setiap angka.
         PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)

@@ -52,7 +52,7 @@ export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {
                 <PageHero
                     icon="mdi:account-circle-outline"
                     title="Profil"
-                    subtitle={`Identitas + koneksi Strava lo. Total ${stats.total_km.toFixed(1)} km dari ${stats.total_runs} lari, sejauh ini.`}
+                    subtitle={`Identitas dan koneksi Strava kamu. Total ${stats.total_km.toFixed(1)} km dari ${stats.total_runs} lari, sejauh ini.`}
                     className="mb-6"
                 />
 
@@ -117,7 +117,7 @@ export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {
                     <section className="mt-6 rounded-2xl border border-line bg-surface-elev p-4 sm:p-6">
                         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">Koleksi Aksesori</h2>
                         <p className="mt-2 text-sm text-ink-soft">
-                            Aksesori yang aku kenakan, unlock dari milestone lo.
+                            Aksesori yang aku kenakan, terbuka dari milestone kamu.
                         </p>
                         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {catalogEntries.map(([key, def]) => (

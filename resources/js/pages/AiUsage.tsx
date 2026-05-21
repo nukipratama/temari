@@ -205,7 +205,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                     <SectionHeading
                         icon="mdi:account-multiple"
                         title="Breakdown per User"
-                        subtitle="Siapa yang paling banyak ngajakin Temari ngobrol."
+                        subtitle="Pengguna yang paling banyak mengajak Temari mengobrol."
                         tone="accent"
                     />
 

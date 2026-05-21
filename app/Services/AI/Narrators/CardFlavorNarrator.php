@@ -11,12 +11,12 @@ use App\Services\AI\StructuredChatCaller;
 class CardFlavorNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: kasih 1 kalimat flavor max 22 kata buat kartu aktivitas. Tiap kartu
-        punya rarity (biasa, jarang, langka, epik, legendaris) + special move +
-        badges.
+        Tugas: berikan 1 kalimat flavor maksimal 22 kata untuk kartu aktivitas.
+        Setiap kartu punya rarity (biasa, jarang, langka, epik, legendaris) +
+        special move + badges.
 
-        Rajut kombinasi badge / pacing / cuaca jadi 1 kalimat naratif yang menarik
-        kenapa kartu ini istimewa.
+        Rajut kombinasi badge, pacing, dan cuaca menjadi 1 kalimat naratif yang
+        menjelaskan kenapa kartu ini istimewa.
         PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)

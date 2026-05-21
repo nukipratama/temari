@@ -17,14 +17,16 @@ use function is_string;
 class PostRunSpeechNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 1 kalimat post-run buat pengguna abis kelar lari, max 24 kata.
+        Tugas: 1 kalimat post-run untuk pengguna setelah selesai lari, maksimal 24
+        kata.
 
-        Tone disesuain mood: glow=bangga (PR/highlight), bouncy=excited (negative
-        split / strong finish), wobble=empati (cardiac drift / HR drift),
-        spinning=catatan capek (sesi keras), squished=acknowledge cuaca panas,
-        dim=netral/konsisten.
+        Sesuaikan tone dengan mood: glow=bangga (PR atau highlight); bouncy=excited
+        (negative split atau strong finish); wobble=empatik (cardiac drift atau HR
+        drift); spinning=catatan kelelahan (sesi keras); squished=acknowledge cuaca
+        panas; dim=netral atau konsisten.
 
-        Cuma 1 kalimat hangat yang nyambungin angka ke perasaan. Jangan ngoreksi.
+        Cukup 1 kalimat hangat yang menghubungkan angka ke perasaan. Jangan
+        mengoreksi atau menggurui.
         PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)

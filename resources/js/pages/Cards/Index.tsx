@@ -76,7 +76,7 @@ export default function CardsIndex({ cards, selectedRarity }: Readonly<CardsInde
                     icon="mdi:cards"
                     eyebrow="Koleksi"
                     title="Kartu Aktivitas"
-                    subtitle="Tiap lari dapet satu kartu. Rarity naik kalau lo bikin PR, negative split, atau lari terjauh."
+                    subtitle="Setiap lari mendapat satu kartu. Rarity-nya naik kalau kamu memecahkan PR, negative split, atau lari terjauh."
                     tone="pop"
                     trailing={
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-pop-500 px-3 py-1.5 text-sm font-bold text-white shadow-sm ring-2 ring-white">
@@ -149,7 +149,7 @@ function EmptyState() {
                 aria-hidden
             />
             <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                Belum ada kartu di rarity ini. Coba filter lain, atau sync lari terbaru lo.
+                Belum ada kartu di rarity ini. Coba filter lain, atau sinkronkan lari terbaru kamu.
             </p>
         </div>
     );

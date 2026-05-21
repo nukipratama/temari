@@ -78,7 +78,6 @@ class RunController extends Controller
             'notes' => $this->notesForActivities($runs->pluck('id')->all()),
             'rangeFilter' => $range,
             'rangeStart' => $rangeStart->toDateString(),
-            'heatmap' => $this->buildHeatmap($user, $rangeStart),
             'weeklySnapshots' => $weeklySnapshots->map(fn (WeeklySnapshot $row): array => [
                 ...$row->toArray(),
                 'recap_analysis' => $recapAnalyses[$row->id] ?? Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, $row->id),
@@ -244,57 +243,6 @@ class RunController extends Controller
         }
 
         return $payloads;
-    }
-
-    /**
-     * One row per day in the range — light enough to JSON-encode even at 1y
-     * (365 rows). The frontend grids these by ISO week for a GitHub-style
-     * contribution heatmap.
-     *
-     * @return array<int, array{date: string, trimp: float|null, distance_km: float|null, activity_id: int|null}>
-     */
-    private function buildHeatmap(User $user, Carbon $rangeStart): array
-    {
-        $rows = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->where('activities.user_id', $user->id)
-            ->whereNotNull('activities.analyzed_at')
-            ->where('activity_details.start_date_local', '>=', $rangeStart)
-            ->select([
-                'activities.id as activity_id',
-                'activity_details.start_date_local',
-                'activity_details.distance',
-                'activity_details.trimp_edwards',
-            ])
-            ->get();
-
-        $byDay = $rows->groupBy(fn ($row): string => Carbon::parse($row->start_date_local)->toDateString())
-            ->map(function ($dayRows): array {
-                $first = $dayRows->first();
-
-                return [
-                    'trimp' => (float) $dayRows->sum(fn ($r) => (float) ($r->trimp_edwards ?? 0)),
-                    'distance' => (float) $dayRows->sum(fn ($r) => (float) ($r->distance ?? 0)),
-                    'activity_id' => $dayRows->count() === 1 && $first !== null ? (int) $first->getAttribute('activity_id') : null,
-                ];
-            });
-
-        $cells = [];
-        $cursor = $rangeStart->copy();
-        $today = Carbon::today();
-        while ($cursor->lessThanOrEqualTo($today)) {
-            $dateKey = $cursor->toDateString();
-            $entry = $byDay->get($dateKey);
-            $cells[] = [
-                'date' => $dateKey,
-                'trimp' => $entry !== null ? round($entry['trimp'], 1) : null,
-                'distance_km' => $entry !== null ? round($entry['distance'] / 1000, 2) : null,
-                'activity_id' => $entry['activity_id'] ?? null,
-            ];
-            $cursor->addDay();
-        }
-
-        return $cells;
     }
 
     public function show(Request $request, Activity $activity, PastYouMatcher $matcher): Response

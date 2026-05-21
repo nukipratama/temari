@@ -7,12 +7,13 @@ import type { Mood, SharedProps } from '@/types/inertia';
 const POLL_MS = 5000;
 
 const PAGE_TIPS: Record<string, string> = {
-    '/': 'Tap aku kalau penasaran sama vibe hari ini ✨',
-    '/aktivitas': 'Geser range filter buat liat heatmap lari lo 🗓️',
-    '/kartu': 'Tap kartu Epic/Legendaris buat efek konfeti 🎉',
-    '/rekor': 'Rekor lo per kategori, tap buat lihat lari aslinya 🏆',
-    '/profil': 'Statistik singkat akun Strava 🧾',
-    '/pengaturan': 'Atur preferensi + Temari di sini ⚙️',
+    '/': 'Ketuk aku kalau penasaran soal kondisi hari ini ✨',
+    '/aktivitas': 'Catatan mingguan kamu, lengkap dengan ringkasan dari aku 🏃‍♀️',
+    '/kalender': 'Lihat hari-hari larimu dalam satu tampilan bulanan 🗓️',
+    '/kartu': 'Ketuk kartu Epic atau Legendaris untuk efek konfeti 🎉',
+    '/rekor': 'Rekor kamu per kategori. Ketuk untuk melihat lari aslinya 🏆',
+    '/profil': 'Statistik singkat akun Strava kamu 🧾',
+    '/pengaturan': 'Atur preferensi akun + aku di sini ⚙️',
 };
 
 function tipForPath(path: string): string {
