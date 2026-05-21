@@ -126,7 +126,7 @@ export default function Rekor({ personalRecords }: Readonly<RekorProps>) {
                 <PageHero
                     icon="mdi:trophy-variant"
                     title="Rekor"
-                    subtitle="Catatan terbaik kamu. Tap nama run-nya buat lihat detail."
+                    subtitle="Catatan terbaik lo, satu per kategori. Tap nama run-nya buat lihat detail sesi yang ngalahin rekor."
                     tone="pop"
                     className="mb-6"
                 />
@@ -150,7 +150,7 @@ function EmptyState() {
         <div className="rounded-2xl border border-dashed border-line bg-surface-elev/40 p-10 text-center">
             <Icon icon="mdi:trophy-outline" width={32} height={32} className="mx-auto text-ink-meta" aria-hidden />
             <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                Belum ada PR. Run dengan splits + best-effort paces akan otomatis terkumpul di sini.
+                Belum ada PR yang tercatat. Lari dengan splits + best-effort paces bakal otomatis nongol di sini.
             </p>
         </div>
     );

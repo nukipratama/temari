@@ -76,7 +76,7 @@ export default function CardsIndex({ cards, selectedRarity }: Readonly<CardsInde
                     icon="mdi:cards"
                     eyebrow="Koleksi"
                     title="Kartu Aktivitas"
-                    subtitle="Setiap lari dapat satu kartu. Rarity naik untuk PR, negative split, atau aktivitas terjauh."
+                    subtitle="Tiap lari dapet satu kartu. Rarity naik kalau lo bikin PR, negative split, atau lari terjauh."
                     tone="pop"
                     trailing={
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-pop-500 px-3 py-1.5 text-sm font-bold text-white shadow-sm ring-2 ring-white">
@@ -106,7 +106,7 @@ export default function CardsIndex({ cards, selectedRarity }: Readonly<CardsInde
                     <section className="mt-6">
                         <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-pop-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-pop-700 ring-1 ring-pop-300">
                             <Icon icon="mdi:star-shooting" width={14} height={14} className="text-pop-600" aria-hidden />
-                            Spotlight kartu
+                            Kartu sorotan minggu ini
                         </div>
                         <MotionLink
                             href={`/aktivitas/${featured.activity_id}`}
@@ -149,7 +149,7 @@ function EmptyState() {
                 aria-hidden
             />
             <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                Belum ada kartu di rarity ini. Coba filter lain atau sinkronkan lari terbaru.
+                Belum ada kartu di rarity ini. Coba filter lain, atau sync lari terbaru lo.
             </p>
         </div>
     );

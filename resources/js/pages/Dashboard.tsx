@@ -86,7 +86,7 @@ export default function Dashboard({
                         <SectionHeading
                             icon="mdi:chart-line"
                             title="Tren 30 Hari"
-                            subtitle="Beban, fitness, dan volume mingguan."
+                            subtitle="Beban, fitness, sama volume mingguan lo. Buat liat arah progress."
                             tone="brand"
                         />
                         {trendAnalysis && (
@@ -106,7 +106,7 @@ export default function Dashboard({
                                         >
                                             Catatan Tren
                                         </h3>
-                                        <p className="mt-0.5 text-xs text-ink-meta">Bagaimana 30 hari terakhir lo terlihat dari mata Temari.</p>
+                                        <p className="mt-0.5 text-xs text-ink-meta">30 hari terakhir lo, dari mata aku.</p>
                                         <div className="mt-3">
                                             <AnalysisStatus
                                                 analysis={trendAnalysis}
@@ -159,7 +159,7 @@ function HeroHeader({ firstName, briefing, snapshot }: Readonly<HeroHeaderProps>
                     </h1>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                         <p className="text-sm leading-relaxed text-ink-soft">
-                            Berikut ringkasan lari kamu.
+                            Ini ringkasan kondisi lo hari ini.
                         </p>
                         {briefing.streakLabel !== null && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
@@ -201,7 +201,7 @@ function AtGlance({ load, decouplingValue }: Readonly<AtGlanceProps>) {
     if (load === null) {
         return (
             <aside className="flex h-full items-center rounded-2xl border border-dashed border-line bg-surface-elev/40 p-4 text-sm text-ink-meta sm:rounded-3xl sm:p-5">
-                Belum cukup data untuk ringkasan kondisi. Sync lari terbaru dulu.
+                Aku belum bisa rangkum kondisi lo, datanya masih kurang. Sync beberapa lari dulu ya.
             </aside>
         );
     }
@@ -360,9 +360,9 @@ function EmptyState() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/15 text-brand-600">
                 <Icon icon="mdi:run-fast" width={28} height={28} aria-hidden />
             </div>
-            <h2 className="mt-4 text-base font-semibold text-ink">Belum ada aktivitas tersinkron</h2>
+            <h2 className="mt-4 text-base font-semibold text-ink">Belum ada lari yang masuk</h2>
             <p className="mx-auto mt-2 max-w-sm text-base leading-relaxed text-ink">
-                Jalankan <code className="rounded bg-line/40 px-1 py-0.5 text-xs">php artisan strava:sync</code> atau tunggu sync terjadwal untuk mengisi dashboard.
+                Strava lo udah nyambung. Begitu lari pertama selesai sinkron, dashboard ini bakal ngisi sendiri.
             </p>
         </section>
     );

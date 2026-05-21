@@ -25,7 +25,7 @@ describe('Runs/Index', () => {
                 }}
             />,
         );
-        expect(screen.getByText(/Belum ada aktivitas/)).toBeInTheDocument();
+        expect(screen.getByText(/Belum ada lari yang masuk/)).toBeInTheDocument();
     });
 
     it('renders rows grouped under a week header', () => {

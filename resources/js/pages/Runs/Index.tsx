@@ -43,7 +43,7 @@ export default function RunsIndex({ runs, notes = {} }: Readonly<RunsIndexProps>
                 <PageHero
                     icon="mdi:run-fast"
                     title="Aktivitas"
-                    subtitle="Lari kamu dirapikan per minggu — klik satu buat lihat detail."
+                    subtitle="Lari lo, dirapiin per minggu. Tap satu buat lihat detailnya."
                     className="mb-6"
                 />
 
@@ -99,13 +99,13 @@ function EmptyState() {
     return (
         <div className="rounded-2xl border border-dashed border-line bg-surface-elev/40 p-10 text-center">
             <Icon icon="mdi:run-fast" width={28} height={28} className="mx-auto text-brand-500" aria-hidden />
-            <p className="mt-3 text-base text-ink">Belum ada aktivitas yang dianalisis</p>
+            <p className="mt-3 text-base text-ink">Belum ada lari yang masuk. Sync run pertama lo dari Strava dulu, ya.</p>
             <Link
                 href="/"
                 className="mt-3 inline-flex items-center gap-1 text-sm text-brand-700 hover:text-brand-800"
             >
                 <Icon icon="mdi:arrow-left" width={14} height={14} aria-hidden />
-                Kembali ke Beranda
+                Balik ke Beranda
             </Link>
         </div>
     );

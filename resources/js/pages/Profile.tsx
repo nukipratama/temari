@@ -52,7 +52,7 @@ export default function Profile({ stats, strava, unlocks = [], unlockCatalog = {
                 <PageHero
                     icon="mdi:account-circle-outline"
                     title="Profil"
-                    subtitle={`Identitas, koneksi Strava, dan ringkasan singkat — total ${stats.total_km.toFixed(1)} km dari ${stats.total_runs} lari.`}
+                    subtitle={`Identitas + koneksi Strava lo. Total ${stats.total_km.toFixed(1)} km dari ${stats.total_runs} lari, sejauh ini.`}
                     className="mb-6"
                 />
 

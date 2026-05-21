@@ -23,7 +23,7 @@ export default function Settings() {
                 <PageHero
                     icon="mdi:cog-outline"
                     title="Pengaturan"
-                    subtitle="Atur akun dan preferensi."
+                    subtitle="Atur akun + preferensi aku biar nyaman dipake."
                     className="mb-6"
                 />
 
