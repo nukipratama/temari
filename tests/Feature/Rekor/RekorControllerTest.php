@@ -20,7 +20,7 @@ it('renders the PR ledger', function (): void {
     $this->actingAs($user)->get('/rekor')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Rekor')
+            ->component('Koleksi/Rekor')
             ->has('personalRecords', 1)
             ->where('personalRecords.0.category', '5km'));
 });
@@ -31,6 +31,6 @@ it('shows empty PR ledger when the user has none', function (): void {
     $this->actingAs($user)->get('/rekor')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Rekor')
+            ->component('Koleksi/Rekor')
             ->where('personalRecords', []));
 });

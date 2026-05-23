@@ -42,7 +42,7 @@ class RekorController extends Controller
             ),
         ])->all();
 
-        return Inertia::render('Rekor', [
+        return Inertia::render('Koleksi/Rekor', [
             'personalRecords' => $payload,
         ]);
     }
