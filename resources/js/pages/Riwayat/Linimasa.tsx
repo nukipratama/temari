@@ -5,10 +5,10 @@ import { useMemo } from 'react';
 import AppShell from '@/layouts/AppShell';
 import DetailTeknisCollapsible, { type DetailStat } from '@/components/aktivitas/DetailTeknisCollapsible';
 import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/JourneyStrip';
-import PageHero from '@/components/PageHero';
 import RangeFilter, { type RangeFilterValue } from '@/components/aktivitas/RangeFilter';
 import RingkasanCard from '@/components/aktivitas/RingkasanCard';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
+import RiwayatTabs from '@/components/daybreak/RiwayatTabs';
 import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
 import { fadeInUp } from '@/lib/motion';
@@ -83,21 +83,27 @@ export default function RunsIndex({
 
     return (
         <AppShell>
-            <Head title="Aktivitas" />
+            <Head title="Riwayat · Linimasa" />
             <motion.main
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="w-full px-4 py-6 sm:px-6 sm:py-10"
+                className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
-                <PageHero
-                    icon="mdi:run-fast"
-                    title="Aktivitas"
-                    subtitle="Aktivitas lari kamu, dirapikan per minggu. Klik satu untuk melihat detailnya."
-                    className="mb-6"
-                />
+                <header className="flex flex-col gap-5">
+                    <div>
+                        <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
+                            Riwayat · {runs.length} aktivitas
+                        </div>
+                        <h1 className="font-display text-[44px] leading-[0.95] tracking-[-0.025em] text-ink sm:text-[56px] lg:text-[72px] lg:leading-[0.92]">
+                            Setiap lari ada ceritanya,<br />
+                            <em className="italic text-horizon-deep">satu per minggu.</em>
+                        </h1>
+                    </div>
+                    <RiwayatTabs active="linimasa" />
+                </header>
 
-                <RangeFilter active={rangeFilter} className="mb-4" />
+                <RangeFilter active={rangeFilter} className="mb-4 mt-6" />
 
                 <JourneyStrip match={journeyMatch} className="mb-6" />
 
@@ -131,9 +137,9 @@ interface WeekSectionProps {
 function WeekSection({ bucket, snapshot, notes }: Readonly<WeekSectionProps>) {
     const trimpLabel = Math.round(bucket.totalTrimp);
     return (
-        <section className="overflow-hidden rounded-2xl border border-line bg-surface-elev shadow-sm">
-            <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line bg-surface-warm/50 px-5 py-4">
-                <div className="text-base font-semibold text-ink">{bucket.label}</div>
+        <section className="overflow-hidden rounded-2xl border border-cream-deep bg-cream shadow-sm">
+            <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
+                <div className="font-display text-lg italic text-ink">{bucket.label}</div>
                 <div className="flex flex-wrap items-center gap-2 text-xs tabular-nums">
                     <Stat icon="mdi:run" label={`${bucket.runs.length} run`} />
                     <Stat icon="mdi:map-marker-distance" label={`${bucket.totalKm.toFixed(1)} km`} />
@@ -143,7 +149,7 @@ function WeekSection({ bucket, snapshot, notes }: Readonly<WeekSectionProps>) {
             </header>
 
             {snapshot && (
-                <div className="space-y-3 border-b border-line bg-surface-warm/20 px-5 py-4">
+                <div className="space-y-3 border-b border-cream-deep bg-cream-deep/20 px-5 py-4">
                     <RingkasanCard
                         analysis={snapshot.recap_analysis}
                         fallback={ruleBasedFallback(snapshot)}
@@ -194,7 +200,7 @@ function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow 
 
 function Stat({ icon, label }: Readonly<{ icon: string; label: string }>) {
     return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-sunken px-3 py-1 text-ink">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-cream-deep/60 px-3 py-1 text-ink">
             <Icon icon={icon} width={12} height={12} className="text-ink-3" aria-hidden />
             <span className="font-semibold">{label}</span>
         </span>
@@ -203,15 +209,16 @@ function Stat({ icon, label }: Readonly<{ icon: string; label: string }>) {
 
 function EmptyState() {
     return (
-        <div className="rounded-2xl border border-dashed border-line bg-surface-elev/40 p-10 text-center">
-            <Icon icon="mdi:run-fast" width={28} height={28} className="mx-auto text-leaf" aria-hidden />
-            <p className="mt-3 text-base text-ink">Belum ada lari yang tercatat. Sinkronkan lari pertama kamu dari Strava dulu, ya.</p>
+        <div className="rounded-2xl border-2 border-dashed border-cream-deep bg-cream/40 p-10 text-center">
+            <Icon icon="mdi:run-fast" width={28} height={28} className="mx-auto text-horizon" aria-hidden />
+            <p className="mt-3 font-display text-2xl italic text-ink-2">Belum ada lari yang tercatat.</p>
+            <p className="mt-2 font-sans text-sm text-ink-3">Sinkronkan lari pertama kamu dari Strava dulu, ya.</p>
             <Link
                 href="/"
-                className="mt-3 inline-flex items-center gap-1 text-sm text-leaf-deep hover:text-ink"
+                className="mt-3 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.12em] text-horizon hover:text-horizon-deep"
             >
                 <Icon icon="mdi:arrow-left" width={14} height={14} aria-hidden />
-                Kembali ke Beranda
+                Kembali ke Hari Ini
             </Link>
         </div>
     );

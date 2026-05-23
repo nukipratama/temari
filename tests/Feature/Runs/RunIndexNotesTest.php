@@ -51,7 +51,7 @@ it('attaches notes keyed by activity_id when post-run analyses exist', function 
     $this->actingAs($user)->get('/aktivitas')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Runs/Index')
+            ->component('Riwayat/Linimasa')
             ->where("notes.{$activity->id}.oneline", 'Run yang mantap')
             ->where("notes.{$activity->id}.mood", Temari::MOOD_ENTENG));
 });
