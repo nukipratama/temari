@@ -57,7 +57,7 @@ class RunCardFactory
             invalidate: true,
         );
 
-        if (in_array($card->rarity, [RunCard::RARITY_EPIK, RunCard::RARITY_LEGENDARIS], strict: true)) {
+        if (in_array($card->rarity, [RunCard::RARITY_EPIC, RunCard::RARITY_LEGENDARY], strict: true)) {
             $this->unlockEngine->grantEligible($activity->user);
         }
 
@@ -74,11 +74,11 @@ class RunCardFactory
         $hasZoneData = is_array($summary['time_in_zone_pct'] ?? null);
 
         return match (true) {
-            $isLongest && $distance >= 21_097.5 => RunCard::RARITY_LEGENDARIS,
-            $prSet => RunCard::RARITY_EPIK,
-            $negativeSplit && $distance >= 5_000 => RunCard::RARITY_LANGKA,
-            $hasZoneData && $distance >= 3_000 => RunCard::RARITY_JARANG,
-            default => RunCard::RARITY_BIASA,
+            $isLongest && $distance >= 21_097.5 => RunCard::RARITY_LEGENDARY,
+            $prSet => RunCard::RARITY_EPIC,
+            $negativeSplit && $distance >= 5_000 => RunCard::RARITY_RARE,
+            $hasZoneData && $distance >= 3_000 => RunCard::RARITY_UNCOMMON,
+            default => RunCard::RARITY_COMMON,
         };
     }
 

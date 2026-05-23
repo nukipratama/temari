@@ -103,7 +103,7 @@ describe('Runs/Index', () => {
             <RunsIndex
                 {...BASE_PROPS}
                 runs={[noteFixture]}
-                notes={{ 7: { oneline: 'Solid run, keren tahanin pace-nya.', mood: 'bouncy' } }}
+                notes={{ 7: { oneline: 'Solid run, keren tahanin pace-nya.', mood: 'enteng' } }}
             />,
         );
         expect(screen.getByText('Solid run, keren tahanin pace-nya.')).toBeInTheDocument();

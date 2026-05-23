@@ -32,13 +32,13 @@ const TWO_WEEK_CELLS: CalendarCell[] = cellsFor([
     { date: '2026-04-28', day: 28 },
     { date: '2026-04-29', day: 29 },
     { date: '2026-04-30', day: 30 },
-    { date: '2026-05-01', day: 1, is_current_month: true, distance_km: 5.0, trimp: 50, pace_sec_per_km: 360, avg_hr: 145, mood: 'bouncy', activity_id: 100 },
+    { date: '2026-05-01', day: 1, is_current_month: true, distance_km: 5.0, trimp: 50, pace_sec_per_km: 360, avg_hr: 145, mood: 'enteng', activity_id: 100 },
     { date: '2026-05-02', day: 2, is_current_month: true },
     { date: '2026-05-03', day: 3, is_current_month: true },
     { date: '2026-05-04', day: 4, is_current_month: true },
-    { date: '2026-05-05', day: 5, is_current_month: true, distance_km: 7.2, trimp: 80, pace_sec_per_km: 380, avg_hr: 150, mood: 'glow', activity_id: 101 },
+    { date: '2026-05-05', day: 5, is_current_month: true, distance_km: 7.2, trimp: 80, pace_sec_per_km: 380, avg_hr: 150, mood: 'nyala', activity_id: 101 },
     { date: '2026-05-06', day: 6, is_current_month: true },
-    { date: '2026-05-07', day: 7, is_current_month: true, is_today: true, distance_km: 3.5, trimp: 25, mood: 'spinning', activity_id: 102 },
+    { date: '2026-05-07', day: 7, is_current_month: true, is_today: true, distance_km: 3.5, trimp: 25, mood: 'mumet', activity_id: 102 },
     { date: '2026-05-08', day: 8, is_current_month: true },
     { date: '2026-05-09', day: 9, is_current_month: true },
     { date: '2026-05-10', day: 10, is_current_month: true },
@@ -106,7 +106,7 @@ describe('Kalender', () => {
 
     it('renders all six mood swatches in the legend', () => {
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        ['Glow', 'Bouncy', 'Wobble', 'Squished', 'Spinning', 'Dim'].forEach((label) => {
+        ['Nyala', 'Enteng', 'Lemes', 'Oleng', 'Mumet', 'Adem'].forEach((label) => {
             expect(screen.getByText(label)).toBeInTheDocument();
         });
     });
@@ -129,7 +129,7 @@ describe('Kalender', () => {
 
     it('rolls multi-activity days into a non-linked cell', () => {
         const cells = cellsFor([
-            { date: '2026-05-01', day: 1, is_current_month: true, distance_km: 10, trimp: 100, mood: 'wobble', activity_id: null },
+            { date: '2026-05-01', day: 1, is_current_month: true, distance_km: 10, trimp: 100, mood: 'lemes', activity_id: null },
             { date: '2026-05-02', day: 2, is_current_month: true },
             { date: '2026-05-03', day: 3, is_current_month: true },
             { date: '2026-05-04', day: 4, is_current_month: true },

@@ -28,7 +28,7 @@ function makeBriefing(overrides: Partial<BriefingResult> = {}): BriefingResult {
         streakLabel: 'Lari hari ini',
         sigilPattern: 'orct',
         accessory: 'headband',
-        mood: 'glow',
+        mood: 'nyala',
         ...overrides,
     };
 }
@@ -87,7 +87,7 @@ describe('BriefingCard', () => {
         render(<BriefingCard briefing={makeBriefing({ recoveryTone: tone })} />);
     });
 
-    it.each(['glow', 'bouncy', 'wobble', 'squished', 'spinning', 'dim'] satisfies Mood[])(
+    it.each(['nyala', 'enteng', 'lemes', 'oleng', 'mumet', 'adem'] satisfies Mood[])(
         'renders mood %s',
         (mood) => {
             render(<BriefingCard briefing={makeBriefing({ mood })} />);

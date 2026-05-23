@@ -89,7 +89,7 @@ function Cell({ value, unit, emphasize = false, hideOnNarrow, tone }: Readonly<C
             <div
                 className={cn(
                     emphasize && 'font-bold text-ink',
-                    tone === 'alert' && 'text-mood-cooked',
+                    tone === 'alert' && 'text-mood-lemes',
                 )}
             >
                 {value}

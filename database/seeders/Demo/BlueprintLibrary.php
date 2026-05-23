@@ -179,7 +179,7 @@ class BlueprintLibrary
                 tags: ['no_gps', 'treadmill'],
                 hasGps: false,
             ),
-            // Phone-only: has_heartrate=false → no zone data → biasa rarity fallback.
+            // Phone-only: has_heartrate=false → no zone data → common rarity fallback.
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(40)->setTime(6, 0),
                 distanceM: 5_500,

@@ -1,4 +1,4 @@
-export type Mood = 'glow' | 'bouncy' | 'wobble' | 'squished' | 'spinning' | 'dim';
+export type Mood = 'nyala' | 'enteng' | 'oleng' | 'lemes' | 'mumet' | 'adem';
 
 export type Tone = 'neutral' | 'positive' | 'warning' | 'alert';
 
@@ -87,7 +87,7 @@ export interface Activity {
     runCard?: RunCard;
 }
 
-export type Rarity = 'biasa' | 'jarang' | 'langka' | 'epik' | 'legendaris';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 export interface RunCard {
     id: number;

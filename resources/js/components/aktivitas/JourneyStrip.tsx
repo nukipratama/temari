@@ -61,7 +61,7 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                     <span
                         className={cn(
                             'font-bold tabular-nums',
-                            pace_improvement_sec > 0 ? 'text-mood-bouncy' : 'text-mood-cooked',
+                            pace_improvement_sec > 0 ? 'text-mood-enteng' : 'text-mood-lemes',
                         )}
                     >
                         {Math.abs(Math.round(pace_improvement_sec))} detik/km{' '}
@@ -72,7 +72,7 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                     <span
                         className={cn(
                             'font-bold tabular-nums',
-                            hr_improvement_bpm > 0 ? 'text-mood-bouncy' : 'text-mood-cooked',
+                            hr_improvement_bpm > 0 ? 'text-mood-enteng' : 'text-mood-lemes',
                         )}
                     >
                         {Math.abs(Math.round(hr_improvement_bpm))} bpm{' '}

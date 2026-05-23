@@ -16,7 +16,7 @@ it('shows the user\'s cards on the gallery', function (): void {
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create(['name' => 'Tempo Run']);
     RunCard::factory()->for($activity)->create([
-        'rarity' => 'epik',
+        'rarity' => 'epic',
         'special_move' => 'Paru-paru Baja',
     ]);
 
@@ -26,18 +26,18 @@ it('shows the user\'s cards on the gallery', function (): void {
             ->component('Cards/Index')
             ->has('cards.data', 1)
             ->where('cards.data.0.special_move', 'Paru-paru Baja')
-            ->where('cards.data.0.rarity', 'epik'));
+            ->where('cards.data.0.rarity', 'epic'));
 });
 
 it('renders the empty state when no cards match the filter', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/kartu?rarity=legendaris')
+    $this->actingAs($user)->get('/kartu?rarity=legendary')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Cards/Index')
             ->where('cards.data', [])
-            ->where('selectedRarity', 'legendaris'));
+            ->where('selectedRarity', 'legendary'));
 });
 
 it('filters by rarity', function (): void {
@@ -45,18 +45,18 @@ it('filters by rarity', function (): void {
     $epicActivity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($epicActivity)->create();
     RunCard::factory()->for($epicActivity)->create([
-        'rarity' => 'epik',
+        'rarity' => 'epic',
         'special_move' => 'EpicMove',
     ]);
 
     $commonActivity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($commonActivity)->create();
     RunCard::factory()->for($commonActivity)->create([
-        'rarity' => 'biasa',
+        'rarity' => 'common',
         'special_move' => 'CommonMove',
     ]);
 
-    $this->actingAs($user)->get('/kartu?rarity=epik')
+    $this->actingAs($user)->get('/kartu?rarity=epic')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->has('cards.data', 1)

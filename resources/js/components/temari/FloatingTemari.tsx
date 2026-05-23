@@ -58,7 +58,7 @@ export default function FloatingTemari() {
         };
     }, [isThinking]);
 
-    const mood: Mood = isThinking ? 'spinning' : 'glow';
+    const mood: Mood = isThinking ? 'mumet' : 'nyala';
     const bubbleText = isThinking
         ? `${total} analisis lagi dipikirin Temari…`
         : tipForPath(url);
@@ -96,7 +96,7 @@ export default function FloatingTemari() {
                                     )}
                                     {activity.processing > 0 && (
                                         <span className="inline-flex items-center gap-1">
-                                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-mood-spinning" aria-hidden />
+                                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-mood-mumet" aria-hidden />
                                             {activity.processing} jalan
                                         </span>
                                     )}
@@ -116,7 +116,7 @@ export default function FloatingTemari() {
                     {isThinking && (
                         <span
                             aria-hidden
-                            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-mood-spinning px-1 text-[10px] font-bold text-white shadow ring-2 ring-surface-elev"
+                            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-mood-mumet px-1 text-[10px] font-bold text-white shadow ring-2 ring-surface-elev"
                         >
                             {total}
                         </span>

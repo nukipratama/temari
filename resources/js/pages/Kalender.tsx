@@ -48,37 +48,37 @@ interface MoodTone {
 }
 
 const MOOD_TONE: Record<Mood, MoodTone> = {
-    glow: {
+    nyala: {
         dot: 'bg-citrus',
         cellBg: 'bg-gradient-to-br from-citrus/10 via-citrus/60 to-citrus/10',
         cellBorder: 'border-citrus/40',
         text: 'text-ink',
     },
-    bouncy: {
-        dot: 'bg-mood-bouncy',
-        cellBg: 'bg-gradient-to-br from-mood-bouncy/10 via-mood-bouncy/15 to-mood-bouncy/5',
-        cellBorder: 'border-mood-bouncy/40',
-        text: 'text-mood-bouncy',
+    enteng: {
+        dot: 'bg-mood-enteng',
+        cellBg: 'bg-gradient-to-br from-mood-enteng/10 via-mood-enteng/15 to-mood-enteng/5',
+        cellBorder: 'border-mood-enteng/40',
+        text: 'text-mood-enteng',
     },
-    wobble: {
-        dot: 'bg-mood-glow',
-        cellBg: 'bg-gradient-to-br from-mood-glow/10 via-mood-glow/15 to-mood-glow/5',
-        cellBorder: 'border-mood-glow/40',
-        text: 'text-citrus-deep',
+    lemes: {
+        dot: 'bg-mood-lemes',
+        cellBg: 'bg-gradient-to-br from-mood-lemes/10 via-mood-lemes/15 to-mood-lemes/5',
+        cellBorder: 'border-mood-lemes/40',
+        text: 'text-mood-lemes',
     },
-    squished: {
-        dot: 'bg-mood-squished',
-        cellBg: 'bg-gradient-to-br from-mood-squished/10 via-mood-squished/15 to-mood-squished/5',
-        cellBorder: 'border-mood-squished/40',
-        text: 'text-mood-squished',
+    oleng: {
+        dot: 'bg-mood-oleng',
+        cellBg: 'bg-gradient-to-br from-mood-oleng/10 via-mood-oleng/15 to-mood-oleng/5',
+        cellBorder: 'border-mood-oleng/40',
+        text: 'text-mood-oleng',
     },
-    spinning: {
-        dot: 'bg-mood-spinning',
-        cellBg: 'bg-gradient-to-br from-mood-spinning/10 via-mood-spinning/15 to-mood-spinning/5',
-        cellBorder: 'border-mood-spinning/40',
-        text: 'text-mood-spinning',
+    mumet: {
+        dot: 'bg-mood-mumet',
+        cellBg: 'bg-gradient-to-br from-mood-mumet/10 via-mood-mumet/15 to-mood-mumet/5',
+        cellBorder: 'border-mood-mumet/40',
+        text: 'text-mood-mumet',
     },
-    dim: {
+    adem: {
         dot: 'bg-ink-3',
         cellBg: 'bg-gradient-to-br from-leaf/10 via-leaf/15 to-leaf/10',
         cellBorder: 'border-leaf/25',
@@ -292,7 +292,7 @@ function DayCellView({ cell }: Readonly<{ cell: CalendarCell }>) {
                                 <span className="font-semibold text-ink-2">{formatPace(cell.pace_sec_per_km)}</span>
                             )}
                             {cell.avg_hr !== null && (
-                                <span className="font-semibold text-mood-cooked">{cell.avg_hr}♥</span>
+                                <span className="font-semibold text-mood-lemes">{cell.avg_hr}♥</span>
                             )}
                         </div>
                     )}
@@ -328,12 +328,12 @@ function dayNumberClassFor(isToday: boolean, hasRun: boolean, tone: MoodTone): s
 
 function Legend({ className }: Readonly<{ className?: string }>) {
     const moods: ReadonlyArray<{ mood: Mood; label: string }> = [
-        { mood: 'glow', label: 'Glow' },
-        { mood: 'bouncy', label: 'Bouncy' },
-        { mood: 'wobble', label: 'Wobble' },
-        { mood: 'squished', label: 'Squished' },
-        { mood: 'spinning', label: 'Spinning' },
-        { mood: 'dim', label: 'Dim' },
+        { mood: 'nyala', label: 'Nyala' },
+        { mood: 'enteng', label: 'Enteng' },
+        { mood: 'lemes', label: 'Lemes' },
+        { mood: 'oleng', label: 'Oleng' },
+        { mood: 'mumet', label: 'Mumet' },
+        { mood: 'adem', label: 'Adem' },
     ];
 
     return (

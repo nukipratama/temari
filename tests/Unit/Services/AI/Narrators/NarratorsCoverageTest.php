@@ -69,21 +69,21 @@ it('PostRunSpeechNarrator returns speech on valid JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['speech' => 'Nice run today!'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller);
-    expect($narrator->generate($a, $d, 'glow'))->toBe('Nice run today!');
+    expect($narrator->generate($a, $d, 'nyala'))->toBe('Nice run today!');
 });
 
 it('PostRunSpeechNarrator throws on non-JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller('not json');
     $narrator = new PostRunSpeechNarrator($caller);
-    $narrator->generate($a, $d, 'glow');
+    $narrator->generate($a, $d, 'nyala');
 })->throws(UnavailableException::class, 'non-JSON');
 
 it('PostRunSpeechNarrator throws on missing key', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller);
-    $narrator->generate($a, $d, 'glow');
+    $narrator->generate($a, $d, 'nyala');
 })->throws(UnavailableException::class, 'missing speech');
 
 // ── DailyGreetingNarrator ─────────────────────────────────────────────

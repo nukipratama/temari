@@ -7,7 +7,7 @@ function card(overrides: Partial<RunCardModel> = {}): RunCardModel {
     return {
         id: 1,
         activity_id: 99,
-        rarity: 'epik',
+        rarity: 'epic',
         special_move: 'Paru-paru Baja',
         badges: ['hari_panas', 'negative_split'],
         ...overrides,
@@ -32,7 +32,7 @@ describe('RunCard', () => {
     it('renders special move + rarity label', () => {
         render(<RunCard card={card()} detail={detail()} />);
         expect(screen.getByText('Paru-paru Baja')).toBeInTheDocument();
-        expect(screen.getByText('Epic')).toBeInTheDocument();
+        expect(screen.getByText('Epik')).toBeInTheDocument();
     });
 
     it('renders detail name when present', () => {
@@ -45,7 +45,7 @@ describe('RunCard', () => {
         expect(screen.getByText('Run')).toBeInTheDocument();
     });
 
-    it.each(['biasa', 'jarang', 'langka', 'epik', 'legendaris'] as const)('renders rarity %s', (rarity) => {
+    it.each(['common', 'uncommon', 'rare', 'epic', 'legendary'] as const)('renders rarity %s', (rarity) => {
         render(<RunCard card={card({ rarity })} detail={detail()} />);
     });
 

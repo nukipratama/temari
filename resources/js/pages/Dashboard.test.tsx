@@ -40,7 +40,7 @@ const briefing: BriefingResult = {
     streakLabel: 'Lari hari ini',
     sigilPattern: 'orct',
     accessory: 'headband',
-    mood: 'glow',
+    mood: 'nyala',
 };
 
 const chartData: FitnessChartData = {

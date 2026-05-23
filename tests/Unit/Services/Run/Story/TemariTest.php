@@ -44,12 +44,12 @@ it('persists a post_run story line with mood + sigil + null speech (LLM async)',
         ->and($line->speech)->toBeNull()
         ->and($line->sigil_pattern)->toBeString()
         ->and($line->mood)->toBeIn([
-            Temari::MOOD_BOUNCY,
-            Temari::MOOD_GLOW,
-            Temari::MOOD_WOBBLE,
-            Temari::MOOD_DIM,
-            Temari::MOOD_SPINNING,
-            Temari::MOOD_SQUISHED,
+            Temari::MOOD_ENTENG,
+            Temari::MOOD_NYALA,
+            Temari::MOOD_LEMES,
+            Temari::MOOD_ADEM,
+            Temari::MOOD_MUMET,
+            Temari::MOOD_OLENG,
         ]);
 
     // Temari no longer dispatches the post-run analysis — ActivityPipeline's
@@ -69,7 +69,7 @@ it('picks glow mood when this activity broke a PR', function (): void {
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_GLOW);
+        ->toBe(Temari::MOOD_NYALA);
 });
 
 it('picks spinning mood on a hard session with ≥50% Z3+ time', function (): void {
@@ -80,7 +80,7 @@ it('picks spinning mood on a hard session with ≥50% Z3+ time', function (): vo
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_SPINNING);
+        ->toBe(Temari::MOOD_MUMET);
 });
 
 it('picks wobble mood when decoupling is high (>8%)', function (): void {
@@ -94,7 +94,7 @@ it('picks wobble mood when decoupling is high (>8%)', function (): void {
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_WOBBLE);
+        ->toBe(Temari::MOOD_LEMES);
 });
 
 it('picks squished mood on hot-weather easy runs', function (): void {
@@ -107,7 +107,7 @@ it('picks squished mood on hot-weather easy runs', function (): void {
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_SQUISHED);
+        ->toBe(Temari::MOOD_OLENG);
 });
 
 it('is idempotent — calling twice for the same activity updates the row', function (): void {
@@ -153,25 +153,25 @@ it('upserts the daily greeting (no dup on second call)', function (): void {
 });
 
 it('maps each mood to its public accessory token', function (): void {
-    expect(Temari::accessoryForMoodPublic(Temari::MOOD_GLOW))->toBe('headband')
-        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_BOUNCY))->toBe('pita')
-        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_DIM))->toBe('mata-ngantuk')
-        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_WOBBLE))->toBeNull()
-        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_SPINNING))->toBeNull()
-        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_SQUISHED))->toBeNull();
+    expect(Temari::accessoryForMoodPublic(Temari::MOOD_NYALA))->toBe('headband')
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_ENTENG))->toBe('pita')
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_ADEM))->toBe('mata-ngantuk')
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_LEMES))->toBeNull()
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_MUMET))->toBeNull()
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_OLENG))->toBeNull();
 });
 
 it('maps each vibe to a mood', function (): void {
     $temari = app(Temari::class);
 
-    expect($temari->moodForVibe(Vibe::PUMPED))->toBe(Temari::MOOD_GLOW)
-        ->and($temari->moodForVibe(Vibe::FRESH))->toBe(Temari::MOOD_GLOW)
-        ->and($temari->moodForVibe(Vibe::BOUNCY))->toBe(Temari::MOOD_BOUNCY)
-        ->and($temari->moodForVibe(Vibe::WORN_DOWN))->toBe(Temari::MOOD_WOBBLE)
-        ->and($temari->moodForVibe(Vibe::COOKED))->toBe(Temari::MOOD_SQUISHED)
-        ->and($temari->moodForVibe(Vibe::STRETCHED_THIN))->toBe(Temari::MOOD_SPINNING)
-        ->and($temari->moodForVibe(Vibe::HIBERNATING))->toBe(Temari::MOOD_DIM)
-        ->and($temari->moodForVibe('unknown'))->toBe(Temari::MOOD_DIM);
+    expect($temari->moodForVibe(Vibe::PUMPED))->toBe(Temari::MOOD_NYALA)
+        ->and($temari->moodForVibe(Vibe::FRESH))->toBe(Temari::MOOD_NYALA)
+        ->and($temari->moodForVibe(Vibe::BOUNCY))->toBe(Temari::MOOD_ENTENG)
+        ->and($temari->moodForVibe(Vibe::WORN_DOWN))->toBe(Temari::MOOD_LEMES)
+        ->and($temari->moodForVibe(Vibe::COOKED))->toBe(Temari::MOOD_OLENG)
+        ->and($temari->moodForVibe(Vibe::STRETCHED_THIN))->toBe(Temari::MOOD_MUMET)
+        ->and($temari->moodForVibe(Vibe::HIBERNATING))->toBe(Temari::MOOD_ADEM)
+        ->and($temari->moodForVibe('unknown'))->toBe(Temari::MOOD_ADEM);
 });
 
 it('picks bouncy mood when the run had a negative split', function (): void {
@@ -186,5 +186,5 @@ it('picks bouncy mood when the run had a negative split', function (): void {
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_BOUNCY);
+        ->toBe(Temari::MOOD_ENTENG);
 });

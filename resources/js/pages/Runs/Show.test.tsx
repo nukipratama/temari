@@ -46,7 +46,7 @@ const detail: ActivityDetail & {
 const card: RunCard = {
     id: 1,
     activity_id: 99,
-    rarity: 'epik',
+    rarity: 'epic',
     special_move: 'Paru-paru Baja',
     badges: [],
 };
@@ -56,7 +56,7 @@ const storyLine: StoryLine = {
     user_id: 1,
     activity_id: 99,
     kind: 'post_run',
-    mood: 'glow',
+    mood: 'nyala',
     speech: null,
     sigil_pattern: 'ssss',
     for_date: null,

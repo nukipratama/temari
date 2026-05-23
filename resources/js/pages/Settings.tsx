@@ -37,7 +37,7 @@ export default function Settings() {
                     <button
                         type="button"
                         onClick={onLogout}
-                        className="mt-4 inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:border-mood-cooked hover:text-mood-cooked focus:outline-none focus:ring-4 focus:ring-mood-cooked/20"
+                        className="mt-4 inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:border-mood-lemes hover:text-mood-lemes focus:outline-none focus:ring-4 focus:ring-mood-lemes/20"
                     >
                         <Icon icon="mdi:logout" width={16} height={16} aria-hidden />
                         Keluar

@@ -18,7 +18,7 @@ export default function TemariBubble({
     inertiaReloadProps = [],
     className,
 }: Readonly<TemariBubbleProps>) {
-    const mood: Mood = line?.mood ?? 'dim';
+    const mood: Mood = line?.mood ?? 'adem';
 
     const isLarge = size === 'lg';
     const mascotSizeClass = isLarge ? 'h-36 w-36 shrink-0' : 'h-20 w-20 shrink-0';

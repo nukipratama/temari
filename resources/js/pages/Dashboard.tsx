@@ -256,15 +256,15 @@ interface StatRowProps {
     label: string;
     value: string;
     hint: string;
-    hintTone: 'meta' | 'cooked' | 'glow' | 'bouncy';
+    hintTone: 'meta' | 'cooked' | 'nyala' | 'enteng';
     explainerKey?: MetricKey;
 }
 
 const HINT_TONE_CLASSES: Record<StatRowProps['hintTone'], string> = {
     meta: 'text-ink-3',
-    cooked: 'text-mood-cooked',
-    glow: 'text-citrus-deep',
-    bouncy: 'text-mood-bouncy',
+    cooked: 'text-mood-lemes',
+    nyala: 'text-citrus-deep',
+    enteng: 'text-mood-enteng',
 };
 
 function StatRow({ icon, iconTone, label, value, hint, hintTone, explainerKey }: Readonly<StatRowProps>) {
@@ -378,18 +378,18 @@ function monotonySignal(m: number): { emoji: string; tone: 'alert' | 'warning' |
     return { emoji: 'ok', tone: 'neutral' };
 }
 
-function monotonyHintTone(tone: 'alert' | 'warning' | 'neutral'): 'meta' | 'cooked' | 'glow' {
+function monotonyHintTone(tone: 'alert' | 'warning' | 'neutral'): 'meta' | 'cooked' | 'nyala' {
     if (tone === 'alert') return 'cooked';
-    if (tone === 'warning') return 'glow';
+    if (tone === 'warning') return 'nyala';
     return 'meta';
 }
 
-function statusHintTone(status: FormStatus): 'meta' | 'cooked' | 'glow' | 'bouncy' {
+function statusHintTone(status: FormStatus): 'meta' | 'cooked' | 'nyala' | 'enteng' {
     switch (status) {
         case 'fresh':
-            return 'bouncy';
+            return 'enteng';
         case 'fatigued':
-            return 'glow';
+            return 'nyala';
         case 'overreaching':
             return 'cooked';
         default:

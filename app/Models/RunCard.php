@@ -32,22 +32,24 @@ class RunCard extends Model
     /** @use HasFactory<RunCardFactory> */
     use HasFactory;
 
-    public const string RARITY_BIASA = 'biasa';
+    public const string RARITY_COMMON = 'common';
 
-    public const string RARITY_JARANG = 'jarang';
+    public const string RARITY_UNCOMMON = 'uncommon';
 
-    public const string RARITY_LANGKA = 'langka';
+    public const string RARITY_RARE = 'rare';
 
-    public const string RARITY_EPIK = 'epik';
+    public const string RARITY_EPIC = 'epic';
 
-    public const string RARITY_LEGENDARIS = 'legendaris';
+    public const string RARITY_LEGENDARY = 'legendary';
 
+    // UI labels stay Bahasa — DB keys are English (Daybreak handoff)
+    // for code clarity; user-facing strings remain ID-first.
     public const array RARITY_LABELS = [
-        self::RARITY_BIASA => 'Biasa',
-        self::RARITY_JARANG => 'Jarang',
-        self::RARITY_LANGKA => 'Langka',
-        self::RARITY_EPIK => 'Epik',
-        self::RARITY_LEGENDARIS => 'Legendaris',
+        self::RARITY_COMMON => 'Biasa',
+        self::RARITY_UNCOMMON => 'Jarang',
+        self::RARITY_RARE => 'Langka',
+        self::RARITY_EPIC => 'Epik',
+        self::RARITY_LEGENDARY => 'Legendaris',
     ];
 
     public const string BADGE_HARI_PANAS = 'hari_panas';

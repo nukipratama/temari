@@ -245,20 +245,20 @@ const VIBE_RULES: Record<string, string> = {
     pumped: 'border-l-leaf',
     fresh: 'border-l-leaf',
     bouncy: 'border-l-leaf',
-    cooked: 'border-l-mood-cooked',
-    stretched_thin: 'border-l-mood-cooked',
+    cooked: 'border-l-mood-lemes',
+    stretched_thin: 'border-l-mood-lemes',
     worn_down: 'border-l-horizon',
-    hibernating: 'border-l-mood-hibernate',
+    hibernating: 'border-l-mood-adem',
 };
 
 function vibeLeftRule(state: string): string {
-    return VIBE_RULES[state] ?? 'border-l-mood-spinning';
+    return VIBE_RULES[state] ?? 'border-l-mood-mumet';
 }
 
 const RECOVERY_CHIP: Record<RecoveryTone, string> = {
-    positive: 'bg-mood-bouncy/15 text-mood-bouncy',
-    warning: 'bg-mood-glow/15 text-mood-glow',
-    alert: 'bg-mood-cooked/15 text-mood-cooked',
+    positive: 'bg-mood-enteng/15 text-mood-enteng',
+    warning: 'bg-mood-nyala/15 text-mood-nyala',
+    alert: 'bg-mood-lemes/15 text-mood-lemes',
     neutral: 'bg-surface-elev/70 text-ink',
 };
 

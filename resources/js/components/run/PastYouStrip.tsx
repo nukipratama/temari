@@ -84,5 +84,5 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
 // Pace: positive diff = faster (good); HR: negative diff = lower (good).
 function diffTone(diff: number, kind: 'pace' | 'hr'): string {
     const good = kind === 'pace' ? diff > 0 : diff < 0;
-    return good ? 'text-mood-bouncy' : 'text-mood-cooked';
+    return good ? 'text-mood-enteng' : 'text-mood-lemes';
 }

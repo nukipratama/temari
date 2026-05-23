@@ -41,7 +41,7 @@ describe('Cards/Index', () => {
                         {
                             id: 1,
                             activity_id: 1,
-                            rarity: 'epik',
+                            rarity: 'epic',
                             special_move: 'Paru-paru Baja',
                             badges: [],
                             activity: { id: 1, user_id: 1, analyzed_at: '2026-05-10', detail: baseDetail },
@@ -65,7 +65,7 @@ describe('Cards/Index', () => {
                 cards={{
                     data: [
                         // @ts-expect-error - missing activity.detail intentionally
-                        { id: 1, activity_id: 1, rarity: 'epik', special_move: 'X', badges: [], activity: { id: 1, user_id: 1, analyzed_at: null } },
+                        { id: 1, activity_id: 1, rarity: 'epic', special_move: 'X', badges: [], activity: { id: 1, user_id: 1, analyzed_at: null } },
                     ],
                     current_page: 1,
                     last_page: 1,
@@ -83,12 +83,11 @@ describe('Cards/Index', () => {
         render(
             <CardsIndex
                 cards={{ data: [], current_page: 1, last_page: 1, per_page: 24, total: 0, links: [] }}
-                selectedRarity="epik"
+                selectedRarity="epic"
             />,
         );
-        // Active Epik now takes its rarity colour (accent), not brand.
-        const epikPill = screen.getByText('Epic').closest('a');
-        expect(epikPill).toHaveClass(/bg-horizon/);
+        const epicPill = screen.getByText('Epik').closest('a');
+        expect(epicPill?.className).toMatch(/bg-horizon/);
     });
 
     it('promotes the highest-rarity card to the Spotlight slot on page 1', () => {
@@ -99,7 +98,7 @@ describe('Cards/Index', () => {
                         {
                             id: 1,
                             activity_id: 1,
-                            rarity: 'jarang',
+                            rarity: 'uncommon',
                             special_move: 'Daily',
                             badges: [],
                             activity: { id: 1, user_id: 1, analyzed_at: '2026-05-10', detail: { ...baseDetail, id: 1 } },
@@ -107,7 +106,7 @@ describe('Cards/Index', () => {
                         {
                             id: 2,
                             activity_id: 2,
-                            rarity: 'legendaris',
+                            rarity: 'legendary',
                             special_move: 'Special',
                             badges: [],
                             activity: { id: 2, user_id: 1, analyzed_at: '2026-05-11', detail: { ...baseDetail, id: 2, activity_id: 2, start_date_local: '2026-05-11T07:00' } },
@@ -135,7 +134,7 @@ describe('Cards/Index', () => {
                         {
                             id: 1,
                             activity_id: 1,
-                            rarity: 'epik',
+                            rarity: 'epic',
                             special_move: 'Older',
                             badges: [],
                             activity: { id: 1, user_id: 1, analyzed_at: '2026-05-10', detail: { ...baseDetail, id: 1, start_date_local: '2026-04-01T07:00' } },
@@ -143,7 +142,7 @@ describe('Cards/Index', () => {
                         {
                             id: 2,
                             activity_id: 2,
-                            rarity: 'epik',
+                            rarity: 'epic',
                             special_move: 'Newer',
                             badges: [],
                             activity: { id: 2, user_id: 1, analyzed_at: '2026-05-11', detail: { ...baseDetail, id: 2, activity_id: 2, start_date_local: '2026-05-11T07:00' } },
@@ -169,11 +168,11 @@ describe('Cards/Index', () => {
                 cards={{
                     data: [
                         // @ts-expect-error intentionally missing activity.detail
-                        { id: 1, activity_id: 1, rarity: 'legendaris', special_move: 'No-Detail', badges: [], activity: { id: 1, user_id: 1, analyzed_at: null } },
+                        { id: 1, activity_id: 1, rarity: 'legendary', special_move: 'No-Detail', badges: [], activity: { id: 1, user_id: 1, analyzed_at: null } },
                         {
                             id: 2,
                             activity_id: 2,
-                            rarity: 'jarang',
+                            rarity: 'uncommon',
                             special_move: 'Only Real',
                             badges: [],
                             activity: { id: 2, user_id: 1, analyzed_at: '2026-05-11', detail: { ...baseDetail, id: 2, activity_id: 2 } },
@@ -194,10 +193,10 @@ describe('Cards/Index', () => {
     });
 
     it.each([
-        ['biasa', 'Common'],
-        ['jarang', 'Uncommon'],
-        ['langka', 'Rare'],
-        ['legendaris', 'Legendary'],
+        ['common', 'Biasa'],
+        ['uncommon', 'Jarang'],
+        ['rare', 'Langka'],
+        ['legendary', 'Legendaris'],
     ] as const)('tints the active pill for rarity %s', (rarity, label) => {
         render(
             <CardsIndex
@@ -207,7 +206,7 @@ describe('Cards/Index', () => {
         );
         // Walk up to the active pill anchor and assert its rarity tint class.
         const pill = screen.getByText(label).closest('a');
-        expect(pill?.className).toMatch(/bg-(ink-meta|brand-400|mood-spinning|pop-500)/);
+        expect(pill?.className).toMatch(/bg-(ink-3|leaf|mood-mumet|horizon|citrus)/);
     });
 
     it('falls back to neutral pill colour for an unknown active rarity', () => {
@@ -230,7 +229,7 @@ describe('Cards/Index', () => {
                         {
                             id: 1,
                             activity_id: 1,
-                            rarity: 'epik',
+                            rarity: 'epic',
                             special_move: 'Move',
                             badges: [],
                             activity: { id: 1, user_id: 1, analyzed_at: '2026-05-10', detail: baseDetail },
@@ -260,7 +259,7 @@ describe('Cards/Index', () => {
                         {
                             id: 1,
                             activity_id: 1,
-                            rarity: 'epik',
+                            rarity: 'epic',
                             special_move: 'Epic Run',
                             badges: [],
                             activity: { id: 1, user_id: 1, analyzed_at: '2026-05-10', detail: baseDetail },
@@ -268,7 +267,7 @@ describe('Cards/Index', () => {
                         {
                             id: 2,
                             activity_id: 2,
-                            rarity: 'legendaris',
+                            rarity: 'legendary',
                             special_move: 'Legendary',
                             badges: [],
                             activity: { id: 2, user_id: 2, analyzed_at: '2026-05-09', detail: { ...baseDetail, id: 12, activity_id: 2 } },

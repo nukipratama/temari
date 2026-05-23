@@ -85,7 +85,7 @@ export default function AktivitasDetailPane({
     const durationLabel = formatDurationHMS(detail.moving_time);
     const km = detail.distance != null ? (detail.distance / 1000).toFixed(2) : '—';
 
-    const mood: Mood = storyLine?.mood ?? 'dim';
+    const mood: Mood = storyLine?.mood ?? 'adem';
 
     const threadEntries: ThreadEntry[] = [
         {

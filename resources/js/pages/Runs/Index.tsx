@@ -60,9 +60,9 @@ const FORM_CHIP_LABEL: Record<FormStatus, string> = {
 
 const FORM_CHIP_CLASS: Record<FormStatus, string> = {
     fresh: 'bg-leaf/15 text-leaf-deep',
-    optimal: 'bg-mood-bouncy/15 text-mood-bouncy',
-    fatigued: 'bg-mood-glow/20 text-citrus-deep',
-    overreaching: 'bg-mood-cooked/15 text-mood-cooked',
+    optimal: 'bg-mood-enteng/15 text-mood-enteng',
+    fatigued: 'bg-mood-nyala/20 text-citrus-deep',
+    overreaching: 'bg-mood-lemes/15 text-mood-lemes',
 };
 
 export default function RunsIndex({

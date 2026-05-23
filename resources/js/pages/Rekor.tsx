@@ -22,7 +22,7 @@ interface RekorProps {
     personalRecords: ExtendedPR[];
 }
 
-type PrTone = 'brand' | 'accent' | 'pop' | 'spinning';
+type PrTone = 'brand' | 'accent' | 'pop' | 'mumet';
 
 interface PrVariant {
     border: string;
@@ -70,16 +70,16 @@ const PR_VARIANT: Record<PrTone, PrVariant> = {
         icon: 'mdi:crown',
         focusRing: 'focus-visible:ring-citrus',
     },
-    spinning: {
-        border: 'border-mood-spinning/40 hover:border-mood-spinning',
-        bg: 'from-mood-spinning/10 via-surface-elev to-mood-spinning/15',
-        topRule: 'from-mood-spinning/40 via-mood-spinning to-mood-spinning/40',
-        blob: 'bg-mood-spinning/25',
-        label: 'text-mood-spinning',
-        value: 'text-mood-spinning',
-        iconBg: 'bg-mood-spinning',
+    mumet: {
+        border: 'border-mood-mumet/40 hover:border-mood-mumet',
+        bg: 'from-mood-mumet/10 via-surface-elev to-mood-mumet/15',
+        topRule: 'from-mood-mumet/40 via-mood-mumet to-mood-mumet/40',
+        blob: 'bg-mood-mumet/25',
+        label: 'text-mood-mumet',
+        value: 'text-mood-mumet',
+        iconBg: 'bg-mood-mumet',
         icon: 'mdi:timer-sand',
-        focusRing: 'focus-visible:ring-mood-spinning',
+        focusRing: 'focus-visible:ring-mood-mumet',
     },
 };
 
@@ -95,7 +95,7 @@ function toneForCategory(category: string): PrTone {
         case 'marathon':
             return 'pop';
         default:
-            return 'spinning';
+            return 'mumet';
     }
 }
 

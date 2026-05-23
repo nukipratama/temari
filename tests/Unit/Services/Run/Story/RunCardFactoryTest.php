@@ -24,7 +24,7 @@ it('defaults to biasa rarity on a featureless short run', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('biasa');
+    expect($card->rarity)->toBe('common');
 });
 
 it('promotes to epik when this activity broke a PR', function (): void {
@@ -41,7 +41,7 @@ it('promotes to epik when this activity broke a PR', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('epik');
+    expect($card->rarity)->toBe('epic');
 });
 
 it('promotes to legendaris on an all-time-longest half-marathon-plus', function (): void {
@@ -58,7 +58,7 @@ it('promotes to legendaris on an all-time-longest half-marathon-plus', function 
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('legendaris');
+    expect($card->rarity)->toBe('legendary');
 });
 
 it('promotes to langka on a 5K+ negative split (no PR)', function (): void {
@@ -70,7 +70,7 @@ it('promotes to langka on a 5K+ negative split (no PR)', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('langka');
+    expect($card->rarity)->toBe('rare');
 });
 
 it('awards the hari_panas badge when temp ≥ 31°C', function (): void {
@@ -148,7 +148,7 @@ it('skips the legendaris check when current detail has no distance', function ()
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('biasa');
+    expect($card->rarity)->toBe('common');
 });
 
 it('is idempotent — rebuilding overwrites the same row', function (): void {

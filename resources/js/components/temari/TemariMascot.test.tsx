@@ -5,38 +5,38 @@ import TemariMascot from './TemariMascot';
 
 describe('TemariMascot', () => {
     it('renders the TemariCharacter SVG inside the motion wrapper', () => {
-        const { container } = render(<TemariMascot mood="glow" />);
+        const { container } = render(<TemariMascot mood="nyala" />);
         expect(container.querySelectorAll('svg').length).toBe(1);
     });
 
     it('forwards aria-label to the wrapper', () => {
-        const { container } = render(<TemariMascot mood="bouncy" aria-label="mood bouncy" />);
+        const { container } = render(<TemariMascot mood="enteng" aria-label="mood bouncy" />);
         expect(container.firstElementChild?.getAttribute('aria-label')).toBe('mood bouncy');
     });
 
     it('renders without crash under mood-aware idle', () => {
-        const { container } = render(<TemariMascot mood="wobble" idle="mood" />);
+        const { container } = render(<TemariMascot mood="lemes" idle="mood" />);
         expect(container.firstElementChild).toBeTruthy();
     });
 
     it('renders with breath idle for the squished mood', () => {
-        const { container } = render(<TemariMascot mood="squished" idle="breath" />);
+        const { container } = render(<TemariMascot mood="oleng" idle="breath" />);
         expect(container.firstElementChild).toBeTruthy();
     });
 
     it('renders without idle when idle is "none"', () => {
-        const { container } = render(<TemariMascot mood="glow" idle="none" />);
+        const { container } = render(<TemariMascot mood="nyala" idle="none" />);
         expect(container.firstElementChild).toBeTruthy();
     });
 
     it('respects sizeClass override', () => {
-        const { container } = render(<TemariMascot mood="dim" sizeClass="h-9 w-9" />);
+        const { container } = render(<TemariMascot mood="adem" sizeClass="h-9 w-9" />);
         expect(container.firstElementChild?.className).toContain('h-9');
     });
 
     it('falls through to breath when given an unknown mood with idle="mood"', () => {
         const { container } = render(
-            <TemariMascot mood={'mystery' as unknown as 'glow'} idle="mood" />,
+            <TemariMascot mood={'mystery' as unknown as 'nyala'} idle="mood" />,
         );
         expect(container.firstElementChild).toBeTruthy();
     });
@@ -44,7 +44,7 @@ describe('TemariMascot', () => {
     it('schedules + fires the idle fidget tick when timers advance', () => {
         vi.useFakeTimers();
         try {
-            const { container, unmount } = render(<TemariMascot mood="glow" idle="breath" />);
+            const { container, unmount } = render(<TemariMascot mood="nyala" idle="breath" />);
             act(() => {
                 vi.advanceTimersByTime(25_000);
             });
@@ -56,7 +56,7 @@ describe('TemariMascot', () => {
     });
 
     it('accepts ornaments prop without crashing', () => {
-        const { container } = render(<TemariMascot mood="glow" ornaments />);
+        const { container } = render(<TemariMascot mood="nyala" ornaments />);
         expect(container.firstElementChild).toBeTruthy();
     });
 
@@ -65,7 +65,7 @@ describe('TemariMascot', () => {
             throw new Error('outside Inertia');
         });
         try {
-            const { container } = render(<TemariMascot mood="glow" />);
+            const { container } = render(<TemariMascot mood="nyala" />);
             expect(container.querySelector('svg')).toBeInTheDocument();
         } finally {
             spy.mockRestore();
@@ -77,7 +77,7 @@ describe('TemariMascot', () => {
         // (running moods use the profile variant which has no accessory overlays).
         const { container } = render(
             <TemariMascot
-                mood="dim"
+                mood="adem"
                 unlockedAccessories={['accessory.headband_legendaris']}
             />,
         );
@@ -87,7 +87,7 @@ describe('TemariMascot', () => {
     it('skips unlock overlays when showUnlocks is false', () => {
         const { container } = render(
             <TemariMascot
-                mood="dim"
+                mood="adem"
                 showUnlocks={false}
                 unlockedAccessories={['accessory.headband_legendaris']}
             />,

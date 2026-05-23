@@ -11,7 +11,7 @@ it('exposes user, vibe, load, verdicts, and asOf as readable props', function ()
     $user = User::factory()->make(['id' => 7, 'name' => 'Ada']);
     $verdict = new VerdictTimelineItem(
         activityId: 1,
-        mood: 'glow',
+        mood: 'nyala',
         moodFace: '✨',
         oneline: 'mantap',
         startedAt: Carbon::parse('2026-05-10'),

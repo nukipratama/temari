@@ -47,18 +47,15 @@ const SHOULDER_LEFT = { x: 28, y: 55 };
 const SHOULDER_RIGHT = { x: 72, y: 55 };
 const EAR_LEFT_PIVOT = { x: 35, y: 19 };
 
-// Per-mood gait — every mood runs/walks, but tone differs by mood:
-// glow = standard running, bouncy = high-energy, wobble = unsteady,
-// spinning = dizzy-but-keeps-running, dim/squished = tired walking shuffle.
 type GaitConfig = { dur: string; armAngle: number; legStep: number };
 const GAIT_DEFAULT: GaitConfig = { dur: '0.7s', armAngle: 22, legStep: 5 };
 const GAIT_BY_MOOD: Record<Mood, GaitConfig> = {
-    glow: { dur: '0.7s', armAngle: 22, legStep: 5 },
-    bouncy: { dur: '0.55s', armAngle: 26, legStep: 6 },
-    wobble: { dur: '0.85s', armAngle: 18, legStep: 4 },
-    spinning: { dur: '0.65s', armAngle: 24, legStep: 5 },
-    dim: { dur: '1.4s', armAngle: 10, legStep: 2.5 },
-    squished: { dur: '1.6s', armAngle: 8, legStep: 2 },
+    nyala: { dur: '0.7s', armAngle: 22, legStep: 5 },
+    enteng: { dur: '0.55s', armAngle: 26, legStep: 6 },
+    lemes: { dur: '0.85s', armAngle: 18, legStep: 4 },
+    mumet: { dur: '0.65s', armAngle: 24, legStep: 5 },
+    adem: { dur: '1.4s', armAngle: 10, legStep: 2.5 },
+    oleng: { dur: '1.6s', armAngle: 8, legStep: 2 },
 };
 const gaitFor = (mood: Mood): GaitConfig => GAIT_BY_MOOD[mood] ?? GAIT_DEFAULT;
 const EAR_RIGHT_PIVOT = { x: 65, y: 19 };

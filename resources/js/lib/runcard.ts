@@ -1,14 +1,14 @@
 import type { Rarity } from '@/types/inertia';
 
 export const RARITY_LABELS: Record<Rarity, string> = {
-    biasa: 'Common',
-    jarang: 'Uncommon',
-    langka: 'Rare',
-    epik: 'Epic',
-    legendaris: 'Legendary',
+    common: 'Biasa',
+    uncommon: 'Jarang',
+    rare: 'Langka',
+    epic: 'Epik',
+    legendary: 'Legendaris',
 };
 
-export const RARITY_ORDER: Rarity[] = ['biasa', 'jarang', 'langka', 'epik', 'legendaris'];
+export const RARITY_ORDER: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 
 export const BADGE_LABELS: Record<string, string> = {
     hari_panas: '🔥 Heat Beater',

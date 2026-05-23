@@ -146,6 +146,6 @@ function iconBgFor(kind: MilestoneEntry['kind']): string {
         case 'first_ever_distance':
             return 'bg-leaf';
         case 'first_ever_pace':
-            return 'bg-mood-spinning';
+            return 'bg-mood-mumet';
     }
 }

@@ -40,10 +40,10 @@ const RARITY_STYLES: Record<string, RarityStyle> = {
     },
     langka: {
         icon: 'mdi:star',
-        ringClass: 'ring-mood-spinning shadow-mood-spinning/30',
-        chipClass: 'bg-mood-spinning text-white ring-2 ring-white',
-        bgClass: 'bg-gradient-to-br from-mood-spinning/20 via-surface-elev to-mood-spinning/10',
-        cornerClass: 'from-mood-spinning/50 to-mood-spinning',
+        ringClass: 'ring-mood-mumet shadow-mood-mumet/30',
+        chipClass: 'bg-mood-mumet text-white ring-2 ring-white',
+        bgClass: 'bg-gradient-to-br from-mood-mumet/20 via-surface-elev to-mood-mumet/10',
+        cornerClass: 'from-mood-mumet/50 to-mood-mumet',
         holographic: false,
     },
     jarang: {

@@ -97,16 +97,16 @@ type StreakConfig = { dur: string; stagger: string; peak: string };
 const STREAK_DEFAULT: StreakConfig = { dur: '0.55s', stagger: '0.12s', peak: '0.55' };
 function streakConfigFor(mood: Mood): StreakConfig {
     switch (mood) {
-        case 'bouncy':
+        case 'enteng':
             return { dur: '0.45s', stagger: '0.1s', peak: '0.7' };
-        case 'glow':
-        case 'spinning':
+        case 'nyala':
+        case 'mumet':
             return STREAK_DEFAULT;
-        case 'wobble':
+        case 'lemes':
             return { dur: '0.7s', stagger: '0.16s', peak: '0.5' };
-        case 'dim':
+        case 'adem':
             return { dur: '1.1s', stagger: '0.26s', peak: '0.32' };
-        case 'squished':
+        case 'oleng':
             return { dur: '1.3s', stagger: '0.3s', peak: '0.28' };
         default:
             return STREAK_DEFAULT;

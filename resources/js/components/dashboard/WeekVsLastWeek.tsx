@@ -84,7 +84,7 @@ function Delta({ value, higherIsBetter, suffix, fmt, labelOverride }: Readonly<D
         sign = '±';
     }
     const good = higherIsBetter ? value > 0 : value < 0;
-    const tone = value === 0 ? 'text-ink-3' : good ? 'text-mood-bouncy' : 'text-mood-cooked';
+    const tone = value === 0 ? 'text-ink-3' : good ? 'text-mood-enteng' : 'text-mood-lemes';
     let label: string;
     if (labelOverride) {
         label = labelOverride(value);

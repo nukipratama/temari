@@ -57,7 +57,7 @@ export default function CardsIndex({ cards, selectedRarity }: Readonly<CardsInde
     const gridItems = featured === null ? cards.data : cards.data.filter((c) => c.id !== featured.id);
 
     const triggerBurstFor = (card: CardWithRel) => {
-        if (card.rarity === 'epik' || card.rarity === 'legendaris') {
+        if (card.rarity === 'epic' || card.rarity === 'legendary') {
             setBurstKey(`card-${card.id}-${Date.now()}`);
         }
     };
@@ -182,19 +182,19 @@ interface RarityPillProps {
 }
 
 const RARITY_PILL_ACTIVE: Record<Rarity, string> = {
-    legendaris: 'border border-citrus bg-citrus text-white shadow-sm',
-    epik: 'border border-horizon bg-horizon text-white shadow-sm',
-    langka: 'border border-mood-spinning bg-mood-spinning text-white shadow-sm',
-    jarang: 'border border-leaf bg-leaf text-white shadow-sm',
-    biasa: 'border border-ink-3 bg-ink-3 text-white shadow-sm',
+    legendary: 'border border-citrus bg-citrus text-white shadow-sm',
+    epic: 'border border-horizon bg-horizon text-white shadow-sm',
+    rare: 'border border-mood-mumet bg-mood-mumet text-white shadow-sm',
+    uncommon: 'border border-leaf bg-leaf text-white shadow-sm',
+    common: 'border border-ink-3 bg-ink-3 text-white shadow-sm',
 };
 
 const RARITY_PILL_ICON: Record<Rarity, string> = {
-    legendaris: 'mdi:crown',
-    epik: 'mdi:star-four-points',
-    langka: 'mdi:star',
-    jarang: 'mdi:star-outline',
-    biasa: 'mdi:circle-outline',
+    legendary: 'mdi:crown',
+    epic: 'mdi:star-four-points',
+    rare: 'mdi:star',
+    uncommon: 'mdi:star-outline',
+    common: 'mdi:circle-outline',
 };
 
 const PILL_INACTIVE = 'border border-line bg-surface-elev text-ink-2 hover:border-leaf/40 hover:text-ink';

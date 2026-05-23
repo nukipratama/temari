@@ -22,7 +22,7 @@ export interface ThreadEntry {
 
 interface TemariThreadProps {
     mood: Mood;
-    /** Sub-label rendered next to the mood badge (e.g. "wobble"). */
+    /** Sub-label rendered next to the mood badge (e.g. "lemes"). */
     moodLabel?: string;
     /** Entries rendered as a vertical conversation thread. */
     entries: ReadonlyArray<ThreadEntry>;
@@ -34,7 +34,7 @@ const TONE_CLASSES: Record<NonNullable<ThreadEntry['tone']>, { rail: string; ico
     brand: { rail: 'bg-leaf', icon: 'text-leaf-deep' },
     accent: { rail: 'bg-horizon', icon: 'text-horizon-deep' },
     pop: { rail: 'bg-citrus', icon: 'text-citrus-deep' },
-    mood: { rail: 'bg-mood-bouncy', icon: 'text-mood-bouncy' },
+    mood: { rail: 'bg-mood-enteng', icon: 'text-mood-enteng' },
 };
 
 /**

@@ -58,7 +58,7 @@ it('orders verdicts newest-first and caps to the limit', function (): void {
         seedVerdict(
             $user,
             Carbon::today()->subDays($i),
-            Temari::MOOD_BOUNCY,
+            Temari::MOOD_ENTENG,
             "Verdict day {$i}",
             5000.0 + $i,
         );
@@ -79,11 +79,11 @@ it('ignores daily-greeting story lines', function (): void {
         'activity_id' => null,
         'for_date' => Carbon::today()->toDateString(),
         'kind' => StoryLine::KIND_DAILY_GREETING,
-        'mood' => Temari::MOOD_GLOW,
+        'mood' => Temari::MOOD_NYALA,
         'speech' => null,
         'sigil_pattern' => 'ssss',
     ]);
-    seedVerdict($user, Carbon::today(), Temari::MOOD_BOUNCY, 'Real verdict', 5000.0);
+    seedVerdict($user, Carbon::today(), Temari::MOOD_ENTENG, 'Real verdict', 5000.0);
 
     $items = app(VerdictTimeline::class)->recent($user);
 
@@ -93,12 +93,12 @@ it('ignores daily-greeting story lines', function (): void {
 
 it('maps each mood to a face emoji', function (): void {
     $user = User::factory()->create();
-    seedVerdict($user, Carbon::today(), Temari::MOOD_GLOW, 'glow', 5000.0);
-    seedVerdict($user, Carbon::today()->subDay(), Temari::MOOD_BOUNCY, 'bouncy', 5000.0);
-    seedVerdict($user, Carbon::today()->subDays(2), Temari::MOOD_WOBBLE, 'wobble', 5000.0);
-    seedVerdict($user, Carbon::today()->subDays(3), Temari::MOOD_SQUISHED, 'squished', 5000.0);
-    seedVerdict($user, Carbon::today()->subDays(4), Temari::MOOD_SPINNING, 'spinning', 5000.0);
-    seedVerdict($user, Carbon::today()->subDays(5), Temari::MOOD_DIM, 'dim', 5000.0);
+    seedVerdict($user, Carbon::today(), Temari::MOOD_NYALA, 'glow', 5000.0);
+    seedVerdict($user, Carbon::today()->subDay(), Temari::MOOD_ENTENG, 'bouncy', 5000.0);
+    seedVerdict($user, Carbon::today()->subDays(2), Temari::MOOD_LEMES, 'wobble', 5000.0);
+    seedVerdict($user, Carbon::today()->subDays(3), Temari::MOOD_OLENG, 'squished', 5000.0);
+    seedVerdict($user, Carbon::today()->subDays(4), Temari::MOOD_MUMET, 'spinning', 5000.0);
+    seedVerdict($user, Carbon::today()->subDays(5), Temari::MOOD_ADEM, 'dim', 5000.0);
 
     $items = app(VerdictTimeline::class)->recent($user);
 
@@ -112,13 +112,13 @@ it('maps each mood to a face emoji', function (): void {
 
 it('skips story lines whose activity has no detail', function (): void {
     $user = User::factory()->create();
-    seedVerdict($user, Carbon::today(), Temari::MOOD_BOUNCY, 'real verdict', 5000.0);
+    seedVerdict($user, Carbon::today(), Temari::MOOD_ENTENG, 'real verdict', 5000.0);
     $orphan = Activity::factory()->for($user)->create();
     StoryLine::query()->create([
         'user_id' => $user->id,
         'activity_id' => $orphan->id,
         'kind' => StoryLine::KIND_POST_RUN,
-        'mood' => Temari::MOOD_DIM,
+        'mood' => Temari::MOOD_ADEM,
         'speech' => null,
         'sigil_pattern' => 'dddd',
     ]);
@@ -137,8 +137,8 @@ it('skips story lines whose activity has no detail', function (): void {
 
 it('skips story lines whose LLM speech analysis is not yet done', function (): void {
     $user = User::factory()->create();
-    seedVerdict($user, Carbon::today(), Temari::MOOD_BOUNCY, 'done speech', 5000.0);
-    $pending = seedVerdict($user, Carbon::today()->subDay(), Temari::MOOD_DIM, null, 5000.0);
+    seedVerdict($user, Carbon::today(), Temari::MOOD_ENTENG, 'done speech', 5000.0);
+    $pending = seedVerdict($user, Carbon::today()->subDay(), Temari::MOOD_ADEM, null, 5000.0);
     Analysis::factory()->queued()->create([
         'subject_type' => Activity::class,
         'subject_id' => $pending->id,
@@ -154,7 +154,7 @@ it('skips story lines whose LLM speech analysis is not yet done', function (): v
 
 it('converts meters to kilometers in the item DTO', function (): void {
     $user = User::factory()->create();
-    seedVerdict($user, Carbon::today(), Temari::MOOD_BOUNCY, 'mantap', 7320.0);
+    seedVerdict($user, Carbon::today(), Temari::MOOD_ENTENG, 'mantap', 7320.0);
 
     $items = app(VerdictTimeline::class)->recent($user);
 
@@ -163,7 +163,7 @@ it('converts meters to kilometers in the item DTO', function (): void {
 
 it('maps an unknown mood to the default rain face', function (): void {
     $user = User::factory()->create();
-    seedVerdict($user, Carbon::today(), Temari::MOOD_DIM, 'dim verdict', 5000.0);
+    seedVerdict($user, Carbon::today(), Temari::MOOD_ADEM, 'dim verdict', 5000.0);
 
     $items = app(VerdictTimeline::class)->recent($user);
 
@@ -174,7 +174,7 @@ it('maps an unknown mood to the default rain face', function (): void {
 it('does not leak verdicts across users', function (): void {
     $a = User::factory()->create();
     $b = User::factory()->create();
-    seedVerdict($a, Carbon::today(), Temari::MOOD_BOUNCY, 'a only', 5000.0);
+    seedVerdict($a, Carbon::today(), Temari::MOOD_ENTENG, 'a only', 5000.0);
 
     expect(app(VerdictTimeline::class)->recent($b))->toBe([]);
 });
@@ -184,11 +184,11 @@ it('maps each mood to a face emoji via the private helper', function (string $mo
 
     expect($method->invoke(app(VerdictTimeline::class), $mood))->toBe($face);
 })->with([
-    [Temari::MOOD_GLOW, '✨'],
-    [Temari::MOOD_BOUNCY, '🦘'],
-    [Temari::MOOD_WOBBLE, '🥵'],
-    [Temari::MOOD_SQUISHED, '🍳'],
-    [Temari::MOOD_SPINNING, '💫'],
-    [Temari::MOOD_DIM, '🌧️'],
+    [Temari::MOOD_NYALA, '✨'],
+    [Temari::MOOD_ENTENG, '🦘'],
+    [Temari::MOOD_LEMES, '🥵'],
+    [Temari::MOOD_OLENG, '🍳'],
+    [Temari::MOOD_MUMET, '💫'],
+    [Temari::MOOD_ADEM, '🌧️'],
     ['unknown_mood', '🌧️'],
 ]);
