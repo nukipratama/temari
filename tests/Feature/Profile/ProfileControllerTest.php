@@ -39,7 +39,7 @@ it('renders Profile with computed identity + hero stats', function (): void {
     $this->actingAs($user)->get('/profil')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Profile')
+            ->component('Aku')
             ->where('stats.total_runs', 2)
             ->where('stats.total_km', 13)
             ->where('stats.longest_run_km', 8)
@@ -52,7 +52,7 @@ it('reports strava_connected as false when the user has no connection', function
     $this->actingAs($user)->get('/profil')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Profile')
+            ->component('Aku')
             ->where('identity.strava_connected', false)
             ->where('stats.total_runs', 0)
             ->where('stats.longest_run_km', 0));

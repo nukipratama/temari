@@ -45,7 +45,7 @@ class ProfileController extends Controller
             ])
             ->all();
 
-        return Inertia::render('Profile', [
+        return Inertia::render('Aku', [
             'identity' => [
                 'name' => $user->name,
                 'avatar_url' => $user->avatar_url,
