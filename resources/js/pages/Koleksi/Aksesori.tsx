@@ -1,0 +1,219 @@
+import { Head, router } from '@inertiajs/react';
+import { Icon } from '@iconify/react';
+import { motion } from 'framer-motion';
+import AppShell from '@/layouts/AppShell';
+import Chip from '@/components/daybreak/Chip';
+import CollectionHeader from '@/components/daybreak/CollectionHeader';
+import HeroPanel from '@/components/daybreak/HeroPanel';
+import PillButton from '@/components/daybreak/PillButton';
+import SectionLabel from '@/components/daybreak/SectionLabel';
+import TemariProto, { type TemariEquipped } from '@/components/daybreak/TemariProto';
+import { cn } from '@/lib/cn';
+import { fadeInUp } from '@/lib/motion';
+
+type Slot = 'headband' | 'medal' | 'pita' | 'aura';
+
+interface AksesoriItem {
+    unlock_key: string;
+    slot: Slot | null;
+    name: string;
+    icon: string;
+    description: string;
+    criteria: string;
+    unlocked: boolean;
+    equipped: boolean;
+}
+
+interface EquippedPayload {
+    headband: 'ember' | 'epik' | 'legendaris' | null;
+    medal: 'pertama' | 'emas' | null;
+    pita: boolean;
+    aura: boolean;
+}
+
+interface AksesoriProps {
+    items: AksesoriItem[];
+    equipped: EquippedPayload;
+}
+
+const SLOT_LABEL: Record<Slot, string> = {
+    headband: 'Headband',
+    medal: 'Medali',
+    pita: 'Pita',
+    aura: 'Aura',
+};
+
+const SLOT_ORDER: Slot[] = ['headband', 'medal', 'pita', 'aura'];
+
+export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriProps>) {
+    const unlockedCount = items.filter((i) => i.unlocked).length;
+    const eyebrow = `Koleksi · ${unlockedCount} / ${items.length} aksesori`;
+
+    const totalKartu = 63;
+    const totalRekor = 8;
+    const aksesoriCount = `${unlockedCount} / ${items.length}`;
+
+    const previewEquipped: TemariEquipped = {
+        headband: equipped.headband,
+        medal: equipped.medal ?? 'none',
+        pita: equipped.pita,
+        aura: equipped.aura,
+    };
+
+    const itemsBySlot: Record<Slot, AksesoriItem[]> = {
+        headband: [],
+        medal: [],
+        pita: [],
+        aura: [],
+    };
+    for (const item of items) {
+        if (item.slot) itemsBySlot[item.slot].push(item);
+    }
+
+    const equipItem = (key: string) => {
+        router.post('/api/aksesori/equip', { unlock_key: key }, { preserveScroll: true });
+    };
+
+    return (
+        <AppShell>
+            <Head title="Koleksi · Aksesori" />
+            <motion.div
+                variants={fadeInUp}
+                initial="hidden"
+                animate="visible"
+                className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
+            >
+                <CollectionHeader
+                    active="aksesori"
+                    eyebrow={eyebrow}
+                    headline1="Dandanin Temari"
+                    headline2="pake yang udah kamu dapet."
+                    counts={{ kartu: totalKartu, rekor: totalRekor, aksesori: aksesoriCount }}
+                />
+
+                <HeroPanel className="mt-8 lg:px-14 lg:py-12">
+                    <div className="grid items-center gap-10 lg:grid-cols-[260px_1fr]">
+                        <div className="flex justify-center">
+                            <TemariProto pose="proud" size={260} equipped={previewEquipped} />
+                        </div>
+                        <div>
+                            <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
+                                ★ Yang sedang dipake
+                            </div>
+                            <h2 className="mb-5 font-display text-[42px] leading-[0.95] tracking-[-0.015em] text-cream sm:text-[56px]">
+                                <em className="italic text-horizon">Penampilan kamu sekarang.</em>
+                            </h2>
+                            <ul className="grid gap-2 sm:grid-cols-2">
+                                {SLOT_ORDER.map((slot) => (
+                                    <li key={slot} className="flex items-center justify-between rounded-xl bg-cream/[0.06] px-4 py-3">
+                                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-cream/55">
+                                            {SLOT_LABEL[slot]}
+                                        </span>
+                                        <span className="font-display text-base italic text-cream">
+                                            {equippedLabelFor(slot, equipped)}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </HeroPanel>
+
+                {SLOT_ORDER.map((slot) =>
+                    itemsBySlot[slot].length > 0 ? (
+                        <SlotSection
+                            key={slot}
+                            slot={slot}
+                            items={itemsBySlot[slot]}
+                            onEquip={equipItem}
+                        />
+                    ) : null,
+                )}
+            </motion.div>
+        </AppShell>
+    );
+}
+
+function equippedLabelFor(slot: Slot, equipped: EquippedPayload): string {
+    if (slot === 'headband') {
+        return equipped.headband ? prettySuffix(equipped.headband) : 'belum dipake';
+    }
+    if (slot === 'medal') {
+        return equipped.medal ? prettyMedal(equipped.medal) : 'belum dipake';
+    }
+    if (slot === 'pita') {
+        return equipped.pita ? 'dipake' : 'belum dipake';
+    }
+    return equipped.aura ? 'aktif' : 'belum dipake';
+}
+
+function prettySuffix(s: string): string {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function prettyMedal(s: 'pertama' | 'emas'): string {
+    return s === 'pertama' ? 'Pertama (Bronze)' : 'Emas';
+}
+
+function SlotSection({
+    slot,
+    items,
+    onEquip,
+}: Readonly<{ slot: Slot; items: AksesoriItem[]; onEquip: (key: string) => void }>) {
+    return (
+        <section className="mt-10">
+            <SectionLabel>{SLOT_LABEL[slot]}</SectionLabel>
+            <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                {items.map((item) => (
+                    <AksesoriCard key={item.unlock_key} item={item} onEquip={onEquip} />
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function AksesoriCard({
+    item,
+    onEquip,
+}: Readonly<{ item: AksesoriItem; onEquip: (key: string) => void }>) {
+    const locked = !item.unlocked;
+    return (
+        <article
+            className={cn(
+                'flex flex-col gap-3 rounded-2xl px-5 py-5 transition',
+                item.equipped
+                    ? 'border-[1.5px] border-horizon bg-horizon/[0.08]'
+                    : locked
+                        ? 'border-2 border-dashed border-cream-deep bg-cream/40'
+                        : 'border border-cream-deep bg-cream hover:-translate-y-0.5 hover:shadow-md',
+            )}
+        >
+            <div className="flex items-start justify-between gap-3">
+                <span
+                    className={cn(
+                        'flex h-10 w-10 items-center justify-center rounded-xl',
+                        locked ? 'bg-ink-3/20 text-ink-3' : 'bg-horizon text-cream',
+                    )}
+                >
+                    <Icon icon={locked ? 'mdi:lock-outline' : item.icon} width={20} height={20} />
+                </span>
+                {item.equipped && <Chip tone="horizon">Dipake</Chip>}
+            </div>
+            <div>
+                <h3 className="font-display text-xl leading-tight tracking-[-0.01em] text-ink">{item.name}</h3>
+                <p className="mt-1 font-sans text-sm text-ink-2">{item.description}</p>
+            </div>
+            {locked ? (
+                <p className="mt-auto font-display text-xs italic text-ink-3">{item.criteria}</p>
+            ) : item.equipped ? (
+                <PillButton tone="ghost" size="sm" disabled className="mt-auto opacity-60">
+                    Sedang dipake
+                </PillButton>
+            ) : (
+                <PillButton tone="sky" size="sm" onClick={() => onEquip(item.unlock_key)} className="mt-auto">
+                    Pasang
+                </PillButton>
+            )}
+        </article>
+    );
+}

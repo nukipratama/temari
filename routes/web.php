@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\AksesoriController;
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
@@ -37,6 +38,10 @@ Route::middleware('auth')->group(function (): void {
     Route::permanentRedirect('/catatan', '/aktivitas');
 
     Route::get('/rekor', RekorController::class)->name('rekor');
+
+    Route::get('/aksesori', [AksesoriController::class, 'index'])->name('aksesori');
+    Route::post('/api/aksesori/equip', [AksesoriController::class, 'equip'])
+        ->name('api.aksesori.equip');
 
     Route::get('/profil', ProfileController::class)->name('profil');
 
