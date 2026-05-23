@@ -44,7 +44,9 @@ export type AnalysisType =
     | 'weekly_recap'
     | 'pr_context'
     | 'trend_caption'
-    | 'card_flavor';
+    | 'card_flavor'
+    | 'persona_summary'
+    | 'monthly_recap';
 
 export interface AnalysisPayload {
     id: number | null;

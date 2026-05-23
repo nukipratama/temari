@@ -85,3 +85,16 @@ it('aggregates multiple runs on the same day into one cell', function (): void {
                     && $cell['activity_id'] === null; // multi-run days don't link
             }));
 });
+
+it('exposes a monthlyRecap analysis payload keyed to the visible month', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/kalender?month=2026-05')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Riwayat/Kalender')
+            ->has('monthlyRecap')
+            ->where('monthlyRecap.type', 'monthly_recap')
+            ->where('monthlyRecap.subject_type', 'monthly_recap_user_month')
+            ->where('monthlyRecap.discriminator', '2026-05'));
+});

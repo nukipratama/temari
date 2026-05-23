@@ -4,10 +4,13 @@ import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import AppShell from '@/layouts/AppShell';
 import RiwayatTabs from '@/components/daybreak/RiwayatTabs';
+import SectionLabel from '@/components/daybreak/SectionLabel';
+import TemariProto from '@/components/daybreak/TemariProto';
+import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatPace } from '@/lib/pace';
-import type { Mood } from '@/types/inertia';
+import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 export interface CalendarCell {
     date: string;
@@ -29,6 +32,7 @@ interface KalenderProps {
     prevMonth: string;
     nextMonth: string;
     todayMonth: string;
+    monthlyRecap?: AnalysisPayload;
 }
 
 interface WeekRow {
@@ -93,7 +97,7 @@ const DEFAULT_TONE: MoodTone = {
     text: 'text-ink',
 };
 
-export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, month, todayMonth }: Readonly<KalenderProps>) {
+export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, month, todayMonth, monthlyRecap }: Readonly<KalenderProps>) {
     const weeks = useMemo<WeekRow[]>(() => groupByWeek(cells), [cells]);
     const monthlyStats = useMemo(() => computeMonthlyStats(cells), [cells]);
     const isCurrentMonth = month === todayMonth;
@@ -139,6 +143,26 @@ export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, mont
                 </div>
 
                 <Legend className="mt-4" />
+
+                {monthlyRecap && (
+                    <section className="mt-10">
+                        <SectionLabel>Catatan bulanan Temari</SectionLabel>
+                        <div className="flex items-start gap-3.5 rounded-2xl border border-cream-deep bg-cream px-6 py-5">
+                            <TemariProto pose="observational" size={56} />
+                            <div className="min-w-0 flex-1">
+                                <AnalysisStatus
+                                    analysis={monthlyRecap}
+                                    inertiaReloadProps={['monthlyRecap']}
+                                    renderContent={(text) => (
+                                        <p className="font-display text-base italic leading-relaxed text-ink-2 sm:text-lg">
+                                            “{text}”
+                                        </p>
+                                    )}
+                                />
+                            </div>
+                        </div>
+                    </section>
+                )}
             </motion.main>
         </AppShell>
     );

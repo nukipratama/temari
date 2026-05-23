@@ -4,13 +4,15 @@ import { motion } from 'framer-motion';
 import AppShell from '@/layouts/AppShell';
 import Chip from '@/components/daybreak/Chip';
 import HeroPanel from '@/components/daybreak/HeroPanel';
+import PersonaBar, { type PersonaSlice } from '@/components/daybreak/PersonaBar';
 import SectionLabel from '@/components/daybreak/SectionLabel';
 import TemariProto from '@/components/daybreak/TemariProto';
 import VoiceCard from '@/components/daybreak/VoiceCard';
+import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { fadeInUp } from '@/lib/motion';
 import { formatIdDate } from '@/lib/pace';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
-import type { SharedProps } from '@/types/inertia';
+import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 interface IdentityPayload {
     name: string;
@@ -53,6 +55,8 @@ interface AkuProps {
     topPrs?: TopPrEntry[];
     unlocks?: UnlockEntry[];
     unlockCatalog?: Record<string, UnlockCatalogEntry>;
+    personaMix?: PersonaSlice[];
+    personaSummary?: AnalysisPayload;
 }
 
 export default function Aku({
@@ -61,6 +65,8 @@ export default function Aku({
     topPrs = [],
     unlocks = [],
     unlockCatalog = {},
+    personaMix = [],
+    personaSummary,
 }: Readonly<AkuProps>) {
     const sharedUser = usePage<SharedProps>().props.auth.user;
     const firstName = sharedUser?.first_name ?? identity.name.split(' ')[0] ?? '';
@@ -103,6 +109,24 @@ export default function Aku({
                     <BigStat value={stats.total_km.toFixed(1)} unit="km" label="Total jarak" />
                     <BigStat value={stats.total_runs.toString()} unit="lari" label="Total aktivitas" />
                     <BigStat value={stats.longest_run_km.toFixed(2)} unit="km" label="Terjauh" />
+                </section>
+
+                <section className="mt-10">
+                    <SectionLabel>Persona · 12 minggu terakhir</SectionLabel>
+                    <div className="flex flex-col gap-5 rounded-2xl border border-cream-deep bg-cream px-6 py-5">
+                        <PersonaBar mix={personaMix} />
+                        {personaSummary && (
+                            <AnalysisStatus
+                                analysis={personaSummary}
+                                inertiaReloadProps={['personaSummary']}
+                                renderContent={(text) => (
+                                    <p className="font-display text-base italic leading-relaxed text-ink-2 sm:text-lg">
+                                        “{text}”
+                                    </p>
+                                )}
+                            />
+                        )}
+                    </div>
                 </section>
 
                 {topPrs.length > 0 && (

@@ -9,11 +9,14 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
+use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\DailyGreetingNarrator;
+use App\Services\AI\Narrators\MonthlyRecapNarrator;
+use App\Services\AI\Narrators\PersonaSummaryNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
@@ -269,3 +272,64 @@ it('CardFlavorNarrator throws on non-JSON', function (): void {
     $narrator = new CardFlavorNarrator($caller);
     $narrator->generate($card);
 })->throws(UnavailableException::class, 'non-JSON');
+
+// ── PersonaSummaryNarrator ────────────────────────────────────────────
+
+it('PersonaSummaryNarrator builds a mood-mix percent breakdown from story lines', function (): void {
+    $user = User::factory()->create();
+    $cutoff = Carbon::now()->subWeeks(11);
+
+    foreach (['nyala', 'nyala', 'nyala', 'adem', 'lemes'] as $mood) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        StoryLine::factory()->for($user)->create([
+            'activity_id' => $activity->id,
+            'mood' => $mood,
+            'created_at' => $cutoff->copy()->addDay(),
+        ]);
+    }
+
+    $caller = fakeCaller(json_encode(['narrative' => 'Larimu lebih sering nyala.'], JSON_THROW_ON_ERROR));
+    $narrator = new PersonaSummaryNarrator($caller);
+
+    $mix = $narrator->personaMix($user->fresh());
+    expect($mix[0]['mood'])->toBe('nyala');
+    expect($mix[0]['count'])->toBe(3);
+    expect($mix[0]['percent'])->toBe(60.0);
+    expect($narrator->generate($user->fresh()))->toBe('Larimu lebih sering nyala.');
+});
+
+it('PersonaSummaryNarrator returns an empty mix for a user with no story lines', function (): void {
+    $user = User::factory()->create();
+    $caller = fakeCaller(json_encode(['narrative' => 'x'], JSON_THROW_ON_ERROR));
+    $narrator = new PersonaSummaryNarrator($caller);
+    expect($narrator->personaMix($user))->toBe([]);
+});
+
+// ── MonthlyRecapNarrator ──────────────────────────────────────────────
+
+it('MonthlyRecapNarrator pulls month totals + mood mix into the context payload', function (): void {
+    $user = User::factory()->create();
+    $month = '2026-05';
+
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000.0,
+        'start_date_local' => Carbon::parse('2026-05-12T07:00'),
+    ]);
+    StoryLine::factory()->for($user)->create([
+        'activity_id' => $activity->id,
+        'mood' => 'nyala',
+        'created_at' => Carbon::parse('2026-05-12T08:00'),
+    ]);
+
+    $caller = fakeCaller(json_encode(['narrative' => 'Bulan ini mostly nyala.'], JSON_THROW_ON_ERROR));
+    $narrator = new MonthlyRecapNarrator($caller);
+
+    $context = $narrator->context($user, $month);
+    expect($context['month'])->toBe('2026-05');
+    expect($context['total_runs'])->toBe(1);
+    expect($context['total_distance_km'])->toBe(8.0);
+    expect($context['longest_run_km'])->toBe(8.0);
+    expect($context['mood_mix'][0]['mood'])->toBe('nyala');
+    expect($narrator->generate($user, $month))->toBe('Bulan ini mostly nyala.');
+});

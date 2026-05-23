@@ -6,8 +6,11 @@ namespace App\Http\Controllers;
 
 use Throwable;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -24,7 +27,7 @@ use Inertia\Response;
  */
 class CalendarController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, AnalysisService $analysisService): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -43,7 +46,31 @@ class CalendarController extends Controller
             'nextMonth' => $monthStart->copy()->addMonthNoOverflow()->format('Y-m'),
             'todayMonth' => Carbon::today()->format('Y-m'),
             'cells' => $this->buildCells($user, $gridStart, $gridEnd, $monthStart, $monthEnd),
+            'monthlyRecap' => $this->resolveMonthlyRecap($user, $monthStart->format('Y-m'), $analysisService),
         ]);
+    }
+
+    /**
+     * @return array{id: int|null, status: string, content: string|null, type: string, subject_type: string, subject_id: int, discriminator: string|null}
+     */
+    private function resolveMonthlyRecap(User $user, string $monthDiscriminator, AnalysisService $analysisService): array
+    {
+        $subjectType = AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE;
+
+        $row = Analysis::query()
+            ->forSubject($subjectType, $user->id, AnalysisType::MonthlyRecap, $monthDiscriminator)
+            ->first();
+
+        if ($row === null) {
+            $row = $analysisService->request(
+                subjectOrType: $subjectType,
+                subjectId: $user->id,
+                type: AnalysisType::MonthlyRecap,
+                discriminator: $monthDiscriminator,
+            );
+        }
+
+        return Analysis::toPayload($row, AnalysisType::MonthlyRecap, $subjectType, $user->id, $monthDiscriminator);
     }
 
     private function resolveMonth(mixed $raw): Carbon
