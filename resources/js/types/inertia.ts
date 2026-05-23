@@ -76,6 +76,7 @@ export interface ActivityDetail {
     location_name?: string | null;
     location_country?: string | null;
     summary_polyline?: string | null;
+    activity?: Activity;
 }
 
 export interface Activity {

@@ -53,11 +53,12 @@ class DashboardController extends Controller
         $recentRuns = ActivityDetail::query()
             ->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards'])
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
+            ->with(['activity.runCard:id,activity_id,rarity,special_move,badges'])
             ->orderByDesc('start_date_local')
-            ->limit(5)
+            ->limit(8)
             ->get();
 
-        return Inertia::render('Dashboard', [
+        return Inertia::render('HariIni', [
             'briefing' => $briefing,
             'load' => $load,
             'snapshot' => $weeks->last(),

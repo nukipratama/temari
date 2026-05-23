@@ -24,7 +24,7 @@ it('renders for a user with no synced activities', function (): void {
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Dashboard')
+            ->component('HariIni')
             ->where('auth.user.first_name', explode(' ', (string) $user->name)[0])
             ->where('load', null)
             ->where('recentRuns', []));
@@ -51,11 +51,11 @@ it('renders KPIs + recent runs when the user has training-load history', functio
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Dashboard')
+            ->component('HariIni')
             ->has('load.weekly_trimp')
             ->has('load.form')
             ->has('snapshot')
-            ->has('recentRuns', 5));
+            ->has('recentRuns', 8));
 
     Carbon::setTestNow();
 });
