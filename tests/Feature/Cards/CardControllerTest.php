@@ -23,7 +23,7 @@ it('shows the user\'s cards on the gallery', function (): void {
     $this->actingAs($user)->get('/kartu')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Cards/Index')
+            ->component('Koleksi/Kartu')
             ->has('cards.data', 1)
             ->where('cards.data.0.special_move', 'Paru-paru Baja')
             ->where('cards.data.0.rarity', 'epic'));
@@ -35,7 +35,7 @@ it('renders the empty state when no cards match the filter', function (): void {
     $this->actingAs($user)->get('/kartu?rarity=legendary')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Cards/Index')
+            ->component('Koleksi/Kartu')
             ->where('cards.data', [])
             ->where('selectedRarity', 'legendary'));
 });
@@ -61,6 +61,33 @@ it('filters by rarity', function (): void {
         ->assertInertia(fn (Assert $page) => $page
             ->has('cards.data', 1)
             ->where('cards.data.0.special_move', 'EpicMove'));
+});
+
+it('exposes a featured card that picks the highest-rarity recent', function (): void {
+    $user = User::factory()->create();
+
+    $commonAct = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($commonAct)->create();
+    RunCard::factory()->for($commonAct)->create([
+        'rarity' => 'common',
+        'special_move' => 'Just Common',
+    ]);
+
+    $epicAct = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($epicAct)->create();
+    RunCard::factory()->for($epicAct)->create([
+        'rarity' => 'epic',
+        'special_move' => 'Pembalik Keadaan',
+    ]);
+
+    $this->actingAs($user)->get('/kartu')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Koleksi/Kartu')
+            ->where('featuredCard.special_move', 'Pembalik Keadaan')
+            ->where('featuredCard.rarity', 'epic')
+            ->where('rarityCounts.epic', 1)
+            ->where('rarityCounts.common', 1));
 });
 
 it('hides other users\' cards', function (): void {

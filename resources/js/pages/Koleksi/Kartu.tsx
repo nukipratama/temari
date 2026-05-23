@@ -1,0 +1,296 @@
+import { Head, Link } from '@inertiajs/react';
+import { motion } from 'framer-motion';
+import AppShell from '@/layouts/AppShell';
+import MotionLink from '@/components/MotionLink';
+import ConfettiBurst from '@/components/ConfettiBurst';
+import Chip from '@/components/daybreak/Chip';
+import CollectionHeader from '@/components/daybreak/CollectionHeader';
+import HeroPanel from '@/components/daybreak/HeroPanel';
+import Kartu from '@/components/daybreak/Kartu';
+import TemariProto from '@/components/daybreak/TemariProto';
+import { cn } from '@/lib/cn';
+import { fadeInUp, pressShrink } from '@/lib/motion';
+import { formatIdDate } from '@/lib/pace';
+import { RARITY_LABELS, RARITY_ORDER } from '@/lib/runcard';
+import { useState } from 'react';
+import type {
+    Activity,
+    ActivityDetail,
+    PaginatedResponse,
+    Rarity,
+    RunCard as RunCardModel,
+} from '@/types/inertia';
+
+interface FeaturedCardPayload {
+    id: number;
+    activity_id: number;
+    rarity: Rarity;
+    special_move: string;
+    badges: string[] | null;
+    detail: ActivityDetail | null;
+}
+
+type CardWithRel = RunCardModel & {
+    activity: Activity & { detail: ActivityDetail };
+};
+
+interface KartuProps {
+    cards: PaginatedResponse<CardWithRel>;
+    selectedRarity: string | null;
+    featuredCard: FeaturedCardPayload | null;
+    rarityCounts: Record<Rarity, number>;
+}
+
+export default function KoleksiKartu({
+    cards,
+    selectedRarity,
+    featuredCard,
+    rarityCounts,
+}: Readonly<KartuProps>) {
+    const [burstKey, setBurstKey] = useState<string | null>(null);
+
+    const totalKartu = Object.values(rarityCounts).reduce((sum, n) => sum + n, 0);
+    const epicCount = rarityCounts.epic + rarityCounts.legendary;
+    const eyebrow = `Koleksi · ${totalKartu} kartu · ${epicCount} Epic+`;
+    const aksesoriCount = '4 / 5';
+
+    const grid = cards.data.filter((c) => featuredCard === null || c.id !== featuredCard.id);
+
+    const triggerBurstFor = (rarity: Rarity, id: number) => {
+        if (rarity === 'epic' || rarity === 'legendary') {
+            setBurstKey(`card-${id}-${Date.now()}`);
+        }
+    };
+
+    return (
+        <AppShell>
+            <Head title="Koleksi · Kartu" />
+            <ConfettiBurst burstKey={burstKey} />
+            <motion.div
+                variants={fadeInUp}
+                initial="hidden"
+                animate="visible"
+                className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
+            >
+                <CollectionHeader
+                    active="kartu"
+                    eyebrow={eyebrow}
+                    headline1="Yang Temari kasih kamu"
+                    headline2="semuanya."
+                    counts={{ kartu: totalKartu, rekor: 8, aksesori: aksesoriCount }}
+                />
+
+                {featuredCard && (
+                    <FeaturedPanel featured={featuredCard} onTap={triggerBurstFor} />
+                )}
+
+                <RarityFilter selected={selectedRarity} counts={rarityCounts} />
+
+                {grid.length === 0 && featuredCard === null ? (
+                    <EmptyState />
+                ) : (
+                    <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                        {grid.map((card) => (
+                            <CardCell key={card.id} card={card} onTap={triggerBurstFor} />
+                        ))}
+                    </div>
+                )}
+
+                {rarityCounts.legendary === 0 && <LegendaryTease />}
+            </motion.div>
+        </AppShell>
+    );
+}
+
+function FeaturedPanel({
+    featured,
+    onTap,
+}: Readonly<{ featured: FeaturedCardPayload; onTap: (rarity: Rarity, id: number) => void }>) {
+    const detail = featured.detail;
+    const km = detail?.distance != null ? (detail.distance / 1000).toFixed(2) : '—';
+    const durasi = detail?.moving_time != null ? formatDurationShort(detail.moving_time) : '—';
+    const trimp = detail?.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—';
+    const subtitle = `${RARITY_LABELS[featured.rarity]} · ${formatIdDate(detail?.start_date_local ?? null, 'short')}`;
+    const tags = (featured.badges ?? []).slice(0, 2).map(prettyBadge);
+
+    return (
+        <HeroPanel className="mt-8 lg:px-14 lg:py-12">
+            <span
+                aria-hidden
+                className="pointer-events-none absolute -right-10 -top-10 h-60 w-60 rounded-full"
+                style={{ background: 'radial-gradient(circle, rgba(232,160,118,0.3) 0%, transparent 70%)' }}
+            />
+            <div className="relative grid items-center gap-9 lg:grid-cols-[200px_1fr_280px]">
+                <div className="hidden lg:block">
+                    <TemariProto pose="proud" size={200} />
+                </div>
+                <div>
+                    <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
+                        ★ Sorotan minggu ini · {RARITY_LABELS[featured.rarity]}
+                    </div>
+                    <h2 className="mb-4 font-display text-[44px] leading-[0.95] tracking-[-0.015em] text-cream sm:text-[56px] lg:text-[64px]">
+                        <em className="italic text-horizon">{featured.special_move}</em>
+                    </h2>
+                    {tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {tags.map((t) => (
+                                <Chip key={t} tone="horizon">{t}</Chip>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <Link
+                    href={`/aktivitas/${featured.activity_id}`}
+                    className="hidden lg:block lg:rotate-[-3deg]"
+                    onClick={() => onTap(featured.rarity, featured.id)}
+                >
+                    <Kartu
+                        name={featured.special_move}
+                        subtitle={subtitle}
+                        km={km}
+                        durasi={durasi}
+                        trimp={trimp}
+                        rarity={featured.rarity}
+                        tags={tags}
+                        size="md"
+                        onSky
+                    />
+                </Link>
+            </div>
+        </HeroPanel>
+    );
+}
+
+function RarityFilter({
+    selected,
+    counts,
+}: Readonly<{ selected: string | null; counts: Record<Rarity, number> }>) {
+    return (
+        <nav aria-label="Filter rarity" className="mt-6 flex flex-wrap items-center gap-2">
+            <span className="mr-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                Rarity
+            </span>
+            <FilterPill href="/kartu" label="Semua" active={selected === null} dot={null} />
+            {RARITY_ORDER.map((r) => (
+                <FilterPill
+                    key={r}
+                    href={`/kartu?rarity=${r}`}
+                    label={`${RARITY_LABELS[r]} · ${counts[r]}`}
+                    active={selected === r}
+                    dot={r}
+                />
+            ))}
+        </nav>
+    );
+}
+
+const RARITY_DOT: Record<Rarity, string> = {
+    common: 'bg-rarity-common',
+    uncommon: 'bg-rarity-uncommon',
+    rare: 'bg-rarity-rare',
+    epic: 'bg-rarity-epic',
+    legendary: 'bg-rarity-legendary',
+};
+
+function FilterPill({
+    href,
+    label,
+    active,
+    dot,
+}: Readonly<{ href: string; label: string; active: boolean; dot: Rarity | null }>) {
+    return (
+        <MotionLink
+            href={href}
+            whileTap={pressShrink}
+            className={cn(
+                'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition',
+                active
+                    ? 'bg-sky text-cream font-semibold'
+                    : 'bg-sky/[0.06] text-ink-2 hover:bg-sky/[0.12]',
+            )}
+        >
+            {dot && <span aria-hidden className={cn('h-2 w-2 rounded-full', RARITY_DOT[dot])} />}
+            {label}
+        </MotionLink>
+    );
+}
+
+function CardCell({
+    card,
+    onTap,
+}: Readonly<{ card: CardWithRel; onTap: (rarity: Rarity, id: number) => void }>) {
+    const detail = card.activity?.detail;
+    if (!detail) return null;
+    const km = detail.distance != null ? (detail.distance / 1000).toFixed(2) : '—';
+    const durasi = detail.moving_time != null ? formatDurationShort(detail.moving_time) : '—';
+    const trimp = detail.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—';
+    const subtitle = `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`;
+    const tags = (card.badges ?? []).slice(0, 2).map(prettyBadge);
+
+    return (
+        <MotionLink
+            href={`/aktivitas/${card.activity_id}`}
+            whileTap={pressShrink}
+            onClick={() => onTap(card.rarity, card.id)}
+            className="block transition hover:-translate-y-0.5"
+        >
+            <Kartu
+                name={card.special_move}
+                subtitle={subtitle}
+                km={km}
+                durasi={durasi}
+                trimp={trimp}
+                rarity={card.rarity}
+                tags={tags}
+                size="md"
+            />
+        </MotionLink>
+    );
+}
+
+function EmptyState() {
+    return (
+        <div className="mt-6 rounded-2xl border-2 border-dashed border-cream-deep bg-cream/40 px-8 py-10 text-center">
+            <p className="font-display text-2xl italic text-ink-2">
+                Belum ada kartu di rarity ini.
+            </p>
+            <p className="mt-2 font-sans text-sm text-ink-3">Coba filter lain, atau sinkronkan lari terbaru kamu.</p>
+        </div>
+    );
+}
+
+function LegendaryTease() {
+    return (
+        <section className="mt-8 flex flex-col items-start gap-5 rounded-2xl border-2 border-dashed border-cream-deep bg-cream px-7 py-6 sm:flex-row sm:items-center">
+            <div className="flex h-28 w-20 items-center justify-center rounded-lg border-2 border-dashed border-rarity-legendary bg-rarity-legendary/[0.06] font-display text-4xl italic text-rarity-legendary">
+                ?
+            </div>
+            <div className="flex-1">
+                <div className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rarity-legendary">
+                    ★ Legendaris · belum terbuka
+                </div>
+                <p className="mb-1.5 font-display text-2xl leading-tight tracking-[-0.01em] text-ink">
+                    “Ada kartu Legendaris nungguin di sini.”
+                </p>
+                <p className="font-display text-sm italic leading-relaxed text-ink-3">
+                    Syaratnya: PR di 21K, atau 5 lari Nyala beruntun.
+                </p>
+            </div>
+        </section>
+    );
+}
+
+function formatDurationShort(secs: number): string {
+    const totalMinutes = Math.round(secs / 60);
+    if (totalMinutes < 60) return `${totalMinutes}m`;
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return m === 0 ? `${h}j` : `${h}j ${m}m`;
+}
+
+function prettyBadge(slug: string): string {
+    return slug
+        .split('_')
+        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+        .join(' ');
+}
