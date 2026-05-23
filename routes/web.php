@@ -13,7 +13,6 @@ use App\Http\Controllers\MilestoneController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
-use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TokenUsageController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,7 +38,6 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/rekor', RekorController::class)->name('rekor');
 
-    Route::get('/pengaturan', SettingsController::class)->name('pengaturan');
     Route::get('/profil', ProfileController::class)->name('profil');
 
     Route::post('/logout', [StravaAuthController::class, 'logout'])->name('auth.logout');
@@ -49,7 +47,8 @@ Route::middleware('auth')->group(function (): void {
     Route::redirect('/runs/{activity}', '/aktivitas/{activity}', 301);
     Route::permanentRedirect('/cards', '/kartu');
     Route::permanentRedirect('/progress', '/aktivitas');
-    Route::permanentRedirect('/settings', '/pengaturan');
+    Route::permanentRedirect('/settings', '/profil');
+    Route::permanentRedirect('/pengaturan', '/profil');
     Route::permanentRedirect('/profile', '/profil');
 
     Route::post('/api/milestones/{activity}/dismiss', [MilestoneController::class, 'dismiss'])

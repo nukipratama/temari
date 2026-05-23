@@ -1,24 +1,23 @@
 import { type ReactNode } from 'react';
-import BrandMark from '@/components/BrandMark';
 import DemoBanner from '@/components/DemoBanner';
-import Sidebar from '@/components/Sidebar';
-import SidebarTrigger from '@/components/SidebarTrigger';
 import FloatingTemari from '@/components/temari/FloatingTemari';
 import UnlockToast from '@/components/temari/UnlockToast';
-import { SidebarProvider } from '@/contexts/SidebarContext';
+import TopNav from '@/components/daybreak/TopNav';
+import MobileBottomNav from '@/components/daybreak/MobileBottomNav';
 import { useDawnShift } from '@/hooks/useDawnShift';
 
 interface AppShellProps {
     children: ReactNode;
-    showSidebar?: boolean;
+    /** Hides the TopNav + MobileBottomNav for standalone screens (e.g. Login). */
+    withNav?: boolean;
 }
 
-export default function AppShell({ children, showSidebar = true }: Readonly<AppShellProps>) {
+export default function AppShell({ children, withNav = true }: Readonly<AppShellProps>) {
     useDawnShift();
 
-    if (!showSidebar) {
+    if (!withNav) {
         return (
-            <div className="min-h-screen bg-surface text-ink">
+            <div className="min-h-screen bg-cream text-ink">
                 <DemoBanner />
                 {children}
             </div>
@@ -26,28 +25,24 @@ export default function AppShell({ children, showSidebar = true }: Readonly<AppS
     }
 
     return (
-        <SidebarProvider>
-            <div className="min-h-screen bg-surface text-ink">
-                <a
-                    href="#main-content"
-                    className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
-                >
-                    Lompat ke konten
-                </a>
+        <div className="min-h-screen bg-cream text-ink">
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
+            >
+                Lompat ke konten
+            </a>
 
-                <DemoBanner />
-                <Sidebar />
+            <DemoBanner />
+            <TopNav />
 
-                <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-line bg-surface-elev/80 px-4 py-3 backdrop-blur lg:hidden">
-                    <SidebarTrigger />
-                    <BrandMark size="compact" />
-                </div>
+            <main id="main-content" className="pb-24 lg:pb-0">
+                {children}
+            </main>
 
-                <div id="main-content" className="lg:ml-64">{children}</div>
-
-                <FloatingTemari />
-                <UnlockToast />
-            </div>
-        </SidebarProvider>
+            <MobileBottomNav />
+            <FloatingTemari />
+            <UnlockToast />
+        </div>
     );
 }

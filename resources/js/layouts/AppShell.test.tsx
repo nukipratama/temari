@@ -10,7 +10,7 @@ describe('AppShell', () => {
 
     it('sets a data-time-of-day attribute on body via useDawnShift', () => {
         setMockPage({
-            auth: { user: { id: 1, name: 'A', first_name: 'A', avatar_url: null } },
+            auth: { user: { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null } },
             flash: {},
             demoLoginEnabled: false,
         });
@@ -22,9 +22,9 @@ describe('AppShell', () => {
         expect(document.body.dataset.timeOfDay).toMatch(/^(dawn|morning|day|dusk|night)$/);
     });
 
-    it('renders header + children by default', () => {
+    it('renders the 4 primary tabs + children by default', () => {
         setMockPage({
-            auth: { user: { id: 1, name: 'A', first_name: 'A', avatar_url: null } },
+            auth: { user: { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null } },
             flash: {},
             demoLoginEnabled: false,
         });
@@ -34,19 +34,19 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText('child content')).toBeInTheDocument();
-        // BrandMark renders in both the persistent sidebar (hidden on `<lg`)
-        // and the mobile topbar — getAllByText handles both being in DOM.
-        expect(screen.getAllByText('TemanLari').length).toBeGreaterThan(0);
+        ['Hari Ini', 'Koleksi', 'Riwayat', 'Aku'].forEach((label) => {
+            expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+        });
     });
 
-    it('omits sidebar when showSidebar is false', () => {
+    it('omits nav chrome when withNav is false', () => {
         setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
         render(
-            <AppShell showSidebar={false}>
+            <AppShell withNav={false}>
                 <p>only child</p>
             </AppShell>,
         );
-        expect(screen.queryByText('TemanLari')).not.toBeInTheDocument();
+        expect(screen.queryByText('Hari Ini')).not.toBeInTheDocument();
         expect(screen.getByText('only child')).toBeInTheDocument();
     });
 });

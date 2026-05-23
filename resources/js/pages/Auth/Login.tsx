@@ -22,7 +22,7 @@ export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
     const submitDemo = () => demoForm.post('/auth/demo');
 
     return (
-        <AppShell showSidebar={false}>
+        <AppShell withNav={false}>
             <Head title="Masuk" />
             <div className="relative min-h-screen overflow-hidden">
                 <MeshBackdrop variant="dawn" className="-z-10" />

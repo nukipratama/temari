@@ -13,7 +13,6 @@ const PAGE_TIPS: Record<string, string> = {
     '/kartu': 'Ketuk kartu Epic atau Legendaris untuk efek konfeti 🎉',
     '/rekor': 'Rekor kamu per kategori. Ketuk untuk melihat lari aslinya 🏆',
     '/profil': 'Statistik singkat akun Strava kamu 🧾',
-    '/pengaturan': 'Atur preferensi akun + aku di sini ⚙️',
 };
 
 function tipForPath(path: string): string {
