@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
@@ -19,24 +20,6 @@ class PersonalRecords
         private readonly UnlockEngine $unlockEngine,
     ) {
     }
-
-    private const array DISTANCE_CATEGORIES = [
-        '1km' => 1_000,
-        '5km' => 5_000,
-        '10km' => 10_000,
-        '15km' => 15_000,
-        'half_marathon' => 21_097.5,
-        'marathon' => 42_195.0,
-    ];
-
-    /** category → stream_summary key */
-    private const array EFFORT_CATEGORIES = [
-        'best_5min' => 'best_5min_pace',
-        'best_10min' => 'best_10min_pace',
-        'best_20min' => 'best_20min_pace',
-        'best_30min' => 'best_30min_pace',
-        'best_60min' => 'best_60min_pace',
-    ];
 
     /**
      * @return list<string>
@@ -65,8 +48,9 @@ class PersonalRecords
         $splits = is_array($detail->splits_metric) ? $detail->splits_metric : [];
         $broken = [];
 
-        foreach (self::DISTANCE_CATEGORIES as $category => $targetMeters) {
-            if ($distance < $targetMeters * 0.95) {
+        foreach (PrCategory::distances() as $category) {
+            $targetMeters = $category->distanceMeters();
+            if ($targetMeters === null || $distance < $targetMeters * 0.95) {
                 continue;
             }
             $value = $this->timeAtDistance($splits, $targetMeters);
@@ -74,7 +58,7 @@ class PersonalRecords
                 continue;
             }
             if ($this->updateIfFaster($activity, $category, $value, $setAt)) {
-                $broken[] = $category;
+                $broken[] = $category->value;
             }
         }
 
@@ -89,7 +73,11 @@ class PersonalRecords
         $streamSummary = is_array($detail->stream_summary) ? $detail->stream_summary : [];
         $broken = [];
 
-        foreach (self::EFFORT_CATEGORIES as $category => $key) {
+        foreach (PrCategory::efforts() as $category) {
+            $key = $category->effortStreamKey();
+            if ($key === null) {
+                continue;
+            }
             $label = $streamSummary[$key] ?? null;
             if (! is_string($label)) {
                 continue;
@@ -99,7 +87,7 @@ class PersonalRecords
                 continue;
             }
             if ($this->updateIfFaster($activity, $category, $value, $setAt)) {
-                $broken[] = $category;
+                $broken[] = $category->value;
             }
         }
 
@@ -133,11 +121,11 @@ class PersonalRecords
         return null;
     }
 
-    private function updateIfFaster(Activity $activity, string $category, float $value, Carbon $setAt): bool
+    private function updateIfFaster(Activity $activity, PrCategory $category, float $value, Carbon $setAt): bool
     {
         $existing = PersonalRecord::query()
             ->where('user_id', $activity->user_id)
-            ->where('category', $category)
+            ->where('category', $category->value)
             ->first();
 
         if ($existing !== null && $value >= $existing->value_sec) {

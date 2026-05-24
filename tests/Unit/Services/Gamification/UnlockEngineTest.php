@@ -72,7 +72,7 @@ it('grants medal_gold once five PRs are recorded', function (): void {
         ['category' => '5km'],
         ['category' => '10km'],
         ['category' => '15km'],
-        ['category' => '21km'],
+        ['category' => 'half_marathon'],
     ))->create();
 
     expect(app(UnlockEngine::class)->grantEligible($user))

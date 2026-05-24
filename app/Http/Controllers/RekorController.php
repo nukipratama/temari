@@ -17,17 +17,6 @@ use Inertia\Response;
 
 class RekorController extends Controller
 {
-    private const array DISTANCE_CATEGORIES = ['1km', '5km', '10km', '15km', 'half_marathon', 'marathon'];
-
-    private const array DISTANCE_TARGET_M = [
-        '1km' => 1_000,
-        '5km' => 5_000,
-        '10km' => 10_000,
-        '15km' => 15_000,
-        'half_marathon' => 21_097,
-        'marathon' => 42_195,
-    ];
-
     public function __invoke(Request $request): Response
     {
         /** @var User $user */
@@ -77,15 +66,15 @@ class RekorController extends Controller
     private function pickFeaturedPr(Collection $records): ?PersonalRecord
     {
         $best = null;
-        $bestRank = -1;
+        $bestRank = -1.0;
         foreach ($records as $pr) {
-            if (! \in_array($pr->category, self::DISTANCE_CATEGORIES, strict: true)) {
+            $target = $pr->category->distanceMeters();
+            if ($target === null) {
                 continue;
             }
-            $rank = self::DISTANCE_TARGET_M[$pr->category];
-            if ($rank > $bestRank) {
+            if ($target > $bestRank) {
                 $best = $pr;
-                $bestRank = $rank;
+                $bestRank = $target;
             }
         }
 
@@ -151,7 +140,7 @@ class RekorController extends Controller
      */
     private function milestoneFor(PersonalRecord $pr): array
     {
-        if (! \in_array($pr->category, self::DISTANCE_CATEGORIES, strict: true)) {
+        if (! $pr->category->isDistance()) {
             return ['target_sec' => null, 'delta_sec' => null];
         }
         $current = (int) $pr->value_sec;
@@ -190,10 +179,10 @@ class RekorController extends Controller
      */
     private function progressionSeries(User $user, PersonalRecord $featured): ?array
     {
-        if (! \in_array($featured->category, self::DISTANCE_CATEGORIES, strict: true)) {
+        $target = $featured->category->distanceMeters();
+        if ($target === null) {
             return null;
         }
-        $target = self::DISTANCE_TARGET_M[$featured->category];
         $minDist = $target * 0.95;
         $maxDist = $target * 1.05;
         $since = Carbon::now()->subWeeks(26)->startOfWeek(Carbon::MONDAY);
@@ -230,7 +219,7 @@ class RekorController extends Controller
         ksort($bestByWeek);
 
         return [
-            'category' => $featured->category,
+            'category' => $featured->category->value,
             'weeks' => array_keys($bestByWeek),
             'times_sec' => array_values($bestByWeek),
             'goal_sec' => $this->milestoneFor($featured)['target_sec'],

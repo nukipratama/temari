@@ -35,7 +35,7 @@ class PrContextNarrator
             kind: 'pr_context',
             systemPrompt: self::SYSTEM_PROMPT,
             context: [
-                'category' => $pr->category,
+                'category' => $pr->category->value,
                 'value_sec' => $pr->value_sec,
                 'set_at' => $pr->set_at->toDateString(),
                 'previous_value_sec' => $previous?->value_sec,

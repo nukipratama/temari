@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use App\Enums\PrCategory;
 use App\Models\PersonalRecord;
 use App\Models\User;
 
@@ -17,34 +18,24 @@ use App\Models\User;
  */
 class VdotEstimator
 {
-    /** PR category → distance meters used in the Daniels velocity calc. */
-    private const array CATEGORY_TO_METERS = [
-        'marathon' => 42_195.0,
-        'half_marathon' => 21_097.5,
-        '15km' => 15_000.0,
-        '10km' => 10_000.0,
-        '5km' => 5_000.0,
-    ];
-
     /**
      * @return array{vdot: float, source_category: string}|null
      */
     public function estimate(User $user): ?array
     {
-        /** @var array<string, PersonalRecord> $prs */
+        $eligibleValues = array_map(static fn (PrCategory $c): string => $c->value, PrCategory::distances());
+
         $prs = PersonalRecord::query()
             ->where('user_id', $user->id)
-            ->whereIn('category', array_keys(self::CATEGORY_TO_METERS))
-            ->get()
-            ->keyBy('category')
-            ->all();
+            ->whereIn('category', $eligibleValues)
+            ->get();
 
         $best = null;
         $bestVdot = null;
 
-        foreach (self::CATEGORY_TO_METERS as $category => $distance) {
-            $pr = $prs[$category] ?? null;
-            if ($pr === null) {
+        foreach ($prs as $pr) {
+            $distance = $pr->category->distanceMeters();
+            if ($distance === null) {
                 continue;
             }
             $vdot = $this->vdotFromTimeAndDistance($pr->value_sec, $distance);
@@ -54,7 +45,7 @@ class VdotEstimator
             // Daniels' formula is distance-normalized; max VDOT wins.
             if ($bestVdot === null || $vdot > $bestVdot) {
                 $bestVdot = $vdot;
-                $best = $category;
+                $best = $pr->category;
             }
         }
 
@@ -62,7 +53,7 @@ class VdotEstimator
             return null;
         }
 
-        return ['vdot' => round($bestVdot, 1), 'source_category' => $best];
+        return ['vdot' => round($bestVdot, 1), 'source_category' => $best->value];
     }
 
     public function vdotFromTimeAndDistance(float $elapsedSec, float $distanceMeters): ?float

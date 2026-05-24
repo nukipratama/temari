@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
+use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 
@@ -88,10 +89,11 @@ class MilestoneDetector
         $milestones = [];
 
         foreach ($newPrCategories as $category) {
+            $label = PrCategory::tryFrom($category)?->label() ?? str_replace('_', ' ', $category);
             $milestones[] = [
                 'kind' => 'pr',
                 'label' => 'Personal Record!',
-                'body' => sprintf('Kamu baru saja memecahkan PR di %s. Aku catat.', $this->prCategoryLabel($category)),
+                'body' => sprintf('Kamu baru saja memecahkan PR di %s. Aku catat.', $label),
                 'priority' => 100,
             ];
         }
@@ -205,19 +207,6 @@ class MilestoneDetector
             'body' => sprintf('Pace kamu turun di bawah %s/km. Quality day!', $label),
             'priority' => 30 + (int) round((420 - $thresholdMatched) / 6),
         ];
-    }
-
-    private function prCategoryLabel(string $category): string
-    {
-        return match ($category) {
-            '1km' => '1 km',
-            '5km' => '5 km',
-            '10km' => '10 km',
-            '15km' => '15 km',
-            'half_marathon' => 'Half Marathon',
-            'marathon' => 'Marathon',
-            default => str_replace('_', ' ', $category),
-        };
     }
 
     private function formatKmLabel(float $km): string

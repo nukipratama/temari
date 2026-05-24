@@ -105,7 +105,7 @@ class ProfileController extends Controller
         foreach ($rows as $pr) {
             $out[] = [
                 'id' => $pr->id,
-                'category' => $pr->category,
+                'category' => $pr->category->value,
                 'value_sec' => (int) $pr->value_sec,
                 'set_at' => $pr->set_at->toIso8601String(),
                 'activity_id' => $pr->activity_id,
