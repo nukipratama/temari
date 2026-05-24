@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeDailyGreetingJob;
+use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzePersonaSummaryJob;
 use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeTrendCaptionJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
@@ -19,6 +21,8 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\BriefingNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\DailyGreetingNarrator;
+use App\Services\AI\Narrators\MonthlyRecapNarrator;
+use App\Services\AI\Narrators\PersonaSummaryNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\TrendCaptionNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
@@ -209,6 +213,52 @@ it('AnalyzeDailyGreetingJob falls back to today when discriminator is null', fun
 it('AnalyzeDailyGreetingJob throws when user missing', function (): void {
     $row = rowOf(AnalysisType::DAILY_GREETING_SUBJECT_TYPE, 99999, AnalysisType::DailyGreeting);
     (new AnalyzeDailyGreetingJob($row->id))->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+// ── AnalyzePersonaSummaryJob (row) ────────────────────────────────────
+
+it('AnalyzePersonaSummaryJob returns summary', function (): void {
+    $user = User::factory()->create();
+    mockNarrator(PersonaSummaryNarrator::class, 'persona narrative');
+
+    $row = rowOf(AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, $user->id, AnalysisType::PersonaSummary);
+    (new AnalyzePersonaSummaryJob($row->id))->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('persona narrative');
+});
+
+it('AnalyzePersonaSummaryJob fails when user missing', function (): void {
+    $row = rowOf(AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, 99999, AnalysisType::PersonaSummary);
+    (new AnalyzePersonaSummaryJob($row->id))->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+// ── AnalyzeMonthlyRecapJob (row) ──────────────────────────────────────
+
+it('AnalyzeMonthlyRecapJob returns recap for the given month', function (): void {
+    $user = User::factory()->create();
+    mockNarrator(MonthlyRecapNarrator::class, 'monthly narrative');
+
+    $row = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-05');
+    (new AnalyzeMonthlyRecapJob($row->id))->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('monthly narrative');
+});
+
+it('AnalyzeMonthlyRecapJob fails when user missing', function (): void {
+    $row = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, 99999, AnalysisType::MonthlyRecap, '2026-05');
+    (new AnalyzeMonthlyRecapJob($row->id))->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+it('AnalyzeMonthlyRecapJob fails when discriminator is missing', function (): void {
+    $user = User::factory()->create();
+    $row = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, null);
+    (new AnalyzeMonthlyRecapJob($row->id))->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });

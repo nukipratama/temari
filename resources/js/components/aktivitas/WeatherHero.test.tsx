@@ -24,7 +24,7 @@ describe('WeatherHero', () => {
         expect(screen.getByText('32')).toBeInTheDocument();
     });
 
-    it('renders rain state with mood-spinning gradient and rain icon', () => {
+    it('renders rain state with mood-mumet gradient and rain icon', () => {
         render(<WeatherHero detail={{ weather_temp_c: 25, weather_rain_detected: true }} />);
         expect(screen.getByText(/hujan saat lari/)).toBeInTheDocument();
     });

@@ -22,7 +22,7 @@ export interface ThreadEntry {
 
 interface TemariThreadProps {
     mood: Mood;
-    /** Sub-label rendered next to the mood badge (e.g. "wobble"). */
+    /** Sub-label rendered next to the mood badge (e.g. "lemes"). */
     moodLabel?: string;
     /** Entries rendered as a vertical conversation thread. */
     entries: ReadonlyArray<ThreadEntry>;
@@ -31,10 +31,10 @@ interface TemariThreadProps {
 }
 
 const TONE_CLASSES: Record<NonNullable<ThreadEntry['tone']>, { rail: string; icon: string }> = {
-    brand: { rail: 'bg-brand-500', icon: 'text-brand-700' },
-    accent: { rail: 'bg-accent-500', icon: 'text-accent-700' },
-    pop: { rail: 'bg-pop-500', icon: 'text-pop-700' },
-    mood: { rail: 'bg-mood-bouncy', icon: 'text-mood-bouncy' },
+    brand: { rail: 'bg-leaf', icon: 'text-leaf-deep' },
+    accent: { rail: 'bg-horizon', icon: 'text-horizon-deep' },
+    pop: { rail: 'bg-citrus', icon: 'text-citrus-deep' },
+    mood: { rail: 'bg-mood-enteng', icon: 'text-mood-enteng' },
 };
 
 /**
@@ -58,7 +58,7 @@ export default function TemariThread({
             animate="visible"
             className={cn(
                 'relative overflow-hidden rounded-2xl border border-line bg-surface-elev p-4 shadow-sm sm:rounded-3xl sm:p-5',
-                'before:pointer-events-none before:absolute before:inset-x-0 before:-top-12 before:h-24 before:bg-gradient-to-b before:from-brand-500/10 before:to-transparent',
+                'before:pointer-events-none before:absolute before:inset-x-0 before:-top-12 before:h-24 before:bg-gradient-to-b before:from-leaf/10 before:to-transparent',
                 className,
             )}
             aria-label="Catatan Temari"
@@ -67,16 +67,16 @@ export default function TemariThread({
                 <TemariMascot mood={mood} sizeClass="h-20 w-20 shrink-0 sm:h-28 sm:w-28" idle="mood" gazeTracking ornaments />
                 <div className="min-w-0 flex-1 pt-2">
                     <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-ink-3">
                             Catatan Temari
                         </span>
                         {moodLabel && (
-                            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-meta">
+                            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-3">
                                 {moodLabel}
                             </span>
                         )}
                     </div>
-                    <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                    <p className="mt-1 text-xs leading-relaxed text-ink-2">
                         Cerita, terjemahan, dan komentar Temari soal lari ini.
                     </p>
                 </div>
@@ -106,7 +106,7 @@ export default function TemariThread({
 
                             <div className="flex items-center gap-1.5">
                                 <Icon icon={entry.icon} width={14} height={14} className={tone.icon} aria-hidden />
-                                <span className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-ink-3">
                                     {entry.label}
                                 </span>
                             </div>
@@ -163,7 +163,7 @@ function GroupedReanalyzeButton({
                         type="button"
                         onClick={trigger}
                         disabled={pending}
-                        className="inline-flex items-center gap-1 text-xs text-ink-meta hover:text-brand-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                        className="inline-flex items-center gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:opacity-50 disabled:cursor-wait"
                     >
                         <Icon icon="mdi:refresh" aria-hidden />
                         <span>Analisis ulang</span>

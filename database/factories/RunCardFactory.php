@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\RunCard;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -20,7 +21,7 @@ class RunCardFactory extends Factory
     {
         return [
             'activity_id' => Activity::factory(),
-            'rarity' => fake()->randomElement(['biasa', 'jarang', 'langka', 'epik', 'legendaris']),
+            'rarity' => fake()->randomElement(Rarity::cases()),
             'badges' => fake()->randomElements(
                 ['hari_panas', 'pejuang_hujan', 'anak_pagi', 'long_slow_distance', 'negative_split', 'tahan_diri'],
                 fake()->numberBetween(0, 3),

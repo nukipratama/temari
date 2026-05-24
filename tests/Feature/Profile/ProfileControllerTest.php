@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\StoryLine;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
@@ -39,7 +40,7 @@ it('renders Profile with computed identity + hero stats', function (): void {
     $this->actingAs($user)->get('/profil')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Profile')
+            ->component('Aku')
             ->where('stats.total_runs', 2)
             ->where('stats.total_km', 13)
             ->where('stats.longest_run_km', 8)
@@ -52,7 +53,7 @@ it('reports strava_connected as false when the user has no connection', function
     $this->actingAs($user)->get('/profil')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Profile')
+            ->component('Aku')
             ->where('identity.strava_connected', false)
             ->where('stats.total_runs', 0)
             ->where('stats.longest_run_km', 0));
@@ -82,4 +83,24 @@ it('returns up to 3 most recent PRs with activity context when available', funct
 
 it('requires auth', function (): void {
     $this->get('/profil')->assertRedirect('/login');
+});
+
+it('exposes personaMix derived from StoryLine moods + personaSummary payload', function (): void {
+    $user = User::factory()->create();
+    $a = Activity::factory()->for($user)->analyzed()->create();
+    StoryLine::factory()->for($user)->create([
+        'activity_id' => $a->id,
+        'mood' => 'nyala',
+    ]);
+
+    $this->actingAs($user)->get('/profil')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Aku')
+            ->has('personaMix', 1)
+            ->where('personaMix.0.mood', 'nyala')
+            ->where('personaMix.0.percent', 100)
+            ->has('personaSummary')
+            ->where('personaSummary.type', 'persona_summary')
+            ->where('personaSummary.subject_type', 'persona_summary_user'));
 });

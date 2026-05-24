@@ -79,11 +79,11 @@ class VerdictTimeline implements VerdictNarrator
      * @var array<string, string>
      */
     private const array MOOD_FACES = [
-        Temari::MOOD_GLOW => '✨',
-        Temari::MOOD_BOUNCY => '🦘',
-        Temari::MOOD_WOBBLE => '🥵',
-        Temari::MOOD_SQUISHED => '🍳',
-        Temari::MOOD_SPINNING => '💫',
+        Temari::MOOD_NYALA => '✨',
+        Temari::MOOD_ENTENG => '🦘',
+        Temari::MOOD_LEMES => '🥵',
+        Temari::MOOD_OLENG => '🍳',
+        Temari::MOOD_MUMET => '💫',
     ];
 
     private function moodFace(string $mood): string

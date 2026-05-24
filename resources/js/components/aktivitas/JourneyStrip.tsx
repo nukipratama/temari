@@ -1,3 +1,4 @@
+import Card from '@/components/ui/Card';
 import { formatPace } from '@/lib/pace';
 import { cn } from '@/lib/cn';
 
@@ -36,18 +37,12 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
     const { first, current, pace_improvement_sec, hr_improvement_bpm, total_km } = match;
 
     return (
-        <section
-            aria-label="Perjalanan lari"
-            className={cn(
-                'rounded-2xl border border-line bg-surface-elev p-4 shadow-sm sm:p-5',
-                className,
-            )}
-        >
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
+        <Card as="section" padding="lg" className={className}>
+            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">
                 Kamu vs Lari Pertama Kamu
             </h3>
-            <p className="mt-2 text-sm leading-relaxed text-ink">
-                Total <span className="font-semibold">{total_km.toFixed(1)} km</span> kekumpul sejak lari pertama
+            <p className="mt-2 font-sans text-sm leading-relaxed text-ink">
+                Total <span className="font-semibold text-horizon-deep">{total_km.toFixed(1)} km</span> kekumpul sejak lari pertama
                 {first.date && (
                     <>
                         {' '}
@@ -56,12 +51,12 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                 )}
                 .
             </p>
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 font-display text-base italic">
                 {pace_improvement_sec !== null && (
                     <span
                         className={cn(
-                            'font-bold tabular-nums',
-                            pace_improvement_sec > 0 ? 'text-mood-bouncy' : 'text-mood-cooked',
+                            'tabular-nums',
+                            pace_improvement_sec > 0 ? 'text-leaf-deep' : 'text-ember-deep',
                         )}
                     >
                         {Math.abs(Math.round(pace_improvement_sec))} detik/km{' '}
@@ -71,8 +66,8 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                 {hr_improvement_bpm !== null && (
                     <span
                         className={cn(
-                            'font-bold tabular-nums',
-                            hr_improvement_bpm > 0 ? 'text-mood-bouncy' : 'text-mood-cooked',
+                            'tabular-nums',
+                            hr_improvement_bpm > 0 ? 'text-leaf-deep' : 'text-ember-deep',
                         )}
                     >
                         {Math.abs(Math.round(hr_improvement_bpm))} bpm{' '}
@@ -82,15 +77,15 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
             </div>
             <PaceLine label="Lari pertama kamu" summary={first} />
             <PaceLine label="Lari terbaru" summary={current} className="mt-1" />
-        </section>
+        </Card>
     );
 }
 
 function PaceLine({ label, summary, className }: Readonly<{ label: string; summary: ActivitySummary; className?: string }>) {
     const paceLabel = summary.pace_sec_per_km !== null ? formatPace(summary.pace_sec_per_km) : null;
     return (
-        <p className={cn('mt-3 text-xs text-ink-meta', className)}>
-            <span className="font-semibold text-ink-soft">{label}:</span>{' '}
+        <p className={cn('mt-3 text-[12px] leading-relaxed text-ink-3', className)}>
+            <span className="font-medium text-ink-2">{label}:</span>{' '}
             {summary.name ?? 'Lari'}{' '}
             {summary.distance_km !== null && <>· {summary.distance_km.toFixed(2)} km </>}
             {paceLabel && <>· pace {paceLabel}/km</>}

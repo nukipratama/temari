@@ -107,28 +107,32 @@ describe('useAnalysisTrigger', () => {
         expect((init.headers as Record<string, string>)['X-CSRF-TOKEN']).toBe('');
     });
 
-    it('polls router.reload every 3s while status is queued, stops on done', async () => {
+    it('polls router.reload with exponential backoff while status is queued, stops on done', async () => {
         vi.useFakeTimers();
         const { rerender } = renderHook(
             ({ p }: { p: AnalysisPayload }) => useAnalysisTrigger(p, ['briefing']),
             { initialProps: { p: payload({ status: 'queued' }) } },
         );
 
+        // First tick fires at the initial delay (3s).
         await act(async () => {
             vi.advanceTimersByTime(3000);
         });
         expect(router.reload).toHaveBeenCalledTimes(1);
 
+        // After backoff, second tick lands later than 3s — advance a generous window.
         await act(async () => {
-            vi.advanceTimersByTime(3000);
+            vi.advanceTimersByTime(10_000);
         });
         expect(router.reload).toHaveBeenCalledTimes(2);
 
+        // Re-rendering with status=done removes the subscriber → no further polls.
         rerender({ p: payload({ status: 'done', content: 'ok' }) });
+        const callsBeforeFinalAdvance = vi.mocked(router.reload).mock.calls.length;
         await act(async () => {
-            vi.advanceTimersByTime(9000);
+            vi.advanceTimersByTime(60_000);
         });
-        expect(router.reload).toHaveBeenCalledTimes(2);
+        expect(router.reload).toHaveBeenCalledTimes(callsBeforeFinalAdvance);
     });
 
     it('does not poll when reload props is empty', async () => {
@@ -153,29 +157,29 @@ describe('useAnalysisTrigger', () => {
         expect(result.current.status).toBe('done');
     });
 
-    it('retires the poll slot after POLL_MAX_ATTEMPTS ticks, releasing listener + Map entry', async () => {
+    it('retires the poll slot after the max-attempts cap is hit', async () => {
         vi.useFakeTimers();
         const { unmount } = renderHook(() =>
             useAnalysisTrigger(payload({ status: 'queued' }), ['briefing']),
         );
 
-        // 60 attempts = the max; the 61st tick should retire the slot instead
-        // of firing a reload. POLL_INTERVAL_MS = 3000.
+        // With backoff capped at 15s, 30 ticks fit well under 10 minutes — advance
+        // a generous window past the cap, then assert no further polls land.
         await act(async () => {
-            vi.advanceTimersByTime(60 * 3000);
+            vi.advanceTimersByTime(20 * 60 * 1000);
         });
-        expect(router.reload).toHaveBeenCalledTimes(60);
+        const callsAfterCap = vi.mocked(router.reload).mock.calls.length;
+        expect(callsAfterCap).toBeGreaterThan(0);
 
         await act(async () => {
-            vi.advanceTimersByTime(3000 * 3);
+            vi.advanceTimersByTime(60_000);
         });
-        // No more reload calls after retirement.
-        expect(router.reload).toHaveBeenCalledTimes(60);
+        expect(router.reload).toHaveBeenCalledTimes(callsAfterCap);
 
         unmount();
     });
 
-    it('shares a single polling interval across multiple hook instances with the same reload set', async () => {
+    it('shares a single polling slot across multiple hook instances with the same reload set', async () => {
         vi.useFakeTimers();
         const { unmount: unmountA } = renderHook(() =>
             useAnalysisTrigger(payload({ status: 'queued', subject_id: 1 }), ['briefing']),
@@ -187,31 +191,28 @@ describe('useAnalysisTrigger', () => {
             useAnalysisTrigger(payload({ status: 'processing', subject_id: 3 }), ['briefing']),
         );
 
+        // One shared slot fires once per tick, not three.
         await act(async () => {
             vi.advanceTimersByTime(3000);
         });
-        // One shared interval fires once per tick, not three.
         expect(router.reload).toHaveBeenCalledTimes(1);
 
-        await act(async () => {
-            vi.advanceTimersByTime(3000);
-        });
-        expect(router.reload).toHaveBeenCalledTimes(2);
-
+        // Unmount two of the three subscribers — slot still polls for the survivor.
         unmountA();
         unmountB();
+        const callsBeforeSurvivorTick = vi.mocked(router.reload).mock.calls.length;
         await act(async () => {
-            vi.advanceTimersByTime(3000);
+            vi.advanceTimersByTime(20_000);
         });
-        // C still subscribed → polling continues.
-        expect(router.reload).toHaveBeenCalledTimes(3);
+        expect(vi.mocked(router.reload).mock.calls.length).toBeGreaterThan(callsBeforeSurvivorTick);
 
+        // All unmounted → slot retires, no further polls.
         unmountC();
+        const callsAfterAllUnmount = vi.mocked(router.reload).mock.calls.length;
         await act(async () => {
-            vi.advanceTimersByTime(6000);
+            vi.advanceTimersByTime(60_000);
         });
-        // All unmounted → polling stopped.
-        expect(router.reload).toHaveBeenCalledTimes(3);
+        expect(router.reload).toHaveBeenCalledTimes(callsAfterAllUnmount);
     });
 
     it('initializes retryAfterSeconds from the prop', () => {
@@ -300,10 +301,12 @@ describe('useAnalysisTrigger', () => {
             hidden = true;
             await act(async () => {
                 document.dispatchEvent(new Event('visibilitychange'));
-                vi.advanceTimersByTime(6000);
+                vi.advanceTimersByTime(60_000);
             });
+            // No further polls while hidden.
             expect(router.reload).toHaveBeenCalledTimes(1);
 
+            // Coming back fires an immediate reload + resumes the schedule.
             hidden = false;
             await act(async () => {
                 document.dispatchEvent(new Event('visibilitychange'));
@@ -311,9 +314,9 @@ describe('useAnalysisTrigger', () => {
             expect(router.reload).toHaveBeenCalledTimes(2);
 
             await act(async () => {
-                vi.advanceTimersByTime(3000);
+                vi.advanceTimersByTime(20_000);
             });
-            expect(router.reload).toHaveBeenCalledTimes(3);
+            expect(vi.mocked(router.reload).mock.calls.length).toBeGreaterThanOrEqual(3);
         } finally {
             if (visibilityDescriptor) {
                 Object.defineProperty(document, 'hidden', visibilityDescriptor);

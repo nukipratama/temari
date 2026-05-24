@@ -91,15 +91,15 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
             <header className="border-b border-line bg-surface-elev">
                 <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-3">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-700 text-white">
+                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-white">
                             <Icon icon="mdi:counter" width={20} aria-hidden />
                         </span>
                         <div>
                             <h1 className="text-base font-semibold tracking-tight text-ink">AI Usage</h1>
-                            <p className="text-xs text-ink-meta">Konsumsi token Azure OpenAI per rentang tanggal.</p>
+                            <p className="text-xs text-ink-3">Konsumsi token Azure OpenAI per rentang tanggal.</p>
                         </div>
                     </div>
-                    <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-ink-meta sm:inline">
+                    <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-ink-3 sm:inline">
                         TemanLari · Devtools
                     </span>
                 </div>
@@ -122,7 +122,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                     <DateField id="to" label="Sampai" value={toInput} onChange={setToInput} />
                     <button
                         type="submit"
-                        className="inline-flex items-center gap-1 rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-800"
+                        className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky"
                     >
                         <Icon icon="mdi:filter-variant" aria-hidden />
                         <span>Terapkan</span>
@@ -148,7 +148,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                     </div>
                 </form>
 
-                <p className="mt-3 text-xs text-ink-meta">
+                <p className="mt-3 text-xs text-ink-3">
                     Rentang aktif: <span className="font-semibold text-ink">{from}</span> sampai{' '}
                     <span className="font-semibold text-ink">{to}</span>
                 </p>
@@ -165,7 +165,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                     />
                 </section>
 
-                <p className="mt-2 text-xs text-ink-meta">
+                <p className="mt-2 text-xs text-ink-3">
                     Rata-rata per call: <span className="font-semibold text-ink">{fmt(avgPerCall)}</span> token.
                 </p>
 
@@ -183,7 +183,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                         <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-surface-elev shadow-sm">
                             <table className="w-full text-sm tabular-nums">
                                 <thead>
-                                    <tr className="border-b border-line text-left text-xs text-ink-meta">
+                                    <tr className="border-b border-line text-left text-xs text-ink-3">
                                         {COLUMNS.map((label) => (
                                             <th key={label} className="px-5 py-3 font-semibold">
                                                 {label}
@@ -215,7 +215,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                         <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-surface-elev shadow-sm">
                             <table className="w-full text-sm tabular-nums">
                                 <thead>
-                                    <tr className="border-b border-line text-left text-xs text-ink-meta">
+                                    <tr className="border-b border-line text-left text-xs text-ink-3">
                                         {USER_COLUMNS.map((label) => (
                                             <th key={label} className="px-5 py-3 font-semibold">
                                                 {label}
@@ -248,17 +248,17 @@ function UserRowView({ row, grandTotal }: Readonly<{ row: UserRow; grandTotal: n
                 <div>{label}</div>
                 <div className="mt-1 h-1.5 w-full max-w-[160px] rounded-full bg-line/40">
                     <div
-                        className="h-full rounded-full bg-accent-500"
+                        className="h-full rounded-full bg-horizon"
                         style={{ width: `${share.toFixed(1)}%` }}
                         aria-label={`${share.toFixed(1)}% dari total`}
                     />
                 </div>
             </td>
-            <td className="px-5 py-3 text-ink-soft">{fmt(row.calls)}</td>
-            <td className="px-5 py-3 text-ink-soft">{fmt(row.prompt)}</td>
-            <td className="px-5 py-3 text-ink-soft">{fmt(row.completion)}</td>
+            <td className="px-5 py-3 text-ink-2">{fmt(row.calls)}</td>
+            <td className="px-5 py-3 text-ink-2">{fmt(row.prompt)}</td>
+            <td className="px-5 py-3 text-ink-2">{fmt(row.completion)}</td>
             <td className="px-5 py-3 font-semibold text-ink">{fmt(row.total)}</td>
-            <td className="px-5 py-3 text-ink-soft">{fmt(avg)}</td>
+            <td className="px-5 py-3 text-ink-2">{fmt(avg)}</td>
         </tr>
     );
 }
@@ -270,14 +270,14 @@ function DateField({
     onChange,
 }: Readonly<{ id: string; label: string; value: string; onChange: (v: string) => void }>) {
     return (
-        <label htmlFor={id} className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wider text-ink-meta">
+        <label htmlFor={id} className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wider text-ink-3">
             {label}
             <input
                 id={id}
                 type="date"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="rounded-xl border border-line bg-surface-sunken px-3 py-2 text-sm font-medium text-ink focus:border-brand-500 focus:outline-none"
+                className="rounded-xl border border-line bg-surface-sunken px-3 py-2 text-sm font-medium text-ink focus:border-leaf focus:outline-none"
             />
         </label>
     );
@@ -288,7 +288,7 @@ function PresetButton({ label, onClick }: Readonly<{ label: string; onClick: () 
         <button
             type="button"
             onClick={onClick}
-            className="rounded-full border border-line bg-surface-sunken px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand-300 hover:text-brand-700"
+            className="rounded-full border border-line bg-surface-sunken px-3 py-1.5 text-xs font-medium text-ink-2 transition hover:border-leaf/40 hover:text-leaf-deep"
         >
             {label}
         </button>
@@ -310,19 +310,19 @@ function KindRow({ row, grandTotal }: Readonly<{ row: UsageRow; grandTotal: numb
                 <div>{row.kind}</div>
                 <div className="mt-1 h-1.5 w-full max-w-[160px] rounded-full bg-line/40">
                     <div
-                        className="h-full rounded-full bg-brand-500"
+                        className="h-full rounded-full bg-leaf"
                         style={{ width: `${share.toFixed(1)}%` }}
                         aria-label={`${share.toFixed(1)}% dari total`}
                     />
                 </div>
             </td>
-            <td className="px-5 py-3 text-ink-soft">{fmt(row.calls)}</td>
-            <td className="px-5 py-3 text-ink-soft">{fmt(row.prompt)}</td>
-            <td className="px-5 py-3 text-ink-soft">{fmt(row.completion)}</td>
+            <td className="px-5 py-3 text-ink-2">{fmt(row.calls)}</td>
+            <td className="px-5 py-3 text-ink-2">{fmt(row.prompt)}</td>
+            <td className="px-5 py-3 text-ink-2">{fmt(row.completion)}</td>
             <td className="px-5 py-3 font-semibold text-ink">{fmt(row.total)}</td>
-            <td className="px-5 py-3 text-ink-soft">{fmt(avg)}</td>
-            <td className="px-5 py-3 text-ink-soft">{latencyLabel}</td>
-            <td className={`px-5 py-3 font-medium ${truncatedRate > 1 ? 'text-accent-700' : 'text-ink-soft'}`}>
+            <td className="px-5 py-3 text-ink-2">{fmt(avg)}</td>
+            <td className="px-5 py-3 text-ink-2">{latencyLabel}</td>
+            <td className={`px-5 py-3 font-medium ${truncatedRate > 1 ? 'text-horizon-deep' : 'text-ink-2'}`}>
                 {row.truncated_calls > 0 ? `${row.truncated_calls} (${truncatedRate.toFixed(1)}%)` : '—'}
             </td>
         </tr>
@@ -332,8 +332,8 @@ function KindRow({ row, grandTotal }: Readonly<{ row: UsageRow; grandTotal: numb
 function EmptyState() {
     return (
         <div className="mt-4 rounded-2xl border border-dashed border-line bg-surface-sunken px-6 py-12 text-center">
-            <Icon icon="mdi:database-off" width={32} className="mx-auto text-ink-meta" aria-hidden />
-            <p className="mt-2 text-sm text-ink-soft">Belum ada token tercatat di rentang ini.</p>
+            <Icon icon="mdi:database-off" width={32} className="mx-auto text-ink-3" aria-hidden />
+            <p className="mt-2 text-sm text-ink-2">Belum ada token tercatat di rentang ini.</p>
         </div>
     );
 }

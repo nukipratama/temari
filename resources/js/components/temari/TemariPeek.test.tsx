@@ -54,4 +54,32 @@ describe('TemariPeek', () => {
         });
         expect(screen.queryByText(/hai|halo|hey/)).not.toBeInTheDocument();
     });
+
+    it('renders nothing when the lines array is empty', () => {
+        const { container } = render(<TemariPeek lines={[]} />);
+        expect(container.textContent).toBe('');
+    });
+
+    it('honours prefers-reduced-motion: reduce by skipping the peek', () => {
+        const original = globalThis.matchMedia;
+        globalThis.matchMedia = vi.fn().mockImplementation((q: string) => ({
+            matches: q === '(prefers-reduced-motion: reduce)',
+            media: q,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+        })) as unknown as typeof globalThis.matchMedia;
+        try {
+            render(<TemariPeek lines={LINES} delayMs={1000} />);
+            act(() => {
+                vi.advanceTimersByTime(5000);
+            });
+            expect(screen.queryByText(/hai|halo|hey/)).not.toBeInTheDocument();
+        } finally {
+            globalThis.matchMedia = original;
+        }
+    });
 });

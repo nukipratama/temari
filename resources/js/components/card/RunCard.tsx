@@ -24,34 +24,34 @@ interface RarityStyle {
 const RARITY_STYLES: Record<string, RarityStyle> = {
     legendaris: {
         icon: 'mdi:crown',
-        ringClass: 'ring-pop-500 shadow-pop-300/40',
-        chipClass: 'bg-pop-500 text-white ring-2 ring-white',
-        bgClass: 'bg-gradient-to-br from-pop-100 via-pop-50 to-accent-100/60',
-        cornerClass: 'from-pop-300 to-pop-500',
+        ringClass: 'ring-citrus shadow-citrus/40',
+        chipClass: 'bg-citrus text-white ring-2 ring-white',
+        bgClass: 'bg-gradient-to-br from-citrus/15 via-citrus/10 to-horizon/15',
+        cornerClass: 'from-citrus/40 to-citrus',
         holographic: true,
     },
     epik: {
         icon: 'mdi:star-four-points',
-        ringClass: 'ring-accent-500 shadow-accent-300/40',
-        chipClass: 'bg-accent-500 text-white ring-2 ring-white',
-        bgClass: 'bg-gradient-to-br from-accent-100 via-accent-50 to-pop-50/60',
-        cornerClass: 'from-accent-300 to-accent-500',
+        ringClass: 'ring-horizon shadow-horizon/40',
+        chipClass: 'bg-horizon text-white ring-2 ring-white',
+        bgClass: 'bg-gradient-to-br from-horizon/15 via-horizon/10 to-citrus/10',
+        cornerClass: 'from-horizon/40 to-horizon',
         holographic: false,
     },
     langka: {
         icon: 'mdi:star',
-        ringClass: 'ring-mood-spinning shadow-mood-spinning/30',
-        chipClass: 'bg-mood-spinning text-white ring-2 ring-white',
-        bgClass: 'bg-gradient-to-br from-mood-spinning/20 via-surface-elev to-mood-spinning/10',
-        cornerClass: 'from-mood-spinning/50 to-mood-spinning',
+        ringClass: 'ring-mood-mumet shadow-mood-mumet/30',
+        chipClass: 'bg-mood-mumet text-white ring-2 ring-white',
+        bgClass: 'bg-gradient-to-br from-mood-mumet/20 via-surface-elev to-mood-mumet/10',
+        cornerClass: 'from-mood-mumet/50 to-mood-mumet',
         holographic: false,
     },
     jarang: {
         icon: 'mdi:star-outline',
-        ringClass: 'ring-brand-400 shadow-brand-200/40',
-        chipClass: 'bg-brand-500 text-white ring-2 ring-white',
-        bgClass: 'bg-gradient-to-br from-brand-100 via-surface-elev to-brand-50',
-        cornerClass: 'from-brand-300 to-brand-500',
+        ringClass: 'ring-leaf shadow-leaf/25',
+        chipClass: 'bg-leaf text-white ring-2 ring-white',
+        bgClass: 'bg-gradient-to-br from-leaf/15 via-surface-elev to-leaf/10',
+        cornerClass: 'from-leaf/40 to-leaf',
         holographic: false,
     },
 };
@@ -59,7 +59,7 @@ const RARITY_STYLES: Record<string, RarityStyle> = {
 const RARITY_DEFAULT: RarityStyle = {
     icon: 'mdi:circle-outline',
     ringClass: 'ring-line',
-    chipClass: 'bg-ink-meta text-white ring-2 ring-white',
+    chipClass: 'bg-ink-3 text-white ring-2 ring-white',
     bgClass: 'bg-surface-elev',
     cornerClass: 'from-line to-line',
     holographic: false,
@@ -113,10 +113,10 @@ export default function RunCard({ card, detail, className, size = 'normal' }: Re
                     >
                         {card.special_move}
                     </h3>
-                    <p className="mt-0.5 truncate text-sm font-medium text-ink-soft">
+                    <p className="mt-0.5 truncate text-sm font-medium text-ink-2">
                         {detail.name ?? 'Run'}
                     </p>
-                    <p className="mt-0.5 text-xs text-ink-meta">
+                    <p className="mt-0.5 text-xs text-ink-3">
                         {formatIdDate(detail.start_date_local)}
                     </p>
                 </div>
@@ -169,7 +169,7 @@ function Stat({ value, unit, size }: Readonly<StatProps>) {
     return (
         <div className="min-w-0">
             <div className={cn('truncate font-black tabular-nums text-ink', valueClass)}>{value}</div>
-            <div className="text-[10px] uppercase tracking-wide text-ink-meta">{unit}</div>
+            <div className="text-[10px] uppercase tracking-wide text-ink-3">{unit}</div>
         </div>
     );
 }

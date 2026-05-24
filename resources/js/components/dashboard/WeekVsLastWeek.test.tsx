@@ -40,7 +40,7 @@ describe('WeekVsLastWeek', () => {
             />,
         );
         const span = screen.getByText(/2\.0 km lebih sedikit/);
-        expect(span.className).toContain('text-mood-cooked');
+        expect(span.className).toContain('text-mood-lemes');
     });
 
     it('hides the pace row when pace_delta_sec is null', () => {

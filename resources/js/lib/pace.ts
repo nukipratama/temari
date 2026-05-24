@@ -11,7 +11,8 @@ export function formatDuration(seconds: number): string {
     const total = Math.round(seconds);
     const h = Math.floor(total / 3600);
     const m = Math.floor((total % 3600) / 60);
-    return h > 0 ? `${h}j ${m}m` : `${m}m`;
+    if (h === 0) return `${m}m`;
+    return m === 0 ? `${h}j` : `${h}j ${m}m`;
 }
 
 export function formatDurationHMS(seconds: number | null | undefined): string {
@@ -53,4 +54,28 @@ export function formatIdDate(iso: string | null, format: 'short' | 'long' = 'sho
         return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
     }
     return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'short' });
+}
+
+// Local-zone Monday-of-week. toISOString() would shift to UTC and roll the date
+// across midnight in non-UTC zones — past incidents traced week-snapshot bugs to that.
+export function mondayOf(iso: string): Date {
+    const d = new Date(iso);
+    d.setHours(0, 0, 0, 0);
+    const offset = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - offset);
+    return d;
+}
+
+export function sundayOf(monday: Date): Date {
+    const d = new Date(monday);
+    d.setDate(d.getDate() + 6);
+    return d;
+}
+
+// YYYY-MM-DD composed from local fields — see mondayOf for the why.
+export function isoDateLocal(d: Date): string {
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${day}`;
 }

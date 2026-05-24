@@ -46,14 +46,14 @@ function seedRunWithNote(User $user, int $daysAgo, string $mood, string $speech)
 
 it('attaches notes keyed by activity_id when post-run analyses exist', function (): void {
     $user = User::factory()->create();
-    $activity = seedRunWithNote($user, 0, Temari::MOOD_BOUNCY, 'Run yang mantap');
+    $activity = seedRunWithNote($user, 0, Temari::MOOD_ENTENG, 'Run yang mantap');
 
     $this->actingAs($user)->get('/aktivitas')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Runs/Index')
+            ->component('Riwayat/Linimasa')
             ->where("notes.{$activity->id}.oneline", 'Run yang mantap')
-            ->where("notes.{$activity->id}.mood", Temari::MOOD_BOUNCY));
+            ->where("notes.{$activity->id}.mood", Temari::MOOD_ENTENG));
 });
 
 it('omits notes when there are no post-run StoryLines', function (): void {
@@ -72,7 +72,7 @@ it('omits notes when there are no post-run StoryLines', function (): void {
 it('does not leak notes across users', function (): void {
     $a = User::factory()->create();
     $b = User::factory()->create();
-    seedRunWithNote($a, 0, Temari::MOOD_BOUNCY, 'a-only line');
+    seedRunWithNote($a, 0, Temari::MOOD_ENTENG, 'a-only line');
 
     $this->actingAs($b)->get('/aktivitas')
         ->assertSuccessful()

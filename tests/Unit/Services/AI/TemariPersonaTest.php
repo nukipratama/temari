@@ -43,10 +43,10 @@ it('locks the address forms — aku for Temari, kamu for the user', function ():
         ->toContain('Sebut pengguna "kamu"');
 });
 
-it('keeps the mood vocabulary in English so narrators never translate it', function (): void {
+it('keeps the Daybreak mood vocabulary inline so narrators reuse it verbatim', function (): void {
     $prompt = TemariPersona::systemPrompt();
 
-    foreach (['cooked', 'fresh', 'pumped', 'bouncy', 'fatigued', 'overreaching', 'spinning', 'worn_down', 'glow', 'hibernate'] as $mood) {
+    foreach (['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'] as $mood) {
         expect($prompt)->toContain($mood);
     }
 });

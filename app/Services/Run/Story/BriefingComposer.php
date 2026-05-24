@@ -7,7 +7,6 @@ namespace App\Services\Run\Story;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\User;
-use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
@@ -20,7 +19,6 @@ class BriefingComposer
     public function __construct(
         private readonly Vibe $vibe,
         private readonly TrainingLoad $trainingLoad,
-        private readonly AnalysisService $analysisService,
         private readonly Temari $temari,
     ) {
     }
@@ -36,9 +34,9 @@ class BriefingComposer
         $discriminator = $asOf->toDateString();
         $subjectType = AnalysisType::BRIEFING_SUBJECT_TYPE;
 
-        $headline = $this->resolveRow($user, AnalysisType::BriefingHeadline, $subjectType, $discriminator);
-        $suggestion = $this->resolveRow($user, AnalysisType::BriefingSuggestion, $subjectType, $discriminator);
-        $mascotVoice = $this->resolveRow($user, AnalysisType::BriefingMascotVoice, $subjectType, $discriminator);
+        $headline = $this->existingRow($user, AnalysisType::BriefingHeadline, $subjectType, $discriminator);
+        $suggestion = $this->existingRow($user, AnalysisType::BriefingSuggestion, $subjectType, $discriminator);
+        $mascotVoice = $this->existingRow($user, AnalysisType::BriefingMascotVoice, $subjectType, $discriminator);
 
         return new BriefingResult(
             vibeState: $vibeState,
@@ -56,18 +54,11 @@ class BriefingComposer
         );
     }
 
-    private function resolveRow(User $user, AnalysisType $type, string $subjectType, string $discriminator): Analysis
+    private function existingRow(User $user, AnalysisType $type, string $subjectType, string $discriminator): ?Analysis
     {
-        $row = Analysis::query()
+        return Analysis::query()
             ->forSubject($subjectType, $user->id, $type, $discriminator)
             ->first();
-
-        return $row ?? $this->analysisService->request(
-            subjectOrType: $subjectType,
-            subjectId: $user->id,
-            type: $type,
-            discriminator: $discriminator,
-        );
     }
 
     private function daysSinceLastRun(User $user, Carbon $asOf): ?int

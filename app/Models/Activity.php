@@ -96,6 +96,14 @@ class Activity extends Model
     }
 
     /**
+     * Server-side only — keeps a per-row JSON blob (sometimes hundreds of bytes)
+     * out of every Inertia payload that serializes an Activity collection.
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['milestone_payload'];
+
+    /**
      * @return array<string, string>
      */
     #[Override]

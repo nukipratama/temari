@@ -17,7 +17,7 @@ it('renders the Kalender page for the current month by default', function (): vo
     $this->actingAs($user)->get('/kalender')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Kalender')
+            ->component('Riwayat/Kalender')
             ->where('month', Carbon::today()->format('Y-m'))
             ->has('monthLabel')
             ->has('cells'));
@@ -84,4 +84,17 @@ it('aggregates multiple runs on the same day into one cell', function (): void {
                     && abs(((float) $cell['distance_km']) - 7.0) < 0.01
                     && $cell['activity_id'] === null; // multi-run days don't link
             }));
+});
+
+it('exposes a monthlyRecap analysis payload keyed to the visible month', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/kalender?month=2026-05')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Riwayat/Kalender')
+            ->has('monthlyRecap')
+            ->where('monthlyRecap.type', 'monthly_recap')
+            ->where('monthlyRecap.subject_type', 'monthly_recap_user_month')
+            ->where('monthlyRecap.discriminator', '2026-05'));
 });

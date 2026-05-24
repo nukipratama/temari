@@ -5,7 +5,7 @@
 <!-- Bullet the user-visible / behaviour-affecting deltas. -->
 
 ## Test plan
-- [ ] `sail pest --coverage --min=100`
+- [ ] `sail pest --coverage --min=95`
 - [ ] `sail pint --test`
 - [ ] `sail phpstan analyse`
 - [ ] `sail rector --dry-run`

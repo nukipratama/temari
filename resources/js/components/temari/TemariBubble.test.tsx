@@ -9,7 +9,7 @@ function makeLine(overrides: Partial<StoryLine> = {}): StoryLine {
         user_id: 1,
         activity_id: 1,
         kind: 'post_run',
-        mood: 'bouncy',
+        mood: 'enteng',
         speech: null,
         sigil_pattern: 'orct',
         for_date: null,

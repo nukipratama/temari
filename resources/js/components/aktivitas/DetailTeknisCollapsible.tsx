@@ -64,7 +64,7 @@ export default function DetailTeknisCollapsible({
                 type="button"
                 onClick={toggle}
                 aria-expanded={open}
-                className="flex w-full min-h-[44px] items-center justify-between gap-3 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-meta transition hover:bg-surface-sunken/40"
+                className="flex w-full min-h-[44px] items-center justify-between gap-3 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-3 transition hover:bg-surface-sunken/40"
             >
                 <span>Detail teknis · TRIMP, CTL, ATL...</span>
                 <Icon
@@ -78,7 +78,7 @@ export default function DetailTeknisCollapsible({
                 <dl className="grid grid-cols-2 gap-3 border-t border-line px-4 py-3 text-sm tabular-nums sm:grid-cols-3 lg:grid-cols-9">
                     {stats.map((stat) => (
                         <div key={stat.label} className="min-w-0">
-                            <dt className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-ink-meta">
+                            <dt className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-ink-3">
                                 <span>{stat.label}</span>
                                 {stat.explainerKey && <MetricExplainer metricKey={stat.explainerKey} size="xs" />}
                             </dt>

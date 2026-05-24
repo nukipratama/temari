@@ -12,8 +12,9 @@ class CardFlavorNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Tugas: berikan 1 kalimat flavor maksimal 22 kata untuk kartu aktivitas.
-        Setiap kartu punya rarity (biasa, jarang, langka, epik, legendaris) +
-        special move + badges.
+        Setiap kartu punya rarity (common, uncommon, rare, epic, legendary) +
+        special move + badges. Saat menyebut rarity dalam kalimat, gunakan
+        label Bahasa Indonesia: Biasa / Jarang / Langka / Epik / Legendaris.
 
         Rajut kombinasi badge, pacing, dan cuaca menjadi 1 kalimat naratif yang
         menjelaskan kenapa kartu ini istimewa.
@@ -31,8 +32,8 @@ class CardFlavorNarrator
         $movingTime = $detail?->moving_time;
 
         $context = [
-            'rarity' => $card->rarity,
-            'rarity_label' => RunCard::RARITY_LABELS[$card->rarity] ?? $card->rarity,
+            'rarity' => $card->rarity->value,
+            'rarity_label' => $card->rarity->label(),
             'special_move' => $card->special_move,
             'badges' => $card->badges,
             'distance_km' => $distance !== null ? round((float) $distance / 1000, 2) : null,

@@ -2,8 +2,10 @@ import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AnalysisPayload, AnalysisStatus } from '@/types/inertia';
 
-const POLL_INTERVAL_MS = 3000;
-const POLL_MAX_ATTEMPTS = 60;
+const POLL_INITIAL_MS = 3000;
+const POLL_MAX_MS = 15000;
+const POLL_BACKOFF_FACTOR = 1.4;
+const POLL_MAX_ATTEMPTS = 30;
 const TRIGGER_DEBOUNCE_MS = 2000;
 
 export const RATE_LIMITED_ERROR = 'rate_limited';
@@ -47,31 +49,35 @@ interface PollSlot {
     key: string;
     refs: number;
     only: string[];
-    interval: ReturnType<typeof setInterval> | null;
+    timeout: ReturnType<typeof setTimeout> | null;
+    nextDelayMs: number;
     attempts: number;
     onVisibility: () => void;
 }
 const pollSlots = new Map<string, PollSlot>();
 
-function startSlot(slot: PollSlot): void {
-    if (slot.interval !== null || globalThis.document.hidden) return;
-    slot.interval = globalThis.setInterval(() => {
+function scheduleNext(slot: PollSlot): void {
+    if (slot.timeout !== null || globalThis.document.hidden) return;
+    slot.timeout = globalThis.setTimeout(() => {
+        slot.timeout = null;
         slot.attempts += 1;
         if (slot.attempts > POLL_MAX_ATTEMPTS) {
             retireSlot(slot);
             return;
         }
         router.reload({ only: slot.only });
-    }, POLL_INTERVAL_MS);
+        slot.nextDelayMs = Math.min(Math.round(slot.nextDelayMs * POLL_BACKOFF_FACTOR), POLL_MAX_MS);
+        scheduleNext(slot);
+    }, slot.nextDelayMs);
 }
 
 function stopSlot(slot: PollSlot): void {
-    if (slot.interval === null) return;
-    globalThis.clearInterval(slot.interval);
-    slot.interval = null;
+    if (slot.timeout === null) return;
+    globalThis.clearTimeout(slot.timeout);
+    slot.timeout = null;
 }
 
-// Stop the interval AND detach the visibility listener AND drop the slot from
+// Stop the timer AND detach the visibility listener AND drop the slot from
 // the registry. Used by the max-attempts give-up path so we don't leak a
 // listener for a slot that no longer polls.
 function retireSlot(slot: PollSlot): void {
@@ -90,21 +96,22 @@ function subscribePoll(only: string[]): () => void {
             key,
             refs: 0,
             only,
-            interval: null,
+            timeout: null,
+            nextDelayMs: POLL_INITIAL_MS,
             attempts: 0,
             onVisibility: () => {
                 if (globalThis.document.hidden) {
                     stopSlot(created);
                 } else {
                     router.reload({ only: created.only });
-                    startSlot(created);
+                    scheduleNext(created);
                 }
             },
         };
         slot = created;
         pollSlots.set(key, created);
         globalThis.document.addEventListener('visibilitychange', created.onVisibility);
-        startSlot(created);
+        scheduleNext(created);
     }
     slot.refs += 1;
     return () => {

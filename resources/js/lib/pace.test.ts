@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, formatDurationHMS, formatIdDate, formatPace, formatRelativeId } from './pace';
+import { formatDuration, formatDurationHMS, formatIdDate, formatPace, formatRelativeId, isoDateLocal, mondayOf, sundayOf } from './pace';
 
 describe('formatPace', () => {
     it("formats whole minutes as M'SS\"", () => {
@@ -110,5 +110,41 @@ describe('formatRelativeId', () => {
     it('falls back to short date for old timestamps', () => {
         const iso = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString();
         expect(formatRelativeId(iso, now)).toMatch(/\w+,\s\d{2}\s\w+/);
+    });
+
+    it('returns "—" for null / invalid input', () => {
+        expect(formatRelativeId(null)).toBe('—');
+        expect(formatRelativeId('not-a-date')).toBe('—');
+    });
+
+    it('returns "baru aja" for under a minute', () => {
+        const iso = new Date(now.getTime() - 5 * 1000).toISOString();
+        expect(formatRelativeId(iso, now)).toBe('baru aja');
+    });
+});
+
+describe('mondayOf / sundayOf / isoDateLocal', () => {
+    it('mondayOf snaps any weekday back to its Monday at local 00:00', () => {
+        // Saturday 2026-05-23 → Monday 2026-05-18.
+        const monday = mondayOf('2026-05-23T15:00:00');
+        expect(monday.getFullYear()).toBe(2026);
+        expect(monday.getMonth()).toBe(4);
+        expect(monday.getDate()).toBe(18);
+        expect(monday.getHours()).toBe(0);
+    });
+
+    it('mondayOf is idempotent when given a Monday', () => {
+        const monday = mondayOf('2026-05-18T10:00:00');
+        expect(isoDateLocal(monday)).toBe('2026-05-18');
+    });
+
+    it('sundayOf advances the given Monday by six days', () => {
+        const sunday = sundayOf(new Date(2026, 4, 18));
+        expect(isoDateLocal(sunday)).toBe('2026-05-24');
+    });
+
+    it('isoDateLocal composes YYYY-MM-DD from local fields (does not roll across UTC)', () => {
+        const d = new Date(2026, 0, 3); // 3 January 2026 local
+        expect(isoDateLocal(d)).toBe('2026-01-03');
     });
 });

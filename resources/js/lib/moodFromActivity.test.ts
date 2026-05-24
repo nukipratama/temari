@@ -18,27 +18,27 @@ function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
 
 describe('moodFromActivity', () => {
     it('returns dim for runs with no/low TRIMP', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: null }))).toBe('dim');
-        expect(moodFromActivity(detail({ trimp_edwards: 20 }))).toBe('dim');
+        expect(moodFromActivity(detail({ trimp_edwards: null }))).toBe('adem');
+        expect(moodFromActivity(detail({ trimp_edwards: 20 }))).toBe('adem');
     });
 
     it('returns spinning for short interval-ish runs', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 40 }))).toBe('spinning');
+        expect(moodFromActivity(detail({ trimp_edwards: 40 }))).toBe('mumet');
     });
 
     it('returns glow for solid aerobic runs', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 75 }))).toBe('glow');
+        expect(moodFromActivity(detail({ trimp_edwards: 75 }))).toBe('nyala');
     });
 
     it('returns squished for long-distance drained runs', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 100, distance: 15000 }))).toBe('squished');
+        expect(moodFromActivity(detail({ trimp_edwards: 100, distance: 15000 }))).toBe('oleng');
     });
 
     it('returns bouncy for solid hard sessions', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 150 }))).toBe('bouncy');
+        expect(moodFromActivity(detail({ trimp_edwards: 150 }))).toBe('enteng');
     });
 
     it('returns wobble for crushing efforts', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 220 }))).toBe('wobble');
+        expect(moodFromActivity(detail({ trimp_edwards: 220 }))).toBe('lemes');
     });
 });

@@ -20,21 +20,21 @@ beforeEach(function (): void {
     Bus::fake();
 });
 
-it('queues both headline + suggestion jobs on first compose', function (): void {
+it('returns pending payloads on first compose and dispatches NO LLM jobs', function (): void {
     $user = User::factory()->create();
     $asOf = Carbon::parse('2026-05-18');
 
     $result = app(BriefingComposer::class)->compose($user, $asOf);
 
-    expect($result->headline['status'])->toBe(AnalysisStatus::Queued->value)
-        ->and($result->suggestion['status'])->toBe(AnalysisStatus::Queued->value)
-        ->and($result->mascotVoice['status'])->toBe(AnalysisStatus::Queued->value)
+    expect($result->headline['status'])->toBe(AnalysisStatus::Pending->value)
+        ->and($result->suggestion['status'])->toBe(AnalysisStatus::Pending->value)
+        ->and($result->mascotVoice['status'])->toBe(AnalysisStatus::Pending->value)
         ->and($result->headline['content'])->toBeNull()
         ->and($result->suggestion['content'])->toBeNull()
         ->and($result->mascotVoice['content'])->toBeNull();
 
-    // Briefing is grouped — one job produces all three rows.
-    Bus::assertDispatched(AnalyzeBriefingJob::class, 1);
+    // No LLM dispatch on page-load reads — analyses are user-triggered.
+    Bus::assertNotDispatched(AnalyzeBriefingJob::class);
 });
 
 it('returns stored content when analyses are done', function (): void {

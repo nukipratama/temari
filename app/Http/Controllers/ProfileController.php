@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\UserUnlock;
+use App\Services\AI\AnalysisType;
+use App\Services\AI\Narrators\PersonaSummaryNarrator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,8 +20,10 @@ class ProfileController extends Controller
 {
     private const int TOP_PR_COUNT = 3;
 
-    public function __invoke(Request $request): Response
-    {
+    public function __invoke(
+        Request $request,
+        PersonaSummaryNarrator $personaNarrator,
+    ): Response {
         /** @var User $user */
         $user = $request->user();
 
@@ -45,11 +51,11 @@ class ProfileController extends Controller
             ])
             ->all();
 
-        return Inertia::render('Profile', [
+        return Inertia::render('Aku', [
             'identity' => [
                 'name' => $user->name,
                 'avatar_url' => $user->avatar_url,
-                'first_run_at' => is_string($firstRunAt) ? $firstRunAt : $firstRunAt?->toIso8601String(),
+                'first_run_at' => \is_string($firstRunAt) ? $firstRunAt : $firstRunAt?->toIso8601String(),
                 'member_since' => $user->created_at?->toIso8601String(),
                 'strava_connected' => $user->stravaConnection !== null,
             ],
@@ -61,7 +67,26 @@ class ProfileController extends Controller
             'topPrs' => $this->topPrs($user),
             'unlocks' => $unlocks,
             'unlockCatalog' => config('temari_unlocks'),
+            'personaMix' => $personaNarrator->personaMix($user),
+            'personaSummary' => $this->resolvePersonaSummary($user),
         ]);
+    }
+
+    /**
+     * @return array{id: int|null, status: string, content: string|null, type: string, subject_type: string, subject_id: int, discriminator: string|null}
+     */
+    private function resolvePersonaSummary(User $user): array
+    {
+        // Cache the persona summary per ISO week — moods don't shift by the
+        // hour, and the narrator pulls 12 weeks of history regardless.
+        $discriminator = Carbon::now()->isoFormat('GGGG-[W]WW');
+        $subjectType = AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE;
+
+        $row = Analysis::query()
+            ->forSubject($subjectType, $user->id, AnalysisType::PersonaSummary, $discriminator)
+            ->first();
+
+        return Analysis::toPayload($row, AnalysisType::PersonaSummary, $subjectType, $user->id, $discriminator);
     }
 
     /**
@@ -80,7 +105,7 @@ class ProfileController extends Controller
         foreach ($rows as $pr) {
             $out[] = [
                 'id' => $pr->id,
-                'category' => $pr->category,
+                'category' => $pr->category->value,
                 'value_sec' => (int) $pr->value_sec,
                 'set_at' => $pr->set_at->toIso8601String(),
                 'activity_id' => $pr->activity_id,

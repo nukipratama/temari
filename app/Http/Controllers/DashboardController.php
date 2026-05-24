@@ -11,7 +11,6 @@ use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingComposer;
@@ -31,7 +30,6 @@ class DashboardController extends Controller
         Temari $temari,
         TrainingLoad $trainingLoad,
         BriefingComposer $briefingComposer,
-        AnalysisService $analysisService,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -53,17 +51,18 @@ class DashboardController extends Controller
         $recentRuns = ActivityDetail::query()
             ->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards'])
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
+            ->with(['activity.runCard:id,activity_id,rarity,special_move,badges'])
             ->orderByDesc('start_date_local')
-            ->limit(5)
+            ->limit(8)
             ->get();
 
-        return Inertia::render('Dashboard', [
+        return Inertia::render('HariIni', [
             'briefing' => $briefing,
             'load' => $load,
             'snapshot' => $weeks->last(),
             'recentRuns' => $recentRuns,
             'chartData' => $this->fitnessChartData($weeks),
-            'trendAnalysis' => $this->resolveTrendCaption($user, $today, $analysisService),
+            'trendAnalysis' => $this->resolveTrendCaption($user, $today),
             'hasNewPr' => $this->detectNewPr($user),
             'pendingMilestone' => $this->resolvePendingMilestone($user),
             'weekVsLastWeek' => $this->resolveWeekVsLastWeek($weeks),
@@ -104,8 +103,6 @@ class DashboardController extends Controller
 
     private static function weekPaceSecPerKm(WeeklySnapshot $snapshot): ?float
     {
-        // Estimate weekly average pace from TRIMP + distance heuristic — falls
-        // back to null when snapshot lacks enough data.
         $km = $snapshot->distance_km;
         $runs = $snapshot->runs;
         if ($km === null || $km <= 0 || $runs === null || $runs <= 0) {
@@ -143,8 +140,6 @@ class DashboardController extends Controller
             return null;
         }
 
-        // `milestone_payload` cast as array; query above filtered nulls.
-        // Frontend MilestoneBanner short-circuits when `milestones` is empty.
         /** @var array<int, array<string, mixed>> $payload */
         $payload = $activity->milestone_payload;
 
@@ -188,7 +183,7 @@ class DashboardController extends Controller
      *     discriminator: string|null,
      * }
      */
-    private function resolveTrendCaption(User $user, Carbon $today, AnalysisService $analysisService): array
+    private function resolveTrendCaption(User $user, Carbon $today): array
     {
         $discriminator = $today->toDateString();
         $subjectType = AnalysisType::TREND_CAPTION_SUBJECT_TYPE;
@@ -196,15 +191,6 @@ class DashboardController extends Controller
         $row = Analysis::query()
             ->forSubject($subjectType, $user->id, AnalysisType::TrendCaption, $discriminator)
             ->first();
-
-        if ($row === null) {
-            $row = $analysisService->request(
-                subjectOrType: $subjectType,
-                subjectId: $user->id,
-                type: AnalysisType::TrendCaption,
-                discriminator: $discriminator,
-            );
-        }
 
         return Analysis::toPayload($row, AnalysisType::TrendCaption, $subjectType, $user->id, $discriminator);
     }

@@ -5,13 +5,6 @@
    elements unpositioned on first render. */
 @import 'leaflet/dist/leaflet.css';
 
-/* Tailwind v4 defaults `dark:` to a prefers-color-scheme media query,
-   which would hijack the UI whenever the user's OS is in dark mode.
-   App is light-only, so re-target the variant to the explicit `.dark`
-   class (which is never applied) — every legacy `dark:` modifier in
-   the codebase becomes inert. */
-@custom-variant dark (&:where(.dark, .dark *));
-
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
@@ -19,77 +12,134 @@
 @source '../**/*.ts';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    /* Daybreak typography — three families per the redesign handoff:
+       Instrument Serif italic for display/voice (Temari quotes, page
+       headlines), Inter for body/UI/numbers, JetBrains Mono for small
+       uppercase metadata labels. Loaded via Google Fonts <link> in
+       app.blade.php. */
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 
-    /* Brand scale — deep emerald (primary). */
-    --color-brand-50: #e6f3eb;
-    --color-brand-100: #c1e0cd;
-    --color-brand-200: #94caab;
-    --color-brand-300: #5fb088;
-    --color-brand-400: #2f956a;
-    --color-brand-500: #0e7a4c;
-    --color-brand-600: #0a623c;
-    --color-brand-700: #07492d;
-    --color-brand-800: #04311e;
-    --color-brand-900: #021a10;
+    /* ─── Daybreak display-type scale ────────────────────────────────
+       Literal px sizes mirroring the prototype JSX. Each token bundles
+       line-height + letter-spacing so a single utility class lands the
+       full type spec.
 
-    /* Accent scale — warm terracotta (co-primary, focal warmth). Same
-       hue family as Strava orange (#FC4C02) but darker / more brown;
-       Strava-coexistence rule still applies (don't put accent near the
-       Strava brand mark). */
-    --color-accent-50: #fbeee5;
-    --color-accent-100: #f3d3bf;
-    --color-accent-200: #eab397;
-    --color-accent-300: #e0936f;
-    --color-accent-400: #dc8259;
-    --color-accent-500: #d9764a;
-    --color-accent-600: #b75f37;
-    --color-accent-700: #8c4727;
-    --color-accent-800: #5f301a;
-    --color-accent-900: #371b0e;
+       text-display-2xl  = 96px  — Hari Ini greeting
+       text-display-xl   = 80px  — hero kartu title
+       text-display-lg   = 72px  — Aku / Riwayat header
+       text-display-md   = 64px  — Koleksi · Kartu hero
+       text-display-sm   = 52px  — Run Detail hero name
+       text-display-xs   = 42px  — "Selamat datang."
+       text-headline-lg  = 38px  — Reveal frame titles
+       text-headline-md  = 32px  — recent-kartu strip head
+       text-headline-sm  = 28px  — weekly summary
+       text-headline-xs  = 24px  — last-lari title
+       text-quote-lg     = 22px  — standard Temari voice quote
+       text-quote-md     = 18px  — compact voice quote
+       text-quote-sm     = 15px  — 4-lens body                         */
+    --text-display-2xl: 96px;
+    --text-display-2xl--line-height: 0.92;
+    --text-display-2xl--letter-spacing: -0.025em;
+    --text-display-xl: 80px;
+    --text-display-xl--line-height: 0.92;
+    --text-display-xl--letter-spacing: -0.02em;
+    --text-display-lg: 72px;
+    --text-display-lg--line-height: 0.92;
+    --text-display-lg--letter-spacing: -0.025em;
+    --text-display-md: 64px;
+    --text-display-md--line-height: 0.95;
+    --text-display-md--letter-spacing: -0.015em;
+    --text-display-sm: 52px;
+    --text-display-sm--line-height: 0.98;
+    --text-display-sm--letter-spacing: -0.015em;
+    --text-display-xs: 42px;
+    --text-display-xs--line-height: 1;
+    --text-display-xs--letter-spacing: -0.015em;
 
-    /* Pop scale — mustard (reserved for PRs / legendaris). */
-    --color-pop-50: #fdf5dd;
-    --color-pop-100: #f9e6a8;
-    --color-pop-200: #f5d678;
-    --color-pop-300: #ecbf4f;
-    --color-pop-400: #e6b340;
-    --color-pop-500: #e0a639;
-    --color-pop-600: #b58427;
-    --color-pop-700: #88621c;
-    --color-pop-800: #5b4112;
-    --color-pop-900: #2e2208;
+    --text-headline-lg: 38px;
+    --text-headline-lg--line-height: 1.05;
+    --text-headline-lg--letter-spacing: -0.01em;
+    --text-headline-md: 32px;
+    --text-headline-md--line-height: 1;
+    --text-headline-md--letter-spacing: -0.01em;
+    --text-headline-sm: 28px;
+    --text-headline-sm--line-height: 1.05;
+    --text-headline-sm--letter-spacing: -0.01em;
+    --text-headline-xs: 24px;
+    --text-headline-xs--line-height: 1.05;
+    --text-headline-xs--letter-spacing: -0.01em;
 
-    /* Surface & ink — pale sage page, white card, slightly warmer
-       sunken for inset wells, ivory `warm` tier for hero / briefing
-       (primary content) so it visually separates from ambient white
-       cards. Dark-mode tokens kept for any code that still references
-       them but the app no longer flips into dark. */
-    --color-surface: #f1f4ee;
+    --text-quote-lg: 22px;
+    --text-quote-lg--line-height: 1.3;
+    --text-quote-md: 18px;
+    --text-quote-md--line-height: 1.4;
+    --text-quote-sm: 15px;
+    --text-quote-sm--line-height: 1.5;
+
+    /* ─── Daybreak palette — pre-dawn Jakarta at 05:30. ─────────────
+       Hex values mirror DAYBREAK constants in the prototype source. */
+
+    /* Sky — structure, hero panels, dark surfaces. */
+    --color-sky: #1f2747;
+    --color-sky-deep: #161b33;
+    --color-sky-2: #2c355c;
+
+    /* Horizon — primary CTA, "earned" state, Temari accent. */
+    --color-horizon: #e8a076;
+    --color-horizon-deep: #d08a60;
+
+    /* Cream — paper / app background, secondary surface. */
+    --color-cream: #f6f1e8;
+    --color-cream-deep: #eee7d6;
+
+    /* Daybreak ink scale (3-tier text contrast). */
+    --color-ink: #1a1812;
+    --color-ink-2: #3d362a;
+    --color-ink-3: #7a6f5c;
+
+    /* Semantic mood-family hues. Each has a deep variant for text + a
+       lighter pastel `-bg` variant for tinted cells (kalender, etc.). */
+    --color-leaf: #6b8e6f;
+    --color-leaf-deep: #4f6c54;
+    --color-ember: #c4623f;
+    --color-ember-deep: #a35030;
+    --color-citrus: #d9b23a;
+    --color-citrus-deep: #b8941e;
+    --color-stone: #8e8579;
+
+    /* Surface tier — cream paper. dawn-shift drifts the base across
+       the day (see body[data-time-of-day=…] below). */
+    --color-surface: #f6f1e8;
     --color-surface-elev: #ffffff;
     --color-surface-warm: #faf3e5;
-    --color-surface-sunken: #e5ebe0;
-    --color-surface-dark: #0c1827;
-    --color-surface-dark-elev: #15233a;
-    --color-surface-dark-sunken: #0a1320;
-    --color-ink: #122218;
-    --color-ink-soft: #3b4a40;
-    --color-ink-meta: #6e7b72;
-    --color-ink-dark: #ecf2ed;
-    --color-ink-soft-dark: #c7d2c9;
-    --color-ink-meta-dark: #8a948c;
+    --color-surface-sunken: #eee7d6;
     --color-line: #d8ddd2;
-    --color-line-dark: #1f3050;
 
-    /* Mood swatches — readable on the pale sage surface. Each mood
-       sits at ≥4.5:1 vs the surface so chips don't fade. */
-    --color-mood-glow: #d99a1a;
-    --color-mood-bouncy: #c83a76;
-    --color-mood-cooked: #b8302f;
-    --color-mood-squished: #c46f1c;
-    --color-mood-hibernate: #6e7b72;
-    --color-mood-spinning: #6b4ea8;
+    /* Mood swatches — Daybreak vocabulary. Each mood pairs a saturated
+       dot tone (`mood-{name}`) with a pastel bg tone (`mood-{name}-bg`)
+       for calendar cells + badge fills. */
+    --color-mood-nyala: #d9b23a;
+    --color-mood-nyala-bg: #ffe6bb;
+    --color-mood-enteng: #e8a076;
+    --color-mood-enteng-bg: #ffdcd3;
+    --color-mood-oleng: #c4623f;
+    --color-mood-oleng-bg: #ffe0b4;
+    --color-mood-lemes: #a65238;
+    --color-mood-lemes-bg: #f3d6cb;
+    --color-mood-mumet: #7b5bb6;
+    --color-mood-mumet-bg: #dcd6f0;
+    --color-mood-adem: #8e8579;
+    --color-mood-adem-bg: #e5e1d8;
+
+    /* Rarity scale — English keys (per Daybreak handoff). */
+    --color-rarity-common: #a39888;
+    --color-rarity-uncommon: #6b8e6f;
+    --color-rarity-rare: #7b5bb6;
+    --color-rarity-epic: #e8a076;
+    --color-rarity-legendary: #d9b23a;
 
     /* Strava brand (untouched, never themed). */
     --color-strava-orange: #fc4c02;
@@ -117,65 +167,51 @@ body {
     .scrollbar-hide::-webkit-scrollbar {
         display: none;
     }
-
-    /* Speed streaks for the Temari mascot — short horizontal lines that
-       sweep left and fade, signaling rightward motion direction without
-       redrawing the character. Paired with the arm/leg running gait. The
-       --streak-peak CSS var lets each instance tune its fade max so tired
-       moods can render fainter streaks. */
-    @keyframes temari-streak-sweep {
-        0% {
-            transform: translateX(60%);
-            opacity: 0;
-        }
-        20% {
-            opacity: var(--streak-peak, 0.55);
-        }
-        100% {
-            transform: translateX(-120%);
-            opacity: 0;
-        }
-    }
-    .temari-streak {
-        position: absolute;
-        background-color: #3b2f1f;
-        opacity: 0;
-        height: 2px;
-        border-radius: 1px;
-        animation: temari-streak-sweep 0.55s linear infinite;
-    }
-}
-
-/* Mobile sidebar drawer — overrides default `<dialog>` centered-modal
-   layout to a slide-from-left full-height drawer. Native `<dialog>`
-   provides focus trap + Esc-close + backdrop click for free; we only
-   reposition + restyle the backdrop. */
-@layer components {
-    dialog.sidebar-drawer {
-        position: fixed;
-        inset: 0 auto 0 0;
-        height: 100dvh;
-        max-height: 100dvh;
-        border: 0;
-    }
-    dialog.sidebar-drawer::backdrop {
-        background: rgba(15, 12, 9, 0.45);
-    }
 }
 
 /* Dawn-shift theme — subtle page-bg tint based on user's local
-   time-of-day. Overrides --color-surface so it drifts across the day. */
+   time-of-day. Drifts the cream surface across the day: cool pre-dawn,
+   warmer in morning + dusk, calm at night. Light-mode only. */
 @layer base {
     body[data-time-of-day='dawn'] {
-        --color-surface: #ebeee5;
+        --color-surface: #f1ecdf;
     }
     body[data-time-of-day='morning'] {
-        --color-surface: #f3f1de;
+        --color-surface: #f9f3e3;
     }
     body[data-time-of-day='dusk'] {
-        --color-surface: #f4ece2;
+        --color-surface: #f5ebd9;
     }
     body[data-time-of-day='night'] {
-        --color-surface: #e8ece3;
+        --color-surface: #efe9dd;
+    }
+}
+
+/* Temari mascot animations — pose-driven keyframes used by
+   <TemariProto>. Mounted globally so the SVG layers can run them via
+   the `animation` style prop or the `animation` Tailwind shortcut. */
+@layer base {
+    @keyframes temari-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.015); } }
+    @keyframes temari-bob     { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @keyframes temari-bounce {
+        0%, 100% { transform: translateY(0); }
+        30%      { transform: translateY(-10px) scaleY(1.04); }
+        60%      { transform: translateY(2px)  scaleY(0.96); }
+    }
+    @keyframes temari-sway   { 0%, 100% { transform: rotate(-4deg) translateX(-2px); } 50% { transform: rotate(4deg) translateX(2px); } }
+    @keyframes temari-nod    { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+    @keyframes temari-tilt   { 0%, 100% { transform: rotate(-3deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-2px); } }
+    @keyframes temari-spin-sparkle { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
+    @keyframes temari-aura-pulse {
+        0%, 100% { opacity: 0.55; transform: scale(1); }
+        50%      { opacity: 0.90; transform: scale(1.08); }
+    }
+    @keyframes temari-blink { 0%, 92%, 100% { transform: scaleY(1); } 94%, 98% { transform: scaleY(0.1); } }
+
+    .temari-root { display: inline-block; transform-origin: 50% 80%; will-change: transform; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .temari-root,
+        .temari-root * { animation: none !important; }
     }
 }

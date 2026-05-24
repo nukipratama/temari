@@ -1,0 +1,169 @@
+import { Link, router, usePage } from '@inertiajs/react';
+import { Icon } from '@iconify/react';
+import { useCallback, useRef, useState } from 'react';
+import { cn } from '@/lib/cn';
+import BrandMark from '@/components/BrandMark';
+import { useDismissable } from '@/hooks/useDismissable';
+import { formatRelativeId } from '@/lib/pace';
+import type { SharedProps, StravaSync } from '@/types/inertia';
+
+type TabId = 'hari-ini' | 'koleksi' | 'riwayat' | 'aku';
+
+interface NavItem {
+    id: TabId;
+    label: string;
+    href: string;
+    prefixes: ReadonlyArray<string>;
+}
+
+const ITEMS: ReadonlyArray<NavItem> = [
+    { id: 'hari-ini', label: 'Hari Ini', href: '/', prefixes: ['/'] },
+    { id: 'koleksi', label: 'Koleksi', href: '/kartu', prefixes: ['/koleksi', '/kartu', '/rekor'] },
+    { id: 'riwayat', label: 'Riwayat', href: '/aktivitas', prefixes: ['/riwayat', '/aktivitas', '/kalender'] },
+    { id: 'aku', label: 'Aku', href: '/profil', prefixes: ['/aku', '/profil'] },
+];
+
+export function activeTabFromUrl(url: string): TabId | null {
+    const path = url.split('?')[0];
+    if (path === '/') return 'hari-ini';
+    for (const item of ITEMS) {
+        if (item.id === 'hari-ini') continue;
+        if (item.prefixes.some((p) => path === p || path.startsWith(`${p}/`))) {
+            return item.id;
+        }
+    }
+    return null;
+}
+
+export default function TopNav() {
+    const { url, props } = usePage<SharedProps>();
+    const active = activeTabFromUrl(url);
+    const user = props.auth.user;
+    const stravaSync = props.stravaSync ?? null;
+
+    return (
+        <header className="hidden border-b border-cream-deep bg-cream lg:block">
+            <div className="flex w-full items-center justify-between px-10 py-[18px]">
+                <div className="flex items-center gap-12">
+                    <Link href="/" aria-label="Beranda">
+                        <BrandMark size="compact" />
+                    </Link>
+                    <nav aria-label="Primary" className="flex items-center gap-1">
+                        {ITEMS.map((item) => (
+                            <TabLink key={item.id} item={item} isActive={active === item.id} />
+                        ))}
+                    </nav>
+                </div>
+                <div className="flex items-center gap-3.5">
+                    <SyncPill sync={stravaSync} />
+                    {user && <UserMenu name={user.name} avatarUrl={user.avatar_url} />}
+                </div>
+            </div>
+        </header>
+    );
+}
+
+function TabLink({ item, isActive }: Readonly<{ item: NavItem; isActive: boolean }>) {
+    return (
+        <Link
+            href={item.href}
+            className={cn(
+                'relative font-display text-[19px] italic tracking-[-0.005em] transition',
+                'px-[18px] py-2.5',
+                isActive ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
+            )}
+        >
+            {item.label}
+            {isActive && (
+                <span
+                    aria-hidden
+                    className="absolute inset-x-[18px] -bottom-[19px] h-0.5 bg-horizon"
+                />
+            )}
+        </Link>
+    );
+}
+
+function SyncPill({ sync }: Readonly<{ sync: StravaSync | null }>) {
+    if (sync === null || ! sync.connected) {
+        return (
+            <div className="hidden items-center gap-2 rounded-full bg-sky/[0.06] px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 md:inline-flex">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3/40" />
+                Strava
+            </div>
+        );
+    }
+
+    const relative = sync.last_synced_at ? formatRelativeId(sync.last_synced_at) : null;
+
+    return (
+        <div className="hidden items-center gap-2 rounded-full bg-sky/[0.06] px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 md:inline-flex">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-leaf" />
+            Strava synced{relative ? ` · ${relative}` : ''}
+        </div>
+    );
+}
+
+function UserMenu({ name, avatarUrl }: Readonly<{ name: string; avatarUrl: string | null }>) {
+    const [open, setOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const close = useCallback(() => setOpen(false), []);
+    useDismissable(open, containerRef, close);
+
+    function handleLogout() {
+        setOpen(false);
+        router.post('/logout');
+    }
+
+    return (
+        <div ref={containerRef} className="relative">
+            <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                aria-label={`Buka menu ${name}`}
+                className="flex h-9 w-9 items-center justify-center rounded-full ring-2 ring-cream-deep transition hover:ring-leaf focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+            >
+                {avatarUrl ? (
+                    <img
+                        src={avatarUrl}
+                        alt=""
+                        className="h-9 w-9 rounded-full object-cover"
+                    />
+                ) : (
+                    <span
+                        aria-hidden
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-horizon font-display text-[17px] font-semibold italic text-sky"
+                    >
+                        {name.charAt(0).toUpperCase()}
+                    </span>
+                )}
+            </button>
+            {open && (
+                <div
+                    role="menu"
+                    className="absolute right-0 top-[calc(100%+10px)] z-40 w-52 overflow-hidden rounded-2xl border border-cream-deep bg-cream shadow-lg"
+                >
+                    <div className="border-b border-cream-deep px-4 py-3">
+                        <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+                            Masuk sebagai
+                        </div>
+                        <div className="mt-0.5 truncate font-sans text-sm font-medium text-ink">
+                            {name}
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        role="menuitem"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left font-sans text-sm text-ink transition hover:bg-cream-deep"
+                    >
+                        <Icon icon="mdi:logout" width={16} height={16} aria-hidden className="text-ink-3" />
+                        Keluar
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\PrCategory;
 use Database\Factories\PersonalRecordFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,7 +16,7 @@ use Override;
 /**
  * @property int $id
  * @property int $user_id
- * @property string $category
+ * @property PrCategory $category
  * @property float $value_sec
  * @property int|null $activity_id
  * @property Carbon $set_at
@@ -59,6 +60,7 @@ class PersonalRecord extends Model
         return [
             'value_sec' => 'float',
             'set_at' => 'datetime',
+            'category' => PrCategory::class,
         ];
     }
 }

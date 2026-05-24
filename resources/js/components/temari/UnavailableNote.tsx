@@ -19,7 +19,7 @@ export default function UnavailableNote({
 }: Readonly<Props>) {
     return (
         <span
-            className={cn('inline-flex items-center rounded-full bg-surface-sunken text-ink-meta', SIZE_CLASSES[size])}
+            className={cn('inline-flex items-center rounded-full bg-surface-sunken text-ink-3', SIZE_CLASSES[size])}
             role="status"
         >
             <Icon icon="mdi:clock-alert-outline" aria-hidden />

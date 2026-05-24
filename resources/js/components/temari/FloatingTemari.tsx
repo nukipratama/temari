@@ -13,7 +13,6 @@ const PAGE_TIPS: Record<string, string> = {
     '/kartu': 'Ketuk kartu Epic atau Legendaris untuk efek konfeti 🎉',
     '/rekor': 'Rekor kamu per kategori. Ketuk untuk melihat lari aslinya 🏆',
     '/profil': 'Statistik singkat akun Strava kamu 🧾',
-    '/pengaturan': 'Atur preferensi akun + aku di sini ⚙️',
 };
 
 function tipForPath(path: string): string {
@@ -58,7 +57,7 @@ export default function FloatingTemari() {
         };
     }, [isThinking]);
 
-    const mood: Mood = isThinking ? 'spinning' : 'glow';
+    const mood: Mood = isThinking ? 'mumet' : 'nyala';
     const bubbleText = isThinking
         ? `${total} analisis lagi dipikirin Temari…`
         : tipForPath(url);
@@ -81,22 +80,22 @@ export default function FloatingTemari() {
                         >
                             <p>{bubbleText}</p>
                             {isThinking && (
-                                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-ink-meta">
+                                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-ink-3">
                                     {activity.pending > 0 && (
                                         <span className="inline-flex items-center gap-1">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-ink-meta" aria-hidden />
+                                            <span className="h-1.5 w-1.5 rounded-full bg-ink-3" aria-hidden />
                                             {activity.pending} nunggu
                                         </span>
                                     )}
                                     {activity.queued > 0 && (
                                         <span className="inline-flex items-center gap-1">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-pop-500" aria-hidden />
+                                            <span className="h-1.5 w-1.5 rounded-full bg-citrus" aria-hidden />
                                             {activity.queued} antri
                                         </span>
                                     )}
                                     {activity.processing > 0 && (
                                         <span className="inline-flex items-center gap-1">
-                                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-mood-spinning" aria-hidden />
+                                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-mood-mumet" aria-hidden />
                                             {activity.processing} jalan
                                         </span>
                                     )}
@@ -110,13 +109,13 @@ export default function FloatingTemari() {
                     type="button"
                     onClick={() => setOpen((v) => !v)}
                     aria-label={isThinking ? `${total} analisis sedang berjalan` : 'Halo dari Temari'}
-                    className="relative rounded-full bg-surface-elev p-1 shadow-lg ring-1 ring-line transition hover:ring-brand-400"
+                    className="relative rounded-full bg-surface-elev p-1 shadow-lg ring-1 ring-line transition hover:ring-leaf"
                 >
                     <TemariMascot mood={mood} sizeClass="h-14 w-14" idle="breath" />
                     {isThinking && (
                         <span
                             aria-hidden
-                            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-mood-spinning px-1 text-[10px] font-bold text-white shadow ring-2 ring-surface-elev"
+                            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-mood-mumet px-1 text-[10px] font-bold text-white shadow ring-2 ring-surface-elev"
                         >
                             {total}
                         </span>

@@ -62,11 +62,11 @@ export default function MilestoneBanner({ pending }: Readonly<MilestoneBannerPro
                     transition={{ duration: 0.25 }}
                     role="status"
                     aria-label="Milestone Temari"
-                    className="relative mb-6 overflow-hidden rounded-2xl border border-pop-300 bg-gradient-to-br from-pop-50 via-surface-warm to-accent-50 p-4 shadow-md sm:rounded-3xl sm:p-6"
+                    className="relative mb-6 overflow-hidden rounded-2xl border border-citrus/40 bg-gradient-to-br from-citrus/10 via-surface-warm to-horizon/10 p-4 shadow-md sm:rounded-3xl sm:p-6"
                 >
                     <ConfettiBurst burstKey={confettiKey} />
-                    <DecorativeBlur className="-right-16 -top-16 h-48 w-48 bg-pop-200/50" />
-                    <DecorativeBlur className="-bottom-16 -left-10 h-40 w-40 bg-accent-200/40" />
+                    <DecorativeBlur className="-right-16 -top-16 h-48 w-48 bg-citrus/25" />
+                    <DecorativeBlur className="-bottom-16 -left-10 h-40 w-40 bg-horizon/25" />
 
                     <div className="relative flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">
@@ -80,25 +80,25 @@ export default function MilestoneBanner({ pending }: Readonly<MilestoneBannerPro
                                 <Icon icon={iconFor(primary.kind)} width={22} height={22} />
                             </span>
                             <div className="min-w-0">
-                                <p className="text-xs font-semibold uppercase tracking-wider text-pop-700">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-citrus-deep">
                                     Milestone hari ini
                                 </p>
                                 <h2 className="mt-0.5 text-lg font-bold leading-tight text-ink sm:text-xl">
                                     {primary.label}
                                 </h2>
-                                <p className="mt-1 text-sm leading-relaxed text-ink-soft">{primary.body}</p>
+                                <p className="mt-1 text-sm leading-relaxed text-ink-2">{primary.body}</p>
 
                                 {extras.length > 0 && !showAll && (
                                     <button
                                         type="button"
                                         onClick={() => setShowAll(true)}
-                                        className="mt-2 text-xs font-semibold text-pop-700 underline-offset-2 hover:underline"
+                                        className="mt-2 text-xs font-semibold text-citrus-deep underline-offset-2 hover:underline"
                                     >
                                         + {extras.length} milestone lainnya
                                     </button>
                                 )}
                                 {showAll && extras.length > 0 && (
-                                    <ul className="mt-3 space-y-1.5 text-sm text-ink-soft">
+                                    <ul className="mt-3 space-y-1.5 text-sm text-ink-2">
                                         {extras.map((m) => (
                                             <li key={`${m.kind}-${m.label}`}>
                                                 <span className="font-semibold text-ink">{m.label}</span>, {m.body}
@@ -113,7 +113,7 @@ export default function MilestoneBanner({ pending }: Readonly<MilestoneBannerPro
                             type="button"
                             onClick={dismiss}
                             aria-label="Tutup"
-                            className="shrink-0 rounded-full p-1.5 text-ink-meta transition hover:bg-line/40 hover:text-ink"
+                            className="shrink-0 rounded-full p-1.5 text-ink-3 transition hover:bg-line/40 hover:text-ink"
                         >
                             <Icon icon="mdi:close" width={18} height={18} aria-hidden />
                         </button>
@@ -140,12 +140,12 @@ function iconFor(kind: MilestoneEntry['kind']): string {
 function iconBgFor(kind: MilestoneEntry['kind']): string {
     switch (kind) {
         case 'pr':
-            return 'bg-pop-500';
+            return 'bg-citrus';
         case 'longest_ever':
-            return 'bg-accent-500';
+            return 'bg-horizon';
         case 'first_ever_distance':
-            return 'bg-brand-500';
+            return 'bg-leaf';
         case 'first_ever_pace':
-            return 'bg-mood-spinning';
+            return 'bg-mood-mumet';
     }
 }

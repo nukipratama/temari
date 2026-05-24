@@ -18,7 +18,7 @@ export default function TemariBubble({
     inertiaReloadProps = [],
     className,
 }: Readonly<TemariBubbleProps>) {
-    const mood: Mood = line?.mood ?? 'dim';
+    const mood: Mood = line?.mood ?? 'adem';
 
     const isLarge = size === 'lg';
     const mascotSizeClass = isLarge ? 'h-36 w-36 shrink-0' : 'h-20 w-20 shrink-0';
@@ -43,7 +43,7 @@ export default function TemariBubble({
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold tracking-tight text-ink">Temari</span>
-                    <span className="text-[10px] uppercase tracking-wider text-ink-meta">{mood}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-ink-3">{mood}</span>
                 </div>
                 <div className="mt-1">
                     <AnalysisStatus

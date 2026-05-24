@@ -43,11 +43,11 @@ export default function HrZoneCard({ zonePct }: Readonly<HrZoneCardProps>) {
     return (
         <section className="rounded-2xl border border-line bg-surface-elev p-4 shadow-sm sm:p-5">
             <div className="flex items-baseline justify-between gap-3">
-                <h3 className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-ink-meta">
+                <h3 className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-ink-3">
                     HR Zones
                     <MetricExplainer metricKey="hr_zones" size="xs" />
                 </h3>
-                <p className="text-xs text-ink-meta">
+                <p className="text-xs text-ink-3">
                     dominan{' '}
                     <span className="font-bold tabular-nums" style={{ color: HR_ZONE_COLORS[dominant.zone] }}>
                         {dominant.zone} · {dominant.pct}%
@@ -70,7 +70,7 @@ export default function HrZoneCard({ zonePct }: Readonly<HrZoneCardProps>) {
             <dl className="mt-3 grid grid-cols-5 gap-2 text-xs tabular-nums">
                 {HR_ZONES.map((zone) => (
                     <div key={zone} className="text-center">
-                        <dt className="flex items-center justify-center gap-0.5 text-ink-meta">
+                        <dt className="flex items-center justify-center gap-0.5 text-ink-3">
                             {zone}
                             <MetricExplainer metricKey={ZONE_EXPLAINER_KEY[zone]} size="xs" />
                         </dt>

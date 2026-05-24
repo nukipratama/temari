@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MOOD_VARIANTS, variantFor } from './temariMoodVariants';
 import type { Mood } from '@/types/inertia';
 
-const ALL_MOODS: Mood[] = ['glow', 'bouncy', 'wobble', 'squished', 'spinning', 'dim'];
+const ALL_MOODS: Mood[] = ['nyala', 'enteng', 'lemes', 'oleng', 'mumet', 'adem'];
 
 describe('temariMoodVariants', () => {
     it('exposes a variant for every mood', () => {
@@ -18,12 +18,12 @@ describe('temariMoodVariants', () => {
     });
 
     it('variantFor returns the right variant', () => {
-        expect(variantFor('glow')).toBe(MOOD_VARIANTS.glow);
-        expect(variantFor('spinning')).toBe(MOOD_VARIANTS.spinning);
+        expect(variantFor('nyala')).toBe(MOOD_VARIANTS.nyala);
+        expect(variantFor('mumet')).toBe(MOOD_VARIANTS.mumet);
     });
 
-    it('variantFor falls back to dim for an unknown mood', () => {
-        expect(variantFor('unknown' as Mood)).toBe(MOOD_VARIANTS.dim);
+    it('variantFor falls back to adem for an unknown mood', () => {
+        expect(variantFor('unknown' as Mood)).toBe(MOOD_VARIANTS.adem);
     });
 
     it('every mood declares an accessory + particle slot', () => {
@@ -34,11 +34,11 @@ describe('temariMoodVariants', () => {
     });
 
     it('maps moods to their signature accessory + particles', () => {
-        expect(MOOD_VARIANTS.glow.accessory).toBe('medal');
-        expect(MOOD_VARIANTS.glow.particles).toBe('sparkles');
-        expect(MOOD_VARIANTS.dim.accessory).toBe('nightcap');
-        expect(MOOD_VARIANTS.dim.particles).toBe('zzz');
-        expect(MOOD_VARIANTS.wobble.accessory).toBe('towel');
-        expect(MOOD_VARIANTS.wobble.particles).toBe('droplets');
+        expect(MOOD_VARIANTS.nyala.accessory).toBe('medal');
+        expect(MOOD_VARIANTS.nyala.particles).toBe('sparkles');
+        expect(MOOD_VARIANTS.adem.accessory).toBe('nightcap');
+        expect(MOOD_VARIANTS.adem.particles).toBe('zzz');
+        expect(MOOD_VARIANTS.lemes.accessory).toBe('towel');
+        expect(MOOD_VARIANTS.lemes.particles).toBe('droplets');
     });
 });

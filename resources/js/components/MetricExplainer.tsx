@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
+import { useDismissable } from '@/hooks/useDismissable';
 import { METRIC_GLOSSARY, type MetricGlossaryEntry, type MetricKey } from '@/lib/metricGlossary';
 import { cn } from '@/lib/cn';
 
@@ -30,30 +31,13 @@ export default function MetricExplainer({
     const popoverId = useId();
 
     const close = useCallback(() => setOpen(false), []);
-
-    useEffect(() => {
-        if (!open) return;
-
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') close();
-        };
-        const onPointer = (e: PointerEvent) => {
-            if (!containerRef.current?.contains(e.target as Node)) close();
-        };
-
-        document.addEventListener('keydown', onKey);
-        document.addEventListener('pointerdown', onPointer);
-        return () => {
-            document.removeEventListener('keydown', onKey);
-            document.removeEventListener('pointerdown', onPointer);
-        };
-    }, [open, close]);
+    useDismissable(open, containerRef, close);
 
     const iconSize = size === 'xs' ? 12 : 14;
     const buttonClass =
         size === 'xs'
-            ? 'inline-flex h-4 w-4 items-center justify-center rounded-full text-ink-meta transition hover:bg-line/60 hover:text-ink'
-            : 'inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-meta transition hover:bg-line/60 hover:text-ink';
+            ? 'inline-flex h-4 w-4 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink'
+            : 'inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink';
 
     return (
         <span ref={containerRef} className={cn('relative inline-flex align-middle', className)}>
@@ -78,11 +62,11 @@ export default function MetricExplainer({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -4, scale: 0.97 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute left-1/2 top-full z-30 mt-2 w-64 max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-brand-200 bg-gradient-to-br from-surface-warm via-surface-elev to-brand-50/60 text-left normal-case shadow-xl ring-1 ring-brand-100/50"
+                        className="absolute left-1/2 top-full z-30 mt-2 w-64 max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-leaf/25 bg-gradient-to-br from-surface-warm via-surface-elev to-leaf/10 text-left normal-case shadow-xl ring-1 ring-leaf/15"
                     >
-                        <div aria-hidden className="absolute inset-y-0 left-0 w-1 bg-brand-500" />
+                        <div aria-hidden className="absolute inset-y-0 left-0 w-1 bg-leaf" />
                         <div className="px-3.5 py-3 pl-4">
-                            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700">
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-leaf-deep">
                                 <Icon icon="mdi:lightbulb-on-outline" width={12} height={12} aria-hidden />
                                 <span>{entry.acronym ? `${entry.label} · ${entry.acronym}` : entry.label}</span>
                             </div>

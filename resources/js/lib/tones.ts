@@ -6,8 +6,8 @@
 export type Tone = 'brand' | 'accent' | 'pop' | 'neutral';
 
 export const ICON_TONE: Record<Tone, string> = {
-    brand: 'bg-brand-100 text-brand-700',
-    accent: 'bg-accent-100 text-accent-700',
-    pop: 'bg-pop-100 text-pop-700',
-    neutral: 'bg-surface-sunken text-ink-soft',
+    brand: 'bg-leaf/15 text-leaf-deep',
+    accent: 'bg-horizon/15 text-horizon-deep',
+    pop: 'bg-citrus/15 text-citrus-deep',
+    neutral: 'bg-surface-sunken text-ink-2',
 };

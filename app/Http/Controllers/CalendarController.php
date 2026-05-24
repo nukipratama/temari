@@ -6,8 +6,10 @@ namespace App\Http\Controllers;
 
 use Throwable;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\AI\AnalysisType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -36,14 +38,29 @@ class CalendarController extends Controller
         $gridStart = $monthStart->copy()->startOfWeek(Carbon::MONDAY);
         $gridEnd = $monthEnd->copy()->endOfWeek(Carbon::SUNDAY);
 
-        return Inertia::render('Kalender', [
+        return Inertia::render('Riwayat/Kalender', [
             'month' => $monthStart->format('Y-m'),
             'monthLabel' => $this->formatMonthLabel($monthStart),
             'prevMonth' => $monthStart->copy()->subMonthNoOverflow()->format('Y-m'),
             'nextMonth' => $monthStart->copy()->addMonthNoOverflow()->format('Y-m'),
             'todayMonth' => Carbon::today()->format('Y-m'),
             'cells' => $this->buildCells($user, $gridStart, $gridEnd, $monthStart, $monthEnd),
+            'monthlyRecap' => $this->resolveMonthlyRecap($user, $monthStart->format('Y-m')),
         ]);
+    }
+
+    /**
+     * @return array{id: int|null, status: string, content: string|null, type: string, subject_type: string, subject_id: int, discriminator: string|null}
+     */
+    private function resolveMonthlyRecap(User $user, string $monthDiscriminator): array
+    {
+        $subjectType = AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE;
+
+        $row = Analysis::query()
+            ->forSubject($subjectType, $user->id, AnalysisType::MonthlyRecap, $monthDiscriminator)
+            ->first();
+
+        return Analysis::toPayload($row, AnalysisType::MonthlyRecap, $subjectType, $user->id, $monthDiscriminator);
     }
 
     private function resolveMonth(mixed $raw): Carbon

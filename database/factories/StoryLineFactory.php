@@ -28,7 +28,7 @@ class StoryLineFactory extends Factory
                 ->value('user_id'),
             'kind' => StoryLine::KIND_POST_RUN,
             'for_date' => null,
-            'mood' => fake()->randomElement(['bouncy', 'glow', 'steady', 'wobble', 'dim', 'squished']),
+            'mood' => fake()->randomElement(['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem']),
             'speech' => fake()->sentence(10),
             'sigil_pattern' => fake()->bothify('????'),
         ];

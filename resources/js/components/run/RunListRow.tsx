@@ -33,7 +33,7 @@ export default function RunListRow({ detail, mood = null, note = null }: Readonl
         <MotionLink
             href={`/aktivitas/${detail.activity_id}`}
             whileTap={pressShrink}
-            className="flex items-start gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface dark:border-line-dark dark:hover:bg-surface-dark-elev"
+            className="flex items-start gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface"
         >
             <TemariMascot
                 mood={safeMood}
@@ -43,8 +43,8 @@ export default function RunListRow({ detail, mood = null, note = null }: Readonl
             <div className="flex min-w-0 flex-1 flex-col gap-2">
                 <div className="flex items-center gap-4">
                     <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium text-ink dark:text-ink-dark">{detail.name ?? 'Run'}</div>
-                        <div className="text-xs text-ink-meta dark:text-ink-meta-dark">{formatIdDate(detail.start_date_local)}</div>
+                        <div className="truncate font-medium text-ink">{detail.name ?? 'Run'}</div>
+                        <div className="text-xs text-ink-3">{formatIdDate(detail.start_date_local)}</div>
                     </div>
                     <div className="flex items-center gap-5 tabular-nums">
                         <Cell value={km} unit="km" emphasize />
@@ -54,13 +54,13 @@ export default function RunListRow({ detail, mood = null, note = null }: Readonl
                     </div>
                 </div>
                 {note && (
-                    <div className="flex items-start gap-2 rounded-xl bg-surface-warm/60 px-3 py-2 text-xs leading-relaxed text-ink dark:bg-surface-dark-elev/60 dark:text-ink-dark">
+                    <div className="flex items-start gap-2 rounded-xl bg-surface-warm/60 px-3 py-2 text-xs leading-relaxed text-ink">
                         <Icon
                             icon="mdi:comment-quote-outline"
                             width={14}
                             height={14}
                             aria-hidden
-                            className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-400"
+                            className="mt-0.5 shrink-0 text-leaf-deep"
                         />
                         <p className="min-w-0">{note.oneline}</p>
                     </div>
@@ -88,13 +88,13 @@ function Cell({ value, unit, emphasize = false, hideOnNarrow, tone }: Readonly<C
         <div className={cn('text-center', hideOnNarrow && HIDE_CLASSES[hideOnNarrow])}>
             <div
                 className={cn(
-                    emphasize && 'font-bold text-ink dark:text-ink-dark',
-                    tone === 'alert' && 'text-mood-cooked',
+                    emphasize && 'font-bold text-ink',
+                    tone === 'alert' && 'text-mood-lemes',
                 )}
             >
                 {value}
             </div>
-            <div className="text-[10px] uppercase tracking-wide text-ink-meta dark:text-ink-meta-dark">{unit}</div>
+            <div className="text-[10px] uppercase tracking-wide text-ink-3">{unit}</div>
         </div>
     );
 }

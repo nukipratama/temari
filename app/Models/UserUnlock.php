@@ -18,9 +18,10 @@ use Override;
  * @property string $unlock_key
  * @property Carbon $unlocked_at
  * @property array<string, mixed>|null $metadata
+ * @property bool $equipped
  * @property-read User $user
  */
-#[Fillable(['user_id', 'unlock_key', 'unlocked_at', 'metadata'])]
+#[Fillable(['user_id', 'unlock_key', 'unlocked_at', 'metadata', 'equipped'])]
 class UserUnlock extends Model
 {
     /** @use HasFactory<UserUnlockFactory> */
@@ -41,6 +42,7 @@ class UserUnlock extends Model
         return [
             'unlocked_at' => 'datetime',
             'metadata' => 'array',
+            'equipped' => 'boolean',
         ];
     }
 }

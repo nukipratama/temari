@@ -31,7 +31,7 @@ function seedActivityForJob(): Activity
         'activity_id' => $activity->id,
         'user_id' => $user->id,
         'kind' => StoryLine::KIND_POST_RUN,
-        'mood' => 'glow',
+        'mood' => 'nyala',
     ]);
 
     return $activity;

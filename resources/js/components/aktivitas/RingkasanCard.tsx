@@ -33,7 +33,7 @@ export default function RingkasanCard({
             )}
             aria-label="Catatan Temari minggu ini"
         >
-            <div className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
+            <div className="text-xs font-semibold uppercase tracking-wider text-ink-3">
                 Catatan Temari
             </div>
             <div className="mt-2">
@@ -47,7 +47,7 @@ export default function RingkasanCard({
                 />
             </div>
             {analysis.status !== 'done' && (
-                <p className="mt-2 text-sm leading-relaxed text-ink-soft">{fallback}</p>
+                <p className="mt-2 text-sm leading-relaxed text-ink-2">{fallback}</p>
             )}
         </section>
     );

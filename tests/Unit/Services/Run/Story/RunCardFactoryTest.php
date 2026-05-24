@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Rarity;
 use App\Models\RunCard;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -24,7 +25,7 @@ it('defaults to biasa rarity on a featureless short run', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('biasa');
+    expect($card->rarity)->toBe(Rarity::Common);
 });
 
 it('promotes to epik when this activity broke a PR', function (): void {
@@ -41,7 +42,7 @@ it('promotes to epik when this activity broke a PR', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('epik');
+    expect($card->rarity)->toBe(Rarity::Epic);
 });
 
 it('promotes to legendaris on an all-time-longest half-marathon-plus', function (): void {
@@ -58,7 +59,7 @@ it('promotes to legendaris on an all-time-longest half-marathon-plus', function 
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('legendaris');
+    expect($card->rarity)->toBe(Rarity::Legendary);
 });
 
 it('promotes to langka on a 5K+ negative split (no PR)', function (): void {
@@ -70,7 +71,7 @@ it('promotes to langka on a 5K+ negative split (no PR)', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('langka');
+    expect($card->rarity)->toBe(Rarity::Rare);
 });
 
 it('awards the hari_panas badge when temp ≥ 31°C', function (): void {
@@ -148,7 +149,7 @@ it('skips the legendaris check when current detail has no distance', function ()
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('biasa');
+    expect($card->rarity)->toBe(Rarity::Common);
 });
 
 it('is idempotent — rebuilding overwrites the same row', function (): void {
@@ -162,4 +163,47 @@ it('is idempotent — rebuilding overwrites the same row', function (): void {
     app(RunCardFactory::class)->build($activity, $detail);
 
     expect(RunCard::query()->where('activity_id', $activity->id)->count())->toBe(1);
+});
+
+it('queues a card reveal on the user when a fresh card is built', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_000,
+        'stream_summary' => null,
+    ]);
+
+    $card = app(RunCardFactory::class)->build($activity, $detail);
+
+    expect($user->fresh()->pending_reveal_card_id)->toBe($card->id);
+});
+
+it('does not re-queue a reveal when rebuilding at the same rarity', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_000,
+        'stream_summary' => null,
+    ]);
+
+    app(RunCardFactory::class)->build($activity, $detail);
+    $user->forceFill(['pending_reveal_card_id' => null])->save();
+    app(RunCardFactory::class)->build($activity, $detail);
+
+    expect($user->fresh()->pending_reveal_card_id)->toBeNull();
+});
+
+it('does not overwrite an existing pending reveal when a new card lands', function (): void {
+    $user = User::factory()->create();
+
+    $oldActivity = Activity::factory()->for($user)->create();
+    $oldDetail = ActivityDetail::factory()->for($oldActivity)->create(['distance' => 4_000, 'stream_summary' => null]);
+    $oldCard = app(RunCardFactory::class)->build($oldActivity, $oldDetail);
+
+    // Second card while the first is still pending should NOT overwrite.
+    $newActivity = Activity::factory()->for($user)->create();
+    $newDetail = ActivityDetail::factory()->for($newActivity)->create(['distance' => 5_000, 'stream_summary' => null]);
+    app(RunCardFactory::class)->build($newActivity, $newDetail);
+
+    expect($user->fresh()->pending_reveal_card_id)->toBe($oldCard->id);
 });

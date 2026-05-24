@@ -65,7 +65,69 @@ class HandleInertiaRequests extends Middleware
             'unlockedAccessories' => fn () => $user === null
                 ? []
                 : UserUnlock::query()->where('user_id', $user->id)->pluck('unlock_key')->all(),
-            'aiActivity' => $this->aiActivityCounts($user),
+            'aiActivity' => fn () => $this->aiActivityCounts($user),
+            'pendingReveal' => fn () => $this->pendingRevealFor($user),
+            'stravaSync' => fn () => $this->stravaSyncFor($user),
+        ];
+    }
+
+    /**
+     * @return array{connected: bool, last_synced_at: string|null}
+     */
+    private function stravaSyncFor(?User $user): array
+    {
+        if ($user === null) {
+            return ['connected' => false, 'last_synced_at' => null];
+        }
+
+        $connected = $user->stravaConnection !== null;
+        if (! $connected) {
+            return ['connected' => false, 'last_synced_at' => null];
+        }
+
+        // Use the most-recent activity ingest timestamp as the human-facing
+        // "last synced" marker. Strava connection itself doesn't store a
+        // sync timestamp; we tag every activity via fetched_at.
+        $latest = Activity::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('fetched_at')
+            ->orderByDesc('fetched_at')
+            ->value('fetched_at');
+
+        return [
+            'connected' => true,
+            'last_synced_at' => $latest?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail_name: string|null}|null
+     */
+    private function pendingRevealFor(?User $user): ?array
+    {
+        if ($user === null || $user->pending_reveal_card_id === null) {
+            return null;
+        }
+
+        $card = RunCard::query()
+            ->whereKey($user->pending_reveal_card_id)
+            ->with(['activity.detail:id,activity_id,name', 'activity:id,user_id'])
+            ->first();
+
+        if ($card === null || $card->activity->user_id !== $user->id) {
+            return null;
+        }
+
+        /** @var array<int, string>|null $badges */
+        $badges = $card->badges;
+
+        return [
+            'card_id' => $card->id,
+            'activity_id' => $card->activity_id,
+            'rarity' => $card->rarity->value,
+            'special_move' => $card->special_move,
+            'badges' => $badges,
+            'detail_name' => $card->activity->detail?->name,
         ];
     }
 

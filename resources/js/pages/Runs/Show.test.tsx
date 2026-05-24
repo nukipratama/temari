@@ -30,7 +30,10 @@ const detail: ActivityDetail & {
     trimp_edwards: 70,
     stream_summary: {
         zone_pct: { Z1: 10, Z2: 60, Z3: 20, Z4: 8, Z5: 2 },
-        per_km: [{ km: 1, pace: '6:00', avg_hr: 150, avg_cadence_spm: 170 }],
+        per_km: [
+            { km: 1, pace: '6:00', avg_hr: 150, avg_cadence_spm: 170 },
+            { km: 2, pace: '5:45', avg_hr: 155, avg_cadence_spm: 173 },
+        ],
         decoupling_pct: 4.5,
         ascent_m: 50,
         stopped_time_sec: 30,
@@ -41,14 +44,15 @@ const detail: ActivityDetail & {
     weather_temp_c: 32,
     weather_humidity_pct: 80,
     weather_rain_detected: true,
+    location_name: 'Senayan, Jakarta Pusat',
 };
 
 const card: RunCard = {
     id: 1,
     activity_id: 99,
-    rarity: 'epik',
+    rarity: 'epic',
     special_move: 'Paru-paru Baja',
-    badges: [],
+    badges: ['negative_split'],
 };
 
 const storyLine: StoryLine = {
@@ -56,7 +60,7 @@ const storyLine: StoryLine = {
     user_id: 1,
     activity_id: 99,
     kind: 'post_run',
-    mood: 'glow',
+    mood: 'nyala',
     speech: null,
     sigil_pattern: 'ssss',
     for_date: null,
@@ -93,178 +97,132 @@ const insightDefaults = {
     insightZones: insight('run_insight_zones'),
 } as const;
 
+function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
+    return render(
+        <RunsShow
+            activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail }}
+            detail={detail}
+            card={card}
+            storyLine={storyLine}
+            speechAnalysis={speechAnalysis()}
+            {...insightDefaults}
+            pastYou={null}
+            {...overrides}
+        />,
+    );
+}
+
 describe('Runs/Show', () => {
-    it('renders headline + Temari speech (done)', () => {
-        render(
-            <RunsShow
-                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail }}
-                detail={detail}
-                card={card}
-                storyLine={storyLine}
-                speechAnalysis={speechAnalysis()}
-                {...insightDefaults}
-                pastYou={null}
-            />,
-        );
+    it('renders run name in the sky hero', () => {
+        renderShow();
         expect(screen.getAllByText('Morning Run').length).toBeGreaterThan(0);
-        expect(screen.getByText('Run solid banget')).toBeInTheDocument();
+    });
+
+    it('renders the four-lens grid with the Kata Temari header', () => {
+        renderShow();
+        expect(screen.getByText('Kata Temari')).toBeInTheDocument();
+        expect(screen.getByText('Cerita lari ini')).toBeInTheDocument();
+        expect(screen.getByText('Terjemahan teknis')).toBeInTheDocument();
+        expect(screen.getByText('Split paling seru')).toBeInTheDocument();
+        expect(screen.getByText('Zona HR')).toBeInTheDocument();
+    });
+
+    it('renders the speech analysis text inside the Cerita panel', () => {
+        renderShow();
+        expect(screen.getByText(/Run solid banget/)).toBeInTheDocument();
+    });
+
+    it('embeds the kartu in the side panel when one exists', () => {
+        renderShow();
         expect(screen.getByText('Paru-paru Baja')).toBeInTheDocument();
+        expect(screen.getByText('Kartu buat lari ini')).toBeInTheDocument();
     });
 
-    it('renders weather hero card with hot temp + rain', () => {
-        render(
-            <RunsShow
-                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail }}
-                detail={detail}
-                card={null}
-                storyLine={null}
-                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
-                {...insightDefaults}
-                pastYou={null}
-            />,
-        );
-        expect(screen.getByText('Cuaca lari')).toBeInTheDocument();
-        expect(screen.getAllByText(/32/).length).toBeGreaterThan(0);
-        expect(screen.getByText(/80% humidity/)).toBeInTheDocument();
-        expect(screen.getByText(/hujan saat lari/)).toBeInTheDocument();
+    it('shows a "no kartu yet" placeholder when card is null', () => {
+        renderShow({ card: null });
+        expect(screen.getByText(/Belum ada kartu/)).toBeInTheDocument();
     });
 
-    it('omits weather hero card when no weather data', () => {
-        const minDetail = {
-            ...detail,
-            stream_summary: null,
-            weather_temp_c: null,
-            weather_humidity_pct: null,
-            weather_rain_detected: null,
-            location_name: null,
-        };
-        render(
-            <RunsShow
-                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: minDetail }}
-                detail={minDetail}
-                card={null}
-                storyLine={null}
-                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
-                {...insightDefaults}
-                pastYou={null}
-            />,
-        );
-        expect(screen.queryByText('Cuaca lari')).not.toBeInTheDocument();
+    it('renders the map+weather panel with temp + location when present', () => {
+        renderShow();
+        expect(screen.getByText('Rute lari')).toBeInTheDocument();
+        expect(screen.getByText(/32°/)).toBeInTheDocument();
+        expect(screen.getByText(/80% LEMBAB/)).toBeInTheDocument();
+        expect(screen.getByText('Senayan, Jakarta Pusat')).toBeInTheDocument();
     });
 
-    it('renders past-you strip with pace + hr diff', () => {
-        render(
-            <RunsShow
-                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail }}
-                detail={detail}
-                card={null}
-                storyLine={null}
-                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
-                {...insightDefaults}
-                pastYou={{
-                    past: { start_date_local: '2026-04-01T07:00' },
-                    pace_diff_sec: 10,
-                    hr_diff_bpm: -3,
-                    days_ago: 30,
-                }}
-            />,
-        );
+    it('hides the map area when no polyline is present', () => {
+        const noPolyline = { ...detail, summary_polyline: null };
+        const { container } = renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noPolyline }, detail: noPolyline });
+        expect(container.querySelector('.animate-pulse')).toBeNull();
+    });
+
+    it('shows the map suspense fallback when a polyline IS present', () => {
+        const withPolyline = { ...detail, summary_polyline: 'abc123' };
+        const { container } = renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withPolyline }, detail: withPolyline });
+        expect(container.querySelector('.animate-pulse')).not.toBeNull();
+    });
+
+    it('renders the splits per-km section + highlights the fastest km', () => {
+        renderShow();
+        expect(screen.getByText('Splits per km')).toBeInTheDocument();
+        // Fastest is the 5:45 km
+        expect(screen.getByText(/5:45 — km 2/)).toBeInTheDocument();
+    });
+
+    it('renders the past-you strip when journeyMatch is present', () => {
+        renderShow({
+            pastYou: {
+                past: { start_date_local: '2026-04-01T07:00' },
+                pace_diff_sec: 10,
+                hr_diff_bpm: -3,
+                days_ago: 30,
+            },
+        });
         expect(screen.getByText(/30 hari lalu/)).toBeInTheDocument();
     });
 
-    it('renders splits table when per_km data is present', () => {
-        render(
-            <RunsShow
-                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail }}
-                detail={detail}
-                card={null}
-                storyLine={null}
-                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
-                {...insightDefaults}
-                pastYou={null}
-            />,
-        );
-        expect(screen.getByText('Splits per KM')).toBeInTheDocument();
-        expect(screen.getAllByText('6:00').length).toBeGreaterThan(0);
-    });
-
-    it('handles null detail.distance for pace', () => {
-        const noDist = { ...detail, distance: null, moving_time: null };
-        render(
-            <RunsShow
-                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noDist }}
-                detail={noDist}
-                card={null}
-                storyLine={null}
-                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
-                {...insightDefaults}
-                pastYou={null}
-            />,
-        );
-        expect(screen.getAllByText('Pace').length).toBeGreaterThan(0);
-    });
-
-    it('falls back to "Run" when detail.name is null', () => {
+    it('falls back to "Lari" when detail.name is null', () => {
         const noName = { ...detail, name: null };
-        render(
-            <RunsShow
-                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noName }}
-                detail={noName}
-                card={null}
-                storyLine={null}
-                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
-                {...insightDefaults}
-                pastYou={null}
-            />,
-        );
-        expect(screen.getAllByText('Run').length).toBeGreaterThan(0);
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noName }, detail: noName });
+        expect(screen.getAllByText(/Lari/).length).toBeGreaterThan(0);
     });
 
-    it('handles missing start_date_local', () => {
-        const noDate = { ...detail, start_date_local: null };
-        render(
-            <RunsShow
-                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noDate }}
-                detail={noDate}
-                card={null}
-                storyLine={null}
-                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
-                {...insightDefaults}
-                pastYou={null}
-            />,
-        );
-        expect(screen.getByText('—')).toBeInTheDocument();
+    it('handles null distance/moving_time gracefully (dash in hero stats)', () => {
+        const noDist = { ...detail, distance: null, moving_time: null };
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noDist }, detail: noDist });
+        expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
 
-    it('renders the location chip when location_name is set', () => {
-        const withLoc = { ...detail, location_name: 'Bogor, Jawa Barat, Indonesia' };
-        render(
-            <RunsShow
-                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withLoc }}
-                detail={withLoc}
-                card={null}
-                storyLine={null}
-                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
-                {...insightDefaults}
-                pastYou={null}
-            />,
-        );
-        expect(screen.getByText('Bogor, Jawa Barat, Indonesia')).toBeInTheDocument();
+    it('exposes the decoupling tile as a warning when |decoupling| > 8%', () => {
+        const hot = { ...detail, stream_summary: { ...(detail.stream_summary ?? {}), decoupling_pct: 12.5 } };
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: hot }, detail: hot });
+        expect(screen.getByText('+12.5%')).toBeInTheDocument();
     });
 
-    it('shows the map fallback area when a summary_polyline is present', () => {
-        const withPolyline = { ...detail, summary_polyline: 'abc123' };
-        const { container } = render(
-            <RunsShow
-                activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withPolyline }}
-                detail={withPolyline}
-                card={null}
-                storyLine={null}
-                speechAnalysis={speechAnalysis({ status: 'pending', content: null })}
-                {...insightDefaults}
-                pastYou={null}
-            />,
-        );
-        expect(container.querySelector('.animate-pulse')).not.toBeNull();
+    it('renders the empty-tiles fallback when detail has no technical numbers', () => {
+        const bare = {
+            ...detail,
+            stream_summary: null,
+            average_heartrate: null,
+            max_heartrate: null,
+            average_cadence: null,
+            trimp_edwards: null,
+        };
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: bare }, detail: bare });
+        expect(screen.getByText(/Detail teknis belum tersedia/)).toBeInTheDocument();
+    });
+
+    it('parses a string-form pace_sec from splits when pace_sec is missing', () => {
+        const withStringPace = {
+            ...detail,
+            stream_summary: {
+                ...(detail.stream_summary ?? {}),
+                per_km: [{ km: 1, pace: '5:30' }, { km: 2, pace: '5:20' }],
+            },
+        };
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withStringPace }, detail: withStringPace });
+        // The splits table renders with parsed paces; we only assert the structure rendered.
+        expect(screen.getAllByText(/5:/).length).toBeGreaterThan(0);
     });
 });

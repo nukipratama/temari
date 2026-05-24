@@ -43,20 +43,20 @@ export default function FirstRunTooltip({ recentRunCount }: Readonly<FirstRunToo
                     transition={{ duration: 0.25, ease: 'easeOut' }}
                     role="status"
                     aria-live="polite"
-                    className="mb-6 flex items-start gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-700 dark:bg-brand-900/40"
+                    className="mb-6 flex items-start gap-3 rounded-2xl border border-leaf/25 bg-leaf/10 p-4"
                 >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500/20 text-brand-700 dark:text-brand-300">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-leaf/20 text-leaf-deep">
                         <Icon icon="mdi:hand-wave" width={20} height={20} aria-hidden />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-ink dark:text-ink-dark">Halo! Strava kamu sudah tersambung.</p>
-                        <p className="mt-1 text-sm leading-relaxed text-ink dark:text-ink-dark">
+                        <p className="text-sm font-semibold text-ink">Halo! Strava kamu sudah tersambung.</p>
+                        <p className="mt-1 text-sm leading-relaxed text-ink">
                             Begitu lari pertama kamu masuk, aku akan mulai menemani di sini. Sinkronisasi berjalan otomatis setiap jam.
                         </p>
                         <button
                             type="button"
                             onClick={dismiss}
-                            className="mt-3 inline-flex items-center gap-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/30"
+                            className="mt-3 inline-flex items-center gap-1 rounded-lg bg-leaf px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-leaf-deep focus:outline-none focus:ring-4 focus:ring-leaf/30"
                         >
                             Baik, ditunggu
                         </button>

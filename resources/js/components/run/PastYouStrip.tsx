@@ -20,8 +20,8 @@ interface PastYouStripProps {
     className?: string;
 }
 
-const CARD_BASE = 'block rounded-2xl border border-line bg-surface-elev p-4 dark:border-line-dark dark:bg-surface-dark-elev sm:p-5';
-const HEADING_CLASS = 'text-xs font-semibold uppercase tracking-wider text-ink-meta dark:text-ink-meta-dark';
+const CARD_BASE = 'block rounded-2xl border border-line bg-surface-elev p-4 sm:p-5';
+const HEADING_CLASS = 'text-xs font-semibold uppercase tracking-wider text-ink-3';
 
 export default function PastYouStrip({ match, currentDistance, className }: Readonly<PastYouStripProps>) {
     const distanceLabel = currentDistance ? `${(currentDistance / 1000).toFixed(1)} km` : 'jarak ini';
@@ -30,7 +30,7 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
         return (
             <div className={cn(CARD_BASE, className)}>
                 <h3 className={HEADING_CLASS}>Kamu vs Kamu Dulu</h3>
-                <p className="mt-2 text-sm text-ink dark:text-ink-dark">Pertama kali di {distanceLabel}!</p>
+                <p className="mt-2 text-sm text-ink">Pertama kali di {distanceLabel}!</p>
             </div>
         );
     }
@@ -41,10 +41,10 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
             <div className="flex items-start justify-between gap-3">
                 <h3 className={HEADING_CLASS}>Kamu vs Kamu Dulu</h3>
                 {linkable && (
-                    <Icon icon="mdi:arrow-top-right" width={16} height={16} aria-hidden className="text-ink-meta" />
+                    <Icon icon="mdi:arrow-top-right" width={16} height={16} aria-hidden className="text-ink-3" />
                 )}
             </div>
-            <p className="mt-2 text-sm leading-relaxed text-ink dark:text-ink-dark">
+            <p className="mt-2 text-sm leading-relaxed text-ink">
                 vs kamu <span className="font-semibold">{match.days_ago} hari lalu</span> di {distanceLabel}
             </p>
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
@@ -58,10 +58,10 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
                     </span>
                 )}
             </div>
-            <p className="mt-3 text-xs font-medium text-ink-soft dark:text-ink-soft-dark">
+            <p className="mt-3 text-xs font-medium text-ink-2">
                 {match.past.name ?? 'Aktivitas dulu'}
             </p>
-            <p className="text-[11px] text-ink-meta dark:text-ink-meta-dark">
+            <p className="text-[11px] text-ink-3">
                 {formatIdDate(match.past.start_date_local, 'long')}
             </p>
         </>
@@ -71,7 +71,7 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
         return (
             <Link
                 href={`/aktivitas/${match.past.activity_id}`}
-                className={cn(CARD_BASE, 'transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500', className)}
+                className={cn(CARD_BASE, 'transition hover:-translate-y-0.5 hover:border-leaf/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-leaf', className)}
             >
                 {body}
             </Link>
@@ -84,5 +84,5 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
 // Pace: positive diff = faster (good); HR: negative diff = lower (good).
 function diffTone(diff: number, kind: 'pace' | 'hr'): string {
     const good = kind === 'pace' ? diff > 0 : diff < 0;
-    return good ? 'text-mood-bouncy' : 'text-mood-cooked';
+    return good ? 'text-mood-enteng' : 'text-mood-lemes';
 }

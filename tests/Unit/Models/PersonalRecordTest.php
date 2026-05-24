@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\PersonalRecord;
 use App\Models\User;
@@ -52,5 +53,5 @@ it('allows the same category under different users', function (): void {
     PersonalRecord::factory()->create(['category' => '5km']);
     $second = PersonalRecord::factory()->create(['category' => '5km']);
 
-    expect($second->category)->toBe('5km');
+    expect($second->category)->toBe(PrCategory::Km5);
 });

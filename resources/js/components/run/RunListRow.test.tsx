@@ -44,18 +44,18 @@ describe('RunListRow', () => {
     });
 
     it('derives a mood from TRIMP when none is provided', () => {
-        // TRIMP=70 (default fixture) falls in the `glow` aerobic bucket.
+        // TRIMP=70 (default fixture) falls in the `nyala` aerobic bucket.
         render(<RunListRow detail={detail()} />);
-        expect(screen.getByLabelText('mood glow')).toBeInTheDocument();
+        expect(screen.getByLabelText('mood nyala')).toBeInTheDocument();
     });
 
     it('uses passed mood when provided (overrides derivation)', () => {
-        render(<RunListRow detail={detail()} mood="dim" />);
-        expect(screen.getByLabelText('mood dim')).toBeInTheDocument();
+        render(<RunListRow detail={detail()} mood="adem" />);
+        expect(screen.getByLabelText('mood adem')).toBeInTheDocument();
     });
 
-    it('derives wobble for a crushing TRIMP', () => {
+    it('derives lemes for a crushing TRIMP', () => {
         render(<RunListRow detail={detail({ trimp_edwards: 220 })} />);
-        expect(screen.getByLabelText('mood wobble')).toBeInTheDocument();
+        expect(screen.getByLabelText('mood lemes')).toBeInTheDocument();
     });
 });

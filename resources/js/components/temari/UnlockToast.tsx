@@ -38,19 +38,19 @@ export default function UnlockToast() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
-                        className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-pop-200 bg-surface-elev px-5 py-3 shadow-lg"
+                        className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-citrus/25 bg-surface-elev px-5 py-3 shadow-lg"
                         role="status"
                     >
-                        <Icon icon={active.icon} width={24} height={24} className="text-pop-600" aria-hidden />
+                        <Icon icon={active.icon} width={24} height={24} className="text-citrus-deep" aria-hidden />
                         <div>
-                            <div className="text-xs font-semibold uppercase tracking-wider text-ink-meta">Unlock baru</div>
+                            <div className="text-xs font-semibold uppercase tracking-wider text-ink-3">Unlock baru</div>
                             <div className="text-sm font-semibold text-ink">{active.name}</div>
                         </div>
                         <button
                             type="button"
                             onClick={() => setActive(null)}
                             aria-label="Tutup notifikasi"
-                            className="ml-2 rounded-full p-1 text-ink-meta hover:bg-line/40 hover:text-ink"
+                            className="ml-2 rounded-full p-1 text-ink-3 hover:bg-line/40 hover:text-ink"
                         >
                             <Icon icon="mdi:close" width={14} height={14} aria-hidden />
                         </button>

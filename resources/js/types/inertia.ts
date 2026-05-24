@@ -1,4 +1,4 @@
-export type Mood = 'glow' | 'bouncy' | 'wobble' | 'squished' | 'spinning' | 'dim';
+export type Mood = 'nyala' | 'enteng' | 'oleng' | 'lemes' | 'mumet' | 'adem';
 
 export type Tone = 'neutral' | 'positive' | 'warning' | 'alert';
 
@@ -11,12 +11,28 @@ export interface AuthUser {
     avatar_url: string | null;
 }
 
+export interface PendingReveal {
+    card_id: number;
+    activity_id: number;
+    rarity: Rarity;
+    special_move: string;
+    badges: string[] | null;
+    detail_name: string | null;
+}
+
+export interface StravaSync {
+    connected: boolean;
+    last_synced_at: string | null;
+}
+
 export interface SharedProps {
     auth: { user: AuthUser | null };
     flash: { success: string | null; error: string | null; info: string | null };
     demoLoginEnabled: boolean;
     onboarding: { forceShow: boolean };
     aiActivity?: { pending: number; queued: number; processing: number };
+    pendingReveal?: PendingReveal | null;
+    stravaSync?: StravaSync | null;
     [key: string]: unknown;
 }
 
@@ -34,7 +50,9 @@ export type AnalysisType =
     | 'weekly_recap'
     | 'pr_context'
     | 'trend_caption'
-    | 'card_flavor';
+    | 'card_flavor'
+    | 'persona_summary'
+    | 'monthly_recap';
 
 export interface AnalysisPayload {
     id: number | null;
@@ -76,6 +94,7 @@ export interface ActivityDetail {
     location_name?: string | null;
     location_country?: string | null;
     summary_polyline?: string | null;
+    activity?: Activity;
 }
 
 export interface Activity {
@@ -87,7 +106,7 @@ export interface Activity {
     runCard?: RunCard;
 }
 
-export type Rarity = 'biasa' | 'jarang' | 'langka' | 'epik' | 'legendaris';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 export interface RunCard {
     id: number;

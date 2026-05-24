@@ -26,7 +26,7 @@ const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
 
 function RateLimitedNote() {
     return (
-        <span className="text-xs text-accent-700">
+        <span className="text-xs text-horizon-deep">
             Pelan-pelan, Temari kewalahan. Coba lagi sebentar.
         </span>
     );
@@ -74,7 +74,7 @@ export default function AnalysisStatus({
                     {renderContent ? renderContent(content) : content}
                 </div>
                 {showTimestamp && analysis.generated_at && (
-                    <span className="text-xs text-ink-meta">
+                    <span className="text-xs text-ink-3">
                         Dibuat {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
@@ -83,7 +83,7 @@ export default function AnalysisStatus({
                         type="button"
                         onClick={trigger}
                         disabled={cooling || pending}
-                        className="inline-flex items-center self-start gap-1 text-xs text-ink-meta hover:text-brand-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-meta"
+                        className="inline-flex items-center self-start gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
                     >
                         <Icon icon="mdi:refresh" aria-hidden />
                         <span>
@@ -101,7 +101,7 @@ export default function AnalysisStatus({
     if (effectiveStatus === 'queued' || effectiveStatus === 'processing') {
         return (
             <span
-                className="inline-flex items-center gap-2 rounded-full bg-surface-sunken text-ink-meta text-xs px-3 py-1.5"
+                className="inline-flex items-center gap-2 rounded-full bg-surface-sunken text-ink-3 text-xs px-3 py-1.5"
                 role="status"
                 aria-live="polite"
             >
@@ -124,7 +124,7 @@ export default function AnalysisStatus({
                         type="button"
                         onClick={trigger}
                         disabled={pending}
-                        className="inline-flex items-center self-start gap-1 text-xs text-brand-700 hover:text-brand-800 transition-colors disabled:opacity-50"
+                        className="inline-flex items-center self-start gap-1 text-xs text-leaf-deep hover:text-ink transition-colors disabled:opacity-50"
                     >
                         <Icon icon="mdi:reload" aria-hidden />
                         <span>Coba lagi</span>
@@ -136,7 +136,7 @@ export default function AnalysisStatus({
 
     return (
         <div className="flex flex-col gap-1.5">
-            <span className="inline-flex items-center gap-1.5 text-xs text-ink-meta">
+            <span className="inline-flex items-center gap-1.5 text-xs text-ink-3">
                 <Icon icon="mdi:sparkles-outline" aria-hidden />
                 <span>Belum dianalisis Temari.</span>
             </span>
@@ -145,7 +145,7 @@ export default function AnalysisStatus({
                     type="button"
                     onClick={trigger}
                     disabled={pending}
-                    className="inline-flex items-center self-start gap-1 rounded-full bg-brand-700 text-white text-xs px-3 py-1 font-semibold hover:bg-brand-800 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center self-start gap-1 rounded-full bg-leaf-deep text-white text-xs px-3 py-1 font-semibold hover:bg-sky transition-colors disabled:opacity-50"
                 >
                     <Icon icon="mdi:auto-fix" aria-hidden />
                     <span>Analisis sekarang</span>

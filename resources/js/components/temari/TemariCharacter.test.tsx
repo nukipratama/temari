@@ -4,7 +4,7 @@ import TemariCharacter from './TemariCharacter';
 import { MOOD_VARIANTS } from '@/lib/temariMoodVariants';
 import type { Mood } from '@/types/inertia';
 
-const ALL_MOODS: Mood[] = ['glow', 'bouncy', 'wobble', 'squished', 'spinning', 'dim'];
+const ALL_MOODS: Mood[] = ['nyala', 'enteng', 'lemes', 'oleng', 'mumet', 'adem'];
 
 describe('TemariCharacter', () => {
     it.each(ALL_MOODS)('renders without crashing for mood %s', (mood) => {
@@ -13,34 +13,31 @@ describe('TemariCharacter', () => {
     });
 
     it('uses the variant mood colour somewhere in the SVG', () => {
-        const { container } = render(<TemariCharacter mood="bouncy" />);
-        const expected = MOOD_VARIANTS.bouncy.moodColor;
+        const { container } = render(<TemariCharacter mood="enteng" />);
+        const expected = MOOD_VARIANTS.enteng.moodColor;
         const svg = container.querySelector('svg');
         expect(svg?.innerHTML.toLowerCase()).toContain(expected);
     });
 
-    it('renders the towel accessory only on wobble', () => {
-        // The towel-around-neck path `M 30 54 Q 50 49` is unique to wobble.
-        const wobble = render(<TemariCharacter mood="wobble" />);
-        const glow = render(<TemariCharacter mood="glow" />);
-        expect(wobble.container.innerHTML).toContain('M 30 54 Q 50 49');
-        expect(glow.container.innerHTML).not.toContain('M 30 54 Q 50 49');
+    it('renders the towel accessory only on lemes', () => {
+        const lemes = render(<TemariCharacter mood="lemes" />);
+        const nyala = render(<TemariCharacter mood="nyala" />);
+        expect(lemes.container.innerHTML).toContain('M 30 54 Q 50 49');
+        expect(nyala.container.innerHTML).not.toContain('M 30 54 Q 50 49');
     });
 
-    it('renders the medal accessory only on glow', () => {
-        const glow = render(<TemariCharacter mood="glow" />);
-        const dim = render(<TemariCharacter mood="dim" />);
-        // Medal ribbon path is the distinctive `M 56 51 L 60 60 L 56 62 Z`.
-        expect(glow.container.innerHTML).toContain('M 56 51 L 60 60 L 56 62 Z');
-        expect(dim.container.innerHTML).not.toContain('M 56 51 L 60 60 L 56 62 Z');
+    it('renders the medal accessory only on nyala', () => {
+        const nyala = render(<TemariCharacter mood="nyala" />);
+        const adem = render(<TemariCharacter mood="adem" />);
+        expect(nyala.container.innerHTML).toContain('M 56 51 L 60 60 L 56 62 Z');
+        expect(adem.container.innerHTML).not.toContain('M 56 51 L 60 60 L 56 62 Z');
     });
 
-    it('renders zzz particles only on dim', () => {
-        const dim = render(<TemariCharacter mood="dim" />);
-        const glow = render(<TemariCharacter mood="glow" />);
-        // Three Z letters in dim mood; none in glow.
-        expect(dim.container.querySelectorAll('text').length).toBeGreaterThanOrEqual(3);
-        expect(glow.container.innerHTML).not.toMatch(/<text[^>]*>Z<\/text>/);
+    it('renders zzz particles only on adem', () => {
+        const adem = render(<TemariCharacter mood="adem" />);
+        const nyala = render(<TemariCharacter mood="nyala" />);
+        expect(adem.container.querySelectorAll('text').length).toBeGreaterThanOrEqual(3);
+        expect(nyala.container.innerHTML).not.toMatch(/<text[^>]*>Z<\/text>/);
     });
 
     it('renders the head + body always (regardless of mood)', () => {
@@ -54,19 +51,19 @@ describe('TemariCharacter', () => {
     });
 
     it('respects the size prop', () => {
-        const { container } = render(<TemariCharacter mood="glow" size={48} />);
+        const { container } = render(<TemariCharacter mood="nyala" size={48} />);
         const svg = container.querySelector('svg');
         expect(svg).toHaveAttribute('width', '48');
         expect(svg).toHaveAttribute('height', '48');
     });
 
     it('passes className through to the svg', () => {
-        const { container } = render(<TemariCharacter mood="glow" className="opacity-50" />);
+        const { container } = render(<TemariCharacter mood="nyala" className="opacity-50" />);
         expect(container.querySelector('svg')).toHaveClass('opacity-50');
     });
 
     it('marks the SVG as aria-hidden (decorative)', () => {
-        const { container } = render(<TemariCharacter mood="glow" />);
+        const { container } = render(<TemariCharacter mood="nyala" />);
         expect(container.querySelector('svg')).toHaveAttribute('aria-hidden');
     });
 
@@ -76,7 +73,7 @@ describe('TemariCharacter', () => {
         const randSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
 
         try {
-            render(<TemariCharacter mood="glow" />);
+            render(<TemariCharacter mood="nyala" />);
 
             // Initial delay fires → closeEye()
             act(() => {
@@ -99,7 +96,7 @@ describe('TemariCharacter', () => {
     it('skips blink scheduling when paused', () => {
         vi.useFakeTimers();
         try {
-            const { unmount } = render(<TemariCharacter mood="glow" paused />);
+            const { unmount } = render(<TemariCharacter mood="nyala" paused />);
             // No timers should be queued.
             expect(vi.getTimerCount()).toBe(0);
             unmount();
@@ -109,8 +106,8 @@ describe('TemariCharacter', () => {
     });
 
     it('applies the gaze offset to the open-eye pupils', () => {
-        const a = render(<TemariCharacter mood="glow" gaze={{ x: 1, y: 1 }} />);
-        const b = render(<TemariCharacter mood="glow" gaze={{ x: -1, y: -1 }} />);
+        const a = render(<TemariCharacter mood="nyala" gaze={{ x: 1, y: 1 }} />);
+        const b = render(<TemariCharacter mood="nyala" gaze={{ x: -1, y: -1 }} />);
         // Default left-pupil cx is 38; gaze=1 nudges it +1.6, gaze=-1 nudges -1.6.
         expect(a.container.innerHTML).toContain('cx="39.6"');
         expect(b.container.innerHTML).toContain('cx="36.4"');
@@ -120,10 +117,10 @@ describe('TemariCharacter', () => {
         'renders the %s particle layer for its mood',
         (kind) => {
             const moodFor = {
-                hearts: 'bouncy',
-                droplets: 'wobble',
-                lines: 'squished',
-                stars: 'spinning',
+                hearts: 'enteng',
+                droplets: 'lemes',
+                lines: 'oleng',
+                stars: 'mumet',
             } as const;
             const { container } = render(<TemariCharacter mood={moodFor[kind]} />);
             expect(container.querySelector('svg')).toBeInTheDocument();
@@ -131,7 +128,7 @@ describe('TemariCharacter', () => {
     );
 
     it.each(['flag', 'question', 'bottle'] as const)('renders the %s accessory for its mood', (kind) => {
-        const moodFor = { flag: 'bouncy', question: 'spinning', bottle: 'squished' } as const;
+        const moodFor = { flag: 'enteng', question: 'mumet', bottle: 'oleng' } as const;
         const { container } = render(<TemariCharacter mood={moodFor[kind]} />);
         expect(container.querySelector('svg')).toBeInTheDocument();
     });
@@ -139,7 +136,7 @@ describe('TemariCharacter', () => {
     it('renders unlocked accessory overlay when unlocks include a known key', () => {
         const { container } = render(
             <TemariCharacter
-                mood="glow"
+                mood="nyala"
                 unlockedAccessories={['accessory.headband_legendaris', 'accessory.medal_gold']}
             />,
         );
@@ -151,23 +148,23 @@ describe('TemariCharacter', () => {
 
     it('re-renders when unlockedAccessories array changes content', () => {
         const { container, rerender } = render(
-            <TemariCharacter mood="glow" unlockedAccessories={['accessory.headband_legendaris']} />,
+            <TemariCharacter mood="nyala" unlockedAccessories={['accessory.headband_legendaris']} />,
         );
         const before = container.innerHTML;
         rerender(
-            <TemariCharacter mood="glow" unlockedAccessories={['accessory.medal_gold']} />,
+            <TemariCharacter mood="nyala" unlockedAccessories={['accessory.medal_gold']} />,
         );
         expect(container.innerHTML).not.toBe(before);
     });
 
     it('skips re-render when only props identity changes but values are equal (memo guard)', () => {
         const { rerender, container } = render(
-            <TemariCharacter mood="glow" gaze={{ x: 0, y: 0 }} />,
+            <TemariCharacter mood="nyala" gaze={{ x: 0, y: 0 }} />,
         );
         const before = container.innerHTML;
         // A fresh `gaze` object with same values — memo equality should skip
         // the re-render, so the DOM string stays byte-identical.
-        rerender(<TemariCharacter mood="glow" gaze={{ x: 0, y: 0 }} />);
+        rerender(<TemariCharacter mood="nyala" gaze={{ x: 0, y: 0 }} />);
         expect(container.innerHTML).toBe(before);
     });
 });

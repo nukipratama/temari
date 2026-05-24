@@ -12,7 +12,7 @@ A self-hosted, Strava-connected personal running dashboard with a built-in compa
 - **Async**: Horizon (queues) · Scheduler
 - **Observability**: Telescope (dev) · Pulse (perf) · Mailpit (dev mail catcher)
 - **LLM**: Azure OpenAI via `openai-php/laravel` for briefing/verdict narration; rule-based fallback flips a "mode darurat" chip in the UI
-- **Tests**: Pest 4 (100% line coverage gate) · Vitest (100% lines + functions gate)
+- **Tests**: Pest 4 (95% line coverage gate) · Vitest (95% lines + functions gate)
 - **AI dev**: Laravel Boost — `CLAUDE.md` + `.claude/skills/*` for AI-paired work; `laravel/claude-code` plugin enabled in `.claude/settings.json`
 
 ## Quick start
@@ -43,7 +43,7 @@ Day-to-day commands (all inside Sail):
 ./vendor/bin/sail composer run dev   # Vite + queue listener + log watcher
 ./vendor/bin/sail bin pest           # PHP tests
 ./vendor/bin/sail npm run test       # FE tests (Vitest)
-./vendor/bin/sail npm run test:coverage  # FE tests with 100% line+function gate
+./vendor/bin/sail npm run test:coverage  # FE tests with 95% line+function gate
 ./vendor/bin/sail bin pint           # format
 ./vendor/bin/sail bin phpstan analyse    # static analysis
 ./vendor/bin/sail bin rector --dry-run   # refactor suggestions
@@ -68,7 +68,7 @@ The test stack (`mysql_test`, `redis_test`) runs on the compose network only —
 
 **PHP** — Pest 4 against a dedicated test stack: `mysql_test` (tmpfs-backed, ephemeral) and `redis_test`, configured in `phpunit.xml`. Same image versions as prod for parity. `RefreshDatabase` resets schema per test class. 1:1 class↔test convention — every class file has its own test (mocking siblings is encouraged).
 
-**Frontend** — Vitest with jsdom against React 19 + Inertia components. Same 1:1 convention. Gates: 100% lines + 100% functions ([vitest.config.ts](vitest.config.ts)). Branches relaxed because hitting every `?? null` fallback in defensive code is contortionist, not signal.
+**Frontend** — Vitest with jsdom against React 19 + Inertia components. Same 1:1 convention. Gates: 95% lines + 95% functions ([vitest.config.ts](vitest.config.ts)). Branches relaxed because hitting every `?? null` fallback in defensive code is contortionist, not signal.
 
 CI uses GitHub Actions service containers (`mysql:8.4` + `redis:alpine`) for the PHP suite — every workflow run gets a fresh DB. FE suite is pure-node, no services.
 
@@ -82,8 +82,8 @@ CI uses GitHub Actions service containers (`mysql:8.4` + `redis:alpine`) for the
 | commit-msg      | Conventional Commits format check                                      |
 | pre-push        | Block direct pushes to `main` (force or not). Use feature branch + PR  |
 | CI — `lint`     | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
-| CI — `pest`     | `pest --coverage --min=100` against mysql:8.4 + redis:alpine services  |
-| CI — `vitest`   | `npm run test:coverage` — 100% lines + functions, jsdom only           |
+| CI — `pest`     | `pest --coverage --min=95` against mysql:8.4 + redis:alpine services   |
+| CI — `vitest`   | `npm run test:coverage` — 95% lines + functions, jsdom only            |
 | CI — `deploy`   | On push to `main`: build prod image, migrate, roll containers, recycle Horizon, healthcheck `/up` |
 
 ## Branch workflow

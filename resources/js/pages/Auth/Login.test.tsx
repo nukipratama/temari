@@ -23,16 +23,15 @@ describe('Login', () => {
         expect(screen.getByText('Coba versi demo')).toBeInTheDocument();
     });
 
-    it('renders the brand hero + 3 product pillars (no mascot reveal pre-auth)', () => {
+    it('renders the brand hero + 3 onboarding pillars (Catat / Kasih / Konsisten)', () => {
         setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
         render(<Login authStravaUrl="/x" />);
         expect(screen.getByText('TemanLari')).toBeInTheDocument();
-        expect(screen.getByText('Setiap Langkah Berarti')).toBeInTheDocument();
-        expect(screen.getByText('Catat')).toBeInTheDocument();
-        expect(screen.getByText('Pantau')).toBeInTheDocument();
-        expect(screen.getByText('Konsisten')).toBeInTheDocument();
-        // Temari is the in-app mascot — should not appear pre-login.
-        expect(screen.queryByText(/Temari/i)).not.toBeInTheDocument();
+        // Editorial headline is split across two lines; assert the second line.
+        expect(screen.getByText('Berarti.')).toBeInTheDocument();
+        ['Catat', 'Kasih', 'Konsisten'].forEach((label) => {
+            expect(screen.getByText(label)).toBeInTheDocument();
+        });
     });
 
     it('clicking the demo button invokes the submit handler', async () => {

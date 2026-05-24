@@ -12,9 +12,9 @@ interface SectionHeadingProps {
 }
 
 const ACCENT_RULE: Record<Tone, string> = {
-    brand: 'before:bg-brand-500',
-    accent: 'before:bg-accent-500',
-    pop: 'before:bg-pop-500',
+    brand: 'before:bg-leaf',
+    accent: 'before:bg-horizon',
+    pop: 'before:bg-citrus',
     neutral: 'before:bg-line',
 };
 
@@ -53,7 +53,7 @@ export default function SectionHeading({
                     {title}
                 </h2>
                 {subtitle !== undefined && subtitle !== null && (
-                    <p className="mt-2 text-sm leading-relaxed text-ink-soft">{subtitle}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-ink-2">{subtitle}</p>
                 )}
             </div>
         </div>

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
@@ -71,7 +72,7 @@ it('grants medal_gold once five PRs are recorded', function (): void {
         ['category' => '5km'],
         ['category' => '10km'],
         ['category' => '15km'],
-        ['category' => '21km'],
+        ['category' => 'half_marathon'],
     ))->create();
 
     expect(app(UnlockEngine::class)->grantEligible($user))
@@ -83,7 +84,7 @@ it('grants headband_legendaris from a Legendaris run card', function (): void {
     $activity = Activity::factory()->for($user)->create();
     RunCard::factory()->create([
         'activity_id' => $activity->id,
-        'rarity' => RunCard::RARITY_LEGENDARIS,
+        'rarity' => Rarity::Legendary,
     ]);
 
     expect(app(UnlockEngine::class)->grantEligible($user))
@@ -96,7 +97,7 @@ it('grants headband_epik after three Epik run cards', function (): void {
         $activity = Activity::factory()->for($user)->create();
         RunCard::factory()->create([
             'activity_id' => $activity->id,
-            'rarity' => RunCard::RARITY_EPIK,
+            'rarity' => Rarity::Epic,
         ]);
     }
 

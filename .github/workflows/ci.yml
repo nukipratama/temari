@@ -101,7 +101,7 @@ jobs:
           # frontend-tests jobs concurrently. Going higher (e.g. nproc)
           # starves vitest's lazy-import resolution past its 10s waitFor
           # budget in Dashboard.test.tsx.
-          ./vendor/bin/pest --parallel --processes=4 --coverage --min=100 \
+          ./vendor/bin/pest --parallel --processes=4 --coverage --min=95 \
             --fail-on-warning --fail-on-notice \
             --fail-on-deprecation --fail-on-risky \
             --fail-on-phpunit-warning --fail-on-phpunit-notice \

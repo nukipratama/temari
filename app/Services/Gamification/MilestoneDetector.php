@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
+use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 
@@ -22,9 +23,6 @@ use App\Models\ActivityDetail;
  */
 class MilestoneDetector
 {
-    /** km thresholds in ascending order. Largest crossed → highest priority. */
-    private const array DISTANCE_THRESHOLDS_KM = [1, 3, 5, 10, 15, 21.1, 42.2];
-
     /** Pace thresholds in seconds-per-km, sorted descending (slowest first). */
     private const array PACE_THRESHOLDS_SEC = [
         7 * 60,
@@ -88,10 +86,11 @@ class MilestoneDetector
         $milestones = [];
 
         foreach ($newPrCategories as $category) {
+            $label = PrCategory::tryFrom($category)?->label() ?? str_replace('_', ' ', $category);
             $milestones[] = [
                 'kind' => 'pr',
                 'label' => 'Personal Record!',
-                'body' => sprintf('Kamu baru saja memecahkan PR di %s. Aku catat.', $this->prCategoryLabel($category)),
+                'body' => sprintf('Kamu baru saja memecahkan PR di %s. Aku catat.', $label),
                 'priority' => 100,
             ];
         }
@@ -141,9 +140,10 @@ class MilestoneDetector
     private function firstEverDistance(Activity $activity, ActivityDetail $detail, float $distanceKm): ?array
     {
         $thresholdReached = null;
-        foreach (self::DISTANCE_THRESHOLDS_KM as $threshold) {
-            if ($distanceKm >= $threshold) {
-                $thresholdReached = $threshold;
+        foreach (PrCategory::distances() as $category) {
+            $thresholdKm = ($category->distanceMeters() ?? 0) / 1000;
+            if ($distanceKm >= $thresholdKm) {
+                $thresholdReached = $thresholdKm;
             }
         }
         if ($thresholdReached === null) {
@@ -205,19 +205,6 @@ class MilestoneDetector
             'body' => sprintf('Pace kamu turun di bawah %s/km. Quality day!', $label),
             'priority' => 30 + (int) round((420 - $thresholdMatched) / 6),
         ];
-    }
-
-    private function prCategoryLabel(string $category): string
-    {
-        return match ($category) {
-            '1km' => '1 km',
-            '5km' => '5 km',
-            '10km' => '10 km',
-            '15km' => '15 km',
-            'half_marathon' => 'Half Marathon',
-            'marathon' => 'Marathon',
-            default => str_replace('_', ' ', $category),
-        };
     }
 
     private function formatKmLabel(float $km): string

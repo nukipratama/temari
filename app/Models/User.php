@@ -17,8 +17,9 @@ use Override;
 
 /**
  * @property Carbon|null $last_seen_pr_ledger_at
+ * @property int|null $pending_reveal_card_id
  */
-#[Fillable(['name', 'email', 'avatar_url', 'last_seen_pr_ledger_at'])]
+#[Fillable(['name', 'email', 'avatar_url', 'last_seen_pr_ledger_at', 'pending_reveal_card_id'])]
 #[Hidden(['remember_token'])]
 class User extends Authenticatable
 {

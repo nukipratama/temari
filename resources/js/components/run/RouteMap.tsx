@@ -17,14 +17,14 @@ export default function RouteMap({ polyline }: Readonly<RouteMapProps>) {
 
     if (positions.length < 2) {
         return (
-            <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-line text-sm text-ink-meta dark:border-line-dark dark:text-ink-meta-dark">
+            <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-line text-sm text-ink-3">
                 Rute tidak tersedia
             </div>
         );
     }
 
     return (
-        <div className="overflow-hidden rounded-2xl border border-line dark:border-line-dark">
+        <div className="overflow-hidden rounded-2xl border border-line">
             <MapContainer
                 bounds={latLngBounds(positions)}
                 boundsOptions={{ padding: [20, 20] }}

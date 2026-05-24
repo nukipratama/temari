@@ -52,7 +52,7 @@ export default function BriefingCard({
             <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-stretch sm:gap-6">
                 {/* LEFT 60% — greeting + narrator */}
                 <div className="min-w-0 sm:basis-3/5">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
                         {formatIdDate(new Date().toISOString(), 'long')}
                     </p>
                     {firstName !== undefined && firstName !== '' && (
@@ -61,7 +61,7 @@ export default function BriefingCard({
                         </h1>
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-700">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-leaf/15 px-3 py-1 text-xs font-semibold text-leaf-deep">
                             <span aria-hidden>{briefing.vibeEmoji}</span>
                             {briefing.vibeLabel}
                         </span>
@@ -104,13 +104,13 @@ export default function BriefingCard({
 
             {/* Full-width speech bubble at the bottom (above the absolute footer button) */}
             {briefing.mascotVoice.status === 'done' && briefing.mascotVoice.content !== null && briefing.mascotVoice.content !== '' && (
-                <div className="relative mt-4 rounded-2xl border border-brand-200/70 bg-brand-50/60 px-3 py-2.5 pl-9 text-sm italic leading-snug text-ink">
+                <div className="relative mt-4 rounded-2xl border border-leaf/25 bg-leaf/10 px-3 py-2.5 pl-9 text-sm italic leading-snug text-ink">
                     <Icon
                         icon="mdi:comment-quote-outline"
                         width={16}
                         height={16}
                         aria-hidden
-                        className="absolute left-2.5 top-2.5 text-brand-700"
+                        className="absolute left-2.5 top-2.5 text-leaf-deep"
                     />
                     {briefing.mascotVoice.content}
                 </div>
@@ -144,7 +144,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
 
     if (effective === 'queued' || effective === 'processing') {
         return (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-sunken/90 px-3 py-1.5 text-xs text-ink-meta backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-sunken/90 px-3 py-1.5 text-xs text-ink-3 backdrop-blur-sm">
                 <Icon icon="mdi:loading" className="animate-spin" aria-hidden />
                 <span>Lagi dipikirin Temari…</span>
             </span>
@@ -157,7 +157,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
                 type="button"
                 onClick={trigger}
                 disabled={pending}
-                className="inline-flex items-center gap-1 rounded-full bg-brand-700 px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-800 disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-sky disabled:opacity-50"
             >
                 <Icon icon="mdi:reload" aria-hidden />
                 <span>Coba lagi</span>
@@ -171,7 +171,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
                 type="button"
                 onClick={trigger}
                 disabled={pending}
-                className="inline-flex items-center gap-1 rounded-full bg-brand-700 px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-800 disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-sky disabled:opacity-50"
             >
                 <Icon icon="mdi:auto-fix" aria-hidden />
                 <span>Analisis sekarang</span>
@@ -185,7 +185,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
             onClick={trigger}
             disabled={cooling || pending}
             aria-label={error ?? undefined}
-            className="inline-flex items-center gap-1 rounded-full bg-surface-sunken/80 px-2.5 py-1 text-xs text-ink-meta backdrop-blur-sm transition hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-meta"
+            className="inline-flex items-center gap-1 rounded-full bg-surface-sunken/80 px-2.5 py-1 text-xs text-ink-3 backdrop-blur-sm transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
         >
             <Icon icon="mdi:refresh" aria-hidden />
             <span>{cooling ? `Tunggu ${formatDurationHMS(remaining)}` : 'Analisis ulang'}</span>
@@ -213,7 +213,7 @@ function BriefingDone({ headline, suggestion }: Readonly<{ headline: AnalysisPay
                 allowReanalyze={false}
                 showTimestamp={false}
                 renderContent={(content) => (
-                    <p className="text-sm leading-snug text-ink-soft">{content}</p>
+                    <p className="text-sm leading-snug text-ink-2">{content}</p>
                 )}
             />
         </div>
@@ -242,23 +242,23 @@ function BriefingPending({ headline }: Readonly<{ headline: AnalysisPayload }>) 
 }
 
 const VIBE_RULES: Record<string, string> = {
-    pumped: 'border-l-brand-500',
-    fresh: 'border-l-brand-500',
-    bouncy: 'border-l-brand-500',
-    cooked: 'border-l-mood-cooked',
-    stretched_thin: 'border-l-mood-cooked',
-    worn_down: 'border-l-accent-500',
-    hibernating: 'border-l-mood-hibernate',
+    pumped: 'border-l-leaf',
+    fresh: 'border-l-leaf',
+    bouncy: 'border-l-leaf',
+    cooked: 'border-l-mood-lemes',
+    stretched_thin: 'border-l-mood-lemes',
+    worn_down: 'border-l-horizon',
+    hibernating: 'border-l-mood-adem',
 };
 
 function vibeLeftRule(state: string): string {
-    return VIBE_RULES[state] ?? 'border-l-mood-spinning';
+    return VIBE_RULES[state] ?? 'border-l-mood-mumet';
 }
 
 const RECOVERY_CHIP: Record<RecoveryTone, string> = {
-    positive: 'bg-mood-bouncy/15 text-mood-bouncy',
-    warning: 'bg-mood-glow/15 text-mood-glow',
-    alert: 'bg-mood-cooked/15 text-mood-cooked',
+    positive: 'bg-mood-enteng/15 text-mood-enteng',
+    warning: 'bg-mood-nyala/15 text-mood-nyala',
+    alert: 'bg-mood-lemes/15 text-mood-lemes',
     neutral: 'bg-surface-elev/70 text-ink',
 };
 

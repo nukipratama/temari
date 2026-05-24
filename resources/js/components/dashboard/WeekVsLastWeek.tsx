@@ -31,7 +31,7 @@ export default function WeekVsLastWeek({ data, className }: Readonly<WeekVsLastW
             )}
         >
             <div className="flex items-start justify-between gap-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-meta">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-3">
                     Minggu ini vs minggu lalu
                 </h3>
             </div>
@@ -84,7 +84,7 @@ function Delta({ value, higherIsBetter, suffix, fmt, labelOverride }: Readonly<D
         sign = '±';
     }
     const good = higherIsBetter ? value > 0 : value < 0;
-    const tone = value === 0 ? 'text-ink-meta' : good ? 'text-mood-bouncy' : 'text-mood-cooked';
+    const tone = value === 0 ? 'text-ink-3' : good ? 'text-mood-enteng' : 'text-mood-lemes';
     let label: string;
     if (labelOverride) {
         label = labelOverride(value);
