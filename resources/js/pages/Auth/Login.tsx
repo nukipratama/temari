@@ -2,6 +2,7 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import AppShell from '@/layouts/AppShell';
 import BrandMark from '@/components/BrandMark';
+import TemariMascot from '@/components/temari/TemariMascot';
 import TemariProto from '@/components/temari/TemariProto';
 import type { SharedProps } from '@/types/inertia';
 
@@ -9,10 +10,10 @@ interface LoginProps {
     authStravaUrl: string;
 }
 
-const PILLARS: ReadonlyArray<{ label: string; desc: string }> = [
-    { label: 'Catat', desc: 'Otomatis nyambung dari Strava' },
-    { label: 'Kasih', desc: 'Tiap lari, Temari bikinin kartunya' },
-    { label: 'Konsisten', desc: 'Jalan terus, nggak harus kenceng' },
+const PILLARS: ReadonlyArray<{ icon: string; label: string; desc: string }> = [
+    { icon: 'mdi:link-variant', label: 'Aku baca', desc: 'Strava-mu nyambung otomatis' },
+    { icon: 'mdi:cards-outline', label: 'Aku catet', desc: 'Tiap lari dapet kartunya' },
+    { icon: 'mdi:hand-heart-outline', label: 'Aku temenin', desc: 'Konsisten, bukan kenceng' },
 ];
 
 const HERO_GRADIENT =
@@ -66,23 +67,26 @@ function HeroSide() {
                 style={{ bottom: '22%', background: HORIZON_BAND }}
             />
 
-            <BrandMark size="compact" tone="cream" />
+            <BrandMark tone="cream" />
 
             <div className="relative z-10 text-center">
                 <div className="mb-8 flex justify-center">
                     <TemariProto pose="proud" size={220} />
                 </div>
-                <h1 className="font-display text-[56px] italic leading-[0.95] tracking-[-0.02em] sm:text-[72px] lg:text-[84px]">
+                <h1 className="font-display italic text-display-xl">
                     Setiap Langkah<br /><span>Berarti.</span>
                 </h1>
-                <p className="mx-auto mt-5 max-w-[480px] font-display text-base italic leading-relaxed text-cream/70 sm:text-lg">
+                <p className="mx-auto mt-6 max-w-[520px] font-sans text-base leading-relaxed text-cream/90 sm:text-lg">
                     “Halo, aku Temari — temen lari kamu. Tiap kamu lari, aku baca, terus aku kasih kartunya.”
                 </p>
             </div>
 
-            <p className="relative text-center font-mono text-[10px] uppercase tracking-[0.16em] text-cream/40">
-                Dibuat di Jakarta · Untuk pelari Indonesia
-            </p>
+            <div
+                aria-hidden
+                className="pointer-events-none absolute bottom-6 right-6 hidden opacity-[0.55] mix-blend-screen sm:right-10 sm:block lg:bottom-8 lg:right-12"
+            >
+                <TemariMascot mood="enteng" sizeClass="h-24 w-24 lg:h-28 lg:w-28" idle="mood" showUnlocks={false} />
+            </div>
         </div>
     );
 }
@@ -105,9 +109,9 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending }
                     >
                         <span
                             aria-hidden
-                            className="mb-2.5 flex h-7 w-7 items-center justify-center rounded-lg bg-horizon/[0.18] font-mono text-[13px] text-horizon-deep"
+                            className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-horizon/[0.18] text-horizon-deep"
                         >
-                            ●
+                            <Icon icon={pillar.icon} width={18} height={18} aria-hidden />
                         </span>
                         <div className="font-sans text-sm font-semibold text-ink">
                             {pillar.label}
@@ -123,7 +127,7 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending }
                 className="rounded-2xl bg-cream px-9 py-10"
                 style={{ boxShadow: FORM_CARD_SHADOW }}
             >
-                <h2 className="font-display text-[34px] italic leading-none tracking-[-0.015em] text-ink sm:text-[42px]">
+                <h2 className="font-display italic text-display-xs text-ink">
                     Selamat datang.
                 </h2>
                 <p className="mt-2.5 font-sans text-sm leading-relaxed text-ink-2">
@@ -152,13 +156,14 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending }
                     </button>
                 )}
 
-                <p className="mt-6 rounded-[10px] bg-cream-deep px-4 py-3.5 font-display text-xs italic leading-relaxed text-ink-3">
-                    Aku cuma pake Strava buat baca lari kamu doang — bukan yang lain.
+                <p className="mt-6 flex items-start gap-2.5 rounded-[10px] bg-leaf/10 px-4 py-3 font-sans text-[13px] leading-relaxed text-ink-2">
+                    <Icon icon="mdi:shield-check-outline" width={16} height={16} aria-hidden className="mt-0.5 shrink-0 text-leaf-deep" />
+                    <span>Aku cuma pake Strava buat baca lari kamu doang — bukan yang lain.</span>
                 </p>
             </div>
 
             <p className="text-center font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
-                Made with ♥ by a runner, for runners
+                Dibuat dengan ♥ oleh pelari, buat pelari
             </p>
         </div>
     );

@@ -126,8 +126,8 @@ export default function Aku({
                                 analysis={personaSummary}
                                 inertiaReloadProps={['personaSummary']}
                                 renderContent={(text) => (
-                                    <p className="font-sans text-[15px] leading-relaxed text-ink-2 sm:text-base">
-                                        {text}
+                                    <p className="font-display text-quote-md italic text-ink-2">
+                                        “{text}”
                                     </p>
                                 )}
                             />

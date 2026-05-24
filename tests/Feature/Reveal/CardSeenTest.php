@@ -77,10 +77,15 @@ it('shares pendingReveal as null when the flagged card was deleted', function ()
             ->where('pendingReveal', null));
 });
 
-it('shares pendingReveal payload when a card is flagged', function (): void {
+it('shares pendingReveal payload (incl. km/duration/trimp) when a card is flagged', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['name' => '10K race-pace']);
+    ActivityDetail::factory()->for($activity)->create([
+        'name' => '10K race-pace',
+        'distance' => 10240.5,
+        'moving_time' => 3480,
+        'trimp_edwards' => 161.4,
+    ]);
     $card = RunCard::factory()->for($activity)->create([
         'rarity' => 'epic',
         'special_move' => 'Pembalik Keadaan',
@@ -94,5 +99,8 @@ it('shares pendingReveal payload when a card is flagged', function (): void {
             ->where('pendingReveal.card_id', $card->id)
             ->where('pendingReveal.rarity', 'epic')
             ->where('pendingReveal.special_move', 'Pembalik Keadaan')
-            ->where('pendingReveal.detail_name', '10K race-pace'));
+            ->where('pendingReveal.detail_name', '10K race-pace')
+            ->where('pendingReveal.distance_m', 10240.5)
+            ->where('pendingReveal.moving_time_sec', 3480)
+            ->where('pendingReveal.trimp_edwards', 161.4));
 });

@@ -26,7 +26,7 @@ interface UsageTotals {
 }
 
 interface UserRow {
-    user_id: number | null;
+    user_id: number;
     user_name: string | null;
     prompt: number;
     completion: number;
@@ -225,7 +225,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                                 </thead>
                                 <tbody>
                                     {byUser.map((row) => (
-                                        <UserRowView key={`${row.user_id ?? 'system'}`} row={row} grandTotal={totals.total} />
+                                        <UserRowView key={row.user_id} row={row} grandTotal={totals.total} />
                                     ))}
                                 </tbody>
                             </table>
@@ -240,7 +240,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
 function UserRowView({ row, grandTotal }: Readonly<{ row: UserRow; grandTotal: number }>) {
     const share = grandTotal > 0 ? (row.total / grandTotal) * 100 : 0;
     const avg = row.calls > 0 ? Math.round(row.total / row.calls) : 0;
-    const label = row.user_name ?? (row.user_id === null ? 'tanpa user' : `User #${row.user_id}`);
+    const label = row.user_name ?? `User #${row.user_id}`;
 
     return (
         <tr className="border-b border-line last:border-b-0">

@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import TemariMascot from './TemariMascot';
+import TemariProto from './TemariProto';
 import type { Mood, SharedProps } from '@/types/inertia';
 
 const POLL_MS = 5000;
@@ -111,7 +112,13 @@ export default function FloatingTemari() {
                     aria-label={isThinking ? `${total} analisis sedang berjalan` : 'Halo dari Temari'}
                     className="relative rounded-full bg-surface-elev p-1 shadow-lg ring-1 ring-line transition hover:ring-leaf"
                 >
-                    <TemariMascot mood={mood} sizeClass="h-14 w-14" idle="breath" />
+                    {isThinking ? (
+                        <TemariMascot mood={mood} sizeClass="h-14 w-14" idle="breath" />
+                    ) : (
+                        <span className="flex h-14 w-14 items-center justify-center">
+                            <TemariProto pose="observational" size={52} />
+                        </span>
+                    )}
                     {isThinking && (
                         <span
                             aria-hidden

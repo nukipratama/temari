@@ -117,20 +117,20 @@ it('returns zeroed totals and empty breakdown when no rows fall within range', f
         );
 });
 
-it('renders a byUser breakdown joined to users.name', function (): void {
+it('renders a byUser breakdown joined to users.name, skipping system-context rows', function (): void {
     $alice = User::factory()->create(['name' => 'Alice']);
     $bob = User::factory()->create(['name' => 'Bob']);
 
     seedUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $alice->id);
     seedUsage('briefing', 200, 80, Carbon::parse('2026-05-12'), userId: $alice->id);
     seedUsage('run-insight', 50, 25, Carbon::parse('2026-05-11'), userId: $bob->id);
-    seedUsage('briefing', 10, 5, Carbon::parse('2026-05-13')); // user_id null — represents system call
+    seedUsage('briefing', 10, 5, Carbon::parse('2026-05-13')); // user_id null — system call, excluded from per-user breakdown
 
     $this->get('/ai-usage?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
-                ->has('byUser', 3)
+                ->has('byUser', 2)
                 ->where('byUser.0', [
                     'user_id' => $alice->id,
                     'user_name' => 'Alice',
@@ -146,14 +146,31 @@ it('renders a byUser breakdown joined to users.name', function (): void {
                     'completion' => 25,
                     'total' => 75,
                     'calls' => 1,
-                ])
-                ->where('byUser.2', [
-                    'user_id' => null,
+                ]),
+        );
+});
+
+it('keeps the user_id in the breakdown after the user is deleted (no FK cascade)', function (): void {
+    $alice = User::factory()->create(['name' => 'Alice']);
+    $aliceId = $alice->id;
+
+    seedUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $aliceId);
+    seedUsage('briefing', 200, 80, Carbon::parse('2026-05-12'), userId: $aliceId);
+
+    $alice->delete();
+
+    $this->get('/ai-usage?from=2026-05-01&to=2026-05-19')
+        ->assertSuccessful()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->has('byUser', 1)
+                ->where('byUser.0', [
+                    'user_id' => $aliceId,
                     'user_name' => null,
-                    'prompt' => 10,
-                    'completion' => 5,
-                    'total' => 15,
-                    'calls' => 1,
+                    'prompt' => 300,
+                    'completion' => 130,
+                    'total' => 430,
+                    'calls' => 2,
                 ]),
         );
 });

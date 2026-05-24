@@ -6,6 +6,18 @@ export function formatPace(secPerKm: number): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+// Distance in meters → "5.00" with em-dash fallback. Stat-row callers add the
+// "KM" label themselves.
+export function formatKm(distanceM: number | null | undefined, fractionDigits = 2): string {
+    if (distanceM == null) return '—';
+    return (distanceM / 1000).toFixed(fractionDigits);
+}
+
+export function paceSecPerKm(movingTimeSec: number | null | undefined, distanceM: number | null | undefined): number | null {
+    if (movingTimeSec == null || distanceM == null || distanceM <= 0) return null;
+    return movingTimeSec / (distanceM / 1000);
+}
+
 // Drops seconds so card-style cells never wrap; use formatDurationHMS for full precision.
 export function formatDuration(seconds: number): string {
     const total = Math.round(seconds);

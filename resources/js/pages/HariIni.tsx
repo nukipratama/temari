@@ -17,7 +17,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formStatusLabel } from '@/lib/formStatus';
-import { formatPace, formatRelativeId } from '@/lib/pace';
+import { formatKm, formatPace, formatRelativeId, paceSecPerKm } from '@/lib/pace';
 import { emberGlowStyle } from '@/lib/styles';
 import {
     VIBE_TO_POSE,
@@ -100,7 +100,7 @@ export default function HariIni({
                         <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
                             {dateLine}
                         </div>
-                        <h1 className="font-display text-[44px] leading-[0.95] tracking-[-0.02em] text-ink sm:text-[64px] lg:text-[96px] lg:leading-[0.92] lg:tracking-[-0.025em]">
+                        <h1 className="font-display text-display-2xl text-ink">
                             Halo, {firstName} —<br />
                             <em className="not-italic text-horizon-deep">
                                 <span className="italic">{vibeSubtitle}</span>
@@ -129,7 +129,7 @@ export default function HariIni({
                         <header className="mb-4 flex items-end justify-between">
                             <div>
                                 <SectionLabel>Kartu terakhir</SectionLabel>
-                                <p className="font-display text-2xl leading-none tracking-[-0.01em] text-ink sm:text-[32px]">
+                                <p className="font-display text-headline-md text-ink">
                                     Yang Temari kasih ke kamu belakangan ini.
                                 </p>
                             </div>
@@ -166,8 +166,8 @@ function TemariReadCard({ briefing, pose }: Readonly<{ briefing: BriefingResult;
                     analysis={briefing.mascotVoice}
                     inertiaReloadProps={['briefing']}
                     renderContent={(text) => (
-                        <p className="font-sans text-sm leading-relaxed text-ink sm:text-[15px]">
-                            {text}
+                        <p className="font-display text-quote-md italic text-ink">
+                            “{text}”
                         </p>
                     )}
                 />
@@ -248,7 +248,7 @@ function FeaturedKartuPanel({
                     <div className="mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
                         ★ Kartu dari Temari minggu ini
                     </div>
-                    <h2 className="mb-5 font-display text-[48px] leading-[0.95] tracking-[-0.02em] text-cream sm:text-[64px] lg:text-[80px] lg:leading-[0.92]">
+                    <h2 className="mb-5 font-display text-display-xl text-cream">
                         <em className="italic text-horizon">{featured.name}</em>
                     </h2>
                     <div className="mb-6 max-w-xl">
@@ -258,8 +258,8 @@ function FeaturedKartuPanel({
                             allowReanalyze={false}
                             showTimestamp={false}
                             renderContent={(text) => (
-                                <p className="font-sans text-[15px] leading-relaxed text-cream/85 sm:text-base">
-                                    {text}
+                                <p className="font-display text-quote-lg italic text-cream">
+                                    “{text}”
                                 </p>
                             )}
                         />
@@ -312,8 +312,8 @@ function SuggestionCard({ suggestion }: Readonly<{ suggestion: AnalysisPayload }
                 analysis={suggestion}
                 inertiaReloadProps={['briefing']}
                 renderContent={(text) => (
-                    <p className="font-sans text-[15px] leading-relaxed text-ink sm:text-base">
-                        {text}
+                    <p className="font-display text-quote-md italic text-ink">
+                        “{text}”
                     </p>
                 )}
             />
@@ -326,11 +326,8 @@ function SuggestionCard({ suggestion }: Readonly<{ suggestion: AnalysisPayload }
 }
 
 function LastLariCard({ run, pose }: Readonly<{ run: ActivityDetail; pose: TemariPose }>) {
-    const km = run.distance != null ? (run.distance / 1000).toFixed(2) : '—';
-    const paceSec =
-        run.distance != null && run.moving_time != null && run.distance > 0
-            ? run.moving_time / (run.distance / 1000)
-            : null;
+    const km = formatKm(run.distance);
+    const paceSec = paceSecPerKm(run.moving_time, run.distance);
     const trimp = run.trimp_edwards != null ? Math.round(run.trimp_edwards) : null;
     const dateLabel = formatRelativeId(run.start_date_local);
 

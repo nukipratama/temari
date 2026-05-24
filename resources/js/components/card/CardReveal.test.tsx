@@ -1,16 +1,20 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import CardReveal from './CardReveal';
 import type { PendingReveal } from '@/types/inertia';
 
-const post = vi.fn();
+const reload = vi.fn();
+const visit = vi.fn();
 
 vi.mock('@inertiajs/react', async () => {
     const actual: typeof import('@inertiajs/react') = await vi.importActual('@inertiajs/react');
     return {
         ...actual,
-        router: { post: (...args: unknown[]) => post(...args) },
+        router: {
+            reload: (...args: unknown[]) => reload(...args),
+            visit: (...args: unknown[]) => visit(...args),
+        },
     };
 });
 
@@ -21,6 +25,9 @@ const epicReveal: PendingReveal = {
     special_move: 'Pembalik Keadaan',
     badges: ['negative_split', 'hari_panas'],
     detail_name: '10K race-pace',
+    distance_m: 10000,
+    moving_time_sec: 3480,
+    trimp_edwards: 161,
 };
 
 const commonReveal: PendingReveal = {
@@ -30,7 +37,23 @@ const commonReveal: PendingReveal = {
     special_move: 'Pagi Santai',
     badges: null,
     detail_name: 'Easy run',
+    distance_m: 5000,
+    moving_time_sec: 1800,
+    trimp_edwards: 42,
 };
+
+const fetchMock = vi.fn(() => Promise.resolve(new Response('{"seen":true}', { status: 200 })));
+
+beforeEach(() => {
+    reload.mockClear();
+    visit.mockClear();
+    fetchMock.mockClear();
+    vi.stubGlobal('fetch', fetchMock);
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
 
 describe('CardReveal', () => {
     it('renders the first frame eyebrow + title on mount', () => {
@@ -57,37 +80,39 @@ describe('CardReveal', () => {
         expect(screen.getByText(/Frame 2 \/ 4/)).toBeInTheDocument();
     });
 
-    it('posts to /api/kartu/{id}/seen on the final advance', async () => {
-        post.mockClear();
+    it('on the final frame, "Lihat koleksi" marks seen and navigates to /kartu', async () => {
         const u = userEvent.setup();
         render(<CardReveal pending={commonReveal} />);
         await u.click(screen.getByText('Lanjut'));
         // Last frame for common (frame 2 / 2)
         await u.click(screen.getByText('Lihat koleksi'));
-        expect(post).toHaveBeenCalledWith(
+
+        expect(fetchMock).toHaveBeenCalledWith(
             '/api/kartu/7/seen',
-            expect.anything(),
-            expect.objectContaining({ only: ['pendingReveal'] }),
+            expect.objectContaining({ method: 'POST' }),
         );
+        expect(visit).toHaveBeenCalledWith('/kartu', expect.anything());
     });
 
-    it('posts seen when Skip is tapped on the first frame', async () => {
-        post.mockClear();
+    it('Skip on any non-final frame marks seen and reloads the pendingReveal prop', async () => {
         const u = userEvent.setup();
         render(<CardReveal pending={epicReveal} />);
         await u.click(screen.getByText('Skip'));
-        expect(post).toHaveBeenCalledWith(
+
+        expect(fetchMock).toHaveBeenCalledWith(
             '/api/kartu/42/seen',
-            expect.anything(),
-            expect.anything(),
+            expect.objectContaining({ method: 'POST' }),
         );
+        expect(reload).toHaveBeenCalledWith({ only: ['pendingReveal'] });
     });
 
     it('Escape key dismisses the reveal modal', async () => {
-        post.mockClear();
         render(<CardReveal pending={epicReveal} />);
         await userEvent.setup().keyboard('{Escape}');
-        expect(post).toHaveBeenCalled();
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/api/kartu/42/seen',
+            expect.objectContaining({ method: 'POST' }),
+        );
     });
 
     it('Space + Enter + ArrowRight all advance the frame', async () => {
@@ -100,5 +125,24 @@ describe('CardReveal', () => {
         expect(screen.getByText(/Frame 3 \/ 4/)).toBeInTheDocument();
         await u.keyboard('{ArrowRight}');
         expect(screen.getByText(/Frame 4 \/ 4/)).toBeInTheDocument();
+    });
+
+    it('only POSTs /seen once even if the user double-clicks Skip', async () => {
+        const u = userEvent.setup();
+        render(<CardReveal pending={epicReveal} />);
+        const skip = screen.getByText('Skip');
+        await u.click(skip);
+        await u.click(skip);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders the card with real km/duration/trimp values on the last frame', async () => {
+        const u = userEvent.setup();
+        render(<CardReveal pending={commonReveal} />);
+        await u.click(screen.getByText('Lanjut')); // jump to last frame
+        // 5000m → 5.00 km, 1800s → 30m, trimp 42
+        expect(screen.getByText('5.00')).toBeInTheDocument();
+        expect(screen.getByText('30m')).toBeInTheDocument();
+        expect(screen.getByText('42')).toBeInTheDocument();
     });
 });

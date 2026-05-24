@@ -23,13 +23,13 @@ describe('Login', () => {
         expect(screen.getByText('Coba versi demo')).toBeInTheDocument();
     });
 
-    it('renders the brand hero + 3 onboarding pillars (Catat / Kasih / Konsisten)', () => {
+    it('renders the brand hero + 3 onboarding pillars in Temari first-person voice', () => {
         setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
         render(<Login authStravaUrl="/x" />);
         expect(screen.getByText('TemanLari')).toBeInTheDocument();
         // Editorial headline is split across two lines; assert the second line.
         expect(screen.getByText('Berarti.')).toBeInTheDocument();
-        ['Catat', 'Kasih', 'Konsisten'].forEach((label) => {
+        ['Aku baca', 'Aku catet', 'Aku temenin'].forEach((label) => {
             expect(screen.getByText(label)).toBeInTheDocument();
         });
     });

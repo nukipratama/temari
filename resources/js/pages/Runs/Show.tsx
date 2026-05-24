@@ -14,7 +14,7 @@ import PastYouStrip from '@/components/run/PastYouStrip';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { moodFromActivity } from '@/lib/moodFromActivity';
-import { formatDurationHMS, formatIdDate, formatPace } from '@/lib/pace';
+import { formatDurationHMS, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
 import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
 import { emberGlowStyle } from '@/lib/styles';
 import type {
@@ -100,11 +100,8 @@ export default function RunsShow({
     const mood: Mood = storyLine?.mood ?? moodFromActivity(detail);
     const pose: TemariPose = MOOD_HERO_POSE[mood];
 
-    const km = detail.distance != null ? (detail.distance / 1000).toFixed(2) : '—';
-    const paceSec =
-        detail.distance != null && detail.moving_time != null && detail.distance > 0
-            ? detail.moving_time / (detail.distance / 1000)
-            : null;
+    const km = formatKm(detail.distance);
+    const paceSec = paceSecPerKm(detail.moving_time, detail.distance);
     const pace = paceSec != null ? formatPace(paceSec) : '—';
     const hr = detail.average_heartrate != null ? Math.round(detail.average_heartrate) : null;
     const trimp = detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
@@ -145,7 +142,7 @@ export default function RunsShow({
                                             {formatIdDate(detail.start_date_local, 'long')}
                                         </span>
                                     </div>
-                                    <h1 className="font-display text-[40px] leading-[0.98] tracking-[-0.015em] text-cream sm:text-[52px]">
+                                    <h1 className="font-display text-display-sm text-cream">
                                         {detail.name ?? 'Lari'}
                                     </h1>
                                 </div>
@@ -191,7 +188,7 @@ export default function RunsShow({
                     <header className="mb-4 flex items-center gap-3.5">
                         <TemariProto pose="observational" size={48} animate={false} />
                         <div>
-                            <h2 className="font-display text-2xl leading-none tracking-[-0.01em] text-ink sm:text-[28px]">
+                            <h2 className="font-display text-headline-sm text-ink">
                                 Kata Temari
                             </h2>
                             <p className="mt-1 font-sans text-xs text-ink-3">Empat cara liat lari ini.</p>

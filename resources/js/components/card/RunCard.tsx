@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
-import { formatDuration, formatIdDate } from '@/lib/pace';
+import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
 import { BADGE_LABELS, RARITY_LABELS } from '@/lib/runcard';
 import type { ActivityDetail, RunCard as RunCardModel } from '@/types/inertia';
 
@@ -71,7 +71,7 @@ function rarityStyle(rarity: string): RarityStyle {
 
 export default function RunCard({ card, detail, className, size = 'normal' }: Readonly<RunCardProps>) {
     const r = rarityStyle(card.rarity);
-    const km = detail.distance != null ? (detail.distance / 1000).toFixed(2) : '—';
+    const km = formatKm(detail.distance);
     const duration = detail.moving_time != null ? formatDuration(detail.moving_time) : '—';
     const trimp = detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : '—';
     const isHero = size === 'hero';

@@ -1,12 +1,15 @@
 import { router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from './Kartu';
 import PillButton from '@/components/ui/PillButton';
 import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
+import TemariMascot from '@/components/temari/TemariMascot';
 import { RARITY_LABELS } from '@/lib/runcard';
+import { formatDuration, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
+import { csrfToken } from '@/lib/http';
 import type { PendingReveal, Rarity } from '@/types/inertia';
 
 interface CardRevealProps {
@@ -15,6 +18,11 @@ interface CardRevealProps {
 
 interface Frame {
     pose: TemariPose;
+    /** When true, render the full-body running mascot instead of the bunny.
+     *  Reserved for the "Sync masuk" frame — Temari literally sprinting back
+     *  from Strava with your run. Every other frame stays on the bunny so
+     *  identity is consistent across reveal/voice/hero surfaces. */
+    runner?: boolean;
     eyebrow: string;
     title: string;
     subtitle?: string;
@@ -31,6 +39,7 @@ function framesFor(theatrical: boolean, rarity: Rarity, name: string): Frame[] {
         return [
             {
                 pose: 'reading',
+                runner: true,
                 eyebrow: 'Sync masuk',
                 title: 'Aku lagi baca lari kamu…',
             },
@@ -48,6 +57,7 @@ function framesFor(theatrical: boolean, rarity: Rarity, name: string): Frame[] {
     return [
         {
             pose: 'reading',
+            runner: true,
             eyebrow: 'Sync masuk',
             title: 'Aku lagi baca lari kamu…',
         },
@@ -82,28 +92,45 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
 
     const [step, setStep] = useState(0);
     const [confettiKey, setConfettiKey] = useState<string | null>(null);
+    const sentRef = useRef(false);
 
-    const finish = useCallback(() => {
-        router.post(
-            `/api/kartu/${pending.card_id}/seen`,
-            {},
-            {
-                preserveScroll: true,
-                preserveState: false,
-                only: ['pendingReveal'],
+    // /api/kartu/{card}/seen returns plain JSON, so Inertia's router can't
+    // call it (it errors on non-Inertia responses). Fire-and-forget; the
+    // modal dismissal doesn't gate on the POST landing.
+    const markSeen = useCallback((): void => {
+        if (sentRef.current) return;
+        sentRef.current = true;
+        void fetch(`/api/kartu/${pending.card_id}/seen`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
             },
-        );
+            body: '{}',
+        }).catch(() => { /* silent — next reload picks up server state */ });
     }, [pending.card_id]);
+
+    const dismiss = useCallback((): void => {
+        markSeen();
+        router.reload({ only: ['pendingReveal'] });
+    }, [markSeen]);
+
+    const viewKoleksi = useCallback((): void => {
+        markSeen();
+        router.visit('/kartu', { preserveScroll: false });
+    }, [markSeen]);
 
     const advance = useCallback(() => {
         setStep((s) => {
             if (s + 1 >= frames.length) {
-                finish();
                 return s;
             }
             return s + 1;
         });
-    }, [frames.length, finish]);
+    }, [frames.length]);
 
     useEffect(() => {
         if (frames[step]?.showConfetti) {
@@ -115,7 +142,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
         const handler = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
                 e.preventDefault();
-                finish();
+                dismiss();
             }
             if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') {
                 e.preventDefault();
@@ -124,10 +151,16 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
         };
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
-    }, [advance, finish]);
+    }, [advance, dismiss]);
 
     const frame = frames[step] ?? frames[frames.length - 1];
     const isLastFrame = step === frames.length - 1;
+    const km = formatKm(pending.distance_m);
+    const durasi = pending.moving_time_sec != null ? formatDuration(pending.moving_time_sec) : '—';
+    const trimp = pending.trimp_edwards != null ? Math.round(pending.trimp_edwards).toString() : '—';
+    const subtitle = buildSubtitle(pending);
+    const onBackdrop = isLastFrame ? dismiss : advance;
+    const onPrimary = isLastFrame ? viewKoleksi : advance;
 
     return (
         <div
@@ -135,7 +168,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
             aria-modal="true"
             aria-label="Kartu baru"
             className="fixed inset-0 z-50 flex items-center justify-center bg-sky-deep/80 px-4 backdrop-blur-md"
-            onClick={advance}
+            onClick={onBackdrop}
         >
             <ConfettiBurst burstKey={confettiKey} />
             <motion.div
@@ -149,13 +182,17 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                     <HeroPanel className="px-8 py-10 sm:px-12 sm:py-12">
                         <div className="grid items-center gap-9 lg:grid-cols-[200px_1fr]">
                             <div className="flex justify-center">
-                                <TemariProto pose={frame.pose} size={200} />
+                                {frame.runner ? (
+                                    <TemariMascot mood="nyala" sizeClass="h-[200px] w-[200px]" idle="mood" />
+                                ) : (
+                                    <TemariProto pose={frame.pose} size={200} />
+                                )}
                             </div>
                             <div>
                                 <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
                                     {frame.eyebrow}
                                 </div>
-                                <h2 className="font-display text-[36px] leading-[0.95] tracking-[-0.015em] text-cream sm:text-[52px]">
+                                <h2 className="font-display text-display-sm text-cream">
                                     <em className="italic text-horizon">{frame.title}</em>
                                 </h2>
                                 {frame.subtitle && (
@@ -172,10 +209,10 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                                     >
                                         <Kartu
                                             name={pending.special_move}
-                                            subtitle={pending.detail_name ?? null}
-                                            km={'—'}
-                                            durasi={'—'}
-                                            trimp={'—'}
+                                            subtitle={subtitle}
+                                            km={km}
+                                            durasi={durasi}
+                                            trimp={trimp}
                                             rarity={pending.rarity}
                                             tags={(pending.badges ?? []).slice(0, 2).map(prettyBadge)}
                                             size="md"
@@ -184,12 +221,12 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                                     </motion.div>
                                 )}
                                 <div className="mt-7 flex flex-wrap items-center gap-2.5">
-                                    <PillButton tone="horizon" onClick={advance}>
+                                    <PillButton tone="horizon" onClick={onPrimary}>
                                         {isLastFrame ? 'Lihat koleksi' : 'Lanjut'}
                                     </PillButton>
                                     <button
                                         type="button"
-                                        onClick={finish}
+                                        onClick={dismiss}
                                         className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-cream/60 hover:text-cream"
                                     >
                                         {isLastFrame ? 'Tutup' : 'Skip'}
@@ -211,4 +248,11 @@ function prettyBadge(slug: string): string {
         .split('_')
         .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
         .join(' ');
+}
+
+function buildSubtitle(pending: PendingReveal): string | null {
+    if (pending.detail_name === null) return null;
+    const paceSec = paceSecPerKm(pending.moving_time_sec, pending.distance_m);
+    if (paceSec === null) return pending.detail_name;
+    return `${pending.detail_name} · ${formatPace(paceSec)}/km`;
 }

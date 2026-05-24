@@ -117,7 +117,7 @@ export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, mont
                         <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
                             Riwayat · {monthLabel.toLowerCase()}
                         </div>
-                        <h1 className="font-display text-[44px] leading-[0.95] tracking-[-0.025em] text-ink sm:text-[56px] lg:text-[72px] lg:leading-[0.92]">
+                        <h1 className="font-display text-display-lg text-ink">
                             Mood-kamu bulan ini,<br />
                             <em className="italic text-horizon-deep">dalam satu lihat.</em>
                         </h1>
@@ -155,8 +155,8 @@ export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, mont
                                     analysis={monthlyRecap}
                                     inertiaReloadProps={['monthlyRecap']}
                                     renderContent={(text) => (
-                                        <p className="font-sans text-[15px] leading-relaxed text-ink-2 sm:text-base">
-                                            {text}
+                                        <p className="font-display text-quote-md italic text-ink-2">
+                                            “{text}”
                                         </p>
                                     )}
                                 />

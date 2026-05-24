@@ -5,6 +5,7 @@ import FloatingTemari from '@/components/temari/FloatingTemari';
 import UnlockToast from '@/components/temari/UnlockToast';
 import CardReveal from '@/components/card/CardReveal';
 import TopNav from '@/components/TopNav';
+import MobileTopBar from '@/components/MobileTopBar';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import type { SharedProps } from '@/types/inertia';
@@ -40,6 +41,7 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
 
             <DemoBanner />
             <TopNav />
+            <MobileTopBar />
 
             <main id="main-content" className="pb-24 lg:pb-0">
                 {children}

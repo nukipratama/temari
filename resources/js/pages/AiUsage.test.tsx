@@ -56,23 +56,23 @@ describe('AiUsage page', () => {
         expect(screen.getAllByText('Belum ada token tercatat di rentang ini.')).toHaveLength(2);
     });
 
-    it('renders a per-user table with named users + share bar + null-user fallback', () => {
+    it('renders a per-user table with named users + share bar', () => {
         render(
             <AiUsage
                 {...baseProps}
                 byUser={[
                     { user_id: 1, user_name: 'Alice', prompt: 500, completion: 230, total: 730, calls: 2 },
-                    { user_id: null, user_name: null, prompt: 50, completion: 25, total: 75, calls: 1 },
+                    { user_id: 2, user_name: 'Bob', prompt: 50, completion: 25, total: 75, calls: 1 },
                 ]}
             />,
         );
 
         expect(screen.getByText('Alice')).toBeInTheDocument();
-        expect(screen.getByText('tanpa user')).toBeInTheDocument();
+        expect(screen.getByText('Bob')).toBeInTheDocument();
         expect(screen.getByText('Breakdown per User')).toBeInTheDocument();
     });
 
-    it('falls back to "User #ID" when user_name is null but user_id is present', () => {
+    it('falls back to "User #ID" for deleted users (user_name null, user_id present)', () => {
         render(
             <AiUsage
                 {...baseProps}

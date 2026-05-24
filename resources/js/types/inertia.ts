@@ -18,6 +18,9 @@ export interface PendingReveal {
     special_move: string;
     badges: string[] | null;
     detail_name: string | null;
+    distance_m: number | null;
+    moving_time_sec: number | null;
+    trimp_edwards: number | null;
 }
 
 export interface StravaSync {

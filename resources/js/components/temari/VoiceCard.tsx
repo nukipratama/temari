@@ -1,5 +1,4 @@
 import { type ReactNode } from 'react';
-import TemariGlyph from './TemariGlyph';
 import { cn } from '@/lib/cn';
 
 interface VoiceCardProps {
@@ -11,6 +10,11 @@ interface VoiceCardProps {
     className?: string;
 }
 
+/**
+ * Quote block in Temari's voice. No avatar — surfaces that need one render
+ * the full TemariProto mascot on the same panel; doubling up with a tiny
+ * "T" badge is redundant. Use this for the prose only.
+ */
 export default function VoiceCard({
     children,
     attribution = 'Temari',
@@ -19,26 +23,23 @@ export default function VoiceCard({
     className,
 }: Readonly<VoiceCardProps>) {
     return (
-        <div className={cn('flex items-start gap-4', className)}>
-            <TemariGlyph size={36} ringColor="horizon" />
-            <div className="min-w-0 flex-1">
-                <p
-                    className={cn(
-                        'font-display text-[22px] italic leading-snug tracking-[-0.005em]',
-                        onSky ? 'text-cream' : 'text-ink',
-                    )}
-                >
-                    “{children}”
-                </p>
-                <div
-                    className={cn(
-                        'mt-2 font-mono text-[9px] uppercase tracking-[0.16em]',
-                        onSky ? 'text-cream/50' : 'text-ink-3',
-                    )}
-                >
-                    — {attribution}
-                    {pose != null && pose !== '' && <> · {pose}</>}
-                </div>
+        <div className={cn('min-w-0', className)}>
+            <p
+                className={cn(
+                    'font-display text-quote-lg italic',
+                    onSky ? 'text-cream' : 'text-ink',
+                )}
+            >
+                “{children}”
+            </p>
+            <div
+                className={cn(
+                    'mt-2 font-mono text-[9px] uppercase tracking-[0.16em]',
+                    onSky ? 'text-cream/50' : 'text-ink-3',
+                )}
+            >
+                — {attribution}
+                {pose != null && pose !== '' && <> · {pose}</>}
             </div>
         </div>
     );

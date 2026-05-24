@@ -11,8 +11,8 @@ interface PageHeroProps {
 }
 
 const EYEBROW = 'font-mono text-[11px] font-bold uppercase tracking-[0.18em]';
-const HEADLINE_ON_SKY = 'font-display text-[44px] leading-[0.95] tracking-[-0.02em] text-cream sm:text-[64px] lg:text-[80px] lg:leading-[0.92]';
-const HEADLINE_ON_CREAM = 'font-display text-[44px] leading-[1.05] tracking-[-0.015em] text-ink sm:text-[60px] lg:text-[72px] lg:leading-[1.02]';
+const HEADLINE_ON_SKY = 'font-display text-display-xl text-cream';
+const HEADLINE_ON_CREAM = 'font-display text-display-lg text-ink';
 
 export default function PageHero({ eyebrow, lead, emph, onSky = false, className }: Readonly<PageHeroProps>) {
     return (

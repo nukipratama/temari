@@ -31,7 +31,7 @@ export default function MilestoneStrip({
                 <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-horizon">
                     ★ Target berikutnya
                 </div>
-                <div className="font-display text-[26px] leading-none tracking-[-0.015em] text-cream sm:text-[30px]">
+                <div className="font-display text-headline-sm text-cream">
                     Sub-<em className="italic">{targetLabel}</em> di {distanceLabel}
                 </div>
             </div>

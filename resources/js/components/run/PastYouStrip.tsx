@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
-import { formatIdDate } from '@/lib/pace';
+import { formatIdDate, formatKm } from '@/lib/pace';
 
 interface PastMatch {
     past: {
@@ -24,7 +24,7 @@ const CARD_BASE = 'block rounded-2xl border border-line bg-surface-elev p-4 sm:p
 const HEADING_CLASS = 'text-xs font-semibold uppercase tracking-wider text-ink-3';
 
 export default function PastYouStrip({ match, currentDistance, className }: Readonly<PastYouStripProps>) {
-    const distanceLabel = currentDistance ? `${(currentDistance / 1000).toFixed(1)} km` : 'jarak ini';
+    const distanceLabel = currentDistance ? `${formatKm(currentDistance, 1)} km` : 'jarak ini';
 
     if (match === null) {
         return (

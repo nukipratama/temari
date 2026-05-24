@@ -11,6 +11,7 @@ import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import Card from '@/components/ui/Card';
 import PageHero from '@/components/ui/PageHero';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
+import TemariMascot from '@/components/temari/TemariMascot';
 import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
@@ -217,13 +218,13 @@ function Stat({ icon, label }: Readonly<{ icon: string; label: string }>) {
 
 function EmptyState() {
     return (
-        <Card tone="empty" padding="lg" className="text-center">
-            <Icon icon="mdi:run-fast" width={28} height={28} className="mx-auto text-horizon" aria-hidden />
-            <p className="mt-3 font-display text-2xl italic text-ink-2">Belum ada lari yang tercatat.</p>
+        <Card tone="empty" padding="lg" className="flex flex-col items-center text-center">
+            <TemariMascot mood="enteng" sizeClass="h-32 w-32" idle="mood" />
+            <p className="mt-4 font-display text-2xl italic text-ink-2">Aku lagi nungguin kamu lari.</p>
             <p className="mt-2 font-sans text-sm text-ink-3">Sinkronkan lari pertama kamu dari Strava dulu, ya.</p>
             <Link
                 href="/"
-                className="mt-3 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.12em] text-horizon hover:text-horizon-deep"
+                className="mt-4 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.12em] text-horizon hover:text-horizon-deep"
             >
                 <Icon icon="mdi:arrow-left" width={14} height={14} aria-hidden />
                 Kembali ke Hari Ini

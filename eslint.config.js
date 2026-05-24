@@ -19,6 +19,22 @@ export default tseslint.config(
             'react/prop-types': 'off', // TypeScript handles prop validation
             'react-hooks/rules-of-hooks': 'error',
             'react-hooks/exhaustive-deps': 'warn',
+            // Block stair-stepped px chains; prefer text-display-* / text-headline-* tokens.
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: String.raw`Literal[value=/text-\[\d+px\][^"]*\b(sm|md|lg|xl|2xl):text-\[\d+px\]/]`,
+                    message: 'Stair-stepped breakpoint sizing detected. Use a text-display-* / text-headline-* token instead — those scale fluidly via clamp().',
+                },
+                {
+                    selector: String.raw`TemplateElement[value.raw=/text-\[\d+px\][^"]*\b(sm|md|lg|xl|2xl):text-\[\d+px\]/]`,
+                    message: 'Stair-stepped breakpoint sizing detected. Use a text-display-* / text-headline-* token instead — those scale fluidly via clamp().',
+                },
+                {
+                    selector: String.raw`Literal[value=/\btext-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl)\b[^"]*\b(sm|md|lg|xl|2xl):text-\[\d+px\]/]`,
+                    message: 'Mixed Tailwind + hardcoded px stair-step. Use a text-display-* / text-headline-* token instead.',
+                },
+            ],
         },
     },
 );

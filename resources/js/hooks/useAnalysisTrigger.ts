@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { csrfToken } from '@/lib/http';
 import type { AnalysisPayload, AnalysisStatus } from '@/types/inertia';
 
 const POLL_INITIAL_MS = 3000;
@@ -27,10 +28,6 @@ interface TriggerResult {
      */
     retryAfterSeconds: number | null;
     trigger: () => Promise<void>;
-}
-
-function csrfToken(): string {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 }
 
 // Shared FloatingTemari badge counts (`aiActivity`) tag along on every

@@ -49,6 +49,13 @@ const SIZE_STAT_GAP: Record<NonNullable<KartuProps['size']>, string> = {
     xl: 'gap-9',
 };
 
+/**
+ * Layout rule: header at the top, stats+tags pinned to the bottom via
+ * `mt-auto`. When the grid stretches cards in a row to match the tallest
+ * (default `items-stretch`), every card's stats baseline ends up at the
+ * same y-position — so cards without tags read as "breathing room" up
+ * top, not "empty void" down low.
+ */
 export default function Kartu({
     name,
     subtitle,
@@ -64,11 +71,10 @@ export default function Kartu({
     return (
         <div
             className={cn(
-                'relative flex flex-col overflow-hidden rounded-[14px] border-[1.5px]',
+                'relative flex h-full flex-col overflow-hidden rounded-[14px] border-[1.5px]',
                 onSky ? 'bg-cream-deep' : 'bg-cream',
                 RARITY_BORDER[rarity],
                 SIZE_PADDING[size],
-                size === 'xl' ? 'gap-[18px]' : 'gap-3',
                 className,
             )}
         >
@@ -81,10 +87,10 @@ export default function Kartu({
             >
                 {RARITY_LABELS[rarity]}
             </span>
-            <div>
+            <div className="pr-16">
                 <div
                     className={cn(
-                        'font-display leading-none tracking-[-0.01em] text-ink',
+                        'font-display leading-tight tracking-[-0.01em] text-ink',
                         SIZE_TITLE[size],
                     )}
                 >
@@ -93,7 +99,7 @@ export default function Kartu({
                 {subtitle != null && subtitle !== '' && (
                     <div
                         className={cn(
-                            'mt-1.5 font-sans text-ink-3',
+                            'mt-1 font-sans text-ink-3',
                             size === 'xl' ? 'text-[15px]' : 'text-xs',
                         )}
                     >
@@ -101,13 +107,13 @@ export default function Kartu({
                     </div>
                 )}
             </div>
-            <div className={cn('flex items-baseline', SIZE_STAT_GAP[size])}>
+            <div className={cn('mt-auto flex items-baseline pt-5', SIZE_STAT_GAP[size])}>
                 <Stat label="KM" value={km} sizeClass={SIZE_STAT[size]} />
                 <Stat label="Durasi" value={durasi} sizeClass={SIZE_STAT[size]} />
                 <Stat label="TRIMP" value={trimp} sizeClass={SIZE_STAT[size]} />
             </div>
             {tags && tags.length > 0 && (
-                <div className={cn('flex flex-wrap gap-1.5', size === 'xl' ? 'mt-1.5' : 'mt-0.5')}>
+                <div className="mt-3 flex flex-wrap gap-1.5">
                     {tags.map((t) => (
                         <Chip key={t} tone="horizon">{t}</Chip>
                     ))}

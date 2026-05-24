@@ -23,52 +23,43 @@
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 
     /* ─── Daybreak display-type scale ────────────────────────────────
-       Literal px sizes mirroring the prototype JSX. Each token bundles
-       line-height + letter-spacing so a single utility class lands the
-       full type spec.
+       Fluid clamp() so editorial type scales smoothly instead of
+       stair-stepping at sm/lg. Each token bundles line-height +
+       letter-spacing so one utility class lands the full spec.
 
-       text-display-2xl  = 96px  — Hari Ini greeting
-       text-display-xl   = 80px  — hero kartu title
-       text-display-lg   = 72px  — Aku / Riwayat header
-       text-display-md   = 64px  — Koleksi · Kartu hero
-       text-display-sm   = 52px  — Run Detail hero name
-       text-display-xs   = 42px  — "Selamat datang."
-       text-headline-lg  = 38px  — Reveal frame titles
-       text-headline-md  = 32px  — recent-kartu strip head
-       text-headline-sm  = 28px  — weekly summary
-       text-headline-xs  = 24px  — last-lari title
-       text-quote-lg     = 22px  — standard Temari voice quote
-       text-quote-md     = 18px  — compact voice quote
-       text-quote-sm     = 15px  — 4-lens body                         */
-    --text-display-2xl: 96px;
+       Display tier — fluid; editorial / hero headlines.
+       Headline tier — fluid, narrower range; section-level.
+       Quote tier — fixed px; body reading should NOT scale with
+         viewport because the focal distance is constant.              */
+    --text-display-2xl: clamp(40px, 7.5vw, 96px);
     --text-display-2xl--line-height: 0.92;
     --text-display-2xl--letter-spacing: -0.025em;
-    --text-display-xl: 80px;
+    --text-display-xl: clamp(44px, 6.5vw, 84px);
     --text-display-xl--line-height: 0.92;
     --text-display-xl--letter-spacing: -0.02em;
-    --text-display-lg: 72px;
+    --text-display-lg: clamp(38px, 5.5vw, 72px);
     --text-display-lg--line-height: 0.92;
     --text-display-lg--letter-spacing: -0.025em;
-    --text-display-md: 64px;
+    --text-display-md: clamp(38px, 5vw, 64px);
     --text-display-md--line-height: 0.95;
     --text-display-md--letter-spacing: -0.015em;
-    --text-display-sm: 52px;
+    --text-display-sm: clamp(34px, 4vw, 52px);
     --text-display-sm--line-height: 0.98;
     --text-display-sm--letter-spacing: -0.015em;
-    --text-display-xs: 42px;
+    --text-display-xs: clamp(28px, 3.2vw, 42px);
     --text-display-xs--line-height: 1;
     --text-display-xs--letter-spacing: -0.015em;
 
-    --text-headline-lg: 38px;
+    --text-headline-lg: clamp(26px, 3vw, 38px);
     --text-headline-lg--line-height: 1.05;
     --text-headline-lg--letter-spacing: -0.01em;
-    --text-headline-md: 32px;
+    --text-headline-md: clamp(22px, 2.5vw, 32px);
     --text-headline-md--line-height: 1;
     --text-headline-md--letter-spacing: -0.01em;
-    --text-headline-sm: 28px;
+    --text-headline-sm: clamp(20px, 2.2vw, 28px);
     --text-headline-sm--line-height: 1.05;
     --text-headline-sm--letter-spacing: -0.01em;
-    --text-headline-xs: 24px;
+    --text-headline-xs: clamp(18px, 2vw, 24px);
     --text-headline-xs--line-height: 1.05;
     --text-headline-xs--letter-spacing: -0.01em;
 

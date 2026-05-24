@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, formatDurationHMS, formatIdDate, formatPace, formatRelativeId, isoDateLocal, mondayOf, sundayOf } from './pace';
+import { formatDuration, formatDurationHMS, formatIdDate, formatKm, formatPace, formatRelativeId, isoDateLocal, mondayOf, paceSecPerKm, sundayOf } from './pace';
 
 describe('formatPace', () => {
     it("formats whole minutes as M'SS\"", () => {
@@ -46,6 +46,43 @@ describe('formatDurationHMS', () => {
 
     it('formats without hours as M:SS', () => {
         expect(formatDurationHMS(125)).toBe('2:05');
+    });
+});
+
+describe('formatKm', () => {
+    it('returns "—" for null/undefined', () => {
+        expect(formatKm(null)).toBe('—');
+        expect(formatKm(undefined)).toBe('—');
+    });
+
+    it('converts meters to km with 2 decimals by default', () => {
+        expect(formatKm(5000)).toBe('5.00');
+        expect(formatKm(10240.5)).toBe('10.24');
+    });
+
+    it('honors a custom fractionDigits', () => {
+        expect(formatKm(5230, 1)).toBe('5.2');
+    });
+
+    it('treats 0 as a real value (not null)', () => {
+        expect(formatKm(0)).toBe('0.00');
+    });
+});
+
+describe('paceSecPerKm', () => {
+    it('returns null when either input is null/undefined', () => {
+        expect(paceSecPerKm(null, 5000)).toBeNull();
+        expect(paceSecPerKm(1800, null)).toBeNull();
+        expect(paceSecPerKm(undefined, undefined)).toBeNull();
+    });
+
+    it('returns null on zero/negative distance (no divide-by-zero)', () => {
+        expect(paceSecPerKm(1800, 0)).toBeNull();
+        expect(paceSecPerKm(1800, -100)).toBeNull();
+    });
+
+    it('computes sec per km for a 30-min 5K → 360', () => {
+        expect(paceSecPerKm(1800, 5000)).toBe(360);
     });
 });
 

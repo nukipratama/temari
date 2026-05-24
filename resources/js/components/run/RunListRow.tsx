@@ -1,5 +1,5 @@
 import { cn } from '@/lib/cn';
-import { formatIdDate, formatPace } from '@/lib/pace';
+import { formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
 import MotionLink from '@/components/MotionLink';
 import { Icon } from '@iconify/react';
 import { pressShrink } from '@/lib/motion';
@@ -19,11 +19,8 @@ interface RunListRowProps {
 }
 
 export default function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowProps>) {
-    const km = detail.distance != null ? (detail.distance / 1000).toFixed(2) : '—';
-    const paceSec =
-        detail.moving_time != null && detail.distance != null && detail.distance > 0
-            ? detail.moving_time / (detail.distance / 1000)
-            : null;
+    const km = formatKm(detail.distance);
+    const paceSec = paceSecPerKm(detail.moving_time, detail.distance);
     const paceLabel = paceSec != null ? formatPace(paceSec) : '—';
     const hr = detail.average_heartrate != null ? Math.round(detail.average_heartrate) : null;
     const trimp = detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;

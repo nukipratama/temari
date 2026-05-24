@@ -3,9 +3,10 @@ import { Icon } from '@iconify/react';
 import { useCallback, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import BrandMark from '@/components/BrandMark';
+import StravaSyncBadge from '@/components/StravaSyncBadge';
+import UserAvatar from '@/components/UserAvatar';
 import { useDismissable } from '@/hooks/useDismissable';
-import { formatRelativeId } from '@/lib/pace';
-import type { SharedProps, StravaSync } from '@/types/inertia';
+import type { SharedProps } from '@/types/inertia';
 
 type TabId = 'hari-ini' | 'koleksi' | 'riwayat' | 'aku';
 
@@ -46,7 +47,7 @@ export default function TopNav() {
             <div className="flex w-full items-center justify-between px-10 py-[18px]">
                 <div className="flex items-center gap-12">
                     <Link href="/" aria-label="Beranda">
-                        <BrandMark size="compact" />
+                        <BrandMark />
                     </Link>
                     <nav aria-label="Primary" className="flex items-center gap-1">
                         {ITEMS.map((item) => (
@@ -55,7 +56,7 @@ export default function TopNav() {
                     </nav>
                 </div>
                 <div className="flex items-center gap-3.5">
-                    <SyncPill sync={stravaSync} />
+                    <StravaSyncBadge sync={stravaSync} />
                     {user && <UserMenu name={user.name} avatarUrl={user.avatar_url} />}
                 </div>
             </div>
@@ -84,26 +85,6 @@ function TabLink({ item, isActive }: Readonly<{ item: NavItem; isActive: boolean
     );
 }
 
-function SyncPill({ sync }: Readonly<{ sync: StravaSync | null }>) {
-    if (sync === null || ! sync.connected) {
-        return (
-            <div className="hidden items-center gap-2 rounded-full bg-sky/[0.06] px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 md:inline-flex">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3/40" />
-                Strava
-            </div>
-        );
-    }
-
-    const relative = sync.last_synced_at ? formatRelativeId(sync.last_synced_at) : null;
-
-    return (
-        <div className="hidden items-center gap-2 rounded-full bg-sky/[0.06] px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 md:inline-flex">
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-leaf" />
-            Strava synced{relative ? ` · ${relative}` : ''}
-        </div>
-    );
-}
-
 function UserMenu({ name, avatarUrl }: Readonly<{ name: string; avatarUrl: string | null }>) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -125,20 +106,7 @@ function UserMenu({ name, avatarUrl }: Readonly<{ name: string; avatarUrl: strin
                 aria-label={`Buka menu ${name}`}
                 className="flex h-9 w-9 items-center justify-center rounded-full ring-2 ring-cream-deep transition hover:ring-leaf focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
             >
-                {avatarUrl ? (
-                    <img
-                        src={avatarUrl}
-                        alt=""
-                        className="h-9 w-9 rounded-full object-cover"
-                    />
-                ) : (
-                    <span
-                        aria-hidden
-                        className="flex h-9 w-9 items-center justify-center rounded-full bg-horizon font-display text-[17px] font-semibold italic text-sky"
-                    >
-                        {name.charAt(0).toUpperCase()}
-                    </span>
-                )}
+                <UserAvatar name={name} avatarUrl={avatarUrl} size="md" />
             </button>
             {open && (
                 <div

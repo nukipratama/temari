@@ -50,7 +50,7 @@ describe('Riwayat/Linimasa', () => {
                 weeklySnapshots={[]}
             />,
         );
-        expect(screen.getByText(/Belum ada lari/i)).toBeInTheDocument();
+        expect(screen.getByText(/Aku lagi nungguin kamu lari/i)).toBeInTheDocument();
     });
 
     it('groups runs into weekly buckets + renders weekly snapshot stats', () => {

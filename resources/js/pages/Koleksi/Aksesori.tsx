@@ -98,7 +98,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                             <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
                                 ★ Yang sedang dipake
                             </div>
-                            <h2 className="mb-5 font-display text-[42px] leading-[0.95] tracking-[-0.015em] text-cream sm:text-[56px]">
+                            <h2 className="mb-5 font-display text-display-md text-cream">
                                 <em className="italic text-horizon">Penampilan kamu sekarang.</em>
                             </h2>
                             <ul className="grid gap-2 sm:grid-cols-2">

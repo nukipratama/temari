@@ -62,6 +62,7 @@ class TokenUsageController extends Controller
         $userRows = DB::table('ai_token_usages')
             ->leftJoin('users', 'users.id', '=', 'ai_token_usages.user_id')
             ->whereBetween('ai_token_usages.created_at', [$from, $to])
+            ->whereNotNull('ai_token_usages.user_id')
             ->selectRaw(
                 'ai_token_usages.user_id as user_id, users.name as user_name, '.
                 'SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
@@ -74,7 +75,7 @@ class TokenUsageController extends Controller
         $byUser = [];
         foreach ($userRows as $row) {
             $byUser[] = [
-                'user_id' => $row->user_id === null ? null : (int) $row->user_id,
+                'user_id' => (int) $row->user_id,
                 'user_name' => $row->user_name === null ? null : (string) $row->user_name,
                 'prompt' => (int) $row->prompt,
                 'completion' => (int) $row->completion,

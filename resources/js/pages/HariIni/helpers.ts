@@ -1,6 +1,6 @@
 import type { TemariPose } from '@/components/temari/TemariProto';
 import { moodFromActivity } from '@/lib/moodFromActivity';
-import { formatDuration, formatRelativeId } from '@/lib/pace';
+import { formatDuration, formatKm, formatRelativeId } from '@/lib/pace';
 import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
 import type { ActivityDetail, Rarity, RunCard } from '@/types/inertia';
 
@@ -66,7 +66,7 @@ export function pickFeaturedKartu(runs: ReadonlyArray<ActivityDetail>): Featured
                 activityId: r.activity_id,
                 name: card.special_move,
                 subtitle: `${RARITY_LABELS[card.rarity]} · ${formatRelativeId(r.start_date_local)}`,
-                km: r.distance != null ? (r.distance / 1000).toFixed(2) : '—',
+                km: formatKm(r.distance),
                 durasi: r.moving_time != null ? formatDuration(r.moving_time) : '—',
                 trimp: r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',
                 rarity: card.rarity,

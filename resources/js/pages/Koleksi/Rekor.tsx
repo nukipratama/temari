@@ -128,63 +128,45 @@ function HeroScoreboard({
     const deltaSec = extras?.delta_sec ?? null;
 
     return (
-        <HeroPanel className="mt-8 min-h-[400px] lg:px-14 lg:py-12">
+        <HeroPanel className="mt-8 lg:px-14 lg:py-12">
             <span
                 aria-hidden
                 className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-60"
                 style={emberGlowStyle(0.45, '60%')}
             />
-            <div className="relative grid items-start gap-10 lg:grid-cols-[1.4fr_1fr]">
+            {/* Two-row layout:
+                Row 1 — oversized time + Temari quote, balanced side-by-side.
+                Row 2 — captions (Tipe / Hari / Tempat / Cuaca), full width.
+                Row 3 — splits, full width.
+               The previous 1.4fr_1fr split left the right column with just a
+               180px mascot + a max-w-sm card, ringed by a sea of empty sky.  */}
+            <div className="relative grid items-center gap-8 lg:grid-cols-[1fr_minmax(320px,_360px)] lg:gap-12">
                 <div>
                     <div className="mb-5 flex flex-wrap items-center gap-2">
                         <Chip tone="onSky">{category}</Chip>
                     </div>
                     <GradientText
                         preset="cream-sun"
-                        fontSize="clamp(80px, 16vw, 200px)"
-                        className="mb-5 block font-sans font-bold leading-[0.85] tracking-[-0.05em] tabular-nums"
+                        fontSize="clamp(80px, 14vw, 200px)"
+                        className="block font-sans font-bold leading-[0.85] tracking-[-0.05em] tabular-nums"
                     >
                         {time}
                     </GradientText>
-                    <div className="mb-6 grid max-w-2xl gap-5 sm:grid-cols-3">
-                        <Caption label="Tipe" value={runName} />
-                        <Caption label="Hari" value={formatIdDate(pr.set_at, 'long')} />
-                        <Caption
-                            label="Tempat"
-                            value={
-                                location ?? (
-                                    pr.activity_id ? (
-                                        <Link
-                                            href={`/aktivitas/${pr.activity_id}`}
-                                            className="text-cream underline-offset-2 hover:underline"
-                                        >
-                                            Lihat detail
-                                        </Link>
-                                    ) : '—'
-                                )
-                            }
-                        />
-                        {tempo != null && (
-                            <Caption
-                                label="Cuaca"
-                                value={`${Math.round(tempo)}°C${humidity != null ? ` · ${Math.round(humidity)}% lembab` : ''}`}
-                            />
-                        )}
-                    </div>
-                    <SplitsSparkline paceSec={splits} className="max-w-2xl" />
                 </div>
-                <div className="flex flex-col items-center gap-4">
-                    <TemariProto pose="glow" size={180} equipped={{ medal: 'emas', headband: 'epik' }} />
+                <div className="flex flex-col items-center gap-4 lg:items-stretch">
+                    <div className="flex justify-center">
+                        <TemariProto pose="glow" size={180} equipped={{ medal: 'emas', headband: 'epik' }} />
+                    </div>
                     {pr.context_analysis && (
-                        <div className="max-w-sm rounded-2xl border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">
+                        <div className="rounded-2xl border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">
                             <AnalysisStatus
                                 analysis={pr.context_analysis}
                                 inertiaReloadProps={['personalRecords']}
                                 allowReanalyze={false}
                                 showTimestamp={false}
                                 renderContent={(text) => (
-                                    <p className="font-sans text-[15px] leading-relaxed text-cream/90">
-                                        {text}
+                                    <p className="font-display text-quote-lg italic text-cream">
+                                        “{text}”
                                     </p>
                                 )}
                             />
@@ -192,6 +174,32 @@ function HeroScoreboard({
                     )}
                 </div>
             </div>
+            <div className="relative mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <Caption label="Tipe" value={runName} />
+                <Caption label="Hari" value={formatIdDate(pr.set_at, 'long')} />
+                <Caption
+                    label="Tempat"
+                    value={
+                        location ?? (
+                            pr.activity_id ? (
+                                <Link
+                                    href={`/aktivitas/${pr.activity_id}`}
+                                    className="text-cream underline-offset-2 hover:underline"
+                                >
+                                    Lihat detail
+                                </Link>
+                            ) : '—'
+                        )
+                    }
+                />
+                {tempo != null && (
+                    <Caption
+                        label="Cuaca"
+                        value={`${Math.round(tempo)}°C${humidity != null ? ` · ${Math.round(humidity)}% lembab` : ''}`}
+                    />
+                )}
+            </div>
+            <SplitsSparkline paceSec={splits} className="relative mt-5" />
             {targetSec != null && deltaSec != null && deltaSec > 0 && (
                 <MilestoneStrip
                     targetSec={targetSec}
@@ -218,7 +226,7 @@ function ProgressionSection({
         <Card as="section" padding="lg" className="mt-8 grid items-center gap-7 lg:grid-cols-[1fr_1.4fr]">
             <div>
                 <SectionLabel>Progres · {label} terbaikmu</SectionLabel>
-                <p className="font-display text-2xl leading-tight tracking-[-0.01em] text-ink sm:text-[30px]">
+                <p className="font-display text-headline-sm text-ink">
                     Dari <em className="italic">{formatDurationHMS(worst)}</em> ke{' '}
                     <em className="italic text-horizon-deep">{formatDurationHMS(best)}</em>
                 </p>
@@ -259,7 +267,7 @@ function TrophyWall({ records }: Readonly<{ records: ExtendedPR[] }>) {
         <section className="mt-8">
             <header className="mb-4 flex items-baseline justify-between">
                 <div className="flex items-baseline gap-3">
-                    <h2 className="font-display text-2xl tracking-[-0.01em] text-ink sm:text-[32px]">
+                    <h2 className="font-display text-headline-md text-ink">
                         Trophy wall · <em className="italic text-horizon-deep">jarak</em>
                     </h2>
                     <Chip tone="horizon">{records.length} PR</Chip>
@@ -292,7 +300,7 @@ function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
         <section className="mt-8">
             <header className="mb-4 flex items-baseline justify-between">
                 <div className="flex items-baseline gap-3">
-                    <h2 className="font-display text-2xl tracking-[-0.01em] text-ink sm:text-[32px]">
+                    <h2 className="font-display text-headline-md text-ink">
                         Pace ticker · <em className="italic text-rarity-rare">best efforts</em>
                     </h2>
                     <Chip>{records.length} PR</Chip>

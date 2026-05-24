@@ -101,7 +101,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail_name: string|null}|null
+     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null}|null
      */
     private function pendingRevealFor(?User $user): ?array
     {
@@ -111,7 +111,10 @@ class HandleInertiaRequests extends Middleware
 
         $card = RunCard::query()
             ->whereKey($user->pending_reveal_card_id)
-            ->with(['activity.detail:id,activity_id,name', 'activity:id,user_id'])
+            ->with([
+                'activity.detail:id,activity_id,name,distance,moving_time,trimp_edwards',
+                'activity:id,user_id',
+            ])
             ->first();
 
         if ($card === null || $card->activity->user_id !== $user->id) {
@@ -121,13 +124,18 @@ class HandleInertiaRequests extends Middleware
         /** @var array<int, string>|null $badges */
         $badges = $card->badges;
 
+        $detail = $card->activity->detail;
+
         return [
             'card_id' => $card->id,
             'activity_id' => $card->activity_id,
             'rarity' => $card->rarity->value,
             'special_move' => $card->special_move,
             'badges' => $badges,
-            'detail_name' => $card->activity->detail?->name,
+            'detail_name' => $detail?->name,
+            'distance_m' => $detail?->distance,
+            'moving_time_sec' => $detail?->moving_time,
+            'trimp_edwards' => $detail?->trimp_edwards,
         ];
     }
 
