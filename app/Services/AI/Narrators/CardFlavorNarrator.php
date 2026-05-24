@@ -32,8 +32,8 @@ class CardFlavorNarrator
         $movingTime = $detail?->moving_time;
 
         $context = [
-            'rarity' => $card->rarity,
-            'rarity_label' => RunCard::RARITY_LABELS[$card->rarity] ?? $card->rarity,
+            'rarity' => $card->rarity->value,
+            'rarity_label' => $card->rarity->label(),
             'special_move' => $card->special_move,
             'badges' => $card->badges,
             'distance_km' => $distance !== null ? round((float) $distance / 1000, 2) : null,

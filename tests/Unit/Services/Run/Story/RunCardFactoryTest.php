@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Rarity;
 use App\Models\RunCard;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -24,7 +25,7 @@ it('defaults to biasa rarity on a featureless short run', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('common');
+    expect($card->rarity)->toBe(Rarity::Common);
 });
 
 it('promotes to epik when this activity broke a PR', function (): void {
@@ -41,7 +42,7 @@ it('promotes to epik when this activity broke a PR', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('epic');
+    expect($card->rarity)->toBe(Rarity::Epic);
 });
 
 it('promotes to legendaris on an all-time-longest half-marathon-plus', function (): void {
@@ -58,7 +59,7 @@ it('promotes to legendaris on an all-time-longest half-marathon-plus', function 
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('legendary');
+    expect($card->rarity)->toBe(Rarity::Legendary);
 });
 
 it('promotes to langka on a 5K+ negative split (no PR)', function (): void {
@@ -70,7 +71,7 @@ it('promotes to langka on a 5K+ negative split (no PR)', function (): void {
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('rare');
+    expect($card->rarity)->toBe(Rarity::Rare);
 });
 
 it('awards the hari_panas badge when temp ≥ 31°C', function (): void {
@@ -148,7 +149,7 @@ it('skips the legendaris check when current detail has no distance', function ()
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    expect($card->rarity)->toBe('common');
+    expect($card->rarity)->toBe(Rarity::Common);
 });
 
 it('is idempotent — rebuilding overwrites the same row', function (): void {

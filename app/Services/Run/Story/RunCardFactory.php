@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
@@ -42,7 +43,7 @@ class RunCardFactory
         ]);
 
         $existing = RunCard::query()->where('activity_id', $activity->id)->first();
-        $previousRarityRank = $existing !== null ? self::RARITY_RANK[$existing->rarity] ?? -1 : -1;
+        $previousRarityRank = $existing?->rarity->rank() ?? -1;
 
         $card = RunCard::query()->updateOrCreate(
             ['activity_id' => $activity->id],
@@ -60,28 +61,19 @@ class RunCardFactory
             invalidate: true,
         );
 
-        if (in_array($card->rarity, [RunCard::RARITY_EPIC, RunCard::RARITY_LEGENDARY], strict: true)) {
+        if (in_array($card->rarity, [Rarity::Epic, Rarity::Legendary], strict: true)) {
             $this->unlockEngine->grantEligible($activity->user);
         }
 
         // Queue this card for the reveal modal when it's freshly created or
         // its rarity climbed since the last build. Re-running build with the
         // same rarity does NOT re-trigger the reveal.
-        $newRarityRank = self::RARITY_RANK[$card->rarity] ?? -1;
-        if ($newRarityRank > $previousRarityRank) {
+        if ($card->rarity->rank() > $previousRarityRank) {
             $this->queueRevealFor($activity, $card);
         }
 
         return $card;
     }
-
-    private const array RARITY_RANK = [
-        RunCard::RARITY_COMMON => 0,
-        RunCard::RARITY_UNCOMMON => 1,
-        RunCard::RARITY_RARE => 2,
-        RunCard::RARITY_EPIC => 3,
-        RunCard::RARITY_LEGENDARY => 4,
-    ];
 
     /**
      * Stash the card id on the user so the next page load can pop the reveal
@@ -101,18 +93,18 @@ class RunCardFactory
     /**
      * @param  array<string, mixed>  $summary
      */
-    private function rarity(ActivityDetail $detail, array $summary, bool $prSet, bool $isLongest): string
+    private function rarity(ActivityDetail $detail, array $summary, bool $prSet, bool $isLongest): Rarity
     {
         $distance = (float) ($detail->distance ?? 0);
         $negativeSplit = ($summary['negative_split'] ?? false) === true;
         $hasZoneData = is_array($summary['time_in_zone_pct'] ?? null);
 
         return match (true) {
-            $isLongest && $distance >= 21_097.5 => RunCard::RARITY_LEGENDARY,
-            $prSet => RunCard::RARITY_EPIC,
-            $negativeSplit && $distance >= 5_000 => RunCard::RARITY_RARE,
-            $hasZoneData && $distance >= 3_000 => RunCard::RARITY_UNCOMMON,
-            default => RunCard::RARITY_COMMON,
+            $isLongest && $distance >= 21_097.5 => Rarity::Legendary,
+            $prSet => Rarity::Epic,
+            $negativeSplit && $distance >= 5_000 => Rarity::Rare,
+            $hasZoneData && $distance >= 3_000 => Rarity::Uncommon,
+            default => Rarity::Common,
         };
     }
 

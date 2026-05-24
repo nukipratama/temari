@@ -124,7 +124,7 @@ class HandleInertiaRequests extends Middleware
         return [
             'card_id' => $card->id,
             'activity_id' => $card->activity_id,
-            'rarity' => $card->rarity,
+            'rarity' => $card->rarity->value,
             'special_move' => $card->special_move,
             'badges' => $badges,
             'detail_name' => $card->activity->detail?->name,

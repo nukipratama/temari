@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
+use App\Enums\Rarity;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
@@ -98,7 +99,7 @@ class UnlockEngine
 
         $legendarisCount = RunCard::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->where('rarity', RunCard::RARITY_LEGENDARY)
+            ->where('rarity', Rarity::Legendary)
             ->count();
         if ($legendarisCount >= 1) {
             $keys[] = 'accessory.headband_legendaris';
@@ -106,7 +107,7 @@ class UnlockEngine
 
         $epikCount = RunCard::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->where('rarity', RunCard::RARITY_EPIC)
+            ->where('rarity', Rarity::Epic)
             ->count();
         if ($epikCount >= 3) {
             $keys[] = 'accessory.headband_epik';

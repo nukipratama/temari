@@ -69,7 +69,7 @@ class CardController extends Controller
         return [
             'id' => $card->id,
             'activity_id' => $card->activity_id,
-            'rarity' => $card->rarity,
+            'rarity' => $card->rarity->value,
             'special_move' => $card->special_move,
             'badges' => $card->badges,
             'detail' => $card->activity->detail,
