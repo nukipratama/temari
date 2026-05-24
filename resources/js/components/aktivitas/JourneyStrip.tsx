@@ -1,4 +1,4 @@
-import Card from '@/components/daybreak/Card';
+import Card from '@/components/ui/Card';
 import { formatPace } from '@/lib/pace';
 import { cn } from '@/lib/cn';
 

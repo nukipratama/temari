@@ -2,12 +2,12 @@ import { Head, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import AppShell from '@/layouts/AppShell';
-import Chip from '@/components/daybreak/Chip';
-import CollectionHeader from '@/components/daybreak/CollectionHeader';
-import HeroPanel from '@/components/daybreak/HeroPanel';
-import PillButton from '@/components/daybreak/PillButton';
-import SectionLabel from '@/components/daybreak/SectionLabel';
-import TemariProto, { type TemariEquipped } from '@/components/daybreak/TemariProto';
+import Chip from '@/components/ui/Chip';
+import CollectionHeader from '@/components/koleksi/CollectionHeader';
+import HeroPanel from '@/components/ui/HeroPanel';
+import PillButton from '@/components/ui/PillButton';
+import SectionLabel from '@/components/ui/SectionLabel';
+import TemariProto, { type TemariEquipped } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 

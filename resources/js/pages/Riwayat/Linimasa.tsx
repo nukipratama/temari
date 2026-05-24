@@ -8,9 +8,9 @@ import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/Jour
 import RangeFilter, { type RangeFilterValue } from '@/components/aktivitas/RangeFilter';
 import RingkasanCard from '@/components/aktivitas/RingkasanCard';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
-import Card from '@/components/daybreak/Card';
-import RiwayatTabs from '@/components/daybreak/RiwayatTabs';
-import TemariProto, { type TemariPose } from '@/components/daybreak/TemariProto';
+import Card from '@/components/ui/Card';
+import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
+import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
 import { fadeInUp } from '@/lib/motion';

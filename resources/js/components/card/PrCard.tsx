@@ -1,5 +1,5 @@
-import Card from './Card';
-import LinkCard from './LinkCard';
+import Card from '@/components/ui/Card';
+import LinkCard from '@/components/ui/LinkCard';
 
 interface PrCardProps {
     category: string;

@@ -1,7 +1,7 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import AppShell from '@/layouts/AppShell';
-import TemariProto from '@/components/daybreak/TemariProto';
+import TemariProto from '@/components/temari/TemariProto';
 import type { SharedProps } from '@/types/inertia';
 
 interface LoginProps {

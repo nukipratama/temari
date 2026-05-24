@@ -2,10 +2,10 @@ import { router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ConfettiBurst from '@/components/ConfettiBurst';
-import HeroPanel from './HeroPanel';
+import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from './Kartu';
-import PillButton from './PillButton';
-import TemariProto, { type TemariPose } from './TemariProto';
+import PillButton from '@/components/ui/PillButton';
+import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
 import { RARITY_LABELS } from '@/lib/runcard';
 import type { PendingReveal, Rarity } from '@/types/inertia';
 

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn';
 import { RARITY_LABELS } from '@/lib/runcard';
-import Chip from './Chip';
+import Chip from '@/components/ui/Chip';
 import type { Rarity } from '@/types/inertia';
 
 interface KartuProps {

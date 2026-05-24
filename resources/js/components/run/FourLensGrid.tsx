@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import Card from '@/components/daybreak/Card';
+import Card from '@/components/ui/Card';
 import { cn } from '@/lib/cn';
 import type { AnalysisPayload } from '@/types/inertia';
 

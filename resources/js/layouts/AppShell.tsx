@@ -3,9 +3,9 @@ import { usePage } from '@inertiajs/react';
 import DemoBanner from '@/components/DemoBanner';
 import FloatingTemari from '@/components/temari/FloatingTemari';
 import UnlockToast from '@/components/temari/UnlockToast';
-import CardReveal from '@/components/daybreak/CardReveal';
-import TopNav from '@/components/daybreak/TopNav';
-import MobileBottomNav from '@/components/daybreak/MobileBottomNav';
+import CardReveal from '@/components/card/CardReveal';
+import TopNav from '@/components/TopNav';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import type { SharedProps } from '@/types/inertia';
 
