@@ -39,15 +39,15 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
         <section
             aria-label="Perjalanan lari"
             className={cn(
-                'rounded-2xl border border-line bg-surface-elev p-4 shadow-sm sm:p-5',
+                'rounded-2xl border border-cream-deep bg-cream px-6 py-5',
                 className,
             )}
         >
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">
                 Kamu vs Lari Pertama Kamu
             </h3>
-            <p className="mt-2 text-sm leading-relaxed text-ink">
-                Total <span className="font-semibold">{total_km.toFixed(1)} km</span> kekumpul sejak lari pertama
+            <p className="mt-2 font-sans text-sm leading-relaxed text-ink">
+                Total <span className="font-semibold text-horizon-deep">{total_km.toFixed(1)} km</span> kekumpul sejak lari pertama
                 {first.date && (
                     <>
                         {' '}
@@ -56,12 +56,12 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                 )}
                 .
             </p>
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 font-display text-base italic">
                 {pace_improvement_sec !== null && (
                     <span
                         className={cn(
-                            'font-bold tabular-nums',
-                            pace_improvement_sec > 0 ? 'text-mood-enteng' : 'text-mood-lemes',
+                            'tabular-nums',
+                            pace_improvement_sec > 0 ? 'text-leaf-deep' : 'text-ember-deep',
                         )}
                     >
                         {Math.abs(Math.round(pace_improvement_sec))} detik/km{' '}
@@ -71,8 +71,8 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                 {hr_improvement_bpm !== null && (
                     <span
                         className={cn(
-                            'font-bold tabular-nums',
-                            hr_improvement_bpm > 0 ? 'text-mood-enteng' : 'text-mood-lemes',
+                            'tabular-nums',
+                            hr_improvement_bpm > 0 ? 'text-leaf-deep' : 'text-ember-deep',
                         )}
                     >
                         {Math.abs(Math.round(hr_improvement_bpm))} bpm{' '}
@@ -89,11 +89,13 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
 function PaceLine({ label, summary, className }: Readonly<{ label: string; summary: ActivitySummary; className?: string }>) {
     const paceLabel = summary.pace_sec_per_km !== null ? formatPace(summary.pace_sec_per_km) : null;
     return (
-        <p className={cn('mt-3 text-xs text-ink-3', className)}>
-            <span className="font-semibold text-ink-2">{label}:</span>{' '}
-            {summary.name ?? 'Lari'}{' '}
-            {summary.distance_km !== null && <>· {summary.distance_km.toFixed(2)} km </>}
-            {paceLabel && <>· pace {paceLabel}/km</>}
+        <p className={cn('mt-3 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-3', className)}>
+            <span className="font-semibold normal-case tracking-normal text-ink-2">{label}:</span>{' '}
+            <span className="font-sans text-xs normal-case tracking-normal text-ink-3">
+                {summary.name ?? 'Lari'}{' '}
+                {summary.distance_km !== null && <>· {summary.distance_km.toFixed(2)} km </>}
+                {paceLabel && <>· pace {paceLabel}/km</>}
+            </span>
         </p>
     );
 }

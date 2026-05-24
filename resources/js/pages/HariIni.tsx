@@ -15,6 +15,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formStatusLabel } from '@/lib/formStatus';
+import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatPace, formatRelativeId } from '@/lib/pace';
 import { RARITY_LABELS } from '@/lib/runcard';
 import type {
@@ -46,6 +47,15 @@ const VIBE_TO_POSE: Record<string, TemariPose> = {
     worn_down: 'wobble',
     stretched_thin: 'wobble',
     hibernating: 'reading',
+};
+
+const MOOD_TO_POSE: Record<string, TemariPose> = {
+    nyala: 'proud',
+    enteng: 'excited',
+    lemes: 'wobble',
+    oleng: 'wobble',
+    mumet: 'wobble',
+    adem: 'reading',
 };
 
 const RARITY_RANK: Record<Rarity, number> = {
@@ -128,7 +138,7 @@ export default function HariIni({
                 {/* 3-UP */}
                 <section className="mt-8 grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
                     <SuggestionCard suggestion={briefing.suggestion} />
-                    {lastRun && <LastLariCard run={lastRun} pose={poseForLastRun()} />}
+                    {lastRun && <LastLariCard run={lastRun} pose={poseForRun(lastRun)} />}
                     <KondisiCard load={load} snapshot={snapshot} />
                 </section>
 
@@ -292,17 +302,21 @@ function FeaturedKartuPanel({
                         onSky
                     />
                 </div>
-                {/* mobile fallback: stack the mini glimpse */}
-                <div className="lg:hidden">
-                    <div className="mt-2 flex items-end gap-3">
-                        <TemariProto pose={pose} size={96} />
-                        <KartuMini
-                            name={featured.name}
-                            rarity={featured.rarity}
-                            date={formatRelativeId(featured.startDate)}
-                            className="!w-auto !flex-1"
-                        />
-                    </div>
+                {/* mobile fallback: Temari above, full Kartu below — keep the kartu-as-hero feel */}
+                <div className="flex flex-col items-center gap-4 lg:hidden">
+                    <TemariProto pose={pose} size={120} animate={false} />
+                    <Kartu
+                        name={featured.name}
+                        subtitle={featured.subtitle}
+                        km={featured.km}
+                        durasi={featured.durasi}
+                        trimp={featured.trimp}
+                        rarity={featured.rarity}
+                        tags={featured.tags}
+                        size="md"
+                        onSky
+                        className="w-full max-w-md"
+                    />
                 </div>
             </div>
         </HeroPanel>
@@ -511,8 +525,9 @@ function vibeSubtitleFor(label: string): string {
     return `kamu lagi ${label.toLowerCase()}.`;
 }
 
-function poseForLastRun(): TemariPose {
-    return 'observational';
+function poseForRun(run: ActivityDetail): TemariPose {
+    const mood = moodFromActivity(run);
+    return MOOD_TO_POSE[mood] ?? 'observational';
 }
 
 function prettyBadge(slug: string): string {

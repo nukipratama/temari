@@ -38,8 +38,8 @@ export default function RangeFilter({
     };
 
     return (
-        <nav aria-label="Range filter" className={cn('flex flex-wrap gap-2', className)}>
-            <span className="mr-1 self-center text-xs font-semibold uppercase tracking-wider text-ink-3">
+        <nav aria-label="Range filter" className={cn('flex flex-wrap items-center gap-1.5', className)}>
+            <span className="mr-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
                 Tampilkan
             </span>
             {RANGE_OPTIONS.map((value) => {
@@ -51,10 +51,10 @@ export default function RangeFilter({
                         onClick={() => onSelect(value)}
                         aria-pressed={isActive}
                         className={cn(
-                            'rounded-full border px-3 py-1 text-sm font-medium transition',
+                            'rounded-full px-3.5 py-1.5 text-xs font-medium transition',
                             isActive
-                                ? 'border-leaf bg-leaf text-white shadow-sm'
-                                : 'border-line bg-surface-elev text-ink-2 hover:border-leaf/40 hover:text-ink',
+                                ? 'bg-sky font-semibold text-cream'
+                                : 'bg-sky/[0.06] text-ink-2 hover:bg-sky/[0.12]',
                         )}
                     >
                         {RANGE_LABEL[value]}

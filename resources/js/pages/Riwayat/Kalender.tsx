@@ -53,48 +53,48 @@ interface MoodTone {
 
 const MOOD_TONE: Record<Mood, MoodTone> = {
     nyala: {
-        dot: 'bg-citrus',
-        cellBg: 'bg-gradient-to-br from-citrus/10 via-citrus/60 to-citrus/10',
-        cellBorder: 'border-citrus/40',
+        dot: 'bg-mood-nyala',
+        cellBg: 'bg-mood-nyala-bg',
+        cellBorder: 'border-mood-nyala/40',
         text: 'text-ink',
     },
     enteng: {
         dot: 'bg-mood-enteng',
-        cellBg: 'bg-gradient-to-br from-mood-enteng/10 via-mood-enteng/15 to-mood-enteng/5',
+        cellBg: 'bg-mood-enteng-bg',
         cellBorder: 'border-mood-enteng/40',
-        text: 'text-mood-enteng',
+        text: 'text-ink',
     },
     lemes: {
         dot: 'bg-mood-lemes',
-        cellBg: 'bg-gradient-to-br from-mood-lemes/10 via-mood-lemes/15 to-mood-lemes/5',
+        cellBg: 'bg-mood-lemes-bg',
         cellBorder: 'border-mood-lemes/40',
-        text: 'text-mood-lemes',
+        text: 'text-ink',
     },
     oleng: {
         dot: 'bg-mood-oleng',
-        cellBg: 'bg-gradient-to-br from-mood-oleng/10 via-mood-oleng/15 to-mood-oleng/5',
+        cellBg: 'bg-mood-oleng-bg',
         cellBorder: 'border-mood-oleng/40',
-        text: 'text-mood-oleng',
+        text: 'text-ink',
     },
     mumet: {
         dot: 'bg-mood-mumet',
-        cellBg: 'bg-gradient-to-br from-mood-mumet/10 via-mood-mumet/15 to-mood-mumet/5',
+        cellBg: 'bg-mood-mumet-bg',
         cellBorder: 'border-mood-mumet/40',
-        text: 'text-mood-mumet',
+        text: 'text-ink',
     },
     adem: {
-        dot: 'bg-ink-3',
-        cellBg: 'bg-gradient-to-br from-leaf/10 via-leaf/15 to-leaf/10',
-        cellBorder: 'border-leaf/25',
+        dot: 'bg-mood-adem',
+        cellBg: 'bg-mood-adem-bg',
+        cellBorder: 'border-mood-adem/40',
         text: 'text-ink',
     },
 };
 
 const DEFAULT_TONE: MoodTone = {
-    dot: 'bg-leaf',
-    cellBg: 'bg-gradient-to-br from-leaf/10 via-leaf/15 to-leaf/10',
-    cellBorder: 'border-leaf/25',
-    text: 'text-ink',
+    dot: 'bg-cream-deep',
+    cellBg: 'bg-cream',
+    cellBorder: 'border-cream-deep',
+    text: 'text-ink-3',
 };
 
 export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, month, todayMonth, monthlyRecap }: Readonly<KalenderProps>) {
@@ -357,22 +357,23 @@ function dayNumberClassFor(isToday: boolean, hasRun: boolean, tone: MoodTone): s
 }
 
 function Legend({ className }: Readonly<{ className?: string }>) {
-    const moods: ReadonlyArray<{ mood: Mood; label: string }> = [
-        { mood: 'nyala', label: 'Nyala' },
-        { mood: 'enteng', label: 'Enteng' },
-        { mood: 'lemes', label: 'Lemes' },
-        { mood: 'oleng', label: 'Oleng' },
-        { mood: 'mumet', label: 'Mumet' },
-        { mood: 'adem', label: 'Adem' },
+    const moods: ReadonlyArray<{ mood: Mood; label: string; hint: string }> = [
+        { mood: 'nyala', label: 'Nyala', hint: 'PR / win' },
+        { mood: 'enteng', label: 'Enteng', hint: 'easy / ringan' },
+        { mood: 'lemes', label: 'Lemes', hint: 'overload' },
+        { mood: 'oleng', label: 'Oleng', hint: 'kepayahan' },
+        { mood: 'mumet', label: 'Mumet', hint: 'intervals' },
+        { mood: 'adem', label: 'Adem', hint: 'recovery' },
     ];
 
     return (
-        <div className={cn('flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-line bg-surface-elev/40 px-4 py-2.5 text-xs text-ink-3', className)}>
-            <span className="font-semibold uppercase tracking-wider">Mood</span>
-            {moods.map(({ mood, label }) => (
-                <span key={mood} className="inline-flex items-center gap-1.5">
-                    <span className={cn('h-2.5 w-2.5 rounded-full', MOOD_TONE[mood].dot)} aria-hidden />
-                    <span>{label}</span>
+        <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-cream-deep bg-cream px-4 py-3 text-xs', className)}>
+            <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">Mood</span>
+            {moods.map(({ mood, label, hint }) => (
+                <span key={mood} className="inline-flex items-baseline gap-1.5">
+                    <span className={cn('inline-block h-2.5 w-2.5 rounded-full', MOOD_TONE[mood].dot)} aria-hidden />
+                    <span className="font-medium text-ink">{label}</span>
+                    <span className="font-display text-[11px] italic text-ink-3">· {hint}</span>
                 </span>
             ))}
         </div>

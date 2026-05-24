@@ -9,6 +9,7 @@ import RangeFilter, { type RangeFilterValue } from '@/components/aktivitas/Range
 import RingkasanCard from '@/components/aktivitas/RingkasanCard';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import RiwayatTabs from '@/components/daybreak/RiwayatTabs';
+import TemariProto, { type TemariPose } from '@/components/daybreak/TemariProto';
 import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
 import { fadeInUp } from '@/lib/motion';
@@ -96,8 +97,8 @@ export default function RunsIndex({
                             Riwayat · {runs.length} aktivitas
                         </div>
                         <h1 className="font-display text-[44px] leading-[0.95] tracking-[-0.025em] text-ink sm:text-[56px] lg:text-[72px] lg:leading-[0.92]">
-                            Setiap lari ada ceritanya,<br />
-                            <em className="italic text-horizon-deep">satu per minggu.</em>
+                            Setiap lari{' '}
+                            <em className="italic text-horizon-deep">ada ceritanya.</em>
                         </h1>
                     </div>
                     <RiwayatTabs active="linimasa" />
@@ -150,10 +151,19 @@ function WeekSection({ bucket, snapshot, notes }: Readonly<WeekSectionProps>) {
 
             {snapshot && (
                 <div className="space-y-3 border-b border-cream-deep bg-cream-deep/20 px-5 py-4">
-                    <RingkasanCard
-                        analysis={snapshot.recap_analysis}
-                        fallback={ruleBasedFallback(snapshot)}
-                    />
+                    <div className="flex items-start gap-3.5">
+                        <TemariProto
+                            pose={poseForFormStatus(snapshot.form_status)}
+                            size={48}
+                            animate={false}
+                        />
+                        <div className="min-w-0 flex-1">
+                            <RingkasanCard
+                                analysis={snapshot.recap_analysis}
+                                fallback={ruleBasedFallback(snapshot)}
+                            />
+                        </div>
+                    </div>
                     <DetailTeknisCollapsible
                         storageKey={snapshot.week_ending.slice(0, 10)}
                         stats={detailStatsFor(snapshot)}
@@ -347,4 +357,19 @@ function weekRangeLabel(monday: Date): string {
     const start = formatIdDate(monday.toISOString(), 'long');
     const end = formatIdDate(sunday.toISOString(), 'long');
     return `${start} — ${end}`;
+}
+
+function poseForFormStatus(status: FormStatus | null): TemariPose {
+    switch (status) {
+        case 'fresh':
+            return 'proud';
+        case 'optimal':
+            return 'observational';
+        case 'fatigued':
+            return 'wobble';
+        case 'overreaching':
+            return 'reading';
+        default:
+            return 'observational';
+    }
 }
