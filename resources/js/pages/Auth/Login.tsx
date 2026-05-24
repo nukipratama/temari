@@ -9,9 +9,9 @@ interface LoginProps {
 }
 
 const PILLARS: ReadonlyArray<{ icon: string; label: string; desc: string }> = [
-    { icon: 'mdi:cards-outline', label: 'Kartu', desc: 'Setiap lari dapet satu kartu' },
-    { icon: 'mdi:trophy-variant-outline', label: 'Rekor', desc: 'Catatan terbaik kamu, satu tempat' },
-    { icon: 'mdi:account-heart-outline', label: 'Temari', desc: 'Catatan yang nemenin tiap minggu' },
+    { icon: 'mdi:cloud-download-outline', label: 'Catat', desc: 'Otomatis nyambung dari Strava' },
+    { icon: 'mdi:card-account-details-outline', label: 'Kasih', desc: 'Tiap lari, Temari bikinin kartunya' },
+    { icon: 'mdi:calendar-check', label: 'Konsisten', desc: 'Jalan terus, nggak harus kenceng' },
 ];
 
 // Strava button keeps #FC4C02 brand orange per Strava brand guidelines.
@@ -32,6 +32,15 @@ export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
                             'linear-gradient(165deg, var(--color-sky-deep) 0%, var(--color-sky) 55%, var(--color-sky-2) 100%)',
                     }}
                 >
+                    {/* Sunrise horizon glow — sits behind everything to evoke the pre-dawn ember. */}
+                    <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0"
+                        style={{
+                            background:
+                                'radial-gradient(ellipse at 70% 100%, rgba(232,160,118,0.55) 0%, rgba(232,160,118,0.18) 35%, transparent 60%)',
+                        }}
+                    />
                     <span
                         aria-hidden
                         className="pointer-events-none absolute -right-10 top-20 h-72 w-72 rounded-full"

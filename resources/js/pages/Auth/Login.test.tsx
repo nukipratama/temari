@@ -23,17 +23,15 @@ describe('Login', () => {
         expect(screen.getByText('Coba versi demo')).toBeInTheDocument();
     });
 
-    it('renders the brand hero + 3 product pillars (Daybreak: Temari is the hero)', () => {
+    it('renders the brand hero + 3 onboarding pillars (Catat / Kasih / Konsisten)', () => {
         setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
         render(<Login authStravaUrl="/x" />);
         expect(screen.getByText('TemanLari')).toBeInTheDocument();
         // Editorial headline is split across two lines; assert the second line.
         expect(screen.getByText('Berarti.')).toBeInTheDocument();
-        expect(screen.getByText('Kartu')).toBeInTheDocument();
-        expect(screen.getByText('Rekor')).toBeInTheDocument();
-        // The third pillar IS Temari — the in-app mascot is part of the
-        // pre-auth pitch in Daybreak.
-        expect(screen.getAllByText('Temari').length).toBeGreaterThan(0);
+        ['Catat', 'Kasih', 'Konsisten'].forEach((label) => {
+            expect(screen.getByText(label)).toBeInTheDocument();
+        });
     });
 
     it('clicking the demo button invokes the submit handler', async () => {

@@ -252,26 +252,39 @@ function AksesoriStrip({
                     Dandanin →
                 </Link>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
                 {entries.map(([key, meta]) => {
                     const unlocked = unlockedKeys.has(key);
                     return (
-                        <div
+                        <article
                             key={key}
                             className={
                                 unlocked
-                                    ? 'flex items-center gap-2 rounded-xl bg-horizon/[0.08] px-3 py-2.5 text-ink'
-                                    : 'flex items-center gap-2 rounded-xl bg-ink/[0.04] px-3 py-2.5 text-ink-3'
+                                    ? 'flex flex-col gap-2 rounded-2xl bg-horizon/[0.08] px-4 py-4 text-ink'
+                                    : 'flex flex-col gap-2 rounded-2xl border border-dashed border-cream-deep bg-cream/40 px-4 py-4 text-ink-3'
                             }
                         >
-                            <Icon
-                                icon={unlocked ? meta.icon : 'mdi:lock-outline'}
-                                width={16}
-                                height={16}
-                                aria-hidden
-                            />
-                            <span className="truncate text-xs font-medium">{meta.name}</span>
-                        </div>
+                            <span
+                                className={
+                                    unlocked
+                                        ? 'flex h-9 w-9 items-center justify-center rounded-xl bg-horizon text-cream'
+                                        : 'flex h-9 w-9 items-center justify-center rounded-xl bg-ink-3/20 text-ink-3'
+                                }
+                            >
+                                <Icon
+                                    icon={unlocked ? meta.icon : 'mdi:lock-outline'}
+                                    width={18}
+                                    height={18}
+                                    aria-hidden
+                                />
+                            </span>
+                            <h4 className="font-display text-base leading-tight tracking-[-0.005em] text-ink">
+                                {meta.name}
+                            </h4>
+                            <p className="font-sans text-[11px] leading-snug text-ink-3">
+                                {unlocked ? meta.description : meta.criteria}
+                            </p>
+                        </article>
                     );
                 })}
             </div>
