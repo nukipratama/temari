@@ -15,14 +15,14 @@ interface CardProps {
     children: ReactNode;
 }
 
-const TONE_CLASS: Record<CardTone, string> = {
+export const TONE_CLASS: Record<CardTone, string> = {
     cream: 'rounded-2xl border border-cream-deep bg-cream',
     'cream-deep': 'rounded-2xl bg-cream-deep',
     'sky-glass': 'rounded-2xl border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
     empty: 'rounded-2xl border-2 border-dashed border-cream-deep bg-cream/40',
 };
 
-const PADDING_CLASS: Record<CardPadding, string> = {
+export const PADDING_CLASS: Record<CardPadding, string> = {
     none: '',
     sm: 'px-4 py-3.5',
     md: 'px-5 py-5',

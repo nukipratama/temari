@@ -168,20 +168,11 @@ function UserMenu({ name, avatarUrl }: Readonly<{ name: string; avatarUrl: strin
                             {name}
                         </div>
                     </div>
-                    <Link
-                        href="/profil"
-                        role="menuitem"
-                        onClick={() => setOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 font-sans text-sm text-ink transition hover:bg-cream-deep"
-                    >
-                        <Icon icon="mdi:account-outline" width={16} height={16} aria-hidden className="text-ink-3" />
-                        Aku
-                    </Link>
                     <button
                         type="button"
                         role="menuitem"
                         onClick={handleLogout}
-                        className="flex w-full items-center gap-2.5 border-t border-cream-deep px-4 py-2.5 text-left font-sans text-sm text-ink transition hover:bg-cream-deep"
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left font-sans text-sm text-ink transition hover:bg-cream-deep"
                     >
                         <Icon icon="mdi:logout" width={16} height={16} aria-hidden className="text-ink-3" />
                         Keluar

@@ -251,7 +251,6 @@ function MapWeatherPanel({ detail }: Readonly<{ detail: DetailedActivityDetail }
 
     return (
         <div className="relative flex flex-col gap-5 overflow-hidden rounded-2xl bg-sky px-6 py-5 text-cream">
-            {/* sky-toned: bg-sky deliberately, NOT a default Card — preserves the prototype's contrast pairing inside the page. */}
             <SectionLabel onSky>Rute lari</SectionLabel>
             {(temp != null || location != null) && (
                 <div className="flex items-baseline gap-4">
