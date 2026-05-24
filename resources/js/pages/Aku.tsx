@@ -6,6 +6,8 @@ import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import HeroPanel from '@/components/ui/HeroPanel';
+import GradientText from '@/components/ui/GradientText';
+import PageHero from '@/components/ui/PageHero';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import PrCard from '@/components/card/PrCard';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -90,12 +92,13 @@ export default function Aku({
                             <TemariProto pose="proud" size={220} />
                         </div>
                         <div>
-                            <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
-                                ★ Identitas kamu
-                            </div>
-                            <h1 className="mb-4 font-display text-[44px] leading-[0.95] tracking-[-0.02em] text-cream sm:text-[64px] lg:text-[80px] lg:leading-[0.92]">
-                                {firstName ? <>Aku, <em className="italic text-horizon">{firstName}.</em></> : <em className="italic text-horizon">Aku.</em>}
-                            </h1>
+                            <PageHero
+                                onSky
+                                eyebrow="★ Identitas kamu"
+                                lead={firstName ? 'Aku,' : undefined}
+                                emph={firstName ? `${firstName}.` : 'Aku.'}
+                                className="mb-4"
+                            />
                             <VoiceCard onSky attribution="Temari" pose="proud">
                                 Halo lagi. Aku catet semua perjalanan kamu di sini — kartu, rekor, aksesori, ceritanya.
                             </VoiceCard>
@@ -197,19 +200,13 @@ function BigStat({ value, unit, label }: Readonly<{ value: string; unit: string;
         <Card padding="lg">
             <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">{label}</div>
             <div className="mt-2 flex items-baseline gap-2">
-                <span
+                <GradientText
+                    preset="horizon"
+                    fontSize="clamp(48px, 6vw, 72px)"
                     className="font-sans font-bold leading-none tabular-nums tracking-[-0.03em]"
-                    style={{
-                        fontSize: 'clamp(48px, 6vw, 72px)',
-                        background: 'linear-gradient(180deg, var(--color-horizon-deep), var(--color-citrus))',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
-                        color: 'transparent',
-                    }}
                 >
                     {value}
-                </span>
+                </GradientText>
                 <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">{unit}</span>
             </div>
         </Card>

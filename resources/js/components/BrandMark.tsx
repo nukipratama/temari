@@ -3,18 +3,20 @@ import { cn } from '@/lib/cn';
 
 interface BrandMarkProps {
     size?: 'hero' | 'compact';
+    /** Wordmark color tone — flip to 'cream' when the mark sits on a dark hero surface. */
+    tone?: 'ink' | 'cream';
     tagline?: boolean;
     className?: string;
 }
 
-export default function BrandMark({ size = 'hero', tagline = false, className }: Readonly<BrandMarkProps>) {
+export default function BrandMark({ size = 'hero', tone = 'ink', tagline = false, className }: Readonly<BrandMarkProps>) {
     if (size === 'compact') {
         return (
             <div className={cn('flex items-center gap-2.5', className)}>
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-leaf text-white">
                     <Icon icon="mdi:run-fast" width={20} height={20} aria-hidden />
                 </span>
-                <span className="font-semibold tracking-tight text-ink">TemanLari</span>
+                <span className={cn('font-semibold tracking-tight', tone === 'cream' ? 'text-cream' : 'text-ink')}>TemanLari</span>
             </div>
         );
     }

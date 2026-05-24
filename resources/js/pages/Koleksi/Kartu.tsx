@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn';
 import { fadeInUp, pressShrink } from '@/lib/motion';
 import { formatDuration, formatIdDate } from '@/lib/pace';
 import { RARITY_LABELS, RARITY_ORDER, prettyBadge } from '@/lib/runcard';
+import { emberGlowStyle } from '@/lib/styles';
 import { useState } from 'react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import type {
@@ -121,7 +122,7 @@ function FeaturedPanel({
             <span
                 aria-hidden
                 className="pointer-events-none absolute -right-10 -top-10 h-60 w-60 rounded-full"
-                style={{ background: 'radial-gradient(circle, rgba(232,160,118,0.3) 0%, transparent 70%)' }}
+                style={emberGlowStyle()}
             />
             <div className="relative grid items-center gap-9 lg:grid-cols-[200px_1fr_280px]">
                 <div className="hidden lg:block">

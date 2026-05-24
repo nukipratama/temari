@@ -20,6 +20,7 @@ import { formStatusLabel } from '@/lib/formStatus';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDuration, formatPace, formatRelativeId } from '@/lib/pace';
 import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
+import { emberGlowStyle } from '@/lib/styles';
 import type {
     ActivityDetail,
     AnalysisPayload,
@@ -259,7 +260,7 @@ function FeaturedKartuPanel({
             <span
                 aria-hidden
                 className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full"
-                style={{ background: 'radial-gradient(circle, rgba(232,160,118,0.3) 0%, transparent 70%)' }}
+                style={emberGlowStyle()}
             />
             <div className="relative grid items-center gap-8 lg:grid-cols-[240px_1fr_320px] lg:gap-12">
                 <div className="hidden lg:block">

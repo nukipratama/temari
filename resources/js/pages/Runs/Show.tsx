@@ -16,6 +16,7 @@ import { fadeInUp } from '@/lib/motion';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDurationHMS, formatIdDate, formatPace } from '@/lib/pace';
 import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
+import { emberGlowStyle } from '@/lib/styles';
 import type {
     Activity,
     ActivityDetail,
@@ -132,7 +133,7 @@ export default function RunsShow({
                         <span
                             aria-hidden
                             className="pointer-events-none absolute -right-10 -top-10 h-52 w-52 rounded-full"
-                            style={{ background: 'radial-gradient(circle, rgba(232,160,118,0.3) 0%, transparent 70%)' }}
+                            style={emberGlowStyle()}
                         />
                         <div className="relative">
                             <div className="mb-5 flex items-start gap-4">

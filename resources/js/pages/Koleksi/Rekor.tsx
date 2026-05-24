@@ -16,6 +16,8 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatIdDate } from '@/lib/pace';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
+import { emberGlowStyle } from '@/lib/styles';
+import GradientText from '@/components/ui/GradientText';
 import type { AnalysisPayload, PersonalRecord } from '@/types/inertia';
 
 interface ExtendedPR extends Omit<PersonalRecord, 'activity'> {
@@ -130,26 +132,20 @@ function HeroScoreboard({
             <span
                 aria-hidden
                 className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-60"
-                style={{ background: 'radial-gradient(circle, rgba(232,160,118,0.45) 0%, transparent 60%)' }}
+                style={emberGlowStyle(0.45, '60%')}
             />
             <div className="relative grid items-start gap-10 lg:grid-cols-[1.4fr_1fr]">
                 <div>
                     <div className="mb-5 flex flex-wrap items-center gap-2">
                         <Chip tone="onSky">{category}</Chip>
                     </div>
-                    <div
-                        className="mb-5 font-sans font-bold leading-[0.85] tracking-[-0.05em] tabular-nums"
-                        style={{
-                            fontSize: 'clamp(80px, 16vw, 200px)',
-                            background: 'linear-gradient(180deg, var(--color-cream), oklch(85% 0.10 50))',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
-                            color: 'transparent',
-                        }}
+                    <GradientText
+                        preset="cream-sun"
+                        fontSize="clamp(80px, 16vw, 200px)"
+                        className="mb-5 block font-sans font-bold leading-[0.85] tracking-[-0.05em] tabular-nums"
                     >
                         {time}
-                    </div>
+                    </GradientText>
                     <div className="mb-6 grid max-w-2xl gap-5 sm:grid-cols-3">
                         <Caption label="Tipe" value={runName} />
                         <Caption label="Hari" value={formatIdDate(pr.set_at, 'long')} />

@@ -9,6 +9,7 @@ import RangeFilter, { type RangeFilterValue } from '@/components/aktivitas/Range
 import RingkasanCard from '@/components/aktivitas/RingkasanCard';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import Card from '@/components/ui/Card';
+import PageHero from '@/components/ui/PageHero';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
@@ -93,15 +94,11 @@ export default function RunsIndex({
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
                 <header className="flex flex-col gap-5">
-                    <div>
-                        <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
-                            Riwayat · {runs.length} aktivitas
-                        </div>
-                        <h1 className="font-display text-[44px] leading-[0.95] tracking-[-0.025em] text-ink sm:text-[56px] lg:text-[72px] lg:leading-[0.92]">
-                            Setiap lari{' '}
-                            <em className="italic text-horizon-deep">ada ceritanya.</em>
-                        </h1>
-                    </div>
+                    <PageHero
+                        eyebrow={`Riwayat · ${runs.length} aktivitas`}
+                        lead="Setiap lari"
+                        emph="ada ceritanya."
+                    />
                     <RiwayatTabs active="linimasa" />
                 </header>
 
