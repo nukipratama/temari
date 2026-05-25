@@ -6,16 +6,15 @@ import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import HeroPanel from '@/components/ui/HeroPanel';
-import GradientText from '@/components/ui/GradientText';
-import PageHero from '@/components/ui/PageHero';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import PrCard from '@/components/card/PrCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import TemariProto from '@/components/temari/TemariProto';
 import VoiceCard from '@/components/temari/VoiceCard';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
-import { formatIdDate } from '@/lib/pace';
+import { formatIdDate, formatShortDateId, monthsSinceId } from '@/lib/pace';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
@@ -75,7 +74,13 @@ export default function Aku({
 }: Readonly<AkuProps>) {
     const sharedUser = usePage<SharedProps>().props.auth.user;
     const firstName = sharedUser?.first_name ?? identity.name.split(' ')[0] ?? '';
+    const firstRunShort = identity.first_run_at ? formatShortDateId(identity.first_run_at) : null;
     const memberSince = identity.member_since ? formatIdDate(identity.member_since, 'long') : null;
+    const monthsSinceFirstRun = monthsSinceId(identity.first_run_at);
+
+    const eyebrowParts: string[] = ['Aku'];
+    if (firstRunShort) eyebrowParts.push(`berlari sejak ${firstRunShort}`);
+    if (monthsSinceFirstRun !== null) eyebrowParts.push(`${monthsSinceFirstRun} bulan`);
 
     return (
         <AppShell>
@@ -86,35 +91,60 @@ export default function Aku({
                 animate="visible"
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
-                <HeroPanel className="lg:px-14 lg:py-12">
-                    <div className="grid items-center gap-9 lg:grid-cols-[220px_1fr]">
-                        <div className="flex justify-center">
-                            <TemariProto pose="proud" size={220} />
+                <header className="mb-8">
+                    <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3 lg:text-xs">
+                        {eyebrowParts.join(' · ')}
+                    </div>
+                    <h1 className="font-display text-display-lg text-ink">
+                        {firstName ? `${firstName} Runner,` : 'Aku,'}<br />
+                        <em className="italic text-horizon-deep">ceritanya.</em>
+                    </h1>
+                </header>
+
+                <HeroPanel className="lg:px-12 lg:py-10">
+                    <div className="grid items-center gap-6 lg:grid-cols-[160px_1fr]">
+                        <div className="flex justify-center lg:justify-start">
+                            <TemariProto pose="proud" size={160} />
                         </div>
                         <div>
-                            <PageHero
-                                onSky
-                                eyebrow="★ Identitas kamu"
-                                lead={firstName ? 'Aku,' : undefined}
-                                emph={firstName ? `${firstName}.` : 'Aku.'}
-                                className="mb-4"
-                            />
+                            <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
+                                ★ Kata Temari tentang kamu
+                            </div>
                             <VoiceCard onSky attribution="Temari" pose="proud">
                                 Halo lagi. Aku catet semua perjalanan kamu di sini — kartu, rekor, aksesori, ceritanya.
                             </VoiceCard>
-                            {memberSince && (
-                                <div className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-cream/55">
-                                    Bareng sejak {memberSince}
-                                </div>
-                            )}
+                            <div className="mt-5 flex flex-wrap gap-2">
+                                <Chip tone="onSky">
+                                    {identity.strava_connected ? 'Strava aktif' : 'Strava off'}
+                                </Chip>
+                                {memberSince && <Chip tone="onSky">Gabung sejak {memberSince}</Chip>}
+                            </div>
                         </div>
                     </div>
                 </HeroPanel>
 
-                <section className="mt-10 grid gap-3.5 sm:grid-cols-3">
-                    <BigStat value={stats.total_km.toFixed(1)} unit="km" label="Total jarak" />
-                    <BigStat value={stats.total_runs.toString()} unit="lari" label="Total aktivitas" />
-                    <BigStat value={stats.longest_run_km.toFixed(2)} unit="km" label="Terjauh" />
+                <section className="mt-8 grid gap-3.5 sm:grid-cols-3">
+                    <StatCard
+                        accent="leaf"
+                        label="Total km"
+                        value={stats.total_km.toFixed(1)}
+                        unit="km"
+                        hint="sejauh ini"
+                    />
+                    <StatCard
+                        accent="horizon"
+                        label="Total lari"
+                        value={stats.total_runs.toString()}
+                        unit="lari"
+                        hint="bareng Temari"
+                    />
+                    <StatCard
+                        accent="nyala"
+                        label="Lari terjauh"
+                        value={stats.longest_run_km.toFixed(2)}
+                        unit="km"
+                        hint={firstRunShort ? `sejak ${firstRunShort}` : undefined}
+                    />
                 </section>
 
                 <section className="mt-10">
@@ -195,20 +225,50 @@ export default function Aku({
     );
 }
 
-function BigStat({ value, unit, label }: Readonly<{ value: string; unit: string; label: string }>) {
+type StatAccent = 'leaf' | 'horizon' | 'nyala';
+
+const STAT_ACCENT: Record<StatAccent, { border: string; value: string }> = {
+    leaf: { border: 'before:bg-leaf', value: 'text-leaf-deep' },
+    horizon: { border: 'before:bg-horizon', value: 'text-horizon-deep' },
+    nyala: { border: 'before:bg-mood-nyala', value: 'text-mood-nyala' },
+};
+
+function StatCard({
+    accent,
+    label,
+    value,
+    unit,
+    hint,
+}: Readonly<{ accent: StatAccent; label: string; value: string; unit?: string; hint?: string }>) {
+    const tone = STAT_ACCENT[accent];
     return (
-        <Card padding="lg">
-            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">{label}</div>
-            <div className="mt-2 flex items-baseline gap-2">
-                <GradientText
-                    preset="horizon"
-                    fontSize="clamp(48px, 6vw, 72px)"
-                    className="font-sans font-bold leading-none tabular-nums tracking-[-0.03em]"
+        <Card
+            padding="lg"
+            className={cn(
+                'relative overflow-hidden',
+                'before:absolute before:inset-x-0 before:top-0 before:h-1',
+                tone.border,
+            )}
+        >
+            <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+                {label}
+            </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+                <span
+                    className={cn(
+                        'font-sans text-display-sm font-black leading-none tabular-nums',
+                        tone.value,
+                    )}
                 >
                     {value}
-                </GradientText>
-                <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">{unit}</span>
+                </span>
+                {unit && (
+                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                        {unit}
+                    </span>
+                )}
             </div>
+            {hint && <div className="mt-2 font-display text-sm italic text-ink-3">{hint}</div>}
         </Card>
     );
 }

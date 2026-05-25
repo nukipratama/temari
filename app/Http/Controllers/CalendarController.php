@@ -6,10 +6,8 @@ namespace App\Http\Controllers;
 
 use Throwable;
 use App\Models\ActivityDetail;
-use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
-use App\Services\AI\AnalysisType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -45,22 +43,46 @@ class CalendarController extends Controller
             'nextMonth' => $monthStart->copy()->addMonthNoOverflow()->format('Y-m'),
             'todayMonth' => Carbon::today()->format('Y-m'),
             'cells' => $this->buildCells($user, $gridStart, $gridEnd, $monthStart, $monthEnd),
-            'monthlyRecap' => $this->resolveMonthlyRecap($user, $monthStart->format('Y-m')),
+            'lifetime' => $this->lifetimeStats($user),
+            'todayQuote' => $this->todayQuote($user),
         ]);
     }
 
     /**
-     * @return array{id: int|null, status: string, content: string|null, type: string, subject_type: string, subject_id: int, discriminator: string|null}
+     * @return array{total_runs: int, total_km: float, first_run_at: string|null}
      */
-    private function resolveMonthlyRecap(User $user, string $monthDiscriminator): array
+    private function lifetimeStats(User $user): array
     {
-        $subjectType = AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE;
+        $totalRuns = $user->activities()->whereNotNull('analyzed_at')->count();
 
-        $row = Analysis::query()
-            ->forSubject($subjectType, $user->id, AnalysisType::MonthlyRecap, $monthDiscriminator)
+        $aggregates = ActivityDetail::query()
+            ->whereHas(
+                'activity',
+                fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'),
+            )
+            ->selectRaw('SUM(distance) AS total_distance, MIN(start_date_local) AS first_run_at')
             ->first();
 
-        return Analysis::toPayload($row, AnalysisType::MonthlyRecap, $subjectType, $user->id, $monthDiscriminator);
+        $totalDistanceMeters = (float) ($aggregates?->getAttribute('total_distance') ?? 0);
+        $firstRunAt = $aggregates?->getAttribute('first_run_at');
+
+        return [
+            'total_runs' => $totalRuns,
+            'total_km' => round($totalDistanceMeters / 1000, 1),
+            'first_run_at' => \is_string($firstRunAt) ? $firstRunAt : $firstRunAt?->toIso8601String(),
+        ];
+    }
+
+    private function todayQuote(User $user): ?string
+    {
+        return StoryLine::query()
+            ->where('kind', StoryLine::KIND_POST_RUN)
+            ->whereHas('activity', fn ($q) => $q
+                ->where('user_id', $user->id)
+                ->whereNotNull('analyzed_at')
+                ->whereHas('detail', fn ($q) => $q->whereDate('start_date_local', Carbon::today())))
+            ->orderByDesc('id')
+            ->value('speech');
     }
 
     private function resolveMonth(mixed $raw): Carbon

@@ -97,9 +97,11 @@ export default function KoleksiKartu({
                 <RarityFilter selected={selectedRarity} counts={rarityCounts} />
 
                 {grid.length === 0 && featuredCard === null ? (
-                    <EmptyState />
+                    <div className="mt-6">
+                        <EmptyState />
+                    </div>
                 ) : (
-                    <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="mt-6 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
                         {grid.map((card) => (
                             <CardCell key={card.id} card={card} onTap={triggerBurstFor} />
                         ))}

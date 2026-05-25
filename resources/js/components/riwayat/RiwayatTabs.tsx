@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
 
 export type RiwayatTab = 'linimasa' | 'kalender';
@@ -9,8 +10,8 @@ interface RiwayatTabsProps {
 }
 
 const TABS = [
-    { id: 'linimasa' as const, label: 'Linimasa', href: '/aktivitas' },
-    { id: 'kalender' as const, label: 'Kalender', href: '/kalender' },
+    { id: 'linimasa' as const, label: 'Linimasa', href: '/aktivitas', icon: 'mdi:arrow-top-right' },
+    { id: 'kalender' as const, label: 'Kalender', href: '/kalender', icon: 'mdi:calendar-blank-outline' },
 ];
 
 export default function RiwayatTabs({ active, className }: Readonly<RiwayatTabsProps>) {
@@ -21,12 +22,13 @@ export default function RiwayatTabs({ active, className }: Readonly<RiwayatTabsP
                     key={tab.id}
                     href={tab.href}
                     className={cn(
-                        'inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-medium transition',
+                        'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] transition',
                         active === tab.id
-                            ? 'bg-sky text-cream font-semibold'
+                            ? 'bg-sky text-cream font-semibold shadow-sm'
                             : 'bg-transparent text-ink-2 hover:bg-sky/[0.06]',
                     )}
                 >
+                    <Icon icon={tab.icon} width={14} height={14} aria-hidden />
                     {tab.label}
                 </Link>
             ))}

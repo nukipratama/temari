@@ -29,6 +29,33 @@ afterEach(() => {
 });
 
 vi.mock('@inertiajs/react', async () => {
+    // Inertia-specific props that React would warn about if they leaked onto a
+    // raw <a>. Keep this aligned with @inertiajs/react Link's public surface.
+    const INERTIA_LINK_PROPS = new Set([
+        'preserveScroll',
+        'preserveState',
+        'replace',
+        'only',
+        'except',
+        'data',
+        'method',
+        'as',
+        'headers',
+        'errorBag',
+        'queryStringArrayFormat',
+        'async',
+        'prefetch',
+        'cacheFor',
+        'onStart',
+        'onProgress',
+        'onFinish',
+        'onCancel',
+        'onSuccess',
+        'onError',
+        'onCancelToken',
+        'onBefore',
+    ]);
+
     const linkComponent = ({
         href,
         children,
@@ -41,12 +68,17 @@ vi.mock('@inertiajs/react', async () => {
         className?: string;
         dangerouslySetInnerHTML?: { __html: string };
         [k: string]: unknown;
-    }) =>
-        createElement(
+    }) => {
+        const domProps: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(rest)) {
+            if (!INERTIA_LINK_PROPS.has(k)) domProps[k] = v;
+        }
+        return createElement(
             'a',
-            { href, className, dangerouslySetInnerHTML, ...rest },
+            { href, className, dangerouslySetInnerHTML, ...domProps },
             dangerouslySetInnerHTML ? undefined : children,
         );
+    };
 
     return {
         Head: ({ children }: { children?: ReactNode }) => children ?? null,

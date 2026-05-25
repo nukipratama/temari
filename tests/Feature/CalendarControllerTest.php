@@ -86,15 +86,14 @@ it('aggregates multiple runs on the same day into one cell', function (): void {
             }));
 });
 
-it('exposes a monthlyRecap analysis payload keyed to the visible month', function (): void {
+it('exposes a lifetime stats payload', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/kalender?month=2026-05')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Riwayat/Kalender')
-            ->has('monthlyRecap')
-            ->where('monthlyRecap.type', 'monthly_recap')
-            ->where('monthlyRecap.subject_type', 'monthly_recap_user_month')
-            ->where('monthlyRecap.discriminator', '2026-05'));
+            ->has('lifetime.total_runs')
+            ->has('lifetime.total_km')
+            ->has('lifetime.first_run_at'));
 });

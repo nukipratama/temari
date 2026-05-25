@@ -25,22 +25,22 @@ beforeEach(() => {
 describe('Aku', () => {
     it('renders the editorial greeting with the first name', () => {
         render(<Aku identity={identity} stats={stats} />);
-        expect(screen.getByText(/Identitas kamu/)).toBeInTheDocument();
-        expect(screen.getByText('Ada.')).toBeInTheDocument();
+        expect(screen.getByText(/berlari sejak/i)).toBeInTheDocument();
+        expect(screen.getByText('Ada Runner,')).toBeInTheDocument();
     });
 
-    it('falls back to "Aku." when no first name is available', () => {
+    it('falls back to "Aku," when no first name is available', () => {
         setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
         const noFirstName = { ...identity, name: '' };
         render(<Aku identity={noFirstName} stats={stats} />);
-        expect(screen.getByText('Aku.')).toBeInTheDocument();
+        expect(screen.getByText('Aku,')).toBeInTheDocument();
     });
 
-    it('renders the three big stat tiles', () => {
+    it('renders the three stat tiles', () => {
         render(<Aku identity={identity} stats={stats} />);
-        expect(screen.getByText('Total jarak')).toBeInTheDocument();
-        expect(screen.getByText('Total aktivitas')).toBeInTheDocument();
-        expect(screen.getByText('Terjauh')).toBeInTheDocument();
+        expect(screen.getByText('Total km')).toBeInTheDocument();
+        expect(screen.getByText('Total lari')).toBeInTheDocument();
+        expect(screen.getByText('Lari terjauh')).toBeInTheDocument();
     });
 
     it('renders the persona bar + summary when personaMix is provided', () => {

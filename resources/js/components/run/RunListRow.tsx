@@ -46,7 +46,7 @@ export default function RunListRow({ detail, mood = null, note = null }: Readonl
                     <div className="flex items-center gap-5 tabular-nums">
                         <Cell value={km} unit="km" emphasize />
                         <Cell value={paceLabel} unit="/km" hideOnNarrow="sm" />
-                        <Cell value={hr ?? '—'} unit="bpm" hideOnNarrow="md" tone="alert" />
+                        <Cell value={hr ?? '—'} unit="bpm" hideOnNarrow="md" />
                         <Cell value={trimp ?? '—'} unit="TRIMP" hideOnNarrow="md" />
                     </div>
                 </div>
@@ -72,7 +72,6 @@ interface CellProps {
     unit: string;
     emphasize?: boolean;
     hideOnNarrow?: 'sm' | 'md';
-    tone?: 'alert';
 }
 
 const HIDE_CLASSES = {
@@ -80,17 +79,10 @@ const HIDE_CLASSES = {
     md: 'hidden md:block',
 } as const;
 
-function Cell({ value, unit, emphasize = false, hideOnNarrow, tone }: Readonly<CellProps>) {
+function Cell({ value, unit, emphasize = false, hideOnNarrow }: Readonly<CellProps>) {
     return (
         <div className={cn('text-center', hideOnNarrow && HIDE_CLASSES[hideOnNarrow])}>
-            <div
-                className={cn(
-                    emphasize && 'font-bold text-ink',
-                    tone === 'alert' && 'text-mood-lemes',
-                )}
-            >
-                {value}
-            </div>
+            <div className={cn('text-ink', emphasize && 'font-bold')}>{value}</div>
             <div className="text-[10px] uppercase tracking-wide text-ink-3">{unit}</div>
         </div>
     );

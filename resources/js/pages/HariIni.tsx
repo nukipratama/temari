@@ -207,20 +207,20 @@ function VitalChip({
     sub,
     tone,
 }: Readonly<{ label: string; value: string; sub: string; tone: 'horizon' | 'leaf' | 'ink' }>) {
-    const valueClass = {
-        horizon: 'text-horizon',
-        leaf: 'text-leaf',
-        ink: 'text-ink',
+    // Color the tiny label dot, not the number — keeps the page from feeling
+    // like a paint-store sample card while still tagging the metric's family.
+    const dotClass = {
+        horizon: 'bg-horizon',
+        leaf: 'bg-leaf',
+        ink: 'bg-ink-3',
     }[tone];
     return (
         <div className="rounded-xl border border-cream-deep bg-cream px-3.5 py-3">
-            <div className="mb-1 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-3">{label}</div>
-            <div
-                className={cn(
-                    'font-sans text-[22px] font-bold leading-none tabular-nums tracking-[-0.02em]',
-                    valueClass,
-                )}
-            >
+            <div className="mb-1 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-3">
+                <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />
+                {label}
+            </div>
+            <div className="font-sans text-[22px] font-bold leading-none tabular-nums tracking-[-0.02em] text-ink">
                 {value}
             </div>
             {sub !== '' && <div className="mt-1 font-display text-xs italic text-ink-3">{sub}</div>}

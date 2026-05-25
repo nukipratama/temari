@@ -1,17 +1,15 @@
 import { Head, Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import AppShell from '@/layouts/AppShell';
-import Card from '@/components/ui/Card';
+import RiwayatFilter, { type MoodOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
-import SectionLabel from '@/components/ui/SectionLabel';
-import TemariProto from '@/components/temari/TemariProto';
-import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
-import { formatPace } from '@/lib/pace';
-import type { AnalysisPayload, Mood } from '@/types/inertia';
+import { MOOD_FILL, MOOD_LABEL, MOOD_SOFT_FILL } from '@/lib/mood';
+import { formatPace, formatShortDateId } from '@/lib/pace';
+import type { Mood } from '@/types/inertia';
 
 export interface CalendarCell {
     date: string;
@@ -26,6 +24,12 @@ export interface CalendarCell {
     activity_id: number | null;
 }
 
+interface LifetimeStats {
+    total_runs: number;
+    total_km: number;
+    first_run_at: string | null;
+}
+
 interface KalenderProps {
     cells: ReadonlyArray<CalendarCell>;
     month: string;
@@ -33,75 +37,61 @@ interface KalenderProps {
     prevMonth: string;
     nextMonth: string;
     todayMonth: string;
-    monthlyRecap?: AnalysisPayload;
+    lifetime?: LifetimeStats;
+    todayQuote?: string | null;
 }
 
 interface WeekRow {
     weekStart: string;
+    weekNumber: number;
     days: CalendarCell[];
     totalKm: number;
     runCount: number;
 }
 
-const WEEKDAY_LABELS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as const;
+const WEEKDAY_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'] as const;
 
-interface MoodTone {
-    dot: string;
-    cellBg: string;
-    cellBorder: string;
-    text: string;
-}
-
-const MOOD_TONE: Record<Mood, MoodTone> = {
-    nyala: {
-        dot: 'bg-mood-nyala',
-        cellBg: 'bg-mood-nyala-bg',
-        cellBorder: 'border-mood-nyala/40',
-        text: 'text-ink',
-    },
-    enteng: {
-        dot: 'bg-mood-enteng',
-        cellBg: 'bg-mood-enteng-bg',
-        cellBorder: 'border-mood-enteng/40',
-        text: 'text-ink',
-    },
-    lemes: {
-        dot: 'bg-mood-lemes',
-        cellBg: 'bg-mood-lemes-bg',
-        cellBorder: 'border-mood-lemes/40',
-        text: 'text-ink',
-    },
-    oleng: {
-        dot: 'bg-mood-oleng',
-        cellBg: 'bg-mood-oleng-bg',
-        cellBorder: 'border-mood-oleng/40',
-        text: 'text-ink',
-    },
-    mumet: {
-        dot: 'bg-mood-mumet',
-        cellBg: 'bg-mood-mumet-bg',
-        cellBorder: 'border-mood-mumet/40',
-        text: 'text-ink',
-    },
-    adem: {
-        dot: 'bg-mood-adem',
-        cellBg: 'bg-mood-adem-bg',
-        cellBorder: 'border-mood-adem/40',
-        text: 'text-ink',
-    },
+// Hint strings paired by mood key. Labels + fill classes come from lib/mood.ts.
+const MOOD_HINT: Record<Mood, string> = {
+    nyala: 'PR / win',
+    enteng: 'easy',
+    oleng: 'HR drift',
+    lemes: 'high strain',
+    mumet: 'overreaching',
+    adem: 'rest',
 };
 
-const DEFAULT_TONE: MoodTone = {
-    dot: 'bg-cream-deep',
-    cellBg: 'bg-cream',
-    cellBorder: 'border-cream-deep',
-    text: 'text-ink-3',
-};
+const MOOD_ORDER: ReadonlyArray<Mood> = ['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'];
 
-export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, month, todayMonth, monthlyRecap }: Readonly<KalenderProps>) {
+const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => ({
+    mood,
+    label: MOOD_LABEL[mood],
+    hint: MOOD_HINT[mood],
+    swatchClass: MOOD_FILL[mood],
+}));
+
+export default function Kalender({
+    cells,
+    monthLabel,
+    prevMonth,
+    nextMonth,
+    month,
+    todayMonth,
+    lifetime,
+    todayQuote = null,
+}: Readonly<KalenderProps>) {
     const weeks = useMemo<WeekRow[]>(() => groupByWeek(cells), [cells]);
-    const monthlyStats = useMemo(() => computeMonthlyStats(cells), [cells]);
     const isCurrentMonth = month === todayMonth;
+    const [moodFilter, setMoodFilter] = useState<ReadonlySet<Mood>>(new Set());
+    const toggleMood = useCallback((mood: Mood) => {
+        setMoodFilter((prev) => {
+            const next = new Set(prev);
+            if (next.has(mood)) next.delete(mood);
+            else next.add(mood);
+            return next;
+        });
+    }, []);
+    const resetFilter = useCallback(() => setMoodFilter(new Set()), []);
 
     return (
         <AppShell>
@@ -112,114 +102,96 @@ export default function Kalender({ cells, monthLabel, prevMonth, nextMonth, mont
                 animate="visible"
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
-                <header className="mb-6 flex flex-col gap-5">
-                    <div>
-                        <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
-                            Riwayat · {monthLabel.toLowerCase()}
-                        </div>
+                <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                        <LifetimeEyebrow lifetime={lifetime} />
                         <h1 className="font-display text-display-lg text-ink">
-                            Mood-kamu bulan ini,<br />
-                            <em className="italic text-horizon-deep">dalam satu lihat.</em>
+                            Setiap lari,<br />
+                            <em className="italic text-horizon-deep">ada ceritanya.</em>
                         </h1>
                     </div>
-                    <RiwayatTabs active="kalender" />
+                    <MonthNav
+                        label={monthLabel}
+                        prevMonth={prevMonth}
+                        nextMonth={nextMonth}
+                        showTodayButton={!isCurrentMonth}
+                    />
                 </header>
 
-                <MonthNav
-                    label={monthLabel}
-                    stats={monthlyStats}
-                    prevMonth={prevMonth}
-                    nextMonth={nextMonth}
-                    showTodayButton={!isCurrentMonth}
-                    className="mb-4"
-                />
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                    <RiwayatTabs active="kalender" />
+                    <RiwayatFilter
+                        mood={{
+                            selected: moodFilter,
+                            options: MOOD_FILTER_OPTIONS,
+                            onToggle: toggleMood,
+                        }}
+                        onReset={resetFilter}
+                    />
+                </div>
 
-                <div className="overflow-x-auto rounded-2xl border border-line bg-surface-elev shadow-sm">
+                <Legend className="mb-4" />
+
+                <div className="overflow-x-auto rounded-2xl border border-line/70 bg-surface-warm">
                     <div className="min-w-[840px]">
                         <CalendarHeader />
                         {weeks.map((week) => (
-                            <WeekRowView key={week.weekStart} week={week} />
+                            <WeekRowView
+                                key={week.weekStart}
+                                week={week}
+                                todayQuote={todayQuote}
+                                moodFilter={moodFilter}
+                            />
                         ))}
                     </div>
                 </div>
-
-                <Legend className="mt-4" />
-
-                {monthlyRecap && (
-                    <section className="mt-10">
-                        <SectionLabel>Catatan bulanan Temari</SectionLabel>
-                        <Card className="flex items-start gap-3.5">
-                            <TemariProto pose="observational" size={56} />
-                            <div className="min-w-0 flex-1">
-                                <AnalysisStatus
-                                    analysis={monthlyRecap}
-                                    inertiaReloadProps={['monthlyRecap']}
-                                    renderContent={(text) => (
-                                        <p className="font-display text-quote-md italic text-ink-2">
-                                            “{text}”
-                                        </p>
-                                    )}
-                                />
-                            </div>
-                        </Card>
-                    </section>
-                )}
             </motion.main>
         </AppShell>
     );
 }
 
-interface MonthlyStats {
-    totalKm: number;
-    runCount: number;
-    totalTrimp: number;
+function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
+    const stats: string[] = [];
+    if (lifetime && lifetime.total_runs > 0) {
+        stats.push(`${lifetime.total_runs} lari`, `${lifetime.total_km.toFixed(0)} km`);
+        if (lifetime.first_run_at) {
+            stats.push(`sejak ${formatShortDateId(lifetime.first_run_at)}`);
+        }
+    }
+    return (
+        <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3 lg:text-xs">
+            {['Riwayat', ...stats].join(' · ')}
+        </div>
+    );
 }
 
 function MonthNav({
     label,
-    stats,
     prevMonth,
     nextMonth,
     showTodayButton,
-    className,
 }: Readonly<{
     label: string;
-    stats: MonthlyStats;
     prevMonth: string;
     nextMonth: string;
     showTodayButton: boolean;
-    className?: string;
 }>) {
     return (
-        <header
-            className={cn(
-                'flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev px-3 py-2 shadow-sm',
-                className,
-            )}
-        >
+        <div className="flex items-center gap-2">
             <NavButton href={`/kalender?month=${prevMonth}`} icon="mdi:chevron-left" label="Bulan sebelumnya" />
-            <div className="flex flex-1 flex-wrap items-baseline justify-center gap-x-3 gap-y-0.5 text-center">
-                <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl">{label}</h2>
-                {stats.runCount > 0 ? (
-                    <span className="text-xs font-semibold text-ink-3">
-                        <span className="text-leaf-deep">{stats.totalKm.toFixed(1)} km</span> · {stats.runCount} lari
-                    </span>
-                ) : (
-                    <span className="text-xs text-ink-3">Belum ada lari</span>
-                )}
-            </div>
-            <div className="flex items-center gap-2">
-                {showTodayButton && (
-                    <Link
-                        href="/kalender"
-                        className="rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1.5 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
-                    >
-                        Hari ini
-                    </Link>
-                )}
-                <NavButton href={`/kalender?month=${nextMonth}`} icon="mdi:chevron-right" label="Bulan berikutnya" />
-            </div>
-        </header>
+            <h2 className="min-w-[7rem] text-center text-base font-semibold tracking-tight text-ink lg:text-lg">
+                {label}
+            </h2>
+            <NavButton href={`/kalender?month=${nextMonth}`} icon="mdi:chevron-right" label="Bulan berikutnya" />
+            {showTodayButton && (
+                <Link
+                    href="/kalender"
+                    className="ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
+                >
+                    Hari ini
+                </Link>
+            )}
+        </div>
     );
 }
 
@@ -229,23 +201,23 @@ function NavButton({ href, icon, label }: Readonly<{ href: string; icon: string;
             href={href}
             aria-label={label}
             preserveScroll
-            className="flex h-10 w-10 items-center justify-center rounded-full text-ink-2 transition hover:bg-line/50 hover:text-ink"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line/60 text-ink-2 transition hover:border-line hover:bg-surface-warm hover:text-ink"
         >
-            <Icon icon={icon} width={20} height={20} aria-hidden />
+            <Icon icon={icon} width={18} height={18} aria-hidden />
         </Link>
     );
 }
 
 function CalendarHeader() {
     return (
-        <div className="grid grid-cols-[6rem_repeat(7,minmax(0,1fr))] border-b border-line bg-gradient-to-b from-surface-warm/80 to-surface-warm/30">
-            <div className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-ink-3">
-                Pekan
+        <div className="grid grid-cols-[5.5rem_repeat(7,minmax(0,1fr))] border-b border-line/60 bg-surface-sunken/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
+            <div className="px-3 py-2.5">
+                <span className="sr-only">Pekan</span>
             </div>
             {WEEKDAY_LABELS.map((label) => (
                 <div
                     key={label}
-                    className="border-l border-line/40 px-2 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-ink-3"
+                    className="px-2 py-2.5 text-center font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3 lg:text-xs"
                 >
                     {label}
                 </div>
@@ -254,76 +226,83 @@ function CalendarHeader() {
     );
 }
 
-function WeekRowView({ week }: Readonly<{ week: WeekRow }>) {
+function WeekRowView({
+    week,
+    todayQuote,
+    moodFilter,
+}: Readonly<{ week: WeekRow; todayQuote: string | null; moodFilter: ReadonlySet<Mood> }>) {
     return (
-        <div className="grid grid-cols-[6rem_repeat(7,minmax(0,1fr))] border-b border-line last:border-b-0">
+        <div className="grid grid-cols-[5.5rem_repeat(7,minmax(0,1fr))] border-b border-line/50 last:border-b-0 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
             <WeekSummary week={week} />
             {week.days.map((day) => (
-                <DayCellView key={day.date} cell={day} />
+                <DayCellView key={day.date} cell={day} todayQuote={todayQuote} moodFilter={moodFilter} />
             ))}
         </div>
     );
 }
 
 function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
-    const hasRuns = week.runCount > 0;
     return (
-        <div
-            className={cn(
-                'flex flex-col items-start justify-center gap-0.5 border-r border-line p-3 text-xs',
-                hasRuns ? 'bg-gradient-to-br from-leaf/10 to-leaf/15' : 'bg-surface-sunken/30',
-            )}
-        >
-            {hasRuns ? (
+        <div className="flex flex-col items-start justify-center gap-1 border-r border-line/50 p-3">
+            {week.runCount > 0 ? (
                 <>
-                    <span className="text-2xl font-black leading-none tabular-nums text-leaf-deep">
-                        {week.totalKm.toFixed(1)}
+                    <span className="text-base font-bold tabular-nums leading-none text-ink lg:text-lg">
+                        {week.totalKm.toFixed(1)}{' '}
+                        <span className="text-xs font-medium text-ink-3 lg:text-sm">km</span>
                     </span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-leaf-deep">km</span>
-                    <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-ink-3">
-                        <Icon icon="mdi:run" width={10} height={10} aria-hidden />
-                        {week.runCount} lari
+                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                        WK {week.weekNumber}
                     </span>
                 </>
             ) : (
-                <span className="text-[10px] text-ink-3">Tidak ada lari</span>
+                <span className="text-xs text-ink-3">—</span>
             )}
         </div>
     );
 }
 
-function DayCellView({ cell }: Readonly<{ cell: CalendarCell }>) {
+function DayCellView({
+    cell,
+    todayQuote,
+    moodFilter,
+}: Readonly<{ cell: CalendarCell; todayQuote: string | null; moodFilter: ReadonlySet<Mood> }>) {
+    if (cell.is_today) {
+        return <TodayCell cell={cell} quote={todayQuote} />;
+    }
+
     const hasRun = cell.distance_km !== null && cell.distance_km > 0;
-    const tone = cell.mood ? MOOD_TONE[cell.mood] : DEFAULT_TONE;
     const muted = !cell.is_current_month;
-    const dayNumClass = dayNumberClassFor(cell.is_today, hasRun, tone);
+    const filteredOut = moodFilter.size > 0 && (cell.mood === null || !moodFilter.has(cell.mood));
 
     const cellChrome = cn(
-        'group relative flex min-h-[96px] flex-col gap-1.5 border-l border-line p-2 transition',
+        'group relative flex min-h-[120px] flex-col gap-1.5 border-l border-line/50 p-2.5 transition lg:min-h-[140px] lg:p-3',
         muted && 'opacity-40',
-        hasRun ? tone.cellBg : 'bg-surface-elev',
-        cell.is_today && 'ring-2 ring-leaf ring-inset',
+        filteredOut && 'opacity-30',
+        hasRun && cell.mood && !filteredOut ? MOOD_SOFT_FILL[cell.mood] : 'bg-surface-elev',
     );
 
     const inner = (
         <>
             <div className="flex items-start justify-between">
-                <span className={dayNumClass}>{cell.day}</span>
-                {hasRun && <span aria-hidden className={cn('h-2 w-2 rounded-full', tone.dot)} />}
+                <span className={cn('text-base font-bold tabular-nums lg:text-lg', hasRun ? 'text-ink' : 'text-ink-2')}>
+                    {cell.day}
+                </span>
             </div>
             {hasRun && (
                 <div className="mt-auto">
-                    <div className={cn('text-[15px] font-black leading-none tabular-nums', tone.text)}>
+                    <div className="text-headline-xs font-black leading-none tabular-nums text-ink">
                         {cell.distance_km?.toFixed(2)}
-                        <span className="ml-0.5 text-[10px] font-bold opacity-70">km</span>
+                        <span className="ml-0.5 text-[11px] font-bold text-ink-2 lg:text-xs">km</span>
                     </div>
                     {(cell.pace_sec_per_km !== null || cell.avg_hr !== null) && (
-                        <div className="mt-1 flex items-baseline gap-1.5 text-[10px] tabular-nums">
-                            {cell.pace_sec_per_km !== null && (
-                                <span className="font-semibold text-ink-2">{formatPace(cell.pace_sec_per_km)}</span>
-                            )}
+                        <div className="mt-1.5 flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums text-ink-3 lg:text-xs">
+                            {cell.pace_sec_per_km !== null && <span>{formatPace(cell.pace_sec_per_km)}</span>}
+                            {cell.pace_sec_per_km !== null && cell.avg_hr !== null && <span aria-hidden>·</span>}
                             {cell.avg_hr !== null && (
-                                <span className="font-semibold text-mood-lemes">{cell.avg_hr}♥</span>
+                                <span className="inline-flex items-baseline gap-0.5">
+                                    <span aria-hidden>♡</span>
+                                    {cell.avg_hr}
+                                </span>
                             )}
                         </div>
                     )}
@@ -336,7 +315,7 @@ function DayCellView({ cell }: Readonly<{ cell: CalendarCell }>) {
         return (
             <Link
                 href={`/aktivitas/${cell.activity_id}`}
-                className={cn(cellChrome, 'hover:scale-[1.02] hover:shadow-md')}
+                className={cn(cellChrome, 'hover:shadow-md hover:brightness-105')}
                 aria-label={`${cell.date}: ${cell.distance_km} km`}
             >
                 {inner}
@@ -347,34 +326,73 @@ function DayCellView({ cell }: Readonly<{ cell: CalendarCell }>) {
     return <div className={cellChrome}>{inner}</div>;
 }
 
-function dayNumberClassFor(isToday: boolean, hasRun: boolean, tone: MoodTone): string {
-    if (isToday) {
-        return 'text-xs font-bold tabular-nums inline-flex h-5 w-5 items-center justify-center rounded-full bg-leaf text-white';
+function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string | null }>) {
+    const chrome =
+        'group relative flex min-h-[120px] flex-col gap-2 border-l border-line/50 bg-sky p-2.5 text-cream transition lg:min-h-[140px] lg:p-3';
+    const hasRun = cell.distance_km !== null && cell.distance_km > 0;
+
+    let body: ReactNode = null;
+    if (quote) {
+        body = (
+            <p className="mt-auto font-display text-xs italic leading-snug text-cream/90 lg:text-sm">“{quote}”</p>
+        );
+    } else if (hasRun) {
+        body = (
+            <div className="mt-auto">
+                <div className="text-headline-xs font-black leading-none tabular-nums text-cream">
+                    {cell.distance_km?.toFixed(2)}
+                    <span className="ml-0.5 text-[11px] font-bold text-cream/70 lg:text-xs">km</span>
+                </div>
+            </div>
+        );
     }
-    if (hasRun) {
-        return cn('text-xs font-bold tabular-nums', tone.text);
+
+    const inner = (
+        <>
+            <div className="flex items-start justify-between gap-2">
+                <span className="text-base font-bold tabular-nums text-cream lg:text-lg">{cell.day}</span>
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-horizon">
+                    Hari ini
+                </span>
+            </div>
+            {body}
+        </>
+    );
+
+    if (cell.activity_id !== null) {
+        return (
+            <Link
+                href={`/aktivitas/${cell.activity_id}`}
+                className={cn(chrome, 'hover:bg-sky-2')}
+                aria-label={`${cell.date}: hari ini`}
+            >
+                {inner}
+            </Link>
+        );
     }
-    return 'text-xs font-bold tabular-nums text-ink-2';
+
+    return <div className={chrome}>{inner}</div>;
 }
 
 function Legend({ className }: Readonly<{ className?: string }>) {
-    const moods: ReadonlyArray<{ mood: Mood; label: string; hint: string }> = [
-        { mood: 'nyala', label: 'Nyala', hint: 'PR / win' },
-        { mood: 'enteng', label: 'Enteng', hint: 'easy / ringan' },
-        { mood: 'lemes', label: 'Lemes', hint: 'overload' },
-        { mood: 'oleng', label: 'Oleng', hint: 'kepayahan' },
-        { mood: 'mumet', label: 'Mumet', hint: 'intervals' },
-        { mood: 'adem', label: 'Adem', hint: 'recovery' },
-    ];
-
     return (
-        <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-cream-deep bg-cream px-4 py-3 text-xs', className)}>
-            <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">Mood</span>
-            {moods.map(({ mood, label, hint }) => (
-                <span key={mood} className="inline-flex items-baseline gap-1.5">
-                    <span className={cn('inline-block h-2.5 w-2.5 rounded-full', MOOD_TONE[mood].dot)} aria-hidden />
-                    <span className="font-medium text-ink">{label}</span>
-                    <span className="font-display text-[11px] italic text-ink-3">· {hint}</span>
+        <div
+            className={cn(
+                'flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line/60 bg-surface-warm/40 px-4 py-3',
+                className,
+            )}
+        >
+            <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3 lg:text-xs">
+                Mood
+            </span>
+            {MOOD_ORDER.map((mood) => (
+                <span key={mood} className="inline-flex items-center gap-2 text-xs lg:text-sm">
+                    <span
+                        className={cn('inline-block h-3.5 w-3.5 rounded-sm lg:h-4 lg:w-4', MOOD_FILL[mood])}
+                        aria-hidden
+                    />
+                    <span className="font-medium text-ink">{MOOD_LABEL[mood]}</span>
+                    <span className="font-mono text-[11px] text-ink-3 lg:text-xs">· {MOOD_HINT[mood]}</span>
                 </span>
             ))}
         </div>
@@ -396,6 +414,7 @@ function groupByWeek(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
         }
         weeks.push({
             weekStart: days[0].date,
+            weekNumber: weeks.length + 1,
             days,
             totalKm,
             runCount,
@@ -404,17 +423,3 @@ function groupByWeek(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
     return weeks;
 }
 
-function computeMonthlyStats(cells: ReadonlyArray<CalendarCell>): { totalKm: number; runCount: number; totalTrimp: number } {
-    let totalKm = 0;
-    let runCount = 0;
-    let totalTrimp = 0;
-    for (const cell of cells) {
-        if (!cell.is_current_month) continue;
-        if (cell.distance_km !== null && cell.distance_km > 0) {
-            totalKm += cell.distance_km;
-            runCount += 1;
-        }
-        if (cell.trimp !== null) totalTrimp += cell.trimp;
-    }
-    return { totalKm, runCount, totalTrimp };
-}

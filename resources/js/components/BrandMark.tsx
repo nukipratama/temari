@@ -23,59 +23,62 @@ export default function BrandMark({ tone = 'ink', className }: Readonly<BrandMar
 }
 
 function BunnyGlyph({ size, tone }: Readonly<{ size: number; tone: 'ink' | 'cream' }>) {
-    const face = tone === 'cream' ? 'var(--color-cream)' : 'var(--color-ink)';
+    const isInk = tone === 'ink';
+    const face = isInk ? 'var(--color-ink)' : 'var(--color-cream)';
+    const blush = isInk ? 'var(--color-horizon)' : 'var(--color-horizon-deep)';
     const band = 'var(--color-horizon)';
-    const r = size * 0.28;
+    const features = isInk ? 'var(--color-cream)' : 'var(--color-ink)';
+    const highlightOpacity = isInk ? 0.12 : 0.18;
+    const earGradId = `brand-ear-${tone}`;
+    const bodyClipId = `brand-body-clip-${tone}`;
 
     return (
-        <span
+        <svg
             aria-hidden
-            className="relative inline-flex shrink-0"
-            style={{ width: size, height: size }}
+            width={size}
+            height={size}
+            viewBox="0 0 100 100"
+            className="shrink-0 overflow-visible"
         >
-            <span
-                aria-hidden
-                className="absolute rounded-full"
-                style={{
-                    top: -size * 0.18,
-                    left: size * 0.16,
-                    width: size * 0.18,
-                    height: size * 0.32,
-                    background: face,
-                    transform: 'rotate(-12deg)',
-                }}
+            <defs>
+                <radialGradient id={earGradId} cx="0.5" cy="0.4" r="0.7">
+                    <stop offset="0%" stopColor={blush} stopOpacity={0.85} />
+                    <stop offset="100%" stopColor={blush} stopOpacity={0.55} />
+                </radialGradient>
+                <clipPath id={bodyClipId}>
+                    <rect x="10" y="18" width="80" height="78" rx="28" />
+                </clipPath>
+            </defs>
+
+            <ellipse cx="32" cy="8" rx="9" ry="16" fill={face} transform="rotate(-12 32 8)" />
+            <ellipse cx="68" cy="8" rx="9" ry="16" fill={face} transform="rotate(12 68 8)" />
+            <ellipse cx="32" cy="10" rx="4" ry="9" fill={`url(#${earGradId})`} transform="rotate(-12 32 10)" />
+            <ellipse cx="68" cy="10" rx="4" ry="9" fill={`url(#${earGradId})`} transform="rotate(12 68 10)" />
+
+            <rect x="10" y="18" width="80" height="78" rx="28" fill={face} />
+            <g clipPath={`url(#${bodyClipId})`}>
+                <ellipse cx="38" cy="22" rx="36" ry="20" fill="white" opacity={highlightOpacity} />
+            </g>
+
+            <rect x="10" y="40" width="80" height="14" fill={band} />
+            <rect x="10" y="51" width="80" height="3" fill="black" opacity="0.12" />
+
+            <circle cx="38" cy="68" r="4.5" fill={features} />
+            <circle cx="62" cy="68" r="4.5" fill={features} />
+            {isInk && (
+                <>
+                    <circle cx="39.5" cy="66.5" r="1.3" fill="white" opacity="0.9" />
+                    <circle cx="63.5" cy="66.5" r="1.3" fill="white" opacity="0.9" />
+                </>
+            )}
+
+            <path
+                d="M 44 80 Q 50 85 56 80"
+                fill="none"
+                stroke={features}
+                strokeWidth="2.4"
+                strokeLinecap="round"
             />
-            <span
-                aria-hidden
-                className="absolute rounded-full"
-                style={{
-                    top: -size * 0.18,
-                    right: size * 0.16,
-                    width: size * 0.18,
-                    height: size * 0.32,
-                    background: face,
-                    transform: 'rotate(12deg)',
-                }}
-            />
-            <span
-                aria-hidden
-                className="relative block w-full overflow-hidden"
-                style={{
-                    height: size,
-                    background: face,
-                    borderRadius: r,
-                }}
-            >
-                <span
-                    aria-hidden
-                    className="absolute inset-x-0"
-                    style={{
-                        top: size * 0.22,
-                        height: size * 0.14,
-                        background: band,
-                    }}
-                />
-            </span>
-        </span>
+        </svg>
     );
 }

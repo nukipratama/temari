@@ -1,22 +1,23 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
-import DetailTeknisCollapsible, { type DetailStat } from '@/components/aktivitas/DetailTeknisCollapsible';
 import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/JourneyStrip';
-import RangeFilter, { type RangeFilterValue } from '@/components/aktivitas/RangeFilter';
 import RingkasanCard from '@/components/aktivitas/RingkasanCard';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import Card from '@/components/ui/Card';
 import PageHero from '@/components/ui/PageHero';
+import RiwayatFilter, { type MoodOption, type RangeOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import TemariMascot from '@/components/temari/TemariMascot';
 import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
+import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
+import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
 import { fadeInUp } from '@/lib/motion';
-import type { Activity, ActivityDetail, AnalysisPayload, FormStatus } from '@/types/inertia';
+import type { Activity, ActivityDetail, AnalysisPayload, FormStatus, Mood } from '@/types/inertia';
 
 interface WeeklySnapshotRow {
     id: number;
@@ -55,6 +56,36 @@ interface WeekBucket {
     totalTrimp: number;
 }
 
+export type RangeFilterValue = '8w' | '12w' | '6m' | '1y';
+
+const DEFAULT_RANGE: RangeFilterValue = '12w';
+const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'weeklySnapshots', 'notes'];
+
+const RANGE_FILTER_OPTIONS: ReadonlyArray<RangeOption<RangeFilterValue>> = [
+    { value: '8w', label: '2 bulan terakhir', hint: '8w' },
+    { value: '12w', label: '3 bulan terakhir', hint: '12w' },
+    { value: '6m', label: 'Setengah tahun', hint: '6m' },
+    { value: '1y', label: 'Setahun penuh', hint: '1y' },
+];
+
+const MOOD_HINT_BY_KEY: Record<Mood, string> = {
+    nyala: 'PR / win',
+    enteng: 'easy',
+    oleng: 'HR drift',
+    lemes: 'high strain',
+    mumet: 'overreaching',
+    adem: 'rest',
+};
+
+const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = (
+    ['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'] as const
+).map((mood) => ({
+    mood,
+    label: MOOD_LABEL[mood],
+    hint: MOOD_HINT_BY_KEY[mood],
+    swatchClass: MOOD_FILL[mood],
+}));
+
 const FORM_CHIP_LABEL: Record<FormStatus, string> = {
     fresh: 'Segar',
     optimal: 'Pas',
@@ -83,6 +114,45 @@ export default function RunsIndex({
         return map;
     }, [weeklySnapshots]);
 
+    const [moodFilter, setMoodFilter] = useState<ReadonlySet<Mood>>(new Set());
+    const toggleMood = useCallback((mood: Mood) => {
+        setMoodFilter((prev) => {
+            const next = new Set(prev);
+            if (next.has(mood)) next.delete(mood);
+            else next.add(mood);
+            return next;
+        });
+    }, []);
+    const resetFilters = useCallback(() => {
+        setMoodFilter(new Set());
+        if (rangeFilter !== DEFAULT_RANGE) {
+            router.get('/aktivitas', { range: DEFAULT_RANGE }, {
+                preserveScroll: true,
+                preserveState: true,
+                only: RANGE_RELOAD_PROPS,
+            });
+        }
+    }, [rangeFilter]);
+    const onRangeChange = useCallback((next: RangeFilterValue) => {
+        if (next === rangeFilter) return;
+        router.get('/aktivitas', { range: next }, {
+            preserveScroll: true,
+            preserveState: true,
+            only: RANGE_RELOAD_PROPS,
+        });
+    }, [rangeFilter]);
+
+    const matchedRunIds = useMemo(() => {
+        if (moodFilter.size === 0) return null;
+        const ids = new Set<number>();
+        for (const run of runs) {
+            const noteMood = notes[run.id]?.mood ?? null;
+            const mood = noteMood ?? moodFromActivity(run.detail);
+            if (moodFilter.has(mood)) ids.add(run.id);
+        }
+        return ids;
+    }, [runs, notes, moodFilter]);
+
     const hasRuns = runs.length > 0;
 
     return (
@@ -100,26 +170,38 @@ export default function RunsIndex({
                         lead="Setiap lari"
                         emph="ada ceritanya."
                     />
-                    <RiwayatTabs active="linimasa" />
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <RiwayatTabs active="linimasa" />
+                        <RiwayatFilter
+                            range={{
+                                value: rangeFilter,
+                                options: RANGE_FILTER_OPTIONS,
+                                onChange: onRangeChange,
+                            }}
+                            mood={{
+                                selected: moodFilter,
+                                options: MOOD_FILTER_OPTIONS,
+                                onToggle: toggleMood,
+                            }}
+                            onReset={resetFilters}
+                        />
+                    </div>
                 </header>
 
-                <RangeFilter active={rangeFilter} className="mb-4 mt-6" />
-
-                <JourneyStrip match={journeyMatch} className="mb-6" />
+                <JourneyStrip match={journeyMatch} className="mt-6 mb-6" />
 
                 {hasRuns ? (
-                    <>
-                        <div className="space-y-8">
-                            {buckets.map((bucket) => (
-                                <WeekSection
-                                    key={bucket.weekStart}
-                                    bucket={bucket}
-                                    snapshot={snapshotsByWeek.get(bucket.weekEnding) ?? null}
-                                    notes={notes}
-                                />
-                            ))}
-                        </div>
-                    </>
+                    <div className="space-y-8">
+                        {buckets.map((bucket) => (
+                            <WeekSection
+                                key={bucket.weekStart}
+                                bucket={bucket}
+                                snapshot={snapshotsByWeek.get(bucket.weekEnding) ?? null}
+                                notes={notes}
+                                matchedRunIds={matchedRunIds}
+                            />
+                        ))}
+                    </div>
                 ) : (
                     <EmptyState />
                 )}
@@ -132,16 +214,37 @@ interface WeekSectionProps {
     bucket: WeekBucket;
     snapshot: WeeklySnapshotRow | null;
     notes: Record<number, RunNote>;
+    /** When non-null, runs whose id is not in the set are dimmed. Null = no filter. */
+    matchedRunIds: ReadonlySet<number> | null;
 }
 
-function WeekSection({ bucket, snapshot, notes }: Readonly<WeekSectionProps>) {
+function WeekSection({ bucket, snapshot, notes, matchedRunIds }: Readonly<WeekSectionProps>) {
     const trimpLabel = Math.round(bucket.totalTrimp);
+    const matchCount = matchedRunIds
+        ? bucket.runs.filter((r) => matchedRunIds.has(r.id)).length
+        : bucket.runs.length;
+    const wholeWeekDimmed = matchedRunIds !== null && matchCount === 0;
+
     return (
-        <Card as="section" padding="none" className="overflow-hidden shadow-sm">
+        <Card
+            as="section"
+            padding="none"
+            className={cn(
+                'overflow-hidden shadow-sm transition',
+                wholeWeekDimmed && 'opacity-40',
+            )}
+        >
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
                 <div className="font-display text-lg italic text-ink">{bucket.label}</div>
                 <div className="flex flex-wrap items-center gap-2 text-xs tabular-nums">
-                    <Stat icon="mdi:run" label={`${bucket.runs.length} run`} />
+                    <Stat
+                        icon="mdi:run"
+                        label={
+                            matchedRunIds
+                                ? `${matchCount} / ${bucket.runs.length} run`
+                                : `${bucket.runs.length} run`
+                        }
+                    />
                     <Stat icon="mdi:map-marker-distance" label={`${bucket.totalKm.toFixed(1)} km`} />
                     <Stat icon="mdi:fire" label={`${trimpLabel} TRIMP`} />
                     {snapshot && <WeeklyStatusChips snapshot={snapshot} />}
@@ -149,7 +252,7 @@ function WeekSection({ bucket, snapshot, notes }: Readonly<WeekSectionProps>) {
             </header>
 
             {snapshot && (
-                <div className="space-y-3 border-b border-cream-deep bg-cream-deep/20 px-5 py-4">
+                <div className="border-b border-cream-deep bg-cream-deep/20 px-5 py-4">
                     <div className="flex items-start gap-3.5">
                         <TemariProto
                             pose={poseForFormStatus(snapshot.form_status)}
@@ -163,25 +266,48 @@ function WeekSection({ bucket, snapshot, notes }: Readonly<WeekSectionProps>) {
                             />
                         </div>
                     </div>
-                    <DetailTeknisCollapsible
-                        storageKey={snapshot.week_ending.slice(0, 10)}
-                        stats={detailStatsFor(snapshot)}
-                    />
                 </div>
             )}
 
             <div>
-                {bucket.runs.map((activity) => (
-                    <RunListRow key={activity.id} detail={activity.detail} note={notes[activity.id] ?? null} />
-                ))}
+                {bucket.runs.map((activity) => {
+                    const dimmed = matchedRunIds !== null && !matchedRunIds.has(activity.id);
+                    return (
+                        <div key={activity.id} className={cn('transition', dimmed && 'opacity-30')}>
+                            <RunListRow detail={activity.detail} note={notes[activity.id] ?? null} />
+                        </div>
+                    );
+                })}
             </div>
         </Card>
     );
 }
 
 function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow }>) {
+    // Monotony ≥ 1.5 and decoupling ≥ 8% are the runner-relevant alarm thresholds.
+    // Below those, render the chip in the neutral cream tone so the row doesn't
+    // light up with semantic color when nothing is wrong.
+    const monotonyAlert = snapshot.monotony !== null && snapshot.monotony >= 1.5;
+    const decouplingAlert = snapshot.avg_decoupling !== null && snapshot.avg_decoupling >= 8;
     return (
         <>
+            {snapshot.atl_7d !== null && (
+                <MetricChip label="Lelah" value={snapshot.atl_7d.toFixed(1)} />
+            )}
+            {snapshot.monotony !== null && (
+                <MetricChip
+                    label="Variasi"
+                    value={snapshot.monotony.toFixed(2)}
+                    alert={monotonyAlert}
+                />
+            )}
+            {snapshot.avg_decoupling !== null && (
+                <MetricChip
+                    label="Drift"
+                    value={`${snapshot.avg_decoupling.toFixed(1)}%`}
+                    alert={decouplingAlert}
+                />
+            )}
             {snapshot.ctl_42d !== null && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-leaf/15 px-2.5 py-0.5 text-xs font-semibold text-leaf-deep">
                     Fit {snapshot.ctl_42d.toFixed(1)}
@@ -204,6 +330,26 @@ function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow 
                 </span>
             )}
         </>
+    );
+}
+
+function MetricChip({
+    label,
+    value,
+    alert = false,
+}: Readonly<{ label: string; value: string; alert?: boolean }>) {
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                alert
+                    ? 'bg-mood-lemes/15 text-mood-lemes'
+                    : 'bg-cream-deep/60 text-ink-2',
+            )}
+        >
+            <span className="font-mono text-[10px] uppercase tracking-wider text-ink-3">{label}</span>
+            <span className="tabular-nums">{value}</span>
+        </span>
     );
 }
 
@@ -233,20 +379,6 @@ function EmptyState() {
     );
 }
 
-function detailStatsFor(snap: WeeklySnapshotRow): DetailStat[] {
-    return [
-        { label: 'TRIMP', value: fmtInt(snap.weekly_trimp), explainerKey: 'trimp' },
-        { label: 'CTL', value: fmtOne(snap.ctl_42d), explainerKey: 'ctl' },
-        { label: 'ATL', value: fmtOne(snap.atl_7d), explainerKey: 'atl' },
-        { label: 'Form', value: fmtOne(snap.form), explainerKey: 'form' },
-        { label: 'Monotony', value: fmtTwo(snap.monotony), explainerKey: 'monotony' },
-        { label: 'Strain', value: fmtInt(snap.strain), explainerKey: 'strain' },
-        { label: 'Decoupling', value: snap.avg_decoupling !== null ? `${snap.avg_decoupling.toFixed(1)}%` : '—', explainerKey: 'decoupling' },
-        { label: 'Volume', value: fmtKm(snap.distance_km) },
-        { label: 'Run', value: snap.runs !== null ? `${snap.runs}` : '—' },
-    ];
-}
-
 function ruleBasedFallback(snap: WeeklySnapshotRow): string {
     const parts: string[] = [];
     if (snap.runs !== null && snap.distance_km !== null) {
@@ -257,22 +389,6 @@ function ruleBasedFallback(snap: WeeklySnapshotRow): string {
         parts.push(`Form ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, status ${formLabel.toLowerCase()}.`);
     }
     return parts.join(' ') || 'Belum ada data minggu ini, sabar ya.';
-}
-
-function fmtOne(n: number | null): string {
-    return n === null ? '—' : n.toFixed(1);
-}
-
-function fmtTwo(n: number | null): string {
-    return n === null ? '—' : n.toFixed(2);
-}
-
-function fmtKm(km: number | null): string {
-    return km === null ? '—' : `${km.toFixed(1)} km`;
-}
-
-function fmtInt(n: number | null): string {
-    return n === null ? '—' : Math.round(n).toString();
 }
 
 /**

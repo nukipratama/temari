@@ -68,6 +68,27 @@ export function formatIdDate(iso: string | null, format: 'short' | 'long' = 'sho
     return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'short' });
 }
 
+const ID_MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'] as const;
+
+// "19 Feb 2026" — parses YYYY-MM-DD from the front of the string so the wall-
+// clock date renders as-is, regardless of runtime timezone.
+export function formatShortDateId(iso: string | null | undefined): string {
+    if (!iso) return '—';
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    if (!match) return iso;
+    const [, y, m, d] = match;
+    return `${Number(d)} ${ID_MONTH_SHORT[Number(m) - 1]} ${y}`;
+}
+
+export function monthsSinceId(iso: string | null | undefined): number | null {
+    if (!iso) return null;
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    if (!match) return null;
+    const [, y, m] = match;
+    const now = new Date();
+    return Math.max(0, (now.getFullYear() - Number(y)) * 12 + (now.getMonth() + 1 - Number(m)));
+}
+
 // Local-zone Monday-of-week. toISOString() would shift to UTC and roll the date
 // across midnight in non-UTC zones — past incidents traced week-snapshot bugs to that.
 export function mondayOf(iso: string): Date {
