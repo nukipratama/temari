@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\VerdictTimeline;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -28,12 +29,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Event::listen(SocialiteWasCalled::class, StravaExtendSocialite::class);
 
-        // Access control for these dashboards lives at the Caddy edge in prod
-        // (basicauth on /horizon, /pulse, /ai-usage). The gates stay permissive
-        // because by the time a request reaches PHP, the edge has already let
-        // it through — re-gating in-app would just block local dev.
-        Gate::define('viewPulse', fn (): bool => true);
-        Gate::define('viewAiUsage', fn (): bool => true);
+        // Edge basicauth (docker/Caddyfile) gates these in prod. The `?Authenticatable`
+        // param is what makes the gate accept guests — a zero-param closure 403s them.
+        Gate::define('viewPulse', fn (?Authenticatable $user = null): bool => true);
+        Gate::define('viewAiUsage', fn (?Authenticatable $user = null): bool => true);
 
         RateLimiter::for('analysis-trigger', function (Request $request): Limit {
             $perMinute = max(1, (int) config('ai.rate_limit_per_minute', 8));
