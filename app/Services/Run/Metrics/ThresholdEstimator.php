@@ -31,7 +31,7 @@ class ThresholdEstimator
 
         $paces = [];
         foreach ($details as $detail) {
-            $summary = is_array($detail->stream_summary) ? $detail->stream_summary : [];
+            $summary = $detail->streamSummary();
             if (! $this->isHardSession($summary)) {
                 continue;
             }

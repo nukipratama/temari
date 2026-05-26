@@ -15,7 +15,6 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\Run\Story\BriefingComposer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -67,7 +66,7 @@ it('triggers a briefing headline analysis for the authenticated user', function 
 it('force re-triggers a briefing when the previous one is older than the cooldown', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done('old')->create([
-        'subject_type' => BriefingComposer::SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingHeadline,
         'discriminator' => '2026-05-18',
@@ -87,7 +86,7 @@ it('returns the cached payload with retry_after_seconds when within cooldown', f
     config()->set('ai.cooldown_seconds', 300);
     $user = User::factory()->create();
     Analysis::factory()->done('fresh content')->create([
-        'subject_type' => BriefingComposer::SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingHeadline,
         'discriminator' => '2026-05-18',
@@ -108,7 +107,7 @@ it('skips the cooldown gate when cooldown_seconds is 0', function (): void {
     config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
     Analysis::factory()->done('recent')->create([
-        'subject_type' => BriefingComposer::SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingHeadline,
         'discriminator' => '2026-05-18',
@@ -142,7 +141,7 @@ it('authorizes post-run speech only for the activity owner', function (): void {
 it('returns the current state via GET show', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done('content here')->create([
-        'subject_type' => BriefingComposer::SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingHeadline,
         'discriminator' => '2026-05-18',

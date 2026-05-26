@@ -10,8 +10,6 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\StreamSummary;
 
-use function is_array;
-
 class RunInsightNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
@@ -58,7 +56,7 @@ class RunInsightNarrator
     /** @return array<string, mixed> */
     private function buildContext(ActivityDetail $detail): array
     {
-        $summary = is_array($detail->stream_summary) ? $detail->stream_summary : [];
+        $summary = $detail->streamSummary();
         $zonePct = StreamSummary::zonePct($summary);
 
         return [

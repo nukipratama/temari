@@ -43,7 +43,7 @@ export default function TopNav() {
     const stravaSync = props.stravaSync ?? null;
 
     return (
-        <header className="hidden border-b border-cream-deep bg-cream lg:block">
+        <header className="sticky top-0 z-30 hidden border-b border-cream-deep bg-cream lg:block">
             <div className="flex w-full items-center justify-between px-10 py-[18px]">
                 <div className="flex items-center gap-12">
                     <Link href="/" aria-label="Beranda">

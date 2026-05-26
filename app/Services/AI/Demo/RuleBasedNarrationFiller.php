@@ -25,6 +25,7 @@ final class RuleBasedNarrationFiller
             AnalysisType::BriefingHeadline => $this->briefingHeadline(),
             AnalysisType::BriefingSuggestion => $this->briefingSuggestion(),
             AnalysisType::BriefingMascotVoice => $this->briefingMascotVoice(),
+            AnalysisType::BriefingFeaturedKartuVoice => $this->briefingFeaturedKartuVoice(),
             AnalysisType::PostRunSpeech => $this->postRunSpeech($row->subject_id),
             AnalysisType::DailyGreeting => $this->dailyGreeting(),
             AnalysisType::RunInsightTechnical => $this->runInsightTechnical($row->subject_id),
@@ -52,6 +53,11 @@ final class RuleBasedNarrationFiller
     private function briefingMascotVoice(): string
     {
         return 'Aku liat ritme kamu masih oke beberapa hari terakhir. Pertahanin pelan-pelan, gak usah dipaksa kalau lagi gak mood.';
+    }
+
+    private function briefingFeaturedKartuVoice(): string
+    {
+        return 'Kartu ini cerita tentang lari yang berkesan. Simpan sebagai pengingat pas momen itu terasa berat.';
     }
 
     private function postRunSpeech(int $activityId): string

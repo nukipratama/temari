@@ -9,11 +9,8 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Models\User;
-use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\StreamSummary;
 use Illuminate\Support\Carbon;
-
-use function is_array;
 
 class Temari
 {
@@ -29,9 +26,6 @@ class Temari
     public const MOOD_MUMET = 'mumet';     // overreaching / hard-zone heavy
 
     public const MOOD_ADEM = 'adem';       // rest day / default
-
-    /** @deprecated Use {@see AnalysisType::DAILY_GREETING_SUBJECT_TYPE}. Kept for back-compat. */
-    public const string DAILY_GREETING_SUBJECT_TYPE = AnalysisType::DAILY_GREETING_SUBJECT_TYPE;
 
     // 4-char sigil codes; renderer reads each char as a stitch op.
     private const array SIGIL_FOR_MOOD = [
@@ -101,7 +95,7 @@ class Temari
     // Order matters — first matching rule wins, most-prestigious mood first.
     private function moodForActivity(ActivityDetail $detail, bool $hasPr): string
     {
-        $summary = is_array($detail->stream_summary) ? $detail->stream_summary : [];
+        $summary = $detail->streamSummary();
         $hardShare = StreamSummary::hardZoneShare($summary);
         $decoupling = (float) ($summary['decoupling_pct'] ?? 0);
         $hotWeather = (int) ($detail->weather_temp_c ?? 0) >= 31;

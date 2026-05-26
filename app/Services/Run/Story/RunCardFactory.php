@@ -31,7 +31,7 @@ class RunCardFactory
 
     public function build(Activity $activity, ActivityDetail $detail): RunCard
     {
-        $summary = is_array($detail->stream_summary) ? $detail->stream_summary : [];
+        $summary = $detail->streamSummary();
         $prSet = $this->hasPrFromThisActivity($activity);
         $isLongest = $this->isAllTimeLongest($activity, $detail);
 

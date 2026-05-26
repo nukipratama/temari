@@ -7,6 +7,7 @@ namespace App\Services\AI;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
+use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeDailyGreetingJob;
@@ -25,6 +26,7 @@ enum AnalysisType: string
     case BriefingHeadline = 'briefing_headline';
     case BriefingSuggestion = 'briefing_suggestion';
     case BriefingMascotVoice = 'briefing_mascot_voice';
+    case BriefingFeaturedKartuVoice = 'briefing_featured_kartu_voice';
     case PostRunSpeech = 'post_run_speech';
     case DailyGreeting = 'daily_greeting';
     case RunInsightTechnical = 'run_insight_technical';
@@ -50,6 +52,7 @@ enum AnalysisType: string
             self::BriefingHeadline,
             self::BriefingSuggestion => AnalyzeBriefingJob::class,
             self::BriefingMascotVoice => AnalyzeBriefingMascotVoiceJob::class,
+            self::BriefingFeaturedKartuVoice => AnalyzeBriefingFeaturedKartuVoiceJob::class,
             self::PostRunSpeech,
             self::RunInsightTechnical,
             self::RunInsightSplits,
@@ -69,7 +72,8 @@ enum AnalysisType: string
         return match ($this) {
             self::BriefingHeadline,
             self::BriefingSuggestion,
-            self::BriefingMascotVoice => self::BRIEFING_SUBJECT_TYPE,
+            self::BriefingMascotVoice,
+            self::BriefingFeaturedKartuVoice => self::BRIEFING_SUBJECT_TYPE,
             self::TrendCaption => self::TREND_CAPTION_SUBJECT_TYPE,
             self::DailyGreeting => self::DAILY_GREETING_SUBJECT_TYPE,
             self::PostRunSpeech,

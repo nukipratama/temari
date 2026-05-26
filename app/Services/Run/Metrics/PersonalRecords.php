@@ -70,7 +70,7 @@ class PersonalRecords
      */
     private function checkEffortPrs(Activity $activity, ActivityDetail $detail, Carbon $setAt): array
     {
-        $streamSummary = is_array($detail->stream_summary) ? $detail->stream_summary : [];
+        $streamSummary = $detail->streamSummary();
         $broken = [];
 
         foreach (PrCategory::efforts() as $category) {

@@ -18,6 +18,7 @@ import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDurationHMS, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
 import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
 import { emberGlowStyle } from '@/lib/styles';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type {
     Activity,
     ActivityDetail,
@@ -75,15 +76,6 @@ interface ShowProps {
     pastYou: PastYouMatch | null;
 }
 
-const MOOD_HERO_POSE: Record<Mood, TemariPose> = {
-    nyala: 'proud',
-    enteng: 'excited',
-    lemes: 'wobble',
-    oleng: 'wobble',
-    mumet: 'wobble',
-    adem: 'reading',
-};
-
 export default function RunsShow({
     activity,
     detail,
@@ -99,7 +91,7 @@ export default function RunsShow({
     const perKm = (summary.per_km as PerKmRow[] | undefined) ?? [];
 
     const mood: Mood = storyLine?.mood ?? moodFromActivity(detail);
-    const pose: TemariPose = MOOD_HERO_POSE[mood];
+    const pose: TemariPose = MOOD_TO_POSE[mood];
 
     const km = formatKm(detail.distance);
     const paceSec = paceSecPerKm(detail.moving_time, detail.distance);

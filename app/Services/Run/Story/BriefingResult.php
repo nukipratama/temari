@@ -26,6 +26,7 @@ final readonly class BriefingResult implements Arrayable
      * @param  AnalysisPayload  $headline
      * @param  AnalysisPayload  $suggestion
      * @param  AnalysisPayload  $mascotVoice
+     * @param  AnalysisPayload  $featuredKartuVoice
      */
     public function __construct(
         public string $vibeState,
@@ -34,6 +35,7 @@ final readonly class BriefingResult implements Arrayable
         public array $headline,
         public array $suggestion,
         public array $mascotVoice,
+        public array $featuredKartuVoice,
         public string $recoveryLabel,
         public string $recoveryTone,
         public ?string $recoveryHoursLabel,
@@ -55,6 +57,7 @@ final readonly class BriefingResult implements Arrayable
             'headline' => $this->headline,
             'suggestion' => $this->suggestion,
             'mascotVoice' => $this->mascotVoice,
+            'featuredKartuVoice' => $this->featuredKartuVoice,
             'recoveryLabel' => $this->recoveryLabel,
             'recoveryTone' => $this->recoveryTone,
             'recoveryHoursLabel' => $this->recoveryHoursLabel,

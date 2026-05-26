@@ -84,6 +84,31 @@ class ActivityDetail extends Model
     }
 
     /**
+     * Pace in seconds per kilometre. Null when distance or time is missing/zero.
+     */
+    public function paceSecPerKm(): ?float
+    {
+        $distance = $this->distance;
+        $movingTime = $this->moving_time;
+        if ($distance === null || $distance <= 0 || $movingTime === null || $movingTime <= 0) {
+            return null;
+        }
+
+        return $movingTime / ($distance / 1000);
+    }
+
+    /**
+     * Returns the stream_summary array, or an empty array when the column is null.
+     * The column is JSON-cast, so null is the only non-array value possible.
+     *
+     * @return array<string, mixed>
+     */
+    public function streamSummary(): array
+    {
+        return $this->stream_summary ?? [];
+    }
+
+    /**
      * @return array<string, string>
      */
     #[Override]
