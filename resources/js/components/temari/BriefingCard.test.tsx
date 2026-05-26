@@ -25,6 +25,7 @@ function makeBriefing(overrides: Partial<BriefingResult> = {}): BriefingResult {
         mascotVoice: analysisPayload(null, 'pending', 'briefing_mascot_voice'),
         recoveryLabel: 'Pemulihan: cukup',
         recoveryTone: 'positive',
+        recoveryHoursLabel: '12j',
         streakLabel: 'Lari hari ini',
         sigilPattern: 'orct',
         accessory: 'headband',
@@ -55,7 +56,7 @@ describe('BriefingCard', () => {
                 })}
             />,
         );
-        expect(screen.getByText(/belum tersedia/i)).toBeInTheDocument();
+        expect(screen.getByText(/Temari lagi diem dulu/i)).toBeInTheDocument();
     });
 
     it('shows manual trigger CTA when LLM analysis pending', () => {
@@ -66,7 +67,7 @@ describe('BriefingCard', () => {
                 })}
             />,
         );
-        expect(screen.getByText(/Belum dianalisis Temari/)).toBeInTheDocument();
+        expect(screen.getByText(/Belum dibaca Temari/)).toBeInTheDocument();
     });
 
     it.each([
@@ -133,7 +134,7 @@ describe('BriefingCard', () => {
             act(() => {
                 vi.advanceTimersByTime(2000);
             });
-            expect(screen.getByText('Analisis ulang')).toBeInTheDocument();
+            expect(screen.getByText(/Baca ulang/)).toBeInTheDocument();
         } finally {
             vi.useRealTimers();
         }

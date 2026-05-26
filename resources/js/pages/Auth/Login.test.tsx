@@ -7,7 +7,7 @@ describe('Login', () => {
     it('shows the Strava CTA with the given URL', () => {
         setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
         render(<Login authStravaUrl="/auth/strava/redirect" />);
-        const strava = screen.getByText(/Connect with Strava/).closest('a');
+        const strava = screen.getByText(/Sambungkan dengan Strava/).closest('a');
         expect(strava?.getAttribute('href')).toBe('/auth/strava/redirect');
     });
 
@@ -27,9 +27,10 @@ describe('Login', () => {
         setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
         render(<Login authStravaUrl="/x" />);
         expect(screen.getByText('TemanLari')).toBeInTheDocument();
-        // Editorial headline is split across two lines; assert the second line.
-        expect(screen.getByText('Berarti.')).toBeInTheDocument();
-        ['Aku baca', 'Aku catet', 'Aku temenin'].forEach((label) => {
+        // Mascot intro headline includes the value-prop CTA.
+        expect(screen.getByText(/Gak Sendirian/)).toBeInTheDocument();
+        expect(screen.getByText(/Halo, aku Temari/)).toBeInTheDocument();
+        [/Aku baca/, /Aku catat/, /Aku temenin/].forEach((label) => {
             expect(screen.getByText(label)).toBeInTheDocument();
         });
     });

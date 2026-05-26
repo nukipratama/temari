@@ -13,8 +13,8 @@ export default function BrandMark({ tone = 'ink', className }: Readonly<BrandMar
         <div className={cn('flex items-center gap-2.5', className)}>
             <BunnyGlyph size={28} tone={tone} />
             <span
-                className={cn('font-display italic leading-none tracking-[-0.02em]', wordColor)}
-                style={{ fontSize: 22 }}
+                className={cn('font-mono font-bold leading-none tracking-[-0.02em]', wordColor)}
+                style={{ fontSize: 20 }}
             >
                 TemanLari
             </span>
@@ -46,7 +46,7 @@ function BunnyGlyph({ size, tone }: Readonly<{ size: number; tone: 'ink' | 'crea
                     <stop offset="100%" stopColor={blush} stopOpacity={0.55} />
                 </radialGradient>
                 <clipPath id={bodyClipId}>
-                    <rect x="10" y="18" width="80" height="78" rx="28" />
+                    <circle cx="50" cy="58" r="40" />
                 </clipPath>
             </defs>
 
@@ -55,13 +55,12 @@ function BunnyGlyph({ size, tone }: Readonly<{ size: number; tone: 'ink' | 'crea
             <ellipse cx="32" cy="10" rx="4" ry="9" fill={`url(#${earGradId})`} transform="rotate(-12 32 10)" />
             <ellipse cx="68" cy="10" rx="4" ry="9" fill={`url(#${earGradId})`} transform="rotate(12 68 10)" />
 
-            <rect x="10" y="18" width="80" height="78" rx="28" fill={face} />
+            <circle cx="50" cy="58" r="40" fill={face} />
             <g clipPath={`url(#${bodyClipId})`}>
                 <ellipse cx="38" cy="22" rx="36" ry="20" fill="white" opacity={highlightOpacity} />
+                <rect x="10" y="40" width="80" height="14" fill={band} />
+                <rect x="10" y="51" width="80" height="3" fill="black" opacity="0.12" />
             </g>
-
-            <rect x="10" y="40" width="80" height="14" fill={band} />
-            <rect x="10" y="51" width="80" height="3" fill="black" opacity="0.12" />
 
             <circle cx="38" cy="68" r="4.5" fill={features} />
             <circle cx="62" cy="68" r="4.5" fill={features} />

@@ -12,6 +12,7 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import TemariProto from '@/components/temari/TemariProto';
 import VoiceCard from '@/components/temari/VoiceCard';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import PageOnboardingTooltip from '@/components/onboarding/PageOnboardingTooltip';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatIdDate, formatShortDateId, monthsSinceId } from '@/lib/pace';
@@ -91,6 +92,14 @@ export default function Aku({
                 animate="visible"
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
+                <PageOnboardingTooltip
+                    pageKey="aku"
+                    icon="🏃"
+                    title="Perjalanan kamu."
+                >
+                    Total km, total lari, lari terjauh, plus persona kamu (gaya lari 12 minggu terakhir). Tombol Strava buat sambung ulang juga di sini.
+                </PageOnboardingTooltip>
+
                 <header className="mb-8">
                     <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3 lg:text-xs">
                         {eyebrowParts.join(' · ')}
@@ -111,7 +120,7 @@ export default function Aku({
                                 ★ Kata Temari tentang kamu
                             </div>
                             <VoiceCard onSky attribution="Temari" pose="proud">
-                                Halo lagi. Aku catet semua perjalanan kamu di sini — kartu, rekor, aksesori, ceritanya.
+                                Halo lagi 👋 Aku catat semua perjalanan kamu di sini: kartu, rekor, aksesori, ceritanya.
                             </VoiceCard>
                             <div className="mt-5 flex flex-wrap gap-2">
                                 <Chip tone="onSky">
@@ -176,7 +185,7 @@ export default function Aku({
                         <div className="mt-4 text-right">
                             <Link
                                 href="/rekor"
-                                className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-horizon hover:text-horizon-deep"
+                                className="font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-horizon-deep hover:text-ember-deep"
                             >
                                 Semua rekor →
                             </Link>
@@ -196,7 +205,7 @@ export default function Aku({
                     <TemariProto pose="observational" size={48} />
                     <div className="flex-1">
                         <p className="font-display text-base italic leading-relaxed text-ink-2">
-                            “Strava {identity.strava_connected ? 'tersambung' : 'belum nyambung'}. {identity.strava_connected ? 'Lari baru otomatis kepoin.' : 'Sambungkan supaya lari baru kebaca.'}”
+                            “Strava {identity.strava_connected ? 'tersambung' : 'belum nyambung'}. {identity.strava_connected ? 'Lari baru otomatis kepoin.' : 'Sambungin biar lari baru kebaca.'}”
                         </p>
                     </div>
                     {!identity.strava_connected && (
@@ -309,7 +318,7 @@ function AksesoriStrip({
                 <Chip tone="horizon">{unlockedCount} / {entries.length} kebuka</Chip>
                 <Link
                     href="/aksesori"
-                    className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-horizon hover:text-horizon-deep"
+                    className="font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-horizon-deep hover:text-ember-deep"
                 >
                     Dandanin →
                 </Link>

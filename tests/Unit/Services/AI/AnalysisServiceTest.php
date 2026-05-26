@@ -213,13 +213,14 @@ it('activity group debounces — 3 sibling-type requests dispatch only one Analy
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
 });
 
-it('requestBriefingGroup creates 3 rows and dispatches one AnalyzeBriefingJob', function (): void {
+it('requestBriefingGroup creates 2 rows (headline + suggestion) and dispatches one AnalyzeBriefingJob', function (): void {
     $service = app(AnalysisService::class);
     $user = User::factory()->create();
 
     $service->requestBriefingGroup($user, '2026-05-18');
 
-    expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(3);
+    // Mascot voice is split into its own row job — not in this group anymore.
+    expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(2);
     Bus::assertDispatched(
         AnalyzeBriefingJob::class,
         fn (AnalyzeBriefingJob $job): bool => $job->subjectId === $user->id && $job->discriminator === '2026-05-18',

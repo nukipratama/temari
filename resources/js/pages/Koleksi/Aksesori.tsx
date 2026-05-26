@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import Chip from '@/components/ui/Chip';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
@@ -8,6 +9,7 @@ import HeroPanel from '@/components/ui/HeroPanel';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import TemariProto, { type TemariEquipped } from '@/components/temari/TemariProto';
+import PageOnboardingTooltip from '@/components/onboarding/PageOnboardingTooltip';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 
@@ -81,6 +83,14 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                 animate="visible"
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
+                <PageOnboardingTooltip
+                    pageKey="koleksi"
+                    icon="🃏"
+                    title="Koleksi kamu."
+                >
+                    Tiga sub-tab di sini: Kartu (tiap lari aku kasih satu), Rekor (PR kamu di berbagai jarak), Aksesori (bisa dipakein ke aku, kebuka pelan-pelan).
+                </PageOnboardingTooltip>
+
                 <CollectionHeader
                     active="aksesori"
                     eyebrow={eyebrow}
@@ -96,10 +106,10 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                         </div>
                         <div>
                             <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
-                                ★ Yang sedang dipake
+                                ★ Yang lagi dipake
                             </div>
                             <h2 className="mb-5 font-display text-display-md text-cream">
-                                <em className="italic text-horizon">Penampilan kamu sekarang.</em>
+                                <em className="italic text-horizon">Lagi pake yang ini.</em>
                             </h2>
                             <ul className="grid gap-2 sm:grid-cols-2">
                                 {SLOT_ORDER.map((slot) => (
@@ -114,7 +124,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                                 ))}
                             </ul>
                             <p className="mt-5 max-w-md font-display text-sm italic leading-relaxed text-cream/75">
-                                “Tiap kamu dapet aksesori baru, langsung aku siapin di sini.”
+                                “Tiap kamu dapet aksesori baru, langsung aku siapin di sini.” 🎀
                             </p>
                         </div>
                     </div>
@@ -161,14 +171,40 @@ function SlotSection({
     items,
     onEquip,
 }: Readonly<{ slot: Slot; items: AksesoriItem[]; onEquip: (key: string) => void }>) {
+    const [showLocked, setShowLocked] = useState(false);
+    const unlocked = items.filter((i) => i.unlocked);
+    const locked = items.filter((i) => !i.unlocked);
+    const hasHiddenLocked = locked.length > 0;
+
     return (
         <section className="mt-8">
             <SectionLabel>{SLOT_LABEL[slot]}</SectionLabel>
             <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-                {items.map((item) => (
+                {unlocked.map((item) => (
                     <AksesoriCard key={item.unlock_key} item={item} onEquip={onEquip} />
                 ))}
+                {/* Locked items: visible on sm+ always, collapsible on mobile. */}
+                {locked.map((item) => (
+                    <div
+                        key={item.unlock_key}
+                        className={showLocked ? 'contents' : 'hidden sm:contents'}
+                    >
+                        <AksesoriCard item={item} onEquip={onEquip} />
+                    </div>
+                ))}
             </div>
+            {hasHiddenLocked && (
+                <button
+                    type="button"
+                    onClick={() => setShowLocked((s) => !s)}
+                    className="mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-cream-deep bg-cream px-4 py-2 text-xs font-semibold text-ink-2 transition hover:border-ink-3 hover:text-ink sm:hidden"
+                >
+                    <Icon icon={showLocked ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={14} height={14} aria-hidden />
+                    {showLocked
+                        ? `Sembunyikan ${locked.length} belum kebuka`
+                        : `+${locked.length} belum kebuka`}
+                </button>
+            )}
         </section>
     );
 }
@@ -209,7 +245,7 @@ function AksesoriCard({
         >
             {item.equipped && (
                 <Chip tone="horizon" className="absolute right-4 top-4">
-                    Dipake
+                    Lagi dipake
                 </Chip>
             )}
             <div className="relative">
@@ -237,7 +273,7 @@ function AksesoriCard({
                 <p className="mt-auto font-display text-xs italic text-ink-3">{item.criteria}</p>
             ) : item.equipped ? (
                 <PillButton tone="ghost" size="sm" disabled className="mt-auto opacity-60">
-                    Sedang dipake
+                    Lagi dipake
                 </PillButton>
             ) : (
                 <PillButton tone="sky" size="sm" onClick={() => onEquip(item.unlock_key)} className="mt-auto">

@@ -20,7 +20,7 @@ describe('AnalysisStatus', () => {
     it('renders done content with the reanalyze button by default', () => {
         render(<AnalysisStatus analysis={payload({ status: 'done', content: 'Halo Temari' })} />);
         expect(screen.getByText('Halo Temari')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Analisis ulang/ })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Baca ulang/ })).toBeInTheDocument();
     });
 
     it('hides the reanalyze button when allowReanalyze is false', () => {
@@ -30,7 +30,7 @@ describe('AnalysisStatus', () => {
                 allowReanalyze={false}
             />,
         );
-        expect(screen.queryByRole('button', { name: /Analisis ulang/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
     });
 
     it('uses renderContent for custom rendering when provided', () => {
@@ -60,7 +60,7 @@ describe('AnalysisStatus', () => {
 
     it('renders the empty-state trigger when status is pending with no content', () => {
         render(<AnalysisStatus analysis={payload({ status: 'pending' })} />);
-        expect(screen.getByRole('button', { name: /Analisis sekarang/ })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Minta Temari bacain/ })).toBeInTheDocument();
     });
 
     it('shows "Dibuat X lalu" hint when generated_at is present on done content', () => {
@@ -84,7 +84,7 @@ describe('AnalysisStatus', () => {
                 analysis={payload({ status: 'done', content: 'x', retry_after_seconds: 125 })}
             />,
         );
-        const button = screen.getByRole('button', { name: /Bisa diulang dalam 2:05/ });
+        const button = screen.getByRole('button', { name: /Tunggu 2:05/ });
         expect(button).toBeDisabled();
     });
 
@@ -97,18 +97,18 @@ describe('AnalysisStatus', () => {
                 />,
             );
 
-            expect(screen.getByRole('button', { name: /Bisa diulang dalam 0:04/ })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Tunggu 0:04/ })).toBeInTheDocument();
 
             await act(async () => {
                 vi.advanceTimersByTime(1000);
             });
-            expect(screen.getByRole('button', { name: /Bisa diulang dalam 0:03/ })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Tunggu 0:03/ })).toBeInTheDocument();
 
             await act(async () => {
                 vi.advanceTimersByTime(4000);
             });
-            // Countdown reaches 0 → button re-enables to "Analisis ulang".
-            expect(screen.getByRole('button', { name: /^Analisis ulang$/ })).not.toBeDisabled();
+            // Countdown reaches 0 → button re-enables to "Baca ulang".
+            expect(screen.getByRole('button', { name: /^Baca ulang$/ })).not.toBeDisabled();
         } finally {
             vi.useRealTimers();
         }
@@ -128,7 +128,7 @@ describe('AnalysisStatus', () => {
             );
 
             await act(async () => {
-                fireEvent.click(screen.getByRole('button', { name: /Analisis ulang/ }));
+                fireEvent.click(screen.getByRole('button', { name: /Baca ulang/ }));
             });
 
             await waitFor(() => {

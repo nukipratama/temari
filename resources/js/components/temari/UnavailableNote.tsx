@@ -14,12 +14,12 @@ const SIZE_CLASSES: Record<UnavailableNoteSize, string> = {
 };
 
 export default function UnavailableNote({
-    message = 'Narasi Temari belum tersedia, coba lagi nanti.',
+    message = 'Temari lagi diem dulu. Coba lagi sebentar.',
     size = 'md',
 }: Readonly<Props>) {
     return (
         <span
-            className={cn('inline-flex items-center rounded-full bg-surface-sunken text-ink-3', SIZE_CLASSES[size])}
+            className={cn('inline-flex items-center rounded-full bg-surface-sunken text-ink-2', SIZE_CLASSES[size])}
             role="status"
         >
             <Icon icon="mdi:clock-alert-outline" aria-hidden />

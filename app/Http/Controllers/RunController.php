@@ -63,7 +63,7 @@ class RunController extends Controller
 
         $recapAnalyses = $this->recapAnalysesFor($weeklySnapshots->all());
 
-        return Inertia::render('Riwayat/Linimasa', [
+        return Inertia::render('Riwayat/Jejak', [
             'runs' => $runs->values(),
             'notes' => $this->notesForActivities($runs->pluck('id')->all()),
             'rangeFilter' => $range,

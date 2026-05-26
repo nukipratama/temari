@@ -2,7 +2,7 @@ import type { TemariPose } from '@/components/temari/TemariProto';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDuration, formatKm, formatRelativeId } from '@/lib/pace';
 import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
-import type { ActivityDetail, Rarity, RunCard } from '@/types/inertia';
+import type { ActivityDetail, Mood, Rarity, RunCard } from '@/types/inertia';
 
 export interface FeaturedCard {
     activityId: number;
@@ -57,7 +57,7 @@ export function pickFeaturedKartu(runs: ReadonlyArray<ActivityDetail>): Featured
     let bestRank = -1;
     let bestDate = '';
     for (const r of runs) {
-        const card = r.activity?.runCard;
+        const card = r.activity?.run_card;
         if (!card) continue;
         const rank = RARITY_RANK[card.rarity];
         const date = r.start_date_local ?? '';
@@ -81,7 +81,7 @@ export function pickFeaturedKartu(runs: ReadonlyArray<ActivityDetail>): Featured
 }
 
 export function kartuStripItem(run: ActivityDetail): StripItem | null {
-    const card: RunCard | undefined = run.activity?.runCard;
+    const card: RunCard | undefined = run.activity?.run_card;
     if (!card) return null;
     return {
         key: `card-${card.id}`,
@@ -103,4 +103,69 @@ export function vibeSubtitleFor(label: string): string {
 export function poseForRun(run: ActivityDetail): TemariPose {
     const mood = moodFromActivity(run);
     return MOOD_TO_POSE[mood] ?? 'observational';
+}
+
+export const MOOD_UPPER: Record<Mood, string> = {
+    nyala: 'NYALA',
+    enteng: 'ENTENG',
+    oleng: 'OLENG',
+    lemes: 'LEMES',
+    mumet: 'MUMET',
+    adem: 'ADEM',
+};
+
+export function formatIdDateUpper(iso: string | null): string {
+    if (iso == null) return '';
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })
+        .format(date)
+        .toUpperCase();
+}
+
+export function shortenLocation(name: string | null): string | null {
+    if (name === null || name === '') return null;
+    const parts = name.split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0) return null;
+    return parts.length === 1 ? parts[0] : `${parts[0]}, ${parts[1]}`;
+}
+
+export function formatWeather(tempC: number | null, humidityPct: number | null, rain: boolean | null): string | null {
+    const bits: string[] = [];
+    if (tempC !== null) bits.push(`${Math.round(tempC)}°C`);
+    if (humidityPct !== null) bits.push(`${Math.round(humidityPct)}%`);
+    if (rain === true) bits.push('hujan');
+    return bits.length > 0 ? bits.join(' · ') : null;
+}
+
+// Indonesian descriptors for Kondisi card subtitles. Thresholds are rough
+// runner-folklore numbers, not medical advice.
+export function ctlHint(ctl: number | null | undefined): string {
+    if (ctl == null) return '';
+    if (ctl < 25) return 'lagi dibangun';
+    if (ctl < 50) return 'naik tipis';
+    if (ctl < 80) return 'stabil';
+    return 'tinggi';
+}
+
+export function atlHint(atl: number | null | undefined): string {
+    if (atl == null) return '';
+    if (atl < 25) return 'fresh';
+    if (atl < 55) return 'wajar';
+    if (atl < 85) return 'lelah';
+    return 'berat';
+}
+
+export function strainHint(strain: number | null | undefined): string {
+    if (strain == null) return '';
+    if (strain < 250) return 'ringan';
+    if (strain < 500) return 'sedang';
+    return 'berat';
+}
+
+export function monotonyHint(monotony: number | null | undefined): string {
+    if (monotony == null) return '';
+    if (monotony < 1.5) return 'sehat';
+    if (monotony < 2) return 'tinggi';
+    return 'monoton';
 }

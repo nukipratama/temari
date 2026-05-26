@@ -53,7 +53,7 @@ describe('AiUsage page', () => {
             />,
         );
 
-        expect(screen.getAllByText('Belum ada token tercatat di rentang ini.')).toHaveLength(2);
+        expect(screen.getAllByText('Belum ada catatan token di rentang ini.')).toHaveLength(2);
     });
 
     it('renders a per-user table with named users + share bar', () => {

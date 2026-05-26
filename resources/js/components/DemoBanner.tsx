@@ -9,7 +9,7 @@ export default function DemoBanner() {
     return (
         <div className="border-b border-horizon/40 bg-horizon/15 px-4 py-2 text-center text-xs font-medium text-ember-deep">
             <Icon icon="mdi:flask-outline" width={14} height={14} className="-mt-0.5 mr-1 inline-block align-middle" aria-hidden />
-            Mode demo aktif — semua data di halaman ini adalah dummy.
+            Mode demo aktif. Semua data di halaman ini cuma dummy.
         </div>
     );
 }

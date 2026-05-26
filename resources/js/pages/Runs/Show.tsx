@@ -11,6 +11,7 @@ import MoodChip from '@/components/ui/MoodChip';
 import SectionLabel from '@/components/ui/SectionLabel';
 import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
 import PastYouStrip from '@/components/run/PastYouStrip';
+import PageOnboardingTooltip from '@/components/onboarding/PageOnboardingTooltip';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { moodFromActivity } from '@/lib/moodFromActivity';
@@ -116,12 +117,20 @@ export default function RunsShow({
                 animate="visible"
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
+                <PageOnboardingTooltip
+                    pageKey="run-detail"
+                    icon="✨"
+                    title="Detail lari kamu."
+                >
+                    Aku kasih komentar buat lari ini, splits per km, breakdown zone HR, sama perbandingan sama past-you kalau ada. Kalau analisis-nya kosong, tap Baca ulang.
+                </PageOnboardingTooltip>
+
                 <Link
                     href="/aktivitas"
-                    className="mb-5 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.14em] text-ink-3 transition hover:text-horizon"
+                    className="mb-5 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.14em] text-ink-3 transition hover:text-horizon-deep"
                 >
                     <Icon icon="mdi:arrow-left" width={14} height={14} aria-hidden />
-                    Riwayat · Linimasa
+                    Riwayat · Jejak
                 </Link>
 
                 {/* HERO + EMBEDDED KARTU */}
@@ -177,7 +186,7 @@ export default function RunsShow({
                         )}
                         {card && (
                             <p className="border-t border-dashed border-cream-deep pt-3 font-display text-sm italic leading-relaxed text-ink-2">
-                                “{RARITY_LABELS[card.rarity]} — aku catet karena {detail.name ?? 'lari ini'} layak.”
+                                “{RARITY_LABELS[card.rarity]} — aku catat karena {detail.name ?? 'lari ini'} layak.”
                             </p>
                         )}
                     </Card>
@@ -321,8 +330,8 @@ function DetailTiles({
 
     if (tiles.length === 0) {
         return (
-            <Card tone="empty" padding="lg" className="text-center font-display text-base italic text-ink-3">
-                Detail teknis belum tersedia.
+            <Card tone="empty" padding="lg" className="text-center font-display text-base italic text-ink-2">
+                Detail teknis-nya belum kebaca.
             </Card>
         );
     }
@@ -363,20 +372,62 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
     const fastest = paces.length > 0 ? Math.min(...paces) : null;
     const fastestKm = fastest != null ? rows.find((r) => paceSecOf(r) === fastest)?.km ?? null : null;
     const slowestSec = paces.length > 0 ? Math.max(...paces) : null;
-    const fastestLabel = fastest != null ? `${formatPace(fastest)} — km ${fastestKm ?? '?'}` : null;
+    const fastestLabel = fastest != null ? `${formatPace(fastest)} di km ${fastestKm ?? '?'}` : null;
 
     return (
         <Card as="section" padding="lg" className={className}>
             <header className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Splits per km</SectionLabel>
                 {fastestLabel && (
-                    <p className="font-display text-sm italic text-ink-3">
+                    <p className="font-display text-sm italic text-ink-2">
                         Pace paling kenceng:{' '}
                         <strong className="font-semibold not-italic text-horizon-deep">{fastestLabel}</strong>
                     </p>
                 )}
             </header>
-            <div className="flex flex-col">
+
+            {/* Mobile: per-km card stack. Pace is the visual lead. */}
+            <div className="flex flex-col gap-2 lg:hidden">
+                {rows.map((row, idx) => {
+                    const sec = paceSecOf(row);
+                    const isFast = sec != null && sec === fastest;
+                    const pctWidth = computeBarWidth(sec, fastest, slowestSec);
+                    return (
+                        <div
+                            key={row.km ?? `row-${idx}`}
+                            className={cn(
+                                'rounded-xl border px-3.5 py-3',
+                                isFast
+                                    ? 'border-horizon/40 bg-horizon/[0.08]'
+                                    : 'border-cream-deep bg-cream',
+                            )}
+                        >
+                            <div className="flex items-baseline justify-between gap-3">
+                                <div className="font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+                                    KM {row.km ?? '?'}
+                                </div>
+                                <div className="font-sans text-2xl font-bold tabular-nums leading-none text-ink">
+                                    {row.pace ?? '—'}
+                                    <span className="ml-1 font-mono text-[11px] font-medium text-ink-3">/km</span>
+                                </div>
+                            </div>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded bg-sky/[0.06]">
+                                <div
+                                    className={cn('h-full rounded', isFast ? 'bg-horizon' : 'bg-sky')}
+                                    style={{ width: `${pctWidth}%` }}
+                                />
+                            </div>
+                            <div className="mt-2 flex items-center gap-4 font-sans text-xs tabular-nums text-ink-2">
+                                <span>♡ {row.avg_hr ?? '—'}</span>
+                                <span>↻ {row.avg_cadence_spm ?? '—'}</span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Desktop: dense grid table. */}
+            <div className="hidden flex-col lg:flex">
                 {rows.map((row, idx) => {
                     const sec = paceSecOf(row);
                     const isFast = sec != null && sec === fastest;
@@ -390,7 +441,7 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
                                 isFast ? 'rounded-lg bg-horizon/[0.08] px-3 py-2.5' : 'px-0 py-2.5',
                             )}
                         >
-                            <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">
+                            <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-ink-2">
                                 KM {row.km ?? '?'}
                             </div>
                             <div className="h-2 overflow-hidden rounded bg-sky/[0.06]">
@@ -402,10 +453,10 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
                             <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink">
                                 {row.pace ?? '—'}
                             </div>
-                            <div className="text-right font-sans text-xs tabular-nums text-ink-3">
+                            <div className="text-right font-sans text-xs tabular-nums text-ink-2">
                                 ♡ {row.avg_hr ?? '—'}
                             </div>
-                            <div className="text-right font-sans text-xs tabular-nums text-ink-3">
+                            <div className="text-right font-sans text-xs tabular-nums text-ink-2">
                                 ↻ {row.avg_cadence_spm ?? '—'}
                             </div>
                         </div>

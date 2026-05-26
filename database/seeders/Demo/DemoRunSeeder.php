@@ -14,7 +14,9 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Demo\RuleBasedNarrationFiller;
 use App\Services\Geo\PolylineEncoder;
 use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PersonalRecords;
@@ -35,11 +37,7 @@ class DemoRunSeeder
 {
     public const string DEMO_USER_EMAIL = 'demo@teman-lari.local';
 
-    // Stagger between dispatched LLM jobs so Horizon doesn't slam Azure all at
-    // once. Demo dispatches a few hundred jobs; 30s lets workers drip through.
-    private const int DISPATCH_STAGGER_SECONDS = 30;
-
-    // Senayan / SCBD, Jakarta — must agree with DEMO_LOCATION_NAME below.
+    // Senayan / SCBD, Jakarta. Must agree with DEMO_LOCATION_NAME below.
     private const float DEMO_START_LAT = -6.2253;
 
     private const float DEMO_START_LNG = 106.8090;
@@ -61,6 +59,7 @@ class DemoRunSeeder
         private readonly Vibe $vibe,
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly AnalysisService $analysisService,
+        private readonly RuleBasedNarrationFiller $filler,
         private readonly PolylineEncoder $polylineEncoder = new PolylineEncoder(),
     ) {
     }
@@ -130,23 +129,28 @@ class DemoRunSeeder
             $vibeState = $this->vibe->current($user);
             $this->temari->dailyGreeting($user, $vibeState);
             $log("  Today's vibe: {$vibeState}");
+
+            // Stage Pending Analysis rows for every surface that uses LLM. No
+            // jobs dispatch because the entire seed runs inside
+            // withoutDispatching; the rows are flat-filled below with
+            // deterministic rule-based content so demo doesn't burn tokens.
+            $this->stagePendingAnalyses($user);
         });
 
         $user = User::query()->where('email', self::DEMO_USER_EMAIL)->firstOrFail();
-        $dispatched = $this->dispatchPendingAnalyses($user);
-        $log(sprintf('  %d AI analyses dispatched to Horizon (narasi akan muncul saat job selesai).', $dispatched));
+        $filled = $this->backfillWithFiller($user);
+        $log(sprintf('  %d AI analyses backfilled with rule-based content (klik "Baca ulang" buat narasi LLM beneran).', $filled));
 
         return $count;
     }
 
-    private function dispatchPendingAnalyses(User $user): int
+    private function stagePendingAnalyses(User $user): void
     {
         $activities = Activity::query()->where('user_id', $user->id)->get();
         $weeklyIds = WeeklySnapshot::query()->where('user_id', $user->id)->pluck('id')->all();
         $prIds = PersonalRecord::query()->where('user_id', $user->id)->pluck('id')->all();
         $cardIds = RunCard::query()->whereIn('activity_id', $activities->pluck('id'))->pluck('id')->all();
 
-        $count = 0;
         $today = Carbon::today()->toDateString();
 
         foreach ($activities as $activity) {
@@ -154,63 +158,84 @@ class DemoRunSeeder
                 subjectOrType: Activity::class,
                 subjectId: $activity->id,
                 type: AnalysisType::PostRunSpeech,
-                delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
             );
-            $count++;
         }
         foreach ($cardIds as $cardId) {
             $this->analysisService->request(
                 subjectOrType: RunCard::class,
                 subjectId: $cardId,
                 type: AnalysisType::CardFlavor,
-                delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
             );
-            $count++;
         }
         foreach ($prIds as $prId) {
             $this->analysisService->request(
                 subjectOrType: PersonalRecord::class,
                 subjectId: $prId,
                 type: AnalysisType::PrContext,
-                delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
             );
-            $count++;
         }
         foreach ($weeklyIds as $weeklyId) {
             $this->analysisService->request(
                 subjectOrType: WeeklySnapshot::class,
                 subjectId: $weeklyId,
                 type: AnalysisType::WeeklyRecap,
-                delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
             );
-            $count++;
         }
         $this->analysisService->request(
             subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
             subjectId: $user->id,
             type: AnalysisType::BriefingHeadline,
             discriminator: $today,
-            delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
         );
-        $count++;
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
+            subjectId: $user->id,
+            type: AnalysisType::BriefingMascotVoice,
+            discriminator: $today,
+        );
         $this->analysisService->request(
             subjectOrType: AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
             subjectId: $user->id,
             type: AnalysisType::DailyGreeting,
             discriminator: $today,
-            delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
         );
-        $count++;
         $this->analysisService->request(
             subjectOrType: AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
             subjectId: $user->id,
             type: AnalysisType::TrendCaption,
             discriminator: $today,
-            delaySeconds: $count * self::DISPATCH_STAGGER_SECONDS,
         );
-        $count++;
+    }
 
-        return $count;
+    private function backfillWithFiller(User $user): int
+    {
+        $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
+        $weeklyIds = WeeklySnapshot::query()->where('user_id', $user->id)->pluck('id');
+        $prIds = PersonalRecord::query()->where('user_id', $user->id)->pluck('id');
+        $cardIds = RunCard::query()->whereIn('activity_id', $activityIds)->pluck('id');
+
+        $rows = Analysis::query()
+            ->where('status', '!=', AnalysisStatus::Done)
+            ->where(function ($q) use ($user, $activityIds, $weeklyIds, $prIds, $cardIds): void {
+                $q->where(fn ($qq) => $qq->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
+                    ->orWhere(fn ($qq) => $qq->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $weeklyIds))
+                    ->orWhere(fn ($qq) => $qq->where('subject_type', PersonalRecord::class)->whereIn('subject_id', $prIds))
+                    ->orWhere(fn ($qq) => $qq->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
+                    ->orWhere(fn ($qq) => $qq->whereIn('subject_type', [
+                        AnalysisType::BRIEFING_SUBJECT_TYPE,
+                        AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+                        AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
+                        AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE,
+                        AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                    ])->where('subject_id', $user->id));
+            })
+            ->get();
+
+        foreach ($rows as $row) {
+            $this->analysisService->markDone($row, $this->filler->fillFor($row));
+        }
+
+        return $rows->count();
     }
 
     private function ensureDemoUser(Closure $log): User

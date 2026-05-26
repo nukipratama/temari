@@ -5,6 +5,8 @@ import { Icon } from '@iconify/react';
 import { pressShrink } from '@/lib/motion';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import TemariMascot from '@/components/temari/TemariMascot';
+import MoodChip from '@/components/ui/MoodChip';
+import { MOOD_LABEL } from '@/lib/mood';
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
 export interface RunNote {
@@ -35,13 +37,16 @@ export default function RunListRow({ detail, mood = null, note = null }: Readonl
             <TemariMascot
                 mood={safeMood}
                 sizeClass="h-16 w-16 shrink-0"
-                aria-label={`mood ${safeMood}`}
+                aria-label={`mood ${MOOD_LABEL[safeMood]}`}
             />
             <div className="flex min-w-0 flex-1 flex-col gap-2">
                 <div className="flex items-center gap-4">
                     <div className="min-w-0 flex-1">
                         <div className="truncate font-medium text-ink">{detail.name ?? 'Run'}</div>
-                        <div className="text-xs text-ink-3">{formatIdDate(detail.start_date_local)}</div>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-3">
+                            <span>{formatIdDate(detail.start_date_local)}</span>
+                            <MoodChip mood={safeMood} size="sm" />
+                        </div>
                     </div>
                     <div className="flex items-center gap-5 tabular-nums">
                         <Cell value={km} unit="km" emphasize />

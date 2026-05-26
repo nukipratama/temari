@@ -16,6 +16,7 @@ import { RARITY_LABELS, RARITY_ORDER, prettyBadge } from '@/lib/runcard';
 import { emberGlowStyle } from '@/lib/styles';
 import { useState } from 'react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import PageOnboardingTooltip from '@/components/onboarding/PageOnboardingTooltip';
 import type {
     Activity,
     ActivityDetail,
@@ -82,6 +83,14 @@ export default function KoleksiKartu({
                 animate="visible"
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
+                <PageOnboardingTooltip
+                    pageKey="koleksi"
+                    icon="🃏"
+                    title="Koleksi kamu."
+                >
+                    Tiga sub-tab di sini: Kartu (tiap lari aku kasih satu), Rekor (PR kamu di berbagai jarak), Aksesori (bisa dipakein ke aku, kebuka pelan-pelan).
+                </PageOnboardingTooltip>
+
                 <CollectionHeader
                     active="kartu"
                     eyebrow={eyebrow}
@@ -123,7 +132,9 @@ function FeaturedPanel({
     const durasi = detail?.moving_time != null ? formatDuration(detail.moving_time) : '—';
     const trimp = detail?.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—';
     const subtitle = `${RARITY_LABELS[featured.rarity]} · ${formatIdDate(detail?.start_date_local ?? null, 'short')}`;
-    const tags = (featured.badges ?? []).slice(0, 2).map(prettyBadge);
+    const allTags = (featured.badges ?? []).slice(0, 2).map(prettyBadge);
+    // Mobile: cap to 1 chip so the panel fits on iPhone SE-class screens.
+    const mobileTags = allTags.slice(0, 1);
 
     return (
         <HeroPanel className="mt-8 lg:px-14 lg:py-12">
@@ -158,12 +169,19 @@ function FeaturedPanel({
                             />
                         </div>
                     )}
-                    {tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                            {tags.map((t) => (
-                                <Chip key={t} tone="horizon">{t}</Chip>
-                            ))}
-                        </div>
+                    {allTags.length > 0 && (
+                        <>
+                            <div className="hidden flex-wrap gap-2 sm:flex">
+                                {allTags.map((t) => (
+                                    <Chip key={t} tone="horizon">{t}</Chip>
+                                ))}
+                            </div>
+                            <div className="flex flex-wrap gap-2 sm:hidden">
+                                {mobileTags.map((t) => (
+                                    <Chip key={t} tone="horizon">{t}</Chip>
+                                ))}
+                            </div>
+                        </>
                     )}
                 </div>
                 <Link
@@ -178,7 +196,7 @@ function FeaturedPanel({
                         durasi={durasi}
                         trimp={trimp}
                         rarity={featured.rarity}
-                        tags={tags}
+                        tags={allTags}
                         size="lg"
                         onSky
                         className="rotate-[-3deg]"
@@ -280,9 +298,9 @@ function EmptyState() {
     return (
         <Card tone="empty" padding="lg" className="mt-8 text-center">
             <p className="font-display text-2xl italic text-ink-2">
-                Belum ada kartu di rarity ini.
+                Filter ini belum ada kartunya.
             </p>
-            <p className="mt-2 font-sans text-sm text-ink-3">Coba filter lain, atau sinkronkan lari terbaru kamu.</p>
+            <p className="mt-2 font-sans text-sm text-ink-2">Coba filter lain, atau sync lari terbaru dulu.</p>
         </Card>
     );
 }
@@ -294,14 +312,14 @@ function LegendaryTease() {
                 ?
             </div>
             <div className="flex-1">
-                <div className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rarity-legendary">
-                    ★ Legendaris · belum terbuka
+                <div className="mb-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rarity-legendary">
+                    ★ Legendaris · belum kebuka
                 </div>
                 <p className="mb-1.5 font-display text-2xl leading-tight tracking-[-0.01em] text-ink">
-                    “Ada kartu Legendaris nungguin di sini.”
+                    “Ada kartu Legendaris nungguin di sini.” ✨
                 </p>
-                <p className="font-display text-sm italic leading-relaxed text-ink-3">
-                    Syaratnya: PR di 21K, atau 5 lari Nyala beruntun.
+                <p className="font-display text-sm italic leading-relaxed text-ink-2">
+                    Buat buka: PR di 21K, atau 5 lari Nyala beruntun.
                 </p>
             </div>
         </Card>

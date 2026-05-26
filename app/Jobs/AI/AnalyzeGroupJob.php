@@ -30,39 +30,52 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             static::groupedTypes(),
         );
 
-        if ($this->allDone($rows)) {
+        $pending = $rows->filter(fn (Analysis $row): bool => $row->status !== AnalysisStatus::Done);
+        if ($pending->isEmpty()) {
             return;
         }
 
         try {
             $subject = $this->resolveSubject($this->subjectId);
         } catch (UnavailableException $e) {
-            foreach ($rows as $row) {
-                $service->markFailed($row, $e->getMessage());
-            }
+            $this->failPending($pending, $service, $e->getMessage());
 
             return;
         }
 
-        foreach ($rows as $row) {
+        foreach ($pending as $row) {
             $service->markProcessing($row);
         }
 
         try {
-            $payload = $this->generateAll($subject);
-            $version = $this->modelVersion();
-
-            DB::transaction(function () use ($rows, $payload, $version, $service): void {
-                foreach ($rows as $key => $row) {
-                    $service->markDone($row, $payload[$key], $version);
-                }
-            });
+            $this->finalizePending($pending, $service, $this->generateAll($subject));
         } catch (Throwable $e) {
-            foreach ($rows as $row) {
-                $service->markFailed($row, $e->getMessage());
-            }
+            $this->failPending($pending, $service, $e->getMessage());
             $this->rethrowIfUnexpected($e);
         }
+    }
+
+    /** @param Collection<string, Analysis> $pending */
+    private function failPending(Collection $pending, AnalysisService $service, string $reason): void
+    {
+        foreach ($pending as $row) {
+            $service->markFailed($row, $reason);
+        }
+    }
+
+    /**
+     * @param Collection<string, Analysis> $pending
+     * @param array<string, string> $payload
+     */
+    private function finalizePending(Collection $pending, AnalysisService $service, array $payload): void
+    {
+        $version = $this->modelVersion();
+
+        DB::transaction(function () use ($pending, $payload, $version, $service): void {
+            foreach ($pending as $key => $row) {
+                $service->markDone($row, $payload[$key], $version);
+            }
+        });
     }
 
     /**
@@ -78,10 +91,4 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
      * @return array<string, string> keyed by AnalysisType value
      */
     abstract protected function generateAll(mixed $subject): array;
-
-    /** @param Collection<string, Analysis> $rows */
-    private function allDone(Collection $rows): bool
-    {
-        return $rows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done);
-    }
 }

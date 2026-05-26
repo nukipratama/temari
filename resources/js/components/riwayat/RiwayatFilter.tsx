@@ -41,7 +41,7 @@ interface RiwayatFilterProps<V extends string> {
 }
 
 /**
- * Single compact filter trigger used on both Linimasa and Kalender. Replaces
+ * Single compact filter trigger used on both Jejak and Kalender. Replaces
  * a row-spanning chip strip with one button + popover, so the page title and
  * tabs stay the visual anchor and the filter is opt-in.
  *

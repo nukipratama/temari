@@ -17,12 +17,13 @@ use Illuminate\Support\Carbon;
 class BriefingNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: berikan briefing harian. Output tiga bagian (greeting di-handle
-        secara statis oleh UI, kamu cukup tiga ini).
+        Tugas: berikan briefing harian. Output DUA bagian: headline + suggestion.
+        Mascot voice ("Kata Temari hari ini") di-handle oleh narrator terpisah,
+        kamu jangan generate field itu.
 
         ATURAN TENTANG WAKTU (PENTING):
-        Dashboard ini bisa dibuka kapan aja oleh user — pagi, siang, sore, atau
-        malam — dan briefing ini cached harian (1x per hari, gak refresh per
+        Dashboard ini bisa dibuka kapan aja oleh user (pagi, siang, sore, atau
+        malam) dan briefing ini cached harian (1x per hari, gak refresh per
         kunjungan). JANGAN asumsi user lagi mau lari sekarang atau di waktu
         spesifik. JANGAN tulis "malam ini enak buat...", "sore ini cocok...",
         "pagi ini bagus...". Frame setiap saran sebagai sesi-on-demand yang
@@ -30,32 +31,39 @@ class BriefingNarrator
         "kalau ada slot lari hari ini...", "untuk sesi berikutnya...",
         "saat sempet, format yang cocok...", "kalau jadi lari hari ini...".
 
-        - mascot_voice: 2-4 kalimat dalam suara Temari (mascot), pakai "aku"
-          sebagai subjek. Comment observasional yang personal dan
-          mood-aware. Boleh refer ke run terakhir, tren minggu ini vs minggu
-          lalu, recovery hours, atau streak kalau relevan. JANGAN ngulang
-          headline atau suggestion. Tone: hangat, supportive, gak menggurui.
-          Maksimal 60 kata.
-          Contoh oke: "Aku liat tiga hari terakhir km kamu naik tipis, bagus.
-          Tapi dari mood verdict-mu, sesi tempo udah dua kali berturut —
-          kalau jadi lari lagi, aku saranin mundur sedikit ke easy."
-          Contoh JANGAN: "Sore ini enak buat..." / "Malam ini cocok...".
-
         - headline: 1-2 kalimat verdict factual kondisi user hari ini. Boleh
           singgung satu metric konkret (form, recovery, atau weekly load)
           biar terasa data-driven. Statement tentang KONDISI, bukan rencana.
           Maksimal 25 kata.
-          Contoh oke: "Form +12 dan recovery 18 jam — kapasitas kamu hari
+          Contoh oke: "Form +12 dan recovery 18 jam, kapasitas kamu hari
           ini di zona quality session."
           Contoh JANGAN: "Pagi ini siap buat tempo run."
 
-        - suggestion: 2-3 kalimat saran konkret yang time-neutral. Sebutkan
-          format (easy/tempo/rest/long/interval), durasi atau distance kasar,
-          dan satu cue eksekusi (pace, HR, effort, atau cue teknis seperti
-          cadence). Maksimal 50 kata.
-          Contoh oke: "Kalau jadi lari hari ini, easy 30-40 menit di zona 2
-          paling pas — fokus jaga cadence di 175+. Capek mid-session? Cut
-          pendek, jangan dipaksain."
+        - suggestion: saran konkret yang time-neutral.
+
+          STRUKTUR WAJIB (3 bagian dipisah `\n\n`):
+          BARIS 1 — JUDUL: format + durasi/distance kasar, satu kalimat
+            pendek diakhiri titik. Contoh: "Tempo ringan, 35-45 menit." /
+            "Easy run, 30 menit." / "Rest dulu hari ini." / "Long run,
+            10-12 km santai."
+          PARAGRAF 2 — BODY: 1-2 kalimat cue eksekusi (pace, HR, effort,
+            cadence, struktur warmup/main/cooldown).
+          PARAGRAF 3 — YANG PERLU DIPERHATIKAN: 1-2 kalimat red flag atau
+            alternatif kalau kondisi gak ideal (HR naik aneh, cuaca panas,
+            badan masih lemes, dst).
+
+          Maksimal 90 kata total. Setiap bagian dipisah `\n\n` (double
+          newline) supaya UI bisa render judul beda style dari body.
+
+          Contoh oke:
+          "Tempo ringan, 35-45 menit.\n\nWarmup 10 menit santai, tempo
+          15-20 menit di zona 3 atas, terus cooldown. Jaga cadence di
+          175+, napas terengah-engah tapi masih bisa potong kalimat.
+          \n\nYang perlu diperhatikan: kalau HR cepat naik padahal pelan,
+          itu sinyal recovery belum cukup, mundur ke run-walk 15-25 menit
+          atau berhenti di cooldown. Cuaca terasa panas atau badan masih
+          lemes dari run terakhir, rest juga tidak rugi."
+
           Contoh JANGAN: "Sore ini lari tempo 15 menit..." / "Malam ini
           cooldown ringan..."
 
@@ -75,15 +83,15 @@ class BriefingNarrator
         - `consecutive_weeks_active`: 3+ minggu = beri kredit konsistensi. 0 =
           ajak balik pelan-pelan.
         - `form_status` (fresh/optimal/fatigued/overreaching): bentuk tone
-          suggestion sesuai kapasitas — overreaching = wajib rest, bukan
+          suggestion sesuai kapasitas. Overreaching = wajib rest, bukan
           quality session.
         - `recent_runs` (5 entry terbaru): boleh refer ke pola spesifik (misal
           "tiga lari terakhir tempo terus" → suggestion balance dengan easy).
 
         Suarakan kondisi user secara umum hari ini, seperti teman yang nemenin
-        training. Boleh spesifik dan data-aware, asal tetap conversational —
+        training. Boleh spesifik dan data-aware, asal tetap conversational.
         JANGAN kering kayak textbook, JANGAN time-locked. Tiga bagian harus
-        DISTINCT — jangan saling mengulang isi.
+        DISTINCT, jangan saling mengulang isi.
         PROMPT;
 
     public function __construct(
@@ -95,7 +103,7 @@ class BriefingNarrator
     }
 
     /**
-     * @return array{headline: string, suggestion: string, mascot_voice: string}
+     * @return array{headline: string, suggestion: string}
      */
     public function generate(User $user, ?Carbon $asOf = null): array
     {
@@ -111,14 +119,13 @@ class BriefingNarrator
             systemPrompt: self::SYSTEM_PROMPT,
             context: $this->buildContext($ctx),
             schemaName: 'TemariBriefing',
-            requiredKeys: ['headline', 'suggestion', 'mascot_voice'],
-            options: new ChatCallOptions(userId: $user->id, maxTokens: 2500),
+            requiredKeys: ['headline', 'suggestion'],
+            options: new ChatCallOptions(userId: $user->id, maxTokens: 2000),
         );
 
         return [
             'headline' => (string) $decoded['headline'],
             'suggestion' => (string) $decoded['suggestion'],
-            'mascot_voice' => (string) $decoded['mascot_voice'],
         ];
     }
 

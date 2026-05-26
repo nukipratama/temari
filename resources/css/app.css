@@ -12,13 +12,14 @@
 @source '../**/*.ts';
 
 @theme {
-    /* Daybreak typography — three families per the redesign handoff:
+    /* Daybreak typography — two families only:
        Instrument Serif italic for display/voice (Temari quotes, page
-       headlines), Inter for body/UI/numbers, JetBrains Mono for small
-       uppercase metadata labels. Loaded via Google Fonts <link> in
-       app.blade.php. */
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+       headlines), and JetBrains Mono for everything else (body/UI/numbers
+       and small uppercase metadata labels). Mono-as-body gives the runner
+       brand a data-driven, indie-tech aesthetic plus tabular nums by
+       default. Loaded via Google Fonts <link> in app.blade.php. */
+    --font-sans: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
     --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 

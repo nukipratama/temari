@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
 
-export type RiwayatTab = 'linimasa' | 'kalender';
+export type RiwayatTab = 'jejak' | 'kalender';
 
 interface RiwayatTabsProps {
     active: RiwayatTab;
@@ -10,7 +10,7 @@ interface RiwayatTabsProps {
 }
 
 const TABS = [
-    { id: 'linimasa' as const, label: 'Linimasa', href: '/aktivitas', icon: 'mdi:arrow-top-right' },
+    { id: 'jejak' as const, label: 'Jejak', href: '/aktivitas', icon: 'mdi:arrow-top-right' },
     { id: 'kalender' as const, label: 'Kalender', href: '/kalender', icon: 'mdi:calendar-blank-outline' },
 ];
 

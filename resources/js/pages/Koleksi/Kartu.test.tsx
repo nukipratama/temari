@@ -15,7 +15,7 @@ function cardWithRel(id: number, rarity: RunCard['rarity'], move = 'Langkah Mant
     const detail: ActivityDetail = {
         id, activity_id: id, name: 'Lari pagi', start_date_local: '2026-05-10T06:30',
         distance: 5000, moving_time: 1800, trimp_edwards: 50, average_heartrate: 150,
-        activity: { ...activity, runCard: { id, activity_id: id, rarity, special_move: move, badges: ['negative_split'] } },
+        activity: { ...activity, run_card: { id, activity_id: id, rarity, special_move: move, badges: ['negative_split'] } },
     };
     return {
         id, activity_id: id, rarity, special_move: move, badges: ['negative_split'],
@@ -35,7 +35,7 @@ beforeEach(() => {
 describe('Koleksi/Kartu', () => {
     it('renders the EmptyState when no cards and no featured card', () => {
         render(<KoleksiKartu cards={emptyCards()} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
-        expect(screen.getByText(/Belum ada kartu/)).toBeInTheDocument();
+        expect(screen.getByText(/Filter ini belum ada kartunya/)).toBeInTheDocument();
     });
 
     it('renders the LegendaryTease when legendary count is 0', () => {

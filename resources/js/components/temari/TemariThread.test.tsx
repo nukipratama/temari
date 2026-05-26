@@ -34,7 +34,7 @@ describe('TemariThread grouped reanalyze button', () => {
             entry('zones', { type: 'run_insight_zones' }),
         ];
         render(<TemariThread mood="nyala" entries={entries} />);
-        expect(screen.getByRole('button', { name: /Analisis ulang/ })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Baca ulang/ })).toBeInTheDocument();
     });
 
     it('hides the grouped button when any entry is queued', () => {
@@ -45,7 +45,7 @@ describe('TemariThread grouped reanalyze button', () => {
             entry('zones', { type: 'run_insight_zones' }),
         ];
         render(<TemariThread mood="nyala" entries={entries} />);
-        expect(screen.queryByRole('button', { name: /Analisis ulang/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
     });
 
     it('hides the grouped button when any entry is processing', () => {
@@ -56,7 +56,7 @@ describe('TemariThread grouped reanalyze button', () => {
             entry('zones', { type: 'run_insight_zones' }),
         ];
         render(<TemariThread mood="nyala" entries={entries} />);
-        expect(screen.queryByRole('button', { name: /Analisis ulang/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
     });
 
     it('does not render the grouped button for a single-entry thread', () => {
@@ -64,6 +64,6 @@ describe('TemariThread grouped reanalyze button', () => {
         render(<TemariThread mood="nyala" entries={entries} />);
         // Single-entry threads use the per-row button instead of the grouped one.
         // The per-row button text is identical so we check there is exactly one.
-        expect(screen.getAllByRole('button', { name: /Analisis ulang/ })).toHaveLength(1);
+        expect(screen.getAllByRole('button', { name: /Baca ulang/ })).toHaveLength(1);
     });
 });

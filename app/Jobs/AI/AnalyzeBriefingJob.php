@@ -16,10 +16,13 @@ class AnalyzeBriefingJob extends AnalyzeGroupJob
     #[Override]
     public static function groupedTypes(): array
     {
+        // BriefingMascotVoice was previously in this group; split out into
+        // AnalyzeBriefingMascotVoiceJob so the "Kata Temari hari ini" surface
+        // can be retried independently without re-spending tokens on the
+        // headline + suggestion (and vice versa).
         return [
             AnalysisType::BriefingHeadline,
             AnalysisType::BriefingSuggestion,
-            AnalysisType::BriefingMascotVoice,
         ];
     }
 
@@ -50,7 +53,6 @@ class AnalyzeBriefingJob extends AnalyzeGroupJob
         return [
             AnalysisType::BriefingHeadline->value => $payload['headline'],
             AnalysisType::BriefingSuggestion->value => $payload['suggestion'],
-            AnalysisType::BriefingMascotVoice->value => $payload['mascot_voice'],
         ];
     }
 }

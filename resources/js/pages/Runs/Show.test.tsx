@@ -167,7 +167,7 @@ describe('Runs/Show', () => {
         renderShow();
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
         // Fastest is the 5:45 km
-        expect(screen.getByText(/5:45 — km 2/)).toBeInTheDocument();
+        expect(screen.getByText(/5:45 di km 2/)).toBeInTheDocument();
     });
 
     it('renders the past-you strip when journeyMatch is present', () => {
@@ -210,7 +210,7 @@ describe('Runs/Show', () => {
             trimp_edwards: null,
         };
         renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: bare }, detail: bare });
-        expect(screen.getByText(/Detail teknis belum tersedia/)).toBeInTheDocument();
+        expect(screen.getByText(/Detail teknis-nya belum kebaca/)).toBeInTheDocument();
     });
 
     it('parses a string-form pace_sec from splits when pace_sec is missing', () => {

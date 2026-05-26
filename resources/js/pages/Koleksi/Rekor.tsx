@@ -13,6 +13,7 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import SplitsSparkline from '@/components/run/SplitsSparkline';
 import TemariProto from '@/components/temari/TemariProto';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import PageOnboardingTooltip from '@/components/onboarding/PageOnboardingTooltip';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatIdDate } from '@/lib/pace';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
@@ -85,6 +86,14 @@ export default function KoleksiRekor({
                 animate="visible"
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
+                <PageOnboardingTooltip
+                    pageKey="koleksi"
+                    icon="🃏"
+                    title="Koleksi kamu."
+                >
+                    Tiga sub-tab di sini: Kartu (tiap lari aku kasih satu), Rekor (PR kamu di berbagai jarak), Aksesori (bisa dipakein ke aku, kebuka pelan-pelan).
+                </PageOnboardingTooltip>
+
                 <CollectionHeader
                     active="rekor"
                     eyebrow={eyebrow}
@@ -353,7 +362,7 @@ function TemariFooter() {
         <Card as="section" className="mt-8 flex items-start gap-3.5">
             <TemariProto pose="observational" size={56} />
             <p className="flex-1 font-display text-[15px] italic leading-relaxed text-ink-2">
-                “Tiap kamu pecahin rekor, langsung aku catet di sini. Nggak ada yang ilang, ya.”
+                “Tiap kamu pecahin rekor, langsung aku catat di sini. Nggak ada yang ilang, ya.”
             </p>
         </Card>
     );
