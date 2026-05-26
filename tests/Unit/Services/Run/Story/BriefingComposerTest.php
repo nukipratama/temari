@@ -47,7 +47,7 @@ it('returns stored content when analyses are done', function (): void {
         AnalysisType::BriefingMascotVoice->value => 'Aku liat kemarin lo lari santai, easy hari ini ya',
     ] as $typeValue => $content) {
         Analysis::factory()->done($content)->create([
-            'subject_type' => BriefingComposer::SUBJECT_TYPE,
+            'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
             'subject_id' => $user->id,
             'analysis_type' => $typeValue,
             'discriminator' => '2026-05-18',
@@ -71,7 +71,7 @@ it('does not re-dispatch when some pieces are done and others queued', function 
     $asOf = Carbon::parse('2026-05-18');
 
     Analysis::factory()->done('Pagi yang oke')->create([
-        'subject_type' => BriefingComposer::SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingHeadline,
         'discriminator' => '2026-05-18',
@@ -81,7 +81,7 @@ it('does not re-dispatch when some pieces are done and others queued', function 
         AnalysisType::BriefingMascotVoice->value,
     ] as $typeValue) {
         Analysis::factory()->queued()->create([
-            'subject_type' => BriefingComposer::SUBJECT_TYPE,
+            'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
             'subject_id' => $user->id,
             'analysis_type' => $typeValue,
             'discriminator' => '2026-05-18',

@@ -45,6 +45,7 @@ export type AnalysisType =
     | 'briefing_headline'
     | 'briefing_suggestion'
     | 'briefing_mascot_voice'
+    | 'briefing_featured_kartu_voice'
     | 'post_run_speech'
     | 'daily_greeting'
     | 'run_insight_technical'
@@ -77,6 +78,7 @@ export interface BriefingResult {
     headline: AnalysisPayload;
     suggestion: AnalysisPayload;
     mascotVoice: AnalysisPayload;
+    featuredKartuVoice: AnalysisPayload;
     recoveryLabel: string;
     recoveryTone: RecoveryTone;
     recoveryHoursLabel: string | null;

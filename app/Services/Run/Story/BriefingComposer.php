@@ -13,9 +13,6 @@ use Illuminate\Support\Carbon;
 
 class BriefingComposer
 {
-    /** @deprecated Use {@see AnalysisType::BRIEFING_SUBJECT_TYPE}. */
-    public const string SUBJECT_TYPE = AnalysisType::BRIEFING_SUBJECT_TYPE;
-
     public function __construct(
         private readonly Vibe $vibe,
         private readonly TrainingLoad $trainingLoad,
@@ -38,6 +35,7 @@ class BriefingComposer
         $headline = $this->existingRow($user, AnalysisType::BriefingHeadline, $subjectType, $discriminator);
         $suggestion = $this->existingRow($user, AnalysisType::BriefingSuggestion, $subjectType, $discriminator);
         $mascotVoice = $this->existingRow($user, AnalysisType::BriefingMascotVoice, $subjectType, $discriminator);
+        $featuredKartuVoice = $this->existingRow($user, AnalysisType::BriefingFeaturedKartuVoice, $subjectType, $discriminator);
 
         return new BriefingResult(
             vibeState: $vibeState,
@@ -46,6 +44,7 @@ class BriefingComposer
             headline: Analysis::toPayload($headline, AnalysisType::BriefingHeadline, $subjectType, $user->id, $discriminator),
             suggestion: Analysis::toPayload($suggestion, AnalysisType::BriefingSuggestion, $subjectType, $user->id, $discriminator),
             mascotVoice: Analysis::toPayload($mascotVoice, AnalysisType::BriefingMascotVoice, $subjectType, $user->id, $discriminator),
+            featuredKartuVoice: Analysis::toPayload($featuredKartuVoice, AnalysisType::BriefingFeaturedKartuVoice, $subjectType, $user->id, $discriminator),
             recoveryLabel: FormStatus::label($load),
             recoveryTone: FormStatus::tone($load),
             recoveryHoursLabel: $this->recoveryHoursLabel($hoursSince),

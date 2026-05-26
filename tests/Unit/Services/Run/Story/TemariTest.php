@@ -135,7 +135,7 @@ it('emits a daily greeting story line per (user, date) with null speech and disp
     Bus::assertNotDispatched(AnalyzeDailyGreetingJob::class);
 
     $analysis = Analysis::query()
-        ->forSubject(Temari::DAILY_GREETING_SUBJECT_TYPE, $user->id, AnalysisType::DailyGreeting, '2026-05-11')
+        ->forSubject(AnalysisType::DAILY_GREETING_SUBJECT_TYPE, $user->id, AnalysisType::DailyGreeting, '2026-05-11')
         ->first();
     expect($analysis)->toBeNull();
 });

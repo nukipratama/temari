@@ -142,7 +142,7 @@ export default function HariIni({
                 </header>
 
                 {/* HERO KARTU */}
-                {featured && <FeaturedKartuPanel featured={featured} pose={pose} mascotVoice={briefing.mascotVoice} />}
+                {featured && <FeaturedKartuPanel featured={featured} pose={pose} featuredKartuVoice={briefing.featuredKartuVoice} />}
 
                 {/* 3-UP */}
                 <section className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
@@ -286,8 +286,8 @@ function VitalChip({
 function FeaturedKartuPanel({
     featured,
     pose,
-    mascotVoice,
-}: Readonly<{ featured: FeaturedCard; pose: TemariPose; mascotVoice: AnalysisPayload }>) {
+    featuredKartuVoice,
+}: Readonly<{ featured: FeaturedCard; pose: TemariPose; featuredKartuVoice: AnalysisPayload }>) {
     return (
         <HeroPanel className="mt-8 min-h-[360px] lg:px-14 lg:py-12">
             <span
@@ -308,9 +308,8 @@ function FeaturedKartuPanel({
                     </h2>
                     <div className="mb-6 max-w-xl">
                         <AnalysisStatus
-                            analysis={mascotVoice}
+                            analysis={featuredKartuVoice}
                             inertiaReloadProps={['briefing']}
-                            allowReanalyze={false}
                             showTimestamp={false}
                             renderContent={(text) => (
                                 <p className="font-display text-quote-lg italic text-cream">

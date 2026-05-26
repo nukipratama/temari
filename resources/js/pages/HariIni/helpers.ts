@@ -1,7 +1,8 @@
-import type { TemariPose } from '@/components/temari/TemariProto';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDuration, formatKm, formatRelativeId } from '@/lib/pace';
 import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
+import type { TemariPose } from '@/components/temari/TemariProto';
 import type { ActivityDetail, Mood, Rarity, RunCard } from '@/types/inertia';
 
 export interface FeaturedCard {
@@ -33,15 +34,6 @@ export const VIBE_TO_POSE: Record<string, TemariPose> = {
     worn_down: 'wobble',
     stretched_thin: 'wobble',
     hibernating: 'reading',
-};
-
-const MOOD_TO_POSE: Record<string, TemariPose> = {
-    nyala: 'proud',
-    enteng: 'excited',
-    lemes: 'wobble',
-    oleng: 'wobble',
-    mumet: 'wobble',
-    adem: 'reading',
 };
 
 const RARITY_RANK: Record<Rarity, number> = {

@@ -41,7 +41,7 @@ class PastYouMatcher
      */
     public function findMatch(Activity $activity, ActivityDetail $detail): ?array
     {
-        $currentPaceSec = $this->paceSecPerKm($detail);
+        $currentPaceSec = $detail->paceSecPerKm();
         $currentDistance = (float) ($detail->distance ?? 0);
         $startDate = $detail->start_date_local;
 
@@ -91,7 +91,7 @@ class PastYouMatcher
         foreach ($candidates as $past) {
             // The SQL above filters distance > 0 AND moving_time > 0, so
             // paceSecPerKm cannot return null here — assert narrows for PHPStan.
-            $pastPace = $this->paceSecPerKm($past);
+            $pastPace = $past->paceSecPerKm();
             assert($pastPace !== null);
 
             if (! $this->isWithinTempTolerance($detail, $past)) {
@@ -122,17 +122,6 @@ class PastYouMatcher
             $secPerKm >= self::EASY_PACE_FLOOR_SEC => self::BAND_EASY,
             default => self::BAND_THRESHOLD,
         };
-    }
-
-    private function paceSecPerKm(ActivityDetail $detail): ?float
-    {
-        $distance = (float) ($detail->distance ?? 0);
-        $movingTime = (int) ($detail->moving_time ?? 0);
-        if ($distance <= 0 || $movingTime <= 0) {
-            return null;
-        }
-
-        return $movingTime / ($distance / 1000);
     }
 
     private function isWithinTempTolerance(ActivityDetail $current, ActivityDetail $past): bool

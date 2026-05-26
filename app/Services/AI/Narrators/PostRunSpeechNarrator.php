@@ -11,7 +11,6 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\StreamSummary;
 
-use function is_array;
 use function is_string;
 
 class PostRunSpeechNarrator
@@ -52,7 +51,7 @@ class PostRunSpeechNarrator
     /** @return array<string, mixed> */
     private function buildContext(ActivityDetail $detail, string $mood, bool $hasPr): array
     {
-        $summary = is_array($detail->stream_summary) ? $detail->stream_summary : [];
+        $summary = $detail->streamSummary();
         $zonePct = StreamSummary::zonePct($summary);
         $dominantZone = $zonePct === []
             ? null

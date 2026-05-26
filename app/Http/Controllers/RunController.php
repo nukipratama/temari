@@ -107,8 +107,8 @@ class RunController extends Controller
             return null;
         }
 
-        $firstPace = self::paceSecPerKm($first);
-        $currentPace = self::paceSecPerKm($current);
+        $firstPace = $first->paceSecPerKm();
+        $currentPace = $current->paceSecPerKm();
         $paceImprovement = ($firstPace !== null && $currentPace !== null)
             ? $firstPace - $currentPace
             : null;
@@ -130,17 +130,6 @@ class RunController extends Controller
             'hr_improvement_bpm' => $hrImprovement,
             'total_km' => round($totalKm / 1000, 1),
         ];
-    }
-
-    private static function paceSecPerKm(ActivityDetail $detail): ?float
-    {
-        $distance = $detail->distance;
-        $moving = $detail->moving_time;
-        if ($distance === null || $distance <= 0 || $moving === null || $moving <= 0) {
-            return null;
-        }
-
-        return $moving / ($distance / 1000);
     }
 
     /**

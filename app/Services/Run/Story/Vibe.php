@@ -130,7 +130,7 @@ class Vibe
 
         $samples = [];
         foreach ($rows as $row) {
-            $summary = is_array($row->stream_summary) ? $row->stream_summary : [];
+            $summary = $row->streamSummary();
             if (isset($summary['decoupling_pct'])) {
                 $samples[] = (float) $summary['decoupling_pct'];
             }

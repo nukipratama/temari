@@ -108,6 +108,7 @@ class AnalysisController extends Controller
             AnalysisType::BriefingHeadline,
             AnalysisType::BriefingSuggestion,
             AnalysisType::BriefingMascotVoice,
+            AnalysisType::BriefingFeaturedKartuVoice,
             AnalysisType::DailyGreeting,
             AnalysisType::TrendCaption,
             AnalysisType::PersonaSummary,
