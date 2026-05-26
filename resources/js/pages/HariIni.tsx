@@ -168,10 +168,10 @@ export default function HariIni({
                                 Semua {totalKartuCount > 0 ? `${totalKartuCount} ` : ''}koleksi →
                             </Link>
                         </header>
-                        <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-1 scrollbar-hide sm:-mx-8 sm:px-8 lg:-mx-14 lg:px-14">
+                        <div className="-mx-5 flex items-stretch gap-3 overflow-x-auto px-5 pb-1 scrollbar-hide sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] lg:overflow-visible lg:px-0">
                             {cardStrip.map((item) => (
-                                <Link key={item.key} href={`/aktivitas/${item.activityId}`} className="block">
-                                    <KartuMini name={item.name} rarity={item.rarity} date={item.date} />
+                                <Link key={item.key} href={`/aktivitas/${item.activityId}`} className="flex-none block lg:h-full">
+                                    <KartuMini name={item.name} rarity={item.rarity} date={item.date} className="h-full lg:w-full" />
                                 </Link>
                             ))}
                         </div>
@@ -195,8 +195,8 @@ function KataTemariCompact({ briefing, pose }: Readonly<{ briefing: BriefingResu
                     inertiaReloadProps={['briefing']}
                     size="sm"
                     renderContent={(text) => (
-                        <p className="whitespace-pre-line font-display text-sm italic leading-relaxed text-ink">
-                            “{text}”
+                        <p className="whitespace-pre-line font-display text-base italic leading-relaxed text-ink">
+                            &ldquo;{text}&rdquo;
                         </p>
                     )}
                 />
@@ -311,9 +311,10 @@ function FeaturedKartuPanel({
                             analysis={featuredKartuVoice}
                             inertiaReloadProps={['briefing']}
                             showTimestamp={false}
+                            allowReanalyze={false}
                             renderContent={(text) => (
                                 <p className="font-display text-quote-lg italic text-cream">
-                                    “{text}”
+                                    &ldquo;{text}&rdquo;
                                 </p>
                             )}
                         />
@@ -369,7 +370,7 @@ function SuggestionContent({ text }: Readonly<{ text: string }>) {
         return null;
     }
     const [titleRaw, ...rest] = parts;
-    const title = titleRaw.replace(/^["“]|["”]$/g, '');
+    const title = titleRaw.replace(/^[""]|[""]$/g, '');
     const body = rest.join('\n\n');
 
     return (
@@ -465,7 +466,7 @@ function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose:
             </div>
             {note && (
                 <p className="font-display text-sm italic leading-relaxed text-ink-2">
-                    “{note.oneline}”
+                    &ldquo;{note.oneline}&rdquo;
                 </p>
             )}
             <span className="mt-auto font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep">

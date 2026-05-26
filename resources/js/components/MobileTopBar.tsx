@@ -15,7 +15,7 @@ export default function MobileTopBar() {
     const stravaSync = props.stravaSync ?? null;
 
     return (
-        <header className="flex items-center justify-between gap-3 border-b border-cream-deep bg-cream px-5 py-3 lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-cream-deep bg-cream px-5 py-3 lg:hidden">
             <Link href="/" aria-label="Beranda">
                 <BrandMark />
             </Link>
