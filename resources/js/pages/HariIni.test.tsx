@@ -37,6 +37,7 @@ const briefing: BriefingResult = {
     },
     recoveryLabel: 'Pemulihan: 41j',
     recoveryTone: 'positive',
+    recoveryHoursLabel: '41j',
     streakLabel: 'Lari hari ini',
     sigilPattern: 'orct',
     accessory: null,
@@ -101,7 +102,9 @@ describe('HariIni', () => {
     it('renders the editorial greeting with first name + vibe subtitle', () => {
         render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[]} />);
         expect(screen.getByText(/Halo, Ada/)).toBeInTheDocument();
-        expect(screen.getByText(/membara/)).toBeInTheDocument();
+        // "membara" now appears both in the italic headline accent and as the
+        // Vibe chip sub-label, so allow multiple matches.
+        expect(screen.getAllByText(/membara/i).length).toBeGreaterThan(0);
     });
 
     it('renders the three vital chips (Vibe / Form / Recovery)', () => {

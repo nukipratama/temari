@@ -79,6 +79,7 @@ export interface BriefingResult {
     mascotVoice: AnalysisPayload;
     recoveryLabel: string;
     recoveryTone: RecoveryTone;
+    recoveryHoursLabel: string | null;
     streakLabel: string | null;
     sigilPattern: string;
     accessory: string | null;
@@ -96,6 +97,9 @@ export interface ActivityDetail {
     trimp_edwards: number | null;
     location_name?: string | null;
     location_country?: string | null;
+    weather_temp_c?: number | null;
+    weather_humidity_pct?: number | null;
+    weather_rain_detected?: boolean | null;
     summary_polyline?: string | null;
     activity?: Activity;
 }

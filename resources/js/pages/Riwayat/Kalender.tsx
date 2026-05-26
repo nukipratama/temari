@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import AppShell from '@/layouts/AppShell';
 import RiwayatFilter, { type MoodOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
+import PageOnboardingTooltip from '@/components/onboarding/PageOnboardingTooltip';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { MOOD_FILL, MOOD_LABEL, MOOD_SOFT_FILL } from '@/lib/mood';
@@ -63,6 +64,15 @@ const MOOD_HINT: Record<Mood, string> = {
 
 const MOOD_ORDER: ReadonlyArray<Mood> = ['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'];
 
+const MOOD_GLYPH: Record<Mood, string> = {
+    nyala: 'N',
+    enteng: 'E',
+    oleng: 'O',
+    lemes: 'L',
+    mumet: 'M',
+    adem: 'A',
+};
+
 const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => ({
     mood,
     label: MOOD_LABEL[mood],
@@ -102,12 +112,20 @@ export default function Kalender({
                 animate="visible"
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
+                <PageOnboardingTooltip
+                    pageKey="riwayat"
+                    icon="📅"
+                    title="Riwayat lari kamu."
+                >
+                    Dua view di sini: Jejak (per minggu) sama Kalender (heatmap mood). Tiap lari aku kasih mood: nyala, enteng, oleng, lemes, mumet, adem.
+                </PageOnboardingTooltip>
+
                 <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                         <LifetimeEyebrow lifetime={lifetime} />
                         <h1 className="font-display text-display-lg text-ink">
                             Setiap lari,<br />
-                            <em className="italic text-horizon-deep">ada ceritanya.</em>
+                            <em className="not-italic text-horizon-deep">ada ceritanya.</em>
                         </h1>
                     </div>
                     <MonthNav
@@ -287,6 +305,15 @@ function DayCellView({
                 <span className={cn('text-base font-bold tabular-nums lg:text-lg', hasRun ? 'text-ink' : 'text-ink-2')}>
                     {cell.day}
                 </span>
+                {hasRun && cell.mood && (
+                    <span
+                        aria-hidden
+                        className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink/60"
+                        title={MOOD_LABEL[cell.mood]}
+                    >
+                        {MOOD_GLYPH[cell.mood]}
+                    </span>
+                )}
             </div>
             {hasRun && (
                 <div className="mt-auto">
@@ -311,19 +338,24 @@ function DayCellView({
         </>
     );
 
+    const moodAriaPart = hasRun && cell.mood ? `, mood ${MOOD_LABEL[cell.mood]}` : '';
+    const ariaLabel = hasRun
+        ? `${cell.date}: ${cell.distance_km} km${moodAriaPart}`
+        : `${cell.date}: tidak ada lari`;
+
     if (cell.activity_id !== null) {
         return (
             <Link
                 href={`/aktivitas/${cell.activity_id}`}
                 className={cn(cellChrome, 'hover:shadow-md hover:brightness-105')}
-                aria-label={`${cell.date}: ${cell.distance_km} km`}
+                aria-label={ariaLabel}
             >
                 {inner}
             </Link>
         );
     }
 
-    return <div className={cellChrome}>{inner}</div>;
+    return <div className={cellChrome} aria-label={ariaLabel}>{inner}</div>;
 }
 
 function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string | null }>) {
@@ -359,19 +391,23 @@ function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string
         </>
     );
 
+    const moodAriaPart = hasRun && cell.mood ? `, mood ${MOOD_LABEL[cell.mood]}` : '';
+    const distancePart = hasRun ? `, ${cell.distance_km} km` : '';
+    const ariaLabel = `${cell.date}: hari ini${distancePart}${moodAriaPart}`;
+
     if (cell.activity_id !== null) {
         return (
             <Link
                 href={`/aktivitas/${cell.activity_id}`}
                 className={cn(chrome, 'hover:bg-sky-2')}
-                aria-label={`${cell.date}: hari ini`}
+                aria-label={ariaLabel}
             >
                 {inner}
             </Link>
         );
     }
 
-    return <div className={chrome}>{inner}</div>;
+    return <div className={chrome} aria-label={ariaLabel}>{inner}</div>;
 }
 
 function Legend({ className }: Readonly<{ className?: string }>) {

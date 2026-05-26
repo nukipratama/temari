@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import RunsIndex from './Linimasa';
+import RunsIndex from './Jejak';
 import { setMockPage } from '@/test/setup';
 import type { Activity, ActivityDetail } from '@/types/inertia';
 
@@ -40,7 +40,7 @@ beforeEach(() => {
     });
 });
 
-describe('Riwayat/Linimasa', () => {
+describe('Riwayat/Jejak', () => {
     it('renders the empty state when no runs exist', () => {
         render(
             <RunsIndex

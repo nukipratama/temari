@@ -7,6 +7,7 @@ namespace App\Services\AI;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeDailyGreetingJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
@@ -47,8 +48,8 @@ enum AnalysisType: string
     {
         return match ($this) {
             self::BriefingHeadline,
-            self::BriefingSuggestion,
-            self::BriefingMascotVoice => AnalyzeBriefingJob::class,
+            self::BriefingSuggestion => AnalyzeBriefingJob::class,
+            self::BriefingMascotVoice => AnalyzeBriefingMascotVoiceJob::class,
             self::PostRunSpeech,
             self::RunInsightTechnical,
             self::RunInsightSplits,

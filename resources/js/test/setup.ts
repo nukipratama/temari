@@ -18,7 +18,7 @@ let mockPageProps: Record<string, unknown> = { ...DEFAULT_PAGE_PROPS };
 let mockUrl = DEFAULT_URL;
 
 export function setMockPage(props: Record<string, unknown>, url = DEFAULT_URL) {
-    mockPageProps = props;
+    mockPageProps = { ...DEFAULT_PAGE_PROPS, ...props };
     mockUrl = url;
 }
 

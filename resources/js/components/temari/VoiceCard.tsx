@@ -38,7 +38,7 @@ export default function VoiceCard({
                     onSky ? 'text-cream/50' : 'text-ink-3',
                 )}
             >
-                — {attribution}
+                {attribution}
                 {pose != null && pose !== '' && <> · {pose}</>}
             </div>
         </div>

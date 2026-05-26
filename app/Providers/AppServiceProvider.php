@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\AI\AnalysisService;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\VerdictTimeline;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -23,6 +24,11 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(VerdictNarrator::class, VerdictTimeline::class);
+
+        // Singleton so `withoutDispatching()` from one caller (e.g. DemoSeedCommand)
+        // also suppresses dispatches in collaborators (RunCardFactory,
+        // PersonalRecords, ActivityPipeline) that get this same instance injected.
+        $this->app->singleton(AnalysisService::class);
     }
 
     public function boot(): void

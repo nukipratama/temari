@@ -58,18 +58,18 @@ function bootNarrator(string $jsonContent): array
     return ['user' => $user, 'narrator' => $narrator, 'client' => $client];
 }
 
-it('returns all three briefing fields from a valid LLM structured response', function (): void {
+it('returns headline + suggestion from a valid LLM structured response', function (): void {
+    // Mascot voice was split into BriefingMascotVoiceNarrator (separate LLM
+    // call) so this narrator only handles headline + suggestion now.
     ['user' => $user, 'narrator' => $narrator] = bootNarrator(json_encode([
         'headline' => 'Pagi yang oke buat lari pelan',
         'suggestion' => 'Easy run 30 menit, dengerin badan',
-        'mascot_voice' => 'Aku liat lo kemarin lari santai, easy hari ini ya',
     ], JSON_THROW_ON_ERROR));
 
     $payload = $narrator->generate($user, Carbon::today());
 
     expect($payload['headline'])->toBe('Pagi yang oke buat lari pelan')
-        ->and($payload['suggestion'])->toBe('Easy run 30 menit, dengerin badan')
-        ->and($payload['mascot_voice'])->toBe('Aku liat lo kemarin lari santai, easy hari ini ya');
+        ->and($payload['suggestion'])->toBe('Easy run 30 menit, dengerin badan');
 });
 
 it('throws UnavailableException when the response is not valid JSON', function (): void {

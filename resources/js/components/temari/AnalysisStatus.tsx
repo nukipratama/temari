@@ -27,7 +27,7 @@ const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
 function RateLimitedNote() {
     return (
         <span className="text-xs text-horizon-deep">
-            Pelan-pelan, Temari kewalahan. Coba lagi sebentar.
+            Pelan-pelan, Temari kewalahan. Coba lagi sebentar ya.
         </span>
     );
 }
@@ -70,7 +70,7 @@ export default function AnalysisStatus({
         const cooling = cooldownRemaining > 0;
         return (
             <div className="flex flex-col gap-1">
-                <div className={`${TEXT_SIZE[size]} text-ink`}>
+                <div className={`${TEXT_SIZE[size]} whitespace-pre-line text-ink`}>
                     {renderContent ? renderContent(content) : content}
                 </div>
                 {showTimestamp && analysis.generated_at && (
@@ -88,8 +88,8 @@ export default function AnalysisStatus({
                         <Icon icon="mdi:refresh" aria-hidden />
                         <span>
                             {cooling
-                                ? `Bisa diulang dalam ${formatDurationHMS(cooldownRemaining)}`
-                                : 'Analisis ulang'}
+                                ? `Tunggu ${formatDurationHMS(cooldownRemaining)} ya`
+                                : 'Baca ulang'}
                         </span>
                     </button>
                 )}
@@ -101,7 +101,7 @@ export default function AnalysisStatus({
     if (effectiveStatus === 'queued' || effectiveStatus === 'processing') {
         return (
             <span
-                className="inline-flex items-center gap-2 rounded-full bg-surface-sunken text-ink-3 text-xs px-3 py-1.5"
+                className="inline-flex items-center gap-2 rounded-full bg-surface-sunken text-ink-2 text-xs px-3 py-1.5"
                 role="status"
                 aria-live="polite"
             >
@@ -136,9 +136,9 @@ export default function AnalysisStatus({
 
     return (
         <div className="flex flex-col gap-1.5">
-            <span className="inline-flex items-center gap-1.5 text-xs text-ink-3">
+            <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
                 <Icon icon="mdi:sparkles-outline" aria-hidden />
-                <span>Belum dianalisis Temari.</span>
+                <span>Belum dibaca Temari.</span>
             </span>
             {allowReanalyze && (
                 <button
@@ -148,7 +148,7 @@ export default function AnalysisStatus({
                     className="inline-flex items-center self-start gap-1 rounded-full bg-leaf-deep text-white text-xs px-3 py-1 font-semibold hover:bg-sky transition-colors disabled:opacity-50"
                 >
                     <Icon icon="mdi:auto-fix" aria-hidden />
-                    <span>Analisis sekarang</span>
+                    <span>Minta Temari bacain</span>
                 </button>
             )}
         </div>

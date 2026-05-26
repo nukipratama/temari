@@ -4,7 +4,7 @@
  * keyed by a stable slug. Components opt in via `<MetricExplainer
  * metricKey="ctl" />` next to the label they want to demystify.
  *
- * Voice matches the Temari persona — santai-formal, "kamu" address form,
+ * Voice matches the Temari persona:santai-formal, "kamu" address form,
  * running domain terms stay English, no em-dash, no markdown, no slang.
  */
 
@@ -68,27 +68,27 @@ export const METRIC_GLOSSARY = {
     },
     hr_z1: {
         acronym: 'Z1',
-        label: 'Zone 1 — Recovery',
+        label: 'Zone 1: Recovery',
         body: 'Sangat santai, masih bisa bernyanyi sambil lari. Untuk recovery atau cooldown.',
     },
     hr_z2: {
         acronym: 'Z2',
-        label: 'Zone 2 — Conversational',
+        label: 'Zone 2: Conversational',
         body: 'Conversational pace, masih bisa mengobrol sambil lari. Zone andalan untuk base building.',
     },
     hr_z3: {
         acronym: 'Z3',
-        label: 'Zone 3 — Tempo',
+        label: 'Zone 3: Tempo',
         body: 'Tempo pace. Sudah terengah-engah, hanya bisa bicara satu sampai dua kata.',
     },
     hr_z4: {
         acronym: 'Z4',
-        label: 'Zone 4 — Threshold',
+        label: 'Zone 4: Threshold',
         body: 'Threshold pace. Sudah keras, hanya bicara singkat. Untuk sesi tempo atau interval.',
     },
     hr_z5: {
         acronym: 'Z5',
-        label: 'Zone 5 — Max',
+        label: 'Zone 5: Max',
         body: 'Mode sprint, tidak bisa bicara sama sekali. Dipakai hanya untuk interval pendek.',
     },
     status_fresh: {
@@ -106,6 +106,10 @@ export const METRIC_GLOSSARY = {
     status_overreaching: {
         label: 'Overreaching',
         body: 'Terlalu diforsir. Wajib rest beberapa hari sebelum lanjut, kalau tidak risiko cedera atau sakit meningkat.',
+    },
+    vibe_vs_mood: {
+        label: 'Vibe vs Mood',
+        body: 'Vibe = kondisi kamu hari ini, dihitung dari fitness, fatigue, dan form. Mood = nuansa lari per sesi (nyala, enteng, oleng, lemes, mumet, adem). Vibe satu hari satu, mood per lari.',
     },
 } as const satisfies Record<string, MetricGlossaryEntry>;
 

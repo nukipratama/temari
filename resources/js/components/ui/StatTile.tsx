@@ -37,7 +37,7 @@ export default function StatTile({
                 className,
             )}
         >
-            <div className={cn('mb-2 font-mono text-[9px] uppercase tracking-[0.14em]', labelClass)}>
+            <div className={cn('mb-2 font-mono text-[11px] uppercase tracking-[0.14em]', labelClass)}>
                 {label}
             </div>
             <div

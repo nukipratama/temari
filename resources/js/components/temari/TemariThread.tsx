@@ -166,7 +166,7 @@ function GroupedReanalyzeButton({
                         className="inline-flex items-center gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:opacity-50 disabled:cursor-wait"
                     >
                         <Icon icon="mdi:refresh" aria-hidden />
-                        <span>Analisis ulang</span>
+                        <span>Baca ulang</span>
                     </button>
                 </motion.div>
             )}

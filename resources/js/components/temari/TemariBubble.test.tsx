@@ -43,8 +43,8 @@ describe('TemariBubble', () => {
                 speechAnalysis={makeAnalysis({ status: 'pending', content: null })}
             />,
         );
-        expect(screen.getByText(/Belum dianalisis Temari/)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Analisis sekarang/ })).toBeInTheDocument();
+        expect(screen.getByText(/Belum dibaca Temari/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Minta Temari bacain/ })).toBeInTheDocument();
     });
 
     it('renders UnavailableNote + retry CTA when status is failed', () => {
@@ -54,7 +54,7 @@ describe('TemariBubble', () => {
                 speechAnalysis={makeAnalysis({ status: 'failed', content: null })}
             />,
         );
-        expect(screen.getByText(/belum tersedia/i)).toBeInTheDocument();
+        expect(screen.getByText(/Temari lagi diem dulu/i)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Coba lagi/ })).toBeInTheDocument();
     });
 

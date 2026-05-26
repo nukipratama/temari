@@ -16,8 +16,8 @@ interface CardProps {
 }
 
 export const TONE_CLASS: Record<CardTone, string> = {
-    cream: 'rounded-2xl border border-cream-deep bg-cream',
-    'cream-deep': 'rounded-2xl bg-cream-deep',
+    cream: 'rounded-2xl border-2 border-cream-deep bg-cream',
+    'cream-deep': 'rounded-2xl border-2 border-cream-deep bg-cream-deep',
     'sky-glass': 'rounded-2xl border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
     empty: 'rounded-2xl border-2 border-dashed border-cream-deep bg-cream/40',
 };

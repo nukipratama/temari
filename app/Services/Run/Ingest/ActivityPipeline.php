@@ -109,6 +109,16 @@ class ActivityPipeline
 
         $this->analysisService->requestActivityGroup($activity, delaySeconds: $delaySec);
         $this->analysisService->requestBriefingGroup($user, $today, invalidate: true, delaySeconds: $delaySec);
+        // BriefingMascotVoice was split out of the briefing group; dispatch it
+        // independently so its own LLM call runs alongside the briefing group.
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
+            subjectId: $user->id,
+            type: AnalysisType::BriefingMascotVoice,
+            discriminator: $today,
+            delaySeconds: $delaySec,
+            invalidate: true,
+        );
         $this->analysisService->request(
             subjectOrType: AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
             subjectId: $user->id,

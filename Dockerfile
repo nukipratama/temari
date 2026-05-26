@@ -21,8 +21,8 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN apk add --no-cache nodejs npm
 
 # Caddy needs writable dirs for its PKI module even when auto_https is off.
-RUN mkdir -p /data/caddy /config/caddy \
-    && chown -R www-data:www-data /data/caddy /config/caddy
+RUN mkdir -p /data/caddy /config/caddy /config/psysh \
+    && chown -R www-data:www-data /data/caddy /config/caddy /config/psysh
 
 COPY docker/Caddyfile.dev /etc/frankenphp/Caddyfile
 COPY docker/php.dev.ini /usr/local/etc/php/conf.d/zz-app.ini
@@ -107,10 +107,10 @@ COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 
 # /data/caddy and /config/caddy are Caddy's data + config dirs (used by the
 # pki module even when auto_https is off). Must be writable by www-data.
-RUN mkdir -p /data/caddy /config/caddy \
+RUN mkdir -p /data/caddy /config/caddy /config/psysh \
     && chown -R www-data:www-data \
         /app/storage /app/bootstrap/cache \
-        /data/caddy /config/caddy
+        /data/caddy /config/caddy /config/psysh
 
 USER www-data
 EXPOSE 7001

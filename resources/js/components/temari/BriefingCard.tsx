@@ -95,7 +95,7 @@ export default function BriefingCard({
                             idle="mood"
                             gazeTracking
                             ornaments
-                            aria-label={`Temari — mood ${briefing.mood}`}
+                            aria-label={`Temari, mood ${briefing.mood}`}
                         />
                         <TemariPeek lines={PEEK_LINES} />
                     </div>
@@ -174,7 +174,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
                 className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-sky disabled:opacity-50"
             >
                 <Icon icon="mdi:auto-fix" aria-hidden />
-                <span>Analisis sekarang</span>
+                <span>Minta Temari bacain</span>
             </button>
         );
     }
@@ -188,7 +188,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
             className="inline-flex items-center gap-1 rounded-full bg-surface-sunken/80 px-2.5 py-1 text-xs text-ink-3 backdrop-blur-sm transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
         >
             <Icon icon="mdi:refresh" aria-hidden />
-            <span>{cooling ? `Tunggu ${formatDurationHMS(remaining)}` : 'Analisis ulang'}</span>
+            <span>{cooling ? `Tunggu ${formatDurationHMS(remaining)} ya` : 'Baca ulang'}</span>
         </button>
     );
 }

@@ -38,9 +38,9 @@ export default function KartuMini({
                     RARITY_CORNER[rarity],
                 )}
             />
-            <div className="mb-1.5 font-display text-[17px] leading-[1.05] text-ink">{name}</div>
+            <div className="mb-1.5 font-sans text-[15px] font-bold leading-[1.1] tracking-tight text-ink">{name}</div>
             {date != null && date !== '' && (
-                <div className="font-mono text-[9px] uppercase tracking-[0.08em] text-ink-3">{date}</div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-3">{date}</div>
             )}
         </div>
     );

@@ -8,9 +8,11 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingComposer;
@@ -49,24 +51,67 @@ class DashboardController extends Controller
             ->values();
 
         $recentRuns = ActivityDetail::query()
-            ->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards'])
+            ->select([
+                'id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time',
+                'average_heartrate', 'trimp_edwards',
+                'location_name', 'weather_temp_c', 'weather_humidity_pct', 'weather_rain_detected',
+            ])
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
             ->with(['activity.runCard:id,activity_id,rarity,special_move,badges'])
             ->orderByDesc('start_date_local')
             ->limit(8)
             ->get();
 
+        $lastRunNote = $this->lastRunNote($recentRuns->first()?->activity_id);
+
+        $totalKartuCount = RunCard::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->count();
+
         return Inertia::render('HariIni', [
             'briefing' => $briefing,
             'load' => $load,
             'snapshot' => $weeks->last(),
             'recentRuns' => $recentRuns,
+            'lastRunNote' => $lastRunNote,
+            'totalKartuCount' => $totalKartuCount,
             'chartData' => $this->fitnessChartData($weeks),
             'trendAnalysis' => $this->resolveTrendCaption($user, $today),
             'hasNewPr' => $this->detectNewPr($user),
             'pendingMilestone' => $this->resolvePendingMilestone($user),
             'weekVsLastWeek' => $this->resolveWeekVsLastWeek($weeks),
         ]);
+    }
+
+    /**
+     * Post-run note (mood + oneline) for the user's most-recent activity, if
+     * the StoryLine + PostRunSpeech analysis are both ready.
+     *
+     * @return array{oneline: string, mood: string}|null
+     */
+    private function lastRunNote(?int $activityId): ?array
+    {
+        if ($activityId === null) {
+            return null;
+        }
+
+        $mood = StoryLine::query()
+            ->where('kind', StoryLine::KIND_POST_RUN)
+            ->where('activity_id', $activityId)
+            ->value('mood');
+
+        $speech = Analysis::query()
+            ->where('subject_type', Activity::class)
+            ->where('analysis_type', AnalysisType::PostRunSpeech)
+            ->where('status', AnalysisStatus::Done)
+            ->where('subject_id', $activityId)
+            ->value('content');
+
+        if ($mood === null || ! is_string($speech) || $speech === '') {
+            return null;
+        }
+
+        return ['oneline' => $speech, 'mood' => $mood];
     }
 
     /**

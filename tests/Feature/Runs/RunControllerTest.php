@@ -26,7 +26,7 @@ it('lists the user\'s analyzed runs in reverse chronological order', function ()
     $this->actingAs($user)->get('/aktivitas')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Riwayat/Linimasa')
+            ->component('Riwayat/Jejak')
             ->has('runs', 2)
             ->where('runs.0.detail.name', 'Newer Run')
             ->where('runs.1.detail.name', 'Older Run'));
@@ -38,7 +38,7 @@ it('renders the empty state when the user has no analyzed runs yet', function ()
     $this->actingAs($user)->get('/aktivitas')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Riwayat/Linimasa')
+            ->component('Riwayat/Jejak')
             ->where('runs', [])
             ->where('rangeFilter', '8w'));
 });

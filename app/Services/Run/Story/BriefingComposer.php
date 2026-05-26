@@ -28,7 +28,8 @@ class BriefingComposer
         $asOf ??= Carbon::today();
         $vibeState = $this->vibe->current($user, $asOf);
         $load = $this->trainingLoad->summary($user, $asOf);
-        $daysSince = $this->daysSinceLastRun($user, $asOf);
+        $hoursSince = $this->hoursSinceLastRun($user, $asOf);
+        $daysSince = $hoursSince === null ? null : (int) floor($hoursSince / 24);
 
         $mood = $this->temari->moodForVibe($vibeState);
         $discriminator = $asOf->toDateString();
@@ -47,6 +48,7 @@ class BriefingComposer
             mascotVoice: Analysis::toPayload($mascotVoice, AnalysisType::BriefingMascotVoice, $subjectType, $user->id, $discriminator),
             recoveryLabel: FormStatus::label($load),
             recoveryTone: FormStatus::tone($load),
+            recoveryHoursLabel: $this->recoveryHoursLabel($hoursSince),
             streakLabel: $this->streakLabel($daysSince),
             sigilPattern: Temari::sigilForMoodPublic($mood),
             accessory: Temari::accessoryForMoodPublic($mood),
@@ -61,7 +63,7 @@ class BriefingComposer
             ->first();
     }
 
-    private function daysSinceLastRun(User $user, Carbon $asOf): ?int
+    private function hoursSinceLastRun(User $user, Carbon $asOf): ?int
     {
         $lastRun = ActivityDetail::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
@@ -73,7 +75,24 @@ class BriefingComposer
             return null;
         }
 
-        return (int) Carbon::parse($lastRun)->startOfDay()->diffInDays($asOf->copy()->startOfDay());
+        // Hours between the last run's local timestamp and `now` on the same
+        // local clock (asOf is start-of-day; bump to now-of-day for precision).
+        $now = $asOf->isSameDay(Carbon::now()) ? Carbon::now() : $asOf->copy()->endOfDay();
+
+        return max(0, (int) Carbon::parse($lastRun)->diffInHours($now, absolute: true));
+    }
+
+    private function recoveryHoursLabel(?int $hoursSince): ?string
+    {
+        if ($hoursSince === null) {
+            return null;
+        }
+        if ($hoursSince < 72) {
+            return "{$hoursSince}j";
+        }
+        $days = (int) floor($hoursSince / 24);
+
+        return "{$days}h";
     }
 
     private function streakLabel(?int $daysSince): ?string

@@ -35,7 +35,7 @@ beforeEach(() => {
 describe('Koleksi/Kartu', () => {
     it('renders the EmptyState when no cards and no featured card', () => {
         render(<KoleksiKartu cards={emptyCards()} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
-        expect(screen.getByText(/Belum ada kartu/)).toBeInTheDocument();
+        expect(screen.getByText(/Filter ini belum ada kartunya/)).toBeInTheDocument();
     });
 
     it('renders the LegendaryTease when legendary count is 0', () => {

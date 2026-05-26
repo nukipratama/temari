@@ -20,7 +20,7 @@ class MonthlyRecapNarrator
         (nyala/enteng/oleng/lemes/mumet/adem) untuk bulan itu.
 
         Output: tone hangat, jujur, tidak menggurui. Sebut yang menonjol
-        (mis. "Bulan ini lebih banyak adem daripada nyala — tubuhmu lagi
+        (mis. "Bulan ini lebih banyak adem daripada nyala, tubuhmu lagi
         atur ulang"), lalu tutup dengan refleksi atau 1 saran untuk
         bulan depan.
         PROMPT;

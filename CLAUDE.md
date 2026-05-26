@@ -88,7 +88,13 @@ Sweep `grep text-ink-soft` before merging — if it's wrapping a `<p>` of runnin
 
 ## LLM Integration
 
-Briefing narration is LLM-backed via Azure OpenAI through openai-php/laravel ([AzureOpenAiClient](app/Services/Llm/AzureOpenAiClient.php) + [LlmBriefingNarrator](app/Services/Run/Story/Narrators/LlmBriefingNarrator.php)). Falls back to the rule-based [Briefing](app/Services/Run/Story/Briefing.php) on any error and flips `BriefingResult::degraded = true` so the UI surfaces a "mode darurat" chip ([DegradedChip.tsx](resources/js/components/temari/DegradedChip.tsx)). Empty `AZURE_OPENAI_URI` / `AZURE_OPENAI_API_KEY` env = rule-based silently with no chip (intended state, not failure).
+Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-php/laravel ([AzureOpenAIClient](app/Services/AI/AzureOpenAIClient.php), [StructuredChatCaller](app/Services/AI/StructuredChatCaller.php), narrators under [app/Services/AI/Narrators/](app/Services/AI/Narrators/)). All narrator output flows through the [Analysis](app/Models/AI/Analysis.php) row model (status: pending / queued / processing / done / failed).
+
+**Runtime failure model**: when an AI job exhausts its `$tries` (Laravel native retry + backoff on [AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php)), it lands in `failed_jobs` and the Analysis row is marked `failed`. The UI shows an empty state with a "Coba lagi" button per-block via [AnalysisStatus.tsx](resources/js/components/temari/AnalysisStatus.tsx). Users manually re-dispatch from the UI; developers can retry via Horizon's failed-job tab. AI jobs early-exit when the row is already `done` (idempotency guard in [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php) and [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php)) so a UI-triggered retry that races with a developer Horizon retry doesn't double-bill the LLM. **There is no scheduler** — manual retry only, to keep LLM cost predictable. **There is no global "mode darurat" chip** — per-block state is the source of truth.
+
+**Unconfigured-env fallback**: when `AZURE_OPENAI_URI` / `AZURE_OPENAI_API_KEY` are empty (dev/demo/local without credentials), [AnalysisService](app/Services/AI/AnalysisService.php) skips job dispatch entirely. Rows stay pending until something fills them.
+
+**Demo seed**: [DemoSeedCommand](app/Console/Commands/DemoSeedCommand.php) backfills every Analysis row with deterministic rule-based content via [RuleBasedNarrationFiller](app/Services/AI/Demo/RuleBasedNarrationFiller.php) under `AnalysisService::withoutDispatching()` — no LLM tokens spent on seed. The "Baca ulang" button stays live so a reviewer can trigger a real LLM call per block on demand.
 
 ## Environment toggles
 

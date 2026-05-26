@@ -333,7 +333,7 @@ function EmptyState() {
     return (
         <div className="mt-4 rounded-2xl border border-dashed border-line bg-surface-sunken px-6 py-12 text-center">
             <Icon icon="mdi:database-off" width={32} className="mx-auto text-ink-3" aria-hidden />
-            <p className="mt-2 text-sm text-ink-2">Belum ada token tercatat di rentang ini.</p>
+            <p className="mt-2 text-sm text-ink-2">Belum ada catatan token di rentang ini.</p>
         </div>
     );
 }

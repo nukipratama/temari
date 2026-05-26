@@ -12,6 +12,7 @@ import RiwayatFilter, { type MoodOption, type RangeOption } from '@/components/r
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import TemariMascot from '@/components/temari/TemariMascot';
 import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
+import PageOnboardingTooltip from '@/components/onboarding/PageOnboardingTooltip';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
 import { moodFromActivity } from '@/lib/moodFromActivity';
@@ -157,21 +158,30 @@ export default function RunsIndex({
 
     return (
         <AppShell>
-            <Head title="Riwayat · Linimasa" />
+            <Head title="Riwayat · Jejak" />
             <motion.main
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
+                <PageOnboardingTooltip
+                    pageKey="riwayat"
+                    icon="📅"
+                    title="Riwayat lari kamu."
+                >
+                    Dua view di sini: Jejak (per minggu) sama Kalender (heatmap mood). Tiap lari aku kasih mood: nyala, enteng, oleng, lemes, mumet, adem.
+                </PageOnboardingTooltip>
+
                 <header className="flex flex-col gap-5">
                     <PageHero
                         eyebrow={`Riwayat · ${runs.length} aktivitas`}
                         lead="Setiap lari"
                         emph="ada ceritanya."
+                        noItalic
                     />
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <RiwayatTabs active="linimasa" />
+                        <RiwayatTabs active="jejak" />
                         <RiwayatFilter
                             range={{
                                 value: rangeFilter,
@@ -366,11 +376,11 @@ function EmptyState() {
     return (
         <Card tone="empty" padding="lg" className="flex flex-col items-center text-center">
             <TemariMascot mood="enteng" sizeClass="h-32 w-32" idle="mood" />
-            <p className="mt-4 font-display text-2xl italic text-ink-2">Aku lagi nungguin kamu lari.</p>
-            <p className="mt-2 font-sans text-sm text-ink-3">Sinkronkan lari pertama kamu dari Strava dulu, ya.</p>
+            <p className="mt-4 font-display text-2xl italic text-ink-2">Aku lagi nungguin kamu lari 🏃‍♀️</p>
+            <p className="mt-2 font-sans text-sm text-ink-2">Sync lari pertama kamu dari Strava dulu ya.</p>
             <Link
                 href="/"
-                className="mt-4 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.12em] text-horizon hover:text-horizon-deep"
+                className="mt-4 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.12em] text-horizon-deep hover:text-ember-deep"
             >
                 <Icon icon="mdi:arrow-left" width={14} height={14} aria-hidden />
                 Kembali ke Hari Ini
@@ -447,7 +457,7 @@ function weekRangeLabel(monday: Date): string {
     const sunday = sundayOf(monday);
     const start = formatIdDate(monday.toISOString(), 'long');
     const end = formatIdDate(sunday.toISOString(), 'long');
-    return `${start} — ${end}`;
+    return `${start} - ${end}`;
 }
 
 function poseForFormStatus(status: FormStatus | null): TemariPose {
