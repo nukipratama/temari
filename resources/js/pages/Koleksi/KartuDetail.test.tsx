@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import KartuDetail from './KartuDetail';
 import { setMockPage } from '@/test/setup';
@@ -105,5 +105,11 @@ describe('KartuDetail', () => {
         const cardPending = { ...epicCard, flavor_analysis: pendingAnalysis };
         render(<KartuDetail card={cardPending} relatedCards={[]} totalForRarity={3} />);
         expect(screen.queryByText(/Lari ini bukti/)).not.toBeInTheDocument();
+    });
+
+    it('opens ShareIgModal when "Bagikan" is clicked', () => {
+        render(<KartuDetail card={epicCard} relatedCards={[]} totalForRarity={3} />);
+        fireEvent.click(screen.getByRole('button', { name: /Bagikan/i }));
+        expect(screen.getByText(/Bagikan kartu/)).toBeInTheDocument();
     });
 });
