@@ -17,6 +17,8 @@ interface Props {
     allowReanalyze?: boolean;
     /** Whether to render the "Dibuat …" relative timestamp when status is `done`. */
     showTimestamp?: boolean;
+    /** Use cream-tinted colours for non-done states when rendered on a dark sky panel. */
+    onSky?: boolean;
 }
 
 const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
@@ -58,6 +60,7 @@ export default function AnalysisStatus({
     renderContent,
     allowReanalyze = true,
     showTimestamp = true,
+    onSky = false,
 }: Readonly<Props>) {
     const { status, pending, error, retryAfterSeconds, trigger } = useAnalysisTrigger(analysis, inertiaReloadProps);
     const effectiveStatus = pending ? 'queued' : status;
@@ -101,7 +104,7 @@ export default function AnalysisStatus({
     if (effectiveStatus === 'queued' || effectiveStatus === 'processing') {
         return (
             <span
-                className="inline-flex items-center gap-2 rounded-full bg-surface-sunken text-ink-2 text-xs px-3 py-1.5"
+                className={`inline-flex items-center gap-2 rounded-full text-xs px-3 py-1.5 ${onSky ? 'bg-cream/10 text-cream/70' : 'bg-surface-sunken text-ink-2'}`}
                 role="status"
                 aria-live="polite"
             >
@@ -136,7 +139,7 @@ export default function AnalysisStatus({
 
     return (
         <div className="flex flex-col gap-1.5">
-            <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
+            <span className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-cream/60' : 'text-ink-2'}`}>
                 <Icon icon="mdi:sparkles-outline" aria-hidden />
                 <span>Belum dibaca Temari.</span>
             </span>

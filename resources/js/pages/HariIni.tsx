@@ -321,7 +321,7 @@ function FeaturedKartuPanel({
                 className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full"
                 style={emberGlowStyle()}
             />
-            <div className="relative grid items-center gap-8 lg:grid-cols-[240px_1fr_320px] lg:gap-12">
+            <div className="relative grid items-center gap-8 lg:grid-cols-[200px_1fr_40%] lg:gap-10">
                 <div className="hidden lg:block">
                     <TemariProto pose={pose} size={240} />
                 </div>
@@ -338,6 +338,7 @@ function FeaturedKartuPanel({
                             inertiaReloadProps={['briefing']}
                             showTimestamp={false}
                             allowReanalyze={false}
+                            onSky
                             renderContent={(text) => (
                                 <p className="font-display text-quote-lg italic text-cream">
                                     &ldquo;{text}&rdquo;

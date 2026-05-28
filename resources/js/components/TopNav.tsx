@@ -69,7 +69,7 @@ function TabLink({ item, isActive }: Readonly<{ item: NavItem; isActive: boolean
         <Link
             href={item.href}
             className={cn(
-                'relative font-display text-[19px] italic tracking-[-0.005em] transition',
+                'relative font-mono text-sm tracking-[0.02em] transition',
                 'px-[18px] py-2.5',
                 isActive ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
             )}
