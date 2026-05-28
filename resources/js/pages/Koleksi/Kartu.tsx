@@ -185,7 +185,7 @@ function FeaturedPanel({
                     )}
                 </div>
                 <Link
-                    href={`/aktivitas/${featured.activity_id}`}
+                    href={`/kartu/${featured.id}`}
                     className="hidden lg:block"
                     onClick={() => onTap(featured.rarity, featured.id)}
                 >
@@ -275,7 +275,7 @@ function CardCell({
 
     return (
         <MotionLink
-            href={`/aktivitas/${card.activity_id}`}
+            href={`/kartu/${card.id}`}
             whileTap={pressShrink}
             onClick={() => onTap(card.rarity, card.id)}
             className="block transition hover:-translate-y-0.5"

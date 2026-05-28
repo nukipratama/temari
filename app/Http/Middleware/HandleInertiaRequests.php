@@ -57,6 +57,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
                 'info' => fn () => $request->session()->get('info'),
+                'unlock' => fn () => $request->session()->get('unlock'),
             ],
             'demoLoginEnabled' => (bool) config('demo.login_enabled'),
             'onboarding' => [
@@ -101,7 +102,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null}|null
+     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null, is_pr: bool, pr_category_label: string|null, pr_time_display: string|null}|null
      */
     private function pendingRevealFor(?User $user): ?array
     {
@@ -126,6 +127,11 @@ class HandleInertiaRequests extends Middleware
 
         $detail = $card->activity->detail;
 
+        $pr = PersonalRecord::query()
+            ->where('user_id', $user->id)
+            ->where('activity_id', $card->activity_id)
+            ->first();
+
         return [
             'card_id' => $card->id,
             'activity_id' => $card->activity_id,
@@ -136,7 +142,23 @@ class HandleInertiaRequests extends Middleware
             'distance_m' => $detail?->distance,
             'moving_time_sec' => $detail?->moving_time,
             'trimp_edwards' => $detail?->trimp_edwards,
+            'is_pr' => $pr !== null,
+            'pr_category_label' => $pr?->category->label(),
+            'pr_time_display' => $pr !== null ? $this->formatSeconds((int) $pr->value_sec) : null,
         ];
+    }
+
+    private function formatSeconds(int $totalSec): string
+    {
+        $h = intdiv($totalSec, 3600);
+        $m = intdiv($totalSec % 3600, 60);
+        $s = $totalSec % 60;
+
+        if ($h > 0) {
+            return sprintf('%d:%02d:%02d', $h, $m, $s);
+        }
+
+        return sprintf('%d:%02d', $m, $s);
     }
 
     /**

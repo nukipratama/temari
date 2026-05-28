@@ -33,6 +33,7 @@ export default function MobileBottomNav() {
                     <Link
                         key={item.id}
                         href={item.href}
+                        data-tour={item.id === 'koleksi' ? 'bottom-nav-koleksi' : undefined}
                         className={cn(
                             'flex flex-col items-center gap-1 px-4 py-2 transition',
                             isActive ? 'text-horizon' : 'text-cream/[0.55]',

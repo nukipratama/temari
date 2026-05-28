@@ -28,6 +28,9 @@ const epicReveal: PendingReveal = {
     distance_m: 10000,
     moving_time_sec: 3480,
     trimp_edwards: 161,
+    is_pr: false,
+    pr_category_label: null,
+    pr_time_display: null,
 };
 
 const commonReveal: PendingReveal = {
@@ -40,6 +43,9 @@ const commonReveal: PendingReveal = {
     distance_m: 5000,
     moving_time_sec: 1800,
     trimp_edwards: 42,
+    is_pr: false,
+    pr_category_label: null,
+    pr_time_display: null,
 };
 
 const fetchMock = vi.fn(() => Promise.resolve(new Response('{"seen":true}', { status: 200 })));

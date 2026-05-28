@@ -21,6 +21,9 @@ export interface PendingReveal {
     distance_m: number | null;
     moving_time_sec: number | null;
     trimp_edwards: number | null;
+    is_pr: boolean;
+    pr_category_label: string | null;
+    pr_time_display: string | null;
 }
 
 export interface StravaSync {

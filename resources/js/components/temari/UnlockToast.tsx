@@ -9,6 +9,7 @@ interface UnlockFlash {
     unlock_key: string;
     name: string;
     icon: string;
+    is_major: boolean;
 }
 
 interface UnlockFlashProps extends SharedProps {
@@ -23,7 +24,7 @@ export default function UnlockToast() {
     const [active, setActive] = useState<UnlockFlash | null>(null);
 
     useEffect(() => {
-        if (unlock === null) return;
+        if (unlock === null || unlock.is_major) return;
         setActive(unlock);
         const t = window.setTimeout(() => setActive(null), DISMISS_MS);
         return () => window.clearTimeout(t);

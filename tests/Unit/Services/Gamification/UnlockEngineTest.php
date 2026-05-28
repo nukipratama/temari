@@ -163,5 +163,6 @@ it('falls back to the key + default icon when the config entry omits name and ic
         'unlock_key' => 'accessory.medal_first_pr',
         'name' => 'accessory.medal_first_pr',
         'icon' => 'mdi:medal',
+        'is_major' => false,
     ]);
 });

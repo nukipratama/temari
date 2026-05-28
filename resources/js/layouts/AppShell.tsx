@@ -1,9 +1,11 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import DemoBanner from '@/components/DemoBanner';
 import FloatingTemari from '@/components/temari/FloatingTemari';
 import UnlockToast from '@/components/temari/UnlockToast';
 import CardReveal from '@/components/card/CardReveal';
+import PRMomentModal from '@/components/celebrations/PRMomentModal';
+import AksesoriUnlockModal from '@/components/celebrations/AksesoriUnlockModal';
 import TopNav from '@/components/TopNav';
 import MobileTopBar from '@/components/MobileTopBar';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -16,16 +18,48 @@ interface AppShellProps {
     withNav?: boolean;
 }
 
+type PrModalData = { activityId: number; categoryLabel: string; timeDisplay: string };
+
+interface UnlockFlash {
+    unlock_key: string;
+    name: string;
+    icon: string;
+    is_major: boolean;
+}
+
+interface AppShellPageProps extends SharedProps {
+    flash: SharedProps['flash'] & { unlock?: UnlockFlash | null };
+}
+
 export default function AppShell({ children, withNav = true }: Readonly<AppShellProps>) {
     useDawnShift();
-    const pending = usePage<SharedProps>().props.pendingReveal ?? null;
+    const { pendingReveal, flash } = usePage<AppShellPageProps>().props;
+    const pending = pendingReveal ?? null;
+    const [prModal, setPrModal] = useState<PrModalData | null>(null);
+    const [majorUnlock, setMajorUnlock] = useState<UnlockFlash | null>(null);
+
+    const unlock = flash?.unlock ?? null;
+    useEffect(() => {
+        if (unlock?.is_major) {
+            setMajorUnlock(unlock);
+        }
+    }, [unlock]);
+
+    const handlePrMoment = () => {
+        if (pending?.is_pr && pending.pr_category_label && pending.pr_time_display) {
+            setPrModal({
+                activityId: pending.activity_id,
+                categoryLabel: pending.pr_category_label,
+                timeDisplay: pending.pr_time_display,
+            });
+        }
+    };
 
     if (!withNav) {
         return (
             <div className="min-h-screen bg-cream text-ink">
                 <DemoBanner />
                 {children}
-                {pending && <CardReveal pending={pending} />}
             </div>
         );
     }
@@ -50,7 +84,9 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
             <MobileBottomNav />
             <FloatingTemari />
             <UnlockToast />
-            {pending && <CardReveal pending={pending} />}
+            {pending && <CardReveal pending={pending} onPrMoment={handlePrMoment} />}
+            <PRMomentModal pr={prModal} onClose={() => setPrModal(null)} />
+            <AksesoriUnlockModal unlock={majorUnlock} onClose={() => setMajorUnlock(null)} />
         </div>
     );
 }

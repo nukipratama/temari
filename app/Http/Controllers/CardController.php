@@ -39,6 +39,58 @@ class CardController extends Controller
         ]);
     }
 
+    public function show(Request $request, RunCard $card): Response
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $card->loadMissing('activity');
+        abort_if($card->activity->user_id !== $user->id, 404);
+
+        $card->loadMissing('activity.detail');
+
+        $flavorAnalysis = Analysis::query()
+            ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
+            ->first();
+
+        $relatedCards = RunCard::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->with(['activity.detail'])
+            ->where('rarity', $card->rarity)
+            ->where('id', '!=', $card->id)
+            ->orderByDesc('id')
+            ->limit(3)
+            ->get()
+            ->map(fn (RunCard $c) => [
+                'id' => $c->id,
+                'activity_id' => $c->activity_id,
+                'rarity' => $c->rarity->value,
+                'special_move' => $c->special_move,
+                'badges' => $c->badges,
+                'detail' => $c->activity->detail,
+            ])
+            ->values();
+
+        $totalForRarity = RunCard::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->where('rarity', $card->rarity)
+            ->count();
+
+        return Inertia::render('Koleksi/KartuDetail', [
+            'card' => [
+                'id' => $card->id,
+                'activity_id' => $card->activity_id,
+                'rarity' => $card->rarity->value,
+                'special_move' => $card->special_move,
+                'badges' => $card->badges,
+                'detail' => $card->activity->detail,
+                'flavor_analysis' => Analysis::toPayload($flavorAnalysis, AnalysisType::CardFlavor, RunCard::class, $card->id),
+            ],
+            'relatedCards' => $relatedCards,
+            'totalForRarity' => $totalForRarity,
+        ]);
+    }
+
     /**
      * @return array{id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail: ActivityDetail|null, flavor_analysis: array<string, mixed>}|null
      */

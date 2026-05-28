@@ -5,6 +5,8 @@ import ConfettiBurst from '@/components/ConfettiBurst';
 import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from './Kartu';
 import PillButton from '@/components/ui/PillButton';
+import ShareIgModal from './ShareIgModal';
+import type { ShareKartuData } from './ShareIgModal';
 import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
 import TemariMascot from '@/components/temari/TemariMascot';
 import { RARITY_LABELS } from '@/lib/runcard';
@@ -14,6 +16,7 @@ import type { PendingReveal, Rarity } from '@/types/inertia';
 
 interface CardRevealProps {
     pending: PendingReveal;
+    onPrMoment?: () => void;
 }
 
 interface Frame {
@@ -83,7 +86,7 @@ function framesFor(theatrical: boolean, rarity: Rarity, name: string): Frame[] {
     ];
 }
 
-export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
+export default function CardReveal({ pending, onPrMoment }: Readonly<CardRevealProps>) {
     const theatrical = THEATRICAL_RARITIES.includes(pending.rarity);
     const frames = useMemo(
         () => framesFor(theatrical, pending.rarity, pending.special_move),
@@ -92,15 +95,15 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
 
     const [step, setStep] = useState(0);
     const [confettiKey, setConfettiKey] = useState<string | null>(null);
+    const [shareOpen, setShareOpen] = useState(false);
     const sentRef = useRef(false);
 
     // /api/kartu/{card}/seen returns plain JSON, so Inertia's router can't
-    // call it (it errors on non-Inertia responses). Fire-and-forget; the
-    // modal dismissal doesn't gate on the POST landing.
-    const markSeen = useCallback((): void => {
-        if (sentRef.current) return;
+    // call it (it errors on non-Inertia responses).
+    const markSeen = useCallback((): Promise<void> => {
+        if (sentRef.current) return Promise.resolve();
         sentRef.current = true;
-        void fetch(`/api/kartu/${pending.card_id}/seen`, {
+        return fetch(`/api/kartu/${pending.card_id}/seen`, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
@@ -110,17 +113,21 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                 'X-Requested-With': 'XMLHttpRequest',
             },
             body: '{}',
-        }).catch(() => { /* silent — next reload picks up server state */ });
+        }).then(() => {}).catch(() => { /* silent — next reload picks up server state */ });
     }, [pending.card_id]);
 
     const dismiss = useCallback((): void => {
-        markSeen();
-        router.reload({ only: ['pendingReveal'] });
-    }, [markSeen]);
+        if (pending.is_pr && onPrMoment) {
+            onPrMoment();
+        }
+        // Await markSeen before reloading — same race guard as viewKoleksi.
+        void markSeen().then(() => router.reload({ only: ['pendingReveal'] }));
+    }, [markSeen, pending.is_pr, onPrMoment]);
 
+    // Await markSeen before navigating — prevents the Inertia request from
+    // arriving before the seen POST clears pending_reveal_card_id.
     const viewKoleksi = useCallback((): void => {
-        markSeen();
-        router.visit('/kartu', { preserveScroll: false });
+        void markSeen().then(() => router.visit('/kartu', { preserveScroll: false }));
     }, [markSeen]);
 
     const advance = useCallback(() => {
@@ -162,7 +169,24 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
     const onBackdrop = isLastFrame ? dismiss : advance;
     const onPrimary = isLastFrame ? viewKoleksi : advance;
 
+    const shareData: ShareKartuData = {
+        id: pending.card_id,
+        name: pending.special_move,
+        rarity: pending.rarity,
+        subtitle,
+        date: null,
+        km,
+        durasi,
+        trimp,
+        hr: null,
+        location: null,
+        weather: null,
+        tags: (pending.badges ?? []).slice(0, 2).map(prettyBadge),
+        quote: null,
+    };
+
     return (
+        <>
         <div
             role="dialog"
             aria-modal="true"
@@ -224,15 +248,28 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                                     <PillButton tone="horizon" onClick={onPrimary}>
                                         {isLastFrame ? 'Lihat koleksi' : 'Lanjut'}
                                     </PillButton>
-                                    <button
-                                        type="button"
+                                    {isLastFrame && frame.showKartu && (
+                                        <PillButton
+                                            tone="horizon"
+                                            className="bg-horizon-deep text-white hover:opacity-90"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShareOpen(true);
+                                            }}
+                                        >
+                                            Bagikan
+                                        </PillButton>
+                                    )}
+                                    <PillButton
+                                        tone="ghost"
+                                        onSky
+                                        size="sm"
                                         onClick={dismiss}
-                                        className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-cream/60 hover:text-cream"
                                     >
                                         {isLastFrame ? 'Tutup' : 'Skip'}
-                                    </button>
+                                    </PillButton>
                                 </div>
-                                <div className="mt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-cream/40">
+                                <div className="mt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-cream/55">
                                     Frame {step + 1} / {frames.length} · tap untuk lanjut
                                 </div>
                             </div>
@@ -240,6 +277,8 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                     </HeroPanel>
             </motion.div>
         </div>
+        <ShareIgModal kartu={shareOpen ? shareData : null} onClose={() => setShareOpen(false)} />
+        </>
     );
 }
 

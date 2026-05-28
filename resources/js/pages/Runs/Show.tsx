@@ -161,16 +161,21 @@ export default function RunsShow({
                     <Card as="aside" padding="lg" className="flex flex-col gap-3.5">
                         <SectionLabel>Kartu buat lari ini</SectionLabel>
                         {card ? (
-                            <Kartu
-                                name={card.special_move}
-                                subtitle={`${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`}
-                                km={km}
-                                durasi={duration === '—' ? '—' : duration}
-                                trimp={trimp != null ? trimp : '—'}
-                                rarity={card.rarity}
-                                tags={(card.badges ?? []).slice(0, 2).map(prettyBadge)}
-                                size="md"
-                            />
+                            <Link
+                                href={`/kartu/${card.id}`}
+                                className="block transition hover:-translate-y-0.5"
+                            >
+                                <Kartu
+                                    name={card.special_move}
+                                    subtitle={`${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`}
+                                    km={km}
+                                    durasi={duration === '—' ? '—' : duration}
+                                    trimp={trimp != null ? trimp : '—'}
+                                    rarity={card.rarity}
+                                    tags={(card.badges ?? []).slice(0, 2).map(prettyBadge)}
+                                    size="md"
+                                />
+                            </Link>
                         ) : (
                             <p className="font-display text-base italic text-ink-3">
                                 Belum ada kartu buat lari ini.
