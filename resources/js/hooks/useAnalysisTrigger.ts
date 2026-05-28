@@ -30,13 +30,6 @@ interface TriggerResult {
     trigger: () => Promise<void>;
 }
 
-// Shared FloatingTemari badge counts (`aiActivity`) tag along on every
-// analysis-triggered partial reload so the floating mascot stays in sync at
-// the analysis poll cadence instead of its own 5s fallback.
-function withAiActivity(only: string[]): string[] {
-    return only.includes('aiActivity') ? only : [...only, 'aiActivity'];
-}
-
 // Module-level refcounted poll registry. Multiple in-flight analyses sharing
 // the same reload set (the 4 activity insights, the 2 briefing analyses)
 // share a single interval + visibility listener instead of each spinning up
@@ -170,7 +163,7 @@ export function useAnalysisTrigger(
             options.onUpdate?.(next);
 
             if (inertiaReloadProps.length > 0) {
-                router.reload({ only: withAiActivity(inertiaReloadProps) });
+                router.reload({ only: inertiaReloadProps });
             }
         } catch (err) {
             setStatus('failed');
@@ -192,7 +185,7 @@ export function useAnalysisTrigger(
     const isInFlight = payload.status === 'queued' || payload.status === 'processing';
     useEffect(() => {
         if (!isInFlight || reloadKey === '') return;
-        return subscribePoll(withAiActivity(reloadKey.split('|')));
+        return subscribePoll(reloadKey.split('|'));
     }, [isInFlight, reloadKey]);
 
     return { status, pending, error, retryAfterSeconds, trigger };

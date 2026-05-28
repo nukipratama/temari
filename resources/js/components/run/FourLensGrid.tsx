@@ -77,7 +77,7 @@ export default function FourLensGrid({
         if (bulkPending) return;
         setBulkPending(true);
         await Promise.allSettled(lenses.map((l) => triggerOne(l.analysis)));
-        router.reload({ only: [...inertiaReloadProps, 'aiActivity'] });
+        router.reload({ only: inertiaReloadProps });
         setBulkPending(false);
     }, [bulkPending, lenses, inertiaReloadProps]);
 

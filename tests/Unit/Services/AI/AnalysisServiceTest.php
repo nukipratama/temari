@@ -274,7 +274,7 @@ it('does not dispatch when ai.auto_dispatch config is false', function (): void 
         type: AnalysisType::WeeklyRecap,
     );
 
-    expect($row->status)->toBe(AnalysisStatus::Pending);
+    expect($row->status)->toBe(AnalysisStatus::Done);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -289,7 +289,7 @@ it('does not dispatch when Azure config is missing', function (): void {
         type: AnalysisType::WeeklyRecap,
     );
 
-    expect($row->status)->toBe(AnalysisStatus::Pending);
+    expect($row->status)->toBe(AnalysisStatus::Done);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 

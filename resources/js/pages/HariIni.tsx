@@ -99,12 +99,6 @@ const TOUR_STEPS: TourStep[] = [
         body: 'Semua kartu ngumpul di sini. Koleksi tumbuh seiring larimu.',
         tipSide: 'above',
     },
-    {
-        target: 'floating-temari',
-        title: 'Aku selalu ada',
-        body: 'Klik aku kapanpun mau ngobrol soal larimu.',
-        tipSide: 'left',
-    },
 ];
 
 export default function HariIni({

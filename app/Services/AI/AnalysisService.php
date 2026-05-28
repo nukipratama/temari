@@ -12,6 +12,7 @@ use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
+use App\Services\AI\Demo\RuleBasedNarrationFiller;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Support\Carbon;
@@ -20,6 +21,10 @@ use Illuminate\Support\Collection;
 class AnalysisService
 {
     private bool $dispatchSuppressed = false;
+
+    public function __construct(private readonly RuleBasedNarrationFiller $filler)
+    {
+    }
 
     /**
      * Suppress queue dispatch for the duration of $callback. Rows are still
@@ -125,6 +130,13 @@ class AnalysisService
         $justCreated = $row->wasRecentlyCreated;
 
         if (! $this->autoDispatchEnabled()) {
+            // When Azure is unconfigured, fill synchronously so "Saran lain" /
+            // "Baca ulang" still return fresh content in local / demo setups.
+            if ($justCreated || ($invalidate && $row->status === AnalysisStatus::Done)) {
+                $this->markDone($row, $this->filler->fillFor($row));
+                $row->refresh();
+            }
+
             return $row;
         }
 

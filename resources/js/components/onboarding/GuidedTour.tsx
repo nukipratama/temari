@@ -52,15 +52,16 @@ export default function GuidedTour({
         if (!visible || !currentStep) return;
 
         const el = document.querySelector<HTMLElement>(`[data-tour="${currentStep.target}"]`);
-        if (!el) {
-            // Target not in DOM — skip this step
+        const elRect = el?.getBoundingClientRect();
+        if (!el || (elRect!.width === 0 && elRect!.height === 0)) {
+            // Target not in DOM or hidden on this viewport (e.g. mobile-only nav on desktop)
             setStep((s) => (s + 1 < steps.length ? s + 1 : s));
             return;
         }
 
         el.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
 
-        setRect(el.getBoundingClientRect());
+        setRect(elRect!);
 
         const observer = new ResizeObserver(measureTarget);
         observer.observe(el);
