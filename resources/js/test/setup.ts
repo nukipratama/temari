@@ -98,6 +98,13 @@ vi.mock('@inertiajs/react', async () => {
     };
 });
 
+// jsdom stubs for browser APIs not implemented in the test environment.
+globalThis.ResizeObserver = class ResizeObserver {
+    observe = vi.fn();
+    unobserve = vi.fn();
+    disconnect = vi.fn();
+};
+
 // react-chartjs-2 needs canvas — stub Chart components.
 vi.mock('react-chartjs-2', () => ({
     Line: () => createElement('div', { 'data-testid': 'line-chart' }),
