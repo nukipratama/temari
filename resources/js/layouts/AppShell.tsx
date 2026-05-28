@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import DemoBanner from '@/components/DemoBanner';
-import FloatingTemari from '@/components/temari/FloatingTemari';
 import UnlockToast from '@/components/temari/UnlockToast';
 import CardReveal from '@/components/card/CardReveal';
 import PRMomentModal from '@/components/celebrations/PRMomentModal';
@@ -82,7 +81,6 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
             </main>
 
             <MobileBottomNav />
-            <FloatingTemari />
             <UnlockToast />
             {pending && <CardReveal pending={pending} onPrMoment={handlePrMoment} />}
             <PRMomentModal pr={prModal} onClose={() => setPrModal(null)} />

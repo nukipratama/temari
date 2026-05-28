@@ -36,7 +36,6 @@ export interface SharedProps {
     flash: { success: string | null; error: string | null; info: string | null };
     demoLoginEnabled: boolean;
     onboarding: { forceShow: boolean };
-    aiActivity?: { pending: number; queued: number; processing: number };
     pendingReveal?: PendingReveal | null;
     stravaSync?: StravaSync | null;
     [key: string]: unknown;
