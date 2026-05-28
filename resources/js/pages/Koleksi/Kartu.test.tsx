@@ -83,7 +83,7 @@ describe('Koleksi/Kartu', () => {
             } as ActivityDetail,
         };
         render(<KoleksiKartu cards={emptyCards()} selectedRarity={null} featuredCard={featured} rarityCounts={{ ...rarityCounts, legendary: 1 }} />);
-        const cardLink = screen.getAllByRole('link').find((el) => el.getAttribute('href') === '/aktivitas/99');
+        const cardLink = screen.getAllByRole('link').find((el) => el.getAttribute('href') === '/kartu/7');
         fireEvent.click(cardLink!);
     });
 
@@ -91,7 +91,7 @@ describe('Koleksi/Kartu', () => {
         const cards = { ...emptyCards(), data: [cardWithRel(1, 'epic', 'Tendangan Epic'), cardWithRel(2, 'common')] };
         render(<KoleksiKartu cards={cards} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
         expect(screen.getByText('Tendangan Epic')).toBeInTheDocument();
-        const links = screen.getAllByRole('link').filter((el) => el.getAttribute('href') === '/aktivitas/1');
+        const links = screen.getAllByRole('link').filter((el) => el.getAttribute('href') === '/kartu/1');
         fireEvent.click(links[0]);
     });
 

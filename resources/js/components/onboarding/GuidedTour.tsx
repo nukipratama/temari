@@ -58,7 +58,7 @@ export default function GuidedTour({
             return;
         }
 
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        el.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
 
         setRect(el.getBoundingClientRect());
 
