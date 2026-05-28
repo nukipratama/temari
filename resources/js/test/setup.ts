@@ -94,9 +94,16 @@ vi.mock('@inertiajs/react', async () => {
             delete: vi.fn(),
             reset: vi.fn(),
         }),
-        router: { post: vi.fn(), get: vi.fn(), reload: vi.fn() },
+        router: { post: vi.fn(), get: vi.fn(), reload: vi.fn(), visit: vi.fn() },
     };
 });
+
+// jsdom stubs for browser APIs not implemented in the test environment.
+globalThis.ResizeObserver = class ResizeObserver {
+    observe = vi.fn();
+    unobserve = vi.fn();
+    disconnect = vi.fn();
+};
 
 // react-chartjs-2 needs canvas — stub Chart components.
 vi.mock('react-chartjs-2', () => ({

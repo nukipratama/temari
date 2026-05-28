@@ -108,6 +108,7 @@ export default function FloatingTemari() {
 
                 <button
                     type="button"
+                    data-tour="floating-temari"
                     onClick={() => setOpen((v) => !v)}
                     aria-label={isThinking ? `${total} analisis sedang berjalan` : 'Halo dari Temari'}
                     className="relative rounded-full bg-surface-elev p-1 shadow-lg ring-1 ring-line transition hover:ring-leaf"

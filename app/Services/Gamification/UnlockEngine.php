@@ -30,6 +30,12 @@ class UnlockEngine
         'accessory.weekly_streak_4',
     ];
 
+    /** Keys that trigger the full-screen unlock takeover instead of the toast. */
+    private const array MAJOR_KEYS = [
+        'accessory.headband_legendaris',
+        'accessory.headband_epik',
+    ];
+
     /** @return list<string> */
     public function grantEligible(User $user): array
     {
@@ -75,6 +81,7 @@ class UnlockEngine
                     'unlock_key' => $firstKey,
                     'name' => $def['name'] ?? $firstKey,
                     'icon' => $def['icon'] ?? 'mdi:medal',
+                    'is_major' => \in_array($firstKey, self::MAJOR_KEYS, true),
                 ]);
             }
         }

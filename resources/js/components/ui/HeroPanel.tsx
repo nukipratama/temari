@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
 interface HeroPanelProps {
@@ -6,11 +6,12 @@ interface HeroPanelProps {
     /** When true, applies the pre-dawn 160deg sky→sky-deep→sky-2 gradient. */
     gradient?: boolean;
     className?: string;
+    style?: CSSProperties;
 }
 
 const GRADIENT = 'bg-[linear-gradient(160deg,var(--color-sky-deep)_0%,var(--color-sky)_60%,var(--color-sky-2)_100%)]';
 
-export default function HeroPanel({ children, gradient = true, className }: Readonly<HeroPanelProps>) {
+export default function HeroPanel({ children, gradient = true, className, style }: Readonly<HeroPanelProps>) {
     return (
         <div
             className={cn(
@@ -18,6 +19,7 @@ export default function HeroPanel({ children, gradient = true, className }: Read
                 gradient ? GRADIENT : 'bg-sky',
                 className,
             )}
+            style={style}
         >
             {children}
         </div>

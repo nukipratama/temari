@@ -92,15 +92,6 @@ jobs:
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
         run: |
-          # config:cache is intentionally NOT used here. phpunit.xml's <env>
-          # tags (QUEUE_CONNECTION=sync, fake AZURE_OPENAI_*, etc.) only get
-          # applied when PHPUnit boots — caching config beforehand freezes
-          # .env.example values and AnalysisService::autoDispatchEnabled()
-          # silently returns false, breaking every dispatch-assertion test.
-          # Pinned at 4 — this self-hosted runner runs backend-tests and
-          # frontend-tests jobs concurrently. Going higher (e.g. nproc)
-          # starves vitest's lazy-import resolution past its 10s waitFor
-          # budget in Dashboard.test.tsx.
           ./vendor/bin/pest --parallel --processes=4 --coverage --min=95 \
             --fail-on-warning --fail-on-notice \
             --fail-on-deprecation --fail-on-risky \

@@ -141,12 +141,12 @@ describe('HariIni', () => {
     });
 
     it('shows the suggestion text', () => {
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[]} />);
+        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
         expect(screen.getByText(/Tempo ringan, 35–45 menit\./)).toBeInTheDocument();
     });
 
     it('renders the Kondisi card with CTL / ATL / Strain / Monotony rows', () => {
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[]} />);
+        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
         ['Fondasi', 'Kelelahan', 'Beban', 'Variasi'].forEach((row) => {
             expect(screen.getByText(row)).toBeInTheDocument();
         });

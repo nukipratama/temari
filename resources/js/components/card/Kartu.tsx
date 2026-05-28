@@ -99,7 +99,7 @@ export default function Kartu({
                 {subtitle != null && subtitle !== '' && (
                     <div
                         className={cn(
-                            'mt-1 font-sans text-ink-3',
+                            'mt-1 whitespace-pre-line font-sans text-ink-3',
                             size === 'xl' ? 'text-[15px]' : 'text-xs',
                         )}
                     >

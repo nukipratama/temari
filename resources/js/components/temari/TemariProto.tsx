@@ -105,7 +105,7 @@ export default function TemariProto({
     size = 140,
     tone = 'cream',
     equipped = null,
-    animate = true,
+    animate = false,
     className,
 }: Readonly<TemariProtoProps>) {
     const aspectHeight = (size * 150) / 120;

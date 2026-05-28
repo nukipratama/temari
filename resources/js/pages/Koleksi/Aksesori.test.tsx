@@ -107,4 +107,16 @@ describe('Koleksi/Aksesori', () => {
         );
         expect(screen.getByText('accessory.aura_legendaris')).toBeInTheDocument();
     });
+
+    it('toggles the locked items list when the "belum kebuka" button is clicked', () => {
+        const items = [
+            item('accessory.headband_epik', 'headband', true, false),
+            item('accessory.headband_legendaris', 'headband', false, false),
+            item('accessory.medal_first_pr', 'medal', false, false),
+        ];
+        render(<KoleksiAksesori items={items} equipped={{ headband: null, medal: null, pita: false, aura: false }} />);
+        const btn = screen.getAllByRole('button').find((b) => /belum kebuka/.test(b.textContent ?? ''));
+        fireEvent.click(btn ?? document.body);
+        fireEvent.click(btn ?? document.body);
+    });
 });

@@ -102,9 +102,9 @@ function HeroSide() {
                     <TemariProto pose="proud" size={220} />
                 </div>
                 <h1 className="font-display italic text-display-2xl text-cream">
-                    Lari Kamu,<br />Gak Sendirian.
+                    Lari Kamu,<br /><span className="text-horizon">Gak Sendirian.</span>
                 </h1>
-                <p className="mx-auto mt-6 max-w-[520px] font-sans text-base leading-relaxed text-cream sm:text-lg">
+                <p className="mt-6 font-sans text-base leading-relaxed text-cream sm:text-lg">
                     “Halo, aku Temari. Mulai sekarang, lari kamu aku temenin.”
                 </p>
             </div>

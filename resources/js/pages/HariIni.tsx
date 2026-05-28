@@ -5,7 +5,7 @@ import AppShell from '@/layouts/AppShell';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import MilestoneBanner, { type PendingMilestone } from '@/components/MilestoneBanner';
 import FirstRunTooltip from '@/components/onboarding/FirstRunTooltip';
-import PageOnboardingTooltip from '@/components/onboarding/PageOnboardingTooltip';
+import GuidedTour, { type TourStep } from '@/components/onboarding/GuidedTour';
 import MetricExplainer from '@/components/MetricExplainer';
 import type { MetricKey } from '@/lib/metricGlossary';
 import Card from '@/components/ui/Card';
@@ -20,6 +20,7 @@ import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { cn } from '@/lib/cn';
+import EmptyRunsState from '@/components/run/EmptyRunsState';
 import { fadeInUp } from '@/lib/motion';
 import { formStatusLabel } from '@/lib/formStatus';
 import { formatKm, formatPace, formatRelativeId, paceSecPerKm } from '@/lib/pace';
@@ -79,6 +80,33 @@ const ID_TIME_FMT = new Intl.DateTimeFormat('id-ID', {
     minute: '2-digit',
 });
 
+const TOUR_STEPS: TourStep[] = [
+    {
+        target: 'greeting',
+        title: 'Briefing harian',
+        body: 'Tiap pagi aku kasih briefing kondisi lari kamu — vibe, saran sesi, sama recap terakhir.',
+        tipSide: 'below',
+    },
+    {
+        target: 'kartu-strip',
+        title: 'Kartu dari setiap lari',
+        body: 'Tiap lari yang masuk dapat satu kartu. Langka-tidaknya tergantung apa yang kamu keluarin.',
+        tipSide: 'above',
+    },
+    {
+        target: 'bottom-nav-koleksi',
+        title: 'Koleksi kamu',
+        body: 'Semua kartu ngumpul di sini. Koleksi tumbuh seiring larimu.',
+        tipSide: 'above',
+    },
+    {
+        target: 'floating-temari',
+        title: 'Aku selalu ada',
+        body: 'Klik aku kapanpun mau ngobrol soal larimu.',
+        tipSide: 'left',
+    },
+];
+
 export default function HariIni({
     briefing,
     load,
@@ -114,18 +142,16 @@ export default function HariIni({
                 animate="visible"
                 className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
             >
-                <PageOnboardingTooltip
-                    pageKey="hariini"
-                    icon="👋"
-                    title="Hai, aku Temari."
-                >
-                    Ini tab Hari Ini. Isinya briefing kondisi kamu, lari terakhir, sama saran sesi kalau jadi lari hari ini.
-                </PageOnboardingTooltip>
+                <GuidedTour
+                    steps={TOUR_STEPS}
+                    storageKey="onboarding_shown"
+                    forceShow={props.onboarding.forceShow}
+                />
                 <FirstRunTooltip recentRunCount={recentRuns.length} />
                 <MilestoneBanner pending={pendingMilestone} />
 
                 {/* HEADLINE */}
-                <header className="grid items-end gap-9 lg:grid-cols-[1.4fr_1fr]">
+                <header data-tour="greeting" className="grid items-end gap-9 lg:grid-cols-[1.4fr_1fr]">
                     <div>
                         <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
                             {dateLine}
@@ -141,41 +167,47 @@ export default function HariIni({
                     </aside>
                 </header>
 
-                {/* HERO KARTU */}
-                {featured && <FeaturedKartuPanel featured={featured} pose={pose} featuredKartuVoice={briefing.featuredKartuVoice} />}
+                {recentRuns.length === 0 ? (
+                    <EmptyRunsState />
+                ) : (
+                    <>
+                        {/* HERO KARTU */}
+                        {featured && <FeaturedKartuPanel featured={featured} pose={pose} featuredKartuVoice={briefing.featuredKartuVoice} />}
 
-                {/* 3-UP */}
-                <section className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
-                    <SuggestionCard suggestion={briefing.suggestion} lastRun={lastRun} />
-                    {lastRun && <LastLariCard run={lastRun} pose={poseForRun(lastRun)} note={lastRunNote} />}
-                    <KondisiCard load={load} snapshot={snapshot} />
-                </section>
+                        {/* 3-UP */}
+                        <section className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
+                            <SuggestionCard suggestion={briefing.suggestion} lastRun={lastRun} />
+                            {lastRun && <LastLariCard run={lastRun} pose={poseForRun(lastRun)} note={lastRunNote} />}
+                            <KondisiCard load={load} snapshot={snapshot} />
+                        </section>
 
-                {/* KARTU STRIP */}
-                {cardStrip.length > 0 && (
-                    <section className="mt-10">
-                        <header className="mb-4 flex items-end justify-between">
-                            <div>
-                                <SectionLabel>Kartu terakhir</SectionLabel>
-                                <p className="font-display text-headline-md text-ink">
-                                    Yang Temari kasih ke kamu belakangan ini.
-                                </p>
-                            </div>
-                            <Link
-                                href="/kartu"
-                                className="hidden font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-horizon-deep hover:text-ember-deep sm:inline"
-                            >
-                                Semua {totalKartuCount > 0 ? `${totalKartuCount} ` : ''}koleksi →
-                            </Link>
-                        </header>
-                        <div className="-mx-5 flex items-stretch gap-3 overflow-x-auto px-5 pb-1 scrollbar-hide sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] lg:overflow-visible lg:px-0">
-                            {cardStrip.map((item) => (
-                                <Link key={item.key} href={`/aktivitas/${item.activityId}`} className="flex-none block lg:h-full">
-                                    <KartuMini name={item.name} rarity={item.rarity} date={item.date} className="h-full lg:w-full" />
-                                </Link>
-                            ))}
-                        </div>
-                    </section>
+                        {/* KARTU STRIP */}
+                        {cardStrip.length > 0 && (
+                            <section data-tour="kartu-strip" className="mt-10">
+                                <header className="mb-4 flex items-end justify-between">
+                                    <div>
+                                        <SectionLabel>Kartu terakhir</SectionLabel>
+                                        <p className="font-display text-headline-md text-ink">
+                                            Yang Temari kasih ke kamu belakangan ini.
+                                        </p>
+                                    </div>
+                                    <Link
+                                        href="/kartu"
+                                        className="hidden font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-horizon-deep hover:text-ember-deep sm:inline"
+                                    >
+                                        Semua {totalKartuCount > 0 ? `${totalKartuCount} ` : ''}koleksi →
+                                    </Link>
+                                </header>
+                                <div className="-mx-5 flex items-stretch gap-3 overflow-x-auto px-5 pb-1 scrollbar-hide sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] lg:overflow-visible lg:px-0">
+                                    {cardStrip.map((item) => (
+                                        <Link key={item.key} href={`/aktivitas/${item.activityId}`} className="flex-none block lg:h-full">
+                                            <KartuMini name={item.name} rarity={item.rarity} date={item.date} className="h-full lg:w-full" />
+                                        </Link>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+                    </>
                 )}
             </motion.div>
         </AppShell>
