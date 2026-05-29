@@ -23,8 +23,10 @@ export default function RouteMap({ polyline }: Readonly<RouteMapProps>) {
         );
     }
 
+    // `isolate` confines Leaflet's internal pane/control z-indexes (up to ~1000)
+    // to this box so they don't paint over the fixed bottom nav.
     return (
-        <div className="overflow-hidden rounded-2xl border border-line">
+        <div className="isolate overflow-hidden rounded-2xl border border-line">
             <MapContainer
                 bounds={latLngBounds(positions)}
                 boundsOptions={{ padding: [20, 20] }}
