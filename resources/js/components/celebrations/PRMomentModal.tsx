@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import TemariProto from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
 
 interface PrData {
     activityId: number;
@@ -80,11 +80,7 @@ export default function PRMomentModal({ pr, onClose, onShare }: Readonly<PRMomen
 
                     {/* Mascot */}
                     <div className="relative mb-6 flex justify-center">
-                        <TemariProto
-                            pose="excited"
-                            size={180}
-                            equipped={{ headband: 'epik', medal: 'emas' }}
-                        />
+                        <Temari pose="excited" size={180} />
                     </div>
 
                     {/* Big time */}

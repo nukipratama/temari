@@ -15,7 +15,8 @@ import Kartu from '@/components/card/Kartu';
 import KartuMini from '@/components/card/KartuMini';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
-import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
+import { type TemariPose } from '@/components/temari/TemariProto';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { cn } from '@/lib/cn';
@@ -217,7 +218,7 @@ export default function HariIni({
 function KataTemariCompact({ briefing, pose }: Readonly<{ briefing: BriefingResult; pose: TemariPose }>) {
     return (
         <Card padding="lg" className="flex items-start gap-3.5">
-            <TemariProto pose={pose} size={48} animate={false} />
+            <Temari pose={pose} size={48} animate={false} />
             <div className="min-w-0 flex-1">
                 <div className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-horizon-deep">
                     ★ Kata Temari hari ini
@@ -330,7 +331,7 @@ function FeaturedKartuPanel({
             />
             <div className="relative grid items-center gap-8 lg:grid-cols-[200px_1fr_40%] lg:gap-10">
                 <div className="hidden lg:block">
-                    <TemariProto pose={pose} size={240} />
+                    <Temari pose={pose} size={240} />
                 </div>
                 <div>
                     <div className="mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
@@ -372,7 +373,7 @@ function FeaturedKartuPanel({
                 </div>
                 {/* mobile fallback: Temari above, full Kartu below — keep the kartu-as-hero feel */}
                 <div className="flex flex-col items-center gap-4 lg:hidden">
-                    <TemariProto pose={pose} size={120} animate={false} />
+                    <Temari pose={pose} size={120} animate={false} />
                     <Kartu
                         name={featured.name}
                         subtitle={featured.subtitle}
@@ -469,7 +470,7 @@ function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose:
         <LinkCard href={`/aktivitas/${run.activity_id}`} padding="md" className="flex flex-col gap-3">
             <SectionLabel>Lari terakhir · {dateLabel}</SectionLabel>
             <div className="flex items-start gap-3">
-                <TemariProto pose={pose} size={48} />
+                <Temari pose={pose} size={48} />
                 <div className="min-w-0 flex-1">
                     <div className="font-display text-2xl leading-tight tracking-[-0.01em] text-ink">
                         {run.name ?? 'Lari'}

@@ -17,7 +17,7 @@ export interface TemariEquipped {
     aura?: boolean;
 }
 
-interface TemariProtoProps {
+export interface TemariProtoProps {
     pose?: TemariPose;
     size?: number;
     /** Cream-bg vs sky-bg surface — currently only swaps the cheek tone. */

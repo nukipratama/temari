@@ -8,7 +8,7 @@ import Chip from '@/components/ui/Chip';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from '@/components/card/Kartu';
-import TemariProto from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
 import { cn } from '@/lib/cn';
 import { fadeInUp, pressShrink } from '@/lib/motion';
 import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
@@ -137,7 +137,7 @@ function FeaturedPanel({
             />
             <div className="relative grid items-center gap-9 lg:grid-cols-[160px_1fr_minmax(380px,_46%)]">
                 <div className="hidden lg:block">
-                    <TemariProto pose="proud" size={160} />
+                    <Temari pose="proud" size={160} />
                 </div>
                 <div>
                     <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">

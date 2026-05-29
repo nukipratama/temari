@@ -11,6 +11,9 @@ vi.mock('@inertiajs/react', async () => {
     const actual: typeof import('@inertiajs/react') = await vi.importActual('@inertiajs/react');
     return {
         ...actual,
+        // CardReveal renders <Temari>, which reads usePage().props; the real
+        // hook needs an Inertia app context this test doesn't bootstrap.
+        usePage: () => ({ props: {}, url: '/' }),
         router: {
             reload: (...args: unknown[]) => reload(...args),
             visit: (...args: unknown[]) => visit(...args),

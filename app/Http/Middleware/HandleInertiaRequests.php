@@ -9,6 +9,7 @@ use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\UserUnlock;
+use App\Services\Gamification\EquippedAccessories;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Override;
@@ -49,6 +50,7 @@ class HandleInertiaRequests extends Middleware
             'unlockedAccessories' => fn () => $user === null
                 ? []
                 : UserUnlock::query()->where('user_id', $user->id)->pluck('unlock_key')->all(),
+            'equippedAccessories' => fn () => app(EquippedAccessories::class)->forUser($user),
             'pendingReveal' => fn () => $this->pendingRevealFor($user),
             'stravaSync' => fn () => $this->stravaSyncFor($user),
         ];

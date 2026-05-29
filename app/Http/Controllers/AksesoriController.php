@@ -6,7 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\UserUnlock;
-use Illuminate\Database\Eloquent\Collection;
+use App\Services\Gamification\EquippedAccessories;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,6 +14,10 @@ use Inertia\Response;
 
 class AksesoriController extends Controller
 {
+    public function __construct(private readonly EquippedAccessories $equipped)
+    {
+    }
+
     public function index(Request $request): Response
     {
         /** @var User $user */
@@ -33,7 +37,7 @@ class AksesoriController extends Controller
             if (! \is_array($meta)) {
                 continue;
             }
-            $slot = $this->slotFor((string) $key);
+            $slot = $this->equipped->slotFor((string) $key);
             $unlock = $equippedByKey->get((string) $key);
             $items[] = [
                 'unlock_key' => (string) $key,
@@ -49,7 +53,7 @@ class AksesoriController extends Controller
 
         return Inertia::render('Koleksi/Aksesori', [
             'items' => $items,
-            'equipped' => $this->resolveEquipped($unlocks),
+            'equipped' => $this->equipped->resolve($unlocks),
         ]);
     }
 
@@ -63,7 +67,7 @@ class AksesoriController extends Controller
         ]);
 
         $key = (string) $validated['unlock_key'];
-        $slot = $this->slotFor($key);
+        $slot = $this->equipped->slotFor($key);
 
         $unlock = UserUnlock::query()
             ->where('user_id', $user->id)
@@ -82,7 +86,7 @@ class AksesoriController extends Controller
         $catalog = (array) config('temari_unlocks', []);
         $siblingKeys = array_values(array_filter(
             array_keys($catalog),
-            fn (string $k): bool => $this->slotFor($k) === $slot && $k !== $key,
+            fn (string $k): bool => $this->equipped->slotFor($k) === $slot && $k !== $key,
         ));
 
         UserUnlock::query()
@@ -93,63 +97,5 @@ class AksesoriController extends Controller
         $unlock->forceFill(['equipped' => true])->save();
 
         return back();
-    }
-
-    private function slotFor(string $key): ?string
-    {
-        $without = str_replace('accessory.', '', $key);
-        if (str_starts_with($without, 'headband_')) {
-            return 'headband';
-        }
-        if (str_starts_with($without, 'medal_')) {
-            return 'medal';
-        }
-        if (str_starts_with($without, 'pita_') || str_starts_with($without, 'weekly_streak_')) {
-            return 'pita';
-        }
-        if (str_starts_with($without, 'aura_')) {
-            return 'aura';
-        }
-
-        return null;
-    }
-
-    /**
-     * @param  Collection<int, UserUnlock>  $unlocks
-     * @return array{headband: ?string, medal: ?string, pita: bool, aura: bool}
-     */
-    private function resolveEquipped(Collection $unlocks): array
-    {
-        $byEquipped = $unlocks->filter(fn (UserUnlock $u): bool => (bool) $u->equipped);
-
-        $headband = $byEquipped->first(fn (UserUnlock $u): bool => $this->slotFor($u->unlock_key) === 'headband');
-        $medal = $byEquipped->first(fn (UserUnlock $u): bool => $this->slotFor($u->unlock_key) === 'medal');
-        $pita = $byEquipped->contains(fn (UserUnlock $u): bool => $this->slotFor($u->unlock_key) === 'pita');
-        $aura = $byEquipped->contains(fn (UserUnlock $u): bool => $this->slotFor($u->unlock_key) === 'aura');
-
-        return [
-            'headband' => $headband !== null ? $this->headbandVariant($headband->unlock_key) : null,
-            'medal' => $medal !== null ? $this->medalVariant($medal->unlock_key) : null,
-            'pita' => $pita,
-            'aura' => $aura,
-        ];
-    }
-
-    private function headbandVariant(string $key): string
-    {
-        return match ($key) {
-            'accessory.headband_legendaris' => 'legendaris',
-            'accessory.headband_epik' => 'epik',
-            default => 'ember',
-        };
-    }
-
-    private function medalVariant(string $key): ?string
-    {
-        return match ($key) {
-            'accessory.medal_gold' => 'emas',
-            'accessory.medal_first_pr' => 'pertama',
-            default => null,
-        };
     }
 }

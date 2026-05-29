@@ -37,12 +37,21 @@ export interface StravaSync {
     last_synced_at: string | null;
 }
 
+/** Resolved server-side from the user's equipped UserUnlock rows. */
+export interface EquippedAccessories {
+    headband: 'ember' | 'epik' | 'legendaris' | null;
+    medal: 'pertama' | 'emas' | null;
+    pita: boolean;
+    aura: boolean;
+}
+
 export interface SharedProps {
     auth: { user: AuthUser | null };
     flash: { success: string | null; error: string | null; info: string | null };
     demoLoginEnabled: boolean;
     onboarding: { forceShow: boolean };
     pendingReveal?: PendingReveal | null;
+    equippedAccessories?: EquippedAccessories | null;
     stravaSync?: StravaSync | null;
     [key: string]: unknown;
 }

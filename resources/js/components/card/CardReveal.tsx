@@ -7,7 +7,8 @@ import Kartu from './Kartu';
 import PillButton from '@/components/ui/PillButton';
 import ShareIgModal from './ShareIgModal';
 import type { ShareKartuData } from './ShareIgModal';
-import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
+import { type TemariPose } from '@/components/temari/TemariProto';
 import TemariMascot from '@/components/temari/TemariMascot';
 import { RARITY_LABELS } from '@/lib/runcard';
 import { formatDuration, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
@@ -209,7 +210,7 @@ export default function CardReveal({ pending, onPrMoment }: Readonly<CardRevealP
                                 {frame.runner ? (
                                     <TemariMascot mood="nyala" sizeClass="h-[200px] w-[200px]" idle="mood" />
                                 ) : (
-                                    <TemariProto pose={frame.pose} size={200} />
+                                    <Temari pose={frame.pose} size={200} />
                                 )}
                             </div>
                             <div>

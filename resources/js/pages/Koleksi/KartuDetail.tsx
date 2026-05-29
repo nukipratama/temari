@@ -8,7 +8,7 @@ import HeroPanel from '@/components/ui/HeroPanel';
 import KartuComponent from '@/components/card/Kartu';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
-import TemariProto from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import ShareIgModal from '@/components/card/ShareIgModal';
 import type { ShareKartuData } from '@/components/card/ShareIgModal';
@@ -133,7 +133,7 @@ export default function KartuDetail({
                                 }}
                             />
 
-                            <TemariProto pose="excited" size={140} className="relative" />
+                            <Temari pose="excited" size={140} className="relative" />
 
                             <div className="relative w-full max-w-xs rotate-[-2deg] drop-shadow-2xl">
                                 <KartuComponent
@@ -226,7 +226,7 @@ export default function KartuDetail({
                                 className="block"
                             >
                                 <Card padding="md" className="flex items-center gap-4">
-                                    <TemariProto pose="proud" size={48} animate={false} />
+                                    <Temari pose="proud" size={48} animate={false} />
                                     <div className="min-w-0 flex-1">
                                         <div className="mb-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ink-3">
                                             Dari lari

@@ -11,7 +11,8 @@ import PageHero from '@/components/ui/PageHero';
 import RiwayatFilter, { type MoodOption, type RangeOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import TemariMascot from '@/components/temari/TemariMascot';
-import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
+import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
 import { moodFromActivity } from '@/lib/moodFromActivity';
@@ -255,7 +256,7 @@ function WeekSection({ bucket, snapshot, notes, matchedRunIds }: Readonly<WeekSe
             {snapshot && (
                 <div className="border-b border-cream-deep bg-cream-deep/20 px-5 py-4">
                     <div className="flex items-start gap-3.5">
-                        <TemariProto
+                        <Temari
                             pose={poseForFormStatus(snapshot.form_status)}
                             size={48}
                             animate={false}

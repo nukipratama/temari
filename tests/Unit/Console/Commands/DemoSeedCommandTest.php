@@ -65,6 +65,10 @@ it('seeds a full-featured, login-ready demo: rarity ladder, unlocks, persona, va
         'accessory.weekly_streak_4',
     );
 
+    // Best-in-slot accessories are equipped so the demo mascot shows them off.
+    $equipped = UserUnlock::query()->where('user_id', $user->id)->where('equipped', true)->pluck('unlock_key')->all();
+    expect($equipped)->toContain('accessory.headband_legendaris', 'accessory.medal_gold', 'accessory.weekly_streak_4');
+
     $persona = Analysis::query()
         ->where('subject_type', AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE)
         ->where('subject_id', $user->id)

@@ -12,6 +12,7 @@ use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -123,6 +124,17 @@ class DemoRunSeeder
             // final sweep grants everything the dataset now qualifies for.
             $granted = $this->unlockEngine->grantEligible($user);
             $log(sprintf('  %d accessory unlocks granted (%s)', count($granted), $granted === [] ? 'all already unlocked' : implode(', ', $granted)));
+
+            // Equip the best-in-slot accessories (one per slot) so the demo
+            // Temari actually shows off its hardware everywhere it appears.
+            UserUnlock::query()
+                ->where('user_id', $user->id)
+                ->whereIn('unlock_key', [
+                    'accessory.headband_legendaris',
+                    'accessory.medal_gold',
+                    'accessory.weekly_streak_4',
+                ])
+                ->update(['equipped' => true]);
 
             $log("Generating today's Temari greeting...");
             $vibeState = $this->vibe->current($user);

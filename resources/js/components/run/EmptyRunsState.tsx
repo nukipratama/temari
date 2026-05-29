@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
-import TemariProto from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
 
 const ACTIONS = [
     {
@@ -30,7 +30,7 @@ export default function EmptyRunsState() {
         <div className="flex flex-col items-center gap-8 px-5 py-10 sm:px-8 lg:px-14">
             {/* Temari + headline */}
             <div className="flex flex-col items-center gap-5 text-center">
-                <TemariProto pose="reading" size={140} />
+                <Temari pose="reading" size={140} />
                 <div>
                     <div className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-horizon">
                         ★ Lagi nungguin

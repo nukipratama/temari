@@ -9,7 +9,8 @@ import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from '@/components/card/Kartu';
 import MoodChip from '@/components/ui/MoodChip';
 import SectionLabel from '@/components/ui/SectionLabel';
-import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
+import { type TemariPose } from '@/components/temari/TemariProto';
 import PastYouStrip from '@/components/run/PastYouStrip';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
@@ -126,7 +127,7 @@ export default function RunsShow({
                         />
                         <div className="relative">
                             <div className="mb-5 flex items-start gap-4">
-                                <TemariProto pose={pose} size={72} animate={false} />
+                                <Temari pose={pose} size={72} animate={false} />
                                 <div className="min-w-0 flex-1">
                                     <div className="mb-1.5 flex flex-wrap items-center gap-2">
                                         <MoodChip mood={mood} onSky />
@@ -183,7 +184,7 @@ export default function RunsShow({
                 {/* KATA TEMARI header + 4-LENS GRID */}
                 <section className="mt-10">
                     <header className="mb-4 flex items-center gap-3.5">
-                        <TemariProto pose="observational" size={48} animate={false} />
+                        <Temari pose="observational" size={48} animate={false} />
                         <div>
                             <h2 className="font-display text-headline-sm text-ink">
                                 Kata Temari

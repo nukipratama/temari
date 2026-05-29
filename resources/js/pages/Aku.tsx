@@ -9,7 +9,7 @@ import HeroPanel from '@/components/ui/HeroPanel';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import PrCard from '@/components/card/PrCard';
 import SectionLabel from '@/components/ui/SectionLabel';
-import TemariProto from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
 import VoiceCard from '@/components/temari/VoiceCard';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
@@ -105,7 +105,7 @@ export default function Aku({
                 <HeroPanel className="lg:px-12 lg:py-10">
                     <div className="grid items-center gap-6 lg:grid-cols-[160px_1fr]">
                         <div className="flex justify-center lg:justify-start">
-                            <TemariProto pose="proud" size={160} />
+                            <Temari pose="proud" size={160} />
                         </div>
                         <div>
                             <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
@@ -194,7 +194,7 @@ export default function Aku({
                 </section>
 
                 <Card as="section" className="mt-10 flex items-start gap-3.5">
-                    <TemariProto pose="observational" size={48} />
+                    <Temari pose="observational" size={48} />
                     <div className="flex-1">
                         <p className="font-display text-base italic leading-relaxed text-ink-2">
                             “Strava {identity.strava_connected ? 'tersambung' : 'belum nyambung'}. {identity.strava_connected ? 'Lari baru otomatis kepoin.' : 'Sambungin biar lari baru kebaca.'}”

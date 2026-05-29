@@ -1,6 +1,6 @@
 import { type CSSProperties, useCallback, useLayoutEffect, useState } from 'react';
 import Portal from '@/components/ui/Portal';
-import TemariProto from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
 
 export interface TourStep {
     target: string;
@@ -139,7 +139,7 @@ export default function GuidedTour({
                 style={tooltipStyle}
             >
                 <div className="flex items-start gap-3">
-                    <TemariProto pose="observational" size={44} />
+                    <Temari pose="observational" size={44} />
                     <div className="min-w-0 flex-1">
                         <div className="mb-1 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ink-3">
                             {step + 1} / {steps.length}
