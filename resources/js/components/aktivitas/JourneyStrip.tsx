@@ -84,8 +84,8 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
 function PaceLine({ label, summary, className }: Readonly<{ label: string; summary: ActivitySummary; className?: string }>) {
     const paceLabel = summary.pace_sec_per_km !== null ? formatPace(summary.pace_sec_per_km) : null;
     return (
-        <p className={cn('mt-3 text-[12px] leading-relaxed text-ink-3', className)}>
-            <span className="font-medium text-ink-2">{label}:</span>{' '}
+        <p className={cn('mt-3 text-[12px] leading-relaxed text-ink-2', className)}>
+            <span className="font-semibold text-ink">{label}:</span>{' '}
             {summary.name ?? 'Lari'}{' '}
             {summary.distance_km !== null && <>· {summary.distance_km.toFixed(2)} km </>}
             {paceLabel && <>· pace {paceLabel}/km</>}

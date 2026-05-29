@@ -112,8 +112,6 @@ class CardController extends Controller
             return null;
         }
 
-        $card->loadMissing('activity.detail');
-
         $flavor = Analysis::query()
             ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
             ->first();

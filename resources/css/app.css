@@ -21,6 +21,8 @@
     --font-sans: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace, 'Apple Color Emoji',
         'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
     --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
+    /* Intentionally identical to --font-sans (not a copy-paste slip): the brand
+       is all-mono, so `font-sans` and `font-mono` resolve to the same family. */
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 
     /* ─── Daybreak display-type scale ────────────────────────────────
@@ -70,6 +72,11 @@
     --text-quote-md--line-height: 1.4;
     --text-quote-sm: 15px;
     --text-quote-sm--line-height: 1.5;
+
+    /* Stat value — the big tabular number on KPI tiles / PR cards. Fixed px
+       (not fluid): these sit in fixed-height card layouts. */
+    --text-stat: 32px;
+    --text-stat--line-height: 1;
 
     /* ─── Daybreak palette — pre-dawn Jakarta at 05:30. ─────────────
        Hex values mirror DAYBREAK constants in the prototype source. */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\Run\Metrics\PaceCalculator;
 use Database\Factories\ActivityDetailFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -88,13 +89,7 @@ class ActivityDetail extends Model
      */
     public function paceSecPerKm(): ?float
     {
-        $distance = $this->distance;
-        $movingTime = $this->moving_time;
-        if ($distance === null || $distance <= 0 || $movingTime === null || $movingTime <= 0) {
-            return null;
-        }
-
-        return $movingTime / ($distance / 1000);
+        return PaceCalculator::secPerKm($this->distance, $this->moving_time);
     }
 
     /**

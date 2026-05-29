@@ -22,9 +22,9 @@ import type { ActivityDetail, AnalysisPayload, Rarity } from '@/types/inertia';
 const BADGE_DESCS: Record<string, string> = {
     negative_split: 'Paruh kedua lebih kenceng dari paruh pertama.',
     hari_panas: 'Tetap lari dan kontrol HR walau suhu tinggi.',
-    pejuang_hujan: 'Nggak berhenti meski hujan — komitmen penuh.',
+    pejuang_hujan: 'Nggak berhenti meski hujan, komitmen penuh.',
     anak_pagi: 'Mulai sebelum matahari tinggi, sebelum orang lain bangun.',
-    long_slow_distance: 'Jarak panjang di pace santai — fondasi aerobik yang rapi.',
+    long_slow_distance: 'Jarak panjang di pace santai, fondasi aerobik yang rapi.',
     tahan_diri: 'Pace terkontrol, HR rapi dari awal sampai akhir.',
 };
 

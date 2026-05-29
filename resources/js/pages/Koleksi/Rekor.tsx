@@ -174,7 +174,7 @@ function HeroScoreboard({
                     )}
                 </div>
             </div>
-            <div className="relative mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="relative mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <Caption label="Tipe" value={runName} />
                 <Caption label="Hari" value={formatIdDate(pr.set_at, 'long')} />
                 <Caption
@@ -205,7 +205,7 @@ function HeroScoreboard({
                     targetSec={targetSec}
                     deltaSec={deltaSec}
                     distanceLabel={category}
-                    className="relative mt-7"
+                    className="relative mt-6"
                 />
             )}
         </HeroPanel>
@@ -364,7 +364,7 @@ function EmptyState() {
         <Card tone="empty" padding="lg" className="mt-8 text-center">
             <p className="font-display text-3xl italic text-ink-2">Belum ada PR.</p>
             <p className="mt-2 font-sans text-sm text-ink-3">
-                Sinkronkan lari Strava kamu — Temari otomatis nyatet rekor yang kepecahin.
+                Sinkronkan lari Strava kamu, Temari otomatis nyatet rekor yang kepecahin.
             </p>
         </Card>
     );

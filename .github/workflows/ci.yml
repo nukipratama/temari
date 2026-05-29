@@ -69,8 +69,18 @@ jobs:
         # load does a filesystem stat per PSR-4 path.
         run: composer install --prefer-dist --no-interaction --no-progress --classmap-authoritative
 
+      - name: Audit composer dependencies
+        # Fails the build on any known advisory in composer.lock. Cheap
+        # supply-chain gate for an internet-facing app.
+        run: composer audit --no-interaction
+
       - name: Stub .env so Laravel doesn't warn on bootstrap
         run: cp .env.example .env
+
+      # Fast structural gate: fail before the expensive coverage run if any
+      # app class lacks a matching test (the 1:1 convention). No DB needed.
+      - name: Class/test 1:1 structure check
+        run: ./vendor/bin/pest --group=structure
 
       # Invoke pest directly, not `php artisan test --parallel --coverage` —
       # the artisan wrapper silently drops --coverage in parallel mode.
@@ -138,6 +148,16 @@ jobs:
       - name: Install npm deps
         if: steps.node_modules_cache.outputs.cache-hit != 'true'
         run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Audit npm dependencies (prod, high+)
+        # Only production deps, only high/critical — dev-tool advisories and
+        # low-severity noise shouldn't block a deploy.
+        run: npm audit --omit=dev --audit-level=high
+
+      # Fast structural gate: fail before the full coverage run if any
+      # component/page lacks a co-located *.test.tsx (the 1:1 convention).
+      - name: Component/test 1:1 structure check
+        run: npx vitest run resources/js/test/structure.test.ts
 
       - name: Vitest + 95% coverage
         run: npm run test:coverage

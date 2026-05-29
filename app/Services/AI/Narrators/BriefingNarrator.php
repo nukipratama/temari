@@ -42,13 +42,13 @@ class BriefingNarrator
         - suggestion: saran konkret yang time-neutral.
 
           STRUKTUR WAJIB (3 bagian dipisah `\n\n`):
-          BARIS 1 — JUDUL: format + durasi/distance kasar, satu kalimat
+          BARIS 1, JUDUL: format + durasi/distance kasar, satu kalimat
             pendek diakhiri titik. Contoh: "Tempo ringan, 35-45 menit." /
             "Easy run, 30 menit." / "Rest dulu hari ini." / "Long run,
             10-12 km santai."
-          PARAGRAF 2 — BODY: 1-2 kalimat cue eksekusi (pace, HR, effort,
+          PARAGRAF 2, BODY: 1-2 kalimat cue eksekusi (pace, HR, effort,
             cadence, struktur warmup/main/cooldown).
-          PARAGRAF 3 — YANG PERLU DIPERHATIKAN: 1-2 kalimat red flag atau
+          PARAGRAF 3, YANG PERLU DIPERHATIKAN: 1-2 kalimat red flag atau
             alternatif kalau kondisi gak ideal (HR naik aneh, cuaca panas,
             badan masih lemes, dst).
 

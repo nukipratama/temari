@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingComposer;
 use App\Services\Run\Story\Temari;
@@ -142,22 +143,15 @@ class DashboardController extends Controller
 
     private static function weekPaceSecPerKm(WeeklySnapshot $snapshot): ?float
     {
+        // Real pace: total moving seconds over total distance for the week.
+        // moving_time_sec is null for snapshots written before it was tracked;
+        // those return null until the next aggregation backfills the column.
         $km = $snapshot->distance_km;
-        $runs = $snapshot->runs;
-        if ($km === null || $km <= 0 || $runs === null || $runs <= 0) {
-            return null;
-        }
 
-        // Rough estimate: 1 TRIMP ≈ 1 minute of moderate effort. Good enough
-        // for relative week-over-week comparison, not for absolute pace claims.
-        $trimp = $snapshot->weekly_trimp;
-        if ($trimp === null || $trimp <= 0) {
-            return null;
-        }
-
-        $estimatedMinutes = (float) $trimp;
-
-        return ($estimatedMinutes * 60) / $km;
+        return PaceCalculator::secPerKm(
+            $km === null ? null : $km * 1000,
+            $snapshot->moving_time_sec,
+        );
     }
 
     /**

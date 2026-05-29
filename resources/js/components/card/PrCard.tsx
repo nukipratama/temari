@@ -12,7 +12,7 @@ interface PrCardProps {
 
 const TIME_CLASS = {
     sm: 'font-sans text-2xl font-bold leading-none tabular-nums tracking-[-0.02em] text-ink',
-    lg: 'font-sans text-[32px] font-bold leading-none tabular-nums tracking-[-0.02em] text-ink',
+    lg: 'font-sans text-stat font-bold leading-none tabular-nums tracking-[-0.02em] text-ink',
 } as const;
 
 const GAP_CLASS = {

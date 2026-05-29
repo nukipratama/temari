@@ -47,6 +47,22 @@ it('throws UnavailableException when structured output decodes to a non-object v
     structuredCaller('"just a string"')->call('kind', 'sys', [], 'schema', ['headline']);
 })->throws(UnavailableException::class, 'structured output not an object');
 
+it('throws UnavailableException when the model returns syntactically invalid JSON', function (): void {
+    structuredCaller('{not valid json')->call('kind', 'sys', [], 'schema', ['headline']);
+})->throws(UnavailableException::class, 'non-JSON');
+
+it('throws UnavailableException when a required key is missing from the structured output', function (): void {
+    structuredCaller(json_encode(['something_else' => 'x'], JSON_THROW_ON_ERROR))
+        ->call('kind', 'sys', [], 'schema', ['headline']);
+})->throws(UnavailableException::class, 'missing headline');
+
+it('does not record token usage when the response is malformed', function (): void {
+    expect(fn () => structuredCaller('{not valid json')->call('kind', 'sys', [], 'schema', ['headline']))
+        ->toThrow(UnavailableException::class);
+
+    expect(TokenUsage::query()->count())->toBe(0);
+});
+
 it('returns the decoded payload when all required keys are present', function (): void {
     $payload = structuredCaller(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))
         ->call('kind', 'sys', [], 'schema', ['headline']);

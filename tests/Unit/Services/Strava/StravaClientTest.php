@@ -88,6 +88,28 @@ it('refreshes when the token is within the 60-second buffer', function (): void 
     expect($connection->refresh()->access_token)->toBe('fresh-access');
 });
 
+it('skips the refresh POST when another worker already refreshed under the lock', function (): void {
+    Http::fake();
+
+    $connection = StravaConnection::factory()->create([
+        'access_token' => 'stale-in-memory',
+        'token_expires_at' => Carbon::now()->subMinute(),
+    ]);
+
+    // Simulate a concurrent worker that grabbed the lock first and refreshed:
+    // the DB row is now fresh while our in-memory model still looks expired.
+    // Use a separate model instance so encrypted casts are applied on write.
+    StravaConnection::query()->find($connection->id)->update([
+        'access_token' => 'refreshed-by-other-worker',
+        'token_expires_at' => Carbon::now()->addHours(6),
+    ]);
+
+    $result = (new StravaClient())->refreshIfExpired($connection);
+
+    expect($result->access_token)->toBe('refreshed-by-other-worker');
+    Http::assertNothingSent();
+});
+
 it('throws when token refresh fails', function (): void {
     Http::fake([
         'strava.com/oauth/token' => Http::response(['message' => 'Bad refresh token'], 400),

@@ -129,6 +129,9 @@ class TrainingLoad
         $atl = 0.0;
         $ctl = 0.0;
 
+        // Cold-starts ATL/CTL from zero at the first activity date and warms up
+        // over the decay windows. Backfilling history across a long gap therefore
+        // re-warms from the earliest synced day rather than carrying prior load.
         $startDate = Carbon::parse((string) array_key_first($dailyTrimp));
         $cursor = $startDate->copy();
         while ($cursor->lte($today)) {

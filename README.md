@@ -2,7 +2,7 @@
 
 A self-hosted, Strava-connected personal running dashboard with a built-in companion (**Temari**) that narrates each run. UI in Bahasa Indonesia. Containerized end-to-end — Laravel Sail in dev, FrankenPHP behind a Cloudflare Tunnel in prod — and continuously deployed to a homelab on every merge to `main`.
 
-> **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and the Temari mascot are all shipping. Hutan Pagi palette (forest green + warm-neutral) — intentionally far from Strava orange. Default UI follows system light/dark.
+> **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and the Temari mascot are all shipping. Daybreak palette (pre-dawn peach `horizon` + cream paper + navy `sky`), intentionally far from Strava orange. Light-mode only.
 
 ## Stack
 
@@ -11,7 +11,7 @@ A self-hosted, Strava-connected personal running dashboard with a built-in compa
 - **Data**: MySQL 8.4 + Redis (separate dev / test / prod stacks for parity)
 - **Async**: Horizon (queues) · Scheduler
 - **Observability**: Telescope (dev) · Pulse (perf) · Mailpit (dev mail catcher)
-- **LLM**: Azure OpenAI via `openai-php/laravel` for briefing/verdict narration; rule-based fallback flips a "mode darurat" chip in the UI
+- **LLM**: Azure OpenAI via `openai-php/laravel` for briefing/verdict narration; when credentials are unset, narration silently falls back to deterministic rule-based content. Per-block `AnalysisStatus` (pending / failed + a "Coba lagi" retry button) is the source of truth — there is no global "mode darurat" chip
 - **Tests**: Pest 4 (95% line coverage gate) · Vitest (95% lines + functions gate)
 - **AI dev**: Laravel Boost — `CLAUDE.md` + `.claude/skills/*` for AI-paired work; `laravel/claude-code` plugin enabled in `.claude/settings.json`
 
@@ -148,7 +148,7 @@ In **repo Settings → Secrets and variables → Actions → Secrets**, add:
 | `STRAVA_CLIENT_ID`    | from your Strava developer app                                                                       |
 | `STRAVA_CLIENT_SECRET`| from your Strava developer app                                                                       |
 | `AZURE_OPENAI_URI`    | Optional. Full Azure OpenAI deployment URL (incl. api-version). Empty = rule-based narration silently |
-| `AZURE_OPENAI_API_KEY`| Optional. Pairs with `AZURE_OPENAI_URI`. Empty = rule-based silently. Failures flip "mode darurat" chip in UI |
+| `AZURE_OPENAI_API_KEY`| Optional. Pairs with `AZURE_OPENAI_URI`. Empty = rule-based silently. Job failures mark that Analysis block `failed` with a per-block retry button |
 | `DEMO_LOGIN_ENABLED`  | Optional. `true` renders the "Coba versi demo" button on `/login`. Default `false`                  |
 | `ONBOARDING_FORCE_SHOW` | Optional. `true` re-renders the dashboard first-run tooltip on every mount (QA / demos). Default `false` |
 

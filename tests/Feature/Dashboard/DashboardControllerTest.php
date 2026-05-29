@@ -135,23 +135,42 @@ it('falls back to null pace_delta when one snapshot lacks distance / runs / trim
         ->assertInertia(fn (Assert $page) => $page->where('weekVsLastWeek.pace_delta_sec', null));
 });
 
-it('falls back to null pace_delta when a snapshot has distance + runs but zero trimp', function (): void {
+it('falls back to null pace_delta when a snapshot lacks moving_time_sec', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->subWeek()->toDateString(),
         'distance_km' => 20,
         'runs' => 3,
-        'weekly_trimp' => 0, // trips the zero-trimp branch in weekPaceSecPerKm
+        'moving_time_sec' => null, // snapshot written before moving time was tracked
     ]);
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->toDateString(),
         'distance_km' => 25,
         'runs' => 4,
-        'weekly_trimp' => 220,
+        'moving_time_sec' => 8250,
     ]);
 
     $this->actingAs($user)->get('/')
         ->assertInertia(fn (Assert $page) => $page->where('weekVsLastWeek.pace_delta_sec', null));
+});
+
+it('computes real pace_delta_sec from moving time over distance', function (): void {
+    $user = User::factory()->create();
+    // last week: 20 km in 7200s → 360 s/km.
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->subWeek()->toDateString(),
+        'distance_km' => 20,
+        'moving_time_sec' => 7200,
+    ]);
+    // this week: 25 km in 8250s → 330 s/km (30 s/km faster).
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->toDateString(),
+        'distance_km' => 25,
+        'moving_time_sec' => 8250,
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page->where('weekVsLastWeek.pace_delta_sec', -30));
 });
 
 it('surfaces the latest activity with un-dismissed milestone payload', function (): void {

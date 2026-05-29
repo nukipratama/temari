@@ -148,7 +148,7 @@ export default function AnalysisStatus({
                     type="button"
                     onClick={trigger}
                     disabled={pending}
-                    className="inline-flex items-center self-start gap-1 rounded-full bg-leaf-deep text-white text-xs px-3 py-1 font-semibold hover:bg-sky transition-colors disabled:opacity-50"
+                    className="inline-flex items-center self-start gap-1 rounded-full bg-leaf-deep text-cream text-xs px-3 py-1 font-semibold transition hover:opacity-90 disabled:opacity-50"
                 >
                     <Icon icon="mdi:auto-fix" aria-hidden />
                     <span>Minta Temari bacain</span>

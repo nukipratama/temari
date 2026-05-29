@@ -7,6 +7,7 @@ namespace App\Services\Gamification;
 use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Services\Run\Metrics\PaceCalculator;
 
 /**
  * Picks out "first-ever" / PR / longest-ever moments from a freshly-ingested
@@ -112,9 +113,10 @@ class MilestoneDetector
             $milestones[] = $distanceMilestone;
         }
 
-        $movingSec = (int) ($detail->moving_time ?? 0);
-        if ($distanceMeters > 0 && $movingSec > 0) {
-            $paceSec = (int) round($movingSec / ($distanceMeters / 1000));
+        $paceFloat = PaceCalculator::secPerKm((float) $distanceMeters, $detail->moving_time);
+        if ($paceFloat !== null) {
+            // Whole-second pace: a 7:00.4/km run is compared as 7:01.
+            $paceSec = (int) round($paceFloat);
             $paceMilestone = $this->firstEverPace($activity, $detail, $paceSec);
             if ($paceMilestone !== null) {
                 $milestones[] = $paceMilestone;

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -33,13 +34,38 @@ it('interpolates time at distance from splits (no walk-past inflation)', functio
     expect($secs)->toBeFloat()->toEqualWithDelta(10167.75, 1.0);
 });
 
-it('returns null when splits do not cover the target distance', function (): void {
+it('returns null and logs when splits do not cover the target distance', function (): void {
+    Log::shouldReceive('warning')
+        ->once()
+        ->with('PersonalRecords: per-km splits did not reach target distance', Mockery::type('array'));
+
     $splits = [
         ['split' => 1, 'distance' => 1000, 'elapsed_time' => 400],
         ['split' => 2, 'distance' => 1000, 'elapsed_time' => 410],
     ];
 
     expect((app(PersonalRecords::class))->timeAtDistance($splits, 10_000))->toBeNull();
+});
+
+it('logs the anomaly when truncated splits fall short of a target the run distance cleared', function (): void {
+    // The run "covers" 5 km by total distance, but only 3 km of splits arrived
+    // (truncated / dropped segments). Interpolation can't reach 5 km, so it
+    // returns null and surfaces the inconsistency rather than skipping silently.
+    Log::shouldReceive('warning')
+        ->once()
+        ->with('PersonalRecords: per-km splits did not reach target distance', Mockery::on(
+            fn (array $ctx): bool => $ctx['target_meters'] === 5000.0
+                && $ctx['accumulated_meters'] === 3000.0
+                && $ctx['split_count'] === 3,
+        ));
+
+    $splits = [
+        ['split' => 1, 'distance' => 1000, 'elapsed_time' => 400],
+        ['split' => 2, 'distance' => 1000, 'elapsed_time' => 410],
+        ['split' => 3, 'distance' => 1000, 'elapsed_time' => 420],
+    ];
+
+    expect((app(PersonalRecords::class))->timeAtDistance($splits, 5000.0))->toBeNull();
 });
 
 it('inserts a fresh distance PR when none exists', function (): void {

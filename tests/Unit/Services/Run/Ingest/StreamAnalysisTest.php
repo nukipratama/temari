@@ -114,6 +114,20 @@ it('returns null best-effort pace when the run is too short', function (): void 
     expect((new StreamAnalysis())->bestEffortPace([0, 30, 60], [2.5, 2.5, 2.5], 300))->toBeNull();
 });
 
+it('keeps best-effort pace at the true rate for a steady run (no window inflation)', function (): void {
+    // Constant 3.0 m/s (= 333.3 s/km = 5:33/km) for 20 min. The best 5-min
+    // window must report the steady pace, not an inflated one from a window
+    // whose distance slightly overshoots the target.
+    $time = [];
+    $velocity = [];
+    for ($t = 0; $t <= 1200; $t += 60) {
+        $time[] = $t;
+        $velocity[] = 3.0;
+    }
+
+    expect((new StreamAnalysis())->bestEffortPace($time, $velocity, 300))->toBe('5:33');
+});
+
 it('computes per-km splits + negative_split + hr drift + cadence drop from splits', function (): void {
     $splits = [
         ['split' => 1, 'distance' => 1000, 'elapsed_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 140, 'average_cadence' => 82],

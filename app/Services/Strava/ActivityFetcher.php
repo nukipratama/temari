@@ -16,6 +16,13 @@ class ActivityFetcher
     }
 
     /**
+     * Fetch external ids of activities not yet stored locally.
+     *
+     * Contract: relies on the Strava `/athlete/activities` invariant that
+     * results are ordered newest-first. The walk stops at the first already-known
+     * activity (everything older is assumed synced) and returns the new ids
+     * sorted oldest-first so the caller can ingest in chronological order.
+     *
      * @return list<int>
      */
     public function fetchNewExternalIds(StravaConnection $connection): array

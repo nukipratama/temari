@@ -9,6 +9,7 @@ use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -19,6 +20,8 @@ class StravaClient
     private const string TOKEN_URL = 'https://www.strava.com/oauth/token';
 
     private const int REFRESH_BUFFER_SECONDS = 60;
+
+    private const int REFRESH_LOCK_SECONDS = 15;
 
     /**
      * Per-app shared rate limits (app-wide, not per-user).
@@ -47,10 +50,34 @@ class StravaClient
 
     public function refreshIfExpired(StravaConnection $connection): StravaConnection
     {
-        if ($connection->token_expires_at->isAfter(Carbon::now()->addSeconds(self::REFRESH_BUFFER_SECONDS))) {
+        if ($this->tokenIsFresh($connection)) {
             return $connection;
         }
 
+        // Serialize refreshes per connection: without the lock two concurrent
+        // workers could both POST /oauth/token, and Strava's rotated
+        // refresh_token from the first call invalidates the second.
+        return Cache::lock("strava-refresh:{$connection->id}", self::REFRESH_LOCK_SECONDS)->block(
+            self::REFRESH_LOCK_SECONDS,
+            function () use ($connection): StravaConnection {
+                // Re-read inside the lock: another worker may have just refreshed.
+                $connection->refresh();
+                if ($this->tokenIsFresh($connection)) {
+                    return $connection;
+                }
+
+                return $this->performRefresh($connection);
+            },
+        );
+    }
+
+    private function tokenIsFresh(StravaConnection $connection): bool
+    {
+        return $connection->token_expires_at->isAfter(Carbon::now()->addSeconds(self::REFRESH_BUFFER_SECONDS));
+    }
+
+    private function performRefresh(StravaConnection $connection): StravaConnection
+    {
         $response = Http::asForm()->post(self::TOKEN_URL, [
             'client_id' => config('services.strava.client_id'),
             'client_secret' => config('services.strava.client_secret'),

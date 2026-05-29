@@ -27,3 +27,10 @@ it('no-ops on a deleted user', function (): void {
 
     (new SyncActivitiesJob(999_999))->handle($orchestrator);
 });
+
+it('retries with backoff so a transient Strava blip does not lose the sync', function (): void {
+    $job = new SyncActivitiesJob(1);
+
+    expect($job->tries)->toBe(3)
+        ->and($job->backoff)->toBe([30, 120]);
+});

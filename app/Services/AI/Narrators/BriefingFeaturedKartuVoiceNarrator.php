@@ -19,7 +19,7 @@ class BriefingFeaturedKartuVoiceNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Tugas: 2-3 kalimat dalam suara Temari (mascot), pakai "aku" sebagai
-        subjek. Komentar tentang kartu yang dikasih ke pengguna — bisa tentang
+        subjek. Komentar tentang kartu yang dikasih ke pengguna, bisa tentang
         nama kartu, rarity-nya, atau kenapa lari itu layak dapat kartu.
         Tone: antusias tapi tetap hangat, bukan lebay. Maksimal 50 kata.
 

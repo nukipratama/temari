@@ -12,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
 use Laravel\Socialite\Two\InvalidStateException;
@@ -44,7 +45,11 @@ class StravaAuthController extends Controller
             ]);
         }
 
-        Auth::login($this->upsertUser($stravaUser), remember: true);
+        // Strava returns the scopes the user actually granted (comma-separated)
+        // in the `scope` query param. Store those, not what we requested.
+        $grantedScopes = (string) $request->query('scope', '');
+
+        Auth::login($this->upsertUser($stravaUser, $grantedScopes), remember: true);
 
         return redirect()->intended(route('dashboard'));
     }
@@ -65,8 +70,21 @@ class StravaAuthController extends Controller
         return $driver->redirectUrl(route('auth.strava.callback'));
     }
 
-    private function upsertUser(SocialiteUser $stravaUser): User
+    private function upsertUser(SocialiteUser $stravaUser, string $grantedScopes = ''): User
     {
+        $scopes = $grantedScopes !== '' ? $grantedScopes : implode(',', self::SCOPES);
+
+        // Surface partial grants: if the athlete declined a scope we need, the
+        // connection still saves but sync may silently return less data.
+        $missing = array_diff(self::SCOPES, explode(',', $scopes));
+        if ($missing !== []) {
+            Log::warning('strava.scopes.partial', [
+                'athlete_id' => $stravaUser->getId(),
+                'granted' => $scopes,
+                'missing' => array_values($missing),
+            ]);
+        }
+
         $userAttributes = [
             'name' => $stravaUser->getName() ?: 'Strava Athlete',
             'email' => $stravaUser->getEmail(),
@@ -76,7 +94,7 @@ class StravaAuthController extends Controller
             'access_token' => $stravaUser->token,
             'refresh_token' => $stravaUser->refreshToken,
             'token_expires_at' => Carbon::now()->addSeconds($stravaUser->expiresIn),
-            'scopes' => implode(',', self::SCOPES),
+            'scopes' => $scopes,
         ];
 
         $connection = StravaConnection::where('strava_athlete_id', $stravaUser->getId())->first();

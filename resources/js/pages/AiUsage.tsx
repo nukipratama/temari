@@ -91,11 +91,11 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
             <header className="border-b border-line bg-surface-elev">
                 <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-3">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-white">
+                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-cream">
                             <Icon icon="mdi:counter" width={20} aria-hidden />
                         </span>
                         <div>
-                            <h1 className="text-base font-semibold tracking-tight text-ink">AI Usage</h1>
+                            <h1 className="text-headline-xs font-semibold tracking-tight text-ink">AI Usage</h1>
                             <p className="text-xs text-ink-3">Konsumsi token Azure OpenAI per rentang tanggal.</p>
                         </div>
                     </div>
@@ -122,7 +122,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                     <DateField id="to" label="Sampai" value={toInput} onChange={setToInput} />
                     <button
                         type="submit"
-                        className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky"
+                        className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-cream transition hover:opacity-90"
                     >
                         <Icon icon="mdi:filter-variant" aria-hidden />
                         <span>Terapkan</span>

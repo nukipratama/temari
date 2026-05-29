@@ -141,7 +141,7 @@ export default function GuidedTour({
                         <div className="mb-1 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ink-3">
                             {step + 1} / {steps.length}
                         </div>
-                        <h3 className="font-display text-lg leading-tight text-ink">{currentStep.title}</h3>
+                        <h3 className="font-display text-lg leading-tight tracking-tight text-ink">{currentStep.title}</h3>
                         <p className="mt-1.5 font-sans text-sm leading-relaxed text-ink-2">
                             &ldquo;{currentStep.body}&rdquo;
                         </p>
