@@ -2,9 +2,9 @@ import type { Rarity } from '@/types/inertia';
 
 export const RARITY_LABELS: Record<Rarity, string> = {
     common: 'Biasa',
-    uncommon: 'Jarang',
+    uncommon: 'Berkesan',
     rare: 'Langka',
-    epic: 'Epik',
+    epic: 'Luar Biasa',
     legendary: 'Legendaris',
 };
 

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Icon } from '@iconify/react';
 import { RATE_LIMITED_ERROR, useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
+import { renderBold } from '@/lib/richText';
 import type { AnalysisPayload } from '@/types/inertia';
 import UnavailableNote from './UnavailableNote';
 
@@ -74,7 +75,7 @@ export default function AnalysisStatus({
         return (
             <div className="flex flex-col gap-1">
                 <div className={`${TEXT_SIZE[size]} whitespace-pre-line text-ink`}>
-                    {renderContent ? renderContent(content) : content}
+                    {renderContent ? renderContent(content) : renderBold(content)}
                 </div>
                 {showTimestamp && analysis.generated_at && (
                     <span className="text-xs text-ink-3">

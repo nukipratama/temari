@@ -29,7 +29,7 @@ class RunCardFactory extends Factory
             'special_move' => fake()->randomElement([
                 'Langkah Mantap',
                 'Paru-paru Baja',
-                'Mode Metronom',
+                'Metronom',
                 'Pemburu Sabar',
                 'Pembalik Keadaan',
                 'Tendangan Awal',

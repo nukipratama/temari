@@ -21,7 +21,7 @@ const KEY_TO_EQUIPPED: Record<string, TemariEquipped> = {
 };
 
 const KEY_TO_CRITERIA: Record<string, string> = {
-    'accessory.headband_epik': '3 kartu Epic · ✓ kelar',
+    'accessory.headband_epik': '3 kartu Luar Biasa · ✓ kelar',
     'accessory.headband_legendaris': '1 kartu Legendaris · ✓ kelar',
 };
 

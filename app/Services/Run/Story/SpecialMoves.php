@@ -43,7 +43,7 @@ class SpecialMoves
         }
 
         if (((float) ($distribution['>175'] ?? 0.0)) > 60.0) {
-            return 'Mode Metronom'; // Metronome Mode
+            return 'Metronom'; // Metronome Mode
         }
 
         if ($z2 > 80.0) {

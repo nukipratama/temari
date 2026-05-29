@@ -15,6 +15,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatIdDate, formatShortDateId, monthsSinceId } from '@/lib/pace';
+import { renderBold } from '@/lib/richText';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
@@ -157,7 +158,7 @@ export default function Aku({
                                 inertiaReloadProps={['personaSummary']}
                                 renderContent={(text) => (
                                     <p className="font-display text-quote-md italic text-ink-2">
-                                        “{text}”
+                                        “{renderBold(text)}”
                                     </p>
                                 )}
                             />

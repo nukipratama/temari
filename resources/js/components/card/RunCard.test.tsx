@@ -32,7 +32,7 @@ describe('RunCard', () => {
     it('renders special move + rarity label', () => {
         render(<RunCard card={card()} detail={detail()} />);
         expect(screen.getByText('Paru-paru Baja')).toBeInTheDocument();
-        expect(screen.getByText('Epik')).toBeInTheDocument();
+        expect(screen.getByText('Luar Biasa')).toBeInTheDocument();
     });
 
     it('renders detail name when present', () => {

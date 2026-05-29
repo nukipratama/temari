@@ -15,6 +15,7 @@ import TemariProto from '@/components/temari/TemariProto';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatIdDate } from '@/lib/pace';
+import { renderBold } from '@/lib/richText';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
 import { emberGlowStyle } from '@/lib/styles';
 import GradientText from '@/components/ui/GradientText';
@@ -166,7 +167,7 @@ function HeroScoreboard({
                                 showTimestamp={false}
                                 renderContent={(text) => (
                                     <p className="font-display text-quote-lg italic text-cream">
-                                        “{text}”
+                                        “{renderBold(text)}”
                                     </p>
                                 )}
                             />

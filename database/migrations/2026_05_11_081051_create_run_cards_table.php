@@ -16,7 +16,7 @@ return new class () extends Migration {
             $table->string('rarity', 20);
             // ["hari_panas", "negative_split", ...]
             $table->json('badges');
-            // "Paru-paru Baja", "Mode Metronom", etc.
+            // "Paru-paru Baja", "Metronom", etc.
             $table->string('special_move', 60);
             // null until the share image is generated on first request
             $table->string('share_image_path')->nullable();

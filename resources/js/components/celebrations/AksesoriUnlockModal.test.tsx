@@ -34,7 +34,7 @@ describe('AksesoriUnlockModal', () => {
 
     it('renders the criteria label for known keys', () => {
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={vi.fn()} />);
-        expect(screen.getByText(/3 kartu Epic/)).toBeInTheDocument();
+        expect(screen.getByText(/3 kartu Luar Biasa/)).toBeInTheDocument();
     });
 
     it('calls onClose when "Nanti aja" is clicked', () => {

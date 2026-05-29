@@ -35,7 +35,7 @@ beforeEach(() => {
 describe('Koleksi/Kartu', () => {
     it('renders the EmptyState when no cards and no featured card', () => {
         render(<KoleksiKartu cards={emptyCards()} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
-        expect(screen.getByText(/Filter ini belum ada kartunya/)).toBeInTheDocument();
+        expect(screen.getByText(/Belum ada kartu di sini/)).toBeInTheDocument();
     });
 
     it('renders the LegendaryTease when legendary count is 0', () => {
@@ -52,7 +52,7 @@ describe('Koleksi/Kartu', () => {
     it('renders the rarity filter pills (counts per rarity)', () => {
         render(<KoleksiKartu cards={emptyCards()} selectedRarity="epic" featuredCard={null} rarityCounts={rarityCounts} />);
         expect(screen.getByText(/Biasa · 5/)).toBeInTheDocument();
-        expect(screen.getByText(/Epik · 2/)).toBeInTheDocument();
+        expect(screen.getByText(/Luar Biasa · 2/)).toBeInTheDocument();
     });
 
     it('renders the featured panel with flavor analysis + badge tags', () => {
@@ -69,7 +69,7 @@ describe('Koleksi/Kartu', () => {
         };
         render(<KoleksiKartu cards={emptyCards()} selectedRarity={null} featuredCard={featured} rarityCounts={rarityCounts} />);
         expect(screen.getAllByText('Pembalik Keadaan').length).toBeGreaterThan(0);
-        expect(screen.getByText(/Sorotan minggu ini/)).toBeInTheDocument();
+        expect(screen.getByText(/Highlight minggu ini/)).toBeInTheDocument();
         expect(screen.getByText(/Lari yang menyegarkan/)).toBeInTheDocument();
         expect(screen.getAllByText('Negative Split').length).toBeGreaterThan(0);
     });

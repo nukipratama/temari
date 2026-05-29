@@ -16,6 +16,7 @@ import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
 import { RARITY_BORDER, RARITY_LABELS, prettyBadge } from '@/lib/runcard';
+import { renderBold } from '@/lib/richText';
 import type { ActivityDetail, AnalysisPayload, Rarity } from '@/types/inertia';
 
 // Short Indonesian descriptions for each badge key
@@ -177,7 +178,7 @@ export default function KartuDetail({
                             <h1 className="font-display text-display-lg leading-[0.92] tracking-[-0.025em] text-ink">
                                 {card.special_move}.
                             </h1>
-                            <div className="mt-5">
+                            <div className="mt-3">
                                 <AnalysisStatus
                                     analysis={card.flavor_analysis}
                                     inertiaReloadProps={['card']}
@@ -185,7 +186,7 @@ export default function KartuDetail({
                                     showTimestamp={false}
                                     renderContent={(text) => (
                                         <p className="font-display text-quote-md italic leading-relaxed text-ink-2">
-                                            &ldquo;{text}&rdquo;
+                                            &ldquo;{renderBold(text)}&rdquo;
                                         </p>
                                     )}
                                 />
@@ -248,7 +249,7 @@ export default function KartuDetail({
                         {relatedCards.length > 0 && (
                             <div>
                                 <SectionLabel className="mb-3">
-                                    Yang serupa dari koleksi
+                                    Kartu mirip di koleksimu
                                 </SectionLabel>
                                 <div className="grid grid-cols-3 gap-2.5">
                                     {relatedCards.map((c) => (

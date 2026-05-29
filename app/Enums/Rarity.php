@@ -20,9 +20,9 @@ enum Rarity: string
     {
         return match ($this) {
             self::Common => 'Biasa',
-            self::Uncommon => 'Jarang',
+            self::Uncommon => 'Berkesan',
             self::Rare => 'Langka',
-            self::Epic => 'Epik',
+            self::Epic => 'Luar Biasa',
             self::Legendary => 'Legendaris',
         };
     }

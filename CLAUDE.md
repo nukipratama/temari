@@ -49,6 +49,8 @@ UI is **Inertia 2 + React 19 + TypeScript + Tailwind v4** following Laravel Reac
 
 Full token reference (colors, type scale, fonts, gradients, spacing): [docs/design-tokens.md](docs/design-tokens.md), generated from the `app.css @theme` block.
 
+**Voice & tone:** all user-facing copy (UI chrome, Temari narration, LLM prompts) follows one casual-Jakarta register with a code-switch test for English terms, a beginner-accessibility tier for jargon, a calque blacklist, and a `**bold**` emphasis rule. Read [docs/voice-and-tone.md](docs/voice-and-tone.md) before writing or reviewing copy. Persona source of truth: [TemariPersona.php](app/Services/AI/TemariPersona.php).
+
 ### Strava brand mark — hands off
 
 The "Connect with Strava" button (and any Strava brand mark in the app) is never restyled. Strava brand orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. The warm `horizon` peach (`#e8a076`) and `ember` share a hue family with Strava orange, so within any card that **displays the Strava brand mark**, the warm accent is *not* used: switch the local context to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Strava can revoke API access for brand-guideline violations.

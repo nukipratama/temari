@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatIdDate } from '@/lib/pace';
+import { renderBold } from '@/lib/richText';
 import AnalysisStatus from './AnalysisStatus';
 import TemariMascot from './TemariMascot';
 import TemariPeek from './TemariPeek';
@@ -203,7 +204,7 @@ function BriefingDone({ headline, suggestion }: Readonly<{ headline: AnalysisPay
                 allowReanalyze={false}
                 showTimestamp={false}
                 renderContent={(content) => (
-                    <p className="text-lg font-semibold leading-snug tracking-tight text-ink">{content}</p>
+                    <p className="text-lg font-semibold leading-snug tracking-tight text-ink">{renderBold(content)}</p>
                 )}
             />
             <AnalysisStatus
@@ -213,7 +214,7 @@ function BriefingDone({ headline, suggestion }: Readonly<{ headline: AnalysisPay
                 allowReanalyze={false}
                 showTimestamp={false}
                 renderContent={(content) => (
-                    <p className="text-sm leading-snug text-ink-2">{content}</p>
+                    <p className="text-sm leading-snug text-ink-2">{renderBold(content)}</p>
                 )}
             />
         </div>
@@ -235,7 +236,7 @@ function BriefingPending({ headline }: Readonly<{ headline: AnalysisPayload }>) 
             allowReanalyze={false}
             showTimestamp={false}
             renderContent={(content) => (
-                <p className="text-lg font-semibold leading-snug tracking-tight text-ink">{content}</p>
+                <p className="text-lg font-semibold leading-snug tracking-tight text-ink">{renderBold(content)}</p>
             )}
         />
     );

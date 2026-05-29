@@ -42,7 +42,7 @@ final class RuleBasedNarrationFiller
 
     private function briefingHeadline(): string
     {
-        return 'Kondisi kamu hari ini stabil, kapasitas cukup buat sesi ringan sampai sedang.';
+        return 'Kondisi kamu hari ini **stabil**, kapasitas cukup buat sesi ringan sampai sedang.';
     }
 
     private function briefingSuggestion(): string

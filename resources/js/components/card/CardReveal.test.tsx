@@ -103,7 +103,7 @@ describe('CardReveal', () => {
     it('Skip on any non-final frame marks seen and reloads the pendingReveal prop', async () => {
         const u = userEvent.setup();
         render(<CardReveal pending={epicReveal} />);
-        await u.click(screen.getByText('Skip'));
+        await u.click(screen.getByText('Lewati'));
 
         expect(fetchMock).toHaveBeenCalledWith(
             '/api/kartu/42/seen',
@@ -136,7 +136,7 @@ describe('CardReveal', () => {
     it('only POSTs /seen once even if the user double-clicks Skip', async () => {
         const u = userEvent.setup();
         render(<CardReveal pending={epicReveal} />);
-        const skip = screen.getByText('Skip');
+        const skip = screen.getByText('Lewati');
         await u.click(skip);
         await u.click(skip);
         expect(fetchMock).toHaveBeenCalledTimes(1);

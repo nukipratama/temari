@@ -7,8 +7,8 @@ import TemariProto from '@/components/temari/TemariProto';
 const ACTIONS = [
     {
         icon: 'mdi:cards-outline',
-        title: 'Cek koleksi yang Legendary',
-        desc: 'Liat kartu-kartu yang bisa kamu earn.',
+        title: 'Cek koleksi yang Legendaris',
+        desc: 'Liat kartu yang bisa kamu dapetin.',
         href: '/kartu',
     },
     {

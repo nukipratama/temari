@@ -23,9 +23,9 @@ describe('MetricExplainer', () => {
 
     it('omits the acronym separator for metrics without one', () => {
         render(<MetricExplainer metricKey="form" />);
-        fireEvent.click(screen.getByRole('button', { name: 'Penjelasan Form' }));
-        // Heading is just "Form" — no " · " separator
-        expect(screen.queryByText(/Form ·/)).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Penjelasan Kesiapan' }));
+        // Heading is just "Kesiapan" — no " · " separator
+        expect(screen.queryByText(/Kesiapan ·/)).not.toBeInTheDocument();
     });
 
     it('closes the popover on second trigger click', async () => {

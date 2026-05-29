@@ -66,8 +66,8 @@ function framesFor(theatrical: boolean, rarity: Rarity, name: string): Frame[] {
         },
         {
             pose: 'excited',
-            eyebrow: 'Verdict',
-            title: 'Ini layak kartu.',
+            eyebrow: 'Hasil',
+            title: 'Ini pantas dapet kartu.',
         },
         {
             pose: 'holding',
@@ -266,11 +266,11 @@ export default function CardReveal({ pending, onPrMoment }: Readonly<CardRevealP
                                         size="sm"
                                         onClick={dismiss}
                                     >
-                                        {isLastFrame ? 'Tutup' : 'Skip'}
+                                        {isLastFrame ? 'Tutup' : 'Lewati'}
                                     </PillButton>
                                 </div>
                                 <div className="mt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-cream/55">
-                                    Frame {step + 1} / {frames.length} · tap untuk lanjut
+                                    Frame {step + 1} / {frames.length} · ketuk untuk lanjut
                                 </div>
                             </div>
                         </div>

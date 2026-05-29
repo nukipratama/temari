@@ -1,5 +1,6 @@
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
+import { renderBold } from '@/lib/richText';
 import type { AnalysisPayload } from '@/types/inertia';
 
 interface RingkasanCardProps {
@@ -42,7 +43,7 @@ export default function RingkasanCard({
                     inertiaReloadProps={inertiaReloadProps}
                     size="md"
                     renderContent={(content) => (
-                        <p className="text-sm leading-relaxed text-ink">{content}</p>
+                        <p className="text-sm leading-relaxed text-ink">{renderBold(content)}</p>
                     )}
                 />
             </div>

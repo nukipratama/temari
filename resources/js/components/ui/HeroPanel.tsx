@@ -15,7 +15,9 @@ export default function HeroPanel({ children, gradient = true, className, style 
     return (
         <div
             className={cn(
-                'relative overflow-hidden rounded-2xl px-9 py-8 text-cream',
+                // Mobile-first padding; callers bump `lg:` (no tailwind-merge in `cn`,
+                // so the base intentionally leaves `lg:` to callers to avoid conflicts).
+                'relative overflow-hidden rounded-2xl px-6 py-6 text-cream sm:px-8 sm:py-7',
                 gradient ? GRADIENT : 'bg-sky',
                 className,
             )}

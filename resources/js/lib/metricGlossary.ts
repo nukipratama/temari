@@ -4,8 +4,9 @@
  * keyed by a stable slug. Components opt in via `<MetricExplainer
  * metricKey="ctl" />` next to the label they want to demystify.
  *
- * Voice matches the Temari persona:santai-formal, "kamu" address form,
- * running domain terms stay English, no em-dash, no markdown, no slang.
+ * Voice matches the Temari persona: santai khas obrolan, "kamu" address form,
+ * common running terms stay English, obscure ones get explained, no em-dash,
+ * no markdown. See docs/voice-and-tone.md.
  */
 
 export interface MetricGlossaryEntry {
@@ -29,8 +30,8 @@ export const METRIC_GLOSSARY = {
         body: 'Beban 7 hari terakhir. Tinggi berarti kamu baru selesai kerja keras dan perlu recovery sebelum push lagi.',
     },
     form: {
-        label: 'Form',
-        body: 'Selisih Fitness dikurangi Fatigue. Positif berarti segar dan siap, negatif berarti sedang lelah dari sesi keras.',
+        label: 'Kesiapan',
+        body: 'Seberapa siap badanmu buat lari hari ini, dari selisih Fitness dikurangi Fatigue. Positif berarti segar dan siap, negatif berarti lagi capek dari sesi keras.',
     },
     trimp: {
         acronym: 'TRIMP',
@@ -92,20 +93,20 @@ export const METRIC_GLOSSARY = {
         body: 'Mode sprint, tidak bisa bicara sama sekali. Dipakai hanya untuk interval pendek.',
     },
     status_fresh: {
-        label: 'Fresh',
-        body: 'Sedang segar dan siap untuk latihan berat. Form positif, fatigue rendah.',
+        label: 'Lagi seger',
+        body: 'Lagi segar dan siap buat sesi berat. Kesiapan positif, fatigue rendah.',
     },
     status_optimal: {
-        label: 'Optimal',
-        body: 'Pas, beban dan kebugaran seimbang. Sweet spot untuk training konsisten.',
+        label: 'Pas banget',
+        body: 'Pas, beban dan kebugaran seimbang. Sweet spot buat training konsisten.',
     },
     status_fatigued: {
-        label: 'Fatigued',
-        body: 'Lelah, perlu mengurangi intensitas. Kasih easy day atau rest agar fatigue turun.',
+        label: 'Mulai capek',
+        body: 'Lagi capek, intensitasnya dikurangi dulu. Kasih easy day atau rest biar fatigue turun.',
     },
     status_overreaching: {
-        label: 'Overreaching',
-        body: 'Terlalu diforsir. Wajib rest beberapa hari sebelum lanjut, kalau tidak risiko cedera atau sakit meningkat.',
+        label: 'Kelewatan',
+        body: 'Bebannya kelewat banyak. Wajib rest beberapa hari sebelum lanjut, kalau dipaksa risiko cedera atau sakit naik.',
     },
     vibe_vs_mood: {
         label: 'Vibe vs Mood',

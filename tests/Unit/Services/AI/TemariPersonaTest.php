@@ -8,7 +8,7 @@ use App\Services\AI\TemariPersona;
  * MANUAL VOICE SPOT-CHECK (run after meaningful persona edits):
  *  - Hit /dashboard logged in as a user with recent activity and read the
  *    Briefing Temari card. Voice should be first-person Temari ("aku" /
- *    "kamu"), hangat, formal-tapi-tidak-kaku, tanpa bahasa gaul.
+ *    "kamu"), hangat, santai khas obrolan Jakarta, garis merah di lo/gue.
  *  - Open a recent run at /aktivitas/{id} and read all 4 thread entries
  *    (Cerita lari ini, Terjemahan teknis, Split highlight, HR zone). Same
  *    voice across all four — they're produced by different narrators but
@@ -51,20 +51,21 @@ it('keeps the Daybreak mood vocabulary inline so narrators reuse it verbatim', f
     }
 });
 
-it('forbids markdown, em-dash, and third-person clinical phrasing', function (): void {
+it('allows one bold emphasis but bans other markdown, em-dash, and clinical phrasing', function (): void {
     $prompt = TemariPersona::systemPrompt();
 
     expect($prompt)
-        ->toContain('JANGAN markdown')
+        ->toContain('**bold**')
+        ->toContain('JANGAN markdown lain')
         ->toContain('em dash')
         ->toContain('orang ketiga');
 });
 
-it('forbids gaul / slang vocabulary', function (): void {
+it('draws the slang bright line at lo/gue while allowing casual Jakarta vocab', function (): void {
     $prompt = TemariPersona::systemPrompt();
 
     expect($prompt)
-        ->toContain('JANGAN gunakan bahasa gaul')
+        ->toContain('Garis merah')
         ->toContain('"lo"')
         ->toContain('"gue"')
         ->toContain('"udah"')

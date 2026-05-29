@@ -4,6 +4,7 @@ import { Icon } from '@iconify/react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Card from '@/components/ui/Card';
 import { csrfToken } from '@/lib/http';
+import { renderBold } from '@/lib/richText';
 import { cn } from '@/lib/cn';
 import type { AnalysisPayload } from '@/types/inertia';
 
@@ -123,7 +124,7 @@ export default function FourLensGrid({
                             showTimestamp={false}
                             renderContent={(text) => (
                                 <p className="font-sans text-[15px] leading-relaxed text-ink">
-                                    {text}
+                                    {renderBold(text)}
                                 </p>
                             )}
                         />

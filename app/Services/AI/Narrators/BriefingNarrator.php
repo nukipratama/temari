@@ -32,10 +32,10 @@ class BriefingNarrator
         "saat sempet, format yang cocok...", "kalau jadi lari hari ini...".
 
         - headline: 1-2 kalimat verdict factual kondisi user hari ini. Boleh
-          singgung satu metric konkret (form, recovery, atau weekly load)
+          singgung satu metric konkret (kesiapan, recovery, atau weekly load)
           biar terasa data-driven. Statement tentang KONDISI, bukan rencana.
           Maksimal 25 kata.
-          Contoh oke: "Form +12 dan recovery 18 jam, kapasitas kamu hari
+          Contoh oke: "Kesiapan +12 dan recovery 18 jam, kapasitas kamu hari
           ini di zona quality session."
           Contoh JANGAN: "Pagi ini siap buat tempo run."
 

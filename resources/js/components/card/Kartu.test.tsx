@@ -16,7 +16,7 @@ describe('Kartu', () => {
         'renders rarity flag for %s',
         (rarity) => {
             render(<Kartu name="x" km="1" durasi="1:00" trimp={1} rarity={rarity} />);
-            const label = { common: 'Biasa', uncommon: 'Jarang', rare: 'Langka', epic: 'Epik', legendary: 'Legendaris' }[rarity];
+            const label = { common: 'Biasa', uncommon: 'Berkesan', rare: 'Langka', epic: 'Luar Biasa', legendary: 'Legendaris' }[rarity];
             expect(screen.getByText(label)).toBeInTheDocument();
         },
     );

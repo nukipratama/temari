@@ -39,7 +39,7 @@ it('returns Paru-paru Baja when Z3 share exceeds 60 percent', function (): void 
     expect($move)->toBe('Paru-paru Baja');
 });
 
-it('returns Mode Metronom when cadence stays mostly above 175', function (): void {
+it('returns Metronom when cadence stays mostly above 175', function (): void {
     $move = (new SpecialMoves())->pick(
         [
             'cadence_distribution_pct' => ['<165' => 5, '165-175' => 25, '>175' => 70],
@@ -47,7 +47,7 @@ it('returns Mode Metronom when cadence stays mostly above 175', function (): voi
         ['distance_m' => 5_000, 'pr_set' => false],
     );
 
-    expect($move)->toBe('Mode Metronom');
+    expect($move)->toBe('Metronom');
 });
 
 it('returns Pemburu Sabar on Z2-dominant runs', function (): void {

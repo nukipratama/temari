@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn';
 import { fadeInUp, pressShrink } from '@/lib/motion';
 import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
 import { RARITY_LABELS, RARITY_ORDER, prettyBadge } from '@/lib/runcard';
+import { renderBold } from '@/lib/richText';
 import { emberGlowStyle } from '@/lib/styles';
 import { useState } from 'react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -56,7 +57,7 @@ export default function KoleksiKartu({
 
     const totalKartu = Object.values(rarityCounts).reduce((sum, n) => sum + n, 0);
     const epicCount = rarityCounts.epic + rarityCounts.legendary;
-    const eyebrow = `Koleksi · ${totalKartu} kartu · ${epicCount} Epic+`;
+    const eyebrow = `Koleksi · ${totalKartu} kartu · ${epicCount} terbaik`;
 
     // On the "Semua" view we hide the spotlight card from the grid to avoid
     // it appearing twice (hero + tile). On any rarity-filtered view we keep
@@ -85,8 +86,8 @@ export default function KoleksiKartu({
                 <CollectionHeader
                     active="kartu"
                     eyebrow={eyebrow}
-                    headline1="Yang Temari kasih kamu"
-                    headline2="semuanya."
+                    headline1="Semua kartu kamu"
+                    headline2="dari Temari."
                     activeCount={String(totalKartu)}
                 />
 
@@ -140,7 +141,7 @@ function FeaturedPanel({
                 </div>
                 <div>
                     <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
-                        ★ Sorotan minggu ini · {RARITY_LABELS[featured.rarity]}
+                        ★ Highlight minggu ini · {RARITY_LABELS[featured.rarity]}
                     </div>
                     <h2 className="mb-4 font-display text-display-md text-cream">
                         <em className="italic text-horizon">{featured.special_move}</em>
@@ -154,7 +155,7 @@ function FeaturedPanel({
                                 showTimestamp={false}
                                 renderContent={(text) => (
                                     <p className="font-display text-quote-lg italic text-cream">
-                                        “{text}”
+                                        “{renderBold(text)}”
                                     </p>
                                 )}
                             />
@@ -203,9 +204,9 @@ function RarityFilter({
     counts,
 }: Readonly<{ selected: string | null; counts: Record<Rarity, number> }>) {
     return (
-        <nav aria-label="Filter rarity" className="mt-8 flex flex-wrap items-center gap-2">
+        <nav aria-label="Filter kartu" className="mt-8 flex flex-wrap items-center gap-2">
             <span className="mr-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
-                Rarity
+                Tingkat
             </span>
             <FilterPill href="/kartu" label="Semua" active={selected === null} dot={null} />
             {RARITY_ORDER.map((r) => (
@@ -289,7 +290,7 @@ function EmptyState() {
     return (
         <Card tone="empty" padding="lg" className="mt-8 text-center">
             <p className="font-display text-2xl italic text-ink-2">
-                Filter ini belum ada kartunya.
+                Belum ada kartu di sini.
             </p>
             <p className="mt-2 font-sans text-sm text-ink-2">Coba filter lain, atau sync lari terbaru dulu.</p>
         </Card>

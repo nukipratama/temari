@@ -73,7 +73,7 @@ describe('KartuDetail', () => {
 
     it('renders badge lore section when badges exist', () => {
         render(<KartuDetail card={epicCard} relatedCards={[]} totalForRarity={3} />);
-        expect(screen.getByText(/Kenapa Epik/)).toBeInTheDocument();
+        expect(screen.getByText(/Kenapa Luar Biasa/)).toBeInTheDocument();
         expect(screen.getAllByText(/Negative Split/i).length).toBeGreaterThan(0);
     });
 
@@ -86,7 +86,7 @@ describe('KartuDetail', () => {
     it('renders related cards when provided', () => {
         render(<KartuDetail card={epicCard} relatedCards={relatedCards} totalForRarity={3} />);
         expect(screen.getByText('Lompatan Fajar')).toBeInTheDocument();
-        expect(screen.getByText(/Yang serupa dari koleksi/)).toBeInTheDocument();
+        expect(screen.getByText(/Kartu mirip di koleksimu/)).toBeInTheDocument();
     });
 
     it('omits the badge lore section when badges is null', () => {

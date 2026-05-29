@@ -80,7 +80,7 @@ describe('AppShell', () => {
             { preload: () => {} },
         ) as typeof fetch;
         render(<AppShell><p>x</p></AppShell>);
-        await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Skip/i })); });
+        await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Lewati/i })); });
         // PRMomentModal fires — PR time is visible
         expect(screen.getByText('22:15')).toBeInTheDocument();
         // Clicking close triggers the onClose callback (covers () => setPrModal(null))

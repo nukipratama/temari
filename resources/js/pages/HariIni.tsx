@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import { fadeInUp } from '@/lib/motion';
 import { formStatusLabel } from '@/lib/formStatus';
+import { renderBold } from '@/lib/richText';
 import { formatKm, formatPace, formatRelativeId, paceSecPerKm } from '@/lib/pace';
 import { emberGlowStyle } from '@/lib/styles';
 import {
@@ -82,7 +83,7 @@ const TOUR_STEPS: TourStep[] = [
     {
         target: 'greeting',
         title: 'Briefing harian',
-        body: 'Tiap pagi aku kasih briefing kondisi lari kamu: vibe, saran sesi, sama recap terakhir.',
+        body: 'Tiap pagi aku kasih briefing kondisi lari kamu: vibe, saran sesi, sama ringkasan lari terakhir.',
         tipSide: 'below',
     },
     {
@@ -94,7 +95,7 @@ const TOUR_STEPS: TourStep[] = [
     {
         target: 'bottom-nav-koleksi',
         title: 'Koleksi kamu',
-        body: 'Semua kartu ngumpul di sini. Koleksi tumbuh seiring larimu.',
+        body: 'Semua kartu ngumpul di sini. Makin sering lari, makin banyak kartunya.',
         tipSide: 'above',
     },
 ];
@@ -221,7 +222,7 @@ function KataTemariCompact({ briefing, pose }: Readonly<{ briefing: BriefingResu
                     size="sm"
                     renderContent={(text) => (
                         <p className="whitespace-pre-line font-display text-base italic leading-relaxed text-ink">
-                            &ldquo;{text}&rdquo;
+                            &ldquo;{renderBold(text)}&rdquo;
                         </p>
                     )}
                 />
@@ -249,11 +250,12 @@ function VitalChips({ briefing, load, onSky = false }: Readonly<{ briefing: Brie
                 explainerKey="vibe_vs_mood"
             />
             <VitalChip
-                label="Form"
+                label="Kesiapan"
                 value={load ? formatSignedForm(load.form) : '—'}
                 sub={load ? formStatusLabel(load.form_status) : ''}
                 tone="leaf"
                 onSky={onSky}
+                explainerKey="form"
             />
             <VitalChip
                 label="Recovery"
@@ -340,7 +342,7 @@ function FeaturedKartuPanel({
                             onSky
                             renderContent={(text) => (
                                 <p className="font-display text-quote-lg italic text-cream">
-                                    &ldquo;{text}&rdquo;
+                                    &ldquo;{renderBold(text)}&rdquo;
                                 </p>
                             )}
                         />
@@ -402,11 +404,11 @@ function SuggestionContent({ text }: Readonly<{ text: string }>) {
     return (
         <div className="space-y-2.5">
             <h3 className="font-display text-display-xs leading-tight tracking-[-0.01em] text-ink">
-                {title}
+                {renderBold(title)}
             </h3>
             {body !== '' && (
                 <p className="whitespace-pre-line font-sans text-sm leading-relaxed text-ink-2">
-                    {body}
+                    {renderBold(body)}
                 </p>
             )}
         </div>

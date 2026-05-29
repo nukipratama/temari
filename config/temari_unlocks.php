@@ -33,10 +33,10 @@ return [
         'criteria' => 'Dapatkan 1 kartu Legendaris.',
     ],
     'accessory.headband_epik' => [
-        'name' => 'Headband Epik',
+        'name' => 'Headband Luar Biasa',
         'icon' => 'mdi:bandage',
-        'description' => 'Headband ungu untuk koleksi 3 kartu Epik.',
-        'criteria' => 'Dapatkan 3 kartu Epik.',
+        'description' => 'Headband ungu untuk koleksi 3 kartu Luar Biasa.',
+        'criteria' => 'Dapatkan 3 kartu Luar Biasa.',
     ],
     'accessory.weekly_streak_4' => [
         'name' => 'Pita Konsisten',

@@ -116,10 +116,10 @@ describe('HariIni', () => {
         expect(screen.getAllByText(/membara/i).length).toBeGreaterThan(0);
     });
 
-    it('renders the three vital chips (Vibe / Form / Recovery)', () => {
+    it('renders the three vital chips (Vibe / Kesiapan / Recovery)', () => {
         render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
         expect(screen.getByText('Vibe')).toBeInTheDocument();
-        expect(screen.getByText('Form')).toBeInTheDocument();
+        expect(screen.getByText('Kesiapan')).toBeInTheDocument();
         expect(screen.getByText('Recovery')).toBeInTheDocument();
     });
 

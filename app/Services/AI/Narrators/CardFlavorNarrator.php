@@ -15,10 +15,10 @@ class CardFlavorNarrator
         Tugas: berikan 1 kalimat flavor maksimal 22 kata untuk kartu aktivitas.
         Setiap kartu punya rarity (common, uncommon, rare, epic, legendary) +
         special move + badges. Saat menyebut rarity dalam kalimat, gunakan
-        label Bahasa Indonesia: Biasa / Jarang / Langka / Epik / Legendaris.
+        label Bahasa Indonesia: Biasa / Berkesan / Langka / Luar Biasa / Legendaris.
 
-        Rajut kombinasi badge, pacing, dan cuaca menjadi 1 kalimat naratif yang
-        menjelaskan kenapa kartu ini istimewa.
+        Rajut kombinasi badge, pacing, dan cuaca jadi 1 kalimat yang
+        nunjukin kenapa kartu ini spesial.
         PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)

@@ -204,7 +204,7 @@ class MilestoneDetector
         return [
             'kind' => 'first_ever_pace',
             'label' => sprintf('Pace sub-%s pertama!', $label),
-            'body' => sprintf('Pace kamu turun di bawah %s/km. Quality day!', $label),
+            'body' => sprintf('Pace kamu turun di bawah %s/km. Lari berkualitas!', $label),
             'priority' => 30 + (int) round((420 - $thresholdMatched) / 6),
         ];
     }

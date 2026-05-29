@@ -1,4 +1,5 @@
 import { type CSSProperties, useCallback, useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import TemariProto from '@/components/temari/TemariProto';
 
 export interface TourStep {
@@ -118,7 +119,10 @@ export default function GuidedTour({
         }
     })();
 
-    return (
+    // Portal to <body> so the overlay escapes the page's `motion.div` stacking
+    // context (the enter animation animates opacity, which traps child z-index
+    // below sibling chrome like the mobile bottom nav).
+    return createPortal(
         <>
             {/* 4-panel backdrop */}
             <div aria-hidden className="pointer-events-none fixed inset-0 z-[49]">
@@ -164,6 +168,7 @@ export default function GuidedTour({
                     </div>
                 </div>
             </div>
-        </>
+        </>,
+        document.body,
     );
 }
