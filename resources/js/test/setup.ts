@@ -1,7 +1,15 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { MotionGlobalConfig } from 'framer-motion';
 import { createElement, type ReactNode } from 'react';
+
+// Make framer-motion animations resolve instantly in tests. Without this its
+// animation frameloop runs over real time and a frame can fire after a test
+// file's jsdom env is torn down, throwing an unhandled "window is not defined"
+// that fails CI even when every test passes. Instant animations also make
+// AnimatePresence exits deterministic (children removed synchronously).
+MotionGlobalConfig.skipAnimations = true;
 
 const DEFAULT_PAGE_PROPS: Record<string, unknown> = {
     auth: { user: null },

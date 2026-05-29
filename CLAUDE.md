@@ -33,22 +33,37 @@ This application is a Laravel application and its main Laravel ecosystems packag
 
 ## Frontend Stack
 
-UI is **Inertia 2 + React 19 + TypeScript + Tailwind v4** following Laravel React Starter Kit conventions. Routes still go through controllers (`Inertia::render('PageName', $props)`); React pages live in `resources/js/pages/` and components in `resources/js/components/`. Palette tokens live in the `@theme` block of [resources/css/app.css](resources/css/app.css) — components use `brand-*`, `accent-*`, `pop-*`, `surface*`, `ink*`, `mood-*` semantic classes, NOT raw Tailwind colors like `lime-500`. Brand primary is deep emerald `#0E7A4C`; co-primary accent is warm terracotta `#D9764A`; `pop-*` mustard is reserved for PR / legendaris celebrations only. App is **light-mode only** — the `dark:` modifier still appears in legacy component code but `.dark` is never applied to `<html>`; treat any new code as light-only.
+UI is **Inertia 2 + React 19 + TypeScript + Tailwind v4** following Laravel React Starter Kit conventions. Routes still go through controllers (`Inertia::render('PageName', $props)`); React pages live in `resources/js/pages/` and components in `resources/js/components/`. Palette tokens live in the `@theme` block of [resources/css/app.css](resources/css/app.css). The palette is **Daybreak** (pre-dawn Jakarta at 05:30). Components use the semantic token families, NOT raw Tailwind colors like `lime-500`:
+
+- `sky` / `sky-deep` / `sky-2` (`#1f2747`) - structure, dark hero panels, the only "dark" surface.
+- `horizon` / `horizon-deep` (`#e8a076` peach) - primary CTA, "earned"/PR state, Temari accent.
+- `cream` / `cream-deep` (`#f6f1e8`) - paper / secondary surface and borders.
+- `ink` / `ink-2` / `ink-3` - the 3-tier text-contrast scale (see below).
+- `surface` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` - app surfaces (dawn-shift drifts `surface`).
+- `mood-{nyala,enteng,oleng,lemes,mumet,adem}` (each with a pastel `-bg` variant) - calendar cells + mood badges.
+- `rarity-{common,uncommon,rare,epic,legendary}` - card rarity.
+- semantic hues `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone`.
+- `strava-orange` / `strava-orange-hover` - reserved, never themed (see below).
+
+`citrus` mustard (`#d9b23a`) is reserved for PR / legendaris celebrations only. App is **light-mode only**: the `dark:` modifier still appears in legacy component code but `.dark` is never applied to `<html>`, and there are no `*-dark` tokens. Treat any new code as light-only.
+
+Full token reference (colors, type scale, fonts, gradients, spacing): [docs/design-tokens.md](docs/design-tokens.md), generated from the `app.css @theme` block.
 
 ### Strava brand mark — hands off
 
-The "Connect with Strava" button (and any Strava brand mark in the app) is never restyled. Strava brand orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. Terracotta `#D9764A` and Strava orange share a hue family, so within any card that **displays the Strava brand mark**, the surrounding `accent` color is *not* used — switch the local context to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Strava can revoke API access for brand-guideline violations.
+The "Connect with Strava" button (and any Strava brand mark in the app) is never restyled. Strava brand orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. The warm `horizon` peach (`#e8a076`) and `ember` share a hue family with Strava orange, so within any card that **displays the Strava brand mark**, the warm accent is *not* used: switch the local context to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Strava can revoke API access for brand-guideline violations.
 
 ### CTA contrast rule (WCAG)
 
-`accent-500` `#D9764A` on white text is ~3.4:1 — passes for large text (≥18px, or 14px bold) but **fails AA for normal body text**. So:
-- Primary CTAs on `accent-500` must be `text-base font-bold` or larger.
-- Smaller / dense buttons use `brand-700` `#07492D` as bg (white text passes 12:1).
-- `accent-500` is fine for icon-only buttons and large hero CTAs.
+`horizon` (`#e8a076`) is a light peach, so it pairs with **dark** text, never white. Follow the [`PillButton`](resources/js/components/ui/PillButton.tsx) presets:
+- `horizon` bg → `text-sky` (dark navy text on peach passes comfortably); hover darkens to `horizon-deep`.
+- `sky` / `sky-deep` bg (dark navy) → `text-cream` / white text (passes ~12:1); hover darkens to `sky-deep`.
+- `leaf-deep` (`#4f6c54`) bg → white text (passes AA ~4.9:1); used for dense "retry"/action chips. No darker leaf token exists, so darken on hover with `hover:opacity-90`, not a hue jump.
+- Never put white text on `horizon`/`citrus`/`cream` (all too light).
 
 ### Gradient primitives
 
-Five signature gradients live as CSS vars in `app.css` (`--gradient-subuh`, `--gradient-subuh-soft`, `--gradient-fajar`, `--gradient-thread`, `--gradient-ember`), exposed as utilities `bg-gradient-*` and `text-gradient-*`. Rule: **gradient text on numbers only**, only on `text-2xl`+, and only one per visible viewport — scarcity makes it feel premium, not Las-Vegas. Use [`<GradientNumber>`](resources/js/components/GradientNumber.tsx) as the wrapper. Backdrop atmospherics use [`<MeshBackdrop variant="dawn|night|ember" />`](resources/js/components/MeshBackdrop.tsx) inside `relative overflow-hidden` parents.
+Gradient **text** is applied via [`<GradientText preset="horizon|cream-sun" fontSize=… />`](resources/js/components/ui/GradientText.tsx), which clips a `linear-gradient` to the text via inline `background-clip`. Rule: **gradient text on numbers only**, only at large display sizes, and only one per visible viewport. Scarcity makes it feel premium, not Las-Vegas. Backdrop atmospherics use [`<MeshBackdrop variant="dawn|night|ember" />`](resources/js/components/MeshBackdrop.tsx) (three blurred radial blobs) inside `relative overflow-hidden` parents; used mainly on the login page, in-app pages stay clean.
 
 ### Dawn-shift theme
 
@@ -58,25 +73,27 @@ Five signature gradients live as CSS vars in `app.css` (`--gradient-subuh`, `--g
 
 3-stop semantic system — use the tier that matches the text role, not "pick whichever color looks right":
 
-- `text-ink` (+ `dark:text-ink-dark`) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
-- `text-ink-soft` (+ `dark:text-ink-soft-dark`) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
-- `text-ink-meta` (+ `dark:text-ink-meta-dark`) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier — never use for body prose.
+- `text-ink` (`#1a1812`) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
+- `text-ink-2` (`#3d362a`) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
+- `text-ink-3` (`#7a6f5c`) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
 
-Sweep `grep text-ink-soft` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
+Sweep `grep text-ink-3` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
 
-### Typography scale
+### Typography & fonts
+
+Two families only (both loaded via Google Fonts in [app.blade.php](resources/views/app.blade.php)): **Instrument Serif** italic is `font-display` (headlines + Temari voice/quotes); **JetBrains Mono** is *both* `font-sans` and `font-mono` (the brand is deliberately all-mono for body/UI/numbers, tabular figures by default). The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headline-*`, `text-quote-*`), each bundling its own line-height + letter-spacing, so one utility lands the full spec.
 
 | Role | Class |
 |---|---|
-| Hero title (pre-auth landing) | `text-4xl font-semibold tracking-tight` |
-| Page title (`<h1>`) | `text-2xl font-semibold tracking-tight` |
-| Section heading (`<h2>`) | `text-lg font-bold tracking-tight` |
-| Sub-label (KPI/table cap) | `text-xs font-semibold uppercase tracking-wider text-ink-meta` |
-| Body paragraph | `text-base leading-relaxed text-ink` |
-| Caption / supporting | `text-sm text-ink-soft leading-relaxed` |
-| Meta / timestamp | `text-xs text-ink-meta` |
-| KPI value | `text-3xl font-black tabular-nums text-ink` |
-| Card stat (RunCard) | `text-2xl font-black tabular-nums text-ink` |
+| In-app hero title | `font-display italic text-display-2xl text-ink` |
+| Page title (`<h1>`) | `font-display text-display-lg text-ink` (compact/devtools header: `text-headline-xs`) |
+| Section heading (`<h2>`) | `font-display text-headline-sm text-ink` |
+| Temari voice / quote | `font-display italic text-quote-lg text-ink-2` |
+| Sub-label (KPI/table cap) | `text-xs font-semibold uppercase tracking-wider text-ink-3` |
+| Body paragraph | `font-sans text-sm leading-relaxed text-ink` |
+| Caption / supporting | `text-sm text-ink-2 leading-relaxed` |
+| Meta / timestamp | `text-xs text-ink-3` |
+| KPI / big stat value | display tier (`text-display-xs`+) `tabular-nums text-ink`; avoid one-off `text-[NNpx]` |
 
 ### Section spacing rhythm
 

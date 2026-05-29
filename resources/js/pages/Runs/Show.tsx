@@ -174,14 +174,14 @@ export default function RunsShow({
                         )}
                         {card && (
                             <p className="border-t border-dashed border-cream-deep pt-3 font-display text-sm italic leading-relaxed text-ink-2">
-                                “{RARITY_LABELS[card.rarity]} — aku catat karena {detail.name ?? 'lari ini'} layak.”
+                                “{RARITY_LABELS[card.rarity]}, aku catat karena {detail.name ?? 'lari ini'} layak.”
                             </p>
                         )}
                     </Card>
                 </section>
 
                 {/* KATA TEMARI header + 4-LENS GRID */}
-                <section className="mt-9">
+                <section className="mt-10">
                     <header className="mb-4 flex items-center gap-3.5">
                         <TemariProto pose="observational" size={48} animate={false} />
                         <div>
@@ -200,20 +200,20 @@ export default function RunsShow({
                 </section>
 
                 {/* MAP + WEATHER + DETAIL TILES */}
-                <section className="mt-9 grid gap-3.5 lg:grid-cols-[1.4fr_1fr]">
+                <section className="mt-10 grid gap-3.5 lg:grid-cols-[1.4fr_1fr]">
                     <MapWeatherPanel detail={detail} />
                     <DetailTiles detail={detail} summary={summary} />
                 </section>
 
                 {/* KAMU VS KAMU DULU */}
                 {pastYou && (
-                    <section className="mt-9">
+                    <section className="mt-10">
                         <PastYouStrip match={pastYou} currentDistance={detail.distance} />
                     </section>
                 )}
 
                 {/* SPLITS */}
-                {perKm.length > 0 && <SplitsTable rows={perKm} className="mt-9" />}
+                {perKm.length > 0 && <SplitsTable rows={perKm} className="mt-10" />}
 
                 <footer className="mt-8 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-3">
                     Strava activity {activity.strava_external_id ?? '—'} · ingested{' '}

@@ -7,6 +7,7 @@ namespace App\Services\AI\Narrators;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\PaceCalculator;
 
 class WeeklyRecapNarrator
 {
@@ -25,6 +26,11 @@ class WeeklyRecapNarrator
 
     public function generate(WeeklySnapshot $snapshot): string
     {
+        $paceSecPerKm = PaceCalculator::secPerKm(
+            $snapshot->distance_km === null ? null : $snapshot->distance_km * 1000,
+            $snapshot->moving_time_sec,
+        );
+
         $decoded = $this->caller->call(
             kind: 'weekly_recap',
             systemPrompt: self::SYSTEM_PROMPT,
@@ -32,6 +38,7 @@ class WeeklyRecapNarrator
                 'week_ending' => $snapshot->week_ending->toDateString(),
                 'runs' => $snapshot->runs,
                 'distance_km' => $snapshot->distance_km,
+                'pace_sec_per_km' => $paceSecPerKm,
                 'weekly_trimp' => $snapshot->weekly_trimp,
                 'ctl_42d' => $snapshot->ctl_42d,
                 'atl_7d' => $snapshot->atl_7d,

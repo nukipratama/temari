@@ -83,7 +83,7 @@ export default function MilestoneBanner({ pending }: Readonly<MilestoneBannerPro
                                 <p className="text-xs font-semibold uppercase tracking-wider text-citrus-deep">
                                     Milestone hari ini
                                 </p>
-                                <h2 className="mt-0.5 text-lg font-bold leading-tight text-ink sm:text-xl">
+                                <h2 className="mt-0.5 text-lg font-bold leading-tight tracking-tight text-ink sm:text-xl">
                                     {primary.label}
                                 </h2>
                                 <p className="mt-1 text-sm leading-relaxed text-ink-2">{primary.body}</p>

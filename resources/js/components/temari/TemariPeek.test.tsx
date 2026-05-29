@@ -21,21 +21,20 @@ describe('TemariPeek', () => {
         expect(screen.queryByText(/hai|halo|hey/)).not.toBeInTheDocument();
     });
 
-    it('appears after the delay and starts fading after visibleMs', () => {
+    it('appears after the delay and hides after visibleMs', async () => {
         render(<TemariPeek lines={LINES} delayMs={1000} visibleMs={500} />);
         act(() => {
             vi.advanceTimersByTime(1000);
         });
-        const bubble = screen.getByText(/hai|halo|hey/);
-        expect(bubble).toBeInTheDocument();
-        // Fake timers don't drive FM's rAF-based exit animation, so the
-        // bubble may still be in the DOM mid-fade. We only assert that
-        // the hide trigger fired — the inline opacity should drop below
-        // the initial 1.0 once the exit transition starts.
-        act(() => {
+        expect(screen.getByText(/hai|halo|hey/)).toBeInTheDocument();
+        // After visibleMs the bubble is dismissed. Animations are instant in
+        // tests (MotionGlobalConfig.skipAnimations), so the exit completes and
+        // the bubble leaves the DOM. The async act flushes AnimatePresence's
+        // safe-to-remove tick.
+        await act(async () => {
             vi.advanceTimersByTime(2000);
         });
-        expect(Number.parseFloat(bubble.style.opacity || '1')).toBeLessThan(1);
+        expect(screen.queryByText(/hai|halo|hey/)).not.toBeInTheDocument();
     });
 
     it('writes the session flag after first appearance', () => {

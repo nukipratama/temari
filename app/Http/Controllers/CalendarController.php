@@ -8,6 +8,7 @@ use Throwable;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\Run\Metrics\PaceCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -175,15 +176,15 @@ class CalendarController extends Controller
         $primary = $rows->first();
         $primaryId = (int) $primary->getAttribute('activity_id');
 
+        $paceSecPerKm = PaceCalculator::secPerKm($totalDistance, $totalMoving);
+
         return [
             'date' => $dateKey,
             'day' => $cursor->day,
             'is_current_month' => $cursor->betweenIncluded($monthStart, $monthEnd),
             'is_today' => $dateKey === $todayKey,
             'distance_km' => round($totalDistance / 1000, 2),
-            'pace_sec_per_km' => $totalDistance > 0 && $totalMoving > 0
-                ? round($totalMoving / ($totalDistance / 1000), 0)
-                : null,
+            'pace_sec_per_km' => $paceSecPerKm !== null ? round($paceSecPerKm, 0) : null,
             'avg_hr' => $hrWeight > 0 ? (int) round($hrWeighted / $hrWeight) : null,
             'trimp' => round($totalTrimp, 1),
             'mood' => $moodByActivity[$primaryId] ?? null,

@@ -9,6 +9,7 @@ use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\PaceCalculator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -122,10 +123,10 @@ class RekorController extends Controller
         foreach ($splits as $row) {
             $distance = isset($row['distance']) ? (float) $row['distance'] : 0.0;
             $time = isset($row['moving_time']) ? (float) $row['moving_time'] : 0.0;
-            if ($distance <= 0 || $time <= 0) {
+            $paceSecPerKm = PaceCalculator::secPerKm($distance, $time);
+            if ($paceSecPerKm === null) {
                 continue;
             }
-            $paceSecPerKm = ($time / $distance) * 1000;
             $out[] = (int) round($paceSecPerKm);
         }
 

@@ -82,7 +82,7 @@ const TOUR_STEPS: TourStep[] = [
     {
         target: 'greeting',
         title: 'Briefing harian',
-        body: 'Tiap pagi aku kasih briefing kondisi lari kamu — vibe, saran sesi, sama recap terakhir.',
+        body: 'Tiap pagi aku kasih briefing kondisi lari kamu: vibe, saran sesi, sama recap terakhir.',
         tipSide: 'below',
     },
     {
@@ -147,7 +147,7 @@ export default function HariIni({
                             {dateLine}
                         </div>
                         <h1 className="font-display text-display-2xl text-ink">
-                            Halo, {firstName} —<br />
+                            Halo, {firstName},<br />
                             <span className="italic text-horizon">{vibeSubtitle}</span>
                         </h1>
                     </div>

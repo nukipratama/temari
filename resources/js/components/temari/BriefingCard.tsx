@@ -157,7 +157,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
                 type="button"
                 onClick={trigger}
                 disabled={pending}
-                className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-sky disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-3 py-1 text-xs font-semibold text-cream shadow-sm transition hover:opacity-90 disabled:opacity-50"
             >
                 <Icon icon="mdi:reload" aria-hidden />
                 <span>Coba lagi</span>
@@ -171,7 +171,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
                 type="button"
                 onClick={trigger}
                 disabled={pending}
-                className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-sky disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-3 py-1 text-xs font-semibold text-cream shadow-sm transition hover:opacity-90 disabled:opacity-50"
             >
                 <Icon icon="mdi:auto-fix" aria-hidden />
                 <span>Minta Temari bacain</span>

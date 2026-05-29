@@ -47,4 +47,11 @@ Thumbs.db
 # IS committed (the prod Docker build relies on it).
 **/caddy
 frankenphp
-.claude/
+
+# Track the shareable Claude config (project skills, slash commands, settings)
+# but keep machine-local overrides out of git.
+.claude/*
+!.claude/settings.json
+!.claude/skills/
+!.claude/commands/
+.claude/settings.local.json

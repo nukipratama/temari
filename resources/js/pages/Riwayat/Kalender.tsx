@@ -104,7 +104,7 @@ export default function Kalender({
 
     return (
         <AppShell>
-            <Head title={`Riwayat · Kalender — ${monthLabel}`} />
+            <Head title={`Riwayat · Kalender · ${monthLabel}`} />
             <motion.main
                 variants={fadeInUp}
                 initial="hidden"

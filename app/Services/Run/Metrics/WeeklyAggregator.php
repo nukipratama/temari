@@ -100,6 +100,7 @@ class WeeklyAggregator
 
         $distanceKm = round(((float) $weekDetails->sum('distance')) / 1000, 1);
         $runs = $weekDetails->count();
+        $movingTimeSec = (int) round((float) $weekDetails->sum('moving_time'));
         $avgDecoupling = $this->averageDecoupling($weekDetails);
 
         $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $weekEnding);
@@ -112,6 +113,7 @@ class WeeklyAggregator
             [
                 'distance_km' => $distanceKm,
                 'runs' => $runs,
+                'moving_time_sec' => $movingTimeSec,
                 'weekly_trimp' => $summary['weekly_trimp'] ?? 0.0,
                 'atl_7d' => $summary['atl_7d'] ?? 0.0,
                 'ctl_42d' => $summary['ctl_42d'] ?? 0.0,

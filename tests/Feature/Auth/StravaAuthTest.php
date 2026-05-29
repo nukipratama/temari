@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as SocialiteUser;
@@ -81,6 +82,32 @@ it('creates a new user from the strava callback and logs them in', function (): 
         ->and($connection->access_token)->toBe('access-token-xyz')
         ->and($connection->refresh_token)->toBe('refresh-token-xyz')
         ->and($connection->scopes)->toBe('read,activity:read_all');
+});
+
+it('stores only the granted scopes and logs when a required scope is declined', function (): void {
+    Log::spy();
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'access-token-partial';
+    $stravaUser->refreshToken = 'refresh-token-partial';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('555111');
+    $stravaUser->shouldReceive('getName')->andReturn('Partial Grant');
+    $stravaUser->shouldReceive('getEmail')->andReturn('partial@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/p.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    // Strava reports only `read` was granted; activity:read_all was declined.
+    $this->get(route('auth.strava.callback', ['scope' => 'read']))
+        ->assertRedirect(route('dashboard'));
+
+    $connection = StravaConnection::where('strava_athlete_id', 555111)->firstOrFail();
+    expect($connection->scopes)->toBe('read');
+
+    Log::shouldHaveReceived('warning')->once()->with('strava.scopes.partial', Mockery::on(
+        fn (array $ctx): bool => $ctx['missing'] === ['activity:read_all'] && $ctx['granted'] === 'read',
+    ));
 });
 
 it('updates an existing user on subsequent strava callbacks', function (): void {
