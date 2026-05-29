@@ -1,3 +1,9 @@
+// Generated from the PHP enums — see generated.ts (`php artisan typescript:enums`).
+// Imported for local use below and re-exported so consumers keep importing from here.
+import type { AnalysisStatus, AnalysisType, Rarity } from './generated';
+
+export type { AnalysisStatus, AnalysisType, Rarity } from './generated';
+
 export type Mood = 'nyala' | 'enteng' | 'oleng' | 'lemes' | 'mumet' | 'adem';
 
 export type Tone = 'neutral' | 'positive' | 'warning' | 'alert';
@@ -40,25 +46,6 @@ export interface SharedProps {
     stravaSync?: StravaSync | null;
     [key: string]: unknown;
 }
-
-export type AnalysisStatus = 'pending' | 'queued' | 'processing' | 'done' | 'failed';
-
-export type AnalysisType =
-    | 'briefing_headline'
-    | 'briefing_suggestion'
-    | 'briefing_mascot_voice'
-    | 'briefing_featured_kartu_voice'
-    | 'post_run_speech'
-    | 'daily_greeting'
-    | 'run_insight_technical'
-    | 'run_insight_splits'
-    | 'run_insight_zones'
-    | 'weekly_recap'
-    | 'pr_context'
-    | 'trend_caption'
-    | 'card_flavor'
-    | 'persona_summary'
-    | 'monthly_recap';
 
 export interface AnalysisPayload {
     id: number | null;
@@ -116,8 +103,6 @@ export interface Activity {
     detail?: ActivityDetail;
     run_card?: RunCard;
 }
-
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 export interface RunCard {
     id: number;
