@@ -77,9 +77,9 @@ class RunCardFactory
 
     /**
      * Stash the card id on the user so the next page load can pop the reveal
-     * modal. We never overwrite a pending reveal that's still unseen — the
-     * oldest one wins; the modal will cycle through any later cards on
-     * subsequent loads.
+     * modal. Only one reveal can be pending at a time: if an unseen reveal is
+     * already queued we leave it (the earlier one wins), and this newer card is
+     * not shown via the modal. It still lands in the collection normally.
      */
     private function queueRevealFor(Activity $activity, RunCard $card): void
     {

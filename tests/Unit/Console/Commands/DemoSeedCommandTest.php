@@ -87,6 +87,23 @@ it('seeds a full-featured, login-ready demo: rarity ladder, unlocks, persona, va
     expect($distinctLocations)->toBeGreaterThan(1);
 });
 
+it('queues the reveal modal on the rarest seeded card', function (): void {
+    $this->artisan('demo:seed', ['--fresh' => true])->assertSuccessful();
+
+    $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
+
+    expect($user->pending_reveal_card_id)->not->toBeNull();
+
+    $queued = RunCard::query()->findOrFail($user->pending_reveal_card_id);
+    $maxRank = RunCard::query()
+        ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+        ->get()
+        ->max(fn (RunCard $card): int => $card->rarity->rank());
+
+    // The queued reveal is one of the rarest cards (legendary, here).
+    expect($queued->rarity->rank())->toBe($maxRank);
+});
+
 it('is idempotent — re-running with --fresh produces a consistent row count', function (): void {
     $this->artisan('demo:seed', ['--fresh' => true])->assertSuccessful();
     $firstUser = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();

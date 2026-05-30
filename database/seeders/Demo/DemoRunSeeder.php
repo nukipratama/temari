@@ -146,6 +146,8 @@ class DemoRunSeeder
             // withoutDispatching; the rows are flat-filled below with
             // deterministic rule-based content so demo doesn't burn tokens.
             $this->stagePendingAnalyses($user);
+
+            $this->queueBestRevealFor($user);
         });
 
         $user = User::query()->where('email', self::DEMO_USER_EMAIL)->firstOrFail();
@@ -153,6 +155,26 @@ class DemoRunSeeder
         $log(sprintf('  %d AI analyses backfilled with rule-based content (klik "Baca ulang" buat narasi LLM beneran).', $filled));
 
         return $count;
+    }
+
+    /**
+     * Point the one-shot reveal modal at the demo user's rarest card instead of
+     * whatever run happened to seed first. RunCardFactory::build() queues the
+     * first card it creates (the oldest activity, a plain Common easy run), so
+     * without this the demo's first login pops an underwhelming reveal. Here we
+     * override it to showcase the gimmick on a legendary/epic card. Ties break
+     * to the highest card id (most recently seeded).
+     */
+    private function queueBestRevealFor(User $user): void
+    {
+        $best = RunCard::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->whereNotNull('special_move')
+            ->get()
+            ->sortByDesc(fn (RunCard $card): array => [$card->rarity->rank(), $card->id])
+            ->first();
+
+        $user->forceFill(['pending_reveal_card_id' => $best?->id])->save();
     }
 
     private function stagePendingAnalyses(User $user): void
