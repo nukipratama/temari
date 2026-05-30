@@ -1,12 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useRef, useState } from 'react';
-import { toPng } from 'html-to-image';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@iconify/react';
-import BrandMark from '@/components/BrandMark';
-import Kartu from './Kartu';
 import { cn } from '@/lib/cn';
 import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 import { RARITY_LABELS } from '@/lib/runcard';
+import { drawShareCard, shareCardBlob, type Format, type Layout, type Theme } from '@/lib/shareCard';
 import type { Rarity } from '@/types/inertia';
 
 export interface ShareKartuData {
@@ -31,27 +29,12 @@ interface ShareIgModalProps {
     onClose: () => void;
 }
 
-type Theme = 'Dawn' | 'Sky' | 'Cream' | 'Inverted';
-type Format = 'story' | 'feed';
-type Layout = 'poster' | 'angka' | 'kartu' | 'struk';
-
 const LAYOUTS: Layout[] = ['poster', 'angka', 'kartu', 'struk'];
 const LAYOUT_LABELS: Record<Layout, string> = {
     poster: 'Poster',
     angka: 'Angka',
     kartu: 'Kartu',
     struk: 'Struk',
-};
-
-const THEME_BG: Record<Theme, React.CSSProperties> = {
-    Dawn: {
-        background:
-            'linear-gradient(170deg, var(--color-sky-deep) 0%, var(--color-sky) 50%, oklch(58% 0.10 38) 88%, var(--color-horizon-deep) 100%)',
-        color: 'var(--color-cream)',
-    },
-    Sky: { background: 'var(--color-sky)', color: 'var(--color-cream)' },
-    Cream: { background: 'var(--color-cream-deep)', color: 'var(--color-ink)' },
-    Inverted: { background: 'var(--color-sky-deep)', color: 'var(--color-cream)' },
 };
 
 const THEMES: Theme[] = ['Dawn', 'Sky', 'Cream', 'Inverted'];
@@ -62,37 +45,26 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
     const [showStats, setShowStats] = useState(true);
     const [showQuote, setShowQuote] = useState(true);
     const [format, setFormat] = useState<Format>('story');
-    const previewRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // Repaint the fixed-resolution canvas whenever any knob changes. The canvas
+    // IS the export, so the on-screen preview can never drift from the shared
+    // image, and the output is identical on every device.
+    useEffect(() => {
+        if (kartu === null || canvasRef.current === null) {
+            return;
+        }
+        void drawShareCard(canvasRef.current, { kartu, theme, layout, format, showStats, showQuote });
+    }, [kartu, theme, layout, format, showStats, showQuote]);
 
     if (kartu === null) return null;
 
-    const isDark = theme !== 'Cream';
-    const dividerColor = isDark ? 'rgba(246,241,232,0.18)' : 'rgba(31,39,71,0.10)';
-    const metaColor = isDark ? 'rgba(246,241,232,0.72)' : 'var(--color-ink-3)';
+    const cfg = { kartu, theme, layout, format, showStats, showQuote };
 
-    const statItems = [
-        { v: kartu.km, l: 'KM' },
-        { v: kartu.durasi, l: 'Durasi' },
-        ...(kartu.pace ? [{ v: `${kartu.pace}/km`, l: 'Pace' }] : []),
-        { v: kartu.trimp, l: 'TRIMP' },
-        ...(kartu.hr ? [{ v: kartu.hr, l: 'HR' }] : []),
-        ...(kartu.weather ? [{ v: kartu.weather, l: 'Cuaca' }] : []),
-        ...(kartu.location ? [{ v: kartu.location, l: 'Lokasi' }] : []),
-    ];
-
-    const ctx: TemplateProps = { kartu, isDark, format, showStats, showQuote, statItems, dividerColor, metaColor };
-
-    const captureImage = async (): Promise<Blob> => {
-        const dataUrl = await toPng(previewRef.current!, {
-            pixelRatio: 3,
-            skipFonts: true,   // avoids CORS errors from Google Fonts + cross-origin CSS
-        });
-        const res = await fetch(dataUrl);
-        return res.blob();
-    };
+    const captureImage = (): Promise<Blob> => shareCardBlob(cfg);
 
     const handleShare = async () => {
-        if (previewRef.current && typeof navigator.share === 'function') {
+        if (typeof navigator.share === 'function') {
             try {
                 const blob = await captureImage();
                 const file = new File([blob], `${kartu.name}.png`, { type: 'image/png' });
@@ -121,7 +93,6 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
     };
 
     const handleCopy = async () => {
-        if (!previewRef.current) return;
         try {
             const blob = await captureImage();
             await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
@@ -156,26 +127,17 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                         natural height (shrink-0) so nothing clips. Desktop: side-by-side,
                         preview fixed and the controls column scrolls on its own. */}
                     <div className="flex shrink-0 flex-col items-center gap-3 bg-cream-deep p-5 lg:w-80 lg:overflow-hidden">
-                        {/* Preview canvas */}
-                        <div
-                            ref={previewRef}
+                        {/* Preview canvas — fixed internal resolution, scaled to fit.
+                            This canvas IS the exported image (no html-to-image). */}
+                        <canvas
+                            ref={canvasRef}
+                            aria-label={`Pratinjau kartu ${kartu.name}`}
                             className={cn(
-                                'relative w-full overflow-hidden rounded-2xl',
+                                'w-full rounded-2xl',
                                 format === 'story' ? 'aspect-[9/16]' : 'aspect-square',
                             )}
-                            style={{
-                                ...THEME_BG[theme],
-                                display: 'flex',
-                                flexDirection: 'column',
-                                padding: '1.25rem',
-                                boxShadow: '0 16px 48px rgba(31,39,71,0.25)',
-                            }}
-                        >
-                            {layout === 'poster' && <PosterTemplate ctx={ctx} />}
-                            {layout === 'angka' && <AngkaTemplate ctx={ctx} />}
-                            {layout === 'kartu' && <KartuTemplate ctx={ctx} />}
-                            {layout === 'struk' && <StrukTemplate ctx={ctx} />}
-                        </div>
+                            style={{ boxShadow: '0 16px 48px rgba(31,39,71,0.25)' }}
+                        />
 
                         {/* Format picker */}
                         <div className="grid w-full grid-cols-2 gap-2">
@@ -323,218 +285,5 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                 </motion.div>
             </motion.div>
         </AnimatePresence>
-    );
-}
-
-interface TemplateProps {
-    kartu: ShareKartuData;
-    isDark: boolean;
-    format: Format;
-    showStats: boolean;
-    showQuote: boolean;
-    statItems: Array<{ v: string; l: string }>;
-    dividerColor: string;
-    metaColor: string;
-}
-
-const nameColor = (isDark: boolean): string => (isDark ? 'var(--color-horizon)' : 'var(--color-ink)');
-const quoteColor = (isDark: boolean): string => (isDark ? 'rgba(246,241,232,0.88)' : 'var(--color-ink-2)');
-
-function Glow({ top = '44%' }: Readonly<{ top?: string }>) {
-    return (
-        <span
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{ top, background: 'radial-gradient(circle, oklch(82% 0.14 55 / 0.36), transparent 66%)', filter: 'blur(12px)' }}
-        />
-    );
-}
-
-function BrandBadge({ isDark }: Readonly<{ isDark: boolean }>) {
-    return (
-        <div className="absolute right-5 top-5 origin-top-right scale-[0.5]">
-            <BrandMark tone={isDark ? 'cream' : 'ink'} />
-        </div>
-    );
-}
-
-function RarityFlag({ rarity }: Readonly<{ rarity: Rarity }>) {
-    return (
-        <span
-            className="inline-block whitespace-nowrap rounded-full px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em]"
-            style={{ background: 'var(--color-horizon)', color: 'var(--color-sky-deep)' }}
-        >
-            ★ {RARITY_LABELS[rarity]}
-        </span>
-    );
-}
-
-function DashedRule({ color }: Readonly<{ color: string }>) {
-    return <div className="my-2.5 border-t border-dashed" style={{ borderColor: color }} />;
-}
-
-/** Name-forward editorial poster: centered move name + pull-quote + stat list. */
-function PosterTemplate({ ctx }: Readonly<{ ctx: TemplateProps }>) {
-    const { kartu, isDark, format, showStats, showQuote, statItems, dividerColor, metaColor } = ctx;
-    return (
-        <>
-            <Glow />
-            <BrandBadge isDark={isDark} />
-            <div className="relative">
-                <RarityFlag rarity={kartu.rarity} />
-            </div>
-            <div className={cn('relative flex flex-1 flex-col justify-center', format === 'story' ? 'gap-4 py-6' : 'gap-3 py-3')}>
-                <h3
-                    className={cn('font-display italic leading-[0.96] tracking-[-0.02em]', format === 'story' ? 'text-[40px]' : 'text-[30px]')}
-                    style={{ color: nameColor(isDark) }}
-                >
-                    {kartu.name}.
-                </h3>
-                {format === 'story' && showQuote && kartu.quote && (
-                    <p className="border-l-2 pl-3.5 font-display text-base italic leading-snug" style={{ borderColor: 'var(--color-horizon)', color: quoteColor(isDark) }}>
-                        {kartu.quote}
-                    </p>
-                )}
-            </div>
-            <div className="relative">
-                {showStats && (
-                    <div className="border-t pt-3" style={{ borderColor: dividerColor }}>
-                        {(format === 'story' ? statItems.slice(0, 4) : statItems.slice(0, 3)).map(({ v, l }) => (
-                            <div key={l} className="flex items-baseline justify-between gap-3 py-[3px]">
-                                <span className="font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: metaColor }}>{l}</span>
-                                <span className="min-w-0 truncate font-sans text-sm font-bold tabular-nums">{v}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-                {kartu.date && (
-                    <div className="mt-3 font-mono text-[11px] tracking-[0.08em]" style={{ color: metaColor }}>
-                        {kartu.date.replace('\n', ' · ')}
-                    </div>
-                )}
-            </div>
-        </>
-    );
-}
-
-/** Big-stat: oversized distance as the focal point, name small above. */
-function AngkaTemplate({ ctx }: Readonly<{ ctx: TemplateProps }>) {
-    const { kartu, isDark, format, showStats, showQuote, metaColor } = ctx;
-    return (
-        <>
-            <Glow top="52%" />
-            <BrandBadge isDark={isDark} />
-            <div className="relative">
-                <RarityFlag rarity={kartu.rarity} />
-            </div>
-            <div className="relative flex flex-1 flex-col justify-center">
-                <div className="font-display text-xl italic leading-tight" style={{ color: nameColor(isDark) }}>
-                    {kartu.name}.
-                </div>
-                <div className="mt-3 flex items-end gap-2">
-                    <span
-                        className="font-mono font-bold leading-[0.82] tabular-nums"
-                        style={{ fontSize: format === 'story' ? '80px' : '62px', color: nameColor(isDark) }}
-                    >
-                        {kartu.km}
-                    </span>
-                    <span className="mb-2 font-mono text-sm font-bold uppercase tracking-[0.2em]" style={{ color: metaColor }}>km</span>
-                </div>
-                {showStats && (
-                    <div className="mt-3 font-mono text-[12px] uppercase tracking-[0.12em]" style={{ color: metaColor }}>
-                        {[kartu.durasi, kartu.pace ? `${kartu.pace}/km` : null, `${kartu.trimp} trimp`].filter(Boolean).join(' · ')}
-                    </div>
-                )}
-                {format === 'story' && showQuote && kartu.quote && (
-                    <p className="mt-5 border-l-2 pl-3.5 font-display text-base italic leading-snug" style={{ borderColor: 'var(--color-horizon)', color: quoteColor(isDark) }}>
-                        {kartu.quote}
-                    </p>
-                )}
-            </div>
-            {kartu.date && (
-                <div className="relative font-mono text-[11px] tracking-[0.08em]" style={{ color: metaColor }}>
-                    {kartu.date.replace('\n', ' · ')}
-                </div>
-            )}
-        </>
-    );
-}
-
-/** Collectible: the actual run card centered in the themed frame. */
-function KartuTemplate({ ctx }: Readonly<{ ctx: TemplateProps }>) {
-    const { kartu, isDark, format, showQuote } = ctx;
-    return (
-        <>
-            <Glow top="46%" />
-            <BrandBadge isDark={isDark} />
-            <div className="relative font-mono text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--color-horizon)' }}>
-                ★ Kartu kamu
-            </div>
-            <div className="relative flex flex-1 items-center justify-center py-3">
-                <div className={cn('w-full -rotate-2 drop-shadow-xl', format === 'story' ? 'max-w-[250px]' : 'max-w-[208px]')}>
-                    <Kartu
-                        name={kartu.name}
-                        subtitle={kartu.date ? kartu.date.replace('\n', ' · ') : undefined}
-                        km={kartu.km}
-                        durasi={kartu.durasi}
-                        trimp={kartu.trimp}
-                        rarity={kartu.rarity}
-                        tags={kartu.tags.slice(0, 2)}
-                        size="md"
-                        className="w-full"
-                    />
-                </div>
-            </div>
-            {format === 'story' && showQuote && kartu.quote && (
-                <p className="relative text-center font-display text-[15px] italic leading-snug" style={{ color: quoteColor(isDark) }}>
-                    &ldquo;{kartu.quote}&rdquo;
-                </p>
-            )}
-        </>
-    );
-}
-
-/** Receipt: monospace race-result stub with dashed dividers. */
-function StrukTemplate({ ctx }: Readonly<{ ctx: TemplateProps }>) {
-    const { kartu, isDark, format, showStats, showQuote, statItems, dividerColor, metaColor } = ctx;
-    const items = format === 'story' ? statItems : statItems.slice(0, 3);
-    return (
-        <div className="relative flex flex-1 flex-col">
-            <div className="text-center font-mono text-[11px] uppercase tracking-[0.24em]" style={{ color: metaColor }}>
-                TemanLari
-            </div>
-            <DashedRule color={dividerColor} />
-            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--color-horizon)' }}>
-                ★ {RARITY_LABELS[kartu.rarity]}
-            </div>
-            <div className="font-display text-2xl italic leading-tight" style={{ color: nameColor(isDark) }}>
-                {kartu.name}.
-            </div>
-            <DashedRule color={dividerColor} />
-            {showStats && (
-                <div className="flex flex-col gap-1.5">
-                    {items.map(({ v, l }) => (
-                        <div key={l} className="flex items-baseline justify-between gap-3 font-mono text-[12px]">
-                            <span className="uppercase tracking-[0.1em]" style={{ color: metaColor }}>{l}</span>
-                            <span className="min-w-0 truncate font-bold tabular-nums">{v}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
-            {format === 'story' && showQuote && kartu.quote && (
-                <>
-                    <DashedRule color={dividerColor} />
-                    <p className="font-display text-[13px] italic leading-snug" style={{ color: quoteColor(isDark) }}>
-                        &ldquo;{kartu.quote}&rdquo;
-                    </p>
-                </>
-            )}
-            <div className="flex-1" />
-            <DashedRule color={dividerColor} />
-            <div className="flex items-baseline justify-between gap-2 font-mono text-[11px] tracking-[0.06em]" style={{ color: metaColor }}>
-                <span className="min-w-0 truncate">{kartu.date ? kartu.date.replace('\n', ' · ') : 'TemanLari'}</span>
-                <span>teman-lari</span>
-            </div>
-        </div>
     );
 }

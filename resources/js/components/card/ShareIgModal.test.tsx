@@ -1,8 +1,11 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('html-to-image', () => ({
-    toPng: vi.fn(() => Promise.resolve('data:image/png;base64,abc')),
+// The canvas renderer is unit-tested on its own; here we stub it so the modal
+// tests don't depend on a real 2d context (jsdom doesn't implement one).
+vi.mock('@/lib/shareCard', () => ({
+    drawShareCard: vi.fn(() => Promise.resolve()),
+    shareCardBlob: vi.fn(() => Promise.resolve(new Blob(['x'], { type: 'image/png' }))),
 }));
 
 // jsdom doesn't implement ClipboardItem
@@ -74,9 +77,9 @@ describe('ShareIgModal', () => {
         // No crash = theme switching works
     });
 
-    it('renders stat items km, durasi, trimp', () => {
+    it('renders the canvas preview', () => {
         render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
-        expect(screen.getAllByText(/5\.28/).length).toBeGreaterThan(0);
+        expect(screen.getByLabelText(/Pratinjau kartu/)).toBeInTheDocument();
     });
 
     it('fires Bagikan without crashing when share API is unavailable', async () => {
