@@ -12,8 +12,6 @@ interface KartuProps {
     rarity?: Rarity;
     tags?: ReadonlyArray<string>;
     size?: 'md' | 'lg' | 'xl';
-    /** When mounted inside a sky panel, the bg flips to cream-deep for contrast. */
-    onSky?: boolean;
     className?: string;
 }
 
@@ -65,14 +63,13 @@ export default function Kartu({
     rarity = 'epic',
     tags,
     size = 'md',
-    onSky = false,
     className,
 }: Readonly<KartuProps>) {
     return (
         <div
             className={cn(
                 'relative flex h-full flex-col overflow-hidden rounded-[14px] border-[1.5px]',
-                onSky ? 'bg-cream-deep' : 'bg-cream',
+                'bg-surface-card',
                 RARITY_BORDER[rarity],
                 SIZE_PADDING[size],
                 className,

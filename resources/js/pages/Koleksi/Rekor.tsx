@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
@@ -13,7 +12,7 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import SplitsSparkline from '@/components/run/SplitsSparkline';
 import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import { formatDurationHMS, formatIdDate } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
@@ -80,12 +79,7 @@ export default function KoleksiRekor({
     return (
         <AppShell>
             <Head title="Koleksi · Rekor" />
-            <motion.div
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <CollectionHeader
                     active="rekor"
                     eyebrow={eyebrow}
@@ -109,7 +103,7 @@ export default function KoleksiRekor({
                 )}
 
                 <TemariFooter />
-            </motion.div>
+            </PageContainer>
         </AppShell>
     );
 }

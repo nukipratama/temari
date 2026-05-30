@@ -41,7 +41,7 @@ export default function FitnessChart({ data }: Readonly<FitnessChartProps>) {
     };
 
     return (
-        <div className="rounded-2xl border border-line bg-surface-elev p-5">
+        <div className="rounded-2xl border border-line bg-surface-card p-5">
             <div className="flex items-center justify-between gap-3">
                 <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
                     Fitness &amp; Form

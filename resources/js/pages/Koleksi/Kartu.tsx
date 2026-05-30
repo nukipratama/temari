@@ -1,5 +1,4 @@
 import { Head, Link } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import AppShell from '@/layouts/AppShell';
 import MotionLink from '@/components/MotionLink';
 import ConfettiBurst from '@/components/ConfettiBurst';
@@ -10,7 +9,8 @@ import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from '@/components/card/Kartu';
 import Temari from '@/components/temari/Temari';
 import { cn } from '@/lib/cn';
-import { fadeInUp, pressShrink } from '@/lib/motion';
+import { pressShrink } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
 import { RARITY_LABELS, RARITY_ORDER, prettyBadge } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
@@ -77,12 +77,7 @@ export default function KoleksiKartu({
         <AppShell>
             <Head title="Koleksi · Kartu" />
             <ConfettiBurst burstKey={burstKey} />
-            <motion.div
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <CollectionHeader
                     active="kartu"
                     eyebrow={eyebrow}
@@ -110,7 +105,7 @@ export default function KoleksiKartu({
                 )}
 
                 {rarityCounts.legendary === 0 && <LegendaryTease />}
-            </motion.div>
+            </PageContainer>
         </AppShell>
     );
 }
@@ -190,7 +185,6 @@ function FeaturedPanel({
                         rarity={featured.rarity}
                         tags={allTags}
                         size="lg"
-                        onSky
                         className="rotate-[-3deg]"
                     />
                 </Link>

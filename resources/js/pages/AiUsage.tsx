@@ -89,7 +89,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
             <Head title="AI Usage" />
 
             <header className="border-b border-line bg-surface-elev">
-                <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+                <div className="mx-auto flex max-w-[1440px] items-center justify-between px-6 py-4 2xl:max-w-[1680px]">
                     <div className="flex items-center gap-3">
                         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-cream">
                             <Icon icon="mdi:counter" width={20} aria-hidden />
@@ -99,7 +99,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                             <p className="text-xs text-ink-3">Konsumsi token Azure OpenAI per rentang tanggal.</p>
                         </div>
                     </div>
-                    <span className="hidden font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-3 sm:inline">
+                    <span className="hidden text-label-micro font-semibold text-ink-3 sm:inline">
                         TemanLari · Devtools
                     </span>
                 </div>
@@ -109,7 +109,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="mx-auto max-w-6xl px-6 py-8"
+                className="mx-auto max-w-[1440px] px-6 py-8 2xl:max-w-[1680px]"
             >
                 <form
                     onSubmit={(e) => {

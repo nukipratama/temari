@@ -121,8 +121,8 @@ interface FormSideProps {
 
 function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending }: Readonly<FormSideProps>) {
     return (
-        <div className="flex flex-col justify-center gap-9 bg-cream px-8 py-12 sm:px-12 lg:px-[100px] lg:py-20">
-            <ul className="grid grid-cols-3 gap-3.5">
+        <div className="flex flex-col items-center justify-center gap-9 bg-cream px-8 py-12 sm:px-12 lg:px-[100px] lg:py-20">
+            <ul className="grid w-full max-w-[480px] grid-cols-3 gap-3.5 2xl:max-w-[560px]">
                 {PILLARS.map((pillar) => (
                     <li
                         key={pillar.label}
@@ -145,7 +145,7 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending }
             </ul>
 
             <div
-                className="rounded-2xl bg-cream px-9 py-10"
+                className="w-full max-w-[480px] rounded-2xl bg-cream px-9 py-10 2xl:max-w-[560px]"
                 style={{ boxShadow: FORM_CARD_SHADOW }}
             >
                 <h2 className="font-display italic text-display-xs text-ink">
@@ -183,7 +183,7 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending }
                 </p>
             </div>
 
-            <p className="text-center font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+            <p className="text-center text-label-micro text-ink-3">
                 Dibuat dengan ♥ oleh pelari, buat pelari
             </p>
         </div>

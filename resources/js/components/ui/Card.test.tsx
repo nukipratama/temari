@@ -3,11 +3,12 @@ import { describe, expect, it } from 'vitest';
 import Card, { type CardTone } from './Card';
 
 describe('Card', () => {
-    it('renders children inside a cream-bordered default tone', () => {
+    it('renders children inside the tonal, bordered default surface', () => {
         const { container } = render(<Card>hello</Card>);
         expect(screen.getByText('hello')).toBeInTheDocument();
         const root = container.firstChild as HTMLElement;
-        expect(root.className).toMatch(/bg-cream/);
+        expect(root.className).toMatch(/bg-surface-card/);
+        expect(root.className).toMatch(/border-line/);
     });
 
     it.each(['cream', 'cream-deep', 'sky-glass', 'empty'] satisfies CardTone[])(

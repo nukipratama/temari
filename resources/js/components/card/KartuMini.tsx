@@ -26,7 +26,7 @@ export default function KartuMini({
     return (
         <div
             className={cn(
-                'relative w-[140px] flex-none overflow-hidden rounded-[10px] border-[1.5px] bg-cream px-3.5 py-3',
+                'relative w-[140px] flex-none overflow-hidden rounded-[10px] border-[1.5px] bg-surface-card px-3.5 py-3',
                 RARITY_BORDER[rarity],
                 className,
             )}

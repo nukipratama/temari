@@ -15,8 +15,8 @@ import { cva } from 'class-variance-authority';
 export const cardVariants = cva('', {
     variants: {
         tone: {
-            cream: 'rounded-2xl bg-cream',
-            'cream-deep': 'rounded-2xl bg-cream-deep',
+            cream: 'rounded-2xl border border-line bg-surface-card',
+            'cream-deep': 'rounded-2xl border border-line bg-cream-deep',
             'sky-glass': 'rounded-2xl border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
             empty: 'rounded-2xl border border-dashed border-cream-deep bg-cream/40',
         },
@@ -84,13 +84,62 @@ export const chipVariants = cva(
                 onSky: 'bg-cream/10 text-cream/80',
             },
             size: {
-                sm: 'px-[9px] py-[3px] text-[10px]',
-                md: 'px-[11px] py-[5px] text-[11px]',
+                sm: 'px-[9px] py-[3px] text-[11px]',
+                md: 'px-[11px] py-[5px] text-[12px]',
             },
         },
         defaultVariants: {
             tone: 'neutral',
             size: 'sm',
+        },
+    },
+);
+
+/**
+ * Segmented / toggle control — the selected-vs-unselected pill repeated by
+ * hand across filter rows (riwayat range + mood, AiUsage date presets,
+ * ShareIgModal format toggle). One source of truth for radius/size/state.
+ */
+export const toggleButtonVariants = cva(
+    'inline-flex items-center justify-center rounded-full font-sans font-medium transition focus-ring',
+    {
+        variants: {
+            size: {
+                sm: 'px-3 py-1.5 text-[12px]',
+                md: 'px-4 py-2 text-sm',
+            },
+            selected: {
+                true: 'bg-sky text-cream',
+                false: 'bg-cream-deep text-ink-2 hover:bg-cream-deep/70',
+            },
+        },
+        defaultVariants: {
+            size: 'sm',
+            selected: false,
+        },
+    },
+);
+
+/**
+ * Icon button — square/round hit target for a bare icon (close ×, nav
+ * arrows, modal dismiss). `onSky` flips it to the cream-on-dark treatment.
+ */
+export const iconButtonVariants = cva(
+    'inline-flex items-center justify-center rounded-full transition text-ink-2 hover:bg-ink/[0.06] hover:text-ink focus-ring',
+    {
+        variants: {
+            size: {
+                sm: 'h-8 w-8',
+                md: 'h-10 w-10',
+            },
+            onSky: {
+                true: 'text-cream/80 hover:bg-cream/10 hover:text-cream',
+                false: '',
+            },
+        },
+        defaultVariants: {
+            size: 'sm',
+            onSky: false,
         },
     },
 );

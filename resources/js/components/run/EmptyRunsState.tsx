@@ -53,7 +53,7 @@ export default function EmptyRunsState() {
                         <Link
                             key={title}
                             href={href}
-                            className="flex items-center gap-3 rounded-xl bg-cream px-4 py-3"
+                            className="flex items-center gap-3 rounded-xl bg-surface-card px-4 py-3"
                         >
                             <span
                                 aria-hidden

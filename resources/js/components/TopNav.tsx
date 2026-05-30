@@ -54,7 +54,7 @@ export default function TopNav() {
 
   return (
     <header className="hidden bg-cream-deep lg:block">
-      <div className="flex w-full items-center justify-between px-10 py-[18px]">
+      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-14 py-[18px] 2xl:max-w-[1680px] 2xl:px-20">
         <div className="flex items-center gap-12">
           <Link href="/" aria-label="Beranda">
             <BrandMark />
@@ -134,7 +134,7 @@ function UserMenu({
           className="absolute right-0 top-[calc(100%+10px)] z-40 w-52 overflow-hidden rounded-2xl border border-cream-deep bg-cream shadow-lg"
         >
           <div className="border-b border-cream-deep px-4 py-3">
-            <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+            <div className="text-label-micro font-semibold text-ink-3">
               Masuk sebagai
             </div>
             <div className="mt-0.5 truncate font-sans text-sm font-medium text-ink">

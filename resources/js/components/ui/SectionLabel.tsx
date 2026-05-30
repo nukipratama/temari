@@ -12,8 +12,8 @@ export default function SectionLabel({ children, onSky = false, className }: Rea
     return (
         <div
             className={cn(
-                'mb-3.5 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em]',
-                onSky ? 'text-cream/55' : 'text-ink-3',
+                'mb-3.5 flex items-center gap-3 text-label-small',
+                onSky ? 'text-ink-on-sky' : 'text-ink-3',
                 className,
             )}
         >

@@ -12,13 +12,13 @@
 @source '../**/*.ts';
 
 @theme {
-    /* Daybreak typography — three families:
-       Instrument Serif italic for display/voice (Temari quotes, page
-       headlines), Inter for body/UI/numbers/buttons, and JetBrains Mono for
-       small uppercase metadata labels only. Loaded via Google Fonts <link>
-       in app.blade.php. */
-    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-    --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
+    /* Daybreak typography — three families, each with one job:
+       Fraunces italic for display/voice (Temari quotes, page headlines),
+       Plus Jakarta Sans for prose/UI (the readable default), and JetBrains
+       Mono for telemetry only (numbers, stats, uppercase metadata labels).
+       Loaded via Google Fonts <link> in app.blade.php. */
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 
     /* ─── Daybreak display-type scale ────────────────────────────────
@@ -30,37 +30,37 @@
        Headline tier — fluid, narrower range; section-level.
        Quote tier — fixed px; body reading should NOT scale with
          viewport because the focal distance is constant.              */
-    --text-display-2xl: clamp(40px, 7.5vw, 96px);
-    --text-display-2xl--line-height: 0.92;
-    --text-display-2xl--letter-spacing: -0.025em;
-    --text-display-xl: clamp(44px, 6.5vw, 84px);
-    --text-display-xl--line-height: 0.92;
-    --text-display-xl--letter-spacing: -0.02em;
-    --text-display-lg: clamp(38px, 5.5vw, 72px);
-    --text-display-lg--line-height: 0.92;
-    --text-display-lg--letter-spacing: -0.025em;
-    --text-display-md: clamp(38px, 5vw, 64px);
-    --text-display-md--line-height: 0.95;
-    --text-display-md--letter-spacing: -0.015em;
+    --text-display-2xl: clamp(40px, 7.5vw, 92px);
+    --text-display-2xl--line-height: 0.96;
+    --text-display-2xl--letter-spacing: -0.01em;
+    --text-display-xl: clamp(44px, 6.5vw, 82px);
+    --text-display-xl--line-height: 0.96;
+    --text-display-xl--letter-spacing: -0.01em;
+    --text-display-lg: clamp(38px, 5.5vw, 70px);
+    --text-display-lg--line-height: 0.96;
+    --text-display-lg--letter-spacing: -0.01em;
+    --text-display-md: clamp(38px, 5vw, 62px);
+    --text-display-md--line-height: 0.98;
+    --text-display-md--letter-spacing: -0.005em;
     --text-display-sm: clamp(34px, 4vw, 52px);
-    --text-display-sm--line-height: 0.98;
-    --text-display-sm--letter-spacing: -0.015em;
+    --text-display-sm--line-height: 1;
+    --text-display-sm--letter-spacing: -0.005em;
     --text-display-xs: clamp(28px, 3.2vw, 42px);
-    --text-display-xs--line-height: 1;
-    --text-display-xs--letter-spacing: -0.015em;
+    --text-display-xs--line-height: 1.02;
+    --text-display-xs--letter-spacing: -0.005em;
 
     --text-headline-lg: clamp(26px, 3vw, 38px);
-    --text-headline-lg--line-height: 1.05;
-    --text-headline-lg--letter-spacing: -0.01em;
+    --text-headline-lg--line-height: 1.08;
+    --text-headline-lg--letter-spacing: 0;
     --text-headline-md: clamp(22px, 2.5vw, 32px);
-    --text-headline-md--line-height: 1;
-    --text-headline-md--letter-spacing: -0.01em;
+    --text-headline-md--line-height: 1.05;
+    --text-headline-md--letter-spacing: 0;
     --text-headline-sm: clamp(20px, 2.2vw, 28px);
-    --text-headline-sm--line-height: 1.05;
-    --text-headline-sm--letter-spacing: -0.01em;
+    --text-headline-sm--line-height: 1.08;
+    --text-headline-sm--letter-spacing: 0;
     --text-headline-xs: clamp(18px, 2vw, 24px);
-    --text-headline-xs--line-height: 1.05;
-    --text-headline-xs--letter-spacing: -0.01em;
+    --text-headline-xs--line-height: 1.1;
+    --text-headline-xs--letter-spacing: 0;
 
     --text-quote-lg: 22px;
     --text-quote-lg--line-height: 1.3;
@@ -90,10 +90,14 @@
     --color-cream: #f6f1e8;
     --color-cream-deep: #eee7d6;
 
-    /* Daybreak ink scale (3-tier text contrast). */
+    /* Daybreak ink scale (3-tier text contrast). ink-3 is metadata-only:
+       darkened from #7a6f5c (which failed WCAG AA at ~4.3:1) to clear
+       4.5:1 on cream. ink-on-sky is the muted label tone on dark sky
+       panels (replaces the old text-cream/55, which was ~2.2:1). */
     --color-ink: #1a1812;
     --color-ink-2: #3d362a;
-    --color-ink-3: #7a6f5c;
+    --color-ink-3: #6e6452;
+    --color-ink-on-sky: #b8ad97;
 
     /* Semantic mood-family hues. Each has a deep variant for text + a
        lighter pastel `-bg` variant for tinted cells (kalender, etc.). */
@@ -108,7 +112,13 @@
     /* Surface tier — cream paper. dawn-shift drifts the base across
        the day (see body[data-time-of-day=…] below). */
     --color-surface: #f6f1e8;
-    --color-surface-elev: #ffffff;
+    /* Card surface — the single warm cream every card shares. Lighter
+       than the cream-deep page so cards lift, paired with border-line.
+       One token = consistent cards everywhere; change here to retint all.
+       surface-elev (warmed off pure white) stays for floating UI + the
+       via-surface-elev gradient midpoints. */
+    --color-surface-card: #f6f1e8;
+    --color-surface-elev: #fbf7ee;
     --color-surface-warm: #faf3e5;
     --color-surface-sunken: #eee7d6;
     --color-line: #d8ddd2;
@@ -176,13 +186,39 @@ body {
     .focus-ring-on-sky {
         @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-sky;
     }
-    /* Small uppercase metadata label — micro tier (10px). */
+    /* ─── Typography role utilities ──────────────────────────────────
+       Each role bundles font + size + color so call sites name a role
+       instead of hardcoding. The rule they encode: mono = numbers +
+       uppercase labels, sans (default) = prose, Fraunces italic =
+       display + Temari voice. Mirror in docs/design-tokens.md. */
+
+    /* Small uppercase metadata label — micro tier (11px). */
     .text-label-micro {
-        @apply font-mono text-[10px] uppercase tracking-[0.14em];
+        @apply font-mono text-[11px] uppercase tracking-[0.12em];
     }
-    /* Small uppercase metadata label — small tier (11px). */
+    /* Small uppercase metadata label — small tier (12px). */
     .text-label-small {
-        @apply font-mono text-[11px] uppercase tracking-[0.16em];
+        @apply font-mono text-[12px] uppercase tracking-[0.14em];
+    }
+    /* Narrator / body sentences. */
+    .text-prose {
+        @apply font-sans text-quote-md text-ink-2;
+    }
+    /* KPI / PR number — the big tabular figure. */
+    .text-stat {
+        @apply font-mono text-stat font-bold tabular-nums tracking-[-0.02em] text-ink;
+    }
+    /* Smaller stat figure (compact tiles). */
+    .text-stat-sm {
+        @apply font-mono text-2xl font-bold tabular-nums tracking-[-0.02em] text-ink;
+    }
+    /* Date / timestamp / footnote — metadata, non-uppercase. */
+    .text-meta {
+        @apply font-mono text-[11px] tracking-[0.04em] text-ink-3;
+    }
+    /* Temari voice — display serif italic. */
+    .voice {
+        @apply font-display text-quote-lg italic text-ink;
     }
 }
 

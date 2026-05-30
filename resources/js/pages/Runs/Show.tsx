@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { motion } from 'framer-motion';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
 import FourLensGrid from '@/components/run/FourLensGrid';
@@ -13,7 +12,7 @@ import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import PastYouStrip from '@/components/run/PastYouStrip';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDurationHMS, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
 import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
@@ -103,12 +102,7 @@ export default function RunsShow({
     return (
         <AppShell>
             <Head title={detail.name ?? 'Run'} />
-            <motion.main
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <Link
                     href="/aktivitas"
                     className="mb-5 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.14em] text-ink-3 transition hover:text-horizon-deep"
@@ -220,7 +214,7 @@ export default function RunsShow({
                     Strava activity {activity.strava_external_id ?? '—'} · ingested{' '}
                     {formatIdDate(activity.analyzed_at ?? null, 'long')}
                 </footer>
-            </motion.main>
+            </PageContainer>
         </AppShell>
     );
 }

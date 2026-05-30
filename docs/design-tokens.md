@@ -12,18 +12,21 @@ Tailwind colors** (`gray-*`, `slate-*`, `lime-*`, …); use the semantic tokens.
 
 ## Fonts
 
-Three families:
+Three families, each with one job:
 
 | Token | Family | Use |
 |---|---|---|
-| `font-display` | Instrument Serif (italic) | Headlines, Temari voice / quotes |
-| `font-sans` | Inter | Body, UI, numbers, buttons (the default family) |
-| `font-mono` | JetBrains Mono | Small uppercase metadata labels only (section labels, chips, stat-tile / kartu captions, timestamps) |
+| `font-display` | Fraunces (italic) | Display headlines, Temari voice / quotes |
+| `font-sans` | Plus Jakarta Sans | Prose + UI (the readable **default** family) |
+| `font-mono` | JetBrains Mono | **Telemetry only** — numbers, stats, splits, uppercase metadata labels |
 
-`font-sans` is Tailwind's default family, so body / UI / numbers resolve to Inter
-automatically. **Small uppercase metadata labels must carry an explicit `font-mono`**
-(or the `.text-label-micro` / `.text-label-small` utilities) — otherwise they fall back
-to Inter. Keep `tabular-nums` on any numeric / stat display.
+`font-sans` is Tailwind's default family, so prose / UI resolve to Plus Jakarta Sans
+automatically — readable Indonesian body text needs no extra class. **Telemetry must carry
+an explicit `font-mono`** (numbers/stats via `.text-stat`, uppercase labels via
+`.text-label-micro` / `.text-label-small`). Keep `tabular-nums` on any numeric / stat
+display. Display headlines + the Temari voice carry `font-display` + `italic` (or the
+`.voice` utility). Rule of thumb: **mono = numbers/labels · sans = prose · serif italic
+= display/voice**.
 
 Loaded via Google Fonts `<link>` in [app.blade.php](../resources/views/app.blade.php).
 
@@ -37,7 +40,10 @@ utility class lands the full spec.
 - **Quote** (`text-quote-sm` / `-md` / `-lg`) — fixed px; body reading should not scale with viewport.
 - **Stat** (`text-stat`, 32px) — the big tabular number on KPI tiles / PR cards.
 
-Role → class mapping lives in the CLAUDE.md "Typography & fonts" table.
+The display tier is tuned for **Fraunces** (softer/wider/optical than the old Instrument
+Serif), with `font-optical-sizing: auto` handling the `opsz` axis per size. Role → class
+mapping is encoded in the role utilities below (`.text-prose`, `.text-stat`, `.text-meta`,
+`.voice`) so call sites name a role instead of hardcoding font+size+color.
 
 ## Colors
 
@@ -46,8 +52,8 @@ Role → class mapping lives in the CLAUDE.md "Typography & fonts" table.
 | Sky | `sky`, `sky-deep`, `sky-2` (`#1f2747`) | Structure, dark hero panels (only "dark" surface) |
 | Horizon | `horizon`, `horizon-deep` (`#e8a076` peach) | Primary CTA, "earned" / PR state, Temari accent |
 | Cream | `cream`, `cream-deep` (`#f6f1e8`) | Paper / secondary surface, borders, on-dark text |
-| Ink | `ink` / `ink-2` / `ink-3` | 3-tier text contrast (primary / supporting / meta) |
-| Surface | `surface`, `surface-elev`, `surface-warm`, `surface-sunken`, `line` | App surfaces (dawn-shift drifts `surface`) |
+| Ink | `ink` / `ink-2` / `ink-3` (+ `ink-on-sky`) | 3-tier text contrast (primary / supporting / meta); `ink-on-sky` = muted label on dark sky |
+| Surface | `surface`, `surface-card`, `surface-elev`, `surface-warm`, `surface-sunken`, `line` | App surfaces (dawn-shift drifts `surface`); `surface-card` = the single warm cream all cards share (one token retints every card); `surface-elev` = floating UI only |
 | Mood | `mood-{nyala,enteng,oleng,lemes,mumet,adem}` (+ `-bg`) | Calendar cells, mood badges |
 | Rarity | `rarity-{common,uncommon,rare,epic,legendary}` | Card rarity |
 | Hues | `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone` | Semantic accents; `citrus` reserved for PR / legendaris |
@@ -57,7 +63,8 @@ Role → class mapping lives in the CLAUDE.md "Typography & fonts" table.
 
 - `text-ink` — primary text (body, headings, button labels, KPI values).
 - `text-ink-2` — supporting body (subtitles, descriptive lines).
-- `text-ink-3` — labels / timestamps / footnotes / metadata only; never body prose.
+- `text-ink-3` — labels / timestamps / footnotes / metadata only; never body prose. Darkened to `#6e6452` to clear WCAG AA (≥4.5:1) on cream.
+- `text-ink-on-sky` (`#b8ad97`) — muted metadata label on dark sky panels. Replaces the old `text-cream/55`, which failed AA (~2.2:1).
 
 ### CTA contrast
 
@@ -89,14 +96,22 @@ built with `@apply` so they compose with token utilities. Prefer these over re-t
 |---|---|---|
 | `.focus-ring` | `focus-visible:ring-2 ring-leaf ring-offset-2 ring-offset-cream` (+ `outline-none`) | Keyboard focus on cream surfaces (the app default) |
 | `.focus-ring-on-sky` | same, but `ring-offset-sky` | Keyboard focus on dark sky panels |
-| `.text-label-micro` | `font-mono text-[10px] uppercase tracking-[0.14em]` | Smallest uppercase metadata label (kartu / stat captions) |
-| `.text-label-small` | `font-mono text-[11px] uppercase tracking-[0.16em]` | Section labels, chip-sized uppercase metadata |
+| `.text-label-micro` | `font-mono text-[11px] uppercase tracking-[0.12em]` | Smallest uppercase metadata label (kartu / stat captions) |
+| `.text-label-small` | `font-mono text-[12px] uppercase tracking-[0.14em]` | Section labels, chip-sized uppercase metadata |
+| `.text-prose` | `font-sans text-quote-md text-ink-2` | Narrator / body sentences |
+| `.text-stat` | `font-mono text-stat font-bold tabular-nums text-ink` | The big tabular KPI / PR number |
+| `.text-stat-sm` | `font-mono text-2xl font-bold tabular-nums text-ink` | Smaller stat figure (compact tiles) |
+| `.text-meta` | `font-mono text-[11px] tracking-[0.04em] text-ink-3` | Date / timestamp / footnote (non-uppercase metadata) |
+| `.voice` | `font-display text-quote-lg italic text-ink` | Temari voice (display serif italic) |
+
+Text floor is **11px** — no `text-[9px]` / `text-[10px]`. Prefer a role utility over a raw size.
 
 ## Variant maps (cva)
 
 Component style variants live in [resources/js/lib/variants.ts](../resources/js/lib/variants.ts)
 as [class-variance-authority](https://cva.style) definitions: `cardVariants`, `pillButtonVariants`,
-`chipVariants`, `rarityVariants`. Consume them with the `cn()` merge helper:
+`chipVariants`, `toggleButtonVariants` (segmented / filter controls), `iconButtonVariants`
+(bare-icon buttons), `rarityVariants`. Consume them with the `cn()` merge helper:
 
 ```tsx
 import { cardVariants } from '@/lib/variants';

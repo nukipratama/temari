@@ -13,6 +13,6 @@ describe('Chip', () => {
 
     it('uses md sizing when size="md"', () => {
         render(<Chip size="md">x</Chip>);
-        expect(screen.getByText('x').className).toMatch(/text-\[11px\]/);
+        expect(screen.getByText('x').className).toMatch(/text-\[12px\]/);
     });
 });

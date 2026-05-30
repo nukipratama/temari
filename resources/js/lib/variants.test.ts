@@ -2,19 +2,22 @@ import { describe, expect, it } from 'vitest';
 import {
     cardVariants,
     chipVariants,
+    iconButtonVariants,
     pillButtonVariants,
     rarityVariants,
+    toggleButtonVariants,
 } from './variants';
 
 describe('cardVariants', () => {
-    it('applies the default cream tone + md padding', () => {
+    it('applies the default cream tone (tonal surface + border) + md padding', () => {
         const cls = cardVariants();
-        expect(cls).toContain('bg-cream');
+        expect(cls).toContain('bg-surface-card');
+        expect(cls).toContain('border-line');
         expect(cls).toContain('py-5');
     });
 
     it.each([
-        ['cream', 'bg-cream'],
+        ['cream', 'bg-surface-card'],
         ['cream-deep', 'bg-cream-deep'],
         ['sky-glass', 'backdrop-blur'],
         ['empty', 'border-dashed'],
@@ -72,7 +75,44 @@ describe('chipVariants', () => {
     });
 
     it('uses md sizing when size="md"', () => {
-        expect(chipVariants({ size: 'md' })).toContain('text-[11px]');
+        expect(chipVariants({ size: 'md' })).toContain('text-[12px]');
+    });
+});
+
+describe('toggleButtonVariants', () => {
+    it('renders the selected state as a sky pill', () => {
+        const cls = toggleButtonVariants({ selected: true });
+        expect(cls).toContain('bg-sky');
+        expect(cls).toContain('text-cream');
+    });
+
+    it('renders the unselected state on cream-deep', () => {
+        const cls = toggleButtonVariants({ selected: false });
+        expect(cls).toContain('bg-cream-deep');
+        expect(cls).toContain('text-ink-2');
+    });
+
+    it('carries the shared focus-ring in its base', () => {
+        expect(toggleButtonVariants()).toContain('focus-ring');
+    });
+
+    it('uses md sizing when size="md"', () => {
+        expect(toggleButtonVariants({ size: 'md' })).toContain('text-sm');
+    });
+});
+
+describe('iconButtonVariants', () => {
+    it('defaults to a sm square hit target with a focus-ring', () => {
+        const cls = iconButtonVariants();
+        expect(cls).toContain('h-8');
+        expect(cls).toContain('w-8');
+        expect(cls).toContain('focus-ring');
+    });
+
+    it('flips to the cream-on-sky treatment via onSky', () => {
+        const cls = iconButtonVariants({ onSky: true });
+        expect(cls).toContain('text-cream/80');
+        expect(cls).toContain('hover:text-cream');
     });
 });
 

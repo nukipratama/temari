@@ -26,7 +26,7 @@ export default function WeekVsLastWeek({ data, className }: Readonly<WeekVsLastW
         <section
             aria-label="Vs minggu lalu"
             className={cn(
-                'rounded-2xl border border-line bg-surface-elev p-4 shadow-sm sm:p-5',
+                'rounded-2xl border border-line bg-surface-card p-4 shadow-sm sm:p-5',
                 className,
             )}
         >

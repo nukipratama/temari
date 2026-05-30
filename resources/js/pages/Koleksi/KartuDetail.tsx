@@ -1,5 +1,4 @@
 import { Head, Link } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import { useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
@@ -13,7 +12,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import ShareIgModal from '@/components/card/ShareIgModal';
 import type { ShareKartuData } from '@/components/card/ShareIgModal';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
 import { RARITY_BORDER, RARITY_LABELS, prettyBadge } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
@@ -100,12 +99,7 @@ export default function KartuDetail({
     return (
         <AppShell>
             <Head title={`${card.special_move} · Kartu`} />
-            <motion.div
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 {/* Breadcrumb */}
                 <Link
                     href="/kartu"
@@ -145,7 +139,6 @@ export default function KartuDetail({
                                     rarity={card.rarity}
                                     tags={badges.map((b) => prettyBadge(b))}
                                     size="lg"
-                                    onSky
                                     className="w-full"
                                 />
                             </div>
@@ -282,7 +275,7 @@ export default function KartuDetail({
                         )}
                     </div>
                 </div>
-            </motion.div>
+            </PageContainer>
             <ShareIgModal
                 kartu={shareOpen ? shareData : null}
                 onClose={() => setShareOpen(false)}

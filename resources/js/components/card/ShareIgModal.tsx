@@ -207,7 +207,6 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                         rarity={kartu.rarity}
                                         tags={kartu.tags.slice(0, 1)}
                                         size="md"
-                                        onSky={isDark}
                                         className="w-full"
                                     />
                                 </div>

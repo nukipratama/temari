@@ -1,6 +1,5 @@
 import { Head, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { motion } from 'framer-motion';
 import { useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import Chip from '@/components/ui/Chip';
@@ -10,7 +9,7 @@ import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import TemariProto, { type TemariEquipped } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 
 type Slot = 'headband' | 'medal' | 'pita' | 'aura';
 
@@ -76,12 +75,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
     return (
         <AppShell>
             <Head title="Koleksi · Aksesori" />
-            <motion.div
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <CollectionHeader
                     active="aksesori"
                     eyebrow={eyebrow}
@@ -131,7 +125,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                         />
                     ) : null,
                 )}
-            </motion.div>
+            </PageContainer>
         </AppShell>
     );
 }

@@ -60,7 +60,7 @@ const RARITY_DEFAULT: RarityStyle = {
     icon: 'mdi:circle-outline',
     ringClass: 'ring-line',
     chipClass: 'bg-ink-3 text-white ring-2 ring-white',
-    bgClass: 'bg-surface-elev',
+    bgClass: 'bg-surface-card',
     cornerClass: 'from-line to-line',
     holographic: false,
 };

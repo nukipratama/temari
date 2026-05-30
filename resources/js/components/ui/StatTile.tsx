@@ -25,7 +25,7 @@ export default function StatTile({
     className,
 }: Readonly<StatTileProps>) {
     const onSky = tone === 'sky';
-    const labelClass = onSky ? 'text-cream/55' : 'text-ink-3';
+    const labelClass = onSky ? 'text-ink-on-sky' : 'text-ink-3';
     const valueClass = onSky ? 'text-cream' : 'text-ink';
 
     return (
@@ -37,12 +37,12 @@ export default function StatTile({
                 className,
             )}
         >
-            <div className={cn('mb-2 font-mono text-[11px] uppercase tracking-[0.14em]', labelClass)}>
+            <div className={cn('mb-2 text-label-small', labelClass)}>
                 {label}
             </div>
             <div
                 className={cn(
-                    'font-sans font-bold leading-none tracking-[-0.02em] tabular-nums',
+                    'font-mono font-bold leading-none tracking-[-0.02em] tabular-nums',
                     size === 'sm' ? 'text-2xl' : 'text-stat',
                     valueClass,
                 )}
