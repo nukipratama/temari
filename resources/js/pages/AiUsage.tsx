@@ -99,7 +99,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                             <p className="text-xs text-ink-3">Konsumsi token Azure OpenAI per rentang tanggal.</p>
                         </div>
                     </div>
-                    <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-ink-3 sm:inline">
+                    <span className="hidden font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-3 sm:inline">
                         TemanLari · Devtools
                     </span>
                 </div>
@@ -270,7 +270,7 @@ function DateField({
     onChange,
 }: Readonly<{ id: string; label: string; value: string; onChange: (v: string) => void }>) {
     return (
-        <label htmlFor={id} className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wider text-ink-3">
+        <label htmlFor={id} className="flex flex-col gap-1 font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
             {label}
             <input
                 id={id}

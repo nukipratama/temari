@@ -53,7 +53,7 @@ export default function BriefingCard({
             <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-stretch sm:gap-6">
                 {/* LEFT 60% — greeting + narrator */}
                 <div className="min-w-0 sm:basis-3/5">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+                    <p className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
                         {formatIdDate(new Date().toISOString(), 'long')}
                     </p>
                     {firstName !== undefined && firstName !== '' && (

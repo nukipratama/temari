@@ -81,7 +81,7 @@ export default function KoleksiKartu({
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
+                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
             >
                 <CollectionHeader
                     active="kartu"

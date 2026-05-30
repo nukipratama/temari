@@ -109,7 +109,7 @@ export default function Kalender({
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
+                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
             >
                 <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">

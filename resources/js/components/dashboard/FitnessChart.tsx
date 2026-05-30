@@ -12,6 +12,7 @@ import {
     type TooltipItem,
 } from 'chart.js';
 import { formatNumericTooltip, tooltipFromTheme, useChartTheme } from '@/lib/chartTheme';
+import { DAYBREAK } from '@/lib/chartTokens';
 import type { FitnessChartData } from '@/types/inertia';
 
 export function fitnessTooltipLabel(ctx: TooltipItem<'line'>): string {
@@ -25,9 +26,9 @@ interface FitnessChartProps {
 }
 
 const SERIES = [
-    { key: 'ctl', label: 'CTL', color: '#0e7a4c', desc: 'Fitness 42-hari', fill: true, dash: false, width: 2 },
-    { key: 'atl', label: 'ATL', color: '#d9764a', desc: 'Fatigue 7-hari', fill: true, dash: false, width: 2 },
-    { key: 'form', label: 'Form', color: '#6b4ea8', desc: 'CTL − ATL', fill: false, dash: true, width: 1.8 },
+    { key: 'ctl', label: 'CTL', color: DAYBREAK.leaf, desc: 'Fitness 42-hari', fill: true, dash: false, width: 2 },
+    { key: 'atl', label: 'ATL', color: DAYBREAK.ember, desc: 'Fatigue 7-hari', fill: true, dash: false, width: 2 },
+    { key: 'form', label: 'Form', color: DAYBREAK.mumet, desc: 'CTL − ATL', fill: false, dash: true, width: 1.8 },
 ] as const;
 
 export default function FitnessChart({ data }: Readonly<FitnessChartProps>) {
@@ -42,7 +43,7 @@ export default function FitnessChart({ data }: Readonly<FitnessChartProps>) {
     return (
         <div className="rounded-2xl border border-line bg-surface-elev p-5">
             <div className="flex items-center justify-between gap-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
                     Fitness &amp; Form
                 </h3>
                 <span className="text-[10px] text-ink-3">hover untuk detail</span>
@@ -51,7 +52,7 @@ export default function FitnessChart({ data }: Readonly<FitnessChartProps>) {
             <dl className="mt-3 grid grid-cols-3 gap-3">
                 {SERIES.map((s) => (
                     <div key={s.key} className="rounded-xl bg-line/20 p-2">
-                        <dt className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-3">
+                        <dt className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-3">
                             <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />
                             {s.label}
                         </dt>

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import polylineCodec from '@mapbox/polyline';
 import { latLngBounds } from 'leaflet';
 import { MapContainer, Polyline, TileLayer } from 'react-leaflet';
+import { DAYBREAK } from '@/lib/chartTokens';
 // leaflet.css lives in resources/css/app.css (@import). Importing it here would race
 // the lazy-load and leave tiles unpositioned on first render.
 
@@ -48,7 +49,7 @@ export default function RouteMap({ polyline }: Readonly<RouteMapProps>) {
                             console.warn('[RouteMap] tile load failed', e.tile?.src ?? '(no src)'),
                     }}
                 />
-                <Polyline positions={positions} pathOptions={{ color: '#0e7a4c', weight: 4, opacity: 0.9 }} />
+                <Polyline positions={positions} pathOptions={{ color: DAYBREAK.leaf, weight: 4, opacity: 0.9 }} />
             </MapContainer>
         </div>
     );

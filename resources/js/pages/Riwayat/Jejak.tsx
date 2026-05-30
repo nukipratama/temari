@@ -163,7 +163,7 @@ export default function RunsIndex({
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
+                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
             >
                 <header className="flex flex-col gap-5">
                     <PageHero

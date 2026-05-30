@@ -12,7 +12,9 @@ interface Particle {
     duration: number;
 }
 
-const COLORS = ['#0E7A4C', '#D9764A', '#E5B83C', '#7AC4A5', '#F0CF8E', '#C46F1C'];
+// Daybreak palette spread (leaf, ember, citrus, horizon, citrus-deep, mumet).
+// Mirrors app.css @theme; Chart/SVG-style particle fills can't read CSS vars.
+const COLORS = ['#6B8E6F', '#C4623F', '#D9B23A', '#E8A076', '#B8941E', '#7B5BB6'];
 
 interface ConfettiBurstProps {
     /** Each unique key triggers a new burst. */

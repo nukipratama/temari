@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, type TooltipItem } from 'chart.js';
 import { formatNumericTooltip, kmAxisTick, tooltipFromTheme, useChartTheme } from '@/lib/chartTheme';
+import { DAYBREAK } from '@/lib/chartTokens';
 import type { FitnessChartData } from '@/types/inertia';
 
 export function volumeTooltipLabel(ctx: TooltipItem<'bar'>): string {
@@ -14,8 +15,10 @@ interface VolumeChartProps {
     data: FitnessChartData;
 }
 
-const BAR_FILL = '#d9764a';
-const BAR_FILL_DARK = '#8c4727';
+// Intensity ramp keyed to the Daybreak ember hue: base → deep for the
+// heaviest weeks, a hand-tuned light tone for the lightest.
+const BAR_FILL = DAYBREAK.ember;
+const BAR_FILL_DARK = DAYBREAK.emberDeep;
 const BAR_FILL_LIGHT = '#eab397';
 
 // Intensity-coded fill — fades from lighter accent on the lowest week
@@ -53,7 +56,7 @@ export default function VolumeChart({ data }: Readonly<VolumeChartProps>) {
     return (
         <div className="rounded-2xl border border-line bg-surface-elev p-5">
             <div className="flex items-center justify-between gap-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
                     Weekly Volume
                 </h3>
                 <span className="text-[10px] text-ink-3">hover untuk detail</span>
@@ -111,7 +114,7 @@ export default function VolumeChart({ data }: Readonly<VolumeChartProps>) {
 function Stat({ label, value, desc }: Readonly<{ label: string; value: string; desc: string }>) {
     return (
         <div className="rounded-xl bg-line/20 p-2">
-            <dt className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">
+            <dt className="font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-3">
                 {label}
             </dt>
             <dd className="mt-0.5 text-base font-bold tabular-nums text-ink">{value}</dd>

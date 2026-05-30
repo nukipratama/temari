@@ -1,4 +1,5 @@
 import MetricExplainer from '@/components/MetricExplainer';
+import { hrZone } from '@/lib/chartTokens';
 import type { MetricKey } from '@/lib/metricGlossary';
 
 export const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
@@ -11,13 +12,7 @@ const ZONE_EXPLAINER_KEY: Record<(typeof HR_ZONES)[number], MetricKey> = {
     Z5: 'hr_z5',
 };
 
-export const HR_ZONE_COLORS: Record<(typeof HR_ZONES)[number], string> = {
-    Z1: '#5fb088',
-    Z2: '#2f956a',
-    Z3: '#d99a1a',
-    Z4: '#c46f1c',
-    Z5: '#b8302f',
-};
+export const HR_ZONE_COLORS: Record<(typeof HR_ZONES)[number], string> = hrZone;
 
 export interface ZonePct {
     Z1?: number;
@@ -43,7 +38,7 @@ export default function HrZoneCard({ zonePct }: Readonly<HrZoneCardProps>) {
     return (
         <section className="rounded-2xl border border-line bg-surface-elev p-4 shadow-sm sm:p-5">
             <div className="flex items-baseline justify-between gap-3">
-                <h3 className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <h3 className="flex items-center gap-1 font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
                     HR Zones
                     <MetricExplainer metricKey="hr_zones" size="xs" />
                 </h3>

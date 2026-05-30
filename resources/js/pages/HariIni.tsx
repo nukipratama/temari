@@ -133,7 +133,7 @@ export default function HariIni({
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-10"
+                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
             >
                 {/* Defer onboarding while a card-reveal takeover is pending, or the
                     coachmark stacks on top of the reveal (a first run that earns an

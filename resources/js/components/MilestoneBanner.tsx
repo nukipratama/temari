@@ -80,7 +80,7 @@ export default function MilestoneBanner({ pending }: Readonly<MilestoneBannerPro
                                 <Icon icon={iconFor(primary.kind)} width={22} height={22} />
                             </span>
                             <div className="min-w-0">
-                                <p className="text-xs font-semibold uppercase tracking-wider text-citrus-deep">
+                                <p className="font-mono text-xs font-semibold uppercase tracking-wider text-citrus-deep">
                                     Milestone hari ini
                                 </p>
                                 <h2 className="mt-0.5 text-lg font-bold leading-tight tracking-tight text-ink sm:text-xl">

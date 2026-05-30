@@ -1,12 +1,8 @@
 import { Link } from "@inertiajs/react";
 import { type MouseEventHandler, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import {
-  PADDING_CLASS,
-  TONE_CLASS,
-  type CardPadding,
-  type CardTone,
-} from "./Card";
+import { cardVariants } from "@/lib/variants";
+import { type CardPadding, type CardTone } from "./Card";
 
 interface LinkCardProps {
   href: string;
@@ -18,9 +14,6 @@ interface LinkCardProps {
   className?: string;
   children: ReactNode;
 }
-
-const FOCUS_RING =
-  "block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream";
 
 export default function LinkCard({
   href,
@@ -34,12 +27,7 @@ export default function LinkCard({
     <Link
       href={href}
       onClick={onClick}
-      className={cn(
-        TONE_CLASS[tone],
-        PADDING_CLASS[padding],
-        FOCUS_RING,
-        className,
-      )}
+      className={cn(cardVariants({ tone, padding }), "block focus-ring", className)}
     >
       {children}
     </Link>

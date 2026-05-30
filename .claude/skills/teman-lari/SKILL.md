@@ -84,10 +84,14 @@ Sweep `grep text-ink-3` before merging — if it's wrapping a `<p>` of running p
 
 ### Typography & fonts
 
-Two families only (both loaded via Google Fonts in
+Three families (all loaded via Google Fonts in
 [app.blade.php](../../../resources/views/app.blade.php)): **Instrument Serif** italic is
-`font-display` (headlines + Temari voice/quotes); **JetBrains Mono** is *both* `font-sans` and
-`font-mono` (the brand is deliberately all-mono for body/UI/numbers, tabular figures by default).
+`font-display` (headlines + Temari voice/quotes); **Inter** is `font-sans`, the default family
+for body/UI/numbers/buttons; **JetBrains Mono** is `font-mono`, reserved for *small uppercase
+metadata labels only* (section labels, chips, stat-tile / kartu captions, timestamps). Because
+`font-sans` (Inter) is Tailwind's default, every small uppercase label must carry an **explicit
+`font-mono`** (or the `.text-label-micro` / `.text-label-small` utilities) or it falls back to
+Inter. Keep `tabular-nums` on numeric / stat displays.
 The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headline-*`,
 `text-quote-*`), each bundling its own line-height + letter-spacing, so one utility lands the full spec.
 
@@ -97,7 +101,7 @@ The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headli
 | Page title (`<h1>`) | `font-display text-display-lg text-ink` (compact/devtools header: `text-headline-xs`) |
 | Section heading (`<h2>`) | `font-display text-headline-sm text-ink` |
 | Temari voice / quote | `font-display italic text-quote-lg text-ink-2` |
-| Sub-label (KPI/table cap) | `text-xs font-semibold uppercase tracking-wider text-ink-3` |
+| Sub-label (KPI/table cap) | `font-mono text-xs font-semibold uppercase tracking-wider text-ink-3` |
 | Body paragraph | `font-sans text-sm leading-relaxed text-ink` |
 | Caption / supporting | `text-sm text-ink-2 leading-relaxed` |
 | Meta / timestamp | `text-xs text-ink-3` |

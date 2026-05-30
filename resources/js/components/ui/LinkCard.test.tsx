@@ -13,7 +13,7 @@ describe('LinkCard', () => {
         const { container } = render(<LinkCard href="/x">x</LinkCard>);
         const root = container.firstChild as HTMLElement;
         expect(root.className).toMatch(/bg-cream/);
-        expect(root.className).toMatch(/focus-visible:ring-leaf/);
+        expect(root.className).toMatch(/focus-ring/);
     });
 
     it('passes className through', () => {

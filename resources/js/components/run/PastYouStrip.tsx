@@ -21,7 +21,7 @@ interface PastYouStripProps {
 }
 
 const CARD_BASE = 'block rounded-2xl border border-line bg-surface-elev p-4 sm:p-5';
-const HEADING_CLASS = 'text-xs font-semibold uppercase tracking-wider text-ink-3';
+const HEADING_CLASS = 'font-mono text-xs font-semibold uppercase tracking-wider text-ink-3';
 
 export default function PastYouStrip({ match, currentDistance, className }: Readonly<PastYouStripProps>) {
     const distanceLabel = currentDistance ? `${formatKm(currentDistance, 1)} km` : 'jarak ini';

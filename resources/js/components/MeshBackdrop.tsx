@@ -18,19 +18,19 @@ interface Blob {
 // the login page (atmospheric moment); in-app pages stay clean.
 const VARIANTS: Record<MeshVariant, Blob[]> = {
     dawn: [
-        { pos: 'top-[-20%] left-[-10%]', size: 'h-[60%] w-[70%]', color: 'bg-[radial-gradient(circle,_#E0A63955_0%,_transparent_60%)]' },
-        { pos: 'bottom-[-20%] right-[-10%]', size: 'h-[60%] w-[70%]', color: 'bg-[radial-gradient(circle,_#D9764A55_0%,_transparent_65%)]' },
-        { pos: 'top-[40%] right-[30%]', size: 'h-[40%] w-[40%]', color: 'bg-[radial-gradient(circle,_#0E7A4C33_0%,_transparent_70%)]' },
+        { pos: 'top-[-20%] left-[-10%]', size: 'h-[60%] w-[70%]', color: 'bg-[radial-gradient(circle,_#D9B23A55_0%,_transparent_60%)]' },
+        { pos: 'bottom-[-20%] right-[-10%]', size: 'h-[60%] w-[70%]', color: 'bg-[radial-gradient(circle,_#C4623F55_0%,_transparent_65%)]' },
+        { pos: 'top-[40%] right-[30%]', size: 'h-[40%] w-[40%]', color: 'bg-[radial-gradient(circle,_#6B8E6F33_0%,_transparent_70%)]' },
     ],
     night: [
-        { pos: 'top-[-20%] left-[-10%]', size: 'h-[60%] w-[70%]', color: 'bg-[radial-gradient(circle,_#5FB08855_0%,_transparent_65%)]' },
-        { pos: 'bottom-[-20%] right-[-10%]', size: 'h-[60%] w-[70%]', color: 'bg-[radial-gradient(circle,_#6B4EA855_0%,_transparent_65%)]' },
-        { pos: 'top-[30%] left-[40%]', size: 'h-[40%] w-[40%]', color: 'bg-[radial-gradient(circle,_#D9764A44_0%,_transparent_70%)]' },
+        { pos: 'top-[-20%] left-[-10%]', size: 'h-[60%] w-[70%]', color: 'bg-[radial-gradient(circle,_#6B8E6F55_0%,_transparent_65%)]' },
+        { pos: 'bottom-[-20%] right-[-10%]', size: 'h-[60%] w-[70%]', color: 'bg-[radial-gradient(circle,_#7B5BB655_0%,_transparent_65%)]' },
+        { pos: 'top-[30%] left-[40%]', size: 'h-[40%] w-[40%]', color: 'bg-[radial-gradient(circle,_#C4623F44_0%,_transparent_70%)]' },
     ],
     ember: [
-        { pos: 'top-[-10%] left-[20%]', size: 'h-[70%] w-[60%]', color: 'bg-[radial-gradient(circle,_#E0A63977_0%,_transparent_60%)]' },
-        { pos: 'bottom-[-20%] right-[10%]', size: 'h-[60%] w-[60%]', color: 'bg-[radial-gradient(circle,_#D9764A66_0%,_transparent_65%)]' },
-        { pos: 'top-[50%] left-[-10%]', size: 'h-[40%] w-[40%]', color: 'bg-[radial-gradient(circle,_#B7843244_0%,_transparent_70%)]' },
+        { pos: 'top-[-10%] left-[20%]', size: 'h-[70%] w-[60%]', color: 'bg-[radial-gradient(circle,_#D9B23A77_0%,_transparent_60%)]' },
+        { pos: 'bottom-[-20%] right-[10%]', size: 'h-[60%] w-[60%]', color: 'bg-[radial-gradient(circle,_#C4623F66_0%,_transparent_65%)]' },
+        { pos: 'top-[50%] left-[-10%]', size: 'h-[40%] w-[40%]', color: 'bg-[radial-gradient(circle,_#B8941E44_0%,_transparent_70%)]' },
     ],
 };
 

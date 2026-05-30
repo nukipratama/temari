@@ -122,7 +122,7 @@ export default function RunCard({ card, detail, className, size = 'normal' }: Re
                 </div>
                 <span
                     className={cn(
-                        'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest shadow-sm',
+                        'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest shadow-sm',
                         r.chipClass,
                     )}
                 >
@@ -169,7 +169,7 @@ function Stat({ value, unit, size }: Readonly<StatProps>) {
     return (
         <div className="min-w-0">
             <div className={cn('truncate font-black tabular-nums text-ink', valueClass)}>{value}</div>
-            <div className="text-[10px] uppercase tracking-wide text-ink-3">{unit}</div>
+            <div className="font-mono text-[10px] uppercase tracking-wide text-ink-3">{unit}</div>
         </div>
     );
 }

@@ -67,11 +67,11 @@ export default function TemariThread({
                 <TemariMascot mood={mood} sizeClass="h-20 w-20 shrink-0 sm:h-28 sm:w-28" idle="mood" gazeTracking ornaments />
                 <div className="min-w-0 flex-1 pt-2">
                     <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+                        <span className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
                             Catatan Temari
                         </span>
                         {moodLabel && (
-                            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-3">
+                            <span className="rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-3">
                                 {moodLabel}
                             </span>
                         )}
@@ -106,7 +106,7 @@ export default function TemariThread({
 
                             <div className="flex items-center gap-1.5">
                                 <Icon icon={entry.icon} width={14} height={14} className={tone.icon} aria-hidden />
-                                <span className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+                                <span className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
                                     {entry.label}
                                 </span>
                             </div>

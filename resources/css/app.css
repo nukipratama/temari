@@ -12,17 +12,13 @@
 @source '../**/*.ts';
 
 @theme {
-    /* Daybreak typography — two families only:
+    /* Daybreak typography — three families:
        Instrument Serif italic for display/voice (Temari quotes, page
-       headlines), and JetBrains Mono for everything else (body/UI/numbers
-       and small uppercase metadata labels). Mono-as-body gives the runner
-       brand a data-driven, indie-tech aesthetic plus tabular nums by
-       default. Loaded via Google Fonts <link> in app.blade.php. */
-    --font-sans: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace, 'Apple Color Emoji',
-        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+       headlines), Inter for body/UI/numbers/buttons, and JetBrains Mono for
+       small uppercase metadata labels only. Loaded via Google Fonts <link>
+       in app.blade.php. */
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
-    /* Intentionally identical to --font-sans (not a copy-paste slip): the brand
-       is all-mono, so `font-sans` and `font-mono` resolve to the same family. */
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 
     /* ─── Daybreak display-type scale ────────────────────────────────
@@ -165,6 +161,28 @@ body {
     }
     .scrollbar-hide::-webkit-scrollbar {
         display: none;
+    }
+}
+
+/* Reusable atomic component classes — the duplicated combos that recur
+   across the UI. `@apply`-built so they compose with token utilities and
+   stay in sync with the Daybreak theme. */
+@layer components {
+    /* Focus ring on cream surfaces (the app default). */
+    .focus-ring {
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream;
+    }
+    /* Focus ring on dark sky panels (offset color flips to sky). */
+    .focus-ring-on-sky {
+        @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-sky;
+    }
+    /* Small uppercase metadata label — micro tier (10px). */
+    .text-label-micro {
+        @apply font-mono text-[10px] uppercase tracking-[0.14em];
+    }
+    /* Small uppercase metadata label — small tier (11px). */
+    .text-label-small {
+        @apply font-mono text-[11px] uppercase tracking-[0.16em];
     }
 }
 

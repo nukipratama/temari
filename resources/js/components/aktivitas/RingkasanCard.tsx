@@ -34,7 +34,7 @@ export default function RingkasanCard({
             )}
             aria-label="Catatan Temari minggu ini"
         >
-            <div className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+            <div className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
                 Catatan Temari
             </div>
             <div className="mt-2">

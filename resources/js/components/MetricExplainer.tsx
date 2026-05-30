@@ -66,7 +66,7 @@ export default function MetricExplainer({
                     >
                         <div aria-hidden className="absolute inset-y-0 left-0 w-1 bg-leaf" />
                         <div className="px-3.5 py-3 pl-4">
-                            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-leaf-deep">
+                            <div className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-leaf-deep">
                                 <Icon icon="mdi:lightbulb-on-outline" width={12} height={12} aria-hidden />
                                 <span>{entry.acronym ? `${entry.label} · ${entry.acronym}` : entry.label}</span>
                             </div>

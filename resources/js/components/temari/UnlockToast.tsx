@@ -44,7 +44,7 @@ export default function UnlockToast() {
                     >
                         <Icon icon={active.icon} width={24} height={24} className="text-citrus-deep" aria-hidden />
                         <div>
-                            <div className="text-xs font-semibold uppercase tracking-wider text-ink-3">Unlock baru</div>
+                            <div className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">Unlock baru</div>
                             <div className="text-sm font-semibold text-ink">{active.name}</div>
                         </div>
                         <button
