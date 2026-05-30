@@ -18,7 +18,8 @@ const kartu: ShareKartuData = {
     subtitle: 'Pagi negatif-split · 20 Mei 2026',
     date: '20 Mei 2026\n07:00',
     km: '5.28',
-    durasi: '40:00',
+    durasi: '40 menit',
+    pace: '5:30',
     trimp: '87',
     hr: '145 bpm',
     location: 'Jakarta Selatan',
@@ -41,7 +42,7 @@ describe('ShareIgModal', () => {
     it('renders Bagikan and Salin Gambar CTAs', () => {
         render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
         expect(screen.getAllByText(/Bagikan/).length).toBeGreaterThan(0);
-        expect(screen.getByText(/Salin Gambar/)).toBeInTheDocument();
+        expect(screen.getByText(/Salin gambar/)).toBeInTheDocument();
     });
 
     it('renders theme buttons', () => {
@@ -103,7 +104,7 @@ describe('ShareIgModal', () => {
                 : Promise.reject(new Error('unexpected')),
         ) as typeof fetch;
         render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
-        await act(async () => { fireEvent.click(screen.getByText(/Salin Gambar/)); });
+        await act(async () => { fireEvent.click(screen.getByText(/Salin gambar/)); });
         expect(write).toHaveBeenCalled();
     });
 
@@ -114,5 +115,17 @@ describe('ShareIgModal', () => {
         fireEvent.click(switches[0]);
         fireEvent.click(switches[1]);
         fireEvent.click(switches[0]);
+    });
+
+    it('offers the four card-style templates and switches between them', () => {
+        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+        const select = screen.getByLabelText('Pilih gaya kartu');
+        expect(select).toBeInTheDocument();
+        ['Poster', 'Angka', 'Kartu', 'Struk'].forEach((label) =>
+            expect(screen.getByRole('option', { name: label })).toBeInTheDocument(),
+        );
+        // Switching to the receipt template renders without crashing.
+        fireEvent.change(select, { target: { value: 'struk' } });
+        expect(screen.getAllByText(/Tendangan Balik/).length).toBeGreaterThan(0);
     });
 });

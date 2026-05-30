@@ -189,6 +189,7 @@ export default function CardReveal({
   const onBackdrop = isLastFrame ? dismiss : advance;
   const onPrimary = isLastFrame ? viewKoleksi : advance;
 
+  const sharePaceSec = paceSecPerKm(pending.moving_time_sec, pending.distance_m);
   const shareData: ShareKartuData = {
     id: pending.card_id,
     name: pending.special_move,
@@ -197,6 +198,7 @@ export default function CardReveal({
     date: null,
     km,
     durasi,
+    pace: sharePaceSec != null ? formatPace(sharePaceSec) : null,
     trimp,
     hr: null,
     location: null,

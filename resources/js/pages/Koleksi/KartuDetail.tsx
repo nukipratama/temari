@@ -13,7 +13,7 @@ import ShareIgModal from '@/components/card/ShareIgModal';
 import type { ShareKartuData } from '@/components/card/ShareIgModal';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
-import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
+import { formatDuration, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
 import { RARITY_BORDER, RARITY_LABELS, prettyBadge } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
 import type { ActivityDetail, AnalysisPayload, Rarity } from '@/types/inertia';
@@ -63,6 +63,7 @@ export default function KartuDetail({
     const durasi = detail?.moving_time == null ? '—' : formatDuration(detail.moving_time);
     const trimp =
         detail?.trimp_edwards == null ? '—' : String(Math.round(detail.trimp_edwards));
+    const sharePaceSec = paceSecPerKm(detail?.moving_time, detail?.distance);
     const subtitle = detail
         ? `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`
         : null;
@@ -88,6 +89,7 @@ export default function KartuDetail({
         date: shareDate,
         km,
         durasi,
+        pace: sharePaceSec != null ? formatPace(sharePaceSec) : null,
         trimp,
         hr: detail?.average_heartrate != null ? `${Math.round(detail.average_heartrate)} bpm` : null,
         location: detail?.location_name ?? null,
