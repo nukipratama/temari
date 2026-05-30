@@ -8,7 +8,9 @@
         "laravel-best-practices",
         "configuring-horizon",
         "pulse-development",
+        "socialite-development",
         "pest-testing",
+        "inertia-react-development",
         "tailwindcss-development"
     ]
 }

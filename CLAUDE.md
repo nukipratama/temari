@@ -1,4 +1,32 @@
 <laravel-boost-guidelines>
+=== .ai/teman-lari rules ===
+
+# teman-lari project guidelines
+
+## Stack notes
+
+- UI is **Inertia 2 + React 19 + TypeScript + Tailwind v4** (Laravel React Starter Kit conventions). Routes go through controllers (`Inertia::render('PageName', $props)`); pages live in `resources/js/pages/`, components in `resources/js/components/`.
+- `livewire/livewire` ships for Pulse internals only. **Do NOT use Livewire in app code.**
+- `openai-php/laravel` is wired as an **Azure OpenAI** client. `inertiajs/inertia-laravel` v3 speaks the **Inertia 2** protocol.
+- App is **light-mode only**. The `dark:` modifier still appears in legacy components but `.dark` is never applied to `<html>`, and there are no `*-dark` tokens. Treat new code as light-only.
+
+> **Design tokens (Daybreak palette), voice & tone, typography, the AI narrator pipeline, the 1:1 test convention, and the Sail toolchain all live in the `teman-lari` skill** (`.claude/skills/teman-lari/`). Activate it for any UI, AI-narration, or test work. Source-of-truth docs: [docs/design-tokens.md](docs/design-tokens.md), [docs/voice-and-tone.md](docs/voice-and-tone.md).
+
+## LLM Integration
+
+Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-php/laravel ([AzureOpenAIClient](app/Services/AI/AzureOpenAIClient.php), [StructuredChatCaller](app/Services/AI/StructuredChatCaller.php), narrators under [app/Services/AI/Narrators/](app/Services/AI/Narrators/)). All narrator output flows through the [Analysis](app/Models/AI/Analysis.php) row model (status: pending / queued / processing / done / failed).
+
+**Runtime failure model**: when an AI job exhausts its `$tries` (Laravel native retry + backoff on [AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php)), it lands in `failed_jobs` and the Analysis row is marked `failed`. The UI shows an empty state with a "Coba lagi" button per-block via [AnalysisStatus.tsx](resources/js/components/temari/AnalysisStatus.tsx). Users manually re-dispatch from the UI; developers can retry via Horizon's failed-job tab. AI jobs early-exit when the row is already `done` (idempotency guard in [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php) and [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php)) so a UI-triggered retry that races with a developer Horizon retry doesn't double-bill the LLM. **There is no scheduler**, manual retry only, to keep LLM cost predictable. **There is no global "mode darurat" chip**, per-block state is the source of truth.
+
+**Unconfigured-env fallback**: when `AZURE_OPENAI_URI` / `AZURE_OPENAI_API_KEY` are empty (dev/demo/local without credentials), [AnalysisService](app/Services/AI/AnalysisService.php) skips job dispatch entirely. Rows stay pending until something fills them.
+
+**Demo seed**: [DemoSeedCommand](app/Console/Commands/DemoSeedCommand.php) backfills every Analysis row with deterministic rule-based content via [RuleBasedNarrationFiller](app/Services/AI/Demo/RuleBasedNarrationFiller.php) under `AnalysisService::withoutDispatching()`, no LLM tokens spent on seed. The "Baca ulang" button stays live so a reviewer can trigger a real LLM call per block on demand.
+
+## Environment toggles
+
+- `DEMO_LOGIN_ENABLED` (default `false`): renders the "Coba versi demo" button on `/login` that signs in as the seeded demo user. Plumbed via [config/demo.php](config/demo.php) to Inertia shared `demoLoginEnabled`. Wired in [compose.prod.yaml](compose.prod.yaml) + [ci.yml](.github/workflows/ci.yml) deploy env.
+- `ONBOARDING_FORCE_SHOW` (default `false`): forces the dashboard first-run tooltip to render on every mount regardless of run count or the localStorage dismissal flag. Used for QA / demos in prod. Plumbed via [config/onboarding.php](config/onboarding.php) to Inertia shared `onboarding.forceShow`. Wired in [compose.prod.yaml](compose.prod.yaml) + [ci.yml](.github/workflows/ci.yml) deploy env.
+
 === foundation rules ===
 
 # Laravel Boost Guidelines
@@ -10,115 +38,27 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
 - php - 8.4
+- inertiajs/inertia-laravel (INERTIA_LARAVEL) - v3
 - laravel/framework (LARAVEL) - v13
 - laravel/horizon (HORIZON) - v5
+- laravel/octane (OCTANE) - v2
 - laravel/prompts (PROMPTS) - v0
 - laravel/pulse (PULSE) - v1
-- inertiajs/inertia-laravel (INERTIA) - v3 (Inertia 2 protocol)
-- openai-php/laravel (OPENAI) - v0 (Azure OpenAI client)
-- livewire/livewire (LIVEWIRE) - v4 (Pulse internal only — NOT used in app code)
+- laravel/socialite (SOCIALITE) - v5
+- livewire/livewire (LIVEWIRE) - v4
 - larastan/larastan (LARASTAN) - v3
 - laravel/boost (BOOST) - v2
 - laravel/mcp (MCP) - v0
 - laravel/pail (PAIL) - v1
 - laravel/pint (PINT) - v1
 - laravel/sail (SAIL) - v1
-- laravel/telescope (TELESCOPE) - v5
 - pestphp/pest (PEST) - v4
 - phpunit/phpunit (PHPUNIT) - v12
 - rector/rector (RECTOR) - v2
+- @inertiajs/react (INERTIA_REACT) - v3
+- react (REACT) - v19
+- eslint (ESLINT) - v9
 - tailwindcss (TAILWINDCSS) - v4
-- react - v19 + typescript (Inertia pages in resources/js/pages/**)
-- react-chartjs-2, chart.js, @iconify/react
-
-## Frontend Stack
-
-UI is **Inertia 2 + React 19 + TypeScript + Tailwind v4** following Laravel React Starter Kit conventions. Routes still go through controllers (`Inertia::render('PageName', $props)`); React pages live in `resources/js/pages/` and components in `resources/js/components/`. Palette tokens live in the `@theme` block of [resources/css/app.css](resources/css/app.css). The palette is **Daybreak** (pre-dawn Jakarta at 05:30). Components use the semantic token families, NOT raw Tailwind colors like `lime-500`:
-
-- `sky` / `sky-deep` / `sky-2` (`#1f2747`) - structure, dark hero panels, the only "dark" surface.
-- `horizon` / `horizon-deep` (`#e8a076` peach) - primary CTA, "earned"/PR state, Temari accent.
-- `cream` / `cream-deep` (`#f6f1e8`) - paper / secondary surface and borders.
-- `ink` / `ink-2` / `ink-3` - the 3-tier text-contrast scale (see below).
-- `surface` / `surface-elev` / `surface-warm` / `surface-sunken` + `line` - app surfaces (dawn-shift drifts `surface`).
-- `mood-{nyala,enteng,oleng,lemes,mumet,adem}` (each with a pastel `-bg` variant) - calendar cells + mood badges.
-- `rarity-{common,uncommon,rare,epic,legendary}` - card rarity.
-- semantic hues `leaf` / `leaf-deep`, `ember` / `ember-deep`, `citrus` / `citrus-deep`, `stone`.
-- `strava-orange` / `strava-orange-hover` - reserved, never themed (see below).
-
-`citrus` mustard (`#d9b23a`) is reserved for PR / legendaris celebrations only. App is **light-mode only**: the `dark:` modifier still appears in legacy component code but `.dark` is never applied to `<html>`, and there are no `*-dark` tokens. Treat any new code as light-only.
-
-Full token reference (colors, type scale, fonts, gradients, spacing): [docs/design-tokens.md](docs/design-tokens.md), generated from the `app.css @theme` block.
-
-**Voice & tone:** all user-facing copy (UI chrome, Temari narration, LLM prompts) follows one casual-Jakarta register with a code-switch test for English terms, a beginner-accessibility tier for jargon, a calque blacklist, and a `**bold**` emphasis rule. Read [docs/voice-and-tone.md](docs/voice-and-tone.md) before writing or reviewing copy. Persona source of truth: [TemariPersona.php](app/Services/AI/TemariPersona.php).
-
-### Strava brand mark — hands off
-
-The "Connect with Strava" button (and any Strava brand mark in the app) is never restyled. Strava brand orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. The warm `horizon` peach (`#e8a076`) and `ember` share a hue family with Strava orange, so within any card that **displays the Strava brand mark**, the warm accent is *not* used: switch the local context to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Strava can revoke API access for brand-guideline violations.
-
-### CTA contrast rule (WCAG)
-
-`horizon` (`#e8a076`) is a light peach, so it pairs with **dark** text, never white. Follow the [`PillButton`](resources/js/components/ui/PillButton.tsx) presets:
-- `horizon` bg → `text-sky` (dark navy text on peach passes comfortably); hover darkens to `horizon-deep`.
-- `sky` / `sky-deep` bg (dark navy) → `text-cream` / white text (passes ~12:1); hover darkens to `sky-deep`.
-- `leaf-deep` (`#4f6c54`) bg → white text (passes AA ~4.9:1); used for dense "retry"/action chips. No darker leaf token exists, so darken on hover with `hover:opacity-90`, not a hue jump.
-- Never put white text on `horizon`/`citrus`/`cream` (all too light).
-
-### Gradient primitives
-
-Gradient **text** is applied via [`<GradientText preset="horizon|cream-sun" fontSize=… />`](resources/js/components/ui/GradientText.tsx), which clips a `linear-gradient` to the text via inline `background-clip`. Rule: **gradient text on numbers only**, only at large display sizes, and only one per visible viewport. Scarcity makes it feel premium, not Las-Vegas. Backdrop atmospherics use [`<MeshBackdrop variant="dawn|night|ember" />`](resources/js/components/MeshBackdrop.tsx) (three blurred radial blobs) inside `relative overflow-hidden` parents; used mainly on the login page, in-app pages stay clean.
-
-### Dawn-shift theme
-
-[`useDawnShift`](resources/js/hooks/useDawnShift.ts) is mounted in [AppShell](resources/js/layouts/AppShell.tsx); it writes `data-time-of-day="dawn|morning|day|dusk|night"` on `<body>` so CSS surface tints respond to user's local time. Light mode only — never auto-flips to dark mode.
-
-### Text contrast tiers
-
-3-stop semantic system — use the tier that matches the text role, not "pick whichever color looks right":
-
-- `text-ink` (`#1a1812`) — **primary text**: body paragraphs, headings, button labels, KPI values. Default for any prose the user reads.
-- `text-ink-2` (`#3d362a`) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
-- `text-ink-3` (`#7a6f5c`) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
-
-Sweep `grep text-ink-3` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
-
-### Typography & fonts
-
-Two families only (both loaded via Google Fonts in [app.blade.php](resources/views/app.blade.php)): **Instrument Serif** italic is `font-display` (headlines + Temari voice/quotes); **JetBrains Mono** is *both* `font-sans` and `font-mono` (the brand is deliberately all-mono for body/UI/numbers, tabular figures by default). The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headline-*`, `text-quote-*`), each bundling its own line-height + letter-spacing, so one utility lands the full spec.
-
-| Role | Class |
-|---|---|
-| In-app hero title | `font-display italic text-display-2xl text-ink` |
-| Page title (`<h1>`) | `font-display text-display-lg text-ink` (compact/devtools header: `text-headline-xs`) |
-| Section heading (`<h2>`) | `font-display text-headline-sm text-ink` |
-| Temari voice / quote | `font-display italic text-quote-lg text-ink-2` |
-| Sub-label (KPI/table cap) | `text-xs font-semibold uppercase tracking-wider text-ink-3` |
-| Body paragraph | `font-sans text-sm leading-relaxed text-ink` |
-| Caption / supporting | `text-sm text-ink-2 leading-relaxed` |
-| Meta / timestamp | `text-xs text-ink-3` |
-| KPI / big stat value | display tier (`text-display-xs`+) `tabular-nums text-ink`; avoid one-off `text-[NNpx]` |
-
-### Section spacing rhythm
-
-- Major section → next major: `mt-10`
-- Subsection → next: `mt-6`
-- `<h2>` → content: `mt-3`
-- Page header → first section: `mt-8`
-- Hero card padding: `p-6`; data card padding: `p-4`; chip/pill: `px-3 py-1`
-
-## LLM Integration
-
-Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-php/laravel ([AzureOpenAIClient](app/Services/AI/AzureOpenAIClient.php), [StructuredChatCaller](app/Services/AI/StructuredChatCaller.php), narrators under [app/Services/AI/Narrators/](app/Services/AI/Narrators/)). All narrator output flows through the [Analysis](app/Models/AI/Analysis.php) row model (status: pending / queued / processing / done / failed).
-
-**Runtime failure model**: when an AI job exhausts its `$tries` (Laravel native retry + backoff on [AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php)), it lands in `failed_jobs` and the Analysis row is marked `failed`. The UI shows an empty state with a "Coba lagi" button per-block via [AnalysisStatus.tsx](resources/js/components/temari/AnalysisStatus.tsx). Users manually re-dispatch from the UI; developers can retry via Horizon's failed-job tab. AI jobs early-exit when the row is already `done` (idempotency guard in [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php) and [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php)) so a UI-triggered retry that races with a developer Horizon retry doesn't double-bill the LLM. **There is no scheduler** — manual retry only, to keep LLM cost predictable. **There is no global "mode darurat" chip** — per-block state is the source of truth.
-
-**Unconfigured-env fallback**: when `AZURE_OPENAI_URI` / `AZURE_OPENAI_API_KEY` are empty (dev/demo/local without credentials), [AnalysisService](app/Services/AI/AnalysisService.php) skips job dispatch entirely. Rows stay pending until something fills them.
-
-**Demo seed**: [DemoSeedCommand](app/Console/Commands/DemoSeedCommand.php) backfills every Analysis row with deterministic rule-based content via [RuleBasedNarrationFiller](app/Services/AI/Demo/RuleBasedNarrationFiller.php) under `AnalysisService::withoutDispatching()` — no LLM tokens spent on seed. The "Baca ulang" button stays live so a reviewer can trigger a real LLM call per block on demand.
-
-## Environment toggles
-
-- `DEMO_LOGIN_ENABLED` (default `false`) — renders the "Coba versi demo" button on `/login` that signs in as the seeded demo user. Plumbed via [config/demo.php](config/demo.php) → Inertia shared `demoLoginEnabled`. Wired in [compose.prod.yaml](compose.prod.yaml) + [ci.yml](.github/workflows/ci.yml) deploy env.
-- `ONBOARDING_FORCE_SHOW` (default `false`) — forces the dashboard first-run tooltip to render on every mount regardless of run count or the localStorage dismissal flag. Used for QA / demos in prod. Plumbed via [config/onboarding.php](config/onboarding.php) → Inertia shared `onboarding.forceShow`. Wired in [compose.prod.yaml](compose.prod.yaml) + [ci.yml](.github/workflows/ci.yml) deploy env.
 
 ## Skills Activation
 
