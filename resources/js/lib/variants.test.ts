@@ -47,6 +47,10 @@ describe('pillButtonVariants', () => {
         expect(pillButtonVariants({ size: 'sm' })).toContain('text-[13px]');
     });
 
+    it('carries the shared focus-ring in its base', () => {
+        expect(pillButtonVariants()).toContain('focus-ring');
+    });
+
     it('flips ghost to the on-sky variant via the onSky compound', () => {
         const cls = pillButtonVariants({ tone: 'ghost', onSky: true });
         expect(cls).toContain('text-cream');

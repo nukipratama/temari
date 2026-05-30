@@ -136,14 +136,16 @@ export default function AksesoriUnlockModal({
                     {/* CTAs */}
                     <div className="relative flex flex-col gap-2.5">
                         <button
+                            type="button"
                             onClick={handleEquip}
-                            className="w-full rounded-full bg-horizon py-[14px] font-sans text-sm font-semibold text-sky transition-opacity hover:opacity-90"
+                            className="focus-ring-on-sky w-full rounded-full bg-horizon py-[14px] font-sans text-sm font-semibold text-sky transition-opacity hover:opacity-90"
                         >
                             Pakai sekarang
                         </button>
                         <button
+                            type="button"
                             onClick={onClose}
-                            className="w-full rounded-full border border-cream/30 py-3 font-sans text-[13px] font-medium text-cream transition-colors hover:bg-cream/10"
+                            className="focus-ring-on-sky w-full rounded-full border border-cream/30 py-3 font-sans text-[13px] font-medium text-cream transition-colors hover:bg-cream/10"
                         >
                             Nanti aja
                         </button>

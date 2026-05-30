@@ -39,7 +39,7 @@ export const cardVariants = cva('', {
  * GHOST_ON_SKY in components/ui/PillButton.tsx.
  */
 export const pillButtonVariants = cva(
-    'inline-flex items-center gap-2 rounded-full font-sans font-medium transition',
+    'inline-flex items-center gap-2 rounded-full font-sans font-medium transition focus-ring',
     {
         variants: {
             tone: {

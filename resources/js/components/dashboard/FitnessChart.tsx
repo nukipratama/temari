@@ -100,11 +100,11 @@ export default function FitnessChart({ data }: Readonly<FitnessChartProps>) {
                         },
                         scales: {
                             x: {
-                                ticks: { font: { size: 10 }, color: theme.tick, maxRotation: 0, autoSkipPadding: 14 },
+                                ticks: { font: { size: 11 }, color: theme.tick, maxRotation: 0, autoSkipPadding: 14 },
                                 grid: { color: theme.grid },
                             },
                             y: {
-                                ticks: { font: { size: 10 }, color: theme.tick },
+                                ticks: { font: { size: 11 }, color: theme.tick },
                                 grid: { color: theme.grid },
                             },
                         },

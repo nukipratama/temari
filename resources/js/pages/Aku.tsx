@@ -209,7 +209,7 @@ export default function Aku({
                     <button
                         type="button"
                         onClick={() => router.post('/logout')}
-                        className="inline-flex items-center gap-2 rounded-full border border-cream-deep bg-cream px-5 py-2.5 font-sans text-sm text-ink-2 transition hover:text-ink"
+                        className="focus-ring inline-flex items-center gap-2 rounded-full border border-cream-deep bg-cream px-5 py-2.5 font-sans text-sm text-ink-2 transition hover:text-ink"
                     >
                         <Icon icon="mdi:logout" width={16} height={16} aria-hidden className="text-ink-3" />
                         Keluar

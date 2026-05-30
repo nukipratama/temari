@@ -5,6 +5,7 @@ import { Icon } from '@iconify/react';
 import BrandMark from '@/components/BrandMark';
 import Kartu from './Kartu';
 import { cn } from '@/lib/cn';
+import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 import { RARITY_LABELS } from '@/lib/runcard';
 import type { Rarity } from '@/types/inertia';
 
@@ -253,9 +254,11 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                             {(['story', 'feed'] as Format[]).map((f) => (
                                 <button
                                     key={f}
+                                    type="button"
                                     onClick={() => setFormat(f)}
+                                    aria-pressed={format === f}
                                     className={cn(
-                                        'rounded-xl p-3 text-xs font-medium transition',
+                                        'focus-ring rounded-xl p-3 text-xs font-medium transition',
                                         format === f
                                             ? 'border-2 border-horizon bg-cream font-semibold text-ink'
                                             : 'border-2 border-transparent bg-cream text-ink-2 hover:border-cream-deep',
@@ -278,9 +281,10 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                         {/* Header */}
                         <div className="flex items-center gap-3 border-b border-cream-deep px-5 pb-3.5 pt-5">
                             <button
+                                type="button"
                                 onClick={onClose}
                                 aria-label="Tutup"
-                                className="flex h-7 w-7 items-center justify-center rounded-full text-ink-3 transition hover:bg-cream-deep hover:text-ink"
+                                className={iconButtonVariants({ size: 'sm' })}
                             >
                                 <Icon icon="mdi:close" width={16} height={16} />
                             </button>
@@ -292,7 +296,7 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                     {kartu.name}
                                 </div>
                             </div>
-                            <div className="w-7" />
+                            <div className="w-8" />
                         </div>
 
                         <div className="flex flex-1 flex-col gap-5 px-5 pb-6 pt-5">
@@ -305,13 +309,10 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                     {THEMES.map((t) => (
                                         <button
                                             key={t}
+                                            type="button"
                                             onClick={() => setTheme(t)}
-                                            className={cn(
-                                                'flex-1 rounded-full py-2 text-sm font-medium transition',
-                                                theme === t
-                                                    ? 'bg-sky font-semibold text-cream'
-                                                    : 'bg-cream-deep text-ink-2 hover:bg-sky/10',
-                                            )}
+                                            aria-pressed={theme === t}
+                                            className={cn(toggleButtonVariants({ selected: theme === t, size: 'md' }), 'flex-1')}
                                         >
                                             {t}
                                         </button>
@@ -334,10 +335,11 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                     >
                                         <span className="text-sm text-ink">{label}</span>
                                         <button
+                                            type="button"
                                             onClick={toggle}
                                             aria-checked={value}
                                             role="switch"
-                                            className="relative h-5 w-9 shrink-0 rounded-full transition-colors"
+                                            className="focus-ring relative h-5 w-9 shrink-0 rounded-full transition-colors"
                                             style={{ background: value ? 'var(--color-horizon)' : 'rgba(31,39,71,0.15)' }}
                                         >
                                             <span

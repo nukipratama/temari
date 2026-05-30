@@ -152,14 +152,14 @@ export default function GuidedTour({
                             <button
                                 type="button"
                                 onClick={advance}
-                                className="rounded-full bg-horizon px-4 py-1.5 font-sans text-xs font-semibold text-sky transition hover:opacity-90"
+                                className="focus-ring rounded-full bg-horizon px-4 py-1.5 font-sans text-xs font-semibold text-sky transition hover:opacity-90"
                             >
                                 {step < steps.length - 1 ? 'Lanjut →' : 'Selesai'}
                             </button>
                             <button
                                 type="button"
                                 onClick={dismiss}
-                                className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 transition hover:text-ink"
+                                className="focus-ring rounded font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 transition hover:text-ink"
                             >
                                 Lewati
                             </button>

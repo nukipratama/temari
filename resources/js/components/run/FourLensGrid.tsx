@@ -90,7 +90,7 @@ export default function FourLensGrid({
                     type="button"
                     onClick={triggerAll}
                     disabled={bulkPending}
-                    className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
+                    className="focus-ring rounded inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <Icon icon={bulkPending ? 'mdi:loading' : 'mdi:refresh'} className={cn(bulkPending && 'animate-spin')} aria-hidden />
                     {bulkPending ? 'Lagi dibaca…' : 'Baca ulang semua'}

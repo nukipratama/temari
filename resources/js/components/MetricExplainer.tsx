@@ -36,8 +36,8 @@ export default function MetricExplainer({
     const iconSize = size === 'xs' ? 12 : 14;
     const buttonClass =
         size === 'xs'
-            ? 'inline-flex h-4 w-4 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink'
-            : 'inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink';
+            ? 'focus-ring inline-flex h-4 w-4 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink'
+            : 'focus-ring inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink';
 
     return (
         <span ref={containerRef} className={cn('relative inline-flex align-middle', className)}>

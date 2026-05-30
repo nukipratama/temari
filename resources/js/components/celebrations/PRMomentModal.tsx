@@ -1,6 +1,8 @@
 import { Link } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Temari from '@/components/temari/Temari';
+import { cn } from '@/lib/cn';
+import { iconButtonVariants } from '@/lib/variants';
 
 interface PrData {
     activityId: number;
@@ -60,8 +62,9 @@ export default function PRMomentModal({ pr, onClose, onShare }: Readonly<PRMomen
                     {/* Close */}
                     <div className="relative mb-8 flex justify-end">
                         <button
+                            type="button"
                             onClick={onClose}
-                            className="font-mono text-lg text-cream/60 hover:text-cream/90 transition-colors"
+                            className={cn(iconButtonVariants({ onSky: true }), 'font-mono text-lg')}
                             aria-label="Tutup"
                         >
                             ✕

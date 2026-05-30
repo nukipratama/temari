@@ -96,11 +96,11 @@ export default function VolumeChart({ data }: Readonly<VolumeChartProps>) {
                         },
                         scales: {
                             x: {
-                                ticks: { font: { size: 10 }, color: theme.tick, maxRotation: 0, autoSkipPadding: 14 },
+                                ticks: { font: { size: 11 }, color: theme.tick, maxRotation: 0, autoSkipPadding: 14 },
                                 grid: { color: theme.grid },
                             },
                             y: {
-                                ticks: { font: { size: 10 }, color: theme.tick, callback: kmAxisTick },
+                                ticks: { font: { size: 11 }, color: theme.tick, callback: kmAxisTick },
                                 grid: { color: theme.grid },
                             },
                         },

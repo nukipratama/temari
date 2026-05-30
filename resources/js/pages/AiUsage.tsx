@@ -122,7 +122,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                     <DateField id="to" label="Sampai" value={toInput} onChange={setToInput} />
                     <button
                         type="submit"
-                        className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-cream transition hover:opacity-90"
+                        className="focus-ring inline-flex items-center gap-1 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-cream transition hover:opacity-90"
                     >
                         <Icon icon="mdi:filter-variant" aria-hidden />
                         <span>Terapkan</span>
@@ -288,7 +288,7 @@ function PresetButton({ label, onClick }: Readonly<{ label: string; onClick: () 
         <button
             type="button"
             onClick={onClick}
-            className="rounded-full border border-line bg-surface-sunken px-3 py-1.5 text-xs font-medium text-ink-2 transition hover:border-leaf/40 hover:text-leaf-deep"
+            className="focus-ring rounded-full border border-line bg-surface-sunken px-3 py-1.5 text-xs font-medium text-ink-2 transition hover:border-leaf/40 hover:text-leaf-deep"
         >
             {label}
         </button>

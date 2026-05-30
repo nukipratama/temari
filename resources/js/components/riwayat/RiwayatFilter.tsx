@@ -76,7 +76,7 @@ export default function RiwayatFilter<V extends string>({
                 aria-expanded={open}
                 aria-label="Buka filter"
                 className={cn(
-                    'inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition lg:text-sm',
+                    'focus-ring inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition lg:text-sm',
                     totalActive > 0
                         ? 'border-sky/40 bg-sky/[0.06] text-sky'
                         : 'border-line/60 bg-surface-elev text-ink-2 hover:bg-surface-warm',
@@ -111,7 +111,7 @@ export default function RiwayatFilter<V extends string>({
                                 <button
                                     type="button"
                                     onClick={onReset}
-                                    className="text-[11px] font-medium text-sky hover:underline"
+                                    className="focus-ring rounded text-[11px] font-medium text-sky hover:underline"
                                 >
                                     Reset
                                 </button>
@@ -143,7 +143,7 @@ function RangeSectionView<V extends string>({ section }: Readonly<{ section: Ran
                             aria-checked={active}
                             onClick={() => section.onChange(opt.value)}
                             className={cn(
-                                'flex w-full items-baseline justify-between rounded-lg px-2 py-1.5 text-left text-xs transition lg:text-sm',
+                                'focus-ring flex w-full items-baseline justify-between rounded-lg px-2 py-1.5 text-left text-xs transition lg:text-sm',
                                 active ? 'bg-sky/10 font-semibold text-sky' : 'text-ink hover:bg-surface-warm',
                             )}
                         >
@@ -176,7 +176,7 @@ function MoodSectionView({ section }: Readonly<{ section: MoodSection }>) {
                             aria-checked={active}
                             onClick={() => section.onToggle(mood)}
                             className={cn(
-                                'flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium transition',
+                                'focus-ring flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium transition',
                                 active ? 'bg-sky/10 text-sky' : 'text-ink hover:bg-surface-warm',
                             )}
                         >
