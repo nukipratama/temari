@@ -63,12 +63,16 @@ class CalendarBuilder
      */
     private function cellFor(Carbon $cursor, string $dateKey, ?Collection $rows, array $moodByActivity, Carbon $monthStart, Carbon $monthEnd, string $todayKey): array
     {
+        $base = [
+            'date' => $dateKey,
+            'day' => $cursor->day,
+            'is_current_month' => $cursor->betweenIncluded($monthStart, $monthEnd),
+            'is_today' => $dateKey === $todayKey,
+        ];
+
         if ($rows === null || $rows->isEmpty()) {
             return [
-                'date' => $dateKey,
-                'day' => $cursor->day,
-                'is_current_month' => $cursor->betweenIncluded($monthStart, $monthEnd),
-                'is_today' => $dateKey === $todayKey,
+                ...$base,
                 'distance_km' => null,
                 'pace_sec_per_km' => null,
                 'avg_hr' => null,
@@ -99,10 +103,7 @@ class CalendarBuilder
         $paceSecPerKm = PaceCalculator::secPerKm($totalDistance, $totalMoving);
 
         return [
-            'date' => $dateKey,
-            'day' => $cursor->day,
-            'is_current_month' => $cursor->betweenIncluded($monthStart, $monthEnd),
-            'is_today' => $dateKey === $todayKey,
+            ...$base,
             'distance_km' => round($totalDistance / 1000, 2),
             'pace_sec_per_km' => $paceSecPerKm !== null ? round($paceSecPerKm, 0) : null,
             'avg_hr' => $hrWeight > 0 ? (int) round($hrWeighted / $hrWeight) : null,
