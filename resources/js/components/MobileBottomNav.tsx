@@ -43,8 +43,6 @@ export default function MobileBottomNav() {
           <Link
             key={item.id}
             href={item.href}
-            prefetch
-            cacheFor="30s"
             data-tour={item.id === "koleksi" ? "bottom-nav-koleksi" : undefined}
             className={cn(
               "flex flex-col items-center gap-1 px-4 py-2 transition",

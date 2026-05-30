@@ -37,8 +37,6 @@ export default function RiwayatTabs({
         <Link
           key={tab.id}
           href={tab.href}
-          prefetch
-          cacheFor="30s"
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] transition",
             active === tab.id

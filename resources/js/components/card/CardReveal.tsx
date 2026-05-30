@@ -159,14 +159,6 @@ export default function CardReveal({
     }
   }, [step, frames, pending.card_id]);
 
-  // Warm the collection page once the user reaches the final frame so the
-  // "Lihat koleksi" tap lands instantly despite the tunnel round-trip.
-  useEffect(() => {
-    if (step === frames.length - 1) {
-      router.prefetch("/kartu", {}, { cacheFor: "30s" });
-    }
-  }, [step, frames.length]);
-
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {

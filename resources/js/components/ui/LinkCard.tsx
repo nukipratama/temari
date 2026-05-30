@@ -33,8 +33,6 @@ export default function LinkCard({
   return (
     <Link
       href={href}
-      prefetch
-      cacheFor="30s"
       onClick={onClick}
       className={cn(
         TONE_CLASS[tone],

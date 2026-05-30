@@ -6,7 +6,6 @@ import type { PendingReveal } from "@/types/inertia";
 
 const reload = vi.fn();
 const visit = vi.fn();
-const prefetch = vi.fn();
 
 vi.mock("@inertiajs/react", async () => {
   const actual: typeof import("@inertiajs/react") =
@@ -19,7 +18,6 @@ vi.mock("@inertiajs/react", async () => {
     router: {
       reload: (...args: unknown[]) => reload(...args),
       visit: (...args: unknown[]) => visit(...args),
-      prefetch: (...args: unknown[]) => prefetch(...args),
     },
   };
 });
@@ -61,7 +59,6 @@ const fetchMock = vi.fn(() =>
 beforeEach(() => {
   reload.mockClear();
   visit.mockClear();
-  prefetch.mockClear();
   fetchMock.mockClear();
   vi.stubGlobal("fetch", fetchMock);
 });
