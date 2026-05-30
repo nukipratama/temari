@@ -89,6 +89,26 @@ it('PostRunSpeechNarrator throws on missing key', function (): void {
     $narrator->generate($a, $d, 'nyala');
 })->throws(UnavailableException::class, 'missing speech');
 
+it('PostRunSpeechNarrator does not fatal when the stream summary is null', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => null]);
+    $caller = fakeCaller(json_encode(['speech' => 'Mantap'], JSON_THROW_ON_ERROR));
+    $narrator = new PostRunSpeechNarrator($caller);
+    expect($narrator->generate($a, $d->fresh(), 'dim'))->toBe('Mantap');
+});
+
+it('PostRunSpeechNarrator resolves the dominant zone from a populated stream summary', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => [
+        'time_in_zone_pct' => ['Z1' => 10, 'Z2' => 70, 'Z3' => 20],
+        'decoupling_pct' => 5.2,
+        'negative_split' => true,
+    ]]);
+    $caller = fakeCaller(json_encode(['speech' => 'Base solid'], JSON_THROW_ON_ERROR));
+    $narrator = new PostRunSpeechNarrator($caller);
+    expect($narrator->generate($a, $d->fresh(), 'nyala'))->toBe('Base solid');
+});
+
 // ── DailyGreetingNarrator ─────────────────────────────────────────────
 
 it('DailyGreetingNarrator returns speech on valid JSON', function (): void {
@@ -141,6 +161,17 @@ it('RunInsightNarrator throws on non-JSON', function (): void {
     $narrator = new RunInsightNarrator($caller);
     $narrator->generate($a, $d);
 })->throws(UnavailableException::class, 'non-JSON');
+
+it('RunInsightNarrator does not fatal when the stream summary is null', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => null]);
+    $caller = fakeCaller(json_encode([
+        'technical' => 't', 'splits' => 's', 'zones' => 'z',
+    ], JSON_THROW_ON_ERROR));
+    $narrator = new RunInsightNarrator($caller);
+    $payload = $narrator->generate($a, $d->fresh());
+    expect($payload['zones'])->toBe('z');
+});
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
 

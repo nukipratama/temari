@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\TriggerAnalysisRequest;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
@@ -21,18 +22,16 @@ use Illuminate\Http\Request;
 class AnalysisController extends Controller
 {
     public function trigger(
-        Request $request,
+        TriggerAnalysisRequest $request,
         AnalysisService $service,
         string $type,
         int $subjectId,
     ): JsonResponse {
-        $analysisType = AnalysisType::tryFrom($type);
-        if ($analysisType === null) {
-            return $this->unknownType();
-        }
+        // Validation in TriggerAnalysisRequest guarantees a known type.
+        $analysisType = AnalysisType::from($type);
 
-        $discriminator = $this->discriminator($request);
         $this->authorizeSubject($this->user($request), $analysisType, $subjectId);
+        $discriminator = $request->discriminator();
 
         $existing = Analysis::query()
             ->forSubject($analysisType->subjectType(), $subjectId, $analysisType, $discriminator)

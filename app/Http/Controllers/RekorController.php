@@ -10,14 +10,18 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\PaceCalculator;
+use App\Services\Run\ProgressionSeriesBuilder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class RekorController extends Controller
 {
+    public function __construct(private readonly ProgressionSeriesBuilder $progressionSeriesBuilder)
+    {
+    }
+
     public function __invoke(Request $request): Response
     {
         /** @var User $user */
@@ -54,7 +58,9 @@ class RekorController extends Controller
         return Inertia::render('Koleksi/Rekor', [
             'personalRecords' => $payload,
             'featuredExtras' => $this->featuredExtras($featured),
-            'progressionSeries' => $featured !== null ? $this->progressionSeries($user, $featured) : null,
+            'progressionSeries' => $featured !== null
+                ? $this->progressionSeriesBuilder->build($user, $featured, $this->milestoneFor($featured)['target_sec'])
+                : null,
         ]);
     }
 
@@ -170,60 +176,5 @@ class RekorController extends Controller
         }
         // Sub-10-min: round down to next 15s.
         return (intdiv($current - 1, 15)) * 15;
-    }
-
-    /**
-     * Best time per ISO week over the last 26 weeks for the featured PR's
-     * distance bucket. Goal line = the milestone target from milestoneFor().
-     *
-     * @return array{category:string, weeks:array<int,string>, times_sec:array<int,int|null>, goal_sec:int|null}|null
-     */
-    private function progressionSeries(User $user, PersonalRecord $featured): ?array
-    {
-        $target = $featured->category->distanceMeters();
-        if ($target === null) {
-            return null;
-        }
-        $minDist = $target * 0.95;
-        $maxDist = $target * 1.05;
-        $since = Carbon::now()->subWeeks(26)->startOfWeek(Carbon::MONDAY);
-
-        $rows = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
-            ->whereBetween('distance', [$minDist, $maxDist])
-            ->whereNotNull('moving_time')
-            ->where('moving_time', '>', 0)
-            ->where('start_date_local', '>=', $since)
-            ->select(['start_date_local', 'moving_time', 'distance'])
-            ->orderBy('start_date_local')
-            ->get();
-
-        if ($rows->isEmpty()) {
-            return null;
-        }
-
-        /** @var array<string, int> $bestByWeek */
-        $bestByWeek = [];
-        foreach ($rows as $row) {
-            if ($row->start_date_local === null) {
-                continue;
-            }
-            $weekKey = Carbon::parse($row->start_date_local)->startOfWeek(Carbon::MONDAY)->toDateString();
-            // Scale the moving_time to the exact target distance so weeks with
-            // a 9.7km run and a 10.2km run compare apples-to-apples.
-            $scaled = (int) round((int) $row->moving_time * ($target / (float) $row->distance));
-            if (! isset($bestByWeek[$weekKey]) || $scaled < $bestByWeek[$weekKey]) {
-                $bestByWeek[$weekKey] = $scaled;
-            }
-        }
-
-        ksort($bestByWeek);
-
-        return [
-            'category' => $featured->category->value,
-            'weeks' => array_keys($bestByWeek),
-            'times_sec' => array_values($bestByWeek),
-            'goal_sec' => $this->milestoneFor($featured)['target_sec'],
-        ];
     }
 }

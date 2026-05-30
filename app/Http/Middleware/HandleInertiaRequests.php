@@ -10,12 +10,21 @@ use App\Models\RunCard;
 use App\Models\User;
 use App\Services\Gamification\EquippedAccessories;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 use Override;
 
 class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
+
+    /**
+     * Short TTL for the Strava-sync share. The two queries it runs fire on
+     * every page load, while the "last synced" marker only moves when a sync
+     * ingests a new activity (minutes apart at most), so a brief cache trades
+     * a tiny staleness window for far fewer per-request queries.
+     */
+    private const int STRAVA_SYNC_CACHE_SECONDS = 120;
 
     /**
      * @return array<string, mixed>
@@ -61,6 +70,18 @@ class HandleInertiaRequests extends Middleware
             return ['connected' => false, 'last_synced_at' => null];
         }
 
+        return Cache::remember(
+            "strava-sync:{$user->id}",
+            self::STRAVA_SYNC_CACHE_SECONDS,
+            fn (): array => $this->computeStravaSyncFor($user),
+        );
+    }
+
+    /**
+     * @return array{connected: bool, last_synced_at: string|null}
+     */
+    private function computeStravaSyncFor(User $user): array
+    {
         $connected = $user->stravaConnection !== null;
         if (! $connected) {
             return ['connected' => false, 'last_synced_at' => null];
