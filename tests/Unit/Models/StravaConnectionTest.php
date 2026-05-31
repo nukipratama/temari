@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use Illuminate\Database\UniqueConstraintViolationException;
 use App\Models\StravaConnection;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;

@@ -60,7 +60,7 @@ const RARITY_DEFAULT: RarityStyle = {
     icon: 'mdi:circle-outline',
     ringClass: 'ring-line',
     chipClass: 'bg-ink-3 text-white ring-2 ring-white',
-    bgClass: 'bg-surface-elev',
+    bgClass: 'bg-surface-card',
     cornerClass: 'from-line to-line',
     holographic: false,
 };
@@ -122,7 +122,7 @@ export default function RunCard({ card, detail, className, size = 'normal' }: Re
                 </div>
                 <span
                     className={cn(
-                        'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest shadow-sm',
+                        'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-widest shadow-sm',
                         r.chipClass,
                     )}
                 >
@@ -131,15 +131,17 @@ export default function RunCard({ card, detail, className, size = 'normal' }: Re
                 </span>
             </header>
 
-            <div
-                className={cn(
-                    'relative grid grid-cols-3 gap-3 text-center',
-                    isHero ? 'mt-7' : 'mt-5',
-                )}
-            >
-                <Stat value={km} unit="km" size={size} />
-                <Stat value={duration} unit="durasi" size={size} />
-                <Stat value={trimp} unit="TRIMP" size={size} />
+            <div className={cn('relative', isHero ? 'mt-7' : 'mt-5')}>
+                <div className="grid grid-cols-2 gap-3 text-center">
+                    <Stat value={km} unit="km" size={size} />
+                    <Stat value={trimp} unit="TRIMP" size={size} />
+                </div>
+                <div className="mt-3 flex items-baseline justify-center gap-2">
+                    <span className="font-mono text-[11px] uppercase tracking-wide text-ink-3">durasi</span>
+                    <span className={cn('font-sans font-semibold leading-tight text-ink', isHero ? 'text-base' : 'text-sm')}>
+                        {duration}
+                    </span>
+                </div>
             </div>
 
             {card.badges && card.badges.length > 0 && (
@@ -168,8 +170,8 @@ function Stat({ value, unit, size }: Readonly<StatProps>) {
     const valueClass = size === 'hero' ? 'text-3xl' : 'text-2xl';
     return (
         <div className="min-w-0">
-            <div className={cn('truncate font-black tabular-nums text-ink', valueClass)}>{value}</div>
-            <div className="font-mono text-[10px] uppercase tracking-wide text-ink-3">{unit}</div>
+            <div className={cn('truncate font-mono font-bold tabular-nums text-ink', valueClass)}>{value}</div>
+            <div className="font-mono text-[11px] uppercase tracking-wide text-ink-3">{unit}</div>
         </div>
     );
 }

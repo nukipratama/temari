@@ -41,7 +41,7 @@ export default function KoleksiTabs({ active, activeCount, className }: Readonly
                     >
                         {tab.label}
                         {isActive && activeCount != null && activeCount !== '' && (
-                            <span className="rounded-full bg-horizon/25 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-[0.06em] text-horizon">
+                            <span className="rounded-full bg-horizon/25 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-[0.06em] text-horizon">
                                 {activeCount}
                             </span>
                         )}

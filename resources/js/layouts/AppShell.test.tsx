@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import AppShell from './AppShell';
 import { setMockPage } from '@/test/setup';
 
+const andiUser = { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null };
+
 describe('AppShell', () => {
     afterEach(() => {
         delete document.body.dataset.timeOfDay;
@@ -10,7 +12,7 @@ describe('AppShell', () => {
 
     it('sets a data-time-of-day attribute on body via useDawnShift', () => {
         setMockPage({
-            auth: { user: { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null } },
+            auth: { user: andiUser },
             flash: {},
             demoLoginEnabled: false,
         });
@@ -24,7 +26,7 @@ describe('AppShell', () => {
 
     it('renders the 4 primary tabs + children by default', () => {
         setMockPage({
-            auth: { user: { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null } },
+            auth: { user: andiUser },
             flash: {},
             demoLoginEnabled: false,
         });
@@ -52,7 +54,7 @@ describe('AppShell', () => {
 
     it('shows AksesoriUnlockModal and dismisses it when a major unlock is flashed', async () => {
         setMockPage({
-            auth: { user: { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null } },
+            auth: { user: andiUser },
             flash: {
                 unlock: { unlock_key: 'accessory.headband_epik', name: 'Headband Epik', icon: 'mdi:star', is_major: true },
             },
@@ -66,7 +68,7 @@ describe('AppShell', () => {
 
     it('fires PR modal when CardReveal skip is clicked on a PR run', async () => {
         setMockPage({
-            auth: { user: { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null } },
+            auth: { user: andiUser },
             flash: {},
             demoLoginEnabled: false,
             pendingReveal: {

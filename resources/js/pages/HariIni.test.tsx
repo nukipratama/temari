@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import HariIni from './HariIni';
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 import type { ActivityDetail, BriefingResult, TrainingLoad, WeeklySnapshot } from '@/types/inertia';
 
 const briefing: BriefingResult = {
@@ -100,7 +100,7 @@ const detailWithCard: ActivityDetail = {
 
 beforeEach(() => {
     setMockPage({
-        auth: { user: { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null } },
+        auth: { user: makeUser() },
         flash: {},
         demoLoginEnabled: false,
         onboarding: { forceShow: false },
@@ -197,7 +197,7 @@ describe('HariIni', () => {
 
         it('shows the onboarding tour when no card reveal is pending', () => {
             setMockPage({
-                auth: { user: { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null } },
+                auth: { user: makeUser() },
                 flash: {},
                 demoLoginEnabled: false,
                 onboarding: { forceShow: true },
@@ -208,7 +208,7 @@ describe('HariIni', () => {
 
         it('defers the onboarding tour while a card reveal is pending', () => {
             setMockPage({
-                auth: { user: { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null } },
+                auth: { user: makeUser() },
                 flash: {},
                 demoLoginEnabled: false,
                 onboarding: { forceShow: true },

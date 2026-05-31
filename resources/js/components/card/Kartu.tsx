@@ -12,8 +12,6 @@ interface KartuProps {
     rarity?: Rarity;
     tags?: ReadonlyArray<string>;
     size?: 'md' | 'lg' | 'xl';
-    /** When mounted inside a sky panel, the bg flips to cream-deep for contrast. */
-    onSky?: boolean;
     className?: string;
 }
 
@@ -49,6 +47,14 @@ const SIZE_STAT_GAP: Record<NonNullable<KartuProps['size']>, string> = {
     xl: 'gap-9',
 };
 
+// Duration now renders as full words ("2 jam 30 menit"), so it gets a readable
+// prose size on its own line rather than the oversized tabular stat treatment.
+const SIZE_DURASI: Record<NonNullable<KartuProps['size']>, string> = {
+    md: 'text-sm',
+    lg: 'text-base',
+    xl: 'text-lg',
+};
+
 /**
  * Layout rule: header at the top, stats+tags pinned to the bottom via
  * `mt-auto`. When the grid stretches cards in a row to match the tallest
@@ -65,14 +71,13 @@ export default function Kartu({
     rarity = 'epic',
     tags,
     size = 'md',
-    onSky = false,
     className,
 }: Readonly<KartuProps>) {
     return (
         <div
             className={cn(
                 'relative flex h-full flex-col overflow-hidden rounded-[14px] border-[1.5px]',
-                onSky ? 'bg-cream-deep' : 'bg-cream',
+                'bg-surface-card',
                 RARITY_BORDER[rarity],
                 SIZE_PADDING[size],
                 className,
@@ -81,7 +86,7 @@ export default function Kartu({
             <span
                 aria-hidden
                 className={cn(
-                    'absolute right-0 top-0 rounded-bl-lg px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em]',
+                    'absolute right-0 top-0 rounded-bl-lg px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.12em]',
                     RARITY_FLAG_BG[rarity],
                 )}
             >
@@ -107,10 +112,19 @@ export default function Kartu({
                     </div>
                 )}
             </div>
-            <div className={cn('mt-auto flex items-baseline pt-5', SIZE_STAT_GAP[size])}>
-                <Stat label="KM" value={km} sizeClass={SIZE_STAT[size]} />
-                <Stat label="Durasi" value={durasi} sizeClass={SIZE_STAT[size]} />
-                <Stat label="TRIMP" value={trimp} sizeClass={SIZE_STAT[size]} />
+            <div className="mt-auto pt-5">
+                <div className={cn('flex items-baseline', SIZE_STAT_GAP[size])}>
+                    <Stat label="KM" value={km} sizeClass={SIZE_STAT[size]} />
+                    <Stat label="TRIMP" value={trimp} sizeClass={SIZE_STAT[size]} />
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                        Durasi
+                    </span>
+                    <span className={cn('font-sans font-semibold leading-tight text-ink', SIZE_DURASI[size])}>
+                        {durasi}
+                    </span>
+                </div>
             </div>
             {tags && tags.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
@@ -129,7 +143,7 @@ function Stat({ label, value, sizeClass }: Readonly<{ label: string; value: stri
             <div className={cn('font-sans font-bold leading-none tabular-nums text-ink', sizeClass)}>
                 {value}
             </div>
-            <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-3">
+            <div className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
                 {label}
             </div>
         </div>

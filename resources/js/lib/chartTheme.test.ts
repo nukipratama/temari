@@ -20,7 +20,7 @@ describe('useChartTheme', () => {
         mockMatchMedia(false);
         const { result } = renderHook(() => useChartTheme());
         expect(result.current.isDark).toBe(false);
-        expect(result.current.tick).toBe('#6f6358');
+        expect(result.current.tick).toBe('#3d362a');
     });
 
     it('returns dark theme when prefers-color-scheme is dark', () => {

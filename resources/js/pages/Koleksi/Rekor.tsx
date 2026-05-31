@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { motion } from 'framer-motion';
+import { toggleButtonVariants } from '@/lib/variants';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
@@ -13,7 +13,7 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import SplitsSparkline from '@/components/run/SplitsSparkline';
 import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import { formatDurationHMS, formatIdDate } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
@@ -48,8 +48,17 @@ interface ProgressionSeries {
 interface RekorProps {
     personalRecords: ExtendedPR[];
     featuredExtras?: FeaturedExtras | null;
-    progressionSeries?: ProgressionSeries | null;
+    progressionByCategory?: Record<string, ProgressionSeries> | null;
 }
+
+// Order + short labels for the progression distance selector.
+const PROGRESSION_TABS = ['5km', '10km', 'half_marathon', 'marathon'] as const;
+const PROGRESSION_TAB_LABEL: Record<(typeof PROGRESSION_TABS)[number], string> = {
+    '5km': '5K',
+    '10km': '10K',
+    half_marathon: 'HM',
+    marathon: 'FM',
+};
 
 const DISTANCE_CATEGORIES = ['1km', '5km', '10km', '15km', 'half_marathon', 'marathon'] as const;
 
@@ -65,7 +74,7 @@ const DISTANCE_ORDER: Record<(typeof DISTANCE_CATEGORIES)[number], number> = {
 export default function KoleksiRekor({
     personalRecords,
     featuredExtras = null,
-    progressionSeries = null,
+    progressionByCategory = null,
 }: Readonly<RekorProps>) {
     const distancePRs = personalRecords
         .filter((p) => DISTANCE_CATEGORIES.includes(p.category as (typeof DISTANCE_CATEGORIES)[number]))
@@ -80,12 +89,7 @@ export default function KoleksiRekor({
     return (
         <AppShell>
             <Head title="Koleksi · Rekor" />
-            <motion.div
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <CollectionHeader
                     active="rekor"
                     eyebrow={eyebrow}
@@ -104,12 +108,12 @@ export default function KoleksiRekor({
 
                 {pacePRs.length > 0 && <PaceTicker records={pacePRs} />}
 
-                {progressionSeries && featured && (
-                    <ProgressionSection series={progressionSeries} currentSec={featured.value_sec} />
+                {progressionByCategory && Object.keys(progressionByCategory).length > 0 && (
+                    <ProgressionSection byCategory={progressionByCategory} />
                 )}
 
                 <TemariFooter />
-            </motion.div>
+            </PageContainer>
         </AppShell>
     );
 }
@@ -214,40 +218,64 @@ function HeroScoreboard({
 }
 
 function ProgressionSection({
-    series,
-    currentSec,
-}: Readonly<{ series: ProgressionSeries; currentSec: number }>) {
+    byCategory,
+}: Readonly<{ byCategory: Record<string, ProgressionSeries> }>) {
+    // Tabs are longest-last, so the last one is the headline distance default.
+    const tabs = PROGRESSION_TABS.filter((c) => byCategory[c]);
+    const [selected, setSelected] = useState<string>(tabs.at(-1) ?? tabs[0]);
+    const series = byCategory[selected] ?? byCategory[tabs[0]];
+
     const times = series.times_sec.filter((t): t is number => t != null);
-    const worst = times.length > 0 ? Math.max(...times) : currentSec;
-    const best = times.length > 0 ? Math.min(...times) : currentSec;
+    const worst = times.length > 0 ? Math.max(...times) : 0;
+    const best = times.length > 0 ? Math.min(...times) : 0;
     const delta = Math.max(0, worst - best);
     const label = PR_CATEGORY_LABELS[series.category] ?? series.category;
 
     return (
-        <Card as="section" padding="lg" className="mt-8 grid items-center gap-7 lg:grid-cols-[1fr_1.4fr]">
-            <div>
-                <SectionLabel>Progres · {label} terbaikmu</SectionLabel>
-                <p className="font-display text-headline-sm text-ink">
-                    Dari <em className="italic">{formatDurationHMS(worst)}</em> ke{' '}
-                    <em className="italic text-horizon-deep">{formatDurationHMS(best)}</em>
-                </p>
-                {delta > 0 && (
-                    <p className="mt-3 font-display text-sm italic leading-relaxed text-ink-2">
-                        “Dalam {series.weeks.length} minggu, kamu motong {formatDurationHMS(delta)}.”
-                    </p>
-                )}
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                    <Chip>−{formatDurationHMS(delta)} total</Chip>
-                    {series.goal_sec != null && (
-                        <Chip tone="horizon">Goal: Sub-{formatDurationHMS(series.goal_sec)}</Chip>
-                    )}
+        <Card as="section" padding="lg" className="mt-8">
+            {tabs.length > 1 && (
+                <div className="mb-6 flex flex-wrap items-center gap-2" role="tablist" aria-label="Pilih jarak">
+                    <span className="mr-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">Jarak</span>
+                    {tabs.map((c) => (
+                        <button
+                            key={c}
+                            type="button"
+                            role="tab"
+                            aria-selected={c === selected}
+                            onClick={() => setSelected(c)}
+                            className={toggleButtonVariants({ selected: c === selected, size: 'sm' })}
+                        >
+                            {PROGRESSION_TAB_LABEL[c]}
+                        </button>
+                    ))}
                 </div>
+            )}
+            <div className="grid items-center gap-7 lg:grid-cols-[1fr_1.4fr]">
+                <div>
+                    <SectionLabel>Progres · {label} terbaikmu</SectionLabel>
+                    <p className="font-display text-headline-sm text-ink">
+                        Dari <em className="italic">{formatDurationHMS(worst)}</em> ke{' '}
+                        <em className="italic text-horizon-deep">{formatDurationHMS(best)}</em>
+                    </p>
+                    {delta > 0 && (
+                        <p className="mt-3 font-display text-sm italic leading-relaxed text-ink-2">
+                            “Dalam {series.weeks.length} minggu, kamu motong {formatDurationHMS(delta)}.”
+                        </p>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                        <Chip>−{formatDurationHMS(delta)} total</Chip>
+                        {series.goal_sec != null && (
+                            <Chip tone="horizon">Goal: Sub-{formatDurationHMS(series.goal_sec)}</Chip>
+                        )}
+                    </div>
+                </div>
+                <ProgressionChart
+                    key={selected}
+                    weeks={series.weeks}
+                    timesSec={series.times_sec}
+                    goalSec={series.goal_sec}
+                />
             </div>
-            <ProgressionChart
-                weeks={series.weeks}
-                timesSec={series.times_sec}
-                goalSec={series.goal_sec}
-            />
         </Card>
     );
 }
@@ -255,7 +283,7 @@ function ProgressionSection({
 function Caption({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
     return (
         <div>
-            <div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-cream/55">
+            <div className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
                 {label}
             </div>
             <div className="font-sans text-[13px] font-medium leading-tight text-cream">{value}</div>
@@ -332,7 +360,7 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
     const runName = pr.activity?.detail?.name ?? 'Lari';
     return (
         <div className="flex flex-col gap-2 rounded-xl bg-sky/40 px-5 py-5">
-            <div className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rarity-rare">
+            <div className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rarity-rare">
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-rarity-rare" style={{ boxShadow: '0 0 8px var(--color-rarity-rare)' }} />
                 {category}
             </div>
@@ -341,7 +369,7 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
             </div>
             <div className="border-t border-cream/10 pt-2.5">
                 <div className="font-sans text-xs text-cream/85">{runName}</div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-cream/50">
+                <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-on-sky">
                     {formatIdDate(pr.set_at, 'short')}
                 </div>
             </div>

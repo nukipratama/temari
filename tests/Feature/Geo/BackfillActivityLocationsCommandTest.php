@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 
@@ -13,9 +12,8 @@ uses(RefreshDatabase::class);
 
 it('queues a resolve job for each unresolved detail with coords', function (): void {
     Queue::fake();
-    $user = User::factory()->create();
 
-    [$a, $b] = Activity::factory()->for($user)->count(2)->create();
+    [$a, $b] = Activity::factory()->count(2)->create();
     ActivityDetail::factory()->for($a)->create([
         'start_lat' => -6.24,
         'start_lng' => 106.81,
@@ -34,9 +32,8 @@ it('queues a resolve job for each unresolved detail with coords', function (): v
 
 it('skips already-resolved details and those without coords', function (): void {
     Queue::fake();
-    $user = User::factory()->create();
 
-    [$resolved, $missing, $unresolved] = Activity::factory()->for($user)->count(3)->create();
+    [$resolved, $missing, $unresolved] = Activity::factory()->count(3)->create();
     ActivityDetail::factory()->for($resolved)->create([
         'start_lat' => -6.24,
         'start_lng' => 106.81,
@@ -60,10 +57,8 @@ it('skips already-resolved details and those without coords', function (): void 
 
 it('honors the --limit option', function (): void {
     Queue::fake();
-    $user = User::factory()->create();
 
     Activity::factory()
-        ->for($user)
         ->count(5)
         ->create()
         ->each(fn ($a) => ActivityDetail::factory()->for($a)->create([
@@ -79,9 +74,7 @@ it('honors the --limit option', function (): void {
 
 it('backfills start_lat/start_lng from summary_polyline when coords are null', function (): void {
     Queue::fake();
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
+    $detail = ActivityDetail::factory()->create([
         'start_lat' => null,
         'start_lng' => null,
         // Google polyline-encoding canonical example. First point ≈ (38.5, -120.2).
@@ -99,9 +92,7 @@ it('backfills start_lat/start_lng from summary_polyline when coords are null', f
 
 it('skips polyline backfill when the polyline is empty/malformed', function (): void {
     Queue::fake();
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
+    $detail = ActivityDetail::factory()->create([
         'start_lat' => null,
         'start_lng' => null,
         'summary_polyline' => '_', // truncated → decoder returns null

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\PrCategory;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
@@ -18,6 +19,19 @@ use Inertia\Response;
 
 class RekorController extends Controller
 {
+    /**
+     * Distances offered in the /rekor progression selector, longest last so the
+     * client's last-tab default lands on the headline distance.
+     *
+     * @var list<PrCategory>
+     */
+    private const array PROGRESSION_CATEGORIES = [
+        PrCategory::Km5,
+        PrCategory::Km10,
+        PrCategory::HalfMarathon,
+        PrCategory::Marathon,
+    ];
+
     public function __construct(private readonly ProgressionSeriesBuilder $progressionSeriesBuilder)
     {
     }
@@ -54,14 +68,38 @@ class RekorController extends Controller
         ])->all();
 
         $featured = $this->pickFeaturedPr($personalRecords);
+        $progressionByCategory = $this->buildProgressionByCategory($user, $personalRecords);
 
         return Inertia::render('Koleksi/Rekor', [
             'personalRecords' => $payload,
             'featuredExtras' => $this->featuredExtras($featured),
-            'progressionSeries' => $featured !== null
-                ? $this->progressionSeriesBuilder->build($user, $featured, $this->milestoneFor($featured)['target_sec'])
-                : null,
+            'progressionByCategory' => $progressionByCategory,
         ]);
+    }
+
+    /**
+     * Build a weekly-best progression series for each distance the runner has a
+     * PR in, so /rekor can offer a 5K / 10K / HM / FM selector. Keyed by the
+     * PrCategory value; a category with too few in-window runs is omitted.
+     *
+     * @param  Collection<int, PersonalRecord>  $records
+     * @return array<string, array{category:string, weeks:array<int,string>, times_sec:array<int,int>, goal_sec:int|null}>
+     */
+    private function buildProgressionByCategory(User $user, Collection $records): array
+    {
+        $prs = [];
+        foreach (self::PROGRESSION_CATEGORIES as $category) {
+            $pr = $records->first(fn (PersonalRecord $record): bool => $record->category === $category);
+            if ($pr !== null) {
+                $prs[] = $pr;
+            }
+        }
+
+        return $this->progressionSeriesBuilder->buildMany(
+            $user,
+            $prs,
+            fn (PersonalRecord $pr): ?int => $this->milestoneFor($pr)['target_sec'],
+        );
     }
 
     /**

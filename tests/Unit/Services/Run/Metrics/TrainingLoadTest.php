@@ -12,12 +12,24 @@ use Illuminate\Support\Carbon;
 uses(RefreshDatabase::class);
 
 // Freeze "today" so Carbon::today() math is stable; afterEach prevents leak on failure.
-beforeEach(fn () => Carbon::setTestNow('2026-05-11 12:00:00'));
+beforeEach(function (): void {
+    Carbon::setTestNow('2026-05-11 12:00:00');
+    $this->load = new TrainingLoad();
+});
 afterEach(fn () => Carbon::setTestNow());
+
+function seedTrimpDay(User $user, float $trimp, int $daysAgo): void
+{
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'trimp_edwards' => $trimp,
+        'start_date_local' => Carbon::today()->subDays($daysAgo),
+    ]);
+}
 
 it('computes Edwards TRIMP as zone-weighted minute sum', function (): void {
     // 1*5 + 2*30 + 3*20 + 4*5 + 5*0 = 145
-    $trimp = (new TrainingLoad())->edwardsTrimp([
+    $trimp = $this->load->edwardsTrimp([
         'Z1' => 5,
         'Z2' => 30,
         'Z3' => 20,
@@ -29,48 +41,42 @@ it('computes Edwards TRIMP as zone-weighted minute sum', function (): void {
 });
 
 it('handles missing zones', function (): void {
-    expect((new TrainingLoad())->edwardsTrimp(['Z2' => 60]))->toEqualWithDelta(120.0, 0.01);
+    expect($this->load->edwardsTrimp(['Z2' => 60]))->toEqualWithDelta(120.0, 0.01);
 });
 
 it('a tempo (Z4-heavy) outscores an easy (Z2-heavy) of the same duration', function (): void {
-    $easy = (new TrainingLoad())->edwardsTrimp(['Z2' => 60]);
-    $tempo = (new TrainingLoad())->edwardsTrimp(['Z1' => 5, 'Z2' => 10, 'Z4' => 40, 'Z5' => 5]);
+    $easy = $this->load->edwardsTrimp(['Z2' => 60]);
+    $tempo = $this->load->edwardsTrimp(['Z1' => 5, 'Z2' => 10, 'Z4' => 40, 'Z5' => 5]);
 
     expect($tempo)->toBeGreaterThan($easy * 1.5);
 });
 
 it('uses narrow thresholds for low-CTL beginners', function (): void {
-    $load = new TrainingLoad();
-
-    expect($load->formStatus(0, 10))->toBe('optimal')
-        ->and($load->formStatus(-6, 10))->toBe('fatigued')
-        ->and($load->formStatus(-15, 10))->toBe('overreaching');
+    expect($this->load->formStatus(0, 10))->toBe('optimal')
+        ->and($this->load->formStatus(-6, 10))->toBe('fatigued')
+        ->and($this->load->formStatus(-15, 10))->toBe('overreaching');
 });
 
 it('uses moderate thresholds for mid-CTL runners', function (): void {
-    $load = new TrainingLoad();
-
-    expect($load->formStatus(0, 40))->toBe('optimal')
-        ->and($load->formStatus(-20, 40))->toBe('fatigued')
-        ->and($load->formStatus(-35, 40))->toBe('overreaching');
+    expect($this->load->formStatus(0, 40))->toBe('optimal')
+        ->and($this->load->formStatus(-20, 40))->toBe('fatigued')
+        ->and($this->load->formStatus(-35, 40))->toBe('overreaching');
 });
 
 it('uses wide thresholds for veteran runners', function (): void {
-    $load = new TrainingLoad();
-
-    expect($load->formStatus(0, 60))->toBe('optimal')
-        ->and($load->formStatus(-25, 60))->toBe('fatigued')
-        ->and($load->formStatus(-50, 60))->toBe('overreaching')
-        ->and($load->formStatus(25, 60))->toBe('fresh');
+    expect($this->load->formStatus(0, 60))->toBe('optimal')
+        ->and($this->load->formStatus(-25, 60))->toBe('fatigued')
+        ->and($this->load->formStatus(-50, 60))->toBe('overreaching')
+        ->and($this->load->formStatus(25, 60))->toBe('fresh');
 });
 
 it('returns null when the user has no TRIMP-bearing activities', function (): void {
     $user = User::factory()->create();
-    expect((new TrainingLoad())->summary($user))->toBeNull();
+    expect($this->load->summary($user))->toBeNull();
 });
 
 it('returns null from summaryFromDailyMap when the map is empty', function (): void {
-    expect((new TrainingLoad())->summaryFromDailyMap([], Carbon::today()))->toBeNull();
+    expect($this->load->summaryFromDailyMap([], Carbon::today()))->toBeNull();
 });
 
 it('rolls TRIMP into ATL/CTL/form with sane magnitudes', function (): void {
@@ -78,14 +84,10 @@ it('rolls TRIMP into ATL/CTL/form with sane magnitudes', function (): void {
 
     // Steady 80 TRIMP/day → ATL/CTL converge near 80.
     for ($i = 0; $i < 60; $i++) {
-        $activity = Activity::factory()->for($user)->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'trimp_edwards' => 80.0,
-            'start_date_local' => Carbon::today()->copy()->subDays(59 - $i),
-        ]);
+        seedTrimpDay($user, 80.0, 59 - $i);
     }
 
-    $summary = (new TrainingLoad())->summary($user);
+    $summary = $this->load->summary($user);
 
     expect($summary)->not->toBeNull()
         ->and($summary['atl_7d'])->toBeFloat()->toBeGreaterThan(70)->toBeLessThan(85)
@@ -100,21 +102,13 @@ it('marks fresh when fitness exceeds fatigue (taper-week shape)', function (): v
 
     // Build CTL with 6w × 100 TRIMP/day, then 7-day taper at 30 TRIMP/day.
     for ($i = 0; $i < 42; $i++) {
-        $activity = Activity::factory()->for($user)->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'trimp_edwards' => 100.0,
-            'start_date_local' => Carbon::today()->copy()->subDays(49 - $i),
-        ]);
+        seedTrimpDay($user, 100.0, 49 - $i);
     }
     for ($i = 0; $i < 7; $i++) {
-        $activity = Activity::factory()->for($user)->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'trimp_edwards' => 30.0,
-            'start_date_local' => Carbon::today()->copy()->subDays(6 - $i),
-        ]);
+        seedTrimpDay($user, 30.0, 6 - $i);
     }
 
-    $summary = (new TrainingLoad())->summary($user);
+    $summary = $this->load->summary($user);
 
     expect($summary['form'])->toBeGreaterThan(0);
     expect($summary['form_status'])->toBeIn(['fresh', 'optimal']);
@@ -126,14 +120,10 @@ it('computes Foster monotony and strain over the week', function (): void {
 
     // High-monotony: same 80 TRIMP every day for 7 days.
     for ($i = 0; $i < 7; $i++) {
-        $activity = Activity::factory()->for($user)->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'trimp_edwards' => 80.0,
-            'start_date_local' => Carbon::today()->copy()->subDays(6 - $i),
-        ]);
+        seedTrimpDay($user, 80.0, 6 - $i);
     }
 
-    $summary = (new TrainingLoad())->summary($user);
+    $summary = $this->load->summary($user);
 
     expect($summary['monotony'])->toBeFloat()->toBeGreaterThan(2.0);
     expect($summary['strain'])->toBeFloat()->toBeGreaterThan(0);
@@ -145,14 +135,10 @@ it('reports zero weekly_trimp / monotony / strain on a fully rested current week
 
     // History sits outside the last 7 days so week_total == 0.
     for ($i = 0; $i < 20; $i++) {
-        $activity = Activity::factory()->for($user)->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'trimp_edwards' => 60.0,
-            'start_date_local' => Carbon::today()->subDays(20 + $i),
-        ]);
+        seedTrimpDay($user, 60.0, 20 + $i);
     }
 
-    $summary = (new TrainingLoad())->summary($user);
+    $summary = $this->load->summary($user);
 
     expect($summary['weekly_trimp'])->toBe(0.0)
         ->and($summary['monotony'])->toBe(0.0)
@@ -164,11 +150,8 @@ it('only counts the requested user', function (): void {
     $userA = User::factory()->create();
     $userB = User::factory()->create();
 
-    ActivityDetail::factory()->for(Activity::factory()->for($userA)->create())->create([
-        'trimp_edwards' => 100.0,
-        'start_date_local' => Carbon::today(),
-    ]);
+    seedTrimpDay($userA, 100.0, 0);
 
-    expect((new TrainingLoad())->summary($userB))->toBeNull();
+    expect($this->load->summary($userB))->toBeNull();
 
 });

@@ -12,6 +12,9 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
+beforeEach(fn () => Carbon::setTestNow('2026-05-20 12:00:00'));
+afterEach(fn () => Carbon::setTestNow());
+
 /**
  * @return array{user: User, featured: PersonalRecord}
  */
@@ -41,7 +44,6 @@ it('returns null when there are no in-window runs in the distance bucket', funct
 });
 
 it('builds the weekly-best series scaled to the target distance', function (): void {
-    Carbon::setTestNow('2026-05-20 12:00:00');
     ['user' => $user, 'featured' => $featured] = progressionFixture('10km', 2400);
 
     // Two runs in different ISO weeks, each within the +/-5% bucket of 10km.
@@ -64,12 +66,9 @@ it('builds the weekly-best series scaled to the target distance', function (): v
 
     // First week: 2500s over 9.9km scaled to 10km = round(2500 * 10000/9900).
     expect($series['times_sec'][0])->toBe((int) round(2_500 * (10_000 / 9_900)));
-
-    Carbon::setTestNow();
 });
 
 it('keeps only the best (lowest) scaled time per week', function (): void {
-    Carbon::setTestNow('2026-05-20 12:00:00');
     ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1500);
 
     // Two runs in the SAME ISO week; the faster scaled time should win.
@@ -86,12 +85,9 @@ it('keeps only the best (lowest) scaled time per week', function (): void {
 
     expect($series['weeks'])->toHaveCount(1)
         ->and($series['times_sec'][0])->toBe(1_500);
-
-    Carbon::setTestNow();
 });
 
 it('excludes runs outside the 26-week lookback window', function (): void {
-    Carbon::setTestNow('2026-05-20 12:00:00');
     ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1500);
 
     $a = Activity::factory()->for($user)->analyzed()->create();
@@ -102,12 +98,9 @@ it('excludes runs outside the 26-week lookback window', function (): void {
     ]);
 
     expect((new ProgressionSeriesBuilder())->build($user, $featured, 1_485))->toBeNull();
-
-    Carbon::setTestNow();
 });
 
 it('ignores another user\'s runs and un-analyzed activities', function (): void {
-    Carbon::setTestNow('2026-05-20 12:00:00');
     ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1500);
 
     $other = User::factory()->create();
@@ -127,6 +120,4 @@ it('ignores another user\'s runs and un-analyzed activities', function (): void 
     ]);
 
     expect((new ProgressionSeriesBuilder())->build($user, $featured, 1_485))->toBeNull();
-
-    Carbon::setTestNow();
 });

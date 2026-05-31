@@ -26,6 +26,10 @@ const baseProps = {
 };
 
 describe('AiUsage page', () => {
+    beforeEach(() => {
+        routerGet.mockClear();
+    });
+
     it('shows totals + active date range + breakdown rows', () => {
         render(<AiUsage {...baseProps} />);
 
@@ -84,7 +88,6 @@ describe('AiUsage page', () => {
     });
 
     it('navigates with form submit', () => {
-        routerGet.mockClear();
         render(<AiUsage {...baseProps} />);
 
         fireEvent.click(screen.getByRole('button', { name: /terapkan/i }));
@@ -102,7 +105,6 @@ describe('AiUsage page', () => {
         ['30 hari', /30 hari/i],
         ['bulan ini', /bulan ini/i],
     ])('preset "%s" navigates with a from/to date pair', (_label, pattern) => {
-        routerGet.mockClear();
         render(<AiUsage {...baseProps} />);
 
         fireEvent.click(screen.getByRole('button', { name: pattern }));

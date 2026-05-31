@@ -8,7 +8,7 @@
 - UI is **Inertia 2 + React 19 + TypeScript + Tailwind v4** (Laravel React Starter Kit conventions). Routes go through controllers (`Inertia::render('PageName', $props)`); pages live in `resources/js/pages/`, components in `resources/js/components/`.
 - `livewire/livewire` ships for Pulse internals only. **Do NOT use Livewire in app code.**
 - `openai-php/laravel` is wired as an **Azure OpenAI** client. `inertiajs/inertia-laravel` v3 speaks the **Inertia 2** protocol.
-- App is **light-mode only**. The `dark:` modifier still appears in legacy components but `.dark` is never applied to `<html>`, and there are no `*-dark` tokens. Treat new code as light-only.
+- App is **light-mode only**: `.dark` is never applied to `<html>` and there are no `*-dark` tokens. Write light-only.
 
 > **Design tokens (Daybreak palette), voice & tone, typography, the AI narrator pipeline, the 1:1 test convention, and the Sail toolchain all live in the `teman-lari` skill** (`.claude/skills/teman-lari/`). Activate it for any UI, AI-narration, or test work. Source-of-truth docs: [docs/design-tokens.md](docs/design-tokens.md), [docs/voice-and-tone.md](docs/voice-and-tone.md).
 
@@ -26,6 +26,10 @@ Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-ph
 
 - `DEMO_LOGIN_ENABLED` (default `false`): renders the "Coba versi demo" button on `/login` that signs in as the seeded demo user. Plumbed via [config/demo.php](config/demo.php) to Inertia shared `demoLoginEnabled`. Loaded in prod from the host `.env` via [compose.prod.yaml](compose.prod.yaml) `env_file:` ([ci.yml](.github/workflows/ci.yml) rolls the services, it does not inject these values).
 - `ONBOARDING_FORCE_SHOW` (default `false`): forces the dashboard first-run tooltip to render on every mount regardless of run count or the localStorage dismissal flag. Used for QA / demos in prod. Plumbed via [config/onboarding.php](config/onboarding.php) to Inertia shared `onboarding.forceShow`. Loaded in prod from the host `.env` via [compose.prod.yaml](compose.prod.yaml) `env_file:` ([ci.yml](.github/workflows/ci.yml) rolls the services, it does not inject these values).
+
+## Debugging
+
+When a bug or error is reported, ground the investigation in real state via Boost MCP before hypothesizing: `last-error` + `read-log-entries` for server errors, `browser-logs` for React/Inertia console errors, `database-query` for data. Full tool list in the `teman-lari` skill.
 
 === foundation rules ===
 

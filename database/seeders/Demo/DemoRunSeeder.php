@@ -226,6 +226,15 @@ class DemoRunSeeder
             type: AnalysisType::BriefingMascotVoice,
             discriminator: $today,
         );
+        // The weekly-featured-card voice ("Kartu dari Temari minggu ini" on the
+        // dashboard hero) has its own job and is never auto-requested by ingest,
+        // so the demo must stage it here or the hero falls back to "Belum dibaca".
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
+            subjectId: $user->id,
+            type: AnalysisType::BriefingFeaturedKartuVoice,
+            discriminator: $today,
+        );
         $this->analysisService->request(
             subjectOrType: AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
             subjectId: $user->id,

@@ -1,11 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import Kalender, { type CalendarCell } from './Kalender';
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
 beforeEach(() => {
     setMockPage({
-        auth: { user: { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null } },
+        auth: { user: makeUser({ name: 'Andi', first_name: 'Andi' }) },
         flash: {},
         demoLoginEnabled: false,
     });

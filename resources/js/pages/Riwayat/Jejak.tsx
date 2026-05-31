@@ -1,6 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { motion } from 'framer-motion';
 import { useCallback, useMemo, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/JourneyStrip';
@@ -17,7 +16,7 @@ import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import type { Activity, ActivityDetail, AnalysisPayload, FormStatus, Mood } from '@/types/inertia';
 
 interface WeeklySnapshotRow {
@@ -159,12 +158,7 @@ export default function RunsIndex({
     return (
         <AppShell>
             <Head title="Riwayat · Jejak" />
-            <motion.main
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <header className="flex flex-col gap-5">
                     <PageHero
                         eyebrow={`Riwayat · ${runs.length} aktivitas`}
@@ -207,7 +201,7 @@ export default function RunsIndex({
                 ) : (
                     <EmptyState />
                 )}
-            </motion.main>
+            </PageContainer>
         </AppShell>
     );
 }
@@ -349,7 +343,7 @@ function MetricChip({
                     : 'bg-cream-deep/60 text-ink-2',
             )}
         >
-            <span className="font-mono text-[10px] uppercase tracking-wider text-ink-3">{label}</span>
+            <span className="font-mono text-[11px] uppercase tracking-wider text-ink-3">{label}</span>
             <span className="tabular-nums">{value}</span>
         </span>
     );

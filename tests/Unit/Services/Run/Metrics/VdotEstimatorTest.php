@@ -9,6 +9,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    $this->estimator = new VdotEstimator();
+});
+
 it('returns null when user has no qualifying distance PR', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create([
@@ -16,7 +20,7 @@ it('returns null when user has no qualifying distance PR', function (): void {
         'value_sec' => 300.0,
     ]);
 
-    expect((new VdotEstimator())->estimate($user))->toBeNull();
+    expect($this->estimator->estimate($user))->toBeNull();
 });
 
 it('computes VDOT from a 5km PR via Daniels', function (): void {
@@ -26,7 +30,7 @@ it('computes VDOT from a 5km PR via Daniels', function (): void {
         'value_sec' => 1200.0,
     ]);
 
-    $result = (new VdotEstimator())->estimate($user);
+    $result = $this->estimator->estimate($user);
 
     expect($result)->not->toBeNull()
         ->and($result['source_category'])->toBe('5km')
@@ -44,14 +48,14 @@ it('picks the PR yielding the highest VDOT when several exist', function (): voi
         'value_sec' => 6300.0,
     ]);
 
-    $result = (new VdotEstimator())->estimate($user);
+    $result = $this->estimator->estimate($user);
 
     expect($result['source_category'])->toBe('5km');
 });
 
 it('formula computes a believable VDOT for a known marathon time', function (): void {
     // Sub-3-hour marathon ≈ VDOT 53-55 per Daniels' tables.
-    $vdot = (new VdotEstimator())->vdotFromTimeAndDistance(10_800, 42_195);
+    $vdot = $this->estimator->vdotFromTimeAndDistance(10_800, 42_195);
 
     expect($vdot)->toBeFloat()->toBeGreaterThan(50)->toBeLessThan(58);
 });
@@ -64,11 +68,10 @@ it('skips PRs whose value yields a non-positive VO2 (impossibly slow time)', fun
         'value_sec' => 30_000.0,
     ]);
 
-    expect((new VdotEstimator())->estimate($user))->toBeNull();
+    expect($this->estimator->estimate($user))->toBeNull();
 });
 
 it('returns null for zero or negative inputs', function (): void {
-    $est = new VdotEstimator();
-    expect($est->vdotFromTimeAndDistance(0, 5_000))->toBeNull()
-        ->and($est->vdotFromTimeAndDistance(1_200, 0))->toBeNull();
+    expect($this->estimator->vdotFromTimeAndDistance(0, 5_000))->toBeNull()
+        ->and($this->estimator->vdotFromTimeAndDistance(1_200, 0))->toBeNull();
 });

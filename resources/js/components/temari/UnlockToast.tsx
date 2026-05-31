@@ -51,7 +51,7 @@ export default function UnlockToast() {
                             type="button"
                             onClick={() => setActive(null)}
                             aria-label="Tutup notifikasi"
-                            className="ml-2 rounded-full p-1 text-ink-3 hover:bg-line/40 hover:text-ink"
+                            className="focus-ring ml-2 rounded-full p-1 text-ink-3 hover:bg-line/40 hover:text-ink"
                         >
                             <Icon icon="mdi:close" width={14} height={14} aria-hidden />
                         </button>

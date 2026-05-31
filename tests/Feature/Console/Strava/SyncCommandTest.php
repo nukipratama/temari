@@ -11,10 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 it('syncs all users with a Strava connection', function (): void {
-    $userA = User::factory()->create();
-    StravaConnection::factory()->for($userA)->create();
-    $userB = User::factory()->create();
-    StravaConnection::factory()->for($userB)->create();
+    User::factory()->withStravaConnection()->count(2)->create();
     User::factory()->create(); // no connection — should be skipped
 
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
@@ -25,10 +22,7 @@ it('syncs all users with a Strava connection', function (): void {
 });
 
 it('honors the --user filter', function (): void {
-    $userA = User::factory()->create();
-    StravaConnection::factory()->for($userA)->create();
-    $userB = User::factory()->create();
-    StravaConnection::factory()->for($userB)->create();
+    [$userA] = User::factory()->withStravaConnection()->count(2)->create();
 
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUser')
@@ -52,7 +46,7 @@ it('skips users whose connection is revoked', function (): void {
     $active = User::factory()->create();
     StravaConnection::factory()->for($active)->create();
     $revoked = User::factory()->create();
-    StravaConnection::factory()->for($revoked)->create(['revoked_at' => now()]);
+    StravaConnection::factory()->for($revoked)->revoked()->create();
 
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUser')
@@ -65,8 +59,7 @@ it('skips users whose connection is revoked', function (): void {
 });
 
 it('parses the --since option and forwards it to the orchestrator', function (): void {
-    $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create();
+    $user = User::factory()->withStravaConnection()->create();
 
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUser')

@@ -146,7 +146,7 @@ Code quality (pint/phpstan/rector/tsc) runs on **pre-commit**; coverage runs in 
 
 ## Boost MCP tools
 
-Wired via [.mcp.json](../../../.mcp.json) (runs `boost:mcp` in the Sail container, so the container must be up). Prefer these over guessing:
+Wired via [.mcp.json](../../../.mcp.json) (runs `boost:mcp` in the Sail container, so the container must be up). Prefer these over guessing; when a bug is reported, start here before hypothesizing:
 - **`search-docs`** — version-correct docs for this exact stack (Laravel 13 / Inertia v3 / React 19 / Tailwind v4 / Pest 4). Use it before reaching for memory on framework APIs; they drift.
 - **`database-query` / `database-schema` / `database-connections`** — inspect real data and schema instead of inferring from migrations.
 - **`read-log-entries` / `last-error`** — read actual app errors.

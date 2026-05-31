@@ -21,6 +21,7 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     RateLimiter::clear('strava-api:15min');
     RateLimiter::clear('strava-api:daily');
+    $this->pipeline = app(ActivityPipeline::class);
 });
 
 function makeActivityWithConnection(): Activity
@@ -61,7 +62,7 @@ it('stores detail and streams on successful fetch', function (): void {
         ]),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
     expect($detail)->not->toBeNull()
@@ -87,7 +88,7 @@ it('increments detail_fail_count on detail fetch failure', function (): void {
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'down'], 500),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     expect($activity->fresh()->detail_fail_count)->toBe(3)
         ->and($activity->fresh()->analyzed_at)->toBeNull();
@@ -101,7 +102,7 @@ it('marks analyzed_at after max attempts so we stop hammering Strava', function 
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'down'], 500),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     expect($activity->fresh()->detail_fail_count)->toBe(5)
         ->and($activity->fresh()->analyzed_at)->not->toBeNull();
@@ -114,7 +115,7 @@ it('stops immediately on a 404 detail (deleted activity), no further retries', f
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'Record Not Found'], 404),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     // analyzed_at stamped so the row is treated as handled and never refetched,
     // even though we are nowhere near DETAIL_FETCH_MAX_ATTEMPTS.
@@ -129,7 +130,7 @@ it('keeps retrying on a 5xx detail (transient)', function (): void {
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'down'], 503),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     // 5xx is transient: increment but leave analyzed_at null so we retry.
     expect($activity->fresh()->detail_fail_count)->toBe(1)
@@ -145,7 +146,7 @@ it('propagates a rate-limit exception so the job can re-queue with backoff', fun
     }
     Http::fake();
 
-    expect(fn () => app(ActivityPipeline::class)->ingest($activity))
+    expect(fn () => $this->pipeline->ingest($activity))
         ->toThrow(StravaRateLimitedException::class);
 
     // The rate-limited fetch must NOT count as a detail failure.
@@ -161,7 +162,7 @@ it('still stores detail when streams 404 (best-effort)', function (): void {
         'strava.com/api/v3/activities/999/streams*' => Http::response(['error' => 'gone'], 404),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
         ->and(ActivityStream::query()->where('activity_id', $activity->id)->exists())->toBeFalse()
@@ -178,7 +179,7 @@ it('is idempotent — re-ingesting refreshes detail and clears fail count', func
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
     expect($detail->name)->toBe('fresh name')
@@ -189,7 +190,7 @@ it('skips when user has no Strava connection', function (): void {
     $activity = Activity::factory()->create();
     Http::fake();
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
     Http::assertNothingSent();
@@ -201,7 +202,7 @@ it('treats non-array Strava detail as a fetch failure', function (): void {
         'strava.com/api/v3/activities/999' => Http::response('"unexpected scalar"'),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     expect($activity->fresh()->detail_fail_count)->toBe(1)
         ->and(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
@@ -238,7 +239,7 @@ it('computes stream_summary + Edwards TRIMP from the streams blob', function ():
         ]),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
 
@@ -275,7 +276,7 @@ it('writes weather columns when streams expose a lat/lng', function (): void {
         ]),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
     expect($detail->weather_temp_c)->toBe(28)
@@ -299,7 +300,7 @@ it('leaves weather columns null when Open-Meteo returns nothing', function (): v
         'api.open-meteo.com/*' => Http::response([], 500),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
     expect($detail->weather_temp_c)->toBeNull();
@@ -323,7 +324,7 @@ it('produces a run card + post_run story line on a successful ingest', function 
         ]),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     expect(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
         ->and(StoryLine::query()
@@ -352,7 +353,7 @@ it('inserts a PR row when the activity beats the user\'s ledger', function (): v
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     expect(PersonalRecord::query()
         ->where('user_id', $activity->user_id)

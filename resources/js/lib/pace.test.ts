@@ -21,16 +21,24 @@ describe('formatPace', () => {
 });
 
 describe('formatDuration', () => {
-    it('drops seconds for sub-hour durations', () => {
-        expect(formatDuration(630)).toBe('10m');
+    it('spells sub-hour durations with menit + detik', () => {
+        expect(formatDuration(630)).toBe('10 menit 30 detik');
     });
 
-    it('formats hours+ as "Hj Mm"', () => {
-        expect(formatDuration(7320)).toBe('2j 2m');
+    it('drops detik when the minute is whole', () => {
+        expect(formatDuration(600)).toBe('10 menit');
     });
 
-    it('rounds to nearest minute for single-digit-second durations', () => {
-        expect(formatDuration(65)).toBe('1m');
+    it('formats hours as "H jam M menit", dropping seconds', () => {
+        expect(formatDuration(7320)).toBe('2 jam 2 menit');
+    });
+
+    it('drops menit when the hour is whole', () => {
+        expect(formatDuration(7200)).toBe('2 jam');
+    });
+
+    it('falls back to detik-only under a minute', () => {
+        expect(formatDuration(45)).toBe('45 detik');
     });
 });
 

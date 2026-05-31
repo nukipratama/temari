@@ -54,12 +54,12 @@ export default function VolumeChart({ data }: Readonly<VolumeChartProps>) {
     }, [data.volume]);
 
     return (
-        <div className="rounded-2xl border border-line bg-surface-elev p-5">
+        <div className="rounded-2xl border border-line bg-surface-card p-5">
             <div className="flex items-center justify-between gap-3">
                 <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
                     Weekly Volume
                 </h3>
-                <span className="text-[10px] text-ink-3">hover untuk detail</span>
+                <span className="text-[11px] text-ink-3">hover untuk detail</span>
             </div>
 
             <dl className="mt-3 grid grid-cols-2 gap-3">
@@ -96,11 +96,11 @@ export default function VolumeChart({ data }: Readonly<VolumeChartProps>) {
                         },
                         scales: {
                             x: {
-                                ticks: { font: { size: 10 }, color: theme.tick, maxRotation: 0, autoSkipPadding: 14 },
+                                ticks: { font: { size: 11 }, color: theme.tick, maxRotation: 0, autoSkipPadding: 14 },
                                 grid: { color: theme.grid },
                             },
                             y: {
-                                ticks: { font: { size: 10 }, color: theme.tick, callback: kmAxisTick },
+                                ticks: { font: { size: 11 }, color: theme.tick, callback: kmAxisTick },
                                 grid: { color: theme.grid },
                             },
                         },
@@ -114,11 +114,11 @@ export default function VolumeChart({ data }: Readonly<VolumeChartProps>) {
 function Stat({ label, value, desc }: Readonly<{ label: string; value: string; desc: string }>) {
     return (
         <div className="rounded-xl bg-line/20 p-2">
-            <dt className="font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-3">
+            <dt className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                 {label}
             </dt>
-            <dd className="mt-0.5 text-base font-bold tabular-nums text-ink">{value}</dd>
-            <dd className="text-[10px] text-ink-3">{desc}</dd>
+            <dd className="mt-0.5 font-mono text-base font-bold tabular-nums text-ink">{value}</dd>
+            <dd className="text-[11px] text-ink-2">{desc}</dd>
         </div>
     );
 }

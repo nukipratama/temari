@@ -26,7 +26,7 @@ export default function KartuMini({
     return (
         <div
             className={cn(
-                'relative w-[140px] flex-none overflow-hidden rounded-[10px] border-[1.5px] bg-cream px-3.5 py-3',
+                'relative w-[140px] flex-none overflow-hidden rounded-[10px] border-[1.5px] bg-surface-card px-3.5 py-3',
                 RARITY_BORDER[rarity],
                 className,
             )}
@@ -40,7 +40,7 @@ export default function KartuMini({
             />
             <div className="mb-1.5 font-sans text-[15px] font-bold leading-[1.1] tracking-tight text-ink">{name}</div>
             {date != null && date !== '' && (
-                <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-3">{date}</div>
+                <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">{date}</div>
             )}
         </div>
     );

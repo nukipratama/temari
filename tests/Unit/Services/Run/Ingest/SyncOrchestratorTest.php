@@ -15,8 +15,11 @@ use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
-it('inserts oldest-first so DB ids are chronological', function (): void {
+beforeEach(function (): void {
     Queue::fake();
+});
+
+it('inserts oldest-first so DB ids are chronological', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
@@ -31,7 +34,6 @@ it('inserts oldest-first so DB ids are chronological', function (): void {
 });
 
 it('dispatches one IngestActivityJob per new activity', function (): void {
-    Queue::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
@@ -44,7 +46,6 @@ it('dispatches one IngestActivityJob per new activity', function (): void {
 });
 
 it('returns 0 and does not query Strava when user has no connection', function (): void {
-    Queue::fake();
     $user = User::factory()->create();
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
@@ -57,7 +58,6 @@ it('returns 0 and does not query Strava when user has no connection', function (
 });
 
 it('returns 0 when another sync holds the lock', function (): void {
-    Queue::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
@@ -77,7 +77,6 @@ it('returns 0 when another sync holds the lock', function (): void {
 });
 
 it('returns 0 when fetcher finds no new activities', function (): void {
-    Queue::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
@@ -89,9 +88,8 @@ it('returns 0 when fetcher finds no new activities', function (): void {
 });
 
 it('skips a revoked connection without querying Strava', function (): void {
-    Queue::fake();
     $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['revoked_at' => now()]);
+    StravaConnection::factory()->for($user)->revoked()->create();
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewExternalIds');
@@ -101,7 +99,6 @@ it('skips a revoked connection without querying Strava', function (): void {
 });
 
 it('passes the --since lower bound through to the fetcher', function (): void {
-    Queue::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
     $since = CarbonImmutable::parse('2026-05-01');
@@ -116,7 +113,6 @@ it('passes the --since lower bound through to the fetcher', function (): void {
 });
 
 it('inserts and queues exactly one IngestActivityJob for a single webhook activity', function (): void {
-    Queue::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
@@ -131,7 +127,6 @@ it('inserts and queues exactly one IngestActivityJob for a single webhook activi
 });
 
 it('re-uses the existing row when a webhook update arrives for a known activity', function (): void {
-    Queue::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
     Activity::factory()->for($user)->create(['strava_external_id' => 9_002]);
@@ -145,9 +140,8 @@ it('re-uses the existing row when a webhook update arrives for a known activity'
 });
 
 it('does not sync a single activity for a revoked connection', function (): void {
-    Queue::fake();
     $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['revoked_at' => now()]);
+    StravaConnection::factory()->for($user)->revoked()->create();
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
 

@@ -23,7 +23,7 @@ it('renders Profile with computed identity + hero stats', function (): void {
 
     $analyzed = Activity::factory()
         ->for($user)
-        ->state(['analyzed_at' => now()])
+        ->analyzed()
         ->count(2)
         ->create();
     foreach ($analyzed as $idx => $activity) {
@@ -61,7 +61,7 @@ it('reports strava_connected as false when the user has no connection', function
 
 it('returns up to 3 most recent PRs with activity context when available', function (): void {
     $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->state(['analyzed_at' => now()])->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create(['name' => 'Morning 5k']);
 
     foreach (['1km', '5km', '10km', 'half_marathon'] as $idx => $category) {

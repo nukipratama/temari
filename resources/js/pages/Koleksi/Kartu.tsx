@@ -1,5 +1,4 @@
 import { Head, Link } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import AppShell from '@/layouts/AppShell';
 import MotionLink from '@/components/MotionLink';
 import ConfettiBurst from '@/components/ConfettiBurst';
@@ -10,7 +9,8 @@ import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from '@/components/card/Kartu';
 import Temari from '@/components/temari/Temari';
 import { cn } from '@/lib/cn';
-import { fadeInUp, pressShrink } from '@/lib/motion';
+import { pressShrink } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
 import { RARITY_LABELS, RARITY_ORDER, prettyBadge } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
@@ -77,12 +77,7 @@ export default function KoleksiKartu({
         <AppShell>
             <Head title="Koleksi · Kartu" />
             <ConfettiBurst burstKey={burstKey} />
-            <motion.div
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <CollectionHeader
                     active="kartu"
                     eyebrow={eyebrow}
@@ -110,7 +105,7 @@ export default function KoleksiKartu({
                 )}
 
                 {rarityCounts.legendary === 0 && <LegendaryTease />}
-            </motion.div>
+            </PageContainer>
         </AppShell>
     );
 }
@@ -190,7 +185,6 @@ function FeaturedPanel({
                         rarity={featured.rarity}
                         tags={allTags}
                         size="lg"
-                        onSky
                         className="rotate-[-3deg]"
                     />
                 </Link>
@@ -205,7 +199,7 @@ function RarityFilter({
 }: Readonly<{ selected: string | null; counts: Record<Rarity, number> }>) {
     return (
         <nav aria-label="Filter kartu" className="mt-8 flex flex-wrap items-center gap-2">
-            <span className="mr-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
+            <span className="mr-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
                 Tingkat
             </span>
             <FilterPill href="/kartu" label="Semua" active={selected === null} dot={null} />

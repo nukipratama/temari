@@ -85,14 +85,14 @@ export default function ProgressionChart({
         scales: {
             x: {
                 grid: { display: false },
-                ticks: { color: 'rgba(122, 111, 92, 0.8)', font: { size: 10 } },
+                ticks: { color: '#3d362a', font: { size: 11 } },
             },
             y: {
                 reverse: true,
                 grid: { color: 'rgba(122, 111, 92, 0.12)' },
                 ticks: {
-                    color: 'rgba(122, 111, 92, 0.8)',
-                    font: { size: 10 },
+                    color: '#3d362a',
+                    font: { size: 11 },
                     callback: (val: number | string) => {
                         const v = typeof val === 'number' ? val : Number(val);
                         return Number.isFinite(v) ? formatDurationHMS(Math.round(v * 60)) : String(val);

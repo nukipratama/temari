@@ -11,27 +11,20 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
+function flashWithUnlock(unlock: { unlock_key: string; name: string; icon: string }) {
+    return { success: null, error: null, info: null, unlock };
+}
+
 describe('UnlockToast', () => {
     it('renders nothing when no flash.unlock is set', () => {
-        setMockPage({
-            auth: { user: null },
-            flash: { success: null, error: null, info: null },
-            demoLoginEnabled: false,
-        });
+        setMockPage({});
         const { container } = render(<UnlockToast />);
         expect(container.querySelector('[role="status"]')).not.toBeInTheDocument();
     });
 
     it('renders toast when flash.unlock is present', () => {
         setMockPage({
-            auth: { user: null },
-            flash: {
-                success: null,
-                error: null,
-                info: null,
-                unlock: { unlock_key: 'accessory.medal_gold', name: 'Medali Emas', icon: 'mdi:medal' },
-            },
-            demoLoginEnabled: false,
+            flash: flashWithUnlock({ unlock_key: 'accessory.medal_gold', name: 'Medali Emas', icon: 'mdi:medal' }),
         });
         render(<UnlockToast />);
         expect(screen.getByText('Medali Emas')).toBeInTheDocument();
@@ -41,14 +34,7 @@ describe('UnlockToast', () => {
     it('schedules the auto-dismiss timer when flash.unlock is present', () => {
         const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
         setMockPage({
-            auth: { user: null },
-            flash: {
-                success: null,
-                error: null,
-                info: null,
-                unlock: { unlock_key: 'accessory.crown', name: 'Mahkota', icon: 'mdi:crown' },
-            },
-            demoLoginEnabled: false,
+            flash: flashWithUnlock({ unlock_key: 'accessory.crown', name: 'Mahkota', icon: 'mdi:crown' }),
         });
         render(<UnlockToast />);
         expect(setTimeoutSpy).toHaveBeenCalled();
@@ -59,14 +45,7 @@ describe('UnlockToast', () => {
 
     it('close button is wired up to dismiss handler', () => {
         setMockPage({
-            auth: { user: null },
-            flash: {
-                success: null,
-                error: null,
-                info: null,
-                unlock: { unlock_key: 'accessory.crown', name: 'Mahkota', icon: 'mdi:crown' },
-            },
-            demoLoginEnabled: false,
+            flash: flashWithUnlock({ unlock_key: 'accessory.crown', name: 'Mahkota', icon: 'mdi:crown' }),
         });
         render(<UnlockToast />);
         const dismissBtn = screen.getByLabelText('Tutup notifikasi');

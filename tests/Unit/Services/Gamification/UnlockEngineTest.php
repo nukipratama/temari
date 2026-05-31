@@ -17,17 +17,21 @@ use Illuminate\Support\Facades\Session;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    $this->engine = app(UnlockEngine::class);
+});
+
 it('returns empty when nothing has been earned yet', function (): void {
     $user = User::factory()->create();
 
-    expect(app(UnlockEngine::class)->grantEligible($user))->toBe([]);
+    expect($this->engine->grantEligible($user))->toBe([]);
 });
 
 it('grants accessory.medal_first_pr on first PR', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
-    $granted = app(UnlockEngine::class)->grantEligible($user);
+    $granted = $this->engine->grantEligible($user);
 
     expect($granted)->toContain('accessory.medal_first_pr')
         ->and(UserUnlock::query()->where('user_id', $user->id)->pluck('unlock_key')->all())
@@ -38,8 +42,8 @@ it('is idempotent — re-running does not duplicate the unlock', function (): vo
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
-    app(UnlockEngine::class)->grantEligible($user);
-    $second = app(UnlockEngine::class)->grantEligible($user);
+    $this->engine->grantEligible($user);
+    $second = $this->engine->grantEligible($user);
 
     expect($second)->toBe([])
         ->and(UserUnlock::query()->where('user_id', $user->id)->count())->toBe(1);
@@ -62,7 +66,7 @@ it('short-circuits once every accessory has been unlocked', function (): void {
         ]);
     }
 
-    expect(app(UnlockEngine::class)->grantEligible($user))->toBe([]);
+    expect($this->engine->grantEligible($user))->toBe([]);
 });
 
 it('grants medal_gold once five PRs are recorded', function (): void {
@@ -75,7 +79,7 @@ it('grants medal_gold once five PRs are recorded', function (): void {
         ['category' => 'half_marathon'],
     ))->create();
 
-    expect(app(UnlockEngine::class)->grantEligible($user))
+    expect($this->engine->grantEligible($user))
         ->toContain('accessory.medal_gold');
 });
 
@@ -87,7 +91,7 @@ it('grants headband_legendaris from a Legendaris run card', function (): void {
         'rarity' => Rarity::Legendary,
     ]);
 
-    expect(app(UnlockEngine::class)->grantEligible($user))
+    expect($this->engine->grantEligible($user))
         ->toContain('accessory.headband_legendaris');
 });
 
@@ -101,7 +105,7 @@ it('grants headband_epik after three Epik run cards', function (): void {
         ]);
     }
 
-    expect(app(UnlockEngine::class)->grantEligible($user))
+    expect($this->engine->grantEligible($user))
         ->toContain('accessory.headband_epik');
 });
 
@@ -114,7 +118,7 @@ it('grants weekly_streak_4 after four weekly snapshots with runs', function (): 
         ]);
     }
 
-    expect(app(UnlockEngine::class)->grantEligible($user))
+    expect($this->engine->grantEligible($user))
         ->toContain('accessory.weekly_streak_4');
 });
 
@@ -127,7 +131,7 @@ it('flashes a toast payload to the session when a session is active', function (
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
-    app(UnlockEngine::class)->grantEligible($user);
+    $this->engine->grantEligible($user);
 
     $flashed = Session::get('unlock');
     expect($flashed)->toBeArray()
@@ -143,7 +147,7 @@ it('skips the flash when the unlock has no config entry', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
-    app(UnlockEngine::class)->grantEligible($user);
+    $this->engine->grantEligible($user);
 
     expect(Session::get('unlock'))->toBeNull();
 });
@@ -157,7 +161,7 @@ it('falls back to the key + default icon when the config entry omits name and ic
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
-    app(UnlockEngine::class)->grantEligible($user);
+    $this->engine->grantEligible($user);
 
     expect(Session::get('unlock'))->toBe([
         'unlock_key' => 'accessory.medal_first_pr',

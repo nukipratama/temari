@@ -93,44 +93,22 @@ it('does not re-dispatch when some pieces are done and others queued', function 
     Bus::assertNotDispatched(AnalyzeBriefingJob::class);
 });
 
-it('shows the "Kemarin lari" streak label when last run was yesterday', function (): void {
+it('labels the streak from days since the last run', function (string $lastRun, string $label): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::parse('2026-05-17'),
+        'start_date_local' => Carbon::parse($lastRun),
         'trimp_edwards' => 50.0,
     ]);
 
     $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
 
-    expect($result->streakLabel)->toBe('Kemarin lari');
-});
-
-it('shows the "Sudah N hari" label when last run was 2-3 days ago', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::parse('2026-05-15'),
-        'trimp_edwards' => 50.0,
-    ]);
-
-    $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
-
-    expect($result->streakLabel)->toBe('Sudah 3 hari');
-});
-
-it('shows the "Sudah N hari" label when last run was more than 1 day ago', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::parse('2026-05-10'),
-        'trimp_edwards' => 50.0,
-    ]);
-
-    $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
-
-    expect($result->streakLabel)->toBe('Sudah 8 hari');
-});
+    expect($result->streakLabel)->toBe($label);
+})->with([
+    'yesterday' => ['2026-05-17', 'Kemarin lari'],
+    '3 days ago' => ['2026-05-15', 'Sudah 3 hari'],
+    '8 days ago' => ['2026-05-10', 'Sudah 8 hari'],
+]);
 
 it('returns a null streak label when the user has never run', function (): void {
     $user = User::factory()->create();

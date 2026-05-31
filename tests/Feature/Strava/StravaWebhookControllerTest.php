@@ -93,9 +93,8 @@ it('does not dispatch when the athlete is unknown', function (): void {
 it('does not dispatch sync for a revoked connection', function (): void {
     Bus::fake();
     $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create([
+    StravaConnection::factory()->for($user)->revoked()->create([
         'strava_athlete_id' => 42,
-        'revoked_at' => now(),
     ]);
 
     $this->postJson(route('strava.webhook.handle'), [

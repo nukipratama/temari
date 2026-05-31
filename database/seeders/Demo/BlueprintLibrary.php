@@ -98,11 +98,91 @@ class BlueprintLibrary
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(136)->setTime(5, 30),
                 distanceM: 21_300,
-                targetPaceSecPerKm: 480,
+                targetPaceSecPerKm: 495,
                 hrProfile: HrProfile::LsdDrift,
                 elevationGainM: 140,
                 name: 'Half marathon perdana',
                 tags: ['half_marathon', 'big_volume', 'all_time_longest'],
+                location: $this->loc(0),
+            ),
+            // --- Half-marathon progression: four more HMs after the perdana,
+            // each a notch faster, so /rekor's featured progression chart draws a
+            // real improving line toward the Sub-2:45 goal instead of one point.
+            // All stay under the perdana's 21.3km so it keeps `all_time_longest`.
+            new RunBlueprint(
+                startsAt: Carbon::today()->subDays(118)->setTime(5, 40),
+                distanceM: 21_150,
+                targetPaceSecPerKm: 488,
+                hrProfile: HrProfile::LsdDrift,
+                elevationGainM: 120,
+                name: 'Half marathon kedua',
+                tags: ['half_marathon', 'big_volume'],
+                location: $this->loc(5),
+            ),
+            new RunBlueprint(
+                startsAt: Carbon::today()->subDays(90)->setTime(5, 45),
+                distanceM: 21_120,
+                targetPaceSecPerKm: 483,
+                hrProfile: HrProfile::NegSplit,
+                elevationGainM: 90,
+                name: 'Half marathon pagi Bali',
+                tags: ['half_marathon', 'big_volume', 'travel'],
+                location: $this->loc(6),
+            ),
+            new RunBlueprint(
+                startsAt: Carbon::today()->subDays(55)->setTime(5, 30),
+                distanceM: 21_097,
+                targetPaceSecPerKm: 478,
+                hrProfile: HrProfile::Tempo,
+                elevationGainM: 70,
+                name: 'Half marathon race-pace',
+                tags: ['half_marathon', 'big_volume', 'negative_split'],
+                location: $this->loc(0),
+            ),
+            new RunBlueprint(
+                startsAt: Carbon::today()->subDays(12)->setTime(5, 30),
+                distanceM: 21_100,
+                targetPaceSecPerKm: 476,
+                hrProfile: HrProfile::NegSplit,
+                elevationGainM: 80,
+                name: 'Half marathon PR',
+                tags: ['half_marathon', 'big_volume', 'pembalik_keadaan'],
+                location: $this->loc(0),
+            ),
+            // --- Full-marathon progression: three FMs across the window so the
+            // /rekor chart can plot a marathon line too. All fall AFTER the D-136
+            // half-marathon perdana, so that HM keeps the first distance-milestone
+            // Legendary and the first marathon earns a second one. The first
+            // marathon is the longest (its lone marathon Legendary); the rest
+            // improve toward a PR. Low-variance LsdDrift keeps the first longest.
+            new RunBlueprint(
+                startsAt: Carbon::today()->subDays(105)->setTime(5, 0),
+                distanceM: 42_600,
+                targetPaceSecPerKm: 519,
+                hrProfile: HrProfile::LsdDrift,
+                elevationGainM: 260,
+                name: 'Marathon perdana',
+                tags: ['marathon', 'big_volume', 'all_time_longest'],
+                location: $this->loc(4),
+            ),
+            new RunBlueprint(
+                startsAt: Carbon::today()->subDays(65)->setTime(5, 0),
+                distanceM: 42_450,
+                targetPaceSecPerKm: 498,
+                hrProfile: HrProfile::LsdDrift,
+                elevationGainM: 220,
+                name: 'Marathon kedua',
+                tags: ['marathon', 'big_volume', 'travel'],
+                location: $this->loc(3),
+            ),
+            new RunBlueprint(
+                startsAt: Carbon::today()->subDays(32)->setTime(5, 0),
+                distanceM: 42_350,
+                targetPaceSecPerKm: 481,
+                hrProfile: HrProfile::LsdDrift,
+                elevationGainM: 180,
+                name: 'Marathon PR',
+                tags: ['marathon', 'big_volume', 'pembalik_keadaan'],
                 location: $this->loc(0),
             ),
             new RunBlueprint(

@@ -175,7 +175,7 @@ it('computes real pace_delta_sec from moving time over distance', function (): v
 
 it('surfaces the latest activity with un-dismissed milestone payload', function (): void {
     $user = User::factory()->create();
-    Activity::factory()->for($user)->state(['analyzed_at' => now()])->create([
+    Activity::factory()->for($user)->analyzed()->create([
         'milestone_payload' => [
             ['kind' => 'pr', 'label' => 'PR!', 'body' => 'PR di 5km.', 'priority' => 100],
         ],
@@ -190,7 +190,7 @@ it('surfaces the latest activity with un-dismissed milestone payload', function 
 
 it('returns null pendingMilestone when payload is null', function (): void {
     $user = User::factory()->create();
-    Activity::factory()->for($user)->state(['analyzed_at' => now(), 'milestone_payload' => null])->create();
+    Activity::factory()->for($user)->analyzed()->create(['milestone_payload' => null]);
 
     $this->actingAs($user)->get('/')
         ->assertInertia(fn (Assert $page) => $page->where('pendingMilestone', null));

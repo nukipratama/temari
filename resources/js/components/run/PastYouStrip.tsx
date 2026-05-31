@@ -20,7 +20,7 @@ interface PastYouStripProps {
     className?: string;
 }
 
-const CARD_BASE = 'block rounded-2xl border border-line bg-surface-elev p-4 sm:p-5';
+const CARD_BASE = 'block rounded-2xl border border-line bg-surface-card p-4 sm:p-5';
 const HEADING_CLASS = 'font-mono text-xs font-semibold uppercase tracking-wider text-ink-3';
 
 export default function PastYouStrip({ match, currentDistance, className }: Readonly<PastYouStripProps>) {

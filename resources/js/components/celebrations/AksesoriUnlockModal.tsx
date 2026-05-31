@@ -111,7 +111,7 @@ export default function AksesoriUnlockModal({
 
                     {/* Headline */}
                     <div className="relative mt-5 text-center">
-                        <div className="mb-3.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-horizon">
+                        <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
                             ★ Aksesori baru
                         </div>
                         <h2 className="mb-6 font-display text-[36px] leading-[0.95] tracking-[-0.02em] text-cream">
@@ -128,7 +128,7 @@ export default function AksesoriUnlockModal({
 
                     {/* Criteria label */}
                     {criteria && (
-                        <div className="relative mb-5 text-center font-mono text-[9px] uppercase tracking-[0.14em] text-cream/55">
+                        <div className="relative mb-5 text-center font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
                             Syarat: {criteria}
                         </div>
                     )}
@@ -136,14 +136,16 @@ export default function AksesoriUnlockModal({
                     {/* CTAs */}
                     <div className="relative flex flex-col gap-2.5">
                         <button
+                            type="button"
                             onClick={handleEquip}
-                            className="w-full rounded-full bg-horizon py-[14px] font-sans text-sm font-semibold text-sky transition-opacity hover:opacity-90"
+                            className="focus-ring-on-sky w-full rounded-full bg-horizon py-[14px] font-sans text-sm font-semibold text-sky transition-opacity hover:opacity-90"
                         >
                             Pakai sekarang
                         </button>
                         <button
+                            type="button"
                             onClick={onClose}
-                            className="w-full rounded-full border border-cream/30 py-3 font-sans text-[13px] font-medium text-cream transition-colors hover:bg-cream/10"
+                            className="focus-ring-on-sky w-full rounded-full border border-cream/30 py-3 font-sans text-[13px] font-medium text-cream transition-colors hover:bg-cream/10"
                         >
                             Nanti aja
                         </button>

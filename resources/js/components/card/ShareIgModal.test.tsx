@@ -1,8 +1,11 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('html-to-image', () => ({
-    toPng: vi.fn(() => Promise.resolve('data:image/png;base64,abc')),
+// The canvas renderer is unit-tested on its own; here we stub it so the modal
+// tests don't depend on a real 2d context (jsdom doesn't implement one).
+vi.mock('@/lib/shareCard', () => ({
+    drawShareCard: vi.fn(() => Promise.resolve()),
+    shareCardBlob: vi.fn(() => Promise.resolve(new Blob(['x'], { type: 'image/png' }))),
 }));
 
 // jsdom doesn't implement ClipboardItem
@@ -11,6 +14,16 @@ vi.mock('html-to-image', () => ({
 };
 import ShareIgModal, { type ShareKartuData } from './ShareIgModal';
 
+// Both share paths fetch the rendered data: URL and turn it into a Blob.
+// jsdom has no real fetch, so resolve data: URLs to a stub PNG blob.
+function stubDataUrlFetch() {
+    globalThis.fetch = vi.fn((url: string) =>
+        url.startsWith('data:')
+            ? Promise.resolve({ blob: () => Promise.resolve(new Blob(['i'], { type: 'image/png' })) } as Response)
+            : Promise.reject(new Error('unexpected')),
+    ) as typeof fetch;
+}
+
 const kartu: ShareKartuData = {
     id: 7,
     name: 'Tendangan Balik',
@@ -18,7 +31,8 @@ const kartu: ShareKartuData = {
     subtitle: 'Pagi negatif-split · 20 Mei 2026',
     date: '20 Mei 2026\n07:00',
     km: '5.28',
-    durasi: '40:00',
+    durasi: '40 menit',
+    pace: '5:30',
     trimp: '87',
     hr: '145 bpm',
     location: 'Jakarta Selatan',
@@ -41,7 +55,7 @@ describe('ShareIgModal', () => {
     it('renders Bagikan and Salin Gambar CTAs', () => {
         render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
         expect(screen.getAllByText(/Bagikan/).length).toBeGreaterThan(0);
-        expect(screen.getByText(/Salin Gambar/)).toBeInTheDocument();
+        expect(screen.getByText(/Salin gambar/)).toBeInTheDocument();
     });
 
     it('renders theme buttons', () => {
@@ -73,20 +87,16 @@ describe('ShareIgModal', () => {
         // No crash = theme switching works
     });
 
-    it('renders stat items km, durasi, trimp', () => {
+    it('renders the canvas preview', () => {
         render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
-        expect(screen.getAllByText(/5\.28/).length).toBeGreaterThan(0);
+        expect(screen.getByLabelText(/Pratinjau kartu/)).toBeInTheDocument();
     });
 
     it('fires Bagikan without crashing when share API is unavailable', async () => {
         const writeText = vi.fn(() => Promise.resolve());
         Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
         Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-        globalThis.fetch = vi.fn((url: string) =>
-            url.startsWith('data:')
-                ? Promise.resolve({ blob: () => Promise.resolve(new Blob(['i'], { type: 'image/png' })) } as Response)
-                : Promise.reject(new Error('unexpected')),
-        ) as typeof fetch;
+        stubDataUrlFetch();
         render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
         await act(async () => {
             fireEvent.click(screen.getAllByRole('button').find((b) => b.textContent === 'Bagikan') ?? document.body);
@@ -97,13 +107,9 @@ describe('ShareIgModal', () => {
     it('fires Salin Gambar and copies image to clipboard', async () => {
         const write = vi.fn(() => Promise.resolve());
         Object.defineProperty(navigator, 'clipboard', { value: { write }, configurable: true });
-        globalThis.fetch = vi.fn((url: string) =>
-            url.startsWith('data:')
-                ? Promise.resolve({ blob: () => Promise.resolve(new Blob(['i'], { type: 'image/png' })) } as Response)
-                : Promise.reject(new Error('unexpected')),
-        ) as typeof fetch;
+        stubDataUrlFetch();
         render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
-        await act(async () => { fireEvent.click(screen.getByText(/Salin Gambar/)); });
+        await act(async () => { fireEvent.click(screen.getByText(/Salin gambar/)); });
         expect(write).toHaveBeenCalled();
     });
 
@@ -114,5 +120,17 @@ describe('ShareIgModal', () => {
         fireEvent.click(switches[0]);
         fireEvent.click(switches[1]);
         fireEvent.click(switches[0]);
+    });
+
+    it('offers the four card-style templates and switches between them', () => {
+        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+        const select = screen.getByLabelText('Pilih gaya kartu');
+        expect(select).toBeInTheDocument();
+        ['Poster', 'Angka', 'Kartu', 'Struk'].forEach((label) =>
+            expect(screen.getByRole('option', { name: label })).toBeInTheDocument(),
+        );
+        // Switching to the receipt template renders without crashing.
+        fireEvent.change(select, { target: { value: 'struk' } });
+        expect(screen.getAllByText(/Tendangan Balik/).length).toBeGreaterThan(0);
     });
 });

@@ -28,7 +28,7 @@ export default function MilestoneStrip({
             )}
         >
             <div className="flex flex-wrap items-center gap-4">
-                <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-horizon">
+                <div className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-horizon">
                     ★ Target berikutnya
                 </div>
                 <div className="font-display text-headline-sm text-cream">

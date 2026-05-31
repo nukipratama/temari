@@ -71,7 +71,7 @@ export default function TemariThread({
                             Catatan Temari
                         </span>
                         {moodLabel && (
-                            <span className="rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-3">
+                            <span className="rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                                 {moodLabel}
                             </span>
                         )}
@@ -163,7 +163,7 @@ function GroupedReanalyzeButton({
                         type="button"
                         onClick={trigger}
                         disabled={pending}
-                        className="inline-flex items-center gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:opacity-50 disabled:cursor-wait"
+                        className="focus-ring rounded inline-flex items-center gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:opacity-50 disabled:cursor-wait"
                     >
                         <Icon icon="mdi:refresh" aria-hidden />
                         <span>Baca ulang</span>

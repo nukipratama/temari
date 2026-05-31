@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { motion } from 'framer-motion';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
 import FourLensGrid from '@/components/run/FourLensGrid';
@@ -13,7 +12,7 @@ import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import PastYouStrip from '@/components/run/PastYouStrip';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDurationHMS, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
 import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
@@ -103,12 +102,7 @@ export default function RunsShow({
     return (
         <AppShell>
             <Head title={detail.name ?? 'Run'} />
-            <motion.main
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <Link
                     href="/aktivitas"
                     className="mb-5 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.14em] text-ink-3 transition hover:text-horizon-deep"
@@ -131,7 +125,7 @@ export default function RunsShow({
                                 <div className="min-w-0 flex-1">
                                     <div className="mb-1.5 flex flex-wrap items-center gap-2">
                                         <MoodChip mood={mood} onSky />
-                                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-cream/55">
+                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
                                             {formatIdDate(detail.start_date_local, 'long')}
                                         </span>
                                     </div>
@@ -216,11 +210,11 @@ export default function RunsShow({
                 {/* SPLITS */}
                 {perKm.length > 0 && <SplitsTable rows={perKm} className="mt-10" />}
 
-                <footer className="mt-8 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-3">
+                <footer className="mt-8 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">
                     Strava activity {activity.strava_external_id ?? '—'} · ingested{' '}
                     {formatIdDate(activity.analyzed_at ?? null, 'long')}
                 </footer>
-            </motion.main>
+            </PageContainer>
         </AppShell>
     );
 }
@@ -228,12 +222,12 @@ export default function RunsShow({
 function HeroStat({ label, value, unit }: Readonly<{ label: string; value: string; unit?: string }>) {
     return (
         <div>
-            <div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-cream/55">{label}</div>
+            <div className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">{label}</div>
             <div className="font-sans text-3xl font-bold leading-none tabular-nums tracking-[-0.02em] text-cream sm:text-4xl">
                 {value}
             </div>
             {unit && (
-                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cream/55">{unit}</div>
+                <div className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-on-sky">{unit}</div>
             )}
         </div>
     );
@@ -256,7 +250,7 @@ function MapWeatherPanel({ detail }: Readonly<{ detail: DetailedActivityDetail }
                                 {Math.round(temp)}°<span className="text-lg font-medium">C</span>
                             </div>
                             {humidity != null && (
-                                <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-cream/55">
+                                <div className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
                                     {Math.round(humidity)}% LEMBAB
                                 </div>
                             )}
@@ -335,7 +329,7 @@ function DetailTiles({
                         t.wide && 'col-span-2',
                     )}
                 >
-                    <div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-3">{t.label}</div>
+                    <div className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">{t.label}</div>
                     <div
                         className={cn(
                             'font-sans font-bold leading-none tabular-nums tracking-[-0.01em]',
@@ -395,7 +389,7 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
                                 <div className="font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-2">
                                     KM {row.km ?? '?'}
                                 </div>
-                                <div className="font-sans text-2xl font-bold tabular-nums leading-none text-ink">
+                                <div className="font-mono text-2xl font-bold tabular-nums leading-none text-ink">
                                     {row.pace ?? '—'}
                                     <span className="ml-1 font-mono text-[11px] font-medium text-ink-3">/km</span>
                                 </div>

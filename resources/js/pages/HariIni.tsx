@@ -1,6 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { motion } from 'framer-motion';
 import AppShell from '@/layouts/AppShell';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import MilestoneBanner, { type PendingMilestone } from '@/components/MilestoneBanner';
@@ -21,7 +20,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { cn } from '@/lib/cn';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import { formStatusLabel } from '@/lib/formStatus';
 import { renderBold } from '@/lib/richText';
 import { formatKm, formatPace, formatRelativeId, paceSecPerKm } from '@/lib/pace';
@@ -119,7 +118,7 @@ export default function HariIni({
     const cardStrip = recentRuns
         .map((r) => kartuStripItem(r))
         .filter((x): x is StripItem => x !== null)
-        .slice(0, 8);
+        .slice(0, 5);
 
     const now = new Date();
     const dateLine = `${ID_DATE_FMT.format(now)} · ${ID_TIME_FMT.format(now)} · ${briefing.vibeLabel}`;
@@ -129,12 +128,7 @@ export default function HariIni({
         <AppShell>
             <Head title="Hari Ini" />
             <ConfettiBurst burstKey={hasNewPr ? 'pr-detected' : null} />
-            <motion.div
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 {/* Defer onboarding while a card-reveal takeover is pending, or the
                     coachmark stacks on top of the reveal (a first run that earns an
                     Epic/Legendaris card, or the demo seed). CardReveal's dismiss does a
@@ -210,7 +204,7 @@ export default function HariIni({
                         </section>
                     </>
                 )}
-            </motion.div>
+            </PageContainer>
         </AppShell>
     );
 }
@@ -220,8 +214,9 @@ function KataTemariCompact({ briefing, pose }: Readonly<{ briefing: BriefingResu
         <Card padding="lg" className="flex items-start gap-3.5">
             <Temari pose={pose} size={48} animate={false} />
             <div className="min-w-0 flex-1">
-                <div className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-horizon-deep">
-                    ★ Kata Temari hari ini
+                <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
+                    <span>Kata Temari hari ini</span>
                 </div>
                 <AnalysisStatus
                     analysis={briefing.mascotVoice}
@@ -301,7 +296,7 @@ function VitalChip({
                 'flex h-full flex-col justify-between rounded-xl px-3.5 py-4',
                 onSky
                     ? 'border border-cream/15 bg-cream/[0.08] backdrop-blur-sm'
-                    : 'bg-cream',
+                    : 'border border-line bg-surface-card',
             )}
         >
             <div className={cn('mb-1 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em]', onSky ? 'text-cream/70' : 'text-ink-3')}>
@@ -312,7 +307,7 @@ function VitalChip({
             <div className={cn('font-sans text-[22px] font-bold leading-none tabular-nums tracking-[-0.02em]', valueClass)}>
                 {value}
             </div>
-            {sub !== '' && <div className={cn('mt-1 font-display text-xs italic', onSky ? 'text-cream/65' : 'text-ink-3')}>{sub}</div>}
+            {sub !== '' && <div className={cn('mt-1 font-display text-xs italic', onSky ? 'text-ink-on-sky' : 'text-ink-3')}>{sub}</div>}
         </div>
     );
 }
@@ -368,7 +363,6 @@ function FeaturedKartuPanel({
                         rarity={featured.rarity}
                         tags={featured.tags}
                         size="md"
-                        onSky
                     />
                 </div>
                 {/* mobile fallback: Temari above, full Kartu below — keep the kartu-as-hero feel */}
@@ -383,7 +377,6 @@ function FeaturedKartuPanel({
                         rarity={featured.rarity}
                         tags={featured.tags}
                         size="md"
-                        onSky
                         className="w-full max-w-md"
                     />
                 </div>
@@ -434,7 +427,10 @@ function SuggestionCard({ suggestion, lastRun }: Readonly<{ suggestion: Analysis
 
     return (
         <Card padding="md" as="section" className="flex flex-col gap-3">
-            <SectionLabel>Saran sesi dari Temari</SectionLabel>
+            <div className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
+                <span>Saran sesi dari Temari</span>
+            </div>
             <AnalysisStatus
                 analysis={suggestion}
                 inertiaReloadProps={['briefing']}
@@ -468,7 +464,10 @@ function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose:
 
     return (
         <LinkCard href={`/aktivitas/${run.activity_id}`} padding="md" className="flex flex-col gap-3">
-            <SectionLabel>Lari terakhir · {dateLabel}</SectionLabel>
+            <div className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
+                <span>Lari terakhir · {dateLabel}</span>
+            </div>
             <div className="flex items-start gap-3">
                 <Temari pose={pose} size={48} />
                 <div className="min-w-0 flex-1">
@@ -481,7 +480,7 @@ function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose:
                         </div>
                     )}
                     {(locationShort || weatherLabel) && (
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-3">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">
                             {locationShort && (
                                 <span className="inline-flex items-center gap-1">
                                     <Icon icon="mdi:map-marker-outline" width={11} height={11} aria-hidden />
@@ -543,7 +542,10 @@ function KondisiCard({
     ];
     return (
         <Card as="section" padding="md" className="flex flex-col gap-2.5">
-            <SectionLabel>Kondisi · {snapshot ? '7 hari' : 'belum cukup data'}</SectionLabel>
+            <div className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
+                <span>Kondisi · {snapshot ? '7 hari' : 'belum cukup data'}</span>
+            </div>
             {rows.map(({ label, value, hint, color }) => (
                 <div
                     key={label}
@@ -576,7 +578,7 @@ function KondisiCard({
 function Stat({ l, v }: Readonly<{ l: string; v: string }>) {
     return (
         <div>
-            <div className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-3">{l}</div>
+            <div className="mb-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3">{l}</div>
             <div className="font-sans text-3xl font-black leading-none tabular-nums tracking-tight text-ink">{v}</div>
         </div>
     );

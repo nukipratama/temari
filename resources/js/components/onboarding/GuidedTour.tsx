@@ -141,7 +141,7 @@ export default function GuidedTour({
                 <div className="flex items-start gap-3">
                     <Temari pose="observational" size={44} />
                     <div className="min-w-0 flex-1">
-                        <div className="mb-1 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ink-3">
+                        <div className="mb-1 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-ink-3">
                             {step + 1} / {steps.length}
                         </div>
                         <h3 className="font-display text-lg leading-tight tracking-tight text-ink">{currentStep.title}</h3>
@@ -152,14 +152,14 @@ export default function GuidedTour({
                             <button
                                 type="button"
                                 onClick={advance}
-                                className="rounded-full bg-horizon px-4 py-1.5 font-sans text-xs font-semibold text-sky transition hover:opacity-90"
+                                className="focus-ring rounded-full bg-horizon px-4 py-1.5 font-sans text-xs font-semibold text-sky transition hover:opacity-90"
                             >
                                 {step < steps.length - 1 ? 'Lanjut →' : 'Selesai'}
                             </button>
                             <button
                                 type="button"
                                 onClick={dismiss}
-                                className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-3 transition hover:text-ink"
+                                className="focus-ring rounded font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3 transition hover:text-ink"
                             >
                                 Lewati
                             </button>

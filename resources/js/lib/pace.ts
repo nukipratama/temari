@@ -18,13 +18,21 @@ export function paceSecPerKm(movingTimeSec: number | null | undefined, distanceM
     return movingTimeSec / (distanceM / 1000);
 }
 
-// Drops seconds so card-style cells never wrap; use formatDurationHMS for full precision.
+// Full Indonesian words: "2 jam 30 menit" / "30 menit 10 detik" / "45 detik".
+// Seconds show only when the duration is under an hour, where they read as
+// detail rather than clutter. Use formatDurationHMS for the digital H:MM:SS form.
 export function formatDuration(seconds: number): string {
     const total = Math.round(seconds);
     const h = Math.floor(total / 3600);
     const m = Math.floor((total % 3600) / 60);
-    if (h === 0) return `${m}m`;
-    return m === 0 ? `${h}j` : `${h}j ${m}m`;
+    const s = total % 60;
+    if (h > 0) {
+        return m > 0 ? `${h} jam ${m} menit` : `${h} jam`;
+    }
+    if (m > 0) {
+        return s > 0 ? `${m} menit ${s} detik` : `${m} menit`;
+    }
+    return `${s} detik`;
 }
 
 export function formatDurationHMS(seconds: number | null | undefined): string {

@@ -32,7 +32,7 @@ export default function EmptyRunsState() {
             <div className="flex flex-col items-center gap-5 text-center">
                 <Temari pose="reading" size={140} />
                 <div>
-                    <div className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-horizon">
+                    <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
                         ★ Lagi nungguin
                     </div>
                     <h2 className="font-display text-display-sm text-ink">
@@ -53,7 +53,7 @@ export default function EmptyRunsState() {
                         <Link
                             key={title}
                             href={href}
-                            className="flex items-center gap-3 rounded-xl bg-cream px-4 py-3"
+                            className="flex items-center gap-3 rounded-xl bg-surface-card px-4 py-3"
                         >
                             <span
                                 aria-hidden

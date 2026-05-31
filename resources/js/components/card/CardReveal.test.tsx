@@ -152,9 +152,9 @@ describe("CardReveal", () => {
     const u = userEvent.setup();
     render(<CardReveal pending={commonReveal} />);
     await u.click(screen.getByText("Lanjut")); // jump to last frame
-    // 5000m → 5.00 km, 1800s → 30m, trimp 42
+    // 5000m → 5.00 km, 1800s → 30 menit, trimp 42
     expect(screen.getByText("5.00")).toBeInTheDocument();
-    expect(screen.getByText("30m")).toBeInTheDocument();
+    expect(screen.getByText("30 menit")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
   });
 

@@ -28,4 +28,12 @@ class StravaConnectionFactory extends Factory
             'scopes' => 'read,activity:read_all',
         ];
     }
+
+    /**
+     * A connection the user has deauthorized.
+     */
+    public function revoked(): static
+    {
+        return $this->state(fn (): array => ['revoked_at' => now()]);
+    }
 }

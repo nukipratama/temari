@@ -30,18 +30,50 @@ class ProgressionSeriesBuilder
      */
     public function build(User $user, PersonalRecord $featured, ?int $goalSec): ?array
     {
-        $target = $featured->category->distanceMeters();
-        if ($target === null) {
-            return null;
+        return $this->buildMany($user, [$featured], fn (): ?int => $goalSec)[$featured->category->value] ?? null;
+    }
+
+    /**
+     * Batch variant of build(): one query covering every requested PR's distance
+     * band, bucketed in PHP, so /rekor's multi-distance selector costs a single
+     * round trip instead of one per category. Keyed by PrCategory value; a
+     * category with too few in-window runs is omitted. Insertion order follows
+     * the given $records.
+     *
+     * @param  list<PersonalRecord>  $records
+     * @param  callable(PersonalRecord): (int|null)  $goalResolver
+     * @return array<string, array{category:string, weeks:array<int,string>, times_sec:array<int,int>, goal_sec:int|null}>
+     */
+    public function buildMany(User $user, array $records, callable $goalResolver): array
+    {
+        /** @var array<int, array{record: PersonalRecord, target: float, min: float, max: float}> $bands */
+        $bands = [];
+        foreach ($records as $record) {
+            $target = $record->category->distanceMeters();
+            if ($target === null) {
+                continue;
+            }
+            $bands[] = [
+                'record' => $record,
+                'target' => $target,
+                'min' => $target * (1 - self::DISTANCE_TOLERANCE),
+                'max' => $target * (1 + self::DISTANCE_TOLERANCE),
+            ];
         }
 
-        $minDist = $target * (1 - self::DISTANCE_TOLERANCE);
-        $maxDist = $target * (1 + self::DISTANCE_TOLERANCE);
+        if ($bands === []) {
+            return [];
+        }
+
         $since = Carbon::now()->subWeeks(self::LOOKBACK_WEEKS)->startOfWeek(Carbon::MONDAY);
 
         $rows = ActivityDetail::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
-            ->whereBetween('distance', [$minDist, $maxDist])
+            ->where(function ($q) use ($bands): void {
+                foreach ($bands as $band) {
+                    $q->orWhereBetween('distance', [$band['min'], $band['max']]);
+                }
+            })
             ->whereNotNull('moving_time')
             ->where('moving_time', '>', 0)
             ->where('start_date_local', '>=', $since)
@@ -49,24 +81,24 @@ class ProgressionSeriesBuilder
             ->orderBy('start_date_local')
             ->get();
 
-        if ($rows->isEmpty()) {
-            return null;
+        $out = [];
+        foreach ($bands as $band) {
+            $inBand = $rows->whereBetween('distance', [$band['min'], $band['max']]);
+            $bestByWeek = $this->bestTimePerWeek($inBand, $band['target']);
+            if ($bestByWeek === []) {
+                continue;
+            }
+            ksort($bestByWeek);
+            $category = $band['record']->category;
+            $out[$category->value] = [
+                'category' => $category->value,
+                'weeks' => array_keys($bestByWeek),
+                'times_sec' => array_values($bestByWeek),
+                'goal_sec' => $goalResolver($band['record']),
+            ];
         }
 
-        $bestByWeek = $this->bestTimePerWeek($rows, $target);
-
-        if ($bestByWeek === []) {
-            return null;
-        }
-
-        ksort($bestByWeek);
-
-        return [
-            'category' => $featured->category->value,
-            'weeks' => array_keys($bestByWeek),
-            'times_sec' => array_values($bestByWeek),
-            'goal_sec' => $goalSec,
-        ];
+        return $out;
     }
 
     /**

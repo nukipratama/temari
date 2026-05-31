@@ -2,21 +2,17 @@
 
 declare(strict_types=1);
 
-use Illuminate\Queue\Middleware\WithoutOverlapping;
 use App\Jobs\Geo\ResolveActivityLocationJob;
-use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\User;
 use App\Services\Geo\NominatimResolver;
 use App\Services\Geo\ResolvedLocation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 uses(RefreshDatabase::class);
 
 it('writes resolved location + stamps resolved_at on success', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
+    $detail = ActivityDetail::factory()->create([
         'start_lat' => -6.24,
         'start_lng' => 106.81,
         'location_name' => null,
@@ -38,9 +34,7 @@ it('writes resolved location + stamps resolved_at on success', function (): void
 });
 
 it('stamps resolved_at with null name when resolver returns null (so we don\'t retry)', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
+    $detail = ActivityDetail::factory()->create([
         'start_lat' => 0.0,
         'start_lng' => 0.0,
         'location_resolved_at' => null,
@@ -56,9 +50,7 @@ it('stamps resolved_at with null name when resolver returns null (so we don\'t r
 });
 
 it('skips already-resolved details', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
+    $detail = ActivityDetail::factory()->create([
         'start_lat' => -6.24,
         'start_lng' => 106.81,
         'location_name' => 'cached',
@@ -73,9 +65,7 @@ it('skips already-resolved details', function (): void {
 });
 
 it('stamps and exits when the detail has no coords', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
+    $detail = ActivityDetail::factory()->create([
         'start_lat' => null,
         'start_lng' => null,
         'location_resolved_at' => null,

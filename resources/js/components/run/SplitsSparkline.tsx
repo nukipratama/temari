@@ -13,7 +13,7 @@ export default function SplitsSparkline({ paceSec, className }: Readonly<SplitsS
         return (
             <div
                 className={cn(
-                    'rounded-xl border border-cream/[0.12] bg-sky/40 px-5 py-4 font-display text-xs italic text-cream/55',
+                    'rounded-xl border border-cream/[0.12] bg-sky/40 px-5 py-4 font-display text-xs italic text-ink-on-sky',
                     className,
                 )}
             >
@@ -22,41 +22,60 @@ export default function SplitsSparkline({ paceSec, className }: Readonly<SplitsS
         );
     }
 
-    const fastest = Math.min(...paceSec);
-    const slowest = Math.max(...paceSec);
+    // Per-km bars stay readable up to ~16 splits. Longer runs (HM, marathon)
+    // average consecutive km into ~16 buckets so the pace shape is legible
+    // instead of 40+ hair-thin bars that all read the same.
+    const MAX_BARS = 16;
+    const perKm = paceSec.length <= MAX_BARS;
+    const bucketSize = perKm ? 1 : Math.ceil(paceSec.length / MAX_BARS);
+    const bars = perKm
+        ? paceSec.map((p, i) => ({ pace: p, from: i + 1, to: i + 1 }))
+        : Array.from({ length: Math.ceil(paceSec.length / bucketSize) }, (_, b) => {
+              const start = b * bucketSize;
+              const chunk = paceSec.slice(start, start + bucketSize);
+              const avg = chunk.reduce((sum, p) => sum + p, 0) / chunk.length;
+              return { pace: avg, from: start + 1, to: Math.min(start + bucketSize, paceSec.length) };
+          });
+
+    const barPaces = bars.map((b) => b.pace);
+    const fastest = Math.min(...barPaces);
+    const slowest = Math.max(...barPaces);
+    const range = slowest - fastest;
     const first = paceSec[0];
     const last = paceSec[paceSec.length - 1];
     const negativeSplit = last < first;
-    const fastestIdx = paceSec.indexOf(fastest);
+    const fastestIdx = barPaces.indexOf(fastest);
+    const kmLabel = (b: { from: number; to: number }) => (b.from === b.to ? `${b.to}` : `${b.from}–${b.to}`);
 
     return (
         <div className={cn('rounded-xl border border-cream/[0.12] bg-sky/40 px-5 py-4 backdrop-blur', className)}>
             <header className="mb-3 flex items-baseline justify-between gap-3">
-                <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-cream/60">
-                    Splits · pace per km
+                <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
+                    Splits · pace per km{perKm ? '' : ` · rata-rata tiap ${bucketSize} km`}
                 </div>
                 <div className="font-display text-[13px] italic text-horizon">
                     {negativeSplit ? 'negatif-split rapi' : 'splits stabil'}: {formatPace(first)} → {formatPace(last)}
                 </div>
             </header>
             <div className="flex h-[72px] items-end gap-1.5">
-                {paceSec.map((p, i) => {
-                    const range = slowest - fastest;
-                    const norm = range > 0 ? (slowest - p) / range : 1;
-                    const heightPct = norm * 70 + 30;
+                {bars.map((b, i) => {
+                    // Widen the floor->ceiling spread (22%..100%) so small pace
+                    // differences are still visible rather than a flat wall.
+                    const norm = range > 0 ? (slowest - b.pace) / range : 1;
+                    const heightPct = norm * 78 + 22;
                     const isBest = i === fastestIdx;
                     return (
-                        <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                        <div key={`${b.from}-${b.to}`} className="flex flex-1 flex-col items-center gap-1.5">
                             <div
                                 className={cn(
                                     'w-full min-h-[8px] rounded-sm transition-opacity',
                                     isBest ? 'bg-horizon' : 'bg-cream/35',
                                 )}
                                 style={{ height: `${heightPct}%` }}
-                                aria-label={`Km ${i + 1}: ${formatPace(p)}`}
-                                title={`Km ${i + 1} · ${formatPace(p)}/km`}
+                                aria-label={`Km ${kmLabel(b)}: ${formatPace(b.pace)}`}
+                                title={`Km ${kmLabel(b)} · ${formatPace(b.pace)}/km`}
                             />
-                            <div className="font-mono text-[9px] tabular-nums text-cream/50">{i + 1}</div>
+                            <div className="font-mono text-[11px] tabular-nums text-ink-on-sky">{b.to}</div>
                         </div>
                     );
                 })}

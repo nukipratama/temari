@@ -51,9 +51,9 @@ it('returns an empty equipped set when nothing is equipped', function (): void {
 
 it('resolves equipped accessories into mascot variants', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.headband_legendaris', 'equipped' => true]);
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_gold', 'equipped' => true]);
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.weekly_streak_4', 'equipped' => true]);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.headband_legendaris']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.weekly_streak_4']);
     // An unlocked-but-unequipped medal must not leak into the result.
     UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_first_pr', 'equipped' => false]);
 

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import PillButton, { type PillTone } from './PillButton';
 
@@ -20,7 +21,6 @@ describe('PillButton', () => {
 
     it('fires onClick when clicked', async () => {
         const onClick = vi.fn();
-        const { default: userEvent } = await import('@testing-library/user-event');
         render(<PillButton onClick={onClick}>Go</PillButton>);
         await userEvent.setup().click(screen.getByRole('button'));
         expect(onClick).toHaveBeenCalledOnce();

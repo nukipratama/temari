@@ -23,4 +23,14 @@ describe('SplitsSparkline', () => {
         expect(screen.getByLabelText(/Km 1:/)).toBeInTheDocument();
         expect(screen.getByLabelText(/Km 3:/)).toBeInTheDocument();
     });
+
+    it('buckets long runs into averaged segments instead of one bar per km', () => {
+        const marathon = Array.from({ length: 42 }, (_, i) => 460 + i);
+        render(<SplitsSparkline paceSec={marathon} />);
+        // 42 km → ceil(42/16)=3 km per bucket → range-labelled bars, not per-km.
+        expect(screen.getByText(/rata-rata tiap 3 km/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Km 1–3:/)).toBeInTheDocument();
+        // No single-km label like "Km 5:" should exist once bucketed.
+        expect(screen.queryByLabelText(/Km 5:/)).not.toBeInTheDocument();
+    });
 });

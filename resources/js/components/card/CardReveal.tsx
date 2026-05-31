@@ -189,6 +189,7 @@ export default function CardReveal({
   const onBackdrop = isLastFrame ? dismiss : advance;
   const onPrimary = isLastFrame ? viewKoleksi : advance;
 
+  const sharePaceSec = paceSecPerKm(pending.moving_time_sec, pending.distance_m);
   const shareData: ShareKartuData = {
     id: pending.card_id,
     name: pending.special_move,
@@ -197,6 +198,7 @@ export default function CardReveal({
     date: null,
     km,
     durasi,
+    pace: sharePaceSec != null ? formatPace(sharePaceSec) : null,
     trimp,
     hr: null,
     location: null,
@@ -264,7 +266,6 @@ export default function CardReveal({
                       rarity={pending.rarity}
                       tags={(pending.badges ?? []).slice(0, 2).map(prettyBadge)}
                       size="md"
-                      onSky
                     />
                   </motion.div>
                 )}
@@ -275,7 +276,6 @@ export default function CardReveal({
                   {isLastFrame && frame.showKartu && (
                     <PillButton
                       tone="horizon"
-                      className="bg-horizon-deep text-white hover:opacity-90"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShareOpen(true);
@@ -288,7 +288,7 @@ export default function CardReveal({
                     {isLastFrame ? "Tutup" : "Lewati"}
                   </PillButton>
                 </div>
-                <div className="mt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-cream/55">
+                <div className="mt-4 text-label-micro text-ink-on-sky">
                   Frame {step + 1} / {frames.length} · ketuk untuk lanjut
                 </div>
               </div>

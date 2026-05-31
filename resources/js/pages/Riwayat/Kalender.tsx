@@ -1,12 +1,11 @@
 import { Head, Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { motion } from 'framer-motion';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import AppShell from '@/layouts/AppShell';
 import RiwayatFilter, { type MoodOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import { MOOD_FILL, MOOD_LABEL, MOOD_SOFT_FILL } from '@/lib/mood';
 import { formatPace, formatShortDateId } from '@/lib/pace';
 import type { Mood } from '@/types/inertia';
@@ -105,12 +104,7 @@ export default function Kalender({
     return (
         <AppShell>
             <Head title={`Riwayat · Kalender · ${monthLabel}`} />
-            <motion.main
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                         <LifetimeEyebrow lifetime={lifetime} />
@@ -154,7 +148,7 @@ export default function Kalender({
                         ))}
                     </div>
                 </div>
-            </motion.main>
+            </PageContainer>
         </AppShell>
     );
 }

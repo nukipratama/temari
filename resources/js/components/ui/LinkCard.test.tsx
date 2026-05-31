@@ -9,10 +9,10 @@ describe('LinkCard', () => {
         expect(link?.getAttribute('href')).toBe('/aktivitas/42');
     });
 
-    it('applies the cream-bordered + hover-lift chrome by default', () => {
+    it('applies the tonal-surface + hover-lift chrome by default', () => {
         const { container } = render(<LinkCard href="/x">x</LinkCard>);
         const root = container.firstChild as HTMLElement;
-        expect(root.className).toMatch(/bg-cream/);
+        expect(root.className).toMatch(/bg-surface-card/);
         expect(root.className).toMatch(/focus-ring/);
     });
 

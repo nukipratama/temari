@@ -48,9 +48,9 @@ export default function WeatherHero({ detail }: Readonly<WeatherHeroProps>) {
         <section className={cn('relative overflow-hidden rounded-2xl border border-line p-4 shadow-sm bg-gradient-to-br sm:p-5', style.gradient)}>
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-3">Cuaca lari</p>
+                    <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-3">Cuaca lari</p>
                     {temp != null && (
-                        <p className={cn('mt-1 text-4xl font-black tabular-nums', tempTone(temp))}>
+                        <p className={cn('mt-1 font-mono text-4xl font-bold tabular-nums', tempTone(temp))}>
                             {temp}
                             <span className="ml-0.5 text-xl font-semibold">°C</span>
                         </p>

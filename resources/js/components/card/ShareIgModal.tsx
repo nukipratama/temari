@@ -1,11 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useRef, useState } from 'react';
-import { toPng } from 'html-to-image';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@iconify/react';
-import BrandMark from '@/components/BrandMark';
-import Kartu from './Kartu';
 import { cn } from '@/lib/cn';
+import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 import { RARITY_LABELS } from '@/lib/runcard';
+import { drawShareCard, shareCardBlob, type Format, type Layout, type Theme } from '@/lib/shareCard';
 import type { Rarity } from '@/types/inertia';
 
 export interface ShareKartuData {
@@ -16,6 +15,7 @@ export interface ShareKartuData {
     date: string | null;
     km: string;
     durasi: string;
+    pace: string | null;
     trimp: string;
     hr: string | null;
     location: string | null;
@@ -29,55 +29,42 @@ interface ShareIgModalProps {
     onClose: () => void;
 }
 
-type Theme = 'Dawn' | 'Sky' | 'Cream' | 'Inverted';
-type Format = 'story' | 'feed';
-
-const THEME_BG: Record<Theme, React.CSSProperties> = {
-    Dawn: {
-        background:
-            'linear-gradient(170deg, var(--color-sky-deep) 0%, var(--color-sky) 50%, oklch(58% 0.10 38) 88%, var(--color-horizon-deep) 100%)',
-        color: 'var(--color-cream)',
-    },
-    Sky: { background: 'var(--color-sky)', color: 'var(--color-cream)' },
-    Cream: { background: 'var(--color-cream-deep)', color: 'var(--color-ink)' },
-    Inverted: { background: 'var(--color-sky-deep)', color: 'var(--color-cream)' },
+const LAYOUTS: Layout[] = ['poster', 'angka', 'kartu', 'struk'];
+const LAYOUT_LABELS: Record<Layout, string> = {
+    poster: 'Poster',
+    angka: 'Angka',
+    kartu: 'Kartu',
+    struk: 'Struk',
 };
 
 const THEMES: Theme[] = ['Dawn', 'Sky', 'Cream', 'Inverted'];
 
 export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalProps>) {
     const [theme, setTheme] = useState<Theme>('Dawn');
+    const [layout, setLayout] = useState<Layout>('poster');
     const [showStats, setShowStats] = useState(true);
     const [showQuote, setShowQuote] = useState(true);
     const [format, setFormat] = useState<Format>('story');
-    const previewRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // Repaint the fixed-resolution canvas whenever any knob changes. The canvas
+    // IS the export, so the on-screen preview can never drift from the shared
+    // image, and the output is identical on every device.
+    useEffect(() => {
+        if (kartu === null || canvasRef.current === null) {
+            return;
+        }
+        void drawShareCard(canvasRef.current, { kartu, theme, layout, format, showStats, showQuote });
+    }, [kartu, theme, layout, format, showStats, showQuote]);
 
     if (kartu === null) return null;
 
-    const isDark = theme !== 'Cream';
-    const dividerColor = isDark ? 'rgba(246,241,232,0.15)' : 'rgba(31,39,71,0.10)';
-    const metaColor = isDark ? 'rgba(246,241,232,0.55)' : 'var(--color-ink-3)';
+    const cfg = { kartu, theme, layout, format, showStats, showQuote };
 
-    const statItems = [
-        { v: kartu.km, l: 'KM' },
-        { v: kartu.durasi, l: 'Durasi' },
-        { v: kartu.trimp, l: 'TRIMP' },
-        ...(kartu.hr ? [{ v: kartu.hr, l: 'HR' }] : []),
-        ...(kartu.weather ? [{ v: kartu.weather, l: 'Cuaca' }] : []),
-        ...(kartu.location ? [{ v: kartu.location, l: 'Lokasi' }] : []),
-    ];
-
-    const captureImage = async (): Promise<Blob> => {
-        const dataUrl = await toPng(previewRef.current!, {
-            pixelRatio: 3,
-            skipFonts: true,   // avoids CORS errors from Google Fonts + cross-origin CSS
-        });
-        const res = await fetch(dataUrl);
-        return res.blob();
-    };
+    const captureImage = (): Promise<Blob> => shareCardBlob(cfg);
 
     const handleShare = async () => {
-        if (previewRef.current && typeof navigator.share === 'function') {
+        if (typeof navigator.share === 'function') {
             try {
                 const blob = await captureImage();
                 const file = new File([blob], `${kartu.name}.png`, { type: 'image/png' });
@@ -106,7 +93,6 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
     };
 
     const handleCopy = async () => {
-        if (!previewRef.current) return;
         try {
             const blob = await captureImage();
             await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
@@ -141,122 +127,28 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                         natural height (shrink-0) so nothing clips. Desktop: side-by-side,
                         preview fixed and the controls column scrolls on its own. */}
                     <div className="flex shrink-0 flex-col items-center gap-3 bg-cream-deep p-5 lg:w-80 lg:overflow-hidden">
-                        {/* Preview canvas */}
-                        <div
-                            ref={previewRef}
+                        {/* Preview canvas — fixed internal resolution, scaled to fit.
+                            This canvas IS the exported image (no html-to-image). */}
+                        <canvas
+                            ref={canvasRef}
+                            aria-label={`Pratinjau kartu ${kartu.name}`}
                             className={cn(
-                                'relative w-full overflow-hidden rounded-2xl',
+                                'w-full rounded-2xl',
                                 format === 'story' ? 'aspect-[9/16]' : 'aspect-square',
                             )}
-                            style={{
-                                ...THEME_BG[theme],
-                                display: 'flex',
-                                flexDirection: 'column',
-                                padding: '1.25rem',
-                                boxShadow: '0 16px 48px rgba(31,39,71,0.25)',
-                            }}
-                        >
-                            {/* Glow */}
-                            <span
-                                aria-hidden
-                                className="pointer-events-none absolute bottom-[12%] left-1/2 h-48 w-48 -translate-x-1/2 rounded-full"
-                                style={{
-                                    background: 'radial-gradient(circle, oklch(82% 0.14 55 / 0.45), transparent 60%)',
-                                    filter: 'blur(8px)',
-                                }}
-                            />
-
-                            {/* BrandMark — absolutely anchored top-right, always visible */}
-                            <div className="absolute right-4 top-4 scale-[0.55] origin-top-right">
-                                <BrandMark tone={isDark ? 'cream' : 'ink'} />
-                            </div>
-
-                            {/* Rarity */}
-                            <div
-                                className="relative mb-2 whitespace-nowrap font-mono text-[10px] font-bold uppercase tracking-[0.16em]"
-                                style={{ color: 'var(--color-horizon)' }}
-                            >
-                                ★ Kartu {RARITY_LABELS[kartu.rarity]}
-                            </div>
-
-                            {/* Name */}
-                            <h3
-                                className={cn(
-                                    'relative mb-2 font-display leading-[0.95] tracking-[-0.025em]',
-                                    format === 'story' ? 'text-2xl' : 'text-xl',
-                                )}
-                                style={{ color: isDark ? 'var(--color-horizon)' : 'var(--color-ink)' }}
-                            >
-                                <em className="italic">{kartu.name}.</em>
-                            </h3>
-
-                            {/* Card */}
-                            <div className="relative flex flex-1 items-center justify-center">
-                                <div
-                                    className={cn(
-                                        'w-full drop-shadow-xl',
-                                        format === 'story' ? '-rotate-[3deg]' : '-rotate-[2deg]',
-                                    )}
-                                >
-                                    <Kartu
-                                        name={kartu.name}
-                                        subtitle={kartu.date ?? undefined}
-                                        km={kartu.km}
-                                        durasi={kartu.durasi}
-                                        trimp={kartu.trimp}
-                                        rarity={kartu.rarity}
-                                        tags={kartu.tags.slice(0, 1)}
-                                        size="md"
-                                        onSky={isDark}
-                                        className="w-full"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Quote — story only */}
-                            {format === 'story' && showQuote && kartu.quote && (
-                                <p
-                                    className="relative mt-2 text-center font-display text-xs italic leading-snug"
-                                    style={{ color: isDark ? 'rgba(246,241,232,0.8)' : 'var(--color-ink-2)' }}
-                                >
-                                    &ldquo;{kartu.quote}&rdquo;
-                                </p>
-                            )}
-
-                            {/* Stats — story only */}
-                            {format === 'story' && showStats && (
-                                <div
-                                    className="relative mt-3 grid gap-x-1 gap-y-2 border-t pt-3"
-                                    style={{
-                                        borderColor: dividerColor,
-                                        gridTemplateColumns: `repeat(${Math.min(statItems.length, 3)}, 1fr)`,
-                                    }}
-                                >
-                                    {statItems.map(({ v, l }) => (
-                                        <div key={l} className="min-w-0 text-center">
-                                            <div className="truncate font-sans text-xs font-bold tabular-nums leading-none">
-                                                {v}
-                                            </div>
-                                            <div
-                                                className="mt-0.5 font-mono text-[7px] uppercase tracking-[0.12em]"
-                                                style={{ color: metaColor }}
-                                            >
-                                                {l}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                            style={{ boxShadow: '0 16px 48px rgba(31,39,71,0.25)' }}
+                        />
 
                         {/* Format picker */}
                         <div className="grid w-full grid-cols-2 gap-2">
                             {(['story', 'feed'] as Format[]).map((f) => (
                                 <button
                                     key={f}
+                                    type="button"
                                     onClick={() => setFormat(f)}
+                                    aria-pressed={format === f}
                                     className={cn(
-                                        'rounded-xl p-3 text-xs font-medium transition',
+                                        'focus-ring rounded-xl p-3 text-xs font-medium transition',
                                         format === f
                                             ? 'border-2 border-horizon bg-cream font-semibold text-ink'
                                             : 'border-2 border-transparent bg-cream text-ink-2 hover:border-cream-deep',
@@ -279,24 +171,44 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                         {/* Header */}
                         <div className="flex items-center gap-3 border-b border-cream-deep px-5 pb-3.5 pt-5">
                             <button
+                                type="button"
                                 onClick={onClose}
                                 aria-label="Tutup"
-                                className="flex h-7 w-7 items-center justify-center rounded-full text-ink-3 transition hover:bg-cream-deep hover:text-ink"
+                                className={iconButtonVariants({ size: 'sm' })}
                             >
                                 <Icon icon="mdi:close" width={16} height={16} />
                             </button>
                             <div className="flex-1 text-center">
-                                <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-3">
+                                <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
                                     Bagikan kartu
                                 </div>
                                 <div className="font-display text-xl tracking-tight text-ink">
                                     {kartu.name}
                                 </div>
                             </div>
-                            <div className="w-7" />
+                            <div className="w-8" />
                         </div>
 
                         <div className="flex flex-1 flex-col gap-5 px-5 pb-6 pt-5">
+                            {/* Gaya — template picker (select, biar nggak makan tempat) */}
+                            <div>
+                                <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink-3">
+                                    Gaya
+                                </div>
+                                <select
+                                    value={layout}
+                                    onChange={(e) => setLayout(e.target.value as Layout)}
+                                    aria-label="Pilih gaya kartu"
+                                    className="focus-ring w-full rounded-xl border border-line bg-cream-deep px-3 py-2.5 font-sans text-sm font-medium text-ink"
+                                >
+                                    {LAYOUTS.map((l) => (
+                                        <option key={l} value={l}>
+                                            {LAYOUT_LABELS[l]}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
                             {/* Theme */}
                             <div>
                                 <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink-3">
@@ -306,13 +218,10 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                     {THEMES.map((t) => (
                                         <button
                                             key={t}
+                                            type="button"
                                             onClick={() => setTheme(t)}
-                                            className={cn(
-                                                'flex-1 rounded-full py-2 text-sm font-medium transition',
-                                                theme === t
-                                                    ? 'bg-sky font-semibold text-cream'
-                                                    : 'bg-cream-deep text-ink-2 hover:bg-sky/10',
-                                            )}
+                                            aria-pressed={theme === t}
+                                            className={cn(toggleButtonVariants({ selected: theme === t, size: 'md' }), 'flex-1')}
                                         >
                                             {t}
                                         </button>
@@ -320,25 +229,27 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                 </div>
                             </div>
 
-                            {/* Toggles — disabled in feed format */}
-                            <div className={cn('overflow-hidden rounded-xl bg-cream-deep', format === 'feed' && 'pointer-events-none opacity-40')}>
+                            {/* Toggles — the quote only renders on the taller story format */}
+                            <div className="overflow-hidden rounded-xl bg-cream-deep">
                                 {[
-                                    { label: 'Tampilkan data', value: showStats, toggle: () => setShowStats((v) => !v) },
-                                    { label: 'Tampilkan quote', value: showQuote, toggle: () => setShowQuote((v) => !v) },
-                                ].map(({ label, value, toggle }, i) => (
+                                    { label: 'Tampilin data', value: showStats, toggle: () => setShowStats((v) => !v), disabled: false },
+                                    { label: 'Tampilin quote', value: showQuote, toggle: () => setShowQuote((v) => !v), disabled: format === 'feed' },
+                                ].map(({ label, value, toggle, disabled }, i) => (
                                     <div
                                         key={label}
                                         className={cn(
                                             'flex items-center justify-between px-4 py-3.5',
                                             i > 0 && 'border-t border-cream',
+                                            disabled && 'pointer-events-none opacity-40',
                                         )}
                                     >
                                         <span className="text-sm text-ink">{label}</span>
                                         <button
+                                            type="button"
                                             onClick={toggle}
                                             aria-checked={value}
                                             role="switch"
-                                            className="relative h-5 w-9 shrink-0 rounded-full transition-colors"
+                                            className="focus-ring relative h-5 w-9 shrink-0 rounded-full transition-colors"
                                             style={{ background: value ? 'var(--color-horizon)' : 'rgba(31,39,71,0.15)' }}
                                         >
                                             <span
@@ -355,16 +266,18 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                             {/* CTAs */}
                             <div className="flex flex-col gap-2">
                                 <button
+                                    type="button"
                                     onClick={handleShare}
-                                    className="w-full rounded-full bg-horizon-deep py-3.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                                    className="focus-ring w-full rounded-full bg-horizon-deep py-3.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
                                 >
                                     Bagikan
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleCopy}
-                                    className="w-full rounded-full border border-cream-deep py-3 font-sans text-[13px] font-medium text-ink-2 transition-colors hover:bg-cream-deep"
+                                    className="focus-ring w-full rounded-full border border-cream-deep py-3 font-sans text-[13px] font-medium text-ink-2 transition-colors hover:bg-cream-deep"
                                 >
-                                    Salin Gambar
+                                    Salin gambar
                                 </button>
                             </div>
                         </div>

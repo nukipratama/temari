@@ -197,7 +197,7 @@ it('404s when the activity has not been analyzed yet', function (): void {
 it('dispatches a ResolveActivityLocationJob when the run has coords but no resolved_at', function (): void {
     Queue::fake();
     $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->state(['analyzed_at' => now()])->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_lat' => -6.24,
         'start_lng' => 106.81,
@@ -212,7 +212,7 @@ it('dispatches a ResolveActivityLocationJob when the run has coords but no resol
 it('does not dispatch a ResolveActivityLocationJob when already resolved', function (): void {
     Queue::fake();
     $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->state(['analyzed_at' => now()])->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_lat' => -6.24,
         'start_lng' => 106.81,
@@ -228,7 +228,7 @@ it('does not dispatch a ResolveActivityLocationJob when already resolved', funct
 it('does not dispatch when the run lacks coords', function (): void {
     Queue::fake();
     $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->state(['analyzed_at' => now()])->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_lat' => null,
         'start_lng' => null,

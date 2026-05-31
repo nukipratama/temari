@@ -30,9 +30,9 @@ it('creates the demo user, runs, cards, story lines, PRs, and weekly snapshots',
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 
-    // 26 scripted + RNG fillers @ 65% over ~180d; exact match fails loud on drift.
+    // 33 scripted + RNG fillers @ 65% over ~180d; exact match fails loud on drift.
     $activityCount = Activity::query()->where('user_id', $user->id)->count();
-    expect($activityCount)->toBe(122);
+    expect($activityCount)->toBe(124);
 
     expect(RunCard::query()->whereIn('activity_id', Activity::query()->where('user_id', $user->id)->pluck('id'))->count())
         ->toBe($activityCount)
@@ -41,7 +41,7 @@ it('creates the demo user, runs, cards, story lines, PRs, and weekly snapshots',
         ->and(StoryLine::query()->where('user_id', $user->id)->where('kind', StoryLine::KIND_DAILY_GREETING)->count())
         ->toBe(1)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(27)
-        ->and(PersonalRecord::query()->where('user_id', $user->id)->count())->toBe(9);
+        ->and(PersonalRecord::query()->where('user_id', $user->id)->count())->toBe(10);
 });
 
 it('seeds a full-featured, login-ready demo: rarity ladder, unlocks, persona, varied maps', function (): void {

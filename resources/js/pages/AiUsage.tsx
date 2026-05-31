@@ -1,10 +1,9 @@
 import { Head, router } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import SectionHeading from '@/components/SectionHeading';
 import KpiTile from '@/components/dashboard/KpiTile';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 
 interface UsageRow {
     kind: string;
@@ -89,7 +88,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
             <Head title="AI Usage" />
 
             <header className="border-b border-line bg-surface-elev">
-                <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+                <div className="mx-auto flex max-w-page items-center justify-between px-6 py-4 2xl:max-w-page-2xl">
                     <div className="flex items-center gap-3">
                         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-cream">
                             <Icon icon="mdi:counter" width={20} aria-hidden />
@@ -99,18 +98,13 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                             <p className="text-xs text-ink-3">Konsumsi token Azure OpenAI per rentang tanggal.</p>
                         </div>
                     </div>
-                    <span className="hidden font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-3 sm:inline">
+                    <span className="hidden text-label-micro font-semibold text-ink-3 sm:inline">
                         TemanLari · Devtools
                     </span>
                 </div>
             </header>
 
-            <motion.main
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="mx-auto max-w-6xl px-6 py-8"
-            >
+            <PageContainer>
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
@@ -122,7 +116,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                     <DateField id="to" label="Sampai" value={toInput} onChange={setToInput} />
                     <button
                         type="submit"
-                        className="inline-flex items-center gap-1 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-cream transition hover:opacity-90"
+                        className="focus-ring inline-flex items-center gap-1 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-cream transition hover:opacity-90"
                     >
                         <Icon icon="mdi:filter-variant" aria-hidden />
                         <span>Terapkan</span>
@@ -232,7 +226,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                         </div>
                     )}
                 </section>
-            </motion.main>
+            </PageContainer>
         </div>
     );
 }
@@ -288,7 +282,7 @@ function PresetButton({ label, onClick }: Readonly<{ label: string; onClick: () 
         <button
             type="button"
             onClick={onClick}
-            className="rounded-full border border-line bg-surface-sunken px-3 py-1.5 text-xs font-medium text-ink-2 transition hover:border-leaf/40 hover:text-leaf-deep"
+            className="focus-ring rounded-full border border-line bg-surface-sunken px-3 py-1.5 text-xs font-medium text-ink-2 transition hover:border-leaf/40 hover:text-leaf-deep"
         >
             {label}
         </button>

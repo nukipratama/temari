@@ -30,6 +30,12 @@ export function setMockPage(props: Record<string, unknown>, url = DEFAULT_URL) {
     mockUrl = url;
 }
 
+// Authenticated-user fixture for `usePage().props.auth.user`. Defaults to the
+// demo user shape; pass overrides to vary name etc.
+export function makeUser(overrides: Record<string, unknown> = {}) {
+    return { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null, ...overrides };
+}
+
 afterEach(() => {
     cleanup();
     mockPageProps = { ...DEFAULT_PAGE_PROPS };

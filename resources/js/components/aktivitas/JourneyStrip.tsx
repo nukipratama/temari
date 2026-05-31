@@ -38,7 +38,7 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
 
     return (
         <Card as="section" padding="lg" className={className}>
-            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">
+            <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
                 Kamu vs Lari Pertama Kamu
             </h3>
             <p className="mt-2 font-sans text-sm leading-relaxed text-ink">

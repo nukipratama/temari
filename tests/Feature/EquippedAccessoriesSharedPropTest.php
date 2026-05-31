@@ -11,8 +11,8 @@ uses(RefreshDatabase::class);
 
 it('shares the equipped accessories on every authenticated page', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.headband_epik', 'equipped' => true]);
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_gold', 'equipped' => true]);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.headband_epik']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
     // Unlocked but not equipped — must not leak into the shared set.
     UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.headband_legendaris', 'equipped' => false]);
 

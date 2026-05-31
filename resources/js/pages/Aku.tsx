@@ -1,6 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
@@ -13,7 +12,7 @@ import Temari from '@/components/temari/Temari';
 import VoiceCard from '@/components/temari/VoiceCard';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 import { formatIdDate, formatShortDateId, monthsSinceId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
@@ -86,12 +85,7 @@ export default function Aku({
     return (
         <AppShell>
             <Head title="Aku" />
-            <motion.div
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <header className="mb-8">
                     <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3 lg:text-xs">
                         {eyebrowParts.join(' · ')}
@@ -215,13 +209,13 @@ export default function Aku({
                     <button
                         type="button"
                         onClick={() => router.post('/logout')}
-                        className="inline-flex items-center gap-2 rounded-full border border-cream-deep bg-cream px-5 py-2.5 font-sans text-sm text-ink-2 transition hover:text-ink"
+                        className="focus-ring inline-flex items-center gap-2 rounded-full border border-cream-deep bg-cream px-5 py-2.5 font-sans text-sm text-ink-2 transition hover:text-ink"
                     >
                         <Icon icon="mdi:logout" width={16} height={16} aria-hidden className="text-ink-3" />
                         Keluar
                     </button>
                 </div>
-            </motion.div>
+            </PageContainer>
         </AppShell>
     );
 }

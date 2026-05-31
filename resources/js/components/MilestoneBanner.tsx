@@ -92,7 +92,7 @@ export default function MilestoneBanner({ pending }: Readonly<MilestoneBannerPro
                                     <button
                                         type="button"
                                         onClick={() => setShowAll(true)}
-                                        className="mt-2 text-xs font-semibold text-citrus-deep underline-offset-2 hover:underline"
+                                        className="focus-ring mt-2 rounded text-xs font-semibold text-citrus-deep underline-offset-2 hover:underline"
                                     >
                                         + {extras.length} milestone lainnya
                                     </button>
@@ -113,7 +113,7 @@ export default function MilestoneBanner({ pending }: Readonly<MilestoneBannerPro
                             type="button"
                             onClick={dismiss}
                             aria-label="Tutup"
-                            className="shrink-0 rounded-full p-1.5 text-ink-3 transition hover:bg-line/40 hover:text-ink"
+                            className="focus-ring shrink-0 rounded-full p-1.5 text-ink-3 transition hover:bg-line/40 hover:text-ink"
                         >
                             <Icon icon="mdi:close" width={18} height={18} aria-hidden />
                         </button>

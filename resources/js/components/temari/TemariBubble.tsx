@@ -43,7 +43,7 @@ export default function TemariBubble({
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold tracking-tight text-ink">Temari</span>
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-ink-3">{mood}</span>
+                    <span className="font-mono text-[11px] uppercase tracking-wider text-ink-3">{mood}</span>
                 </div>
                 <div className="mt-1">
                     <AnalysisStatus

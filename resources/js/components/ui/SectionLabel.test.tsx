@@ -9,8 +9,8 @@ describe('SectionLabel', () => {
         expect(container.querySelectorAll('span').length).toBe(2);
     });
 
-    it('switches to cream/55 text on sky', () => {
+    it('switches to the muted ink-on-sky text on sky', () => {
         const { container } = render(<SectionLabel onSky>x</SectionLabel>);
-        expect(container.firstChild).toHaveClass(/text-cream/);
+        expect(container.firstChild).toHaveClass(/text-ink-on-sky/);
     });
 });

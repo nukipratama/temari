@@ -18,7 +18,7 @@ export interface ChartTheme {
 
 const LIGHT: ChartTheme = {
     isDark: false,
-    tick: '#6f6358',
+    tick: '#3d362a',
     grid: 'rgba(31, 27, 22, 0.08)',
     legend: '#1f1b16',
     tooltip: {

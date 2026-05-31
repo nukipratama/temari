@@ -88,7 +88,7 @@ function Cell({ value, unit, emphasize = false, hideOnNarrow }: Readonly<CellPro
     return (
         <div className={cn('text-center', hideOnNarrow && HIDE_CLASSES[hideOnNarrow])}>
             <div className={cn('text-ink', emphasize && 'font-bold')}>{value}</div>
-            <div className="font-mono text-[10px] uppercase tracking-wide text-ink-3">{unit}</div>
+            <div className="font-mono text-[11px] uppercase tracking-wide text-ink-3">{unit}</div>
         </div>
     );
 }

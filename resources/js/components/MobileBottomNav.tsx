@@ -53,7 +53,7 @@ export default function MobileBottomNav() {
             <Icon icon={item.icon} width={20} height={20} aria-hidden />
             <span
               className={cn(
-                "text-[10px]",
+                "text-[11px]",
                 isActive ? "font-semibold" : "font-normal",
               )}
             >

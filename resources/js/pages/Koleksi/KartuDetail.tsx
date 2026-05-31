@@ -1,5 +1,4 @@
 import { Head, Link } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import { useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
@@ -13,8 +12,8 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import ShareIgModal from '@/components/card/ShareIgModal';
 import type { ShareKartuData } from '@/components/card/ShareIgModal';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
-import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
+import PageContainer from '@/components/ui/PageContainer';
+import { formatDuration, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
 import { RARITY_BORDER, RARITY_LABELS, prettyBadge } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
 import type { ActivityDetail, AnalysisPayload, Rarity } from '@/types/inertia';
@@ -64,6 +63,7 @@ export default function KartuDetail({
     const durasi = detail?.moving_time == null ? '—' : formatDuration(detail.moving_time);
     const trimp =
         detail?.trimp_edwards == null ? '—' : String(Math.round(detail.trimp_edwards));
+    const sharePaceSec = paceSecPerKm(detail?.moving_time, detail?.distance);
     const subtitle = detail
         ? `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`
         : null;
@@ -89,6 +89,7 @@ export default function KartuDetail({
         date: shareDate,
         km,
         durasi,
+        pace: sharePaceSec != null ? formatPace(sharePaceSec) : null,
         trimp,
         hr: detail?.average_heartrate != null ? `${Math.round(detail.average_heartrate)} bpm` : null,
         location: detail?.location_name ?? null,
@@ -100,12 +101,7 @@ export default function KartuDetail({
     return (
         <AppShell>
             <Head title={`${card.special_move} · Kartu`} />
-            <motion.div
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 {/* Breadcrumb */}
                 <Link
                     href="/kartu"
@@ -145,7 +141,6 @@ export default function KartuDetail({
                                     rarity={card.rarity}
                                     tags={badges.map((b) => prettyBadge(b))}
                                     size="lg"
-                                    onSky
                                     className="w-full"
                                 />
                             </div>
@@ -172,7 +167,7 @@ export default function KartuDetail({
                     <div className="flex flex-col gap-6">
                         {/* Title block */}
                         <div>
-                            <div className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-horizon-deep">
+                            <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon-deep">
                                 ★ {rarityLabel} · {totalForRarity} dari koleksimu
                             </div>
                             <h1 className="font-display text-display-lg leading-[0.92] tracking-[-0.025em] text-ink">
@@ -228,13 +223,13 @@ export default function KartuDetail({
                                 <Card padding="md" className="flex items-center gap-4">
                                     <Temari pose="proud" size={48} animate={false} />
                                     <div className="min-w-0 flex-1">
-                                        <div className="mb-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ink-3">
+                                        <div className="mb-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3">
                                             Dari lari
                                         </div>
                                         <div className="font-display text-xl leading-tight tracking-[-0.005em] text-ink">
                                             {detail.name ?? 'Lari'}
                                         </div>
-                                        <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-3">
+                                        <div className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">
                                             {formatIdDate(detail.start_date_local, 'long')}
                                         </div>
                                     </div>
@@ -267,7 +262,7 @@ export default function KartuDetail({
                                                 <div className="font-display text-[17px] leading-tight text-ink">
                                                     {c.special_move}
                                                 </div>
-                                                <div className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
+                                                <div className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">
                                                     {rarityLabel} ·{' '}
                                                     {formatIdDate(
                                                         c.detail?.start_date_local ?? null,
@@ -282,7 +277,7 @@ export default function KartuDetail({
                         )}
                     </div>
                 </div>
-            </motion.div>
+            </PageContainer>
             <ShareIgModal
                 kartu={shareOpen ? shareData : null}
                 onClose={() => setShareOpen(false)}

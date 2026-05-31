@@ -30,7 +30,7 @@ export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<S
             aria-label={ariaLabel}
             className={cn(
                 'inline-flex items-center rounded-full bg-sky/[0.06] font-mono uppercase tracking-[0.1em] text-ink-3',
-                isCompact ? 'gap-1.5 px-2.5 py-1.5 text-[10px]' : 'gap-2 px-3.5 py-2 text-[11px]',
+                isCompact ? 'gap-1.5 px-2.5 py-1.5 text-[11px]' : 'gap-2 px-3.5 py-2 text-[11px]',
             )}
         >
             <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', connected ? 'bg-leaf' : 'bg-ink-3/40')} />

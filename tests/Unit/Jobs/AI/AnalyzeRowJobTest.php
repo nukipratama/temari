@@ -77,8 +77,9 @@ it('marks row Failed without rethrowing for UnavailableException', function (): 
 
     fakeUnavailableRowJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed)
-        ->and($row->fresh()->error)->toBe('Azure down');
+    $fresh = $row->fresh();
+    expect($fresh->status)->toBe(AnalysisStatus::Failed)
+        ->and($fresh->error)->toBe('Azure down');
 });
 
 it('re-raises unexpected throwables so the queue can apply retry policy', function (): void {

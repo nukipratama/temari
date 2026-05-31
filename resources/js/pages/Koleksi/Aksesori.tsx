@@ -1,6 +1,5 @@
 import { Head, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { motion } from 'framer-motion';
 import { useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import Chip from '@/components/ui/Chip';
@@ -10,7 +9,7 @@ import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import TemariProto, { type TemariEquipped } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 
 type Slot = 'headband' | 'medal' | 'pita' | 'aura';
 
@@ -76,12 +75,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
     return (
         <AppShell>
             <Head title="Koleksi · Aksesori" />
-            <motion.div
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="w-full px-5 py-6 sm:px-8 lg:px-14 lg:py-8"
-            >
+            <PageContainer>
                 <CollectionHeader
                     active="aksesori"
                     eyebrow={eyebrow}
@@ -105,7 +99,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                             <ul className="grid gap-2 sm:grid-cols-2">
                                 {SLOT_ORDER.map((slot) => (
                                     <li key={slot} className="flex items-center justify-between rounded-xl bg-cream/[0.06] px-4 py-3">
-                                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-cream/55">
+                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
                                             {SLOT_LABEL[slot]}
                                         </span>
                                         <span className="font-display text-base italic text-cream">
@@ -131,7 +125,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                         />
                     ) : null,
                 )}
-            </motion.div>
+            </PageContainer>
         </AppShell>
     );
 }
@@ -188,7 +182,7 @@ function SlotSection({
                 <button
                     type="button"
                     onClick={() => setShowLocked((s) => !s)}
-                    className="mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-cream-deep bg-cream px-4 py-2 text-xs font-semibold text-ink-2 transition hover:border-ink-3 hover:text-ink sm:hidden"
+                    className="focus-ring mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-cream-deep bg-cream px-4 py-2 text-xs font-semibold text-ink-2 transition hover:border-ink-3 hover:text-ink sm:hidden"
                 >
                     <Icon icon={showLocked ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={14} height={14} aria-hidden />
                     {showLocked

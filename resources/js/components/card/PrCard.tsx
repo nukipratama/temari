@@ -30,12 +30,12 @@ export default function PrCard({
 }: Readonly<PrCardProps>) {
     const body = (
         <>
-            <div className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-horizon-deep">
+            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-horizon-deep">
                 {category}
             </div>
             <div className={TIME_CLASS[size]}>{time}</div>
             {runName && <div className="font-sans text-xs text-ink-2">{runName}</div>}
-            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3">
+            <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
                 {setAt}
             </div>
         </>
