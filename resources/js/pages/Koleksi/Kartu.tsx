@@ -12,7 +12,7 @@ import { cn } from '@/lib/cn';
 import { pressShrink } from '@/lib/motion';
 import PageContainer from '@/components/ui/PageContainer';
 import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
-import { RARITY_LABELS, RARITY_ORDER, prettyBadge } from '@/lib/runcard';
+import { RARITY_LABELS, RARITY_ORDER, badgeName, paceShapeFromDetail } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
 import { emberGlowStyle } from '@/lib/styles';
 import { useState } from 'react';
@@ -21,6 +21,7 @@ import type {
     Activity,
     ActivityDetail,
     AnalysisPayload,
+    CardEdition,
     PaginatedResponse,
     Rarity,
     RunCard as RunCardModel,
@@ -33,6 +34,7 @@ interface FeaturedCardPayload {
     special_move: string;
     badges: string[] | null;
     detail: ActivityDetail | null;
+    edition?: CardEdition | null;
     flavor_analysis?: AnalysisPayload;
 }
 
@@ -119,7 +121,7 @@ function FeaturedPanel({
     const durasi = detail?.moving_time != null ? formatDuration(detail.moving_time) : '—';
     const trimp = detail?.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—';
     const subtitle = `${RARITY_LABELS[featured.rarity]} · ${formatIdDate(detail?.start_date_local ?? null, 'short')}`;
-    const allTags = (featured.badges ?? []).slice(0, 2).map(prettyBadge);
+    const allTags = (featured.badges ?? []).slice(0, 2).map((b) => badgeName(b));
     // Mobile: cap to 1 chip so the panel fits on iPhone SE-class screens.
     const mobileTags = allTags.slice(0, 1);
 
@@ -183,7 +185,9 @@ function FeaturedPanel({
                         durasi={durasi}
                         trimp={trimp}
                         rarity={featured.rarity}
-                        tags={allTags}
+                        polyline={detail?.summary_polyline}
+                        paceShape={paceShapeFromDetail(detail)}
+                        edition={featured.edition}
                         size="lg"
                         className="rotate-[-3deg]"
                     />
@@ -257,7 +261,6 @@ function CardCell({
     const durasi = detail.moving_time != null ? formatDuration(detail.moving_time) : '—';
     const trimp = detail.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—';
     const subtitle = `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`;
-    const tags = (card.badges ?? []).slice(0, 2).map(prettyBadge);
 
     return (
         <MotionLink
@@ -273,7 +276,10 @@ function CardCell({
                 durasi={durasi}
                 trimp={trimp}
                 rarity={card.rarity}
-                tags={tags}
+                badges={card.badges ?? []}
+                polyline={detail.summary_polyline}
+                paceShape={paceShapeFromDetail(detail)}
+                edition={card.edition}
                 size="md"
             />
         </MotionLink>

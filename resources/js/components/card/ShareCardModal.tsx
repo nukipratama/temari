@@ -2,50 +2,43 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
+import { useDismissable } from '@/hooks/useDismissable';
 import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 import { RARITY_LABELS } from '@/lib/runcard';
-import { drawShareCard, shareCardBlob, type Format, type Layout, type Theme } from '@/lib/shareCard';
-import type { Rarity } from '@/types/inertia';
+import { drawShareCard, shareCardBlob, type Format, type Layout, type ShareKartuData, type Theme } from '@/lib/shareCard';
 
-export interface ShareKartuData {
-    id: number;
-    name: string;
-    rarity: Rarity;
-    subtitle: string | null;
-    date: string | null;
-    km: string;
-    durasi: string;
-    pace: string | null;
-    trimp: string;
-    hr: string | null;
-    location: string | null;
-    weather: string | null;
-    tags: string[];
-    quote: string | null;
-}
+export type { ShareKartuData };
 
-interface ShareIgModalProps {
+interface ShareCardModalProps {
     kartu: ShareKartuData | null;
     onClose: () => void;
 }
 
-const LAYOUTS: Layout[] = ['poster', 'angka', 'kartu', 'struk'];
+const LAYOUTS: Layout[] = ['kartu', 'pack', 'rute', 'polaroid', 'poster', 'struk'];
 const LAYOUT_LABELS: Record<Layout, string> = {
-    poster: 'Poster',
-    angka: 'Angka',
     kartu: 'Kartu',
+    pack: 'Bungkus',
+    rute: 'Rute',
+    polaroid: 'Polaroid',
+    poster: 'Poster',
     struk: 'Struk',
 };
 
 const THEMES: Theme[] = ['Dawn', 'Sky', 'Cream', 'Inverted'];
 
-export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalProps>) {
+export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardModalProps>) {
     const [theme, setTheme] = useState<Theme>('Dawn');
-    const [layout, setLayout] = useState<Layout>('poster');
+    const [layout, setLayout] = useState<Layout>('kartu');
     const [showStats, setShowStats] = useState(true);
     const [showQuote, setShowQuote] = useState(true);
     const [format, setFormat] = useState<Format>('story');
+    // Transient status under the CTAs: confirms a copy/share that has no native
+    // UI of its own, or surfaces a failure instead of swallowing it silently.
+    const [status, setStatus] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    useDismissable(kartu !== null, panelRef, onClose);
 
     // Repaint the fixed-resolution canvas whenever any knob changes. The canvas
     // IS the export, so the on-screen preview can never drift from the shared
@@ -57,7 +50,18 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
         void drawShareCard(canvasRef.current, { kartu, theme, layout, format, showStats, showQuote });
     }, [kartu, theme, layout, format, showStats, showQuote]);
 
+    // Auto-clear the status line so it reads as a transient toast.
+    useEffect(() => {
+        if (status === null) return;
+        const id = globalThis.setTimeout(() => setStatus(null), 2600);
+        return () => globalThis.clearTimeout(id);
+    }, [status]);
+
     if (kartu === null) return null;
+
+    // The route-hero template needs a polyline; hide it for no-GPS runs.
+    const hasRoute = kartu.polyline != null && kartu.polyline !== '';
+    const availableLayouts = hasRoute ? LAYOUTS : LAYOUTS.filter((l) => l !== 'rute');
 
     const cfg = { kartu, theme, layout, format, showStats, showQuote };
 
@@ -87,17 +91,29 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
             } catch {
                 // user cancelled or API unavailable
             }
+        } else if (navigator.clipboard?.writeText !== undefined) {
+            try {
+                await navigator.clipboard.writeText(url);
+                setStatus({ tone: 'ok', text: 'Link kartu kesalin.' });
+            } catch {
+                setStatus({ tone: 'err', text: 'Gagal nyalin link.' });
+            }
         } else {
-            await navigator.clipboard.writeText(url).catch(() => { /* silent */ });
+            setStatus({ tone: 'err', text: 'Browser ini belum dukung berbagi.' });
         }
     };
 
     const handleCopy = async () => {
+        if (typeof ClipboardItem === 'undefined' || navigator.clipboard?.write === undefined) {
+            setStatus({ tone: 'err', text: 'Browser ini belum dukung salin gambar. Pakai Bagikan ya.' });
+            return;
+        }
         try {
             const blob = await captureImage();
             await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            setStatus({ tone: 'ok', text: 'Gambar kartu kesalin.' });
         } catch {
-            // clipboard API unavailable — silent
+            setStatus({ tone: 'err', text: 'Gagal nyalin gambar. Coba Bagikan aja.' });
         }
     };
 
@@ -110,15 +126,16 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[51] flex items-center justify-center p-4"
                 style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)' }}
-                onClick={onClose}
             >
                 <motion.div
                     key="share-panel"
+                    ref={panelRef}
+                    role="dialog"
+                    aria-modal="true"
                     initial={{ opacity: 0, scale: 0.96, y: 8 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 8 }}
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    onClick={(e) => e.stopPropagation()}
                     className="flex w-full max-w-lg flex-col overflow-y-auto rounded-3xl bg-cream shadow-2xl lg:max-w-4xl lg:flex-row lg:overflow-hidden"
                     style={{ maxHeight: '92dvh' }}
                 >
@@ -160,7 +177,7 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                             f === 'story' ? 'h-7 w-4' : 'h-6 w-6',
                                         )}
                                     />
-                                    {f === 'story' ? 'Story · 9:16' : 'Feed · 1:1'}
+                                    {f === 'story' ? 'Potret · 9:16' : 'Persegi · 1:1'}
                                 </button>
                             ))}
                         </div>
@@ -201,7 +218,7 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                     aria-label="Pilih gaya kartu"
                                     className="focus-ring w-full rounded-xl border border-line bg-cream-deep px-3 py-2.5 font-sans text-sm font-medium text-ink"
                                 >
-                                    {LAYOUTS.map((l) => (
+                                    {availableLayouts.map((l) => (
                                         <option key={l} value={l}>
                                             {LAYOUT_LABELS[l]}
                                         </option>
@@ -279,6 +296,18 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                 >
                                     Salin gambar
                                 </button>
+                                {status !== null && (
+                                    <p
+                                        role="status"
+                                        aria-live="polite"
+                                        className={cn(
+                                            'text-center font-sans text-xs',
+                                            status.tone === 'ok' ? 'text-leaf-deep' : 'text-ember-deep',
+                                        )}
+                                    >
+                                        {status.text}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>

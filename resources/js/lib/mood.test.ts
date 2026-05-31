@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MOOD_FACE, moodRing, moodSigilColor, moodToken } from './mood';
+import { MOOD_FACE, MOOD_HINT, MOOD_ORDER, moodRing, moodSigilColor, moodToken } from './mood';
 import type { Mood } from '@/types/inertia';
 
 const ALL_MOODS: Mood[] = ['nyala', 'enteng', 'lemes', 'oleng', 'mumet', 'adem'];
@@ -8,6 +8,21 @@ describe('mood', () => {
     it('exposes a face emoji for every mood', () => {
         ALL_MOODS.forEach((m) => {
             expect(MOOD_FACE[m]).toBeTruthy();
+        });
+    });
+
+    describe('MOOD_ORDER', () => {
+        it('lists every mood exactly once', () => {
+            const byName = (a: Mood, b: Mood) => a.localeCompare(b);
+            expect([...MOOD_ORDER].sort(byName)).toEqual([...ALL_MOODS].sort(byName));
+        });
+    });
+
+    describe('MOOD_HINT', () => {
+        it('exposes a non-empty hint for every mood', () => {
+            ALL_MOODS.forEach((m) => {
+                expect(MOOD_HINT[m]).toBeTruthy();
+            });
         });
     });
 

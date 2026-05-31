@@ -90,6 +90,25 @@ it('exposes a featured card that picks the highest-rarity recent', function (): 
             ->where('rarityCounts.common', 1));
 });
 
+it('numbers each card by edition within its rarity', function (): void {
+    $user = User::factory()->create();
+    foreach (['First', 'Second', 'Third'] as $move) {
+        $act = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($act)->create();
+        RunCard::factory()->for($act)->create(['rarity' => 'rare', 'special_move' => $move]);
+    }
+
+    $this->actingAs($user)->get('/kartu')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            // Grid is newest-first; chronological edition numbering runs oldest = #1.
+            ->where('cards.data.0.special_move', 'Third')
+            ->where('cards.data.0.edition.index', 3)
+            ->where('cards.data.0.edition.total', 3)
+            ->where('cards.data.2.edition.index', 1)
+            ->where('featuredCard.edition', ['index' => 3, 'total' => 3]));
+});
+
 it('hides other users\' cards', function (): void {
     $other = User::factory()->create();
     $activity = Activity::factory()->for($other)->analyzed()->create();

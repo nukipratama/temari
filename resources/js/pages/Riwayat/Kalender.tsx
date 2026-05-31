@@ -6,7 +6,7 @@ import RiwayatFilter, { type MoodOption } from '@/components/riwayat/RiwayatFilt
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
-import { MOOD_FILL, MOOD_LABEL, MOOD_SOFT_FILL } from '@/lib/mood';
+import { MOOD_FILL, MOOD_HINT, MOOD_LABEL, MOOD_ORDER, MOOD_SOFT_FILL } from '@/lib/mood';
 import { formatPace, formatShortDateId } from '@/lib/pace';
 import type { Mood } from '@/types/inertia';
 
@@ -49,18 +49,6 @@ interface WeekRow {
 }
 
 const WEEKDAY_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'] as const;
-
-// Hint strings paired by mood key. Labels + fill classes come from lib/mood.ts.
-const MOOD_HINT: Record<Mood, string> = {
-    nyala: 'PR / win',
-    enteng: 'easy',
-    oleng: 'HR drift',
-    lemes: 'high strain',
-    mumet: 'overreaching',
-    adem: 'rest',
-};
-
-const MOOD_ORDER: ReadonlyArray<Mood> = ['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'];
 
 const MOOD_GLYPH: Record<Mood, string> = {
     nyala: 'N',

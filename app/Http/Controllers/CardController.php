@@ -31,11 +31,18 @@ class CardController extends Controller
             ->paginate(24)
             ->withQueryString();
 
+        $counts = $this->rarityCounts($user);
+        $editions = $this->editionIndexMap($user);
+
+        $page->getCollection()->each(
+            fn (RunCard $c) => $c->setAttribute('edition', $this->edition($c, $editions, $counts)),
+        );
+
         return Inertia::render('Koleksi/Kartu', [
             'cards' => $page,
             'selectedRarity' => $rarity,
-            'featuredCard' => $this->featuredCard($user, $rarity),
-            'rarityCounts' => $this->rarityCounts($user),
+            'featuredCard' => $this->featuredCard($user, $rarity, $editions, $counts),
+            'rarityCounts' => $counts,
         ]);
     }
 
@@ -49,6 +56,9 @@ class CardController extends Controller
 
         $card->loadMissing('activity.detail');
 
+        $counts = $this->rarityCounts($user);
+        $editions = $this->editionIndexMap($user);
+
         $flavorAnalysis = Analysis::query()
             ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
             ->first();
@@ -61,40 +71,46 @@ class CardController extends Controller
             ->orderByDesc('id')
             ->limit(3)
             ->get()
-            ->map(fn (RunCard $c) => [
-                'id' => $c->id,
-                'activity_id' => $c->activity_id,
-                'rarity' => $c->rarity->value,
-                'special_move' => $c->special_move,
-                'badges' => $c->badges,
-                'detail' => $c->activity->detail,
-            ])
+            ->map(fn (RunCard $c) => $this->cardPayload($c, $editions, $counts))
             ->values();
-
-        $totalForRarity = RunCard::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->where('rarity', $card->rarity)
-            ->count();
 
         return Inertia::render('Koleksi/KartuDetail', [
             'card' => [
-                'id' => $card->id,
-                'activity_id' => $card->activity_id,
-                'rarity' => $card->rarity->value,
-                'special_move' => $card->special_move,
-                'badges' => $card->badges,
-                'detail' => $card->activity->detail,
+                ...$this->cardPayload($card, $editions, $counts),
                 'flavor_analysis' => Analysis::toPayload($flavorAnalysis, AnalysisType::CardFlavor, RunCard::class, $card->id),
             ],
             'relatedCards' => $relatedCards,
-            'totalForRarity' => $totalForRarity,
+            'totalForRarity' => $counts[$card->rarity->value] ?? 0,
         ]);
     }
 
     /**
-     * @return array{id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail: ActivityDetail|null, flavor_analysis: array<string, mixed>}|null
+     * The shared card shape every endpoint returns. Keep the three call sites
+     * (related, detail, featured) on this single mapper so they can't drift.
+     *
+     * @param  array<int, int>  $editions
+     * @param  array<string, int>  $counts
+     * @return array{id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail: ActivityDetail|null, edition: array{index: int, total: int}}
      */
-    private function featuredCard(User $user, ?string $rarity): ?array
+    private function cardPayload(RunCard $card, array $editions, array $counts): array
+    {
+        return [
+            'id' => $card->id,
+            'activity_id' => $card->activity_id,
+            'rarity' => $card->rarity->value,
+            'special_move' => $card->special_move,
+            'badges' => $card->badges,
+            'detail' => $card->activity->detail,
+            'edition' => $this->edition($card, $editions, $counts),
+        ];
+    }
+
+    /**
+     * @param  array<int, int>  $editions
+     * @param  array<string, int>  $counts
+     * @return array{id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail: ActivityDetail|null, edition: array{index: int, total: int}, flavor_analysis: array<string, mixed>}|null
+     */
+    private function featuredCard(User $user, ?string $rarity, array $editions, array $counts): ?array
     {
         $query = RunCard::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
@@ -117,13 +133,37 @@ class CardController extends Controller
             ->first();
 
         return [
-            'id' => $card->id,
-            'activity_id' => $card->activity_id,
-            'rarity' => $card->rarity->value,
-            'special_move' => $card->special_move,
-            'badges' => $card->badges,
-            'detail' => $card->activity->detail,
+            ...$this->cardPayload($card, $editions, $counts),
             'flavor_analysis' => Analysis::toPayload($flavor, AnalysisType::CardFlavor, RunCard::class, $card->id),
+        ];
+    }
+
+    /**
+     * Map of card id => 1-based edition index within its rarity (chronological by id),
+     * for the user's whole collection. One window-function pass, no N+1.
+     *
+     * @return array<int, int>
+     */
+    private function editionIndexMap(User $user): array
+    {
+        return RunCard::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->selectRaw('id, ROW_NUMBER() OVER (PARTITION BY rarity ORDER BY id) AS edition_index')
+            ->pluck('edition_index', 'id')
+            ->map(fn ($index): int => (int) $index)
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int>  $editions
+     * @param  array<string, int>  $counts
+     * @return array{index: int, total: int}
+     */
+    private function edition(RunCard $card, array $editions, array $counts): array
+    {
+        return [
+            'index' => $editions[$card->id] ?? 1,
+            'total' => $counts[$card->rarity->value] ?? 1,
         ];
     }
 

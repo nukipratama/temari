@@ -1,6 +1,6 @@
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDuration, formatKm, formatRelativeId } from '@/lib/pace';
-import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
+import { RARITY_LABELS, paceShapeFromDetail } from '@/lib/runcard';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type { TemariPose } from '@/components/temari/TemariProto';
 import type { ActivityDetail, Mood, Rarity, RunCard } from '@/types/inertia';
@@ -13,7 +13,9 @@ export interface FeaturedCard {
     durasi: string;
     trimp: string;
     rarity: Rarity;
-    tags: ReadonlyArray<string>;
+    badges: ReadonlyArray<string>;
+    polyline: string | null;
+    paceShape: number[];
     startDate: string | null;
 }
 
@@ -23,6 +25,7 @@ export interface StripItem {
     name: string;
     rarity: Rarity;
     date: string;
+    polyline: string | null;
 }
 
 export const VIBE_TO_POSE: Record<string, TemariPose> = {
@@ -62,7 +65,9 @@ export function pickFeaturedKartu(runs: ReadonlyArray<ActivityDetail>): Featured
                 durasi: r.moving_time != null ? formatDuration(r.moving_time) : '—',
                 trimp: r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',
                 rarity: card.rarity,
-                tags: (card.badges ?? []).slice(0, 2).map(prettyBadge),
+                badges: (card.badges ?? []).slice(0, 3),
+                polyline: r.summary_polyline ?? null,
+                paceShape: paceShapeFromDetail(r),
                 startDate: r.start_date_local,
             };
             bestRank = rank;
@@ -81,6 +86,7 @@ export function kartuStripItem(run: ActivityDetail): StripItem | null {
         name: card.special_move,
         rarity: card.rarity,
         date: formatRelativeId(run.start_date_local),
+        polyline: run.summary_polyline ?? null,
     };
 }
 

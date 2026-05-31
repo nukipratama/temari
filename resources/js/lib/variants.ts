@@ -97,7 +97,7 @@ export const chipVariants = cva(
 
 /**
  * Segmented / toggle control — the solid-fill selected-vs-unselected pill used
- * by the Rekor progression tabs and the ShareIgModal theme picker. One source
+ * by the Rekor progression tabs and the ShareCardModal theme picker. One source
  * of truth for radius/size/state. Filter rows that need a bordered or tinted
  * treatment (riwayat range + mood, AiUsage presets) stay hand-rolled.
  */

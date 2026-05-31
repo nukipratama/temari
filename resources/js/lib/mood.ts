@@ -38,6 +38,19 @@ export const MOOD_SOFT_FILL: Record<Mood, string> = {
     adem: 'bg-mood-adem-bg',
 };
 
+// Canonical mood ordering for legends + filter rows (best-day → rest-day).
+export const MOOD_ORDER: ReadonlyArray<Mood> = ['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'];
+
+// One-word English cause hint per mood; pairs with MOOD_LABEL in filter/legend rows.
+export const MOOD_HINT: Record<Mood, string> = {
+    nyala: 'PR / win',
+    enteng: 'easy',
+    oleng: 'HR drift',
+    lemes: 'high strain',
+    mumet: 'overreaching',
+    adem: 'rest',
+};
+
 export function moodToken(mood: Mood): Mood {
     return mood;
 }

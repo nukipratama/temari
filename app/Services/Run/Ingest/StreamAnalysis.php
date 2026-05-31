@@ -466,7 +466,7 @@ class StreamAnalysis
             return [];
         }
         $first = $full[0]['average_heartrate'] ?? null;
-        $last = end($full)['average_heartrate'] ?? null;
+        $last = $full[array_key_last($full)]['average_heartrate'] ?? null;
         if ($first === null || $last === null) {
             return [];
         }
@@ -485,7 +485,7 @@ class StreamAnalysis
             return [];
         }
         $first = $full[0]['average_cadence'] ?? null;
-        $last = end($full)['average_cadence'] ?? null;
+        $last = $full[array_key_last($full)]['average_cadence'] ?? null;
         if ($first === null || $last === null) {
             return [];
         }
