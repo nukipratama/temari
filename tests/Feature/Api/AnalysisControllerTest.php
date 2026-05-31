@@ -74,9 +74,7 @@ it('triggers a briefing headline analysis for the authenticated user', function 
 it('force re-triggers a briefing when the previous one is older than the cooldown', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done('old')->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingHeadline,
         'discriminator' => '2026-05-18',
         'generated_at' => Carbon::now()->subHour(),
     ]);
@@ -94,9 +92,7 @@ it('returns the cached payload with retry_after_seconds when within cooldown', f
     config()->set('ai.cooldown_seconds', 300);
     $user = User::factory()->create();
     Analysis::factory()->done('fresh content')->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingHeadline,
         'discriminator' => '2026-05-18',
         'generated_at' => Carbon::now()->subSeconds(30),
     ]);
@@ -115,9 +111,7 @@ it('skips the cooldown gate when cooldown_seconds is 0', function (): void {
     config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
     Analysis::factory()->done('recent')->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingHeadline,
         'discriminator' => '2026-05-18',
         'generated_at' => Carbon::now()->subSeconds(5),
     ]);
@@ -149,9 +143,7 @@ it('authorizes post-run speech only for the activity owner', function (): void {
 it('returns the current state via GET show', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done('content here')->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingHeadline,
         'discriminator' => '2026-05-18',
     ]);
 
@@ -218,7 +210,7 @@ it('authorizes card_flavor only for the card activity owner', function (): void 
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::today(),
     ]);
-    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+    $card = RunCard::factory()->for($activity)->create();
 
     $this->actingAs($other)
         ->postJson("/api/analyses/card_flavor/{$card->id}/trigger")

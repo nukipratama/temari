@@ -31,7 +31,7 @@ it('does not re-ingest or re-dispatch narration for an already-stored activity',
     Bus::fake();
 
     $user = User::factory()->create();
-    $connection = StravaConnection::factory()->for($user)->create([
+    StravaConnection::factory()->for($user)->create([
         'access_token' => 'tok',
         'token_expires_at' => now()->addHours(2),
     ]);

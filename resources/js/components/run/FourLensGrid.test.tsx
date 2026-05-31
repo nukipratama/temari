@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import FourLensGrid from './FourLensGrid';
 import type { AnalysisPayload } from '@/types/inertia';
 
@@ -15,8 +15,11 @@ const defaultProps = {
 };
 
 describe('FourLensGrid', () => {
-    it('renders the four lens cards with their labels', () => {
+    beforeEach(() => {
         render(<FourLensGrid {...defaultProps} />);
+    });
+
+    it('renders the four lens cards with their labels', () => {
         expect(screen.getByText('Cerita lari ini')).toBeInTheDocument();
         expect(screen.getByText('Terjemahan teknis')).toBeInTheDocument();
         expect(screen.getByText('Split paling seru')).toBeInTheDocument();
@@ -24,18 +27,15 @@ describe('FourLensGrid', () => {
     });
 
     it('renders the "Baca ulang semua" button', () => {
-        render(<FourLensGrid {...defaultProps} />);
         expect(screen.getByText(/Baca ulang semua/i)).toBeInTheDocument();
     });
 
     it('renders analysis content when status is done', () => {
-        render(<FourLensGrid {...defaultProps} />);
         expect(screen.getByText('Cerita lari ini.')).toBeInTheDocument();
     });
 
-    it('disables the bulk trigger button while pending', async () => {
+    it('disables the bulk trigger button while pending', () => {
         globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof fetch;
-        render(<FourLensGrid {...defaultProps} />);
         fireEvent.click(screen.getByText(/Baca ulang semua/i).closest('button') as Element);
         expect(screen.getByText(/Lagi dibaca/i)).toBeInTheDocument();
     });

@@ -24,6 +24,7 @@ beforeEach(function (): void {
     Carbon::setTestNow('2026-05-20 12:00:00');
     config()->set('ai.backfill_threshold_hours', 24);
     config()->set('ai.backfill_stagger_seconds', 360);
+    $this->pipeline = app(ActivityPipeline::class);
 });
 
 afterEach(function (): void {
@@ -66,7 +67,7 @@ function backfillIngestSeed(string $startDate, ?int $userId = null): Activity
 it('fresh activities (started within threshold) dispatch with zero delay', function (): void {
     $activity = backfillIngestSeed('2026-05-20 06:00:00'); // 6 hours ago
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     Bus::assertDispatched(
         AnalyzeActivityJob::class,
@@ -78,7 +79,7 @@ it('fresh activities (started within threshold) dispatch with zero delay', funct
 it('backfilled activities dispatch with staggered delay per user', function (): void {
     $userActivity1 = backfillIngestSeed('2026-04-01 06:00:00'); // ~50 days ago
 
-    app(ActivityPipeline::class)->ingest($userActivity1);
+    $this->pipeline->ingest($userActivity1);
 
     Bus::assertDispatched(
         AnalyzeActivityJob::class,
@@ -90,7 +91,7 @@ it('backfilled activities dispatch with staggered delay per user', function (): 
     Bus::fake();
 
     $userActivity2 = backfillIngestSeed('2026-04-02 06:00:00', $userActivity1->user_id);
-    app(ActivityPipeline::class)->ingest($userActivity2);
+    $this->pipeline->ingest($userActivity2);
 
     Bus::assertDispatched(
         AnalyzeActivityJob::class,
@@ -100,11 +101,11 @@ it('backfilled activities dispatch with staggered delay per user', function (): 
 
 it('backfill stagger is isolated per user', function (): void {
     $userA = backfillIngestSeed('2026-04-01 06:00:00');
-    app(ActivityPipeline::class)->ingest($userA);
+    $this->pipeline->ingest($userA);
     Bus::fake();
 
     $userB = backfillIngestSeed('2026-04-01 06:00:00');
-    app(ActivityPipeline::class)->ingest($userB);
+    $this->pipeline->ingest($userB);
 
     // User B's first backfill should NOT inherit user A's slot
     Bus::assertDispatched(
@@ -115,12 +116,12 @@ it('backfill stagger is isolated per user', function (): void {
 
 it('logs ai.backfill.queued when a non-zero delay is applied', function (): void {
     $first = backfillIngestSeed('2026-04-01 06:00:00');
-    app(ActivityPipeline::class)->ingest($first);
+    $this->pipeline->ingest($first);
     Bus::fake();
     Log::spy();
 
     $second = backfillIngestSeed('2026-04-02 06:00:00', $first->user_id);
-    app(ActivityPipeline::class)->ingest($second);
+    $this->pipeline->ingest($second);
 
     Log::shouldHaveReceived('info')->atLeast()->once()->with(
         'ai.backfill.queued',

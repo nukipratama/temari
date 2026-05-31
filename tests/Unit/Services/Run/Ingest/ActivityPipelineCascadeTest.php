@@ -22,6 +22,7 @@ beforeEach(function (): void {
     Bus::fake();
     RateLimiter::clear('strava-api:15min');
     RateLimiter::clear('strava-api:daily');
+    $this->pipeline = app(ActivityPipeline::class);
 });
 
 function ingestSeed(): Activity
@@ -55,7 +56,7 @@ function ingestSeed(): Activity
 it('cascades 5 dispatches after a successful ingest (activity + briefing + greeting + trend + weekly)', function (): void {
     $activity = ingestSeed();
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     Bus::assertDispatched(AnalyzeActivityJob::class);
     Bus::assertDispatched(AnalyzeBriefingJob::class);
@@ -67,7 +68,7 @@ it('cascades 5 dispatches after a successful ingest (activity + briefing + greet
 it('dispatches AnalyzeActivityJob exactly once per ingest (debounced via the group routing)', function (): void {
     $activity = ingestSeed();
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
 });
@@ -76,15 +77,13 @@ it('uses today as discriminator for briefing/greeting/trend', function (): void 
     Carbon::setTestNow('2026-05-19 12:00:00');
     $activity = ingestSeed();
 
-    app(ActivityPipeline::class)->ingest($activity);
+    $this->pipeline->ingest($activity);
 
     Bus::assertDispatched(
         AnalyzeBriefingJob::class,
         fn (AnalyzeBriefingJob $job): bool => $job->discriminator === '2026-05-19',
     );
-    Bus::assertDispatched(
-        AnalyzeDailyGreetingJob::class,
-        fn (AnalyzeDailyGreetingJob $job): bool => true, // row job dispatched
-    );
+    // Row job carries no discriminator; asserting it dispatched at all is enough.
+    Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
     Carbon::setTestNow();
 });

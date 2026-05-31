@@ -14,6 +14,16 @@ vi.mock('@/lib/shareCard', () => ({
 };
 import ShareIgModal, { type ShareKartuData } from './ShareIgModal';
 
+// Both share paths fetch the rendered data: URL and turn it into a Blob.
+// jsdom has no real fetch, so resolve data: URLs to a stub PNG blob.
+function stubDataUrlFetch() {
+    globalThis.fetch = vi.fn((url: string) =>
+        url.startsWith('data:')
+            ? Promise.resolve({ blob: () => Promise.resolve(new Blob(['i'], { type: 'image/png' })) } as Response)
+            : Promise.reject(new Error('unexpected')),
+    ) as typeof fetch;
+}
+
 const kartu: ShareKartuData = {
     id: 7,
     name: 'Tendangan Balik',
@@ -86,11 +96,7 @@ describe('ShareIgModal', () => {
         const writeText = vi.fn(() => Promise.resolve());
         Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
         Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-        globalThis.fetch = vi.fn((url: string) =>
-            url.startsWith('data:')
-                ? Promise.resolve({ blob: () => Promise.resolve(new Blob(['i'], { type: 'image/png' })) } as Response)
-                : Promise.reject(new Error('unexpected')),
-        ) as typeof fetch;
+        stubDataUrlFetch();
         render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
         await act(async () => {
             fireEvent.click(screen.getAllByRole('button').find((b) => b.textContent === 'Bagikan') ?? document.body);
@@ -101,11 +107,7 @@ describe('ShareIgModal', () => {
     it('fires Salin Gambar and copies image to clipboard', async () => {
         const write = vi.fn(() => Promise.resolve());
         Object.defineProperty(navigator, 'clipboard', { value: { write }, configurable: true });
-        globalThis.fetch = vi.fn((url: string) =>
-            url.startsWith('data:')
-                ? Promise.resolve({ blob: () => Promise.resolve(new Blob(['i'], { type: 'image/png' })) } as Response)
-                : Promise.reject(new Error('unexpected')),
-        ) as typeof fetch;
+        stubDataUrlFetch();
         render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
         await act(async () => { fireEvent.click(screen.getByText(/Salin gambar/)); });
         expect(write).toHaveBeenCalled();

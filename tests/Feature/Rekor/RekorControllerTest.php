@@ -61,10 +61,9 @@ it('computes hero scoreboard extras + progression series for a distance PR with 
             ['distance' => 1_000, 'moving_time' => 346],
         ],
     ]);
-    PersonalRecord::factory()->for($user)->create([
+    PersonalRecord::factory()->forActivity($featuredActivity)->create([
         'category' => '5km',
         'value_sec' => 1_751,
-        'activity_id' => $featuredActivity->id,
         'set_at' => Carbon::parse('2026-05-18 06:30:00'),
     ]);
 

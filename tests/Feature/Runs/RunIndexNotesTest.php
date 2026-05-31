@@ -26,9 +26,7 @@ function seedRunWithNote(User $user, int $daysAgo, string $mood, string $speech)
         'distance' => 5000.0 + ($daysAgo * 100),
         'trimp_edwards' => 60.0,
     ]);
-    StoryLine::query()->create([
-        'user_id' => $user->id,
-        'activity_id' => $activity->id,
+    StoryLine::factory()->for($activity)->create([
         'kind' => StoryLine::KIND_POST_RUN,
         'mood' => $mood,
         'speech' => null,

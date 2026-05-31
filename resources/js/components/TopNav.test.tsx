@@ -4,14 +4,15 @@ import { router } from '@inertiajs/react';
 import TopNav from './TopNav';
 import { setMockPage } from '@/test/setup';
 
+const user = (overrides: Record<string, unknown> = {}) => ({
+    auth: { user: { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null, ...overrides } },
+    flash: {},
+    demoLoginEnabled: false,
+});
+
 beforeEach(() => {
     vi.mocked(router.post).mockReset();
-    setMockPage({
-        auth: { user: { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null } },
-        flash: {},
-        demoLoginEnabled: false,
-        stravaSync: { connected: false, last_synced_at: null },
-    });
+    setMockPage({ ...user(), stravaSync: { connected: false, last_synced_at: null } });
 });
 
 describe('TopNav', () => {
@@ -24,14 +25,7 @@ describe('TopNav', () => {
     });
 
     it('highlights the active tab from the current URL', () => {
-        setMockPage(
-            {
-                auth: { user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null } },
-                flash: {},
-                demoLoginEnabled: false,
-            },
-            '/aktivitas',
-        );
+        setMockPage(user(), '/aktivitas');
         render(<TopNav />);
         const riwayat = screen.getByText('Riwayat');
         expect(riwayat.className).toContain('text-ink');
@@ -44,9 +38,7 @@ describe('TopNav', () => {
 
     it('renders the synced Strava pill with relative time when connected', () => {
         setMockPage({
-            auth: { user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null } },
-            flash: {},
-            demoLoginEnabled: false,
+            ...user(),
             stravaSync: { connected: true, last_synced_at: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
         });
         render(<TopNav />);
@@ -54,12 +46,7 @@ describe('TopNav', () => {
     });
 
     it('renders synced label without timestamp when last_synced_at is null', () => {
-        setMockPage({
-            auth: { user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null } },
-            flash: {},
-            demoLoginEnabled: false,
-            stravaSync: { connected: true, last_synced_at: null },
-        });
+        setMockPage({ ...user(), stravaSync: { connected: true, last_synced_at: null } });
         render(<TopNav />);
         expect(screen.getByText('Strava synced')).toBeInTheDocument();
     });
@@ -89,11 +76,7 @@ describe('TopNav', () => {
     });
 
     it('renders the avatar image when avatar_url is provided', () => {
-        setMockPage({
-            auth: { user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: 'https://example.com/a.jpg' } },
-            flash: {},
-            demoLoginEnabled: false,
-        });
+        setMockPage(user({ avatar_url: 'https://example.com/a.jpg' }));
         render(<TopNav />);
         const avatarButton = screen.getByLabelText(/Buka menu Ada/);
         expect(avatarButton.querySelector('img')).not.toBeNull();
@@ -106,10 +89,7 @@ describe('TopNav', () => {
     });
 
     it('activeTabFromUrl returns null for paths that do not match any prefix', () => {
-        setMockPage(
-            { auth: { user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null } }, flash: {}, demoLoginEnabled: false },
-            '/settings',
-        );
+        setMockPage(user(), '/settings');
         render(<TopNav />);
         // None of the four tabs should carry the active text-ink color.
         // (smoke check — the negative case for activeTabFromUrl loop returning null)

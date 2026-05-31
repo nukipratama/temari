@@ -12,13 +12,16 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-beforeEach(fn () => Carbon::setTestNow('2026-05-11 12:00:00'));
+beforeEach(function (): void {
+    Carbon::setTestNow('2026-05-11 12:00:00');
+    $this->aggregator = app(WeeklyAggregator::class);
+});
 afterEach(fn () => Carbon::setTestNow());
 
 it('returns 0 and creates no rows when the user has no analyzed runs', function (): void {
     $user = User::factory()->create();
 
-    expect(app(WeeklyAggregator::class)->rebuildFor($user))->toBe(0)
+    expect($this->aggregator->rebuildFor($user))->toBe(0)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
@@ -35,7 +38,7 @@ it('upserts one snapshot per ISO week from first run through today', function ()
         ]);
     }
 
-    $written = app(WeeklyAggregator::class)->rebuildFor($user);
+    $written = $this->aggregator->rebuildFor($user);
 
     // Frozen at 2026-05-11 (Mon); 21 days back spans 4 ISO weeks ending Sunday.
     expect($written)->toBe(4)
@@ -57,7 +60,7 @@ it('aggregates distance, runs, and avg decoupling per week', function (): void {
         ]);
     }
 
-    app(WeeklyAggregator::class)->rebuildFor($user);
+    $this->aggregator->rebuildFor($user);
     $snapshot = WeeklySnapshot::query()
         ->where('user_id', $user->id)
         ->where('week_ending', $weekEnding->toDateString())
@@ -79,7 +82,7 @@ it('writes null avg_decoupling when no runs in the week have decoupling_pct', fu
         'stream_summary' => ['time_in_zone_min' => ['Z2' => 25]],
     ]);
 
-    app(WeeklyAggregator::class)->rebuildFor($user);
+    $this->aggregator->rebuildFor($user);
 
     $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
     expect($snapshot->avg_decoupling)->toBeNull();
@@ -96,7 +99,7 @@ it('skips details without trimp_edwards when rolling the daily TRIMP map', funct
         'start_date_local' => Carbon::today(),
     ]);
 
-    app(WeeklyAggregator::class)->rebuildFor($user);
+    $this->aggregator->rebuildFor($user);
 
     $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
     expect($snapshot->runs)->toBe(1)
@@ -114,10 +117,10 @@ it('is idempotent — re-running upserts the same week without duplicating', fun
         'start_date_local' => Carbon::today()->subDays(3),
     ]);
 
-    app(WeeklyAggregator::class)->rebuildFor($user);
+    $this->aggregator->rebuildFor($user);
     $first = WeeklySnapshot::query()->where('user_id', $user->id)->count();
 
-    app(WeeklyAggregator::class)->rebuildFor($user);
+    $this->aggregator->rebuildFor($user);
     $second = WeeklySnapshot::query()->where('user_id', $user->id)->count();
 
     expect($second)->toBe($first);
@@ -133,7 +136,7 @@ it('rebuildForWeekOf rebuilds only the snapshot covering the given date', functi
         'start_date_local' => Carbon::today()->subDays(2),
     ]);
 
-    $snap = app(WeeklyAggregator::class)->rebuildForWeekOf($user, Carbon::today()->subDays(2));
+    $snap = $this->aggregator->rebuildForWeekOf($user, Carbon::today()->subDays(2));
 
     expect($snap)->not->toBeNull()
         ->and($snap->user_id)->toBe($user->id)
@@ -145,7 +148,7 @@ it('rebuildForWeekOf rebuilds only the snapshot covering the given date', functi
 it('rebuildForWeekOf returns null when user has no runs', function (): void {
     $user = User::factory()->create();
 
-    $snap = app(WeeklyAggregator::class)->rebuildForWeekOf($user, Carbon::today());
+    $snap = $this->aggregator->rebuildForWeekOf($user, Carbon::today());
 
     expect($snap)->toBeNull();
 });

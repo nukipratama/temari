@@ -22,13 +22,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
+    $this->service = app(AnalysisService::class);
 });
 
 it('creates a pending row and queues a row job on first request', function (): void {
-    $service = app(AnalysisService::class);
     $user = User::factory()->create();
 
-    $row = $service->request(
+    $row = $this->service->request(
         subjectOrType: AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
         subjectId: $user->id,
         type: AnalysisType::TrendCaption,
@@ -45,7 +45,6 @@ it('creates a pending row and queues a row job on first request', function (): v
 });
 
 it('skips dispatch when status is already done (idempotent)', function (): void {
-    $service = app(AnalysisService::class);
     $snap = WeeklySnapshot::factory()->create();
     Analysis::factory()->done('cached recap')->create([
         'subject_type' => WeeklySnapshot::class,
@@ -54,7 +53,7 @@ it('skips dispatch when status is already done (idempotent)', function (): void 
         'discriminator' => null,
     ]);
 
-    $result = $service->request(
+    $result = $this->service->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -66,7 +65,6 @@ it('skips dispatch when status is already done (idempotent)', function (): void 
 });
 
 it('invalidate=true flips a done row back to queued and re-dispatches', function (): void {
-    $service = app(AnalysisService::class);
     $snap = WeeklySnapshot::factory()->create();
     Analysis::factory()->done('old recap')->create([
         'subject_type' => WeeklySnapshot::class,
@@ -75,7 +73,7 @@ it('invalidate=true flips a done row back to queued and re-dispatches', function
         'discriminator' => null,
     ]);
 
-    $service->request(
+    $this->service->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -87,8 +85,6 @@ it('invalidate=true flips a done row back to queued and re-dispatches', function
 });
 
 it('resets attempts to 0 when invalidating a previously-done row (row + group paths)', function (): void {
-    $service = app(AnalysisService::class);
-
     // Row path (WeeklyRecap is non-grouped).
     $snap = WeeklySnapshot::factory()->create();
     Analysis::factory()->done('old')->create([
@@ -99,7 +95,7 @@ it('resets attempts to 0 when invalidating a previously-done row (row + group pa
         'attempts' => 3,
     ]);
 
-    $service->request(
+    $this->service->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -119,7 +115,7 @@ it('resets attempts to 0 when invalidating a previously-done row (row + group pa
         'attempts' => 2,
     ]);
 
-    $service->request(
+    $this->service->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
         type: AnalysisType::PostRunSpeech,
@@ -134,7 +130,6 @@ it('resets attempts to 0 when invalidating a previously-done row (row + group pa
 });
 
 it('re-dispatches when status is failed', function (): void {
-    $service = app(AnalysisService::class);
     $snap = WeeklySnapshot::factory()->create();
     Analysis::factory()->failed('previous error')->create([
         'subject_type' => WeeklySnapshot::class,
@@ -143,7 +138,7 @@ it('re-dispatches when status is failed', function (): void {
         'discriminator' => null,
     ]);
 
-    $service->request(
+    $this->service->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -156,10 +151,9 @@ it('re-dispatches when status is failed', function (): void {
 });
 
 it('requestActivityGroup creates 4 rows and dispatches one AnalyzeActivityJob', function (): void {
-    $service = app(AnalysisService::class);
     $activity = Activity::factory()->create();
 
-    $service->requestActivityGroup($activity);
+    $this->service->requestActivityGroup($activity);
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     expect($rows)->toHaveCount(4)
@@ -177,10 +171,9 @@ it('requestActivityGroup creates 4 rows and dispatches one AnalyzeActivityJob', 
 });
 
 it('request() with any activity-group type routes to AnalyzeActivityJob (group)', function (): void {
-    $service = app(AnalysisService::class);
     $activity = Activity::factory()->create();
 
-    $service->request(
+    $this->service->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
         type: AnalysisType::RunInsightSplits,
@@ -191,20 +184,19 @@ it('request() with any activity-group type routes to AnalyzeActivityJob (group)'
 });
 
 it('activity group debounces — 3 sibling-type requests dispatch only one AnalyzeActivityJob', function (): void {
-    $service = app(AnalysisService::class);
     $activity = Activity::factory()->create();
 
-    $service->request(
+    $this->service->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
         type: AnalysisType::PostRunSpeech,
     );
-    $service->request(
+    $this->service->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
         type: AnalysisType::RunInsightTechnical,
     );
-    $service->request(
+    $this->service->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
         type: AnalysisType::RunInsightSplits,
@@ -214,10 +206,9 @@ it('activity group debounces — 3 sibling-type requests dispatch only one Analy
 });
 
 it('requestBriefingGroup creates 2 rows (headline + suggestion) and dispatches one AnalyzeBriefingJob', function (): void {
-    $service = app(AnalysisService::class);
     $user = User::factory()->create();
 
-    $service->requestBriefingGroup($user, '2026-05-18');
+    $this->service->requestBriefingGroup($user, '2026-05-18');
 
     // Mascot voice is split into its own row job — not in this group anymore.
     expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(2);
@@ -228,11 +219,10 @@ it('requestBriefingGroup creates 2 rows (headline + suggestion) and dispatches o
 });
 
 it('withoutDispatching suppresses dispatch but still creates Pending rows', function (): void {
-    $service = app(AnalysisService::class);
     $activity = Activity::factory()->create();
 
-    $service->withoutDispatching(function () use ($service, $activity): void {
-        $service->requestActivityGroup($activity);
+    $this->service->withoutDispatching(function () use ($activity): void {
+        $this->service->requestActivityGroup($activity);
     });
 
     expect(Analysis::query()->where('subject_id', $activity->id)->count())->toBe(4)
@@ -241,11 +231,10 @@ it('withoutDispatching suppresses dispatch but still creates Pending rows', func
 });
 
 it('withoutDispatching restores prior suppression state on exit', function (): void {
-    $service = app(AnalysisService::class);
     $snap = WeeklySnapshot::factory()->create();
 
-    $service->withoutDispatching(function () use ($service, $snap): void {
-        $service->request(
+    $this->service->withoutDispatching(function () use ($snap): void {
+        $this->service->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
             type: AnalysisType::WeeklyRecap,
@@ -255,7 +244,7 @@ it('withoutDispatching restores prior suppression state on exit', function (): v
 
     // After exit, dispatching works again.
     $snap2 = WeeklySnapshot::factory()->create();
-    $service->request(
+    $this->service->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap2->id,
         type: AnalysisType::WeeklyRecap,
@@ -265,10 +254,9 @@ it('withoutDispatching restores prior suppression state on exit', function (): v
 
 it('does not dispatch when ai.auto_dispatch config is false', function (): void {
     config(['ai.auto_dispatch' => false]);
-    $service = app(AnalysisService::class);
     $snap = WeeklySnapshot::factory()->create();
 
-    $row = $service->request(
+    $row = $this->service->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -280,10 +268,9 @@ it('does not dispatch when ai.auto_dispatch config is false', function (): void 
 
 it('does not dispatch when Azure config is missing', function (): void {
     config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']);
-    $service = app(AnalysisService::class);
     $snap = WeeklySnapshot::factory()->create();
 
-    $row = $service->request(
+    $row = $this->service->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -295,10 +282,9 @@ it('does not dispatch when Azure config is missing', function (): void {
 
 it('applies delaySeconds when dispatching (row)', function (): void {
     Carbon::setTestNow('2026-05-18 12:00:00');
-    $service = app(AnalysisService::class);
     $user = User::factory()->create();
 
-    $service->request(
+    $this->service->request(
         subjectOrType: AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
         subjectId: $user->id,
         type: AnalysisType::TrendCaption,
@@ -313,7 +299,6 @@ it('applies delaySeconds when dispatching (row)', function (): void {
 });
 
 it('markDone records content + model_version + generated_at', function (): void {
-    $service = app(AnalysisService::class);
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
@@ -321,7 +306,7 @@ it('markDone records content + model_version + generated_at', function (): void 
         'discriminator' => '2026-05-18',
     ]);
 
-    $service->markDone($row, 'final narrative', 'gpt-4-x');
+    $this->service->markDone($row, 'final narrative', 'gpt-4-x');
 
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Done)
@@ -331,7 +316,6 @@ it('markDone records content + model_version + generated_at', function (): void 
 });
 
 it('markFailed records error message without clearing prior content', function (): void {
-    $service = app(AnalysisService::class);
     $row = Analysis::factory()->done('prior content')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
@@ -339,7 +323,7 @@ it('markFailed records error message without clearing prior content', function (
         'discriminator' => '2026-05-18',
     ]);
 
-    $service->markFailed($row, 'Azure 500');
+    $this->service->markFailed($row, 'Azure 500');
 
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Failed)
@@ -348,7 +332,6 @@ it('markFailed records error message without clearing prior content', function (
 });
 
 it('markProcessing increments attempts', function (): void {
-    $service = app(AnalysisService::class);
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
@@ -357,7 +340,7 @@ it('markProcessing increments attempts', function (): void {
         'attempts' => 0,
     ]);
 
-    $service->markProcessing($row);
+    $this->service->markProcessing($row);
 
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Processing)
@@ -365,10 +348,9 @@ it('markProcessing increments attempts', function (): void {
 });
 
 it('accepts a Model instance as the subject', function (): void {
-    $service = app(AnalysisService::class);
     $detail = ActivityDetail::factory()->for(Activity::factory())->create();
 
-    $service->request(
+    $this->service->request(
         subjectOrType: $detail->activity,
         subjectId: $detail->activity_id,
         type: AnalysisType::RunInsightTechnical,

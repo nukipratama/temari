@@ -112,8 +112,7 @@ it('stores only the granted scopes and logs when a required scope is declined', 
 
 it('updates an existing user on subsequent strava callbacks', function (): void {
     $existingUser = User::factory()->create(['name' => 'Old Name']);
-    StravaConnection::factory()->create([
-        'user_id' => $existingUser->id,
+    StravaConnection::factory()->for($existingUser)->create([
         'strava_athlete_id' => 987654,
         'access_token' => 'old-access',
         'refresh_token' => 'old-refresh',
@@ -178,8 +177,7 @@ it('blocks guests from the dashboard', function (): void {
 
 it('shows the dashboard to authenticated users', function (): void {
     $user = User::factory()->create(['name' => 'Ada Lovelace']);
-    StravaConnection::factory()->create([
-        'user_id' => $user->id,
+    StravaConnection::factory()->for($user)->create([
         'strava_athlete_id' => 555111,
     ]);
 
