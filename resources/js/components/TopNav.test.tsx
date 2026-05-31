@@ -2,10 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
 import TopNav from './TopNav';
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
 const user = (overrides: Record<string, unknown> = {}) => ({
-    auth: { user: { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null, ...overrides } },
+    auth: { user: makeUser(overrides) },
     flash: {},
     demoLoginEnabled: false,
 });

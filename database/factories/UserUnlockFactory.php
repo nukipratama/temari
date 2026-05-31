@@ -27,4 +27,12 @@ class UserUnlockFactory extends Factory
             'metadata' => null,
         ];
     }
+
+    /**
+     * An unlock the user has equipped to their mascot.
+     */
+    public function equipped(): static
+    {
+        return $this->state(fn (): array => ['equipped' => true]);
+    }
 }

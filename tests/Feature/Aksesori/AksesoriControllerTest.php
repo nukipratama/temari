@@ -12,10 +12,7 @@ uses(RefreshDatabase::class);
 it('renders the catalog + equipped slots', function (): void {
     $user = User::factory()->create();
 
-    UserUnlock::factory()->for($user)->create([
-        'unlock_key' => 'accessory.headband_epik',
-        'equipped' => true,
-    ]);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.headband_epik']);
     UserUnlock::factory()->for($user)->create([
         'unlock_key' => 'accessory.medal_first_pr',
         'equipped' => false,
@@ -35,10 +32,7 @@ it('renders the catalog + equipped slots', function (): void {
 it('equips a headband + un-equips the previous sibling', function (): void {
     $user = User::factory()->create();
 
-    UserUnlock::factory()->for($user)->create([
-        'unlock_key' => 'accessory.headband_epik',
-        'equipped' => true,
-    ]);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.headband_epik']);
     UserUnlock::factory()->for($user)->create([
         'unlock_key' => 'accessory.headband_legendaris',
         'equipped' => false,
@@ -80,18 +74,9 @@ it('refuses to equip an unlock that does not belong to any slot', function (): v
 
 it('resolves headband=legendaris + medal=emas + pita variants when equipped', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->create([
-        'unlock_key' => 'accessory.headband_legendaris',
-        'equipped' => true,
-    ]);
-    UserUnlock::factory()->for($user)->create([
-        'unlock_key' => 'accessory.medal_gold',
-        'equipped' => true,
-    ]);
-    UserUnlock::factory()->for($user)->create([
-        'unlock_key' => 'accessory.weekly_streak_4',
-        'equipped' => true,
-    ]);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.headband_legendaris']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.weekly_streak_4']);
 
     $this->actingAs($user)->get('/aksesori')
         ->assertSuccessful()
@@ -103,10 +88,7 @@ it('resolves headband=legendaris + medal=emas + pita variants when equipped', fu
 
 it('resolves medal=pertama when medal_first_pr is equipped', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->create([
-        'unlock_key' => 'accessory.medal_first_pr',
-        'equipped' => true,
-    ]);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_first_pr']);
 
     $this->actingAs($user)->get('/aksesori')
         ->assertSuccessful()
@@ -115,10 +97,7 @@ it('resolves medal=pertama when medal_first_pr is equipped', function (): void {
 
 it('resolves aura=true when an aura_* unlock is equipped', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->create([
-        'unlock_key' => 'accessory.aura_legendaris',
-        'equipped' => true,
-    ]);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.aura_legendaris']);
 
     $this->actingAs($user)->get('/aksesori')
         ->assertSuccessful()

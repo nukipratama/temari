@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import KoleksiRekor from './Rekor';
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
 vi.mock('@/components/koleksi/ProgressionChart', () => ({
     default: () => <div data-testid="progression-chart" />,
@@ -40,7 +40,7 @@ const featuredExtras = {
 
 beforeEach(() => {
     setMockPage({
-        auth: { user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null } },
+        auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
         flash: {},
         demoLoginEnabled: false,
     });

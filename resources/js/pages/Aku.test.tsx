@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
 import Aku from './Aku';
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
 const identity = {
     name: 'Ada Lovelace',
@@ -16,7 +16,7 @@ const stats = { total_runs: 63, total_km: 544.1, longest_run_km: 17.99 };
 
 beforeEach(() => {
     setMockPage({
-        auth: { user: { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null } },
+        auth: { user: makeUser() },
         flash: {},
         demoLoginEnabled: false,
     });

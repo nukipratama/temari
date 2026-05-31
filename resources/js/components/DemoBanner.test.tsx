@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import DemoBanner from './DemoBanner';
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
 describe('DemoBanner', () => {
     it('renders nothing when demoLoginEnabled is false', () => {
         setMockPage({
-            auth: { user: { id: 1, name: 'A', first_name: 'A', avatar_url: null } },
+            auth: { user: makeUser({ name: 'A', first_name: 'A' }) },
             flash: {},
             demoLoginEnabled: false,
         });
@@ -22,7 +22,7 @@ describe('DemoBanner', () => {
 
     it('renders banner when demo flag is on and user logged in', () => {
         setMockPage({
-            auth: { user: { id: 1, name: 'Demo User', first_name: 'Demo', avatar_url: null } },
+            auth: { user: makeUser({ name: 'Demo User', first_name: 'Demo' }) },
             flash: {},
             demoLoginEnabled: true,
         });

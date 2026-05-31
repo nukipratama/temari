@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import RunsIndex from './Jejak';
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 import type { Activity, ActivityDetail } from '@/types/inertia';
 
 vi.mock('@/components/aktivitas/JourneyStrip', () => ({
@@ -34,7 +34,7 @@ function run(id: number, name: string, isoDate: string | null): Activity & { det
 
 beforeEach(() => {
     setMockPage({
-        auth: { user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null } },
+        auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
         flash: {},
         demoLoginEnabled: false,
     });
