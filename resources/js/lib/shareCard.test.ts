@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { drawShareCard, type Layout, type Format, type ShareKartuData } from './shareCard';
+import { drawShareCard, shareCardBlob, type Layout, type Format, type ShareKartuData } from './shareCard';
 
 const kartu: ShareKartuData = {
     id: 1,
@@ -102,5 +102,38 @@ describe('drawShareCard', () => {
         await expect(
             drawShareCard(canvas, { kartu, theme: 'Sky', layout: 'struk', format: 'feed', showStats: false, showQuote: false }),
         ).resolves.toBeUndefined();
+    });
+});
+
+describe('shareCardBlob', () => {
+    it('renders onto an offscreen canvas and resolves the PNG blob', async () => {
+        const ctx = makeCtx();
+        const blob = new Blob(['png'], { type: 'image/png' });
+        const canvas = {
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+            toBlob: (cb: (b: Blob | null) => void) => cb(blob),
+        };
+        vi.spyOn(document, 'createElement').mockReturnValue(canvas as unknown as HTMLCanvasElement);
+
+        await expect(
+            shareCardBlob({ kartu, theme: 'Dawn', layout: 'kartu', format: 'story', showStats: true, showQuote: true }),
+        ).resolves.toBe(blob);
+    });
+
+    it('rejects when the canvas yields no blob', async () => {
+        const ctx = makeCtx();
+        const canvas = {
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+            toBlob: (cb: (b: Blob | null) => void) => cb(null),
+        };
+        vi.spyOn(document, 'createElement').mockReturnValue(canvas as unknown as HTMLCanvasElement);
+
+        await expect(
+            shareCardBlob({ kartu, theme: 'Cream', layout: 'poster', format: 'feed', showStats: false, showQuote: false }),
+        ).rejects.toThrow('toBlob failed');
     });
 });
