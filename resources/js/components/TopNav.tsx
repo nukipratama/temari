@@ -54,7 +54,7 @@ export default function TopNav() {
 
   return (
     <header className="hidden bg-cream-deep lg:block">
-      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-14 py-[18px] 2xl:max-w-[1680px] 2xl:px-20">
+      <div className="mx-auto flex w-full max-w-page items-center justify-between px-14 py-[18px] 2xl:max-w-page-2xl 2xl:px-20">
         <div className="flex items-center gap-12">
           <Link href="/" aria-label="Beranda">
             <BrandMark />

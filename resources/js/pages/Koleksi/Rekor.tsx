@@ -49,7 +49,6 @@ interface RekorProps {
     personalRecords: ExtendedPR[];
     featuredExtras?: FeaturedExtras | null;
     progressionByCategory?: Record<string, ProgressionSeries> | null;
-    progressionDefault?: string | null;
 }
 
 // Order + short labels for the progression distance selector.
@@ -76,7 +75,6 @@ export default function KoleksiRekor({
     personalRecords,
     featuredExtras = null,
     progressionByCategory = null,
-    progressionDefault = null,
 }: Readonly<RekorProps>) {
     const distancePRs = personalRecords
         .filter((p) => DISTANCE_CATEGORIES.includes(p.category as (typeof DISTANCE_CATEGORIES)[number]))
@@ -111,10 +109,7 @@ export default function KoleksiRekor({
                 {pacePRs.length > 0 && <PaceTicker records={pacePRs} />}
 
                 {progressionByCategory && Object.keys(progressionByCategory).length > 0 && (
-                    <ProgressionSection
-                        byCategory={progressionByCategory}
-                        defaultCategory={progressionDefault}
-                    />
+                    <ProgressionSection byCategory={progressionByCategory} />
                 )}
 
                 <TemariFooter />
@@ -224,12 +219,10 @@ function HeroScoreboard({
 
 function ProgressionSection({
     byCategory,
-    defaultCategory,
-}: Readonly<{ byCategory: Record<string, ProgressionSeries>; defaultCategory: string | null }>) {
+}: Readonly<{ byCategory: Record<string, ProgressionSeries> }>) {
+    // Tabs are longest-last, so the last one is the headline distance default.
     const tabs = PROGRESSION_TABS.filter((c) => byCategory[c]);
-    const initial =
-        defaultCategory && byCategory[defaultCategory] ? defaultCategory : (tabs.at(-1) ?? tabs[0]);
-    const [selected, setSelected] = useState<string>(initial);
+    const [selected, setSelected] = useState<string>(tabs.at(-1) ?? tabs[0]);
     const series = byCategory[selected] ?? byCategory[tabs[0]];
 
     const times = series.times_sec.filter((t): t is number => t != null);

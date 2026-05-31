@@ -20,8 +20,8 @@ use Inertia\Response;
 class RekorController extends Controller
 {
     /**
-     * Distances offered in the /rekor progression selector, longest last so
-     * array_key_last() yields the headline distance as the default tab.
+     * Distances offered in the /rekor progression selector, longest last so the
+     * client's last-tab default lands on the headline distance.
      *
      * @var list<PrCategory>
      */
@@ -74,7 +74,6 @@ class RekorController extends Controller
             'personalRecords' => $payload,
             'featuredExtras' => $this->featuredExtras($featured),
             'progressionByCategory' => $progressionByCategory,
-            'progressionDefault' => $this->defaultProgressionCategory($featured, $progressionByCategory),
         ]);
     }
 
@@ -88,34 +87,19 @@ class RekorController extends Controller
      */
     private function buildProgressionByCategory(User $user, Collection $records): array
     {
-        $out = [];
+        $prs = [];
         foreach (self::PROGRESSION_CATEGORIES as $category) {
             $pr = $records->first(fn (PersonalRecord $record): bool => $record->category === $category);
-            if ($pr === null) {
-                continue;
-            }
-            $series = $this->progressionSeriesBuilder->build($user, $pr, $this->milestoneFor($pr)['target_sec']);
-            if ($series !== null) {
-                $out[$category->value] = $series;
+            if ($pr !== null) {
+                $prs[] = $pr;
             }
         }
 
-        return $out;
-    }
-
-    /**
-     * Pick the tab to show first: the featured (longest) PR's distance when it
-     * has a series, else the longest distance that does.
-     *
-     * @param  array<string, array<string, mixed>>  $byCategory
-     */
-    private function defaultProgressionCategory(?PersonalRecord $featured, array $byCategory): ?string
-    {
-        if ($featured !== null && isset($byCategory[$featured->category->value])) {
-            return $featured->category->value;
-        }
-
-        return array_key_last($byCategory);
+        return $this->progressionSeriesBuilder->buildMany(
+            $user,
+            $prs,
+            fn (PersonalRecord $pr): ?int => $this->milestoneFor($pr)['target_sec'],
+        );
     }
 
     /**

@@ -74,7 +74,6 @@ describe('Koleksi/Rekor', () => {
                 personalRecords={[pr('5km', 1751)]}
                 featuredExtras={featuredExtras}
                 progressionByCategory={{ '5km': series }}
-                progressionDefault="5km"
             />,
         );
         expect(screen.getByTestId('progression-chart')).toBeInTheDocument();
@@ -92,7 +91,6 @@ describe('Koleksi/Rekor', () => {
                 personalRecords={[pr('5km', 1751, 1), pr('marathon', 12000, 2)]}
                 featuredExtras={featuredExtras}
                 progressionByCategory={{ '5km': mk('5km'), marathon: mk('marathon') }}
-                progressionDefault="marathon"
             />,
         );
         expect(screen.getByRole('tab', { name: 'FM' })).toBeInTheDocument();

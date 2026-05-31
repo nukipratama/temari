@@ -149,6 +149,12 @@
     /* Strava brand (untouched, never themed). */
     --color-strava-orange: #fc4c02;
     --color-strava-orange-hover: #e34402;
+
+    /* Page content width — the centered column cap shared by the top nav,
+       PageContainer, and the devtools header (`max-w-page`). Eases up at 2xl
+       (`max-w-page-2xl`) so a 2K panel isn't marooned in empty gutters. */
+    --container-page: 1440px;
+    --container-page-2xl: 1680px;
 }
 
 /* Mobile horizontal-overflow safety net. Cards or decorative elements

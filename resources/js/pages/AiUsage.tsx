@@ -1,10 +1,9 @@
 import { Head, router } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import SectionHeading from '@/components/SectionHeading';
 import KpiTile from '@/components/dashboard/KpiTile';
-import { fadeInUp } from '@/lib/motion';
+import PageContainer from '@/components/ui/PageContainer';
 
 interface UsageRow {
     kind: string;
@@ -89,7 +88,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
             <Head title="AI Usage" />
 
             <header className="border-b border-line bg-surface-elev">
-                <div className="mx-auto flex max-w-[1440px] items-center justify-between px-6 py-4 2xl:max-w-[1680px]">
+                <div className="mx-auto flex max-w-page items-center justify-between px-6 py-4 2xl:max-w-page-2xl">
                     <div className="flex items-center gap-3">
                         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-cream">
                             <Icon icon="mdi:counter" width={20} aria-hidden />
@@ -105,12 +104,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                 </div>
             </header>
 
-            <motion.main
-                variants={fadeInUp}
-                initial="hidden"
-                animate="visible"
-                className="mx-auto max-w-[1440px] px-6 py-8 2xl:max-w-[1680px]"
-            >
+            <PageContainer>
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
@@ -232,7 +226,7 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                         </div>
                     )}
                 </section>
-            </motion.main>
+            </PageContainer>
         </div>
     );
 }

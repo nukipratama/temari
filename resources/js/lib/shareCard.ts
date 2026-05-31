@@ -1,4 +1,5 @@
 import type { ShareKartuData } from '@/components/card/ShareIgModal';
+import { DAYBREAK } from '@/lib/chartTokens';
 import { RARITY_LABELS } from '@/lib/runcard';
 
 /**
@@ -30,25 +31,27 @@ const DIMS: Record<Format, { w: number; h: number }> = {
 
 const PAD = 92;
 
-// Daybreak palette as literal hex (canvas can't read CSS vars).
+// Daybreak palette as literal hex (canvas can't read CSS vars). Brand hues
+// reference the shared DAYBREAK bridge so they can't drift; the rest are
+// canvas-only shades that mirror the @theme block in app.css.
 const C = {
-    horizon: '#e8a076',
-    horizonDeep: '#d08a60',
-    ink: '#1a1812',
+    horizon: DAYBREAK.horizon,
+    horizonDeep: DAYBREAK.horizonDeep,
+    ink: DAYBREAK.ink,
     ink2: '#3d362a',
     ink3: '#6e6452',
     cream: '#f6f1e8',
     creamDeep: '#eee7d6',
-    sky: '#1f2747',
-    skyDeep: '#161b33',
+    sky: DAYBREAK.sky,
+    skyDeep: DAYBREAK.skyDeep,
     surfaceCard: '#f6f1e8',
     line: '#e3dccd',
     rarity: {
-        common: '#8e8579',
-        uncommon: '#6b8e6f',
-        rare: '#7b5bb6',
-        epic: '#d9b23a',
-        legendary: '#c4623f',
+        common: DAYBREAK.stone,
+        uncommon: DAYBREAK.leaf,
+        rare: DAYBREAK.mumet,
+        epic: DAYBREAK.citrus,
+        legendary: DAYBREAK.ember,
     } as Record<string, string>,
 };
 
@@ -131,23 +134,32 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
     return lines;
 }
 
-async function ensureFonts(): Promise<void> {
-    const specs = [
-        'italic 600 120px "Fraunces"',
-        'italic 500 120px "Fraunces"',
-        '700 120px "JetBrains Mono"',
-        '500 120px "JetBrains Mono"',
-        '600 120px "Plus Jakarta Sans"',
-        '700 120px "Plus Jakarta Sans"',
-    ];
-    try {
-        await Promise.all(specs.map((s) => document.fonts.load(s)));
-        await document.fonts.ready;
-    } catch {
-        /* fonts best-effort; canvas falls back gracefully */
+// Fonts are device-stable, so the load only needs to happen once; cache the
+// promise so interactive preview repaints don't re-await it every knob change.
+let fontsReady: Promise<void> | null = null;
+
+function ensureFonts(): Promise<void> {
+    if (!fontsReady) {
+        const specs = [
+            'italic 600 120px "Fraunces"',
+            'italic 500 120px "Fraunces"',
+            '700 120px "JetBrains Mono"',
+            '500 120px "JetBrains Mono"',
+            '600 120px "Plus Jakarta Sans"',
+            '700 120px "Plus Jakarta Sans"',
+        ];
+        fontsReady = Promise.all(specs.map((s) => document.fonts.load(s)))
+            .then(() => document.fonts.ready)
+            .then(() => undefined)
+            .catch(() => {
+                /* fonts best-effort; canvas falls back gracefully */
+            });
     }
+    return fontsReady;
 }
 
+// Flat, canvas-safe port of BunnyGlyph in components/BrandMark.tsx (no
+// gradients/highlights). Keep the core geometry in sync with that source.
 function bunnySvg(tone: 'ink' | 'cream'): string {
     const isInk = tone === 'ink';
     const face = isInk ? C.ink : C.cream;
@@ -165,9 +177,18 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     });
 }
 
+// Only two tones exist and the glyph never changes; cache each decoded image
+// so repeated repaints reuse it instead of re-encoding and re-decoding the SVG.
+const bunnyCache: Partial<Record<'ink' | 'cream', HTMLImageElement>> = {};
+
 async function loadBunny(tone: 'ink' | 'cream'): Promise<HTMLImageElement | null> {
+    if (bunnyCache[tone]) {
+        return bunnyCache[tone];
+    }
     try {
-        return await loadImage(`data:image/svg+xml;utf8,${encodeURIComponent(bunnySvg(tone))}`);
+        const img = await loadImage(`data:image/svg+xml;utf8,${encodeURIComponent(bunnySvg(tone))}`);
+        bunnyCache[tone] = img;
+        return img;
     } catch {
         return null;
     }
@@ -314,7 +335,7 @@ function drawPoster(d: DrawCtx): void {
     let cursorY = heroTop + (heroBottom - heroTop - blockH) / 2 + nameSize * 0.74;
 
     ctx.font = `italic 600 ${nameSize}px "Fraunces"`;
-    cursorY += drawTextBlock(ctx, nameLines, PAD, cursorY, nameLH, pal.name) - nameLH + nameLH;
+    cursorY += drawTextBlock(ctx, nameLines, PAD, cursorY, nameLH, pal.name);
     if (quoteLines.length) {
         const qy = cursorY + 36;
         ctx.strokeStyle = C.horizon;

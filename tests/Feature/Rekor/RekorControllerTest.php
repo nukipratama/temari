@@ -88,7 +88,6 @@ it('computes hero scoreboard extras + progression series for a distance PR with 
             ->where('featuredExtras.target_sec', 1_740)
             ->where('featuredExtras.delta_sec', 11)
             ->where('featuredExtras.splits_pace_sec', [360, 350, 345, 350, 346])
-            ->where('progressionDefault', '5km')
             ->where('progressionByCategory.5km.category', '5km')
             ->has('progressionByCategory.5km.weeks', 3)
             ->has('progressionByCategory.5km.times_sec', 3));
@@ -146,6 +145,5 @@ it('skips milestone + progression for effort PRs (non-distance categories)', fun
     $this->actingAs($user)->get('/rekor')
         ->assertInertia(fn (Assert $page) => $page
             ->where('featuredExtras.target_sec', null)
-            ->where('progressionByCategory', [])
-            ->where('progressionDefault', null));
+            ->where('progressionByCategory', []));
 });

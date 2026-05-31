@@ -7,8 +7,8 @@ describe('PageContainer', () => {
         const { container } = render(<PageContainer>body</PageContainer>);
         const root = container.firstChild as HTMLElement;
         expect(root).toHaveClass(/mx-auto/);
-        expect(root).toHaveClass(/max-w-\[1440px\]/);
-        expect(root).toHaveClass(/2xl:max-w-\[1680px\]/);
+        expect(root).toHaveClass(/max-w-page/);
+        expect(root).toHaveClass(/2xl:max-w-page-2xl/);
     });
 
     it('renders its children', () => {
@@ -23,6 +23,6 @@ describe('PageContainer', () => {
 
     it('renders a plain div (no motion) when static', () => {
         const { container } = render(<PageContainer static>x</PageContainer>);
-        expect(container.firstChild).toHaveClass(/max-w-\[1440px\]/);
+        expect(container.firstChild).toHaveClass(/max-w-page/);
     });
 });

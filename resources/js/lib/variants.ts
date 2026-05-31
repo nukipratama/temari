@@ -96,9 +96,10 @@ export const chipVariants = cva(
 );
 
 /**
- * Segmented / toggle control — the selected-vs-unselected pill repeated by
- * hand across filter rows (riwayat range + mood, AiUsage date presets,
- * ShareIgModal format toggle). One source of truth for radius/size/state.
+ * Segmented / toggle control — the solid-fill selected-vs-unselected pill used
+ * by the Rekor progression tabs and the ShareIgModal theme picker. One source
+ * of truth for radius/size/state. Filter rows that need a bordered or tinted
+ * treatment (riwayat range + mood, AiUsage presets) stay hand-rolled.
  */
 export const toggleButtonVariants = cva(
     'inline-flex items-center justify-center rounded-full font-sans font-medium transition focus-ring',

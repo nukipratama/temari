@@ -17,7 +17,7 @@ interface PageContainerProps {
  * Carries the shared fadeInUp entrance so pages stay a one-line swap.
  */
 const CONTAINER =
-    'mx-auto w-full max-w-[1440px] px-5 py-6 sm:px-8 lg:px-14 lg:py-8 2xl:max-w-[1680px] 2xl:px-20';
+    'mx-auto w-full max-w-page px-5 py-6 sm:px-8 lg:px-14 lg:py-8 2xl:max-w-page-2xl 2xl:px-20';
 
 export default function PageContainer({
     children,
