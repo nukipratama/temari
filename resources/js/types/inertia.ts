@@ -28,6 +28,7 @@ export interface PendingReveal {
     moving_time_sec: number | null;
     trimp_edwards: number | null;
     summary_polyline?: string | null;
+    edition?: CardEdition | null;
     is_pr: boolean;
     pr_category_label: string | null;
     pr_time_display: string | null;

@@ -103,7 +103,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null, is_pr: bool, pr_category_label: string|null, pr_time_display: string|null}|null
+     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null, summary_polyline: string|null, edition: array{index: int, total: int}, is_pr: bool, pr_category_label: string|null, pr_time_display: string|null}|null
      */
     private function pendingRevealFor(?User $user): ?array
     {
@@ -144,9 +144,29 @@ class HandleInertiaRequests extends Middleware
             'moving_time_sec' => $detail?->moving_time,
             'trimp_edwards' => $detail?->trimp_edwards,
             'summary_polyline' => $detail?->summary_polyline,
+            'edition' => $this->editionFor($user, $card),
             'is_pr' => $pr !== null,
             'pr_category_label' => $pr?->category->label(),
             'pr_time_display' => $pr !== null ? $this->formatSeconds((int) $pr->value_sec) : null,
+        ];
+    }
+
+    /**
+     * Collector number for a single card within its rarity, so the reveal shows
+     * the same "#3/7" as the grid/detail pages. Two cheap counts, only paid when
+     * a reveal is actually pending (the early return above gates this).
+     *
+     * @return array{index: int, total: int}
+     */
+    private function editionFor(User $user, RunCard $card): array
+    {
+        $sameRarity = RunCard::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->where('rarity', $card->rarity);
+
+        return [
+            'index' => (clone $sameRarity)->where('id', '<=', $card->id)->count(),
+            'total' => $sameRarity->count(),
         ];
     }
 

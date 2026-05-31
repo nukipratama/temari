@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
+import { useDismissable } from '@/hooks/useDismissable';
 import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 import { RARITY_LABELS } from '@/lib/runcard';
 import { drawShareCard, shareCardBlob, type Format, type Layout, type ShareKartuData, type Theme } from '@/lib/shareCard';
@@ -31,7 +32,13 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
     const [showStats, setShowStats] = useState(true);
     const [showQuote, setShowQuote] = useState(true);
     const [format, setFormat] = useState<Format>('story');
+    // Transient status under the CTAs: confirms a copy/share that has no native
+    // UI of its own, or surfaces a failure instead of swallowing it silently.
+    const [status, setStatus] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    useDismissable(kartu !== null, panelRef, onClose);
 
     // Repaint the fixed-resolution canvas whenever any knob changes. The canvas
     // IS the export, so the on-screen preview can never drift from the shared
@@ -42,6 +49,13 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
         }
         void drawShareCard(canvasRef.current, { kartu, theme, layout, format, showStats, showQuote });
     }, [kartu, theme, layout, format, showStats, showQuote]);
+
+    // Auto-clear the status line so it reads as a transient toast.
+    useEffect(() => {
+        if (status === null) return;
+        const id = globalThis.setTimeout(() => setStatus(null), 2600);
+        return () => globalThis.clearTimeout(id);
+    }, [status]);
 
     if (kartu === null) return null;
 
@@ -77,17 +91,29 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
             } catch {
                 // user cancelled or API unavailable
             }
+        } else if (navigator.clipboard?.writeText !== undefined) {
+            try {
+                await navigator.clipboard.writeText(url);
+                setStatus({ tone: 'ok', text: 'Link kartu kesalin.' });
+            } catch {
+                setStatus({ tone: 'err', text: 'Gagal nyalin link.' });
+            }
         } else {
-            await navigator.clipboard.writeText(url).catch(() => { /* silent */ });
+            setStatus({ tone: 'err', text: 'Browser ini belum dukung berbagi.' });
         }
     };
 
     const handleCopy = async () => {
+        if (typeof ClipboardItem === 'undefined' || navigator.clipboard?.write === undefined) {
+            setStatus({ tone: 'err', text: 'Browser ini belum dukung salin gambar. Pakai Bagikan ya.' });
+            return;
+        }
         try {
             const blob = await captureImage();
             await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            setStatus({ tone: 'ok', text: 'Gambar kartu kesalin.' });
         } catch {
-            // clipboard API unavailable — silent
+            setStatus({ tone: 'err', text: 'Gagal nyalin gambar. Coba Bagikan aja.' });
         }
     };
 
@@ -100,15 +126,16 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[51] flex items-center justify-center p-4"
                 style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)' }}
-                onClick={onClose}
             >
                 <motion.div
                     key="share-panel"
+                    ref={panelRef}
+                    role="dialog"
+                    aria-modal="true"
                     initial={{ opacity: 0, scale: 0.96, y: 8 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 8 }}
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    onClick={(e) => e.stopPropagation()}
                     className="flex w-full max-w-lg flex-col overflow-y-auto rounded-3xl bg-cream shadow-2xl lg:max-w-4xl lg:flex-row lg:overflow-hidden"
                     style={{ maxHeight: '92dvh' }}
                 >
@@ -269,6 +296,18 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                                 >
                                     Salin gambar
                                 </button>
+                                {status !== null && (
+                                    <p
+                                        role="status"
+                                        aria-live="polite"
+                                        className={cn(
+                                            'text-center font-sans text-xs',
+                                            status.tone === 'ok' ? 'text-leaf-deep' : 'text-ember-deep',
+                                        )}
+                                    >
+                                        {status.text}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>

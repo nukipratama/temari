@@ -71,31 +71,38 @@ class CardController extends Controller
             ->orderByDesc('id')
             ->limit(3)
             ->get()
-            ->map(fn (RunCard $c) => [
-                'id' => $c->id,
-                'activity_id' => $c->activity_id,
-                'rarity' => $c->rarity->value,
-                'special_move' => $c->special_move,
-                'badges' => $c->badges,
-                'detail' => $c->activity->detail,
-                'edition' => $this->edition($c, $editions, $counts),
-            ])
+            ->map(fn (RunCard $c) => $this->cardPayload($c, $editions, $counts))
             ->values();
 
         return Inertia::render('Koleksi/KartuDetail', [
             'card' => [
-                'id' => $card->id,
-                'activity_id' => $card->activity_id,
-                'rarity' => $card->rarity->value,
-                'special_move' => $card->special_move,
-                'badges' => $card->badges,
-                'detail' => $card->activity->detail,
-                'edition' => $this->edition($card, $editions, $counts),
+                ...$this->cardPayload($card, $editions, $counts),
                 'flavor_analysis' => Analysis::toPayload($flavorAnalysis, AnalysisType::CardFlavor, RunCard::class, $card->id),
             ],
             'relatedCards' => $relatedCards,
             'totalForRarity' => $counts[$card->rarity->value] ?? 0,
         ]);
+    }
+
+    /**
+     * The shared card shape every endpoint returns. Keep the three call sites
+     * (related, detail, featured) on this single mapper so they can't drift.
+     *
+     * @param  array<int, int>  $editions
+     * @param  array<string, int>  $counts
+     * @return array{id: int, activity_id: int, rarity: string, special_move: string, badges: array<int, string>|null, detail: ActivityDetail|null, edition: array{index: int, total: int}}
+     */
+    private function cardPayload(RunCard $card, array $editions, array $counts): array
+    {
+        return [
+            'id' => $card->id,
+            'activity_id' => $card->activity_id,
+            'rarity' => $card->rarity->value,
+            'special_move' => $card->special_move,
+            'badges' => $card->badges,
+            'detail' => $card->activity->detail,
+            'edition' => $this->edition($card, $editions, $counts),
+        ];
     }
 
     /**
@@ -126,13 +133,7 @@ class CardController extends Controller
             ->first();
 
         return [
-            'id' => $card->id,
-            'activity_id' => $card->activity_id,
-            'rarity' => $card->rarity->value,
-            'special_move' => $card->special_move,
-            'badges' => $card->badges,
-            'detail' => $card->activity->detail,
-            'edition' => $this->edition($card, $editions, $counts),
+            ...$this->cardPayload($card, $editions, $counts),
             'flavor_analysis' => Analysis::toPayload($flavor, AnalysisType::CardFlavor, RunCard::class, $card->id),
         ];
     }

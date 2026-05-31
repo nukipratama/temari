@@ -223,6 +223,7 @@ export default function CardReveal({
     tags: (pending.badges ?? []).slice(0, 2).map(badgeName),
     quote: null,
     polyline: pending.summary_polyline ?? null,
+    edition: pending.edition ?? null,
   };
 
   return (
@@ -284,6 +285,7 @@ export default function CardReveal({
                       rarity={pending.rarity}
                       badges={(pending.badges ?? []).slice(0, 3)}
                       polyline={pending.summary_polyline}
+                      edition={pending.edition}
                       size="md"
                     />
                     <AnimatePresence>
