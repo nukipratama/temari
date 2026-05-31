@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
-import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
+import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatIdDate } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
@@ -126,19 +126,7 @@ export default function BriefingCard({
 
 function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload }>) {
     const { status, pending, error, retryAfterSeconds, trigger } = useAnalysisTrigger(headline, ['briefing']);
-    const [remaining, setRemaining] = useState(retryAfterSeconds ?? 0);
-
-    useEffect(() => {
-        setRemaining(Math.max(0, retryAfterSeconds ?? 0));
-    }, [retryAfterSeconds]);
-
-    useEffect(() => {
-        if (remaining <= 0) return;
-        const id = globalThis.setInterval(() => {
-            setRemaining((r) => (r <= 1 ? 0 : r - 1));
-        }, 1000);
-        return () => globalThis.clearInterval(id);
-    }, [remaining]);
+    const remaining = useCooldownCountdown(retryAfterSeconds);
 
     const cooling = remaining > 0;
     const effective = pending ? 'queued' : status;

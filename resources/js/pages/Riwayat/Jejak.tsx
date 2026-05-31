@@ -13,7 +13,7 @@ import TemariMascot from '@/components/temari/TemariMascot';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
-import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
+import { MOOD_HINT, MOOD_LABEL, MOOD_FILL, MOOD_ORDER } from '@/lib/mood';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
 import PageContainer from '@/components/ui/PageContainer';
@@ -68,21 +68,10 @@ const RANGE_FILTER_OPTIONS: ReadonlyArray<RangeOption<RangeFilterValue>> = [
     { value: '1y', label: 'Setahun penuh', hint: '1y' },
 ];
 
-const MOOD_HINT_BY_KEY: Record<Mood, string> = {
-    nyala: 'PR / win',
-    enteng: 'easy',
-    oleng: 'HR drift',
-    lemes: 'high strain',
-    mumet: 'overreaching',
-    adem: 'rest',
-};
-
-const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = (
-    ['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'] as const
-).map((mood) => ({
+const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => ({
     mood,
     label: MOOD_LABEL[mood],
-    hint: MOOD_HINT_BY_KEY[mood],
+    hint: MOOD_HINT[mood],
     swatchClass: MOOD_FILL[mood],
 }));
 

@@ -36,7 +36,7 @@ class SyncActivitiesJob implements ShouldQueue
 
     public function handle(SyncOrchestrator $orchestrator): void
     {
-        $user = User::query()->find($this->userId);
+        $user = User::query()->with('stravaConnection')->find($this->userId);
         if ($user === null) {
             return;
         }

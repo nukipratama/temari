@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Icon } from '@iconify/react';
 import { RATE_LIMITED_ERROR, useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
+import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import type { AnalysisPayload } from '@/types/inertia';
@@ -33,25 +34,6 @@ function RateLimitedNote() {
             Pelan-pelan, Temari kewalahan. Coba lagi sebentar ya.
         </span>
     );
-}
-
-function useCooldownCountdown(initialSeconds: number | null | undefined): number {
-    const [remaining, setRemaining] = useState(() => Math.max(0, initialSeconds ?? 0));
-
-    useEffect(() => {
-        setRemaining(Math.max(0, initialSeconds ?? 0));
-    }, [initialSeconds]);
-
-    const ticking = remaining > 0;
-    useEffect(() => {
-        if (!ticking) return;
-        const id = globalThis.setInterval(() => {
-            setRemaining((r) => (r <= 1 ? 0 : r - 1));
-        }, 1000);
-        return () => globalThis.clearInterval(id);
-    }, [ticking]);
-
-    return remaining;
 }
 
 export default function AnalysisStatus({

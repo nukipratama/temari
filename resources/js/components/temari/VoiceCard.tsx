@@ -39,7 +39,7 @@ export default function VoiceCard({
                 )}
             >
                 {attribution}
-                {pose != null && pose !== '' && <> · {pose}</>}
+                {pose && <> · {pose}</>}
             </div>
         </div>
     );

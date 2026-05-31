@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react';
 
+import { cn } from '@/lib/cn';
+
 export type TemariPose =
     | 'proud'
     | 'pumped'
@@ -155,10 +157,6 @@ export default function TemariProto({
             </svg>
         </div>
     );
-}
-
-function cn(...parts: Array<string | undefined | null | false>): string {
-    return parts.filter(Boolean).join(' ');
 }
 
 function resolveMedalKey(pose: TemariPose, equipped: TemariEquipped | null): keyof typeof MEDAL_PALETTE | null {

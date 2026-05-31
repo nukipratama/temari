@@ -9,7 +9,6 @@ use App\Enums\Rarity;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Console\Command;
-use ReflectionEnum;
 
 /**
  * Generates TypeScript string-literal unions from the backed PHP enums the
@@ -60,7 +59,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
     {
         $blocks = [];
         foreach (self::ENUMS as $enum) {
-            $name = (new ReflectionEnum($enum))->getShortName();
+            $name = class_basename($enum);
             /** @var list<string> $values */
             $values = array_map(static fn ($case): string => (string) $case->value, $enum::cases());
             $union = implode(' | ', array_map(static fn (string $v): string => "'{$v}'", $values));

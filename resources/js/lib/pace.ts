@@ -40,7 +40,7 @@ export function formatDurationHMS(seconds: number | null | undefined): string {
     const total = Math.round(seconds);
     const h = Math.floor(total / 3600);
     const m = Math.floor((total % 3600) / 60);
-    const s = total - h * 3600 - m * 60;
+    const s = total % 60;
     if (h > 0) {
         return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }

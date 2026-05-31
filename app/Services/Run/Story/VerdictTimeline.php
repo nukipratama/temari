@@ -53,7 +53,7 @@ class VerdictTimeline implements VerdictNarrator
             }
 
             $speech = $speechByActivity->get($line->activity_id);
-            if ($speech === null || $speech === '') {
+            if (blank($speech)) {
                 continue;
             }
 
