@@ -27,6 +27,7 @@ export interface PendingReveal {
     distance_m: number | null;
     moving_time_sec: number | null;
     trimp_edwards: number | null;
+    summary_polyline?: string | null;
     is_pr: boolean;
     pr_category_label: string | null;
     pr_time_display: string | null;
@@ -86,6 +87,19 @@ export interface BriefingResult {
     mood: Mood;
 }
 
+export interface StreamSummaryPerKm {
+    km: number;
+    pace: string; // "M:SS" per km
+    avg_hr?: number | null;
+    avg_cadence_spm?: number | null;
+}
+
+export interface StreamSummary {
+    per_km?: StreamSummaryPerKm[];
+    negative_split?: boolean;
+    [key: string]: unknown;
+}
+
 export interface ActivityDetail {
     id: number;
     activity_id: number;
@@ -101,6 +115,7 @@ export interface ActivityDetail {
     weather_humidity_pct?: number | null;
     weather_rain_detected?: boolean | null;
     summary_polyline?: string | null;
+    stream_summary?: StreamSummary | null;
     activity?: Activity;
 }
 
@@ -113,12 +128,18 @@ export interface Activity {
     run_card?: RunCard;
 }
 
+export interface CardEdition {
+    index: number;
+    total: number;
+}
+
 export interface RunCard {
     id: number;
     activity_id: number;
     rarity: Rarity;
     special_move: string;
     badges: string[] | null;
+    edition?: CardEdition | null;
     activity?: Activity;
 }
 

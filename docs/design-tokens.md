@@ -12,13 +12,14 @@ Tailwind colors** (`gray-*`, `slate-*`, `lime-*`, …); use the semantic tokens.
 
 ## Fonts
 
-Three families, each with one job:
+Three families for the app, plus one card-scoped face:
 
 | Token | Family | Use |
 |---|---|---|
 | `font-display` | Fraunces (italic) | Display headlines, Temari voice / quotes |
 | `font-sans` | Plus Jakarta Sans | Prose + UI (the readable **default** family) |
 | `font-mono` | JetBrains Mono | **Telemetry only** — numbers, stats, splits, uppercase metadata labels |
+| `font-collectible` | Oswald (condensed) | **Kartu only** — the TCG nameplate, hero KM number, edition number. Not a global default. |
 
 `font-sans` is Tailwind's default family, so prose / UI resolve to Plus Jakarta Sans
 automatically — readable Indonesian body text needs no extra class. **Telemetry must carry

@@ -46,12 +46,12 @@ class RunCard extends Model
     public const string BADGE_TAHAN_DIRI = 'tahan_diri';
 
     public const array BADGE_LABELS = [
-        self::BADGE_HARI_PANAS => '🔥 Hari Panas',
+        self::BADGE_HARI_PANAS => '🔥 Tahan Gerah',
         self::BADGE_PEJUANG_HUJAN => '🌧️ Pejuang Hujan',
         self::BADGE_ANAK_PAGI => '🌅 Anak Pagi',
         self::BADGE_LONG_SLOW_DISTANCE => '🐢 Long Slow Distance',
         self::BADGE_NEGATIVE_SPLIT => '👻 Negative Split',
-        self::BADGE_TAHAN_DIRI => '🧘 Tahan Diri',
+        self::BADGE_TAHAN_DIRI => '🧘 Anti Kalap',
     ];
 
     /**

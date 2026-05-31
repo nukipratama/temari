@@ -107,7 +107,7 @@ describe('KartuDetail', () => {
         expect(screen.queryByText(/Lari ini bukti/)).not.toBeInTheDocument();
     });
 
-    it('opens ShareIgModal and closes it when Bagikan / Tutup are clicked', () => {
+    it('opens ShareCardModal and closes it when Bagikan / Tutup are clicked', () => {
         render(<KartuDetail card={epicCard} relatedCards={[]} totalForRarity={3} />);
         fireEvent.click(screen.getByRole('button', { name: /Bagikan/i }));
         expect(screen.getByText(/Bagikan kartu/)).toBeInTheDocument();

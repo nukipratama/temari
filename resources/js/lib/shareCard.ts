@@ -1,6 +1,7 @@
-import type { ShareKartuData } from '@/components/card/ShareIgModal';
+import polylineCodec from '@mapbox/polyline';
 import { DAYBREAK } from '@/lib/chartTokens';
 import { RARITY_LABELS } from '@/lib/runcard';
+import type { CardEdition, Rarity } from '@/types/inertia';
 
 /**
  * Deterministic, device-independent share-card renderer.
@@ -11,9 +12,35 @@ import { RARITY_LABELS } from '@/lib/runcard';
  * No html-to-image, no DOM capture, no font-fallback drift.
  */
 
+/**
+ * Flat, render-ready data a single card contributes to a share image. Lives
+ * here (next to the canvas engine that consumes it) rather than in the modal
+ * component, so the lib has no component dependency.
+ */
+export interface ShareKartuData {
+    id: number;
+    name: string;
+    rarity: Rarity;
+    subtitle: string | null;
+    date: string | null;
+    km: string;
+    durasi: string;
+    pace: string | null;
+    trimp: string;
+    hr: string | null;
+    location: string | null;
+    weather: string | null;
+    tags: string[];
+    quote: string | null;
+    /** Encoded route polyline for the card / route templates (optional). */
+    polyline?: string | null;
+    /** Collector number within the rarity (optional). */
+    edition?: CardEdition | null;
+}
+
 export type Theme = 'Dawn' | 'Sky' | 'Cream' | 'Inverted';
 export type Format = 'story' | 'feed';
-export type Layout = 'poster' | 'angka' | 'kartu' | 'struk';
+export type Layout = 'kartu' | 'pack' | 'rute' | 'polaroid' | 'poster' | 'struk';
 
 export interface ShareCardConfig {
     kartu: ShareKartuData;
@@ -45,6 +72,7 @@ const C = {
     sky: DAYBREAK.sky,
     skyDeep: DAYBREAK.skyDeep,
     surfaceCard: '#f6f1e8',
+    surfaceSunken: '#efe8da',
     line: '#e3dccd',
     rarity: {
         common: DAYBREAK.stone,
@@ -115,6 +143,70 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
     ctx.closePath();
 }
 
+/**
+ * Decode + stroke a route polyline inside a box (x, y, w, h), preserving aspect
+ * ratio and flipping latitude so north is up. Returns false (drew nothing) when
+ * the polyline is missing / undecodable / single-point, so callers can fall back.
+ */
+function drawRoute(
+    ctx: CanvasRenderingContext2D,
+    polyline: string | null | undefined,
+    box: { x: number; y: number; w: number; h: number },
+    stroke: string,
+    lineWidth: number,
+): boolean {
+    if (polyline == null || polyline === '') {
+        return false;
+    }
+    let points: Array<[number, number]>;
+    try {
+        points = polylineCodec.decode(polyline) as Array<[number, number]>;
+    } catch {
+        return false;
+    }
+    if (points.length < 2) {
+        return false;
+    }
+    if (points.length > 240) {
+        const stride = Math.ceil(points.length / 240);
+        points = points.filter((_, i) => i % stride === 0);
+    }
+
+    const lats = points.map((p) => p[0]);
+    const lngs = points.map((p) => p[1]);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const spanLat = maxLat - minLat || 1;
+    const spanLng = maxLng - minLng || 1;
+    const pad = lineWidth * 1.5;
+    const innerW = box.w - pad * 2;
+    const innerH = box.h - pad * 2;
+    const scale = Math.min(innerW / spanLng, innerH / spanLat);
+    const offX = box.x + pad + (innerW - spanLng * scale) / 2;
+    const offY = box.y + pad + (innerH - spanLat * scale) / 2;
+
+    ctx.save();
+    ctx.beginPath();
+    points.forEach((p, i) => {
+        const px = offX + (p[1] - minLng) * scale;
+        const py = offY + (maxLat - p[0]) * scale;
+        if (i === 0) {
+            ctx.moveTo(px, py);
+        } else {
+            ctx.lineTo(px, py);
+        }
+    });
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+    return true;
+}
+
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
     const words = text.split(/\s+/);
     const lines: string[] = [];
@@ -147,6 +239,8 @@ function ensureFonts(): Promise<void> {
             '500 120px "JetBrains Mono"',
             '600 120px "Plus Jakarta Sans"',
             '700 120px "Plus Jakarta Sans"',
+            '600 120px "Oswald"',
+            '700 120px "Oswald"',
         ];
         fontsReady = Promise.all(specs.map((s) => document.fonts.load(s)))
             .then(() => document.fonts.ready)
@@ -349,42 +443,123 @@ function drawPoster(d: DrawCtx): void {
     }
 }
 
-function drawAngka(d: DrawCtx): void {
+/** Route-map hero: the run's route as big poster art with name + KM + edition. */
+function drawRute(d: DrawCtx): void {
     const { ctx, w, h, cfg, pal, bunny } = d;
-    paintGlow(ctx, w / 2, h * 0.5, w * 0.52);
+    const k = cfg.kartu;
+    paintGlow(ctx, w / 2, h * 0.38, w * 0.5);
     drawBrand(ctx, w - PAD, PAD, pal.isDark, bunny);
-    drawRarityFlag(ctx, PAD, PAD, cfg.kartu.rarity);
+    drawRarityFlag(ctx, PAD, PAD, k.rarity);
 
-    drawDateFooter(d);
+    const box = { x: PAD, y: PAD + 110, w: w - PAD * 2, h: h * (cfg.format === 'story' ? 0.42 : 0.4) };
+    drawRoute(ctx, k.polyline, box, pal.isDark ? C.horizon : C.horizonDeep, 12);
 
-    const centerY = h * 0.46;
+    let y = box.y + box.h + 90;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.font = 'italic 500 52px "Fraunces"';
+    ctx.font = `italic 600 ${cfg.format === 'story' ? 88 : 72}px "Fraunces"`;
     ctx.fillStyle = pal.name;
-    ctx.fillText(`${cfg.kartu.name}.`, PAD, centerY - 150);
+    wrapText(ctx, `${k.name}.`, w - PAD * 2)
+        .slice(0, 2)
+        .forEach((ln) => {
+            ctx.fillText(ln, PAD, y);
+            y += cfg.format === 'story' ? 92 : 78;
+        });
 
-    const numSize = cfg.format === 'story' ? 280 : 220;
-    ctx.font = `700 ${numSize}px "JetBrains Mono"`;
+    y += 24;
+    const kmSize = cfg.format === 'story' ? 200 : 150;
+    ctx.font = `700 ${kmSize}px "Oswald"`;
     ctx.fillStyle = pal.name;
-    ctx.fillText(cfg.kartu.km, PAD, centerY + numSize * 0.34);
-    const numW = ctx.measureText(cfg.kartu.km).width;
-    ctx.font = '700 44px "JetBrains Mono"';
-    ctx.letterSpacing = '4px';
+    ctx.fillText(k.km, PAD, y + kmSize * 0.8);
+    const kmW = ctx.measureText(k.km).width;
+    ctx.font = '700 40px "JetBrains Mono"';
+    ctx.letterSpacing = '3px';
     ctx.fillStyle = pal.meta;
-    ctx.fillText('KM', PAD + numW + 24, centerY + numSize * 0.06);
+    ctx.fillText('KM', PAD + kmW + 20, y + kmSize * 0.5);
+    ctx.letterSpacing = '0px';
+    if (k.edition) {
+        ctx.font = '600 48px "Oswald"';
+        ctx.fillStyle = pal.meta;
+        ctx.textAlign = 'right';
+        ctx.fillText(`#${k.edition.index}/${k.edition.total}`, w - PAD, y + kmSize * 0.5);
+    }
+
+    drawDateFooter(d);
+}
+
+/** Polaroid: the card tile in an instant-photo frame with a handwritten caption. */
+function drawPolaroid(d: DrawCtx): void {
+    const { ctx, w, h, cfg } = d;
+    const k = cfg.kartu;
+    const tileW = cfg.format === 'story' ? w * 0.62 : w * 0.56;
+    const tileH = tileW * 1.34;
+    const frameW = tileW + 88;
+    const frameX = (w - frameW) / 2;
+    const photoTop = cfg.format === 'story' ? h * 0.12 : PAD * 0.7;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(31,39,71,0.3)';
+    ctx.shadowBlur = 48;
+    ctx.shadowOffsetY = 28;
+    roundRectPath(ctx, frameX, photoTop, frameW, tileH + 210, 14);
+    ctx.fillStyle = C.cream;
+    ctx.fill();
+    ctx.restore();
+
+    drawKartuTile(d, w / 2, photoTop + 44 + tileH / 2, tileW);
+
+    const caption = k.quote ?? k.subtitle ?? `${k.km} km bareng Temari`;
+    ctx.font = 'italic 500 46px "Fraunces"';
+    ctx.fillStyle = C.ink2;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const capY = photoTop + 44 + tileH + 96;
+    wrapText(ctx, caption, frameW - 60)
+        .slice(0, 2)
+        .forEach((ln, i) => ctx.fillText(ln, w / 2, capY + i * 52));
+}
+
+/** Booster-pack reveal: the card sliding out of a torn rarity-foil wrapper. */
+function drawPack(d: DrawCtx): void {
+    const { ctx, w, h, cfg, pal, bunny } = d;
+    const k = cfg.kartu;
+    paintGlow(ctx, w / 2, h * 0.46, w * 0.5);
+    drawBrand(ctx, w - PAD, PAD, pal.isDark, bunny);
+
+    ctx.font = '700 30px "JetBrains Mono"';
+    ctx.letterSpacing = '3px';
+    ctx.fillStyle = C.horizon;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('★ BARU NARIK', PAD, PAD + 28);
     ctx.letterSpacing = '0px';
 
-    if (cfg.showStats) {
-        const parts = [cfg.kartu.durasi, cfg.kartu.pace ? `${cfg.kartu.pace}/km` : null, `${cfg.kartu.trimp} TRIMP`].filter(
-            Boolean,
-        ) as string[];
-        ctx.font = '500 34px "JetBrains Mono"';
-        ctx.letterSpacing = '1px';
-        ctx.fillStyle = pal.meta;
-        ctx.fillText(parts.join('  ·  '), PAD, centerY + numSize * 0.34 + 70);
-        ctx.letterSpacing = '0px';
+    // Foil pack (lower portion) with a torn zig-zag top edge.
+    const packTop = h * 0.54;
+    const zig = 30;
+    ctx.beginPath();
+    ctx.moveTo(PAD, packTop);
+    for (let zx = PAD, i = 0; zx < w - PAD; zx += zig * 2, i += 1) {
+        ctx.lineTo(zx + zig, packTop - (i % 2 === 0 ? 24 : 0));
+        ctx.lineTo(zx + zig * 2, packTop);
     }
+    ctx.lineTo(w - PAD, h - PAD);
+    ctx.lineTo(PAD, h - PAD);
+    ctx.closePath();
+    ctx.fillStyle = C.rarity[k.rarity] ?? C.line;
+    ctx.fill();
+
+    ctx.font = '700 40px "JetBrains Mono"';
+    ctx.letterSpacing = '5px';
+    ctx.fillStyle = k.rarity === 'epic' || k.rarity === 'legendary' ? C.ink : C.cream;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('TEMANLARI', w / 2, h - PAD - 40);
+    ctx.letterSpacing = '0px';
+
+    // Card sliding out above the torn edge.
+    const tileW = cfg.format === 'story' ? w * 0.52 : w * 0.48;
+    drawKartuTile(d, w / 2, packTop - tileW * 0.52, tileW);
 }
 
 function drawKartuTile(d: DrawCtx, cx: number, cy: number, tileW: number): void {
@@ -393,13 +568,15 @@ function drawKartuTile(d: DrawCtx, cx: number, cy: number, tileW: number): void 
     const tileH = tileW * 1.34;
     const x = cx - tileW / 2;
     const y = cy - tileH / 2;
-    const pad = tileW * 0.085;
+    const pad = tileW * 0.075;
+    const rarityCol = C.rarity[k.rarity] ?? C.line;
 
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(-0.035);
     ctx.translate(-cx, -cy);
 
+    // Card body + rarity frame.
     ctx.shadowColor = 'rgba(31,39,71,0.35)';
     ctx.shadowBlur = 40;
     ctx.shadowOffsetY = 24;
@@ -409,48 +586,85 @@ function drawKartuTile(d: DrawCtx, cx: number, cy: number, tileW: number): void 
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = C.rarity[k.rarity] ?? C.line;
-    roundRectPath(ctx, x + 2, y + 2, tileW - 4, tileH - 4, 26);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = rarityCol;
+    roundRectPath(ctx, x + 2.5, y + 2.5, tileW - 5, tileH - 5, 26);
     ctx.stroke();
 
-    // Rarity corner flag.
-    ctx.font = '700 24px "JetBrains Mono"';
+    let cursor = y + pad;
+
+    // Chrome row: rarity ribbon (left) + edition (right).
+    ctx.font = '700 26px "JetBrains Mono"';
     ctx.letterSpacing = '2px';
-    const flag = (RARITY_LABELS[k.rarity as keyof typeof RARITY_LABELS] ?? k.rarity).toUpperCase();
-    const flagW = ctx.measureText(flag).width + 36;
-    roundRectPath(ctx, x + tileW - flagW, y, flagW, 46, 0);
-    ctx.fillStyle = C.rarity[k.rarity] ?? C.line;
+    const rlabel = (RARITY_LABELS[k.rarity as keyof typeof RARITY_LABELS] ?? k.rarity).toUpperCase();
+    const ribbonW = ctx.measureText(rlabel).width + 44;
+    roundRectPath(ctx, x + pad, cursor, ribbonW, 46, 23);
+    ctx.fillStyle = rarityCol;
     ctx.fill();
     ctx.fillStyle = k.rarity === 'epic' || k.rarity === 'legendary' ? C.ink : C.cream;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(flag, x + tileW - flagW + 18, y + 24);
+    ctx.fillText(rlabel, x + pad + 22, cursor + 24);
     ctx.letterSpacing = '0px';
+    if (k.edition) {
+        ctx.font = '600 32px "Oswald"';
+        ctx.fillStyle = C.ink3;
+        ctx.textAlign = 'right';
+        ctx.fillText(`#${k.edition.index}/${k.edition.total}`, x + tileW - pad, cursor + 24);
+    }
+    cursor += 46 + pad * 0.5;
 
-    // Name.
-    ctx.font = 'italic 600 56px "Fraunces"';
+    // Nameplate (Oswald, uppercase, up to 2 lines).
+    const nameSize = tileW * 0.108;
+    ctx.font = `700 ${nameSize}px "Oswald"`;
     ctx.fillStyle = C.ink;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    const nameLines = wrapText(ctx, k.name, tileW - pad * 2 - 120);
-    nameLines.slice(0, 2).forEach((ln, i) => ctx.fillText(ln, x + pad, y + pad + 56 + i * 58));
+    wrapText(ctx, k.name.toUpperCase(), tileW - pad * 2)
+        .slice(0, 2)
+        .forEach((ln) => {
+            cursor += nameSize;
+            ctx.fillText(ln, x + pad, cursor);
+            cursor += nameSize * 0.08;
+        });
+    cursor += pad * 0.5;
 
-    // KM + TRIMP big, duration line.
-    const baseY = y + tileH - pad - 110;
-    ctx.font = '700 30px "JetBrains Mono"';
+    // Art window: the run's route, rarity-tinted.
+    const artH = tileH * 0.3;
+    const art = { x: x + pad, y: cursor, w: tileW - pad * 2, h: artH };
+    roundRectPath(ctx, art.x, art.y, art.w, art.h, 16);
+    ctx.fillStyle = C.surfaceSunken;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = C.line;
+    roundRectPath(ctx, art.x, art.y, art.w, art.h, 16);
+    ctx.stroke();
+    ctx.save();
+    roundRectPath(ctx, art.x, art.y, art.w, art.h, 16);
+    ctx.clip();
+    drawRoute(ctx, k.polyline, art, rarityCol, 6);
+    ctx.restore();
+    cursor = art.y + artH + pad * 0.7;
+
+    // Hero KM (Oswald), with duration/TRIMP demoted to its own line BELOW it
+    // (never on the same baseline — that overlapped the number).
+    const kmSize = tileW * 0.155;
+    ctx.font = `700 ${kmSize}px "Oswald"`;
+    ctx.fillStyle = C.horizonDeep;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    const kmBaseline = cursor + kmSize * 0.82;
+    ctx.fillText(k.km, x + pad, kmBaseline);
+    const kmW = ctx.measureText(k.km).width;
+    ctx.font = '700 22px "JetBrains Mono"';
     ctx.letterSpacing = '2px';
     ctx.fillStyle = C.ink3;
-    ctx.fillText('KM', x + pad, baseY);
-    ctx.fillText('TRIMP', x + tileW / 2, baseY);
+    ctx.fillText('KM', x + pad + kmW + 14, kmBaseline);
     ctx.letterSpacing = '0px';
-    ctx.font = '800 56px "Plus Jakarta Sans"';
-    ctx.fillStyle = C.ink;
-    ctx.fillText(k.km, x + pad, baseY + 56);
-    ctx.fillText(String(k.trimp), x + tileW / 2, baseY + 56);
-    ctx.font = '600 32px "Plus Jakarta Sans"';
-    ctx.fillStyle = C.ink2;
-    ctx.fillText(`Durasi ${k.durasi}`, x + pad, baseY + 104);
+    ctx.font = '500 24px "JetBrains Mono"';
+    ctx.fillStyle = C.ink3;
+    ctx.textAlign = 'left';
+    ctx.fillText(`${k.durasi}  ·  TRIMP ${k.trimp}`, x + pad, kmBaseline + 40);
 
     ctx.restore();
 }
@@ -468,10 +682,14 @@ function drawKartu(d: DrawCtx): void {
     ctx.fillText('★ KARTU KAMU', PAD, PAD + 28);
     ctx.letterSpacing = '0px';
 
-    const quote = cfg.format === 'story' && cfg.showQuote ? cfg.kartu.quote : null;
-    const tileW = cfg.format === 'story' ? w * 0.62 : w * 0.52;
-    const centerY = quote ? h * 0.42 : h * 0.5;
-    drawKartuTile(d, w / 2, centerY, tileW);
+    const story = cfg.format === 'story';
+    const quote = story && cfg.showQuote ? cfg.kartu.quote : null;
+    // Bigger tile, positioned so the tile + quote read as one centered block
+    // (no large dead void below the card).
+    const tileW = story ? w * 0.72 : w * 0.58;
+    const tileH = tileW * 1.34;
+    const top = story ? Math.max(PAD + 140, (h - tileH - 150) / 2) : (h - tileH) / 2 + 20;
+    drawKartuTile(d, w / 2, top + tileH / 2, tileW);
 
     if (quote) {
         ctx.font = 'italic 500 40px "Fraunces"';
@@ -479,8 +697,8 @@ function drawKartu(d: DrawCtx): void {
         ctx.textAlign = 'center';
         ctx.fillStyle = pal.quote;
         ctx.textBaseline = 'alphabetic';
-        const startY = h - PAD - lines.length * 52;
-        lines.forEach((ln, i) => ctx.fillText(ln, w / 2, startY + i * 52));
+        const qy = top + tileH + 78;
+        lines.forEach((ln, i) => ctx.fillText(ln, w / 2, qy + i * 52));
     }
 }
 
@@ -568,9 +786,11 @@ function drawStruk(d: DrawCtx): void {
 }
 
 const TEMPLATES: Record<Layout, (d: DrawCtx) => void> = {
-    poster: drawPoster,
-    angka: drawAngka,
     kartu: drawKartu,
+    pack: drawPack,
+    rute: drawRute,
+    polaroid: drawPolaroid,
+    poster: drawPoster,
     struk: drawStruk,
 };
 
@@ -582,7 +802,7 @@ function statItemsFor(kartu: ShareKartuData): Array<{ v: string; l: string }> {
         { v: String(kartu.trimp), l: 'TRIMP' },
         ...(kartu.hr ? [{ v: kartu.hr, l: 'HR' }] : []),
         ...(kartu.weather ? [{ v: kartu.weather, l: 'Cuaca' }] : []),
-        ...(kartu.location ? [{ v: kartu.location, l: 'Lokasi' }] : []),
+        ...(kartu.location ? [{ v: kartu.location.split(',')[0].trim(), l: 'Lokasi' }] : []),
     ];
 }
 

@@ -9,14 +9,14 @@ import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import ShareIgModal from '@/components/card/ShareIgModal';
-import type { ShareKartuData } from '@/components/card/ShareIgModal';
+import ShareCardModal from '@/components/card/ShareCardModal';
+import type { ShareKartuData } from '@/lib/shareCard';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import { formatDuration, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
-import { RARITY_BORDER, RARITY_LABELS, prettyBadge } from '@/lib/runcard';
+import { RARITY_BORDER, RARITY_LABELS, badgeName, paceShapeFromDetail } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
-import type { ActivityDetail, AnalysisPayload, Rarity } from '@/types/inertia';
+import type { ActivityDetail, AnalysisPayload, CardEdition, Rarity } from '@/types/inertia';
 
 // Short Indonesian descriptions for each badge key
 const BADGE_DESCS: Record<string, string> = {
@@ -35,6 +35,7 @@ interface CardPayload {
     special_move: string;
     badges: string[] | null;
     detail: ActivityDetail | null;
+    edition?: CardEdition | null;
     flavor_analysis: AnalysisPayload;
 }
 
@@ -45,6 +46,7 @@ interface RelatedCard {
     special_move: string;
     badges: string[] | null;
     detail: ActivityDetail | null;
+    edition?: CardEdition | null;
 }
 
 interface KartuDetailProps {
@@ -94,8 +96,10 @@ export default function KartuDetail({
         hr: detail?.average_heartrate != null ? `${Math.round(detail.average_heartrate)} bpm` : null,
         location: detail?.location_name ?? null,
         weather: detail?.weather_temp_c != null ? `${Math.round(detail.weather_temp_c)}°C` : null,
-        tags: badges.map((b) => prettyBadge(b)),
+        tags: badges.map((b) => badgeName(b)),
         quote: card.flavor_analysis.content ?? null,
+        polyline: detail?.summary_polyline ?? null,
+        edition: card.edition ?? null,
     };
 
     return (
@@ -139,7 +143,9 @@ export default function KartuDetail({
                                     durasi={durasi}
                                     trimp={trimp}
                                     rarity={card.rarity}
-                                    tags={badges.map((b) => prettyBadge(b))}
+                                    polyline={detail?.summary_polyline}
+                                    paceShape={paceShapeFromDetail(detail)}
+                                    edition={card.edition}
                                     size="lg"
                                     className="w-full"
                                 />
@@ -203,7 +209,7 @@ export default function KartuDetail({
                                                     : '',
                                             )}
                                         >
-                                            <Chip tone="horizon">{prettyBadge(b)}</Chip>
+                                            <Chip tone="horizon">{badgeName(b)}</Chip>
                                             <p className="flex-1 text-sm text-ink-2">
                                                 {BADGE_DESCS[b] ??
                                                     'Kondisi spesial yang bikin lari ini istimewa.'}
@@ -278,7 +284,7 @@ export default function KartuDetail({
                     </div>
                 </div>
             </PageContainer>
-            <ShareIgModal
+            <ShareCardModal
                 kartu={shareOpen ? shareData : null}
                 onClose={() => setShareOpen(false)}
             />

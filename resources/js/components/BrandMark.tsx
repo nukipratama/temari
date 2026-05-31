@@ -22,7 +22,7 @@ export default function BrandMark({ tone = 'ink', className }: Readonly<BrandMar
     );
 }
 
-function BunnyGlyph({ size, tone }: Readonly<{ size: number; tone: 'ink' | 'cream' }>) {
+export function BunnyGlyph({ size, tone }: Readonly<{ size: number; tone: 'ink' | 'cream' }>) {
     const isInk = tone === 'ink';
     const face = isInk ? 'var(--color-ink)' : 'var(--color-cream)';
     const blush = isInk ? 'var(--color-horizon)' : 'var(--color-horizon-deep)';

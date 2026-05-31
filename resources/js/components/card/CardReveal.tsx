@@ -1,16 +1,17 @@
 import { router } from "@inertiajs/react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import HeroPanel from "@/components/ui/HeroPanel";
 import Kartu from "./Kartu";
+import PackWrapper from "./PackWrapper";
 import PillButton from "@/components/ui/PillButton";
-import ShareIgModal from "./ShareIgModal";
-import type { ShareKartuData } from "./ShareIgModal";
+import ShareCardModal from "./ShareCardModal";
+import type { ShareKartuData } from "@/lib/shareCard";
 import Temari from "@/components/temari/Temari";
 import { type TemariPose } from "@/components/temari/TemariProto";
 import TemariMascot from "@/components/temari/TemariMascot";
-import { RARITY_LABELS } from "@/lib/runcard";
+import { RARITY_LABELS, badgeName } from "@/lib/runcard";
 import { formatDuration, formatKm, formatPace, paceSecPerKm } from "@/lib/pace";
 import { csrfToken } from "@/lib/http";
 import type { PendingReveal, Rarity } from "@/types/inertia";
@@ -104,6 +105,10 @@ export default function CardReveal({
   const [step, setStep] = useState(0);
   const [confettiKey, setConfettiKey] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  // The card starts wrapped in foil; reduced-motion users skip straight to it.
+  const [opened, setOpened] = useState(
+    () => globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
+  );
   const sentRef = useRef(false);
 
   // /api/kartu/{card}/seen returns plain JSON, so Inertia's router can't
@@ -153,29 +158,39 @@ export default function CardReveal({
     });
   }, [frames.length]);
 
-  useEffect(() => {
+  const frame = frames[step] ?? frames[frames.length - 1];
+  const isLastFrame = step === frames.length - 1;
+  // The card stays behind the foil PackWrapper until the user tears it open.
+  const wrapped = frame.showKartu === true && !opened;
+
+  // Tearing the pack reveals the card and fires the confetti burst (theatrical
+  // reveals only — the showConfetti frame flag marks them).
+  const openPack = useCallback(() => {
+    setOpened(true);
     if (frames[step]?.showConfetti) {
       setConfettiKey(`reveal-${pending.card_id}-${step}`);
     }
-  }, [step, frames, pending.card_id]);
+  }, [frames, step, pending.card_id]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
         dismiss();
+        return;
       }
+      // No keyboard gesture unzips the pack (touch-first); block frame advance
+      // while the card is still wrapped so the reveal isn't skipped.
       if (e.key === " " || e.key === "Enter" || e.key === "ArrowRight") {
         e.preventDefault();
-        advance();
+        if (!wrapped) {
+          advance();
+        }
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [advance, dismiss]);
-
-  const frame = frames[step] ?? frames[frames.length - 1];
-  const isLastFrame = step === frames.length - 1;
+  }, [advance, dismiss, wrapped]);
   const km = formatKm(pending.distance_m);
   const durasi =
     pending.moving_time_sec != null
@@ -186,8 +201,10 @@ export default function CardReveal({
       ? Math.round(pending.trimp_edwards).toString()
       : "—";
   const subtitle = buildSubtitle(pending);
-  const onBackdrop = isLastFrame ? dismiss : advance;
   const onPrimary = isLastFrame ? viewKoleksi : advance;
+  // While wrapped, a backdrop tap shouldn't skip the reveal.
+  const advanceOrDismiss = isLastFrame ? dismiss : advance;
+  const onBackdrop = wrapped ? () => {} : advanceOrDismiss;
 
   const sharePaceSec = paceSecPerKm(pending.moving_time_sec, pending.distance_m);
   const shareData: ShareKartuData = {
@@ -203,8 +220,9 @@ export default function CardReveal({
     hr: null,
     location: null,
     weather: null,
-    tags: (pending.badges ?? []).slice(0, 2).map(prettyBadge),
+    tags: (pending.badges ?? []).slice(0, 2).map(badgeName),
     quote: null,
+    polyline: pending.summary_polyline ?? null,
   };
 
   return (
@@ -255,7 +273,7 @@ export default function CardReveal({
                     initial={{ opacity: 0, rotate: -6, y: 12 }}
                     animate={{ opacity: 1, rotate: -3, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.15 }}
-                    className="mt-6 max-w-md"
+                    className="relative mt-6 max-w-md"
                   >
                     <Kartu
                       name={pending.special_move}
@@ -264,16 +282,28 @@ export default function CardReveal({
                       durasi={durasi}
                       trimp={trimp}
                       rarity={pending.rarity}
-                      tags={(pending.badges ?? []).slice(0, 2).map(prettyBadge)}
+                      badges={(pending.badges ?? []).slice(0, 3)}
+                      polyline={pending.summary_polyline}
                       size="md"
                     />
+                    <AnimatePresence>
+                      {wrapped && (
+                        <PackWrapper
+                          key="pack"
+                          rarity={pending.rarity}
+                          onOpen={openPack}
+                        />
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )}
                 <div className="mt-7 flex flex-wrap items-center gap-2.5">
-                  <PillButton tone="horizon" onClick={onPrimary}>
-                    {isLastFrame ? "Lihat koleksi" : "Lanjut"}
-                  </PillButton>
-                  {isLastFrame && frame.showKartu && (
+                  {!wrapped && (
+                    <PillButton tone="horizon" onClick={onPrimary}>
+                      {isLastFrame ? "Lihat koleksi" : "Lanjut"}
+                    </PillButton>
+                  )}
+                  {isLastFrame && frame.showKartu && opened && (
                     <PillButton
                       tone="horizon"
                       onClick={(e) => {
@@ -289,26 +319,21 @@ export default function CardReveal({
                   </PillButton>
                 </div>
                 <div className="mt-4 text-label-micro text-ink-on-sky">
-                  Frame {step + 1} / {frames.length} · ketuk untuk lanjut
+                  {wrapped
+                    ? "Sobek bungkusnya buat lihat kartu"
+                    : `Frame ${step + 1} / ${frames.length} · ketuk untuk lanjut`}
                 </div>
               </div>
             </div>
           </HeroPanel>
         </motion.div>
       </div>
-      <ShareIgModal
+      <ShareCardModal
         kartu={shareOpen ? shareData : null}
         onClose={() => setShareOpen(false)}
       />
     </>
   );
-}
-
-function prettyBadge(slug: string): string {
-  return slug
-    .split("_")
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(" ");
 }
 
 function buildSubtitle(pending: PendingReveal): string | null {

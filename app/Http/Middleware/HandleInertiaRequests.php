@@ -114,7 +114,7 @@ class HandleInertiaRequests extends Middleware
         $card = RunCard::query()
             ->whereKey($user->pending_reveal_card_id)
             ->with([
-                'activity.detail:id,activity_id,name,distance,moving_time,trimp_edwards',
+                'activity.detail:id,activity_id,name,distance,moving_time,trimp_edwards,summary_polyline',
                 'activity:id,user_id',
             ])
             ->first();
@@ -143,6 +143,7 @@ class HandleInertiaRequests extends Middleware
             'distance_m' => $detail?->distance,
             'moving_time_sec' => $detail?->moving_time,
             'trimp_edwards' => $detail?->trimp_edwards,
+            'summary_polyline' => $detail?->summary_polyline,
             'is_pr' => $pr !== null,
             'pr_category_label' => $pr?->category->label(),
             'pr_time_display' => $pr !== null ? $this->formatSeconds((int) $pr->value_sec) : null,

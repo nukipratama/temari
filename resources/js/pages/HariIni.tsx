@@ -175,7 +175,7 @@ export default function HariIni({
                                     <div className="-mx-5 flex items-stretch gap-3 overflow-x-auto px-5 pb-1 scrollbar-hide sm:-mx-8 sm:px-8 lg:hidden">
                                         {cardStrip.map((item) => (
                                             <Link key={item.key} href={`/aktivitas/${item.activityId}`} className="flex-none block">
-                                                <KartuMini name={item.name} rarity={item.rarity} date={item.date} className="h-full" />
+                                                <KartuMini name={item.name} rarity={item.rarity} date={item.date} polyline={item.polyline} className="h-full" />
                                             </Link>
                                         ))}
                                     </div>
@@ -183,7 +183,7 @@ export default function HariIni({
                                     <div className="hidden lg:grid lg:gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
                                         {cardStrip.map((item) => (
                                             <Link key={item.key} href={`/aktivitas/${item.activityId}`} className="block h-full">
-                                                <KartuMini name={item.name} rarity={item.rarity} date={item.date} className="h-full w-full" />
+                                                <KartuMini name={item.name} rarity={item.rarity} date={item.date} polyline={item.polyline} className="h-full w-full" />
                                             </Link>
                                         ))}
                                     </div>
@@ -361,7 +361,9 @@ function FeaturedKartuPanel({
                         durasi={featured.durasi}
                         trimp={featured.trimp}
                         rarity={featured.rarity}
-                        tags={featured.tags}
+                        badges={featured.badges}
+                        polyline={featured.polyline}
+                        paceShape={featured.paceShape}
                         size="md"
                     />
                 </div>
@@ -375,7 +377,9 @@ function FeaturedKartuPanel({
                         durasi={featured.durasi}
                         trimp={featured.trimp}
                         rarity={featured.rarity}
-                        tags={featured.tags}
+                        badges={featured.badges}
+                        polyline={featured.polyline}
+                        paceShape={featured.paceShape}
                         size="md"
                         className="w-full max-w-md"
                     />

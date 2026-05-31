@@ -12,7 +12,7 @@ vi.mock('@/lib/shareCard', () => ({
 (globalThis as unknown as { ClipboardItem: unknown }).ClipboardItem = class {
     constructor(public data: Record<string, Blob | Promise<Blob>>) {}
 };
-import ShareIgModal, { type ShareKartuData } from './ShareIgModal';
+import ShareCardModal, { type ShareKartuData } from './ShareCardModal';
 
 // Both share paths fetch the rendered data: URL and turn it into a Blob.
 // jsdom has no real fetch, so resolve data: URLs to a stub PNG blob.
@@ -39,48 +39,50 @@ const kartu: ShareKartuData = {
     weather: '28°C',
     tags: ['Negative Split', 'Anak Pagi'],
     quote: 'Lari ini bukti kamu bisa lebih jauh.',
+    polyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+    edition: { index: 3, total: 25 },
 };
 
-describe('ShareIgModal', () => {
+describe('ShareCardModal', () => {
     it('renders nothing when kartu is null', () => {
-        const { container } = render(<ShareIgModal kartu={null} onClose={vi.fn()} />);
+        const { container } = render(<ShareCardModal kartu={null} onClose={vi.fn()} />);
         expect(container.firstChild).toBeNull();
     });
 
     it('renders the card name in the header', () => {
-        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         expect(screen.getAllByText(/Tendangan Balik/).length).toBeGreaterThan(0);
     });
 
     it('renders Bagikan and Salin Gambar CTAs', () => {
-        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         expect(screen.getAllByText(/Bagikan/).length).toBeGreaterThan(0);
         expect(screen.getByText(/Salin gambar/)).toBeInTheDocument();
     });
 
     it('renders theme buttons', () => {
-        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         expect(screen.getByText('Dawn')).toBeInTheDocument();
         expect(screen.getByText('Sky')).toBeInTheDocument();
         expect(screen.getByText('Cream')).toBeInTheDocument();
         expect(screen.getByText('Inverted')).toBeInTheDocument();
     });
 
-    it('renders format picker Story and Feed buttons', () => {
-        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
-        expect(screen.getByText(/Story/)).toBeInTheDocument();
-        expect(screen.getByText(/Feed/)).toBeInTheDocument();
+    it('renders format picker Potret and Persegi buttons', () => {
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        expect(screen.getByText(/Potret/)).toBeInTheDocument();
+        expect(screen.getByText(/Persegi/)).toBeInTheDocument();
     });
 
     it('calls onClose when the close button is clicked', () => {
         const onClose = vi.fn();
-        render(<ShareIgModal kartu={kartu} onClose={onClose} />);
+        render(<ShareCardModal kartu={kartu} onClose={onClose} />);
         fireEvent.click(screen.getByLabelText('Tutup'));
         expect(onClose).toHaveBeenCalledOnce();
     });
 
     it('switches theme when a theme button is clicked', () => {
-        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         fireEvent.click(screen.getByText('Sky'));
         fireEvent.click(screen.getByText('Cream'));
         fireEvent.click(screen.getByText('Inverted'));
@@ -88,7 +90,7 @@ describe('ShareIgModal', () => {
     });
 
     it('renders the canvas preview', () => {
-        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         expect(screen.getByLabelText(/Pratinjau kartu/)).toBeInTheDocument();
     });
 
@@ -97,7 +99,7 @@ describe('ShareIgModal', () => {
         Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
         Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
         stubDataUrlFetch();
-        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         await act(async () => {
             fireEvent.click(screen.getAllByRole('button').find((b) => b.textContent === 'Bagikan') ?? document.body);
         });
@@ -108,13 +110,13 @@ describe('ShareIgModal', () => {
         const write = vi.fn(() => Promise.resolve());
         Object.defineProperty(navigator, 'clipboard', { value: { write }, configurable: true });
         stubDataUrlFetch();
-        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         await act(async () => { fireEvent.click(screen.getByText(/Salin gambar/)); });
         expect(write).toHaveBeenCalled();
     });
 
     it('toggles data and quote visibility switches', () => {
-        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         const switches = screen.getAllByRole('switch');
         expect(switches.length).toBe(2);
         fireEvent.click(switches[0]);
@@ -122,15 +124,23 @@ describe('ShareIgModal', () => {
         fireEvent.click(switches[0]);
     });
 
-    it('offers the four card-style templates and switches between them', () => {
-        render(<ShareIgModal kartu={kartu} onClose={vi.fn()} />);
+    it('offers the share templates and switches between them', () => {
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         const select = screen.getByLabelText('Pilih gaya kartu');
         expect(select).toBeInTheDocument();
-        ['Poster', 'Angka', 'Kartu', 'Struk'].forEach((label) =>
+        ['Kartu', 'Bungkus', 'Rute', 'Polaroid', 'Poster', 'Struk'].forEach((label) =>
             expect(screen.getByRole('option', { name: label })).toBeInTheDocument(),
         );
+        // The trimmed 'Angka' template is gone.
+        expect(screen.queryByRole('option', { name: 'Angka' })).toBeNull();
         // Switching to the receipt template renders without crashing.
         fireEvent.change(select, { target: { value: 'struk' } });
         expect(screen.getAllByText(/Tendangan Balik/).length).toBeGreaterThan(0);
+    });
+
+    it('hides the Rute template when the card has no route', () => {
+        render(<ShareCardModal kartu={{ ...kartu, polyline: null }} onClose={vi.fn()} />);
+        expect(screen.queryByRole('option', { name: 'Rute' })).toBeNull();
+        expect(screen.getByRole('option', { name: 'Kartu' })).toBeInTheDocument();
     });
 });

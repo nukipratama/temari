@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { drawShareCard, type Layout, type Format } from './shareCard';
-import type { ShareKartuData } from '@/components/card/ShareIgModal';
+import { drawShareCard, type Layout, type Format, type ShareKartuData } from './shareCard';
 
 const kartu: ShareKartuData = {
     id: 1,
@@ -17,6 +16,8 @@ const kartu: ShareKartuData = {
     weather: '27°C',
     tags: ['Anak Pagi'],
     quote: 'Kartu ini lahir dari sesi yang tenang tapi solid.',
+    polyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+    edition: { index: 2, total: 7 },
 };
 
 function makeCtx() {
@@ -36,6 +37,7 @@ function makeCtx() {
         arcTo: vi.fn(),
         fill: vi.fn(),
         stroke: vi.fn(),
+        clip: vi.fn(),
         save: vi.fn(),
         restore: vi.fn(),
         translate: vi.fn(),
@@ -45,6 +47,9 @@ function makeCtx() {
         fillStyle: '',
         strokeStyle: '',
         lineWidth: 0,
+        lineCap: '',
+        lineJoin: '',
+        globalAlpha: 1,
         font: '',
         textAlign: '',
         textBaseline: '',
@@ -72,7 +77,7 @@ beforeEach(() => {
 });
 
 describe('drawShareCard', () => {
-    const layouts: Layout[] = ['poster', 'angka', 'kartu', 'struk'];
+    const layouts: Layout[] = ['kartu', 'pack', 'rute', 'polaroid', 'poster', 'struk'];
     const formats: Format[] = ['story', 'feed'];
 
     it.each(layouts)('paints the %s layout at the fixed story resolution', async (layout) => {

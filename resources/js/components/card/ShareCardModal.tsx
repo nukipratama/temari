@@ -4,44 +4,30 @@ import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
 import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 import { RARITY_LABELS } from '@/lib/runcard';
-import { drawShareCard, shareCardBlob, type Format, type Layout, type Theme } from '@/lib/shareCard';
-import type { Rarity } from '@/types/inertia';
+import { drawShareCard, shareCardBlob, type Format, type Layout, type ShareKartuData, type Theme } from '@/lib/shareCard';
 
-export interface ShareKartuData {
-    id: number;
-    name: string;
-    rarity: Rarity;
-    subtitle: string | null;
-    date: string | null;
-    km: string;
-    durasi: string;
-    pace: string | null;
-    trimp: string;
-    hr: string | null;
-    location: string | null;
-    weather: string | null;
-    tags: string[];
-    quote: string | null;
-}
+export type { ShareKartuData };
 
-interface ShareIgModalProps {
+interface ShareCardModalProps {
     kartu: ShareKartuData | null;
     onClose: () => void;
 }
 
-const LAYOUTS: Layout[] = ['poster', 'angka', 'kartu', 'struk'];
+const LAYOUTS: Layout[] = ['kartu', 'pack', 'rute', 'polaroid', 'poster', 'struk'];
 const LAYOUT_LABELS: Record<Layout, string> = {
-    poster: 'Poster',
-    angka: 'Angka',
     kartu: 'Kartu',
+    pack: 'Bungkus',
+    rute: 'Rute',
+    polaroid: 'Polaroid',
+    poster: 'Poster',
     struk: 'Struk',
 };
 
 const THEMES: Theme[] = ['Dawn', 'Sky', 'Cream', 'Inverted'];
 
-export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalProps>) {
+export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardModalProps>) {
     const [theme, setTheme] = useState<Theme>('Dawn');
-    const [layout, setLayout] = useState<Layout>('poster');
+    const [layout, setLayout] = useState<Layout>('kartu');
     const [showStats, setShowStats] = useState(true);
     const [showQuote, setShowQuote] = useState(true);
     const [format, setFormat] = useState<Format>('story');
@@ -58,6 +44,10 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
     }, [kartu, theme, layout, format, showStats, showQuote]);
 
     if (kartu === null) return null;
+
+    // The route-hero template needs a polyline; hide it for no-GPS runs.
+    const hasRoute = kartu.polyline != null && kartu.polyline !== '';
+    const availableLayouts = hasRoute ? LAYOUTS : LAYOUTS.filter((l) => l !== 'rute');
 
     const cfg = { kartu, theme, layout, format, showStats, showQuote };
 
@@ -160,7 +150,7 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                             f === 'story' ? 'h-7 w-4' : 'h-6 w-6',
                                         )}
                                     />
-                                    {f === 'story' ? 'Story · 9:16' : 'Feed · 1:1'}
+                                    {f === 'story' ? 'Potret · 9:16' : 'Persegi · 1:1'}
                                 </button>
                             ))}
                         </div>
@@ -201,7 +191,7 @@ export default function ShareIgModal({ kartu, onClose }: Readonly<ShareIgModalPr
                                     aria-label="Pilih gaya kartu"
                                     className="focus-ring w-full rounded-xl border border-line bg-cream-deep px-3 py-2.5 font-sans text-sm font-medium text-ink"
                                 >
-                                    {LAYOUTS.map((l) => (
+                                    {availableLayouts.map((l) => (
                                         <option key={l} value={l}>
                                             {LAYOUT_LABELS[l]}
                                         </option>

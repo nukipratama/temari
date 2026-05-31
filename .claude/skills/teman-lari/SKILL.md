@@ -84,14 +84,15 @@ Sweep `grep text-ink-3` before merging — if it's wrapping a `<p>` of running p
 
 ### Typography & fonts
 
-Three families (all loaded via Google Fonts in
-[app.blade.php](../../../resources/views/app.blade.php)): **Instrument Serif** italic is
-`font-display` (headlines + Temari voice/quotes); **Inter** is `font-sans`, the default family
-for body/UI/numbers/buttons; **JetBrains Mono** is `font-mono`, reserved for *small uppercase
-metadata labels only* (section labels, chips, stat-tile / kartu captions, timestamps). Because
-`font-sans` (Inter) is Tailwind's default, every small uppercase label must carry an **explicit
-`font-mono`** (or the `.text-label-micro` / `.text-label-small` utilities) or it falls back to
-Inter. Keep `tabular-nums` on numeric / stat displays.
+Three app families + one card-scoped face (all loaded via Google Fonts in
+[app.blade.php](../../../resources/views/app.blade.php)): **Fraunces** italic is
+`font-display` (headlines + Temari voice/quotes); **Plus Jakarta Sans** is `font-sans`, the default
+family for body/UI/numbers/buttons; **JetBrains Mono** is `font-mono`, reserved for *small uppercase
+metadata labels only* (section labels, chips, stat-tile / kartu captions, timestamps). **Oswald** is
+`font-collectible`, used **only on the Kartu** (TCG nameplate, hero KM number, edition number) — never
+a global default. Because `font-sans` is Tailwind's default, every small uppercase label must carry an
+**explicit `font-mono`** (or the `.text-label-micro` / `.text-label-small` utilities) or it falls back to
+the sans. Keep `tabular-nums` on numeric / stat displays.
 The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headline-*`,
 `text-quote-*`), each bundling its own line-height + letter-spacing, so one utility lands the full spec.
 

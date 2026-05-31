@@ -15,7 +15,7 @@ import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDurationHMS, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
-import { RARITY_LABELS, prettyBadge } from '@/lib/runcard';
+import { RARITY_LABELS, paceShapeFromDetail } from '@/lib/runcard';
 import { emberGlowStyle } from '@/lib/styles';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type {
@@ -158,7 +158,9 @@ export default function RunsShow({
                                     durasi={duration === '—' ? '—' : duration}
                                     trimp={trimp != null ? trimp : '—'}
                                     rarity={card.rarity}
-                                    tags={(card.badges ?? []).slice(0, 2).map(prettyBadge)}
+                                    badges={(card.badges ?? []).slice(0, 3)}
+                                    polyline={detail.summary_polyline}
+                                    paceShape={paceShapeFromDetail(detail)}
                                     size="md"
                                 />
                             </Link>

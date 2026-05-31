@@ -16,10 +16,14 @@
        Fraunces italic for display/voice (Temari quotes, page headlines),
        Plus Jakarta Sans for prose/UI (the readable default), and JetBrains
        Mono for telemetry only (numbers, stats, uppercase metadata labels).
+       Plus a fourth, card-scoped face: Oswald (condensed) for the collectible
+       Kartu nameplate / hero stat / edition number — the "trading-card" look.
+       Not a global default; use font-collectible only on the card chrome.
        Loaded via Google Fonts <link> in app.blade.php. */
     --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    --font-collectible: 'Oswald', 'Plus Jakarta Sans', system-ui, sans-serif;
 
     /* ─── Daybreak display-type scale ────────────────────────────────
        Fluid clamp() so editorial type scales smoothly instead of
@@ -225,6 +229,42 @@ body {
     /* Temari voice — display serif italic. */
     .voice {
         @apply font-display text-quote-lg italic text-ink;
+    }
+
+    /* Holographic foil sweep for top-tier Kartu (Epik / Legendaris). A
+       translucent diagonal highlight drifts across the card; citrus is the
+       reserved celebration hue. Pairs with `position: relative` on the card. */
+    .kartu-holo::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        background: linear-gradient(
+            115deg,
+            transparent 32%,
+            color-mix(in oklab, var(--color-citrus) 38%, transparent) 47%,
+            color-mix(in oklab, var(--color-cream) 60%, transparent) 50%,
+            color-mix(in oklab, var(--color-citrus) 38%, transparent) 53%,
+            transparent 68%
+        );
+        background-size: 250% 250%;
+        mix-blend-mode: soft-light;
+        animation: kartu-holo-sweep 6s linear infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .kartu-holo::after {
+            animation: none;
+        }
+    }
+}
+
+@keyframes kartu-holo-sweep {
+    0% {
+        background-position: 0% 0%;
+    }
+    100% {
+        background-position: 100% 100%;
     }
 }
 
