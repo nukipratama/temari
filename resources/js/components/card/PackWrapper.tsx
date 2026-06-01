@@ -47,10 +47,14 @@ export default function PackWrapper({ rarity, onOpen, className }: Readonly<Pack
             className={cn('absolute inset-0 z-20 cursor-pointer select-none overflow-hidden rounded-[16px]', className)}
             onClick={onOpen}
         >
-            {/* Frosted plastic over the card + rarity foil tint + holo sheen. */}
+            {/* Frosted plastic over the card + rarity foil tint + a gloss sheen. */}
             <div className="absolute inset-0 bg-cream/70 backdrop-blur-[3px]" />
             <div className={cn('absolute inset-0', FOIL_TINT[rarity])} />
-            <span aria-hidden className="kartu-holo absolute inset-0 rounded-[16px]" />
+            <span
+                aria-hidden
+                className="absolute inset-0 rounded-[16px]"
+                style={{ background: 'linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.55) 50%, transparent 62%)' }}
+            />
 
             {/* Perforated tear line + draggable zip-strip tab. */}
             <div className="absolute inset-x-0 top-7 flex items-center">
