@@ -5,7 +5,7 @@
 # Source code is volume-mounted at runtime; this stage only bakes in PHP
 # extensions and the dev Caddyfile. Run: `docker compose build --target dev`.
 FROM dunglas/frankenphp:1-php8.4-alpine AS dev
-WORKDIR /app
+WORKDIR /var/www/html
 
 RUN install-php-extensions \
         pdo_mysql \
@@ -38,7 +38,7 @@ EXPOSE 80
 # composer call also fires post-autoload-dump → `php artisan package:discover`,
 # which writes bootstrap/cache/{packages,services}.php.
 FROM composer:2 AS vendor
-WORKDIR /app
+WORKDIR /var/www/html
 
 COPY composer.json composer.lock ./
 RUN --mount=type=cache,target=/tmp/composer-cache,sharing=locked \
@@ -58,7 +58,7 @@ RUN composer dump-autoload --optimize --classmap-authoritative --no-scripts
 # Build Vite bundle (tailwind via @tailwindcss/vite). Vendor dir is needed
 # because some Laravel packages publish CSS/JS that Vite picks up.
 FROM node:22-alpine AS assets
-WORKDIR /app
+WORKDIR /var/www/html
 
 COPY package.json package-lock.json vite.config.ts tsconfig.json ./
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
@@ -66,14 +66,14 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 
 COPY resources ./resources
 COPY public ./public
-COPY --from=vendor /app/vendor ./vendor
+COPY --from=vendor /var/www/html/vendor ./vendor
 RUN npm run build
 
 # ─── Stage 3: runtime ───────────────────────────────────────────────────────
 # FrankenPHP serves on :7001 (not :80) — auto_https is disabled in the
 # Caddyfile because Cloudflare terminates TLS at the edge.
 FROM dunglas/frankenphp:1-php8.4-alpine
-WORKDIR /app
+WORKDIR /var/www/html
 
 ENV FRANKENPHP_NUM_THREADS=auto \
     SERVER_NAME=:7001
@@ -86,8 +86,8 @@ RUN install-php-extensions \
         opcache \
         pcntl
 
-COPY --from=vendor /app /app
-COPY --from=assets /app/public/build /app/public/build
+COPY --from=vendor /var/www/html /var/www/html
+COPY --from=assets /var/www/html/public/build /var/www/html/public/build
 # Run the package:discover hook the vendor stage deferred. Writes
 # bootstrap/cache/packages.php. CACHE_STORE=array because no redis is
 # reachable at build time — runtime config still resolves to redis.
@@ -109,7 +109,7 @@ COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 # pki module even when auto_https is off). Must be writable by www-data.
 RUN mkdir -p /data/caddy /config/caddy /config/psysh \
     && chown -R www-data:www-data \
-        /app/storage /app/bootstrap/cache \
+        /var/www/html/storage /var/www/html/bootstrap/cache \
         /data/caddy /config/caddy /config/psysh
 
 USER www-data

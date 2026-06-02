@@ -2,7 +2,7 @@
 {
 	auto_https off
 	frankenphp {
-		worker /app/public/frankenphp-worker.php
+		worker /var/www/html/public/frankenphp-worker.php
 	}
 	admin off
 	servers {
@@ -11,7 +11,7 @@
 }
 
 :7001 {
-	root * /app/public
+	root * /var/www/html/public
 	# Cloudflare re-compresses at the edge with brotli, so brotli on the
 	# origin is wasted CPU. zstd for tunnel transport, gzip as fallback.
 	encode zstd gzip

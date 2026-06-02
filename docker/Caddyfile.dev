@@ -10,7 +10,7 @@
 }
 
 :80 {
-	root * /app/public
+	root * /var/www/html/public
 	encode gzip
 
 	@vite path /build/*
