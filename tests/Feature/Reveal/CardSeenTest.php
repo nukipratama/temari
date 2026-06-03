@@ -77,6 +77,52 @@ it('shares pendingReveal as null when the flagged card was deleted', function ()
             ->where('pendingReveal', null));
 });
 
+it('re-arms the reveal flag when replaying an owned card', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    $card = RunCard::factory()->for($activity)->create(['rarity' => 'legendary']);
+
+    expect($user->pending_reveal_card_id)->toBeNull();
+
+    $this->actingAs($user)
+        ->postJson("/api/kartu/{$card->id}/replay")
+        ->assertSuccessful()
+        ->assertJson(['replay' => true]);
+
+    expect($user->fresh()->pending_reveal_card_id)->toBe($card->id);
+});
+
+it('forbids replaying another user\'s card', function (): void {
+    $owner = User::factory()->create();
+    $activity = Activity::factory()->for($owner)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    $card = RunCard::factory()->for($activity)->create();
+
+    $intruder = User::factory()->create();
+    $this->actingAs($intruder)->postJson("/api/kartu/{$card->id}/replay")->assertForbidden();
+
+    expect($owner->fresh()->pending_reveal_card_id)->toBeNull();
+});
+
+it('flags pendingReveal.is_replay on the request following a replay', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    $card = RunCard::factory()->for($activity)->create(['rarity' => 'epic']);
+
+    // The replay POST flashes the marker; the follow-up page load consumes it.
+    $this->actingAs($user)
+        ->postJson("/api/kartu/{$card->id}/replay")
+        ->assertSuccessful();
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('pendingReveal.card_id', $card->id)
+            ->where('pendingReveal.is_replay', true));
+});
+
 it('shares pendingReveal payload (incl. km/duration/trimp) when a card is flagged', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

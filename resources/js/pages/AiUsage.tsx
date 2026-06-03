@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import SectionHeading from '@/components/SectionHeading';
@@ -73,12 +73,6 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
     const [fromInput, setFromInput] = useState<string>(from);
     const [toInput, setToInput] = useState<string>(to);
 
-    const applyPreset = (nextFrom: string, nextTo: string): void => {
-        setFromInput(nextFrom);
-        setToInput(nextTo);
-        navigate(nextFrom, nextTo);
-    };
-
     const promptShare = totals.total > 0 ? Math.round((totals.prompt / totals.total) * 100) : 0;
     const avgPerCall = totals.calls > 0 ? Math.round(totals.total / totals.calls) : 0;
     const truncatedShare = totals.calls > 0 ? Math.round((totals.truncated_calls / totals.calls) * 100) : 0;
@@ -123,22 +117,10 @@ export default function AiUsage({ from, to, totals, byKind, byUser }: Readonly<A
                     </button>
 
                     <div className="ml-auto flex flex-wrap gap-2">
-                        <PresetButton
-                            label="Hari ini"
-                            onClick={() => applyPreset(todayISO(), todayISO())}
-                        />
-                        <PresetButton
-                            label="7 hari"
-                            onClick={() => applyPreset(isoDaysAgo(6), todayISO())}
-                        />
-                        <PresetButton
-                            label="30 hari"
-                            onClick={() => applyPreset(isoDaysAgo(29), todayISO())}
-                        />
-                        <PresetButton
-                            label="Bulan ini"
-                            onClick={() => applyPreset(isoStartOfMonth(), todayISO())}
-                        />
+                        <PresetButton label="Hari ini" href={`/ai-usage?from=${todayISO()}&to=${todayISO()}`} />
+                        <PresetButton label="7 hari" href={`/ai-usage?from=${isoDaysAgo(6)}&to=${todayISO()}`} />
+                        <PresetButton label="30 hari" href={`/ai-usage?from=${isoDaysAgo(29)}&to=${todayISO()}`} />
+                        <PresetButton label="Bulan ini" href={`/ai-usage?from=${isoStartOfMonth()}&to=${todayISO()}`} />
                     </div>
                 </form>
 
@@ -264,7 +246,7 @@ function DateField({
     onChange,
 }: Readonly<{ id: string; label: string; value: string; onChange: (v: string) => void }>) {
     return (
-        <label htmlFor={id} className="flex flex-col gap-1 font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
+        <label htmlFor={id} className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
             {label}
             <input
                 id={id}
@@ -277,15 +259,15 @@ function DateField({
     );
 }
 
-function PresetButton({ label, onClick }: Readonly<{ label: string; onClick: () => void }>) {
+function PresetButton({ label, href }: Readonly<{ label: string; href: string }>) {
     return (
-        <button
-            type="button"
-            onClick={onClick}
+        <Link
+            href={href}
+            preserveScroll
             className="focus-ring rounded-full border border-line bg-surface-sunken px-3 py-1.5 text-xs font-medium text-ink-2 transition hover:border-leaf/40 hover:text-leaf-deep"
         >
             {label}
-        </button>
+        </Link>
     );
 }
 

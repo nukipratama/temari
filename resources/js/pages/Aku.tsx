@@ -87,7 +87,7 @@ export default function Aku({
             <Head title="Aku" />
             <PageContainer>
                 <header className="mb-8">
-                    <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3 lg:text-xs">
+                    <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-2 lg:text-xs">
                         {eyebrowParts.join(' · ')}
                     </div>
                     <h1 className="font-display text-display-lg text-ink">
@@ -245,7 +245,7 @@ function StatCard({
                 tone.border,
             )}
         >
-            <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
                 {label}
             </div>
             <div className="mt-2 flex items-baseline gap-1.5">
@@ -258,7 +258,7 @@ function StatCard({
                     {value}
                 </span>
                 {unit && (
-                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                    <span className="font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
                         {unit}
                     </span>
                 )}

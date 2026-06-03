@@ -6,7 +6,7 @@ import type { TemariPose } from '@/components/temari/TemariProto';
 import type { ActivityDetail, Mood, Rarity, RunCard, ZonePct } from '@/types/inertia';
 
 export interface FeaturedCard {
-    activityId: number;
+    cardId: number;
     name: string;
     subtitle: string;
     km: string;
@@ -24,7 +24,7 @@ export interface FeaturedCard {
 
 export interface StripItem {
     key: string;
-    activityId: number;
+    cardId: number;
     name: string;
     rarity: Rarity;
     date: string;
@@ -52,7 +52,7 @@ const RARITY_RANK: Record<Rarity, number> = {
 
 function toFeaturedCard(r: ActivityDetail, card: RunCard): FeaturedCard {
     return {
-        activityId: r.activity_id,
+        cardId: card.id,
         name: card.special_move,
         subtitle: `${RARITY_LABELS[card.rarity]} · ${formatRelativeId(r.start_date_local)}`,
         km: formatKm(r.distance),
@@ -92,7 +92,7 @@ export function kartuStripItem(run: ActivityDetail): StripItem | null {
     if (!card) return null;
     return {
         key: `card-${card.id}`,
-        activityId: run.activity_id,
+        cardId: card.id,
         name: card.special_move,
         rarity: card.rarity,
         date: formatRelativeId(run.start_date_local),

@@ -6,6 +6,7 @@ namespace App\Services\AI\Demo;
 
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\RunCard;
 use App\Services\AI\AnalysisType;
 
 /**
@@ -24,8 +25,8 @@ final class RuleBasedNarrationFiller
         return match ($row->analysis_type) {
             AnalysisType::BriefingHeadline => $this->briefingHeadline(),
             AnalysisType::BriefingSuggestion => $this->briefingSuggestion(),
-            AnalysisType::BriefingMascotVoice => $this->briefingMascotVoice(),
-            AnalysisType::BriefingFeaturedKartuVoice => $this->briefingFeaturedKartuVoice(),
+            AnalysisType::BriefingMascotVoice => $this->briefingMascotVoice($row->subject_id),
+            AnalysisType::BriefingFeaturedKartuVoice => $this->briefingFeaturedKartuVoice($row->subject_id),
             AnalysisType::PostRunSpeech => $this->postRunSpeech($row->subject_id),
             AnalysisType::DailyGreeting => $this->dailyGreeting(),
             AnalysisType::RunInsightTechnical => $this->runInsightTechnical($row->subject_id),
@@ -34,7 +35,7 @@ final class RuleBasedNarrationFiller
             AnalysisType::WeeklyRecap => $this->weeklyRecap(),
             AnalysisType::PrContext => $this->prContext(),
             AnalysisType::TrendCaption => $this->trendCaption(),
-            AnalysisType::CardFlavor => $this->cardFlavor(),
+            AnalysisType::CardFlavor => $this->cardFlavor($row->subject_id),
             AnalysisType::PersonaSummary => $this->personaSummary(),
             AnalysisType::MonthlyRecap => $this->monthlyRecap(),
         };
@@ -50,14 +51,22 @@ final class RuleBasedNarrationFiller
         return "Tempo ringan, 35-45 menit.\n\nWarmup 10 menit santai, tempo 15-20 menit di zona 3 atas, terus cooldown. Jaga cadence di 175+, napas terengah-engah tapi masih bisa potong kalimat.\n\nYang perlu diperhatikan: kalau HR cepat naik padahal pelan, mundur ke run-walk 15-25 menit atau berhenti di cooldown. Cuaca terasa panas atau badan masih lemes, rest juga tidak rugi.";
     }
 
-    private function briefingMascotVoice(): string
+    private function briefingMascotVoice(int $seed): string
     {
-        return 'Aku liat ritme kamu masih oke beberapa hari terakhir. Pertahanin pelan-pelan, gak usah dipaksa kalau lagi gak mood.';
+        return $this->select([
+            'Aku liat ritme kamu masih oke beberapa hari terakhir. Pertahanin pelan-pelan, gak usah dipaksa kalau lagi gak mood.',
+            'Beberapa hari ini kamu cukup konsisten. Lanjut santai aja, aku nemenin.',
+            'Ritme kamu kebaca stabil. Gak perlu ngoyo, yang penting jalan terus.',
+        ], $seed);
     }
 
-    private function briefingFeaturedKartuVoice(): string
+    private function briefingFeaturedKartuVoice(int $seed): string
     {
-        return 'Kartu ini cerita tentang lari yang berkesan. Simpan sebagai pengingat pas momen itu terasa berat.';
+        return $this->select([
+            'Kartu ini nyimpen cerita lari yang berkesan. Buka lagi pas kamu butuh dorongan.',
+            'Ada satu kartu yang menonjol minggu ini. Simpan sebagai pengingat kamu bisa.',
+            'Kartu ini bukti sesi yang pantas dikenang. Pajang aja, gak rugi.',
+        ], $seed);
     }
 
     private function postRunSpeech(int $activityId): string
@@ -68,7 +77,11 @@ final class RuleBasedNarrationFiller
         }
         $km = $detail->distance !== null ? number_format($detail->distance / 1000, 1) : '?';
 
-        return "Lari {$km} km kelar. Pace-nya keangkut sampai akhir, bagus.";
+        return $this->select([
+            "Lari {$km} km kelar. Pace-nya keangkut sampai akhir, bagus.",
+            "Selesai {$km} km. Ritme kamu rapi, aku suka.",
+            "{$km} km masuk. Konsisten kayak gini yang bikin progres.",
+        ], $activityId);
     }
 
     private function dailyGreeting(): string
@@ -121,9 +134,108 @@ final class RuleBasedNarrationFiller
         return 'Tren beberapa minggu terakhir relatif rata. Solid base.';
     }
 
-    private function cardFlavor(): string
+    /**
+     * Card flavor woven from the card's own context (rarity + special move +
+     * distance + first badge), seeded by card id so each card reads differently
+     * while staying deterministic. Mirrors the per-rarity pools of the real
+     * {@see \App\Services\AI\Narrators\CardFlavorNarrator}, minus the LLM.
+     */
+    private function cardFlavor(int $cardId): string
     {
-        return 'Kartu ini lahir dari sesi yang tenang tapi solid.';
+        $card = RunCard::query()->with('activity.detail')->find($cardId);
+        if ($card === null) {
+            return 'Kartu ini lahir dari sesi yang tenang tapi solid.';
+        }
+
+        $move = $card->special_move;
+        $distance = $card->activity->detail?->distance;
+        $km = $distance !== null ? number_format((float) $distance / 1000, 1) : null;
+
+        $pool = self::FLAVOR_POOLS[$card->rarity->value];
+        $templates = $km === null
+            ? array_values(array_filter($pool, fn (string $t): bool => ! str_contains($t, '{km}')))
+            : $pool;
+        if ($templates === []) {
+            $templates = $pool; // every pool keeps km-less variants; stay non-empty regardless
+        }
+
+        $base = strtr($this->select($templates, $cardId), ['{move}' => $move, '{km}' => (string) $km]);
+        $badgeClause = $this->badgeClause($card->badges, $cardId);
+
+        return $badgeClause === null ? $base : $base . ' ' . $badgeClause;
+    }
+
+    /**
+     * Per-rarity flavor templates. `{move}` and `{km}` are filled from the card;
+     * km-less templates exist so a GPS-free run never renders an empty number.
+     *
+     * @var array<string, non-empty-list<string>>
+     */
+    private const array FLAVOR_POOLS = [
+        'common' => [
+            '"{move}" mungkin biasa, tapi tetap kamu jalanin sampai habis.',
+            'Lari {km} km yang kalem, dicatat karena konsisten itu mahal.',
+            'Gak ada drama di "{move}", cuma ritme yang rapi.',
+        ],
+        'uncommon' => [
+            '"{move}" terasa pas, ada rasa yang nyangkut di sesi ini.',
+            'Lari {km} km yang berkesan, bukan sekadar angka.',
+            'Ada momen di "{move}" yang bikin kamu mau inget lagi.',
+        ],
+        'rare' => [
+            '"{move}" jarang ketemu, simpan baik-baik.',
+            'Lari {km} km langka yang gak datang tiap minggu.',
+            'Sesuatu di "{move}" bikin sesi ini beda dari biasanya.',
+        ],
+        'epic' => [
+            '"{move}" luar biasa, kerja kerasnya kebaca jelas.',
+            'Lari {km} km yang patut dipajang, ini bukan sesi sembarangan.',
+            '"{move}" level beda, kamu lagi naik kelas.',
+        ],
+        'legendary' => [
+            '"{move}" legendaris, sesi yang bakal kamu ceritain lama.',
+            'Lari {km} km yang masuk buku sejarah lari kamu.',
+            '"{move}" sekali seumur progres, rayain.',
+        ],
+    ];
+
+    /**
+     * Short badge-driven coda, picked deterministically when the card carries a
+     * badge. Returns null when there's nothing notable to add.
+     *
+     * @param  array<int, string>|null  $badges
+     */
+    private function badgeClause(?array $badges, int $seed): ?string
+    {
+        if ($badges === null || $badges === []) {
+            return null;
+        }
+
+        $clauses = [
+            RunCard::BADGE_NEGATIVE_SPLIT => 'Paruh kedua malah makin nyala.',
+            RunCard::BADGE_HARI_PANAS => 'Padahal hari lagi gerah-gerahnya.',
+            RunCard::BADGE_PEJUANG_HUJAN => 'Hujan pun gak bikin kamu mundur.',
+            RunCard::BADGE_ANAK_PAGI => 'Berangkat pas dunia masih sepi.',
+            RunCard::BADGE_LONG_SLOW_DISTANCE => 'Jarak panjang, sabar dijaga.',
+            RunCard::BADGE_TAHAN_DIRI => 'Pace ditahan rapi dari awal.',
+        ];
+
+        // Highlight one of the card's badges, chosen by seed so multi-badge
+        // cards don't all lean on the same coda.
+        $known = array_values(array_filter($badges, fn (string $b): bool => isset($clauses[$b])));
+        if ($known === []) {
+            return null;
+        }
+
+        return $clauses[$known[abs($seed) % count($known)]];
+    }
+
+    /**
+     * @param  non-empty-list<string>  $pool
+     */
+    private function select(array $pool, int $seed): string
+    {
+        return $pool[abs($seed) % count($pool)];
     }
 
     private function personaSummary(): string

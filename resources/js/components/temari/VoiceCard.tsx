@@ -34,8 +34,8 @@ export default function VoiceCard({
             </p>
             <div
                 className={cn(
-                    'mt-2 font-mono text-[11px] uppercase tracking-[0.16em]',
-                    onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                    'mt-2 font-mono text-[11px] font-bold uppercase tracking-[0.16em]',
+                    onSky ? 'text-ink-on-sky' : 'text-ink-2',
                 )}
             >
                 {attribution}

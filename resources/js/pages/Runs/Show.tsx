@@ -1,17 +1,18 @@
 import { lazy, Suspense } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { Icon } from '@iconify/react';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
 import FourLensGrid from '@/components/run/FourLensGrid';
 import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from '@/components/card/Kartu';
+import BackLink from '@/components/ui/BackLink';
 import MoodChip from '@/components/ui/MoodChip';
 import SectionLabel from '@/components/ui/SectionLabel';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import PastYouStrip from '@/components/run/PastYouStrip';
 import { cn } from '@/lib/cn';
+import { kartuUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDurationHMS, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
@@ -103,13 +104,9 @@ export default function RunsShow({
         <AppShell>
             <Head title={detail.name ?? 'Run'} />
             <PageContainer>
-                <Link
-                    href="/aktivitas"
-                    className="mb-5 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.14em] text-ink-3 transition hover:text-horizon-deep"
-                >
-                    <Icon icon="mdi:arrow-left" width={14} height={14} aria-hidden />
+                <BackLink href="/aktivitas" className="mb-5">
                     Riwayat · Jejak
-                </Link>
+                </BackLink>
 
                 {/* HERO + EMBEDDED KARTU */}
                 <section className="grid items-stretch gap-4 lg:grid-cols-[1.5fr_1fr]">
@@ -148,7 +145,7 @@ export default function RunsShow({
                         <SectionLabel>Kartu buat lari ini</SectionLabel>
                         {card ? (
                             <Link
-                                href={`/kartu/${card.id}`}
+                                href={kartuUrl(card)}
                                 className="mx-auto block w-full max-w-[260px]"
                             >
                                 <Kartu
@@ -215,7 +212,7 @@ export default function RunsShow({
                 {/* SPLITS */}
                 {perKm.length > 0 && <SplitsTable rows={perKm} className="mt-10" />}
 
-                <footer className="mt-8 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">
+                <footer className="mt-8 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2">
                     Strava activity {activity.strava_external_id ?? '—'} · ingested{' '}
                     {formatIdDate(activity.analyzed_at ?? null, 'long')}
                 </footer>
@@ -334,7 +331,7 @@ function DetailTiles({
                         t.wide && 'col-span-2',
                     )}
                 >
-                    <div className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">{t.label}</div>
+                    <div className="mb-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">{t.label}</div>
                     <div
                         className={cn(
                             'font-sans font-bold leading-none tabular-nums tracking-[-0.01em]',
@@ -360,16 +357,15 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
     const fastest = paces.length > 0 ? Math.min(...paces) : null;
     const fastestKm = fastest != null ? rows.find((r) => paceSecOf(r) === fastest)?.km ?? null : null;
     const slowestSec = paces.length > 0 ? Math.max(...paces) : null;
-    const fastestLabel = fastest != null ? `${formatPace(fastest)} di km ${fastestKm ?? '?'}` : null;
 
     return (
         <Card as="section" padding="lg" className={className}>
             <header className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Splits per km</SectionLabel>
-                {fastestLabel && (
+                {fastest != null && fastestKm != null && (
                     <p className="font-display text-sm italic text-ink-2">
-                        Pace paling kenceng:{' '}
-                        <strong className="font-semibold not-italic text-horizon-deep">{fastestLabel}</strong>
+                        Paling kenceng di km {fastestKm},{' '}
+                        <span className="font-semibold text-horizon-deep">{formatPace(fastest)}/km</span>
                     </p>
                 )}
             </header>
@@ -426,7 +422,9 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
                             className={cn(
                                 'grid grid-cols-[40px_1fr_70px_70px_70px] items-center gap-3',
                                 idx > 0 && !isFast && 'border-t border-cream-deep',
-                                isFast ? 'rounded-lg bg-horizon/[0.08] px-3 py-2.5' : 'px-0 py-2.5',
+                                // Fast row: tint bleeds out via -mx-3 while px-3 keeps content
+                                // aligned with the other rows, so its bar isn't narrowed.
+                                isFast ? '-mx-3 rounded-lg bg-horizon/[0.08] px-3 py-2.5' : 'py-2.5',
                             )}
                         >
                             <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-ink-2">

@@ -146,9 +146,15 @@ export default function Kartu({
     const rootStyle = { '--rarity': rarityHex, '--glow-strength': glowStrength } as CSSProperties;
     const nameGlow = nameGlowFor(rarity);
 
-    // Bright art window backdrop — a soft wash of mood + rarity so it isn't flat cream.
+    // Pearl art-window backdrop — mirrors the canvas share card: a rarity tier
+    // glow up top, a faint mood echo bottom-right, over a cream depth gradient so
+    // the route reads with contrast instead of floating on flat cream.
     const artStyle: CSSProperties = {
-        background: `radial-gradient(ellipse at 50% 60%, ${moodColor}1f 0%, ${rarityHex}14 50%, var(--color-cream) 82%)`,
+        background: [
+            `radial-gradient(ellipse at 30% 26%, ${rarityHex}30 0%, ${rarityHex}12 42%, transparent 70%)`,
+            `radial-gradient(ellipse at 82% 84%, ${moodColor}22 0%, transparent 60%)`,
+            `linear-gradient(to bottom, #fcf9f3, var(--color-cream-deep))`,
+        ].join(', '),
     };
 
     const statParts = buildStatParts(stats);

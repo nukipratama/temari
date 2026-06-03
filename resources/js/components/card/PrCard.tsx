@@ -1,5 +1,6 @@
 import Card from '@/components/ui/Card';
 import LinkCard from '@/components/ui/LinkCard';
+import { aktivitasUrl } from '@/lib/routes';
 
 interface PrCardProps {
     category: string;
@@ -35,7 +36,7 @@ export default function PrCard({
             </div>
             <div className={TIME_CLASS[size]}>{time}</div>
             {runName && <div className="font-sans text-xs text-ink-2">{runName}</div>}
-            <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+            <div className="font-mono font-bold text-[11px] uppercase tracking-[0.12em] text-ink-2">
                 {setAt}
             </div>
         </>
@@ -43,7 +44,7 @@ export default function PrCard({
 
     if (activityId !== null) {
         return (
-            <LinkCard href={`/aktivitas/${activityId}`} padding={size === 'lg' ? 'lg' : 'md'} className={GAP_CLASS[size]}>
+            <LinkCard href={aktivitasUrl({ activity_id: activityId })} padding={size === 'lg' ? 'lg' : 'md'} className={GAP_CLASS[size]}>
                 {body}
             </LinkCard>
         );

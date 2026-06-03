@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import { MOOD_FILL, MOOD_HINT, MOOD_LABEL, MOOD_ORDER, MOOD_SOFT_FILL } from '@/lib/mood';
 import { formatPace, formatShortDateId } from '@/lib/pace';
+import { aktivitasUrl } from '@/lib/routes';
 import type { Mood } from '@/types/inertia';
 
 export interface CalendarCell {
@@ -93,32 +94,32 @@ export default function Kalender({
         <AppShell>
             <Head title={`Riwayat · Kalender · ${monthLabel}`} />
             <PageContainer>
-                <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0">
-                        <LifetimeEyebrow lifetime={lifetime} />
-                        <h1 className="font-display text-display-lg text-ink">
-                            Setiap lari,<br />
-                            <em className="not-italic text-horizon-deep">ada ceritanya.</em>
-                        </h1>
-                    </div>
-                    <MonthNav
-                        label={monthLabel}
-                        prevMonth={prevMonth}
-                        nextMonth={nextMonth}
-                        showTodayButton={!isCurrentMonth}
-                    />
+                <header className="mb-8 min-w-0">
+                    <LifetimeEyebrow lifetime={lifetime} />
+                    <h1 className="font-display text-display-lg text-ink">
+                        Setiap lari,<br />
+                        <em className="not-italic text-horizon-deep">ada ceritanya.</em>
+                    </h1>
                 </header>
 
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                     <RiwayatTabs active="kalender" />
-                    <RiwayatFilter
-                        mood={{
-                            selected: moodFilter,
-                            options: MOOD_FILTER_OPTIONS,
-                            onToggle: toggleMood,
-                        }}
-                        onReset={resetFilter}
-                    />
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <MonthNav
+                            label={monthLabel}
+                            prevMonth={prevMonth}
+                            nextMonth={nextMonth}
+                            showTodayButton={!isCurrentMonth}
+                        />
+                        <RiwayatFilter
+                            mood={{
+                                selected: moodFilter,
+                                options: MOOD_FILTER_OPTIONS,
+                                onToggle: toggleMood,
+                            }}
+                            onReset={resetFilter}
+                        />
+                    </div>
                 </div>
 
                 <Legend className="mb-4" />
@@ -150,7 +151,7 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
         }
     }
     return (
-        <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3 lg:text-xs">
+        <div className="mb-3.5 font-mono font-bold text-[11px] uppercase tracking-[0.18em] text-ink-2 lg:text-xs">
             {['Riwayat', ...stats].join(' · ')}
         </div>
     );
@@ -208,7 +209,7 @@ function CalendarHeader() {
             {WEEKDAY_LABELS.map((label) => (
                 <div
                     key={label}
-                    className="px-2 py-2.5 text-center font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3 lg:text-xs"
+                    className="px-2 py-2.5 text-center font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2 lg:text-xs"
                 >
                     {label}
                 </div>
@@ -241,7 +242,7 @@ function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
                         {week.totalKm.toFixed(1)}{' '}
                         <span className="text-xs font-medium text-ink-3 lg:text-sm">km</span>
                     </span>
-                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                    <span className="font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
                         WK {week.weekNumber}
                     </span>
                 </>
@@ -319,7 +320,7 @@ function DayCellView({
     if (cell.activity_id !== null) {
         return (
             <Link
-                href={`/aktivitas/${cell.activity_id}`}
+                href={aktivitasUrl({ activity_id: cell.activity_id })}
                 className={cn(cellChrome)}
                 aria-label={ariaLabel}
             >
@@ -371,7 +372,7 @@ function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string
     if (cell.activity_id !== null) {
         return (
             <Link
-                href={`/aktivitas/${cell.activity_id}`}
+                href={aktivitasUrl({ activity_id: cell.activity_id })}
                 className={cn(chrome, 'hover:bg-sky-2')}
                 aria-label={ariaLabel}
             >
@@ -391,7 +392,7 @@ function Legend({ className }: Readonly<{ className?: string }>) {
                 className,
             )}
         >
-            <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3 lg:text-xs">
+            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2 lg:text-xs">
                 Mood
             </span>
             {MOOD_ORDER.map((mood) => (

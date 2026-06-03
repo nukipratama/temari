@@ -110,7 +110,11 @@ export default function TemariProto({
     animate = false,
     className,
 }: Readonly<TemariProtoProps>) {
-    const aspectHeight = (size * 150) / 120;
+    // viewBox tightly + evenly frames the artwork with ~5px of margin on every
+    // side: ear tips reach y≈-4, the medal/pita reach y≈121, and the aura/sparkles
+    // reach x≈5 and x≈115. So the box runs x[0..120], y[-9..126] (height 135).
+    // The old 0/0/120/150 clipped the ears at the top and left a dead strip below.
+    const aspectHeight = (size * 135) / 120;
     const headbandKey = equipped?.headband ?? 'ember';
     const hb = HEADBAND_PALETTE[headbandKey];
 
@@ -137,7 +141,7 @@ export default function TemariProto({
             data-tone={tone}
         >
             <svg
-                viewBox="0 0 120 150"
+                viewBox="0 -9 120 135"
                 width={size}
                 height={aspectHeight}
                 style={{ display: 'block', overflow: 'visible' }}

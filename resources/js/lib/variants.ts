@@ -62,9 +62,16 @@ export const pillButtonVariants = cva(
                 onSky: true,
                 class: 'bg-transparent text-cream border-[1.5px] border-cream/30 hover:border-cream/60',
             },
+            {
+                // Primary pill on a dark (sky) panel: flip to a cream fill so it
+                // keeps contrast — navy-on-navy would vanish.
+                tone: 'sky',
+                onSky: true,
+                class: 'bg-cream text-sky hover:bg-cream-deep',
+            },
         ],
         defaultVariants: {
-            tone: 'horizon',
+            tone: 'sky',
             size: 'md',
             onSky: false,
         },

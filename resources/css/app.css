@@ -207,11 +207,11 @@ body {
 
     /* Small uppercase metadata label — micro tier (11px). */
     .text-label-micro {
-        @apply font-mono text-[11px] uppercase tracking-[0.12em];
+        @apply font-mono text-[11px] font-bold uppercase tracking-[0.12em];
     }
     /* Small uppercase metadata label — small tier (12px). */
     .text-label-small {
-        @apply font-mono text-[12px] uppercase tracking-[0.14em];
+        @apply font-mono text-[12px] font-bold uppercase tracking-[0.14em];
     }
     /* Narrator / body sentences. */
     .text-prose {

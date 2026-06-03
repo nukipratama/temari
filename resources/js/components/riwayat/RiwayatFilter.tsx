@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useCallback, useRef, useState } from 'react';
 import { useDismissable } from '@/hooks/useDismissable';
@@ -22,8 +23,10 @@ interface RangeSection<V extends string> {
     /** Currently active value. Always one of `options`. */
     value: V;
     options: ReadonlyArray<RangeOption<V>>;
-    /** Called when the user picks a different value. */
-    onChange: (next: V) => void;
+    /** The range lives in the URL, so each option is a real link. Builds its href. */
+    hrefFor: (value: V) => string;
+    /** Inertia partial-reload props to scope the visit to. */
+    only?: ReadonlyArray<string>;
 }
 
 interface MoodSection {
@@ -104,7 +107,7 @@ export default function RiwayatFilter<V extends string>({
                 >
                     {(totalActive > 0 || onReset) && (
                         <div className="flex items-center justify-between border-b border-line/60 px-3 py-2">
-                            <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+                            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
                                 Filter
                             </span>
                             {totalActive > 0 && onReset && (
@@ -129,19 +132,21 @@ export default function RiwayatFilter<V extends string>({
 function RangeSectionView<V extends string>({ section }: Readonly<{ section: RangeSection<V> }>) {
     return (
         <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
-            <div className="mb-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
                 Rentang waktu
             </div>
             <div className="flex flex-col gap-1">
                 {section.options.map((opt) => {
                     const active = opt.value === section.value;
                     return (
-                        <button
+                        <Link
                             key={opt.value}
-                            type="button"
+                            href={section.hrefFor(opt.value)}
+                            only={section.only ? [...section.only] : undefined}
+                            preserveScroll
+                            preserveState
                             role="menuitemradio"
                             aria-checked={active}
-                            onClick={() => section.onChange(opt.value)}
                             className={cn(
                                 'focus-ring flex w-full items-baseline justify-between rounded-lg px-2 py-1.5 text-left text-xs transition lg:text-sm',
                                 active ? 'bg-sky/10 font-semibold text-sky' : 'text-ink hover:bg-surface-warm',
@@ -151,7 +156,7 @@ function RangeSectionView<V extends string>({ section }: Readonly<{ section: Ran
                             {opt.hint && (
                                 <span className="font-mono text-[11px] text-ink-3">{opt.hint}</span>
                             )}
-                        </button>
+                        </Link>
                     );
                 })}
             </div>
@@ -162,7 +167,7 @@ function RangeSectionView<V extends string>({ section }: Readonly<{ section: Ran
 function MoodSectionView({ section }: Readonly<{ section: MoodSection }>) {
     return (
         <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
-            <div className="mb-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
                 Mood
             </div>
             <div className="grid grid-cols-2 gap-1">

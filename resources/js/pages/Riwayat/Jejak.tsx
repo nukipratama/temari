@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useCallback, useMemo, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
@@ -9,6 +9,7 @@ import Card from '@/components/ui/Card';
 import PageHero from '@/components/ui/PageHero';
 import RiwayatFilter, { type MoodOption, type RangeOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
+import BackLink from '@/components/ui/BackLink';
 import TemariMascot from '@/components/temari/TemariMascot';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
@@ -122,15 +123,6 @@ export default function RunsIndex({
             });
         }
     }, [rangeFilter]);
-    const onRangeChange = useCallback((next: RangeFilterValue) => {
-        if (next === rangeFilter) return;
-        router.get('/aktivitas', { range: next }, {
-            preserveScroll: true,
-            preserveState: true,
-            only: RANGE_RELOAD_PROPS,
-        });
-    }, [rangeFilter]);
-
     const matchedRunIds = useMemo(() => {
         if (moodFilter.size === 0) return null;
         const ids = new Set<number>();
@@ -161,7 +153,8 @@ export default function RunsIndex({
                             range={{
                                 value: rangeFilter,
                                 options: RANGE_FILTER_OPTIONS,
-                                onChange: onRangeChange,
+                                hrefFor: (r) => `/aktivitas?range=${r}`,
+                                only: RANGE_RELOAD_PROPS,
                             }}
                             mood={{
                                 selected: moodFilter,
@@ -332,7 +325,7 @@ function MetricChip({
                     : 'bg-cream-deep/60 text-ink-2',
             )}
         >
-            <span className="font-mono text-[11px] uppercase tracking-wider text-ink-3">{label}</span>
+            <span className="font-mono font-bold text-[11px] uppercase tracking-wider text-ink-2">{label}</span>
             <span className="tabular-nums">{value}</span>
         </span>
     );
@@ -353,13 +346,9 @@ function EmptyState() {
             <TemariMascot mood="enteng" sizeClass="h-32 w-32" idle="mood" />
             <p className="mt-4 font-display text-2xl italic text-ink-2">Aku lagi nungguin kamu lari 🏃‍♀️</p>
             <p className="mt-2 font-sans text-sm text-ink-2">Sync lari pertama kamu dari Strava dulu ya.</p>
-            <Link
-                href="/"
-                className="mt-4 inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.12em] text-horizon-deep hover:text-ember-deep"
-            >
-                <Icon icon="mdi:arrow-left" width={14} height={14} aria-hidden />
+            <BackLink href="/" tone="accent" className="mt-4">
                 Kembali ke Hari Ini
-            </Link>
+            </BackLink>
         </Card>
     );
 }

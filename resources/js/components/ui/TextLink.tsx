@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { type ReactNode, type ComponentProps } from 'react';
+import { type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
 interface TextLinkProps {
@@ -8,8 +8,6 @@ interface TextLinkProps {
     /** Inertia Link props (preserveScroll, etc.) */
     preserveScroll?: boolean;
     className?: string;
-    /** External anchor — renders <a target="_blank"> instead of Inertia Link. */
-    external?: boolean;
 }
 
 /**
@@ -25,26 +23,16 @@ export default function TextLink({
     children,
     preserveScroll,
     className,
-    external = false,
 }: Readonly<TextLinkProps>) {
-    const cls = cn(
-        'inline-flex items-center gap-1 text-sm font-semibold text-horizon-deep transition hover:text-ember-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-horizon-deep focus-visible:ring-offset-2 focus-visible:ring-offset-cream rounded',
-        className,
-    );
-
-    if (external) {
-        const externalProps: ComponentProps<'a'> = {
-            href,
-            target: '_blank',
-            rel: 'noopener noreferrer',
-            className: cls,
-        };
-
-        return <a {...externalProps}>{children}</a>;
-    }
-
     return (
-        <Link href={href} preserveScroll={preserveScroll} className={cls}>
+        <Link
+            href={href}
+            preserveScroll={preserveScroll}
+            className={cn(
+                'inline-flex items-center gap-1 text-sm font-semibold text-horizon-deep transition hover:text-ember-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-horizon-deep focus-visible:ring-offset-2 focus-visible:ring-offset-cream rounded',
+                className,
+            )}
+        >
             {children}
         </Link>
     );

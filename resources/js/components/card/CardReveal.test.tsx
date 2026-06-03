@@ -76,9 +76,9 @@ describe("CardReveal", () => {
     expect(screen.getByText(/Aku lagi baca lari kamu/)).toBeInTheDocument();
   });
 
-  it("uses a 4-frame theatrical flow for epic+", () => {
+  it("uses a 3-frame theatrical flow for epic+", () => {
     render(<CardReveal pending={epicReveal} />);
-    expect(screen.getByText(/Frame 1 \/ 4/)).toBeInTheDocument();
+    expect(screen.getByText(/Frame 1 \/ 3/)).toBeInTheDocument();
   });
 
   it("uses a 2-frame intimate flow for common rarity", () => {
@@ -86,12 +86,13 @@ describe("CardReveal", () => {
     expect(screen.getByText(/Frame 1 \/ 2/)).toBeInTheDocument();
   });
 
-  it("advances frames when the Lanjut button is tapped", async () => {
+  it("advances from the sync frame straight to the wrapped reveal", async () => {
     const u = userEvent.setup();
     render(<CardReveal pending={epicReveal} />);
-    expect(screen.getByText(/Frame 1 \/ 4/)).toBeInTheDocument();
+    expect(screen.getByText(/Frame 1 \/ 3/)).toBeInTheDocument();
     await u.click(screen.getByText("Lanjut"));
-    expect(screen.getByText(/Frame 2 \/ 4/)).toBeInTheDocument();
+    // Frame 2 is the reveal — the card arrives wrapped (counter hidden).
+    expect(screen.getByTestId("pack-wrapper")).toBeInTheDocument();
   });
 
   it('on the final frame, "Lihat koleksi" marks seen and navigates to /kartu', async () => {
@@ -121,6 +122,30 @@ describe("CardReveal", () => {
     expect(reload).toHaveBeenCalledWith({ only: ["pendingReveal"] });
   });
 
+  it("fires onPrMoment on dismiss for a fresh PR reveal", async () => {
+    const onPrMoment = vi.fn();
+    render(
+      <CardReveal
+        pending={{ ...epicReveal, is_pr: true }}
+        onPrMoment={onPrMoment}
+      />,
+    );
+    await userEvent.setup().keyboard("{Escape}");
+    expect(onPrMoment).toHaveBeenCalledTimes(1);
+  });
+
+  it("suppresses onPrMoment when the PR reveal is a replay", async () => {
+    const onPrMoment = vi.fn();
+    render(
+      <CardReveal
+        pending={{ ...epicReveal, is_pr: true, is_replay: true }}
+        onPrMoment={onPrMoment}
+      />,
+    );
+    await userEvent.setup().keyboard("{Escape}");
+    expect(onPrMoment).not.toHaveBeenCalled();
+  });
+
   it("Escape key dismisses the reveal modal", async () => {
     render(<CardReveal pending={epicReveal} />);
     await userEvent.setup().keyboard("{Escape}");
@@ -130,25 +155,31 @@ describe("CardReveal", () => {
     );
   });
 
-  it("Space + Enter advance through the frames up to the wrapped card", async () => {
+  it("Space advances from the sync frame to the wrapped card", async () => {
     const u = userEvent.setup();
     render(<CardReveal pending={epicReveal} />);
-    expect(screen.getByText(/Frame 1 \/ 4/)).toBeInTheDocument();
-    await u.keyboard(" ");
-    expect(screen.getByText(/Frame 2 \/ 4/)).toBeInTheDocument();
-    await u.keyboard("{Enter}"); // → frame 3, the wrapped card (counter hidden)
+    expect(screen.getByText(/Frame 1 \/ 3/)).toBeInTheDocument();
+    await u.keyboard(" "); // → frame 2, the wrapped card (counter hidden)
     expect(screen.getByTestId("pack-wrapper")).toBeInTheDocument();
   });
 
   it("does not advance past the wrapped card frame via keyboard (touch-first tear)", async () => {
     const u = userEvent.setup();
     render(<CardReveal pending={epicReveal} />);
-    await u.keyboard(" "); // → frame 2
-    await u.keyboard("{Enter}"); // → frame 3 (wrapped card)
+    await u.keyboard(" "); // → frame 2 (wrapped card)
     expect(screen.getByTestId("pack-wrapper")).toBeInTheDocument();
     await u.keyboard("{ArrowRight}"); // blocked while wrapped
     expect(screen.getByTestId("pack-wrapper")).toBeInTheDocument();
     expect(screen.queryByText("Disimpan")).toBeNull(); // never reached the proud frame
+  });
+
+  it("ignites the card with a rarity ring when the pack is torn", async () => {
+    const u = userEvent.setup();
+    render(<CardReveal pending={epicReveal} />);
+    await u.click(screen.getByText("Lanjut")); // → wrapped reveal frame
+    expect(screen.queryByTestId("card-ignite")).toBeNull();
+    await u.click(screen.getByTestId("pack-wrapper")); // tear it open
+    expect(screen.getByTestId("card-ignite")).toBeInTheDocument();
   });
 
   it("only POSTs /seen once even if the user double-clicks Skip", async () => {
@@ -173,10 +204,9 @@ describe("CardReveal", () => {
   it("shows Bagikan button after the card is revealed and opens the share modal", async () => {
     const u = userEvent.setup();
     render(<CardReveal pending={epicReveal} />);
-    // Epic = 4 frames: reading → excited → holding (wrapped card) → proud.
+    // Epic = 3 frames: reading → holding (wrapped card) → proud.
     await u.click(screen.getByText("Lanjut"));
-    await u.click(screen.getByText("Lanjut"));
-    // Frame 3 (holding): card is wrapped — tear it, then advance to the last frame.
+    // Frame 2 (holding): card is wrapped — tear it, then advance to the last frame.
     await u.click(screen.getByTestId("pack-wrapper"));
     await u.click(screen.getByText("Lanjut"));
     // Last frame: "Bagikan" button appears

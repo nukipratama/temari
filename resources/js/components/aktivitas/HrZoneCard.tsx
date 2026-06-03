@@ -38,7 +38,7 @@ export default function HrZoneCard({ zonePct }: Readonly<HrZoneCardProps>) {
     return (
         <section className="rounded-2xl border border-line bg-surface-card p-4 shadow-sm sm:p-5">
             <div className="flex items-baseline justify-between gap-3">
-                <h3 className="flex items-center gap-1 font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <h3 className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
                     HR Zones
                     <MetricExplainer metricKey="hr_zones" size="xs" />
                 </h3>

@@ -20,7 +20,7 @@ const HEADLINE_ON_CREAM = 'font-display text-display-lg text-ink';
 export default function PageHero({ eyebrow, lead, emph, onSky = false, noItalic = false, className }: Readonly<PageHeroProps>) {
     return (
         <div className={className}>
-            <div className={cn('mb-3', EYEBROW, onSky ? 'text-horizon' : 'text-ink-3')}>
+            <div className={cn('mb-3', EYEBROW, onSky ? 'text-horizon' : 'text-ink-2')}>
                 {eyebrow}
             </div>
             <h1 className={onSky ? HEADLINE_ON_SKY : HEADLINE_ON_CREAM}>

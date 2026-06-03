@@ -65,14 +65,6 @@ describe('ShareCardModal', () => {
         expect(screen.getByText(/Salin gambar/)).toBeInTheDocument();
     });
 
-    it('renders theme buttons', () => {
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
-        expect(screen.getByText('Dawn')).toBeInTheDocument();
-        expect(screen.getByText('Sky')).toBeInTheDocument();
-        expect(screen.getByText('Cream')).toBeInTheDocument();
-        expect(screen.getByText('Inverted')).toBeInTheDocument();
-    });
-
     it('renders format picker Potret and Persegi buttons', () => {
         render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         expect(screen.getByText(/Potret/)).toBeInTheDocument();
@@ -84,14 +76,6 @@ describe('ShareCardModal', () => {
         render(<ShareCardModal kartu={kartu} onClose={onClose} />);
         fireEvent.click(screen.getByLabelText('Tutup'));
         expect(onClose).toHaveBeenCalledOnce();
-    });
-
-    it('switches theme when a theme button is clicked', () => {
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
-        fireEvent.click(screen.getByText('Sky'));
-        fireEvent.click(screen.getByText('Cream'));
-        fireEvent.click(screen.getByText('Inverted'));
-        // No crash = theme switching works
     });
 
     it('renders the canvas preview', () => {
@@ -120,34 +104,25 @@ describe('ShareCardModal', () => {
         expect(write).toHaveBeenCalled();
     });
 
-    it('toggles data and quote visibility switches', () => {
+    it('offers the share templates as buttons and switches between them', () => {
         render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
-        const switches = screen.getAllByRole('switch');
-        expect(switches.length).toBe(2);
-        fireEvent.click(switches[0]);
-        fireEvent.click(switches[1]);
-        fireEvent.click(switches[0]);
-    });
-
-    it('offers the share templates and switches between them', () => {
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
-        const select = screen.getByLabelText('Pilih gaya kartu');
-        expect(select).toBeInTheDocument();
-        ['Kartu', 'Rute', 'Struk'].forEach((label) =>
-            expect(screen.getByRole('option', { name: label })).toBeInTheDocument(),
-        );
-        // The trimmed templates are gone.
-        ['Bungkus', 'Polaroid', 'Poster', 'Angka'].forEach((label) =>
-            expect(screen.queryByRole('option', { name: label })).toBeNull(),
-        );
-        // Switching to the receipt template renders without crashing.
-        fireEvent.change(select, { target: { value: 'struk' } });
+        const kartuBtn = screen.getByRole('button', { name: 'Kartu' });
+        const ruteBtn = screen.getByRole('button', { name: 'Rute' });
+        expect(kartuBtn).toBeInTheDocument();
+        expect(ruteBtn).toBeInTheDocument();
+        // The dropdown and the trimmed Struk template are gone.
+        expect(screen.queryByLabelText('Pilih gaya kartu')).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Struk' })).toBeNull();
+        // Switching to the route template renders without crashing.
+        fireEvent.click(ruteBtn);
         expect(screen.getAllByText(/Tendangan Balik/).length).toBeGreaterThan(0);
     });
 
-    it('hides the Rute template when the card has no route', () => {
+    it('hides the Gaya picker when the card has no route', () => {
         render(<ShareCardModal kartu={{ ...kartu, polyline: null }} onClose={vi.fn()} />);
-        expect(screen.queryByRole('option', { name: 'Rute' })).toBeNull();
-        expect(screen.getByRole('option', { name: 'Kartu' })).toBeInTheDocument();
+        // Only Kartu remains, so there's nothing to pick — the picker is hidden.
+        expect(screen.queryByRole('button', { name: 'Rute' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Kartu' })).toBeNull();
+        expect(screen.queryByText('Gaya')).toBeNull();
     });
 });

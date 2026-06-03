@@ -40,6 +40,7 @@ class RunCardFactory
         $move = $this->specialMoves->pick($summary, [
             'distance_m' => $detail->distance,
             'pr_set' => $prSet,
+            'seed' => $activity->id, // stable per activity so the name never reshuffles
         ]);
 
         $existing = RunCard::query()->where('activity_id', $activity->id)->first();

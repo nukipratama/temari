@@ -85,6 +85,7 @@ function TabLink({
   return (
     <Link
       href={item.href}
+      aria-current={isActive ? "page" : undefined}
       className={cn(
         "relative font-mono text-sm tracking-[0.02em] transition",
         "px-[18px] py-2.5",

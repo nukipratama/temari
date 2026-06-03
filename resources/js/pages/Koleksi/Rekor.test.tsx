@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import KoleksiRekor from './Rekor';
 import { makeUser, setMockPage } from '@/test/setup';
@@ -94,7 +94,12 @@ describe('Koleksi/Rekor', () => {
             />,
         );
         expect(screen.getByRole('tab', { name: 'FM' })).toBeInTheDocument();
-        expect(screen.getByRole('tab', { name: '5K' })).toBeInTheDocument();
+        const fiveK = screen.getByRole('tab', { name: '5K' });
+        expect(fiveK).toBeInTheDocument();
+
+        // Selecting a progression category swaps the active tab.
+        fireEvent.click(fiveK);
+        expect(fiveK).toHaveAttribute('aria-selected', 'true');
     });
 
     it('renders the trophy wall for distance PRs', () => {

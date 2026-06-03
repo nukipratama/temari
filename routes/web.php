@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AksesoriController;
 use App\Http\Controllers\Api\AnalysisController;
+use App\Http\Controllers\Api\CardReplayController;
 use App\Http\Controllers\Api\CardSeenController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
@@ -70,6 +71,8 @@ Route::middleware('auth')->group(function (): void {
 
     Route::post('/api/kartu/{card}/seen', CardSeenController::class)
         ->name('api.kartu.seen');
+    Route::post('/api/kartu/{card}/replay', CardReplayController::class)
+        ->name('api.kartu.replay');
 
     Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
         ->whereNumber('subjectId')

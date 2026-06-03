@@ -55,6 +55,9 @@ class DashboardController extends Controller
                 'id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time',
                 'average_heartrate', 'trimp_edwards',
                 'location_name', 'weather_temp_c', 'weather_humidity_pct', 'weather_rain_detected',
+                // Needed so the featured + strip cards draw the route hero and the
+                // featured card's zone bar / pace-shape / cadence / best-km.
+                'summary_polyline', 'stream_summary',
             ])
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
             ->with(['activity.runCard:id,activity_id,rarity,special_move,badges'])

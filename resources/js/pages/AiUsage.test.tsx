@@ -6,6 +6,9 @@ const routerGet = vi.fn();
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    Link: ({ href, children, className }: { href: string; children?: React.ReactNode; className?: string }) => (
+        <a href={href} className={className}>{children}</a>
+    ),
     router: {
         get: (...args: unknown[]) => routerGet(...args),
     },
@@ -104,18 +107,13 @@ describe('AiUsage page', () => {
         ['7 hari', /7 hari/i],
         ['30 hari', /30 hari/i],
         ['bulan ini', /bulan ini/i],
-    ])('preset "%s" navigates with a from/to date pair', (_label, pattern) => {
+    ])('preset "%s" is a link to a from/to date pair', (_label, pattern) => {
         render(<AiUsage {...baseProps} />);
 
-        fireEvent.click(screen.getByRole('button', { name: pattern }));
-
-        expect(routerGet).toHaveBeenCalledTimes(1);
-        const [path, params] = routerGet.mock.calls[0];
-        expect(path).toBe('/ai-usage');
-        expect(params).toMatchObject({
-            from: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-            to: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-        });
+        const link = screen.getByRole('link', { name: pattern });
+        expect(link.getAttribute('href')).toMatch(
+            /^\/ai-usage\?from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/,
+        );
     });
 
     it('typing into a date field updates the form value', () => {

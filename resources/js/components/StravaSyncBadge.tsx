@@ -29,7 +29,7 @@ export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<S
         <span
             aria-label={ariaLabel}
             className={cn(
-                'inline-flex items-center rounded-full bg-sky/[0.06] font-mono uppercase tracking-[0.1em] text-ink-3',
+                'inline-flex items-center rounded-full bg-sky/[0.06] font-mono font-bold uppercase tracking-[0.1em] text-ink-2',
                 isCompact ? 'gap-1.5 px-2.5 py-1.5 text-[11px]' : 'gap-2 px-3.5 py-2 text-[11px]',
             )}
         >

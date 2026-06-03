@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
+import { aktivitasUrl } from '@/lib/routes';
 import { toggleButtonVariants } from '@/lib/variants';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
@@ -188,10 +189,10 @@ function HeroScoreboard({
                         location ?? (
                             pr.activity_id ? (
                                 <Link
-                                    href={`/aktivitas/${pr.activity_id}`}
+                                    href={aktivitasUrl({ activity_id: pr.activity_id })}
                                     className="text-cream underline-offset-2 hover:underline"
                                 >
-                                    Lihat detail
+                                    Lihat detail lari
                                 </Link>
                             ) : '—'
                         )
@@ -235,7 +236,7 @@ function ProgressionSection({
         <Card as="section" padding="lg" className="mt-8">
             {tabs.length > 1 && (
                 <div className="mb-6 flex flex-wrap items-center gap-2" role="tablist" aria-label="Pilih jarak">
-                    <span className="mr-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">Jarak</span>
+                    <span className="mr-1 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">Jarak</span>
                     {tabs.map((c) => (
                         <button
                             key={c}

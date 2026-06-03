@@ -35,6 +35,8 @@ export interface PendingReveal {
     is_pr: boolean;
     pr_category_label: string | null;
     pr_time_display: string | null;
+    /** True when this reveal is a user-triggered re-watch, not a fresh card. */
+    is_replay?: boolean;
 }
 
 export interface StravaSync {

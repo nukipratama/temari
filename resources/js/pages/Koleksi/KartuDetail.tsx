@@ -1,11 +1,15 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { csrfToken } from '@/lib/http';
+import { aktivitasUrl, kartuUrl } from '@/lib/routes';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import HeroPanel from '@/components/ui/HeroPanel';
+import BackLink from '@/components/ui/BackLink';
 import KartuComponent from '@/components/card/Kartu';
 import PillButton from '@/components/ui/PillButton';
+import PillLink from '@/components/ui/PillLink';
 import SectionLabel from '@/components/ui/SectionLabel';
 import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -79,6 +83,29 @@ export default function KartuDetail({
     const cardStats = buildCardStats(detail);
 
     const [shareOpen, setShareOpen] = useState(false);
+    const [replaying, setReplaying] = useState(false);
+
+    // Re-arm the reveal for this card, then reload the pendingReveal prop so the
+    // CardReveal modal (mounted in AppShell) plays again.
+    const replayReveal = () => {
+        if (replaying) {
+            return;
+        }
+        setReplaying(true);
+        void fetch(`/api/kartu/${card.id}/replay`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: '{}',
+        })
+            .then(() => router.reload({ only: ['pendingReveal'] }))
+            .finally(() => setReplaying(false));
+    };
 
     const shareDate = detail?.start_date_local
         ? (() => {
@@ -118,12 +145,9 @@ export default function KartuDetail({
             <Head title={`${card.special_move} · Kartu`} />
             <PageContainer>
                 {/* Breadcrumb */}
-                <Link
-                    href="/kartu"
-                    className="mb-6 inline-block font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3 hover:text-ink"
-                >
-                    ← Koleksi · Kartu
-                </Link>
+                <BackLink href="/kartu" className="mb-6">
+                    Koleksi · Kartu
+                </BackLink>
 
                 <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-start">
                     {/* ── LEFT: sky hero with card ── */}
@@ -168,18 +192,25 @@ export default function KartuDetail({
 
                             <div className="relative flex flex-wrap justify-center gap-2">
                                 <PillButton
-                                    tone="horizon"
+                                    tone="sky"
+                                    onSky
                                     size="sm"
-                                    className="text-white"
                                     onClick={() => setShareOpen(true)}
                                 >
                                     Bagikan
                                 </PillButton>
-                                <Link href={`/aktivitas/${card.activity_id}`}>
-                                    <PillButton tone="ghost" onSky size="sm">
-                                        Lihat detail lari
-                                    </PillButton>
-                                </Link>
+                                <PillButton
+                                    tone="ghost"
+                                    onSky
+                                    size="sm"
+                                    onClick={replayReveal}
+                                    disabled={replaying}
+                                >
+                                    {replaying ? 'Menyiapkan…' : 'Buka ulang kartu'}
+                                </PillButton>
+                                <PillLink href={aktivitasUrl(card)} tone="ghost" onSky size="sm">
+                                    Lihat detail lari
+                                </PillLink>
                             </div>
                         </div>
                     </HeroPanel>
@@ -188,7 +219,7 @@ export default function KartuDetail({
                     <div className="flex flex-col gap-6">
                         {/* Title block */}
                         <div>
-                            <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon-deep">
+                            <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-2">
                                 ★ {rarityLabel} · {totalForRarity} dari koleksimu
                             </div>
                             <h1 className="font-display text-display-lg leading-[0.92] tracking-[-0.025em] text-ink">
@@ -198,7 +229,7 @@ export default function KartuDetail({
                                 <AnalysisStatus
                                     analysis={card.flavor_analysis}
                                     inertiaReloadProps={['card']}
-                                    allowReanalyze={false}
+                                    allowReanalyze
                                     showTimestamp={false}
                                     renderContent={(text) => (
                                         <p className="font-display text-quote-md italic leading-relaxed text-ink-2">
@@ -238,24 +269,24 @@ export default function KartuDetail({
                         {/* Linked run */}
                         {detail && (
                             <Link
-                                href={`/aktivitas/${card.activity_id}`}
+                                href={aktivitasUrl(card)}
                                 className="block"
                             >
                                 <Card padding="md" className="flex items-center gap-4">
                                     <Temari pose="proud" size={48} animate={false} />
                                     <div className="min-w-0 flex-1">
-                                        <div className="mb-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3">
+                                        <div className="mb-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
                                             Dari lari
                                         </div>
                                         <div className="font-display text-xl leading-tight tracking-[-0.005em] text-ink">
                                             {detail.name ?? 'Lari'}
                                         </div>
-                                        <div className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">
+                                        <div className="mt-1 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2">
                                             {formatIdDate(detail.start_date_local, 'long')}
                                         </div>
                                     </div>
                                     <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep">
-                                        Lihat detail →
+                                        Lihat detail lari →
                                     </span>
                                 </Card>
                             </Link>
@@ -271,7 +302,7 @@ export default function KartuDetail({
                                     {relatedCards.map((c) => (
                                         <Link
                                             key={c.id}
-                                            href={`/kartu/${c.id}`}
+                                            href={kartuUrl(c)}
                                             className="block"
                                         >
                                             <div
@@ -283,7 +314,7 @@ export default function KartuDetail({
                                                 <div className="font-display text-[17px] leading-tight text-ink">
                                                     {c.special_move}
                                                 </div>
-                                                <div className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">
+                                                <div className="mt-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2">
                                                     {rarityLabel} ·{' '}
                                                     {formatIdDate(
                                                         c.detail?.start_date_local ?? null,

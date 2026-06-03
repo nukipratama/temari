@@ -38,7 +38,7 @@ export default function RouteMap({ polyline }: Readonly<RouteMapProps>) {
                 {/* OSMF main tile server. Avoid *.basemaps.cartocdn.com (blocked by uBlock
                     lists) and tile.openstreetmap.de (needs /tiles/osmde/ prefix or all tiles 404). */}
                 <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
                     url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                     maxZoom={19}
                     eventHandlers={{

@@ -11,7 +11,7 @@ import type { ShareKartuData } from "@/lib/shareCard";
 import Temari from "@/components/temari/Temari";
 import { type TemariPose } from "@/components/temari/TemariProto";
 import TemariMascot from "@/components/temari/TemariMascot";
-import { RARITY_LABELS, badgeEmblem, badgeName, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from "@/lib/runcard";
+import { RARITY_HEX, RARITY_LABELS, badgeEmblem, badgeName, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from "@/lib/runcard";
 import { formatDuration, formatKm, formatPace, paceSecPerKm } from "@/lib/pace";
 import { csrfToken } from "@/lib/http";
 import type { ActivityDetail, PendingReveal, Rarity } from "@/types/inertia";
@@ -62,18 +62,15 @@ function framesFor(theatrical: boolean, rarity: Rarity, name: string): Frame[] {
     ];
   }
 
-  // Theatrical flow: 4 frames for rare+
+  // Theatrical flow: 3 frames for rare+ (sync → reveal → saved). The old
+  // "Hasil" talking-head is gone; that excited beat now lives in the mascot's
+  // anticipation while the card is still wrapped.
   return [
     {
       pose: "reading",
       runner: true,
       eyebrow: "Sync masuk",
       title: "Aku lagi baca lari kamu…",
-    },
-    {
-      pose: "excited",
-      eyebrow: "Hasil",
-      title: "Ini pantas dapet kartu.",
     },
     {
       pose: "holding",
@@ -92,11 +89,27 @@ function framesFor(theatrical: boolean, rarity: Rarity, name: string): Frame[] {
   ];
 }
 
+/**
+ * The mascot's pose for the current beat: excited anticipation while the pack is
+ * still sealed, a rarity-keyed celebration once it's torn open (full glow for
+ * legendary, an energetic bounce otherwise), else the frame's scripted pose.
+ */
+function revealPose(frame: Frame, wrapped: boolean, opened: boolean, rarity: Rarity): TemariPose {
+  if (wrapped) {
+    return "excited";
+  }
+  if (frame.showKartu && opened) {
+    return rarity === "legendary" ? "glow" : "pumped";
+  }
+  return frame.pose;
+}
+
 export default function CardReveal({
   pending,
   onPrMoment,
 }: Readonly<CardRevealProps>) {
   const theatrical = THEATRICAL_RARITIES.includes(pending.rarity);
+  const rarityHex = RARITY_HEX[pending.rarity];
   const frames = useMemo(
     () => framesFor(theatrical, pending.rarity, pending.special_move),
     [theatrical, pending.rarity, pending.special_move],
@@ -134,12 +147,13 @@ export default function CardReveal({
   }, [pending.card_id]);
 
   const dismiss = useCallback((): void => {
-    if (pending.is_pr && onPrMoment) {
+    // A replay re-watches an old card; don't re-fire the PR celebration.
+    if (pending.is_pr && !pending.is_replay && onPrMoment) {
       onPrMoment();
     }
     // Await markSeen before reloading — same race guard as viewKoleksi.
     void markSeen().then(() => router.reload({ only: ["pendingReveal"] }));
-  }, [markSeen, pending.is_pr, onPrMoment]);
+  }, [markSeen, pending.is_pr, pending.is_replay, onPrMoment]);
 
   // Await markSeen before navigating — prevents the Inertia request from
   // arriving before the seen POST clears pending_reveal_card_id.
@@ -162,6 +176,9 @@ export default function CardReveal({
   const isLastFrame = step === frames.length - 1;
   // The card stays behind the foil PackWrapper until the user tears it open.
   const wrapped = frame.showKartu === true && !opened;
+  // Temari reacts to the moment instead of holding one static pose: leaning in
+  // while the pack is sealed, then celebrating once it's torn open.
+  const effectivePose = revealPose(frame, wrapped, opened, pending.rarity);
 
   // Tearing the pack reveals the card and fires the confetti burst (theatrical
   // reveals only — the showConfetti frame flag marks them).
@@ -279,7 +296,14 @@ export default function CardReveal({
                     idle="mood"
                   />
                 ) : (
-                  <Temari pose={frame.pose} size={200} />
+                  <motion.div
+                    key={effectivePose}
+                    initial={{ scale: 0.94 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 320, damping: 14 }}
+                  >
+                    <Temari pose={effectivePose} size={200} />
+                  </motion.div>
                 )}
               </div>
               <div>
@@ -301,22 +325,43 @@ export default function CardReveal({
                     transition={{ duration: 0.6, delay: 0.15 }}
                     className="relative mt-6 max-w-md"
                   >
-                    <Kartu
-                      name={pending.special_move}
-                      subtitle={subtitle}
-                      km={km}
-                      durasi={durasi}
-                      trimp={trimp}
-                      rarity={pending.rarity}
-                      mood={pending.mood}
-                      badges={(pending.badges ?? []).slice(0, 3)}
-                      stats={revealStats}
-                      zonePct={revealZonePct}
-                      polyline={pending.summary_polyline}
-                      paceShape={revealPaceShape}
-                      edition={pending.edition}
-                      size="lg"
-                    />
+                    {/* The card pops with a springy scale-overshoot the instant the
+                        foil tears, and a one-shot rarity ring ignites around it. */}
+                    <motion.div
+                      animate={{ scale: opened ? 1 : 0.95 }}
+                      transition={opened ? { type: "spring", stiffness: 300, damping: 15 } : { duration: 0 }}
+                    >
+                      <AnimatePresence>
+                        {opened && (
+                          <motion.span
+                            key="ignite"
+                            data-testid="card-ignite"
+                            aria-hidden
+                            initial={{ opacity: 0.85, scale: 0.96 }}
+                            animate={{ opacity: 0, scale: 1.18 }}
+                            transition={{ duration: 0.7, ease: "easeOut" }}
+                            className="pointer-events-none absolute inset-0 rounded-[16px]"
+                            style={{ boxShadow: `0 0 0 3px ${rarityHex}, 0 0 36px 8px ${rarityHex}` }}
+                          />
+                        )}
+                      </AnimatePresence>
+                      <Kartu
+                        name={pending.special_move}
+                        subtitle={subtitle}
+                        km={km}
+                        durasi={durasi}
+                        trimp={trimp}
+                        rarity={pending.rarity}
+                        mood={pending.mood}
+                        badges={(pending.badges ?? []).slice(0, 3)}
+                        stats={revealStats}
+                        zonePct={revealZonePct}
+                        polyline={pending.summary_polyline}
+                        paceShape={revealPaceShape}
+                        edition={pending.edition}
+                        size="lg"
+                      />
+                    </motion.div>
                     <AnimatePresence>
                       {wrapped && (
                         <PackWrapper

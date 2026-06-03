@@ -43,7 +43,7 @@ export default function FitnessChart({ data }: Readonly<FitnessChartProps>) {
     return (
         <div className="rounded-2xl border border-line bg-surface-card p-5">
             <div className="flex items-center justify-between gap-3">
-                <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
                     Fitness &amp; Form
                 </h3>
                 <span className="text-[11px] text-ink-3">hover untuk detail</span>
@@ -52,7 +52,7 @@ export default function FitnessChart({ data }: Readonly<FitnessChartProps>) {
             <dl className="mt-3 grid grid-cols-3 gap-3">
                 {SERIES.map((s) => (
                     <div key={s.key} className="rounded-xl bg-line/20 p-2">
-                        <dt className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                        <dt className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-ink-2">
                             <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />
                             {s.label}
                         </dt>

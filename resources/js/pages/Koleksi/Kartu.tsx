@@ -1,19 +1,17 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import AppShell from '@/layouts/AppShell';
 import MotionLink from '@/components/MotionLink';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import Card from '@/components/ui/Card';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
-import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from '@/components/card/Kartu';
-import PillButton from '@/components/ui/PillButton';
-import Temari from '@/components/temari/Temari';
+import FeaturedCardHero from '@/components/card/FeaturedCardHero';
 import { cn } from '@/lib/cn';
 import { pressShrink } from '@/lib/motion';
-import { emberGlowStyle } from '@/lib/styles';
+import { kartuUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
 import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
-import { RARITY_LABELS, RARITY_ORDER, RARITY_POSE, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
+import { RARITY_LABELS, RARITY_ORDER, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
 import { useState, type ReactNode } from 'react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -115,7 +113,6 @@ export default function KoleksiKartu({
 /** Collection highlight hero — same layout as the homepage featured panel. */
 function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
     const detail = featured.detail;
-    const pose = RARITY_POSE[featured.rarity];
     const kartuProps = {
         name: featured.special_move,
         subtitle: detail ? `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}` : undefined,
@@ -134,59 +131,33 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
     };
 
     return (
-        <HeroPanel className="mt-6 min-h-[320px] lg:px-14 lg:py-12">
-            <span
-                aria-hidden
-                className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full"
-                style={emberGlowStyle()}
-            />
-            <div className="relative grid items-center gap-8 lg:grid-cols-[160px_1fr_40%] lg:gap-10">
-                {/* Temari — desktop only */}
-                <div className="hidden lg:block">
-                    <Temari pose={pose} size={200} />
-                </div>
-
-                {/* Quote + CTA */}
-                <div>
-                    <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
-                        ★ Highlight minggu ini · {RARITY_LABELS[featured.rarity]}
-                    </div>
-                    <h2 className="mb-4 font-display text-display-xl text-cream">
-                        <em className="italic text-horizon">{featured.special_move}</em>
-                    </h2>
-                    {featured.flavor_analysis && (
-                        <div className="mb-5 max-w-xl">
-                            <AnalysisStatus
-                                analysis={featured.flavor_analysis}
-                                inertiaReloadProps={['featuredCard']}
-                                allowReanalyze={false}
-                                showTimestamp={false}
-                                onSky
-                                renderContent={(text) => (
-                                    <p className="font-display text-quote-lg italic text-cream">
-                                        &ldquo;{renderBold(text)}&rdquo;
-                                    </p>
-                                )}
-                            />
-                        </div>
-                    )}
-                    <Link href={`/kartu/${featured.id}`}>
-                        <PillButton tone="horizon">Lihat kartu</PillButton>
-                    </Link>
-                </div>
-
-                {/* Card — desktop only (tilted) */}
-                <div className="hidden lg:block lg:rotate-[4deg]">
-                    <Kartu {...kartuProps} className="w-[260px]" />
-                </div>
-
-                {/* Mobile: Temari above, card below */}
-                <div className="flex flex-col items-center gap-4 lg:hidden">
-                    <Temari pose={pose} size={100} animate={false} />
-                    <Kartu {...kartuProps} className="w-full max-w-[300px]" />
-                </div>
-            </div>
-        </HeroPanel>
+        <FeaturedCardHero
+            eyebrow={`★ Highlight minggu ini · ${RARITY_LABELS[featured.rarity]}`}
+            name={featured.special_move}
+            rarity={featured.rarity}
+            km={kartuProps.km}
+            stats={kartuProps.stats}
+            durasi={kartuProps.durasi}
+            badges={kartuProps.badges}
+            ctaHref={kartuUrl(featured)}
+            voice={
+                featured.flavor_analysis && (
+                    <AnalysisStatus
+                        analysis={featured.flavor_analysis}
+                        inertiaReloadProps={['featuredCard']}
+                        allowReanalyze={false}
+                        showTimestamp={false}
+                        onSky
+                        renderContent={(text) => (
+                            <p className="font-display italic text-cream/85">
+                                &ldquo;{renderBold(text)}&rdquo;
+                            </p>
+                        )}
+                    />
+                )
+            }
+            card={<Kartu {...kartuProps} className="w-full" />}
+        />
     );
 }
 
@@ -196,7 +167,7 @@ function RarityFilter({
 }: Readonly<{ selected: string | null; counts: Record<Rarity, number> }>) {
     return (
         <nav aria-label="Filter kartu" className="mt-8 flex flex-wrap items-center gap-2">
-            <span className="mr-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+            <span className="mr-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
                 Tingkat
             </span>
             <FilterPill href="/kartu" label="Semua" active={selected === null} dot={null} />
@@ -230,6 +201,7 @@ function FilterPill({
     return (
         <MotionLink
             href={href}
+            aria-current={active ? 'page' : undefined}
             whileTap={pressShrink}
             className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition',
@@ -257,7 +229,7 @@ function CardCell({
 
     return (
         <MotionLink
-            href={`/kartu/${card.id}`}
+            href={kartuUrl(card)}
             whileTap={pressShrink}
             onClick={() => onTap(card.rarity, card.id)}
             className="mx-auto block w-full max-w-[300px]"

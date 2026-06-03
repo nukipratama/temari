@@ -1,12 +1,17 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
 import { useDismissable } from '@/hooks/useDismissable';
+import { kartuUrl } from '@/lib/routes';
+import PillButton from '@/components/ui/PillButton';
 import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
-import { RARITY_HEADBAND, RARITY_LABELS, RARITY_POSE } from '@/lib/runcard';
-import { drawShareCard, shareCardBlob, type Format, type Layout, type ShareKartuData, type Theme } from '@/lib/shareCard';
-import TemariProto from '@/components/temari/TemariProto';
+import { RARITY_LABELS } from '@/lib/runcard';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
+import { drawShareCard, shareCardBlob, type Format, type Layout, type ShareKartuData } from '@/lib/shareCard';
+import TemariProto, { type TemariEquipped } from '@/components/temari/TemariProto';
+import type { SharedProps } from '@/types/inertia';
 
 export type { ShareKartuData };
 
@@ -15,20 +20,14 @@ interface ShareCardModalProps {
     onClose: () => void;
 }
 
-const LAYOUTS: Layout[] = ['kartu', 'rute', 'struk'];
+const LAYOUTS: Layout[] = ['kartu', 'rute'];
 const LAYOUT_LABELS: Record<Layout, string> = {
     kartu: 'Kartu',
     rute: 'Rute',
-    struk: 'Struk',
 };
 
-const THEMES: Theme[] = ['Dawn', 'Sky', 'Cream', 'Inverted'];
-
 export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardModalProps>) {
-    const [theme, setTheme] = useState<Theme>('Dawn');
     const [layout, setLayout] = useState<Layout>('kartu');
-    const [showStats, setShowStats] = useState(true);
-    const [showQuote, setShowQuote] = useState(true);
     const [format, setFormat] = useState<Format>('story');
     // Transient status under the CTAs: confirms a copy/share that has no native
     // UI of its own, or surfaces a failure instead of swallowing it silently.
@@ -37,6 +36,19 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const temariContainerRef = useRef<HTMLDivElement>(null);
+
+    // The mascot is dressed exactly as the user has it elsewhere. Read the
+    // shared equip state defensively (mirrors TemariMascot) so this still renders
+    // a bare bunny when there's no Inertia page context (e.g. unit tests).
+    let equipped: TemariEquipped | null = null;
+    try {
+        const acc = usePage<SharedProps>().props.equippedAccessories;
+        if (acc) {
+            equipped = { headband: acc.headband, medal: acc.medal ?? 'none', pita: acc.pita, aura: acc.aura };
+        }
+    } catch {
+        equipped = null;
+    }
 
     useDismissable(kartu !== null, panelRef, onClose);
 
@@ -72,8 +84,8 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
         if (kartu === null || canvasRef.current === null) {
             return;
         }
-        void drawShareCard(canvasRef.current, { kartu, theme, layout, format, showStats, showQuote, temariImg });
-    }, [kartu, theme, layout, format, showStats, showQuote, temariImg]);
+        void drawShareCard(canvasRef.current, { kartu, layout, format, temariImg });
+    }, [kartu, layout, format, temariImg]);
 
     // Auto-clear the status line so it reads as a transient toast.
     useEffect(() => {
@@ -88,7 +100,7 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
     const hasRoute = kartu.polyline != null && kartu.polyline !== '';
     const availableLayouts = hasRoute ? LAYOUTS : LAYOUTS.filter((l) => l !== 'rute');
 
-    const cfg = { kartu, theme, layout, format, showStats, showQuote, temariImg };
+    const cfg = { kartu, layout, format, temariImg };
 
     const captureImage = (): Promise<Blob> => shareCardBlob(cfg);
 
@@ -105,7 +117,7 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                 // fall through to URL share
             }
         }
-        const url = `${globalThis.location.origin}/kartu/${kartu.id}`;
+        const url = `${globalThis.location.origin}${kartuUrl(kartu)}`;
         if (typeof navigator.share === 'function') {
             try {
                 await navigator.share({
@@ -161,24 +173,43 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 8 }}
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex w-full max-w-lg flex-col overflow-y-auto rounded-3xl bg-cream shadow-2xl lg:max-w-4xl lg:flex-row lg:overflow-hidden"
+                    className="flex w-full max-w-md flex-col overflow-hidden rounded-3xl bg-cream shadow-2xl"
                     style={{ maxHeight: '92dvh' }}
                 >
-                    {/* ── LEFT: preview ──
-                        Mobile: the whole panel scrolls as one; these halves keep their
-                        natural height (shrink-0) so nothing clips. Desktop: side-by-side,
-                        preview fixed and the controls column scrolls on its own. */}
-                    <div className="flex shrink-0 flex-col items-center gap-3 bg-cream-deep p-5 lg:w-80 lg:overflow-hidden">
-                        {/* Preview canvas — fixed internal resolution, scaled to fit.
-                            This canvas IS the exported image (no html-to-image). */}
+                    {/* Header — pinned. */}
+                    <div className="flex items-center gap-3 border-b border-cream-deep px-5 py-3.5">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            aria-label="Tutup"
+                            className={iconButtonVariants({ size: 'sm' })}
+                        >
+                            <Icon icon="mdi:close" width={16} height={16} />
+                        </button>
+                        <div className="flex-1 text-center">
+                            <div className="font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
+                                Bagikan kartu
+                            </div>
+                            <div className="font-display text-xl tracking-tight text-ink">
+                                {kartu.name}
+                            </div>
+                        </div>
+                        <div className="w-8" />
+                    </div>
+
+                    {/* Body — preview + pickers, scrolls on short screens. */}
+                    <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto bg-cream-deep px-5 py-5">
+                        {/* Preview canvas — fixed internal resolution, bounded by HEIGHT so
+                            a tall 9:16 story scales to fit instead of being forced to the
+                            column width. Width derives from the canvas's intrinsic ratio, so
+                            the bitmap is never distorted. This canvas IS the exported image. */}
                         <canvas
                             ref={canvasRef}
+                            width={1080}
+                            height={format === 'story' ? 1920 : 1080}
                             aria-label={`Pratinjau kartu ${kartu.name}`}
-                            className={cn(
-                                'w-full rounded-2xl',
-                                format === 'story' ? 'aspect-[9/16]' : 'aspect-square',
-                            )}
-                            style={{ boxShadow: '0 16px 48px rgba(31,39,71,0.25)' }}
+                            className="block rounded-2xl"
+                            style={{ maxWidth: '100%', maxHeight: '52vh', boxShadow: '0 16px 48px rgba(31,39,71,0.25)' }}
                         />
 
                         {/* Format picker */}
@@ -190,151 +221,63 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                                     onClick={() => setFormat(f)}
                                     aria-pressed={format === f}
                                     className={cn(
-                                        'focus-ring rounded-xl p-3 text-xs font-medium transition',
+                                        'focus-ring flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-medium transition',
                                         format === f
-                                            ? 'border-2 border-horizon bg-cream font-semibold text-ink'
+                                            ? 'border-2 border-sky bg-cream font-semibold text-ink'
                                             : 'border-2 border-transparent bg-cream text-ink-2 hover:border-cream-deep',
                                     )}
                                 >
-                                    <div
+                                    <span
+                                        aria-hidden
                                         className={cn(
-                                            'mx-auto mb-1.5 rounded-sm bg-sky/25',
-                                            f === 'story' ? 'h-7 w-4' : 'h-6 w-6',
+                                            'rounded-sm bg-sky/25',
+                                            f === 'story' ? 'h-6 w-3.5' : 'h-5 w-5',
                                         )}
                                     />
                                     {f === 'story' ? 'Potret · 9:16' : 'Persegi · 1:1'}
                                 </button>
                             ))}
                         </div>
-                    </div>
 
-                    {/* ── RIGHT: controls ── */}
-                    <div className="flex flex-col max-lg:shrink-0 lg:flex-1 lg:overflow-y-auto">
-                        {/* Header */}
-                        <div className="flex items-center gap-3 border-b border-cream-deep px-5 pb-3.5 pt-5">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                aria-label="Tutup"
-                                className={iconButtonVariants({ size: 'sm' })}
-                            >
-                                <Icon icon="mdi:close" width={16} height={16} />
-                            </button>
-                            <div className="flex-1 text-center">
-                                <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
-                                    Bagikan kartu
-                                </div>
-                                <div className="font-display text-xl tracking-tight text-ink">
-                                    {kartu.name}
-                                </div>
-                            </div>
-                            <div className="w-8" />
-                        </div>
-
-                        <div className="flex flex-1 flex-col gap-5 px-5 pb-6 pt-5">
-                            {/* Gaya — template picker (select, biar nggak makan tempat) */}
-                            <div>
-                                <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink-3">
-                                    Gaya
-                                </div>
-                                <select
-                                    value={layout}
-                                    onChange={(e) => setLayout(e.target.value as Layout)}
-                                    aria-label="Pilih gaya kartu"
-                                    className="focus-ring w-full rounded-xl border border-line bg-cream-deep px-3 py-2.5 font-sans text-sm font-medium text-ink"
-                                >
-                                    {availableLayouts.map((l) => (
-                                        <option key={l} value={l}>
-                                            {LAYOUT_LABELS[l]}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Theme */}
-                            <div>
-                                <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink-3">
-                                    Tema
-                                </div>
-                                <div className="flex gap-2">
-                                    {THEMES.map((t) => (
-                                        <button
-                                            key={t}
-                                            type="button"
-                                            onClick={() => setTheme(t)}
-                                            aria-pressed={theme === t}
-                                            className={cn(toggleButtonVariants({ selected: theme === t, size: 'md' }), 'flex-1')}
-                                        >
-                                            {t}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Toggles — the quote only renders on the taller story format */}
-                            <div className="overflow-hidden rounded-xl bg-cream-deep">
-                                {[
-                                    { label: 'Tampilin data', value: showStats, toggle: () => setShowStats((v) => !v), disabled: false },
-                                    { label: 'Tampilin quote', value: showQuote, toggle: () => setShowQuote((v) => !v), disabled: format === 'feed' },
-                                ].map(({ label, value, toggle, disabled }, i) => (
-                                    <div
-                                        key={label}
-                                        className={cn(
-                                            'flex items-center justify-between px-4 py-3.5',
-                                            i > 0 && 'border-t border-cream',
-                                            disabled && 'pointer-events-none opacity-40',
-                                        )}
+                        {/* Gaya — template picker. Hidden when a no-GPS run leaves only
+                            the Kartu layout, so there's nothing to choose. */}
+                        {availableLayouts.length > 1 && (
+                            <div className="flex w-full gap-2">
+                                {availableLayouts.map((l) => (
+                                    <button
+                                        key={l}
+                                        type="button"
+                                        onClick={() => setLayout(l)}
+                                        aria-pressed={layout === l}
+                                        className={cn(toggleButtonVariants({ selected: layout === l, size: 'md' }), 'flex-1')}
                                     >
-                                        <span className="text-sm text-ink">{label}</span>
-                                        <button
-                                            type="button"
-                                            onClick={toggle}
-                                            aria-checked={value}
-                                            role="switch"
-                                            className="focus-ring relative h-5 w-9 shrink-0 rounded-full transition-colors"
-                                            style={{ background: value ? 'var(--color-horizon)' : 'rgba(31,39,71,0.15)' }}
-                                        >
-                                            <span
-                                                className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all"
-                                                style={{ left: value ? '18px' : '2px' }}
-                                            />
-                                        </button>
-                                    </div>
+                                        {LAYOUT_LABELS[l]}
+                                    </button>
                                 ))}
                             </div>
+                        )}
+                    </div>
 
-                            <div className="flex-1" />
-
-                            {/* CTAs */}
-                            <div className="flex flex-col gap-2">
-                                <button
-                                    type="button"
-                                    onClick={handleShare}
-                                    className="focus-ring w-full rounded-full bg-horizon-deep py-3.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                                >
-                                    Bagikan
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleCopy}
-                                    className="focus-ring w-full rounded-full border border-cream-deep py-3 font-sans text-[13px] font-medium text-ink-2 transition-colors hover:bg-cream-deep"
-                                >
-                                    Salin gambar
-                                </button>
-                                {status !== null && (
-                                    <p
-                                        role="status"
-                                        aria-live="polite"
-                                        className={cn(
-                                            'text-center font-sans text-xs',
-                                            status.tone === 'ok' ? 'text-leaf-deep' : 'text-ember-deep',
-                                        )}
-                                    >
-                                        {status.text}
-                                    </p>
+                    {/* CTAs — pinned footer. */}
+                    <div className="flex flex-col gap-2 border-t border-cream-deep bg-cream px-5 py-4">
+                        <PillButton tone="sky" onClick={handleShare} className="w-full justify-center py-3.5 font-semibold">
+                            Bagikan
+                        </PillButton>
+                        <PillButton tone="ghost" onClick={handleCopy} className="w-full justify-center">
+                            Salin gambar
+                        </PillButton>
+                        {status !== null && (
+                            <p
+                                role="status"
+                                aria-live="polite"
+                                className={cn(
+                                    'text-center font-sans text-xs',
+                                    status.tone === 'ok' ? 'text-leaf-deep' : 'text-ember-deep',
                                 )}
-                            </div>
-                        </div>
+                            >
+                                {status.text}
+                            </p>
+                        )}
                     </div>
                 </motion.div>
             </motion.div>
@@ -342,8 +285,8 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                 headband/pose so we can serialise it to a canvas image. */}
             <div ref={temariContainerRef} aria-hidden className="sr-only pointer-events-none">
                 <TemariProto
-                    pose={RARITY_POSE[kartu.rarity]}
-                    equipped={{ headband: RARITY_HEADBAND[kartu.rarity], medal: 'none' }}
+                    pose={MOOD_TO_POSE[kartu.mood]}
+                    equipped={equipped}
                     size={120}
                     animate={false}
                 />

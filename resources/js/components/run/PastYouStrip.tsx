@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
 import { formatIdDate, formatKm } from '@/lib/pace';
+import { aktivitasUrl } from '@/lib/routes';
 
 interface PastMatch {
     past: {
@@ -21,7 +22,7 @@ interface PastYouStripProps {
 }
 
 const CARD_BASE = 'block rounded-2xl border border-line bg-surface-card p-4 sm:p-5';
-const HEADING_CLASS = 'font-mono text-xs font-semibold uppercase tracking-wider text-ink-3';
+const HEADING_CLASS = 'font-mono text-xs font-bold uppercase tracking-wider text-ink-2';
 
 export default function PastYouStrip({ match, currentDistance, className }: Readonly<PastYouStripProps>) {
     const distanceLabel = currentDistance ? `${formatKm(currentDistance, 1)} km` : 'jarak ini';
@@ -35,12 +36,11 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
         );
     }
 
-    const linkable = match.past.activity_id != null;
     const body = (
         <>
             <div className="flex items-start justify-between gap-3">
                 <h3 className={HEADING_CLASS}>Kamu vs Kamu Dulu</h3>
-                {linkable && (
+                {match.past.activity_id != null && (
                     <Icon icon="mdi:arrow-top-right" width={16} height={16} aria-hidden className="text-ink-3" />
                 )}
             </div>
@@ -67,10 +67,10 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
         </>
     );
 
-    if (linkable) {
+    if (match.past.activity_id != null) {
         return (
             <Link
-                href={`/aktivitas/${match.past.activity_id}`}
+                href={aktivitasUrl({ activity_id: match.past.activity_id })}
                 className={cn(CARD_BASE, 'focus:outline-none focus-visible:ring-2 focus-visible:ring-leaf', className)}
             >
                 {body}

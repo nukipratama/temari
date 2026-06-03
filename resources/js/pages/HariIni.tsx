@@ -8,9 +8,9 @@ import MetricExplainer from '@/components/MetricExplainer';
 import type { MetricKey } from '@/lib/metricGlossary';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
-import HeroPanel from '@/components/ui/HeroPanel';
 import LinkCard from '@/components/ui/LinkCard';
 import Kartu from '@/components/card/Kartu';
+import FeaturedCardHero from '@/components/card/FeaturedCardHero';
 import KartuMini from '@/components/card/KartuMini';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -23,8 +23,8 @@ import EmptyRunsState from '@/components/run/EmptyRunsState';
 import PageContainer from '@/components/ui/PageContainer';
 import { formStatusLabel } from '@/lib/formStatus';
 import { renderBold } from '@/lib/richText';
+import { aktivitasUrl, kartuUrl } from '@/lib/routes';
 import { formatKm, formatPace, formatRelativeId, paceSecPerKm } from '@/lib/pace';
-import { emberGlowStyle } from '@/lib/styles';
 import {
     MOOD_UPPER,
     VIBE_TO_POSE,
@@ -145,11 +145,11 @@ export default function HariIni({
                 {/* HEADLINE */}
                 <header data-tour="greeting" className="grid items-end gap-9 lg:grid-cols-[1.4fr_1fr]">
                     <div>
-                        <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
+                        <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-2">
                             {dateLine}
                         </div>
                         <h1 className="font-display text-display-2xl text-ink">
-                            Halo, {firstName},<br />
+                            Halo, {firstName}<br />
                             <span className="italic text-horizon">{vibeSubtitle}</span>
                         </h1>
                     </div>
@@ -163,7 +163,7 @@ export default function HariIni({
                 ) : (
                     <>
                         {/* HERO KARTU */}
-                        {featured && <FeaturedKartuPanel featured={featured} pose={pose} featuredKartuVoice={briefing.featuredKartuVoice} />}
+                        {featured && <FeaturedKartuPanel featured={featured} featuredKartuVoice={briefing.featuredKartuVoice} />}
 
                         {/* KARTU STRIP (60%) + VITAL CHIPS (40%) */}
                         <div className="mt-6 flex flex-col gap-4 lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8">
@@ -174,7 +174,7 @@ export default function HariIni({
                                     {/* Mobile: horizontal scroll */}
                                     <div className="-mx-5 flex items-stretch gap-3 overflow-x-auto px-5 pb-1 scrollbar-hide sm:-mx-8 sm:px-8 lg:hidden">
                                         {cardStrip.map((item) => (
-                                            <Link key={item.key} href={`/aktivitas/${item.activityId}`} className="flex-none block">
+                                            <Link key={item.key} href={kartuUrl({ id: item.cardId })} className="flex-none block">
                                                 <KartuMini name={item.name} rarity={item.rarity} date={item.date} polyline={item.polyline} className="h-full" />
                                             </Link>
                                         ))}
@@ -182,7 +182,7 @@ export default function HariIni({
                                     {/* Desktop: auto-fit grid — empty tracks collapse so last card aligns with container edge */}
                                     <div className="hidden lg:grid lg:gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
                                         {cardStrip.map((item) => (
-                                            <Link key={item.key} href={`/aktivitas/${item.activityId}`} className="block h-full">
+                                            <Link key={item.key} href={kartuUrl({ id: item.cardId })} className="block h-full">
                                                 <KartuMini name={item.name} rarity={item.rarity} date={item.date} polyline={item.polyline} className="h-full w-full" />
                                             </Link>
                                         ))}
@@ -214,7 +214,7 @@ function KataTemariCompact({ briefing, pose }: Readonly<{ briefing: BriefingResu
         <Card padding="lg" className="flex items-start gap-3.5">
             <Temari pose={pose} size={48} animate={false} />
             <div className="min-w-0 flex-1">
-                <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                <div className="mb-1.5 flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
                     <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
                     <span>Kata Temari hari ini</span>
                 </div>
@@ -299,12 +299,12 @@ function VitalChip({
                     : 'border border-line bg-surface-card',
             )}
         >
-            <div className={cn('mb-1 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em]', onSky ? 'text-cream/70' : 'text-ink-3')}>
+            <div className={cn('mb-1 flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em]', onSky ? 'text-cream/70' : 'text-ink-2')}>
                 <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />
                 <span>{label}</span>
                 {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
             </div>
-            <div className={cn('font-sans text-[22px] font-bold leading-none tabular-nums tracking-[-0.02em]', valueClass)}>
+            <div className={cn('font-sans text-stat font-bold leading-none tabular-nums tracking-[-0.02em]', valueClass)}>
                 {value}
             </div>
             {sub !== '' && <div className={cn('mt-1 font-display text-xs italic', onSky ? 'text-ink-on-sky' : 'text-ink-3')}>{sub}</div>}
@@ -314,85 +314,51 @@ function VitalChip({
 
 function FeaturedKartuPanel({
     featured,
-    pose,
     featuredKartuVoice,
-}: Readonly<{ featured: FeaturedCard; pose: TemariPose; featuredKartuVoice: AnalysisPayload }>) {
+}: Readonly<{ featured: FeaturedCard; featuredKartuVoice: AnalysisPayload }>) {
     return (
-        <HeroPanel className="mt-8 min-h-[360px] lg:px-14 lg:py-12">
-            <span
-                aria-hidden
-                className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full"
-                style={emberGlowStyle()}
-            />
-            <div className="relative grid items-center gap-8 lg:grid-cols-[200px_1fr_40%] lg:gap-10">
-                <div className="hidden lg:block">
-                    <Temari pose={pose} size={240} />
-                </div>
-                <div>
-                    <div className="mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
-                        ★ Kartu dari Temari minggu ini
-                    </div>
-                    <h2 className="mb-5 font-display text-display-xl text-cream">
-                        <em className="italic text-horizon">{featured.name}</em>
-                    </h2>
-                    <div className="mb-6 max-w-xl">
-                        <AnalysisStatus
-                            analysis={featuredKartuVoice}
-                            inertiaReloadProps={['briefing']}
-                            showTimestamp={false}
-                            allowReanalyze={false}
-                            onSky
-                            renderContent={(text) => (
-                                <p className="font-display text-quote-lg italic text-cream">
-                                    &ldquo;{renderBold(text)}&rdquo;
-                                </p>
-                            )}
-                        />
-                    </div>
-                    <Link href={`/aktivitas/${featured.activityId}`}>
-                        <PillButton tone="horizon">Lihat kartu</PillButton>
-                    </Link>
-                </div>
-                <div className="hidden lg:block lg:rotate-[4deg]">
-                    <Kartu
-                        name={featured.name}
-                        subtitle={featured.subtitle}
-                        km={featured.km}
-                        durasi={featured.durasi}
-                        trimp={featured.trimp}
-                        rarity={featured.rarity}
-                        mood={featured.mood}
-                        badges={featured.badges}
-                        stats={featured.stats}
-                        zonePct={featured.zonePct}
-                        polyline={featured.polyline}
-                        paceShape={featured.paceShape}
-                        size="md"
-                        className="w-[260px]"
-                    />
-                </div>
-                {/* mobile fallback: Temari above, full Kartu below — keep the kartu-as-hero feel */}
-                <div className="flex flex-col items-center gap-4 lg:hidden">
-                    <Temari pose={pose} size={120} animate={false} />
-                    <Kartu
-                        name={featured.name}
-                        subtitle={featured.subtitle}
-                        km={featured.km}
-                        durasi={featured.durasi}
-                        trimp={featured.trimp}
-                        rarity={featured.rarity}
-                        mood={featured.mood}
-                        badges={featured.badges}
-                        stats={featured.stats}
-                        zonePct={featured.zonePct}
-                        polyline={featured.polyline}
-                        paceShape={featured.paceShape}
-                        size="md"
-                        className="w-full max-w-[300px]"
-                    />
-                </div>
-            </div>
-        </HeroPanel>
+        <FeaturedCardHero
+            eyebrow="★ Kartu dari Temari minggu ini"
+            name={featured.name}
+            rarity={featured.rarity}
+            km={featured.km}
+            stats={featured.stats}
+            durasi={featured.durasi}
+            badges={featured.badges}
+            ctaHref={kartuUrl({ id: featured.cardId })}
+            voice={
+                <AnalysisStatus
+                    analysis={featuredKartuVoice}
+                    inertiaReloadProps={['briefing']}
+                    showTimestamp={false}
+                    allowReanalyze={false}
+                    onSky
+                    renderContent={(text) => (
+                        <p className="font-display italic text-cream/85">
+                            &ldquo;{renderBold(text)}&rdquo;
+                        </p>
+                    )}
+                />
+            }
+            card={
+                <Kartu
+                    name={featured.name}
+                    subtitle={featured.subtitle}
+                    km={featured.km}
+                    durasi={featured.durasi}
+                    trimp={featured.trimp}
+                    rarity={featured.rarity}
+                    mood={featured.mood}
+                    badges={featured.badges}
+                    stats={featured.stats}
+                    zonePct={featured.zonePct}
+                    polyline={featured.polyline}
+                    paceShape={featured.paceShape}
+                    size="md"
+                    className="w-full"
+                />
+            }
+        />
     );
 }
 
@@ -437,8 +403,8 @@ function SuggestionCard({ suggestion, lastRun }: Readonly<{ suggestion: Analysis
         : null;
 
     return (
-        <Card padding="md" as="section" className="flex flex-col gap-3">
-            <div className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+        <Card padding="md" as="section" className="flex h-full flex-col gap-3">
+            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
                 <span>Saran sesi dari Temari</span>
             </div>
@@ -474,8 +440,8 @@ function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose:
     const subline = [dateUpper, note ? MOOD_UPPER[note.mood] : null].filter(Boolean).join(' · ');
 
     return (
-        <LinkCard href={`/aktivitas/${run.activity_id}`} padding="md" className="flex flex-col gap-3">
-            <div className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+        <LinkCard href={aktivitasUrl(run)} padding="md" className="flex h-full flex-col gap-3">
+            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
                 <span>Lari terakhir · {dateLabel}</span>
             </div>
@@ -486,12 +452,12 @@ function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose:
                         {run.name ?? 'Lari'}
                     </div>
                     {subline !== '' && (
-                        <div className="mt-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3">
+                        <div className="mt-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
                             {subline}
                         </div>
                     )}
                     {(locationShort || weatherLabel) && (
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2">
                             {locationShort && (
                                 <span className="inline-flex items-center gap-1">
                                     <Icon icon="mdi:map-marker-outline" width={11} height={11} aria-hidden />
@@ -515,7 +481,7 @@ function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose:
                 </p>
             )}
             <span className="mt-auto font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep">
-                Lihat detail →
+                Lihat detail lari →
             </span>
         </LinkCard>
     );
@@ -552,8 +518,8 @@ function KondisiCard({
         },
     ];
     return (
-        <Card as="section" padding="md" className="flex flex-col gap-2.5">
-            <div className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">
+        <Card as="section" padding="md" className="flex h-full flex-col gap-3">
+            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
                 <span>Kondisi · {snapshot ? '7 hari' : 'belum cukup data'}</span>
             </div>
@@ -578,7 +544,7 @@ function KondisiCard({
             ))}
             <Link
                 href="/aktivitas"
-                className="mt-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep hover:text-ember-deep"
+                className="mt-auto pt-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep hover:text-ember-deep"
             >
                 Detail teknis →
             </Link>
@@ -589,8 +555,8 @@ function KondisiCard({
 function Stat({ l, v }: Readonly<{ l: string; v: string }>) {
     return (
         <div>
-            <div className="mb-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3">{l}</div>
-            <div className="font-sans text-3xl font-black leading-none tabular-nums tracking-tight text-ink">{v}</div>
+            <div className="mb-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">{l}</div>
+            <div className="font-sans text-stat font-black leading-none tabular-nums tracking-tight text-ink">{v}</div>
         </div>
     );
 }

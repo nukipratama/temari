@@ -30,6 +30,21 @@ it('renders for a user with no synced activities', function (): void {
             ->where('recentRuns', []));
 });
 
+it('includes the route polyline + stream summary on recent runs so the cards draw routes', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+        'stream_summary' => ['time_in_zone_pct' => ['Z1' => 10, 'Z2' => 70, 'Z3' => 20]],
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('recentRuns.0.summary_polyline', '_p~iF~ps|U_ulLnnqC_mqNvxq`@')
+            ->has('recentRuns.0.stream_summary'));
+});
+
 it('renders KPIs + recent runs when the user has training-load history', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
     $user = User::factory()->create();

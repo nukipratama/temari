@@ -10,17 +10,6 @@ describe('TextLink', () => {
         expect(link.className).toMatch(/text-horizon-deep/);
     });
 
-    it('renders an external anchor with target=_blank when external is true', () => {
-        render(
-            <TextLink href="https://strava.com" external>
-                Buka di Strava ↗
-            </TextLink>,
-        );
-        const link = screen.getByRole('link', { name: /buka di strava/i });
-        expect(link).toHaveAttribute('target', '_blank');
-        expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    });
-
     it('passes className through and keeps the base classes', () => {
         render(
             <TextLink href="/x" className="custom-class">

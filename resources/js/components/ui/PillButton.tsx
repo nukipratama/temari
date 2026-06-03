@@ -14,7 +14,7 @@ interface PillButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
 
 export default function PillButton({
     children,
-    tone = 'horizon',
+    tone = 'sky',
     size = 'md',
     onSky = false,
     className,

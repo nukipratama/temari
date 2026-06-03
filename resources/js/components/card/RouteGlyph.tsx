@@ -50,10 +50,11 @@ export default function RouteGlyph({ polyline, paceShape, rarity, color, classNa
                     d={d}
                     fill={fill}
                     stroke={stroke}
-                    strokeWidth={3.4}
+                    strokeWidth={3.8}
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    opacity={0.92}
+                    opacity={0.95}
+                    style={{ filter: `drop-shadow(0 0 1.5px ${stroke})` }}
                 />
                 <circle cx={route.start[0]} cy={route.start[1]} r={3} fill={stroke} />
             </svg>

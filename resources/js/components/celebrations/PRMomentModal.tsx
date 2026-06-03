@@ -1,8 +1,10 @@
-import { Link } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Temari from '@/components/temari/Temari';
 import { cn } from '@/lib/cn';
+import { aktivitasUrl } from '@/lib/routes';
 import { iconButtonVariants } from '@/lib/variants';
+import PillButton from '@/components/ui/PillButton';
+import PillLink from '@/components/ui/PillLink';
 
 interface PrData {
     activityId: number;
@@ -106,23 +108,22 @@ export default function PRMomentModal({ pr, onClose, onShare }: Readonly<PRMomen
                         </div>
                     </div>
 
-                    {/* CTAs */}
+                    {/* CTAs — peach primary is the allowed PR/celebration accent on the navy panel. */}
                     <div className="relative mt-2 flex flex-col gap-2.5">
                         {onShare && (
-                            <button
-                                onClick={onShare}
-                                className="w-full rounded-full bg-horizon py-[14px] font-sans text-sm font-semibold text-sky transition-opacity hover:opacity-90"
-                            >
+                            <PillButton tone="horizon" onClick={onShare} className="w-full justify-center py-[14px] font-semibold">
                                 Bagikan
-                            </button>
+                            </PillButton>
                         )}
-                        <Link
-                            href={`/aktivitas/${pr.activityId}`}
+                        <PillLink
+                            href={aktivitasUrl({ activity_id: pr.activityId })}
+                            tone="ghost"
+                            onSky
                             onClick={onClose}
-                            className="w-full rounded-full border border-cream/30 py-3 text-center font-sans text-[13px] font-medium text-cream transition-colors hover:bg-cream/10"
+                            className="w-full justify-center"
                         >
                             Lihat detail lari
-                        </Link>
+                        </PillLink>
                     </div>
                 </motion.div>
             </motion.div>}

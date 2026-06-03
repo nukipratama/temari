@@ -88,6 +88,8 @@ describe('pickFeaturedKartu', () => {
         );
         const featured = pickFeaturedKartu([older, newer, rare]);
         expect(featured?.name).toBe('Newer Epic');
+        // The CTA links to the card detail page, so it carries the card id, not the run id.
+        expect(featured?.cardId).toBe(2);
     });
 });
 
@@ -99,7 +101,7 @@ describe('kartuStripItem', () => {
     it('returns a strip item with rarity + key derived from card id', () => {
         const run = runWith({}, { id: 42, rarity: 'rare', special_move: 'Cool Move' });
         const item = kartuStripItem(run);
-        expect(item).toMatchObject({ key: 'card-42', name: 'Cool Move', rarity: 'rare' });
+        expect(item).toMatchObject({ key: 'card-42', cardId: 42, name: 'Cool Move', rarity: 'rare' });
     });
 });
 

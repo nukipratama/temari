@@ -41,10 +41,14 @@ export default function KartuMini({
     const rarityHex = RARITY_HEX[rarity];
     const moodColor = mood ? moodSigilColor(mood) : null;
     const rootStyle = { '--rarity': rarityHex } as CSSProperties;
+    // Pearl backdrop matching the full Kartu + canvas share card: a rarity tier
+    // glow up top, an optional mood echo bottom-right, over a cream depth gradient.
     const artStyle: CSSProperties = {
-        background: moodColor
-            ? `radial-gradient(ellipse at 50% 60%, ${moodColor}1f 0%, ${rarityHex}12 50%, var(--color-cream) 82%)`
-            : `radial-gradient(ellipse at 50% 60%, ${rarityHex}12 0%, var(--color-cream) 82%)`,
+        background: [
+            `radial-gradient(ellipse at 30% 26%, ${rarityHex}30 0%, ${rarityHex}12 42%, transparent 70%)`,
+            moodColor ? `radial-gradient(ellipse at 82% 84%, ${moodColor}22 0%, transparent 60%)` : '',
+            `linear-gradient(to bottom, #fcf9f3, var(--color-cream-deep))`,
+        ].filter(Boolean).join(', '),
     };
 
     return (

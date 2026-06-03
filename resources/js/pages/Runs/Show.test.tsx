@@ -166,8 +166,9 @@ describe('Runs/Show', () => {
     it('renders the splits per-km section + highlights the fastest km', () => {
         renderShow();
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
-        // Fastest is the 5:45 km
-        expect(screen.getByText(/5:45 di km 2/)).toBeInTheDocument();
+        // Fastest is the 5:45 km (km 2): caption leads with the km, value is the highlight.
+        expect(screen.getByText(/Paling kenceng di km 2/)).toBeInTheDocument();
+        expect(screen.getByText('5:45/km')).toBeInTheDocument();
     });
 
     it('renders the past-you strip when journeyMatch is present', () => {

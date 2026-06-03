@@ -25,7 +25,8 @@ export default function StatTile({
     className,
 }: Readonly<StatTileProps>) {
     const onSky = tone === 'sky';
-    const labelClass = onSky ? 'text-ink-on-sky' : 'text-ink-3';
+    const labelClass = onSky ? 'text-ink-on-sky' : 'text-ink-2';
+    const subClass = onSky ? 'text-ink-on-sky' : 'text-ink-3';
     const valueClass = onSky ? 'text-cream' : 'text-ink';
 
     return (
@@ -50,7 +51,7 @@ export default function StatTile({
                 {value}
             </div>
             {sub != null && (
-                <div className={cn('mt-1.5 font-sans text-xs', labelClass)}>{sub}</div>
+                <div className={cn('mt-1.5 font-sans text-xs', subClass)}>{sub}</div>
             )}
         </div>
     );

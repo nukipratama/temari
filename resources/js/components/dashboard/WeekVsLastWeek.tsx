@@ -31,7 +31,7 @@ export default function WeekVsLastWeek({ data, className }: Readonly<WeekVsLastW
             )}
         >
             <div className="flex items-start justify-between gap-3">
-                <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
                     Minggu ini vs minggu lalu
                 </h3>
             </div>

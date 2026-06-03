@@ -19,7 +19,7 @@ export default function CollectionHeader({
     return (
         <header className="flex flex-col gap-5">
             <div>
-                <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
+                <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-2">
                     {eyebrow}
                 </div>
                 <h1 className="font-display text-display-lg text-ink">

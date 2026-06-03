@@ -13,7 +13,7 @@ export default function SectionLabel({ children, onSky = false, className }: Rea
         <div
             className={cn(
                 'mb-3.5 flex items-center gap-3 text-label-small',
-                onSky ? 'text-ink-on-sky' : 'text-ink-3',
+                onSky ? 'text-ink-on-sky' : 'text-ink-2',
                 className,
             )}
         >

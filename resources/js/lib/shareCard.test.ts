@@ -82,13 +82,13 @@ beforeEach(() => {
 });
 
 describe('drawShareCard', () => {
-    const layouts: Layout[] = ['kartu', 'rute', 'struk'];
+    const layouts: Layout[] = ['kartu', 'rute'];
     const formats: Format[] = ['story', 'feed'];
 
     it.each(layouts)('paints the %s layout at the fixed story resolution', async (layout) => {
         const ctx = makeCtx();
         const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
-        await drawShareCard(canvas, { kartu, theme: 'Dawn', layout, format: 'story', showStats: true, showQuote: true });
+        await drawShareCard(canvas, { kartu, layout, format: 'story' });
         expect(canvas.width).toBe(1080);
         expect(canvas.height).toBe(1920);
         expect(ctx.fillRect).toHaveBeenCalled(); // background painted
@@ -98,14 +98,36 @@ describe('drawShareCard', () => {
     it.each(formats)('uses the right canvas size for %s', async (format) => {
         const ctx = makeCtx();
         const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
-        await drawShareCard(canvas, { kartu, theme: 'Cream', layout: 'rute', format, showStats: true, showQuote: false });
+        await drawShareCard(canvas, { kartu, layout: 'rute', format });
         expect(canvas.height).toBe(format === 'story' ? 1920 : 1080);
+    });
+
+    const rarities: ShareKartuData['rarity'][] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+
+    it.each(rarities)('renders the redesigned kartu hero for %s rarity (route + mascot)', async (rarity) => {
+        const ctx = makeCtx();
+        const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
+        await drawShareCard(canvas, { kartu: { ...kartu, rarity }, layout: 'kartu', format: 'story' });
+        // Pearl backdrop gradients + glowing route stroke + corner mascot.
+        expect(ctx.createLinearGradient).toHaveBeenCalled();
+        expect(ctx.createRadialGradient).toHaveBeenCalled();
+        expect(ctx.stroke).toHaveBeenCalled();
+        expect(ctx.drawImage).toHaveBeenCalled();
+    });
+
+    it('still renders the kartu hero when the run has no GPS route', async () => {
+        const ctx = makeCtx();
+        const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
+        await drawShareCard(canvas, { kartu: { ...kartu, polyline: null }, layout: 'kartu', format: 'story' });
+        // Mascot grows into the empty window as the fallback hero.
+        expect(ctx.drawImage).toHaveBeenCalled();
+        expect(ctx.fillText).toHaveBeenCalled();
     });
 
     it('does not throw when the 2d context is unavailable', async () => {
         const canvas = { width: 0, height: 0, getContext: () => null } as unknown as HTMLCanvasElement;
         await expect(
-            drawShareCard(canvas, { kartu, theme: 'Sky', layout: 'rute', format: 'feed', showStats: false, showQuote: false }),
+            drawShareCard(canvas, { kartu, layout: 'rute', format: 'feed' }),
         ).resolves.toBeUndefined();
     });
 });
@@ -123,7 +145,7 @@ describe('shareCardBlob', () => {
         vi.spyOn(document, 'createElement').mockReturnValue(canvas as unknown as HTMLCanvasElement);
 
         await expect(
-            shareCardBlob({ kartu, theme: 'Dawn', layout: 'kartu', format: 'story', showStats: true, showQuote: true }),
+            shareCardBlob({ kartu, layout: 'kartu', format: 'story' }),
         ).resolves.toBe(blob);
     });
 
@@ -138,7 +160,7 @@ describe('shareCardBlob', () => {
         vi.spyOn(document, 'createElement').mockReturnValue(canvas as unknown as HTMLCanvasElement);
 
         await expect(
-            shareCardBlob({ kartu, theme: 'Cream', layout: 'struk', format: 'feed', showStats: false, showQuote: false }),
+            shareCardBlob({ kartu, layout: 'rute', format: 'feed' }),
         ).rejects.toThrow('toBlob failed');
     });
 });

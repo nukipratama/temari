@@ -4,6 +4,7 @@ import MotionLink from '@/components/MotionLink';
 import { Icon } from '@iconify/react';
 import { pressShrink } from '@/lib/motion';
 import { moodFromActivity } from '@/lib/moodFromActivity';
+import { aktivitasUrl } from '@/lib/routes';
 import TemariMascot from '@/components/temari/TemariMascot';
 import MoodChip from '@/components/ui/MoodChip';
 import { MOOD_LABEL } from '@/lib/mood';
@@ -30,7 +31,7 @@ export default function RunListRow({ detail, mood = null, note = null }: Readonl
 
     return (
         <MotionLink
-            href={`/aktivitas/${detail.activity_id}`}
+            href={aktivitasUrl(detail)}
             whileTap={pressShrink}
             className="flex items-start gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface"
         >
@@ -88,7 +89,7 @@ function Cell({ value, unit, emphasize = false, hideOnNarrow }: Readonly<CellPro
     return (
         <div className={cn('text-center', hideOnNarrow && HIDE_CLASSES[hideOnNarrow])}>
             <div className={cn('text-ink', emphasize && 'font-bold')}>{value}</div>
-            <div className="font-mono text-[11px] uppercase tracking-wide text-ink-3">{unit}</div>
+            <div className="font-mono font-bold text-[11px] uppercase tracking-wide text-ink-2">{unit}</div>
         </div>
     );
 }
