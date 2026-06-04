@@ -194,14 +194,23 @@ export default function Aku({
                             “Strava {identity.strava_connected ? 'tersambung' : 'belum nyambung'}. {identity.strava_connected ? 'Lari baru otomatis kepoin.' : 'Sambungin biar lari baru kebaca.'}”
                         </p>
                     </div>
-                    {!identity.strava_connected && (
-                        <Link
+                    {identity.strava_connected ? (
+                        <button
+                            type="button"
+                            onClick={() => router.post('/strava/sync', {}, { preserveScroll: true })}
+                            className="focus-ring inline-flex flex-none items-center gap-2 rounded-full border border-cream-deep bg-cream px-4 py-2 text-xs font-semibold text-ink-2 transition hover:text-ink"
+                        >
+                            <Icon icon="mdi:sync" width={14} height={14} aria-hidden className="text-ink-3" />
+                            Sync sekarang
+                        </button>
+                    ) : (
+                        <a
                             href="/auth/strava/redirect"
-                            className="inline-flex items-center gap-2 rounded-full bg-strava-orange px-4 py-2 text-xs font-semibold text-white hover:bg-strava-orange-hover"
+                            className="inline-flex flex-none items-center gap-2 rounded-full bg-strava-orange px-4 py-2 text-xs font-semibold text-white hover:bg-strava-orange-hover"
                         >
                             <Icon icon="mdi:strava" width={14} height={14} aria-hidden />
                             Sambungkan
-                        </Link>
+                        </a>
                     )}
                 </Card>
 

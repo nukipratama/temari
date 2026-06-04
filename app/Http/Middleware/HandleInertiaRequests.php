@@ -60,12 +60,12 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{connected: bool, last_synced_at: string|null}
+     * @return array{state: string, last_synced_at: string|null}
      */
     private function stravaSyncFor(?User $user): array
     {
         if ($user === null) {
-            return ['connected' => false, 'last_synced_at' => null];
+            return ['state' => 'disconnected', 'last_synced_at' => null];
         }
 
         return Cache::remember(
@@ -76,13 +76,24 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{connected: bool, last_synced_at: string|null}
+     * Resolve the honest connection state the UI branches on (the client derives
+     * "connected" from this, so it is not shipped separately):
+     *  - `disconnected`: no Strava connection at all.
+     *  - `revoked`: connection exists but was revoked (token rejected / deauthorized).
+     *  - `syncing`: connected, but no analyzed run has landed yet (backfill in flight).
+     *  - `ready`: at least one analyzed run is on the dashboard.
+     *
+     * @return array{state: string, last_synced_at: string|null}
      */
     private function computeStravaSyncFor(User $user): array
     {
-        $connected = $user->stravaConnection !== null;
-        if (! $connected) {
-            return ['connected' => false, 'last_synced_at' => null];
+        $connection = $user->stravaConnection;
+        if ($connection === null) {
+            return ['state' => 'disconnected', 'last_synced_at' => null];
+        }
+
+        if ($connection->isRevoked()) {
+            return ['state' => 'revoked', 'last_synced_at' => null];
         }
 
         // Use the most-recent activity ingest timestamp as the human-facing
@@ -94,8 +105,13 @@ class HandleInertiaRequests extends Middleware
             ->orderByDesc('fetched_at')
             ->value('fetched_at');
 
+        $hasAnalyzed = Activity::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('analyzed_at')
+            ->exists();
+
         return [
-            'connected' => true,
+            'state' => $hasAnalyzed ? 'ready' : 'syncing',
             'last_synced_at' => $latest?->toIso8601String(),
         ];
     }

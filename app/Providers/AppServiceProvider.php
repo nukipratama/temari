@@ -48,5 +48,15 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute($perMinute)->by($key);
         });
+
+        // "Sync now" button. The orchestrator lock already de-dupes overlapping
+        // syncs; this just keeps an impatient tapper from flooding the queue.
+        RateLimiter::for('strava-sync', function (Request $request): Limit {
+            $key = $request->user()?->id !== null
+                ? (string) $request->user()->id
+                : (string) $request->ip();
+
+            return Limit::perMinute(2)->by($key);
+        });
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Http\Client\RequestException;
@@ -49,7 +50,17 @@ class StravaAuthController extends Controller
         // in the `scope` query param. Store those, not what we requested.
         $grantedScopes = (string) $request->query('scope', '');
 
-        Auth::login($this->upsertUser($stravaUser, $grantedScopes), remember: true);
+        [$user, $isFreshConnection] = $this->upsertUser($stravaUser, $grantedScopes);
+
+        Auth::login($user, remember: true);
+
+        // First-ever connect: pull the athlete's full history now so the
+        // dashboard isn't empty until the hourly poll runs. Re-logins skip this
+        // (the "Sync now" button covers a manual re-pull) — the orchestrator's
+        // per-user lock + insertOrIgnore make a redundant dispatch harmless anyway.
+        if ($isFreshConnection) {
+            SyncActivitiesJob::dispatch($user->id);
+        }
 
         return redirect()->intended(route('dashboard'));
     }
@@ -70,7 +81,14 @@ class StravaAuthController extends Controller
         return $driver->redirectUrl(route('auth.strava.callback'));
     }
 
-    private function upsertUser(SocialiteUser $stravaUser, string $grantedScopes = ''): User
+    /**
+     * Upsert the athlete's user + connection. Returns the user alongside a flag
+     * that is true only when the Strava connection was created for the first
+     * time (so the caller can kick off a one-time history backfill).
+     *
+     * @return array{0: User, 1: bool}
+     */
+    private function upsertUser(SocialiteUser $stravaUser, string $grantedScopes = ''): array
     {
         $scopes = $grantedScopes !== '' ? $grantedScopes : implode(',', self::SCOPES);
 
@@ -103,7 +121,7 @@ class StravaAuthController extends Controller
             $connection->user->fill($userAttributes)->save();
             $connection->fill($connectionAttributes)->save();
 
-            return $connection->user;
+            return [$connection->user, false];
         }
 
         $user = User::create($userAttributes);
@@ -112,6 +130,6 @@ class StravaAuthController extends Controller
             ...$connectionAttributes,
         ]);
 
-        return $user;
+        return [$user, true];
     }
 }

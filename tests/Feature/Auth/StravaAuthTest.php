@@ -2,17 +2,23 @@
 
 declare(strict_types=1);
 
+use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
 uses(RefreshDatabase::class);
+
+// The callback dispatches a backfill job on a fresh connect; fake the bus so it
+// is recorded rather than run inline against the real Strava API.
+beforeEach(fn () => Bus::fake());
 
 it('shows the login page to guests', function (): void {
     $this->get(route('login'))
@@ -82,6 +88,12 @@ it('creates a new user from the strava callback and logs them in', function (): 
         ->and($connection->access_token)->toBe('access-token-xyz')
         ->and($connection->refresh_token)->toBe('refresh-token-xyz')
         ->and($connection->scopes)->toBe('read,activity:read_all');
+
+    // First connect kicks off a full-history backfill (no single-activity scope).
+    Bus::assertDispatched(
+        SyncActivitiesJob::class,
+        fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null,
+    );
 });
 
 it('stores only the granted scopes and logs when a required scope is declined', function (): void {
@@ -138,6 +150,9 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
     expect($existingUser->name)->toBe('New Name')
         ->and($existingUser->stravaConnection->access_token)->toBe('new-access')
         ->and($existingUser->stravaConnection->refresh_token)->toBe('new-refresh');
+
+    // Re-login on an existing connection must NOT re-trigger a backfill.
+    Bus::assertNotDispatched(SyncActivitiesJob::class);
 });
 
 it('redirects back to login when strava returns an error', function (): void {

@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useCallback, useMemo, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
@@ -10,6 +10,7 @@ import PageHero from '@/components/ui/PageHero';
 import RiwayatFilter, { type MoodOption, type RangeOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import BackLink from '@/components/ui/BackLink';
+import StravaSyncButton from '@/components/StravaSyncButton';
 import TemariMascot from '@/components/temari/TemariMascot';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
@@ -18,7 +19,7 @@ import { MOOD_HINT, MOOD_LABEL, MOOD_FILL, MOOD_ORDER } from '@/lib/mood';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
 import PageContainer from '@/components/ui/PageContainer';
-import type { Activity, ActivityDetail, AnalysisPayload, FormStatus, Mood } from '@/types/inertia';
+import type { Activity, ActivityDetail, AnalysisPayload, FormStatus, Mood, SharedProps, StravaSyncState } from '@/types/inertia';
 
 interface WeeklySnapshotRow {
     id: number;
@@ -340,12 +341,36 @@ function Stat({ icon, label }: Readonly<{ icon: string; label: string }>) {
     );
 }
 
+const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
+    disconnected: {
+        line: 'Sambungin Strava dulu ya',
+        sub: 'Aku baca lari kamu dari Strava. Sambungin biar riwayatnya keisi.',
+    },
+    revoked: {
+        line: 'Sambungan Strava putus',
+        sub: 'Token kamu udah gak aktif. Sambungin lagi biar lari baru kebaca.',
+    },
+    syncing: {
+        line: 'Aku lagi narik lari kamu 🏃‍♀️',
+        sub: 'Sebentar ya, riwayatnya muncul begitu lari pertama masuk.',
+    },
+    ready: {
+        line: 'Belum ada lari di rentang ini',
+        sub: 'Coba ganti filter, atau sync lagi kalau baru kelar lari.',
+    },
+};
+
 function EmptyState() {
+    const { stravaSync } = usePage<SharedProps>().props;
+    const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
+    const { line, sub } = EMPTY_COPY[state];
+
     return (
         <Card tone="empty" padding="lg" className="flex flex-col items-center text-center">
             <TemariMascot mood="enteng" sizeClass="h-32 w-32" idle="mood" />
-            <p className="mt-4 font-display text-2xl italic text-ink-2">Aku lagi nungguin kamu lari 🏃‍♀️</p>
-            <p className="mt-2 font-sans text-sm text-ink-2">Sync lari pertama kamu dari Strava dulu ya.</p>
+            <p className="mt-4 font-display text-2xl italic text-ink-2">{line}</p>
+            <p className="mt-2 font-sans text-sm text-ink-2">{sub}</p>
+            <StravaSyncButton state={state} className="mt-4" />
             <BackLink href="/" tone="accent" className="mt-4">
                 Kembali ke Hari Ini
             </BackLink>

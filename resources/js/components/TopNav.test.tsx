@@ -12,7 +12,7 @@ const user = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
     vi.mocked(router.post).mockReset();
-    setMockPage({ ...user(), stravaSync: { connected: false, last_synced_at: null } });
+    setMockPage({ ...user(), stravaSync: { state: 'disconnected', last_synced_at: null } });
 });
 
 describe('TopNav', () => {
@@ -39,14 +39,14 @@ describe('TopNav', () => {
     it('renders the synced Strava pill with relative time when connected', () => {
         setMockPage({
             ...user(),
-            stravaSync: { connected: true, last_synced_at: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
+            stravaSync: { state: 'ready', last_synced_at: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
         });
         render(<TopNav />);
         expect(screen.getByText(/Strava synced/)).toBeInTheDocument();
     });
 
     it('renders synced label without timestamp when last_synced_at is null', () => {
-        setMockPage({ ...user(), stravaSync: { connected: true, last_synced_at: null } });
+        setMockPage({ ...user(), stravaSync: { state: 'ready', last_synced_at: null } });
         render(<TopNav />);
         expect(screen.getByText('Strava synced')).toBeInTheDocument();
     });

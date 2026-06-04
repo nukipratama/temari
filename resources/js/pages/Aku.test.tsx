@@ -101,6 +101,13 @@ describe('Aku', () => {
         expect(screen.getByText(/belum nyambung/)).toBeInTheDocument();
     });
 
+    it('posts to /strava/sync when connected and Sync sekarang is clicked', () => {
+        vi.mocked(router.post).mockReset();
+        render(<Aku identity={identity} stats={stats} />);
+        fireEvent.click(screen.getByText('Sync sekarang'));
+        expect(router.post).toHaveBeenCalledWith('/strava/sync', {}, { preserveScroll: true });
+    });
+
     it('renders the mobile-only logout footer + posts to /logout on click', () => {
         vi.mocked(router.post).mockReset();
         render(<Aku identity={identity} stats={stats} />);

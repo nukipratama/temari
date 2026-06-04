@@ -17,6 +17,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\Strava\StravaWebhookController;
+use App\Http\Controllers\Strava\SyncController;
 use App\Http\Controllers\TokenUsageController;
 use Illuminate\Support\Facades\Route;
 
@@ -54,6 +55,10 @@ Route::middleware('auth')->group(function (): void {
         ->name('api.aksesori.equip');
 
     Route::get('/profil', ProfileController::class)->name('profil');
+
+    Route::post('/strava/sync', SyncController::class)
+        ->middleware('throttle:strava-sync')
+        ->name('strava.sync');
 
     Route::post('/logout', [StravaAuthController::class, 'logout'])->name('auth.logout');
 

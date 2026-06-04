@@ -1,8 +1,33 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
+import StravaSyncButton from '@/components/StravaSyncButton';
 import Temari from '@/components/temari/Temari';
+import type { SharedProps, StravaSyncState } from '@/types/inertia';
+
+const HERO: Record<StravaSyncState, { eyebrow: string; headline: string; copy: string }> = {
+    disconnected: {
+        eyebrow: '★ Belum nyambung',
+        headline: 'Sambungin Strava dulu',
+        copy: 'Aku baca lari kamu langsung dari Strava. Sambungin dulu biar kartu pertamamu mulai jalan.',
+    },
+    revoked: {
+        eyebrow: '★ Sambungan putus',
+        headline: 'Sambungan Strava putus',
+        copy: 'Token Strava kamu udah gak aktif. Sambungin lagi yuk biar lari baru kebaca.',
+    },
+    syncing: {
+        eyebrow: '★ Lagi narik',
+        headline: 'Lari kamu lagi ditarik dari Strava',
+        copy: 'Sebentar ya, begitu lari pertamamu masuk, aku langsung baca dan kartunya muncul.',
+    },
+    ready: {
+        eyebrow: '★ Belum ada',
+        headline: 'Belum nemu lari baru',
+        copy: 'Kalau kamu baru kelar lari, coba sync lagi biar langsung kebaca.',
+    },
+};
 
 const ACTIONS = [
     {
@@ -26,6 +51,10 @@ const ACTIONS = [
 ] as const;
 
 export default function EmptyRunsState() {
+    const { stravaSync } = usePage<SharedProps>().props;
+    const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
+    const hero = HERO[state];
+
     return (
         <div className="flex flex-col items-center gap-8 px-5 py-10 sm:px-8 lg:px-14">
             {/* Temari + headline */}
@@ -33,16 +62,15 @@ export default function EmptyRunsState() {
                 <Temari pose="reading" size={140} />
                 <div>
                     <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
-                        ★ Lagi nungguin
+                        {hero.eyebrow}
                     </div>
-                    <h2 className="font-display text-display-sm text-ink">
-                        Belum ada lari yang masuk.
-                    </h2>
+                    <h2 className="font-display text-display-sm text-ink">{hero.headline}</h2>
                     <p className="mx-auto mt-3 max-w-sm font-display text-quote-sm italic leading-relaxed text-ink-2">
-                        &ldquo;Begitu kamu kelar lari pertamamu, aku langsung baca. Kartu
-                        pertamamu udah aku siapin di lemari.&rdquo;
+                        &ldquo;{hero.copy}&rdquo;
                     </p>
                 </div>
+
+                <StravaSyncButton state={state} />
             </div>
 
             {/* Sambil nungguin */}

@@ -37,6 +37,7 @@ beforeEach(() => {
         auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
         flash: {},
         demoLoginEnabled: false,
+        stravaSync: { state: 'syncing', last_synced_at: null },
     });
 });
 
@@ -50,7 +51,7 @@ describe('Riwayat/Jejak', () => {
                 weeklySnapshots={[]}
             />,
         );
-        expect(screen.getByText(/Aku lagi nungguin kamu lari/i)).toBeInTheDocument();
+        expect(screen.getByText(/Aku lagi narik lari kamu/i)).toBeInTheDocument();
     });
 
     it('groups runs into weekly buckets + renders weekly snapshot stats', () => {

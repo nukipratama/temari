@@ -39,8 +39,15 @@ export interface PendingReveal {
     is_replay?: boolean;
 }
 
+export type StravaSyncState = 'disconnected' | 'revoked' | 'syncing' | 'ready';
+
 export interface StravaSync {
-    connected: boolean;
+    /**
+     * Honest connection/ingest state the UI branches on. `syncing` means
+     * connected but no analyzed run has landed yet (backfill in flight); a
+     * "connected" boolean is derived from this, not shipped separately.
+     */
+    state: StravaSyncState;
     last_synced_at: string | null;
 }
 

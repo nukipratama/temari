@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn';
 import { formatRelativeId } from '@/lib/pace';
-import type { StravaSync } from '@/types/inertia';
+import type { StravaSync, StravaSyncState } from '@/types/inertia';
 
 interface StravaSyncBadgeProps {
     sync: StravaSync | null;
@@ -9,21 +9,13 @@ interface StravaSyncBadgeProps {
 }
 
 export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<StravaSyncBadgeProps>) {
-    const connected = sync !== null && sync.connected;
-    const relative = connected && sync.last_synced_at ? formatRelativeId(sync.last_synced_at) : null;
+    // Default a missing prop to disconnected so a brief server/client deploy
+    // skew never renders a blank badge.
+    const state: StravaSyncState = sync?.state ?? 'disconnected';
+    const relative = state === 'ready' && sync?.last_synced_at ? formatRelativeId(sync.last_synced_at) : null;
     const isCompact = density === 'compact';
 
-    const syncedAriaLabel = relative ? `Strava synced ${relative}` : 'Strava synced';
-    const ariaLabel = connected ? syncedAriaLabel : 'Strava belum nyambung';
-
-    let label: string;
-    if (!connected) {
-        label = 'Strava';
-    } else if (isCompact) {
-        label = relative ?? 'Synced';
-    } else {
-        label = relative ? `Strava synced · ${relative}` : 'Strava synced';
-    }
+    const { label, ariaLabel, dotClass } = resolveBadge(state, relative, isCompact);
 
     return (
         <span
@@ -33,8 +25,39 @@ export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<S
                 isCompact ? 'gap-1.5 px-2.5 py-1.5 text-[11px]' : 'gap-2 px-3.5 py-2 text-[11px]',
             )}
         >
-            <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', connected ? 'bg-leaf' : 'bg-ink-3/40')} />
+            <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />
             {label}
         </span>
     );
+}
+
+function resolveBadge(
+    state: StravaSyncState,
+    relative: string | null,
+    isCompact: boolean,
+): { label: string; ariaLabel: string; dotClass: string } {
+    switch (state) {
+        case 'ready': {
+            const full = relative ? `Strava synced · ${relative}` : 'Strava synced';
+            return {
+                label: isCompact ? (relative ?? 'Synced') : full,
+                ariaLabel: relative ? `Strava synced ${relative}` : 'Strava synced',
+                dotClass: 'bg-leaf',
+            };
+        }
+        case 'syncing':
+            return {
+                label: isCompact ? 'Sinkron' : 'Lagi sinkron',
+                ariaLabel: 'Strava lagi sinkron',
+                dotClass: 'bg-horizon animate-pulse',
+            };
+        case 'revoked':
+            return {
+                label: isCompact ? 'Putus' : 'Strava putus',
+                ariaLabel: 'Sambungan Strava putus',
+                dotClass: 'bg-ember',
+            };
+        default:
+            return { label: 'Strava', ariaLabel: 'Strava belum nyambung', dotClass: 'bg-ink-3/40' };
+    }
 }
