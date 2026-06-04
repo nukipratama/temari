@@ -20,7 +20,7 @@ Artisan::command('dev:fresh {--force : Required outside the local environment}',
     }
 
     $this->call('migrate:fresh', app()->environment('local') ? [] : ['--force' => true]);
-    $this->callSilently('horizon:clear');
+    $this->call('horizon:clear', app()->environment('local') ? [] : ['--force' => true]);
     $this->newLine();
     $this->call('demo:seed', ['--fresh' => true]);
 })->purpose('migrate:fresh + horizon:clear + demo seed (--force required outside local)');
