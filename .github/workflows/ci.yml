@@ -228,10 +228,9 @@ jobs:
           echo "Backup OK: $out ($size bytes)"
           ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz | tail -n +11 | xargs -r rm
 
-      - name: Backup analytics schema before migrate (if present)
-        # ai_token_usages cost history lives in its own schema, so it needs its
-        # own dump in the rollback safety net. Skipped before the schema exists
-        # (first deploy). Distinct filename so the main prune glob won't catch it.
+      - name: Backup analytics schema
+        # Own dump + filename (so the main prune glob won't match it); skipped
+        # until the schema exists.
         run: |
           out="$BACKUP_DIR/analytics-pre-deploy-${{ github.sha }}.sql.gz"
           if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "USE $adb"' 2>/dev/null; then
@@ -247,12 +246,9 @@ jobs:
       - name: Migrate (one-shot, on the new image)
         run: $COMPOSE run --rm app php artisan migrate --force
 
-      - name: Bootstrap + migrate analytics schema (seamless; no manual step)
-        # Make the analytics schema self-bootstrapping so no manual step is
-        # needed: create the schema as root (the app may connect as a non-root
-        # user) + grant, then apply analytics migrations as the app user. Both
-        # idempotent — safe on every deploy. The create+grant SQL is piped into
-        # the mysql container to avoid SQL-quoting hell in YAML.
+      - name: Migrate analytics schema
+        # Create + grant (root, via the piped script) then migrate as the app
+        # user. Idempotent.
         run: |
           $COMPOSE exec -T mysql sh < docker/mysql/init/01-analytics-db.sh
           $COMPOSE run --rm app php artisan migrate --database=analytics --path=database/migrations/analytics --force
