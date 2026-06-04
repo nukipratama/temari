@@ -183,7 +183,13 @@ return [
         SlowJobs::class => [
             'enabled' => env('PULSE_SLOW_JOBS_ENABLED', true),
             'sample_rate' => env('PULSE_SLOW_JOBS_SAMPLE_RATE', 1),
-            'threshold' => env('PULSE_SLOW_JOBS_THRESHOLD', 1000),
+            // AI narration jobs are LLM-bound and slow by nature, so the stock 1s
+            // threshold would flag every one. Give them a wide budget so the Slow
+            // Jobs card surfaces real anomalies, not "the LLM is slow".
+            'threshold' => [
+                '#^App\\\\Jobs\\\\AI\\\\#' => 30_000,
+                'default' => env('PULSE_SLOW_JOBS_THRESHOLD', 1000),
+            ],
             'ignore' => [
                 // '/^Package\\\\Jobs\\\\/',
             ],
@@ -192,14 +198,21 @@ return [
         SlowOutgoingRequests::class => [
             'enabled' => env('PULSE_SLOW_OUTGOING_REQUESTS_ENABLED', true),
             'sample_rate' => env('PULSE_SLOW_OUTGOING_REQUESTS_SAMPLE_RATE', 1),
-            'threshold' => env('PULSE_SLOW_OUTGOING_REQUESTS_THRESHOLD', 1000),
+            // Azure OpenAI completions take seconds; match on the deployment path
+            // (host-agnostic) and give them slack. Everything else (Strava etc.)
+            // stays at 1s so a genuinely hung call still stands out.
+            'threshold' => [
+                '#/openai/deployments/#' => 20_000,
+                'default' => env('PULSE_SLOW_OUTGOING_REQUESTS_THRESHOLD', 1000),
+            ],
             'ignore' => [
                 // '#^http://127\.0\.0\.1:13714#', // Inertia SSR...
             ],
+            // Collapse Strava's per-activity URLs into one labeled row so a slow
+            // Strava call is visible instead of scattered across hundreds of IDs.
             'groups' => [
-                // '#^https://api\.github\.com/repos/.*$#' => 'api.github.com/repos/*',
-                // '#^https?://([^/]*).*$#' => '\1',
-                // '#/\d+#' => '/*',
+                '#^https://www\.strava\.com/api/v3/.*#' => 'strava.com/api/v3/*',
+                '#^https://www\.strava\.com/oauth/token.*#' => 'strava.com/oauth/token',
             ],
         ],
 

@@ -26,7 +26,7 @@ class TokenUsageController extends Controller
             ? Carbon::parse($validated['to'])->endOfDay()
             : Carbon::now();
 
-        $rows = DB::table('ai_token_usages')
+        $rows = DB::connection('analytics')->table('ai_token_usages')
             ->whereBetween('created_at', [$from, $to])
             ->selectRaw(
                 'kind, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
@@ -59,24 +59,30 @@ class TokenUsageController extends Controller
             $totals['truncated_calls'] += $entry['truncated_calls'];
         }
 
-        $userRows = DB::table('ai_token_usages')
-            ->leftJoin('users', 'users.id', '=', 'ai_token_usages.user_id')
-            ->whereBetween('ai_token_usages.created_at', [$from, $to])
-            ->whereNotNull('ai_token_usages.user_id')
+        // user_id lives in the analytics schema; users in the app schema. A
+        // cross-schema join is fragile, so aggregate first, then resolve names
+        // from the default connection and stitch in PHP.
+        $userRows = DB::connection('analytics')->table('ai_token_usages')
+            ->whereBetween('created_at', [$from, $to])
+            ->whereNotNull('user_id')
             ->selectRaw(
-                'ai_token_usages.user_id as user_id, users.name as user_name, '.
-                'SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
+                'user_id, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
                 'SUM(total_tokens) as total, COUNT(*) as calls'
             )
-            ->groupBy('ai_token_usages.user_id', 'users.name')
+            ->groupBy('user_id')
             ->orderByDesc('total')
             ->get();
 
+        $userNames = DB::table('users')
+            ->whereIn('id', $userRows->pluck('user_id')->all())
+            ->pluck('name', 'id');
+
         $byUser = [];
         foreach ($userRows as $row) {
+            $name = $userNames[$row->user_id] ?? null;
             $byUser[] = [
                 'user_id' => (int) $row->user_id,
-                'user_name' => $row->user_name === null ? null : (string) $row->user_name,
+                'user_name' => $name === null ? null : (string) $name,
                 'prompt' => (int) $row->prompt,
                 'completion' => (int) $row->completion,
                 'total' => (int) $row->total,

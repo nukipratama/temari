@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Listeners\VerifyDependencies;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\VerdictTimeline;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -33,7 +35,18 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // The analytics-schema migrations live outside the default path (they
+        // run via `--path` against the `analytics` connection in dev/prod). In
+        // testing the analytics connection shares the default test DB, so load
+        // them into the normal migrate run that RefreshDatabase performs.
+        if ($this->app->environment('testing')) {
+            $this->loadMigrationsFrom(database_path('migrations/analytics'));
+        }
+
         Event::listen(SocialiteWasCalled::class, StravaExtendSocialite::class);
+
+        // Deepen the `/up` health route to fail when MySQL or Redis is unreachable.
+        Event::listen(DiagnosingHealth::class, VerifyDependencies::class);
 
         // Edge basicauth (docker/Caddyfile) gates these in prod. The `?Authenticatable`
         // param is what makes the gate accept guests — a zero-param closure 403s them.
@@ -58,5 +71,9 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(2)->by($key);
         });
+
+        // Client-error telemetry sink. IP-keyed so a single misbehaving browser
+        // (error loop) can't flood the logs.
+        RateLimiter::for('client-errors', fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->ip()));
     }
 }

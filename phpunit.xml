@@ -28,6 +28,9 @@
         <env name="DB_HOST" value="mysql_test"/>
         <env name="DB_PORT" value="3306"/>
         <env name="DB_DATABASE" value="teman_lari_testing"/>
+        <!-- analytics connection co-locates in the default test DB; TestCase
+             re-points it at the per-process DB before RefreshDatabase boots. -->
+        <env name="DB_ANALYTICS_DATABASE" value="teman_lari_testing"/>
         <env name="DB_USERNAME" value="sail"/>
         <env name="DB_PASSWORD" value="password"/>
         <env name="DB_URL" value=""/>

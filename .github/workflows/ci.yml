@@ -231,8 +231,11 @@ jobs:
       - name: Migrate (one-shot, on the new image)
         run: $COMPOSE run --rm app php artisan migrate --force
 
-      - name: Roll app, horizon, scheduler onto the new image
-        run: $COMPOSE up -d --no-deps app horizon scheduler
+      - name: Roll app, workers + Pulse daemons onto the new image
+        # pulse-check (Servers recorder), pulse-work (drains the ingest stream)
+        # and pulse-redis (dedicated ingest buffer) must come up too — the app
+        # now ingests Pulse via redis, so pulse-redis has to be running.
+        run: $COMPOSE up -d --no-deps app horizon scheduler pulse-check pulse-work pulse-redis
 
       - name: Optimize caches
         # Runs inside the running container where compose.prod.yaml's env

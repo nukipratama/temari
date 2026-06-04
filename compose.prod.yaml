@@ -13,7 +13,11 @@ x-app-env: &app-env
   APP_NAME: "TemanLari - Setiap Langkah Berarti"
   APP_ENV: production
   APP_DEBUG: "false"
-  LOG_CHANNEL: daily
+  # stack fans out to both: daily = persisted rotated history (survives deploys
+  # via the app_logs volume), stderr = live `docker compose logs`. Both channels
+  # are defined in config/logging.php.
+  LOG_CHANNEL: stack
+  LOG_STACK: "daily,stderr"
   LOG_LEVEL: info
   DB_CONNECTION: mysql
   DB_HOST: mysql
@@ -29,6 +33,15 @@ x-app-env: &app-env
   CACHE_STORE: redis
   TRUSTED_PROXIES: "127.0.0.1"
   PULSE_ENABLED: "true"
+  # Stable name so the Servers card isn't a random per-container hash. Ingest is
+  # offloaded to a dedicated pulse-redis (drained by pulse-work) — see below.
+  PULSE_SERVER_NAME: teman-lari-homelab
+  PULSE_INGEST_DRIVER: redis
+  PULSE_REDIS_CONNECTION: pulse
+  PULSE_REDIS_HOST: pulse-redis
+  # Servers recorder runs only in pulse-check, which bind-mounts the host root
+  # read-only at /host so the disk metric reflects the real homelab disk.
+  PULSE_SERVER_DIRECTORIES: "/host"
   OCTANE_SERVER: frankenphp
   OCTANE_MAX_REQUESTS: "2000"
   FRANKENPHP_NUM_WORKERS: "2"
@@ -49,6 +62,15 @@ x-app-base: &app-base
     redis-cache:
       condition: service_healthy
   networks: [internal]
+  volumes:
+    # Persist rotated daily logs across container recreation (deploys).
+    - app_logs:/var/www/html/storage/logs
+  logging:
+    # Bound the json-file sink so the stderr stream can't fill the disk.
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 services:
   app:
@@ -92,6 +114,78 @@ services:
           cpus: "0.5"
           memory: 256m
 
+  # Pulse Servers recorder daemon. Without this the /pulse Servers card is empty.
+  # Bind-mounts the host root read-only so the disk metric is the real homelab
+  # disk, not this container's overlay fs (PULSE_SERVER_DIRECTORIES=/host).
+  pulse-check:
+    <<: *app-base
+    command: ["php", "artisan", "pulse:check"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      pulse-redis:
+        condition: service_healthy
+    volumes:
+      - app_logs:/var/www/html/storage/logs
+      - /:/host:ro
+    healthcheck:
+      disable: true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128m
+
+  # Drains the Pulse ingest stream (pulse-redis) into MySQL. If this is down the
+  # dashboard silently stops updating — entries buffer in pulse-redis (LRU).
+  pulse-work:
+    <<: *app-base
+    command: ["php", "artisan", "pulse:work"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      pulse-redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128m
+
+  # Dedicated ingest buffer for Pulse. MUST be separate from redis-data: a Pulse
+  # backlog here LRU-trims (just lost metrics) instead of filling the noeviction
+  # queue/session store and breaking job dispatch.
+  pulse-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - "redis-server"
+      - "--appendonly"
+      - "no"
+      - "--save"
+      - ""
+      - "--maxmemory"
+      - "64mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 96m
+
   mysql:
     image: mysql:8.4
     restart: unless-stopped
@@ -109,6 +203,9 @@ services:
       - "--skip-name-resolve"
     volumes:
       - mysql_data:/var/lib/mysql
+      # Creates the analytics schema + grant on a FRESH volume only. Existing
+      # volumes need `make analytics-init` (create + migrate + backfill) once.
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     networks: [internal]
     healthcheck:
       # CMD-SHELL form + $$ defers interpolation to runtime inside the container
@@ -182,6 +279,7 @@ services:
 volumes:
   mysql_data:
   redis_data:
+  app_logs:
 
 networks:
   internal:

@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CardController;
+use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MilestoneController;
 use App\Http\Controllers\ProfileController;
@@ -26,6 +27,12 @@ use Illuminate\Support\Facades\Route;
 // so it lives outside the auth middleware group.
 Route::get('/strava/webhook', [StravaWebhookController::class, 'verify'])->name('strava.webhook.verify');
 Route::post('/strava/webhook', [StravaWebhookController::class, 'handle'])->name('strava.webhook.handle');
+
+// Client-side error sink. Unauthenticated so it captures errors on guest pages
+// (e.g. /login) too; CSRF-exempt + IP rate-limited (low-risk telemetry).
+Route::post('/client-errors', ClientErrorController::class)
+    ->middleware('throttle:client-errors')
+    ->name('client-errors');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'show'])->name('login');

@@ -26,6 +26,10 @@ class TokenUsage extends Model
 {
     public $timestamps = false;
 
+    // Lives in the dedicated analytics schema so `migrate:fresh` of the app DB
+    // can't wipe cost history. See config/database.php `analytics` connection.
+    protected $connection = 'analytics';
+
     protected $table = 'ai_token_usages';
 
     /** @return array<string, string> */
