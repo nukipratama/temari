@@ -247,14 +247,17 @@ jobs:
         run: $COMPOSE run --rm app php artisan migrate --force
 
       - name: Migrate analytics schema
-        # Apply pending analytics migrations as the app user. The schema is
-        # created+granted at volume init (docker/mysql/init) or once by an admin
-        # with real root creds — NOT here (prod root password-auth isn't reliable
-        # post-init, and the app user can't CREATE DATABASE). Best-effort: a
-        # not-yet-bootstrapped schema must not block the rest of the deploy (the
-        # usage recorder swallows write failures regardless).
+        # Create the schema with the app's OWN working credentials, then migrate.
+        # The deploy can't use root (prod root password-auth is unreliable
+        # post-init), but DB_USERNAME/DB_PASSWORD are what the app authenticates
+        # with — so when that user may create schemas (e.g. connects as root)
+        # this is fully automatic. If it's a locked-down user, CREATE is denied
+        # and the step no-ops. Best-effort (continue-on-error) so it never blocks
+        # the deploy; the usage recorder swallows write failures regardless.
         continue-on-error: true
-        run: $COMPOSE run --rm app php artisan migrate --database=analytics --path=database/migrations/analytics --force
+        run: |
+          $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS $adb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"'
+          $COMPOSE run --rm app php artisan migrate --database=analytics --path=database/migrations/analytics --force
 
       - name: Roll app, workers + Pulse daemons onto the new image
         # pulse-check (Servers recorder), pulse-work (drains the ingest stream)
