@@ -10,6 +10,7 @@ use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pulse\Facades\Pulse;
 
 class SyncActivitiesJob implements ShouldQueue
 {
@@ -58,6 +59,9 @@ class SyncActivitiesJob implements ShouldQueue
             if ($connection !== null) {
                 $connection->markRevoked();
             }
+
+            // Surface revocations as a trend on the /pulse Strava-health card.
+            Pulse::record('strava_revoked', 'token_refresh_failed')->count();
 
             Log::warning('strava-sync revoked connection after token refresh failure', [
                 'user_id' => $user->id,

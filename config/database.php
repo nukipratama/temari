@@ -64,6 +64,29 @@ return [
             ]) : [],
         ],
 
+        // Separate schema on the same MySQL server for analytics/metering that
+        // must survive `migrate:fresh` of the app DB (e.g. ai_token_usages cost
+        // history). Same host/credentials as `mysql`, different database.
+        'analytics' => [
+            'driver' => 'mysql',
+            'url' => env('DB_URL'),
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '3306'),
+            'database' => env('DB_ANALYTICS_DATABASE', 'teman_lari_analytics'),
+            'username' => env('DB_USERNAME', 'root'),
+            'password' => env('DB_PASSWORD', ''),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
@@ -173,6 +196,23 @@ return [
             'password' => env('REDIS_PASSWORD'),
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_CACHE_DB', '1'),
+            'max_retries' => env('REDIS_MAX_RETRIES', 3),
+            'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
+            'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
+            'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
+        ],
+
+        // Dedicated ingest buffer for Pulse (prod: the `pulse-redis` container).
+        // MUST stay off the durable `default` instance so a Pulse backlog can
+        // LRU-trim instead of filling the noeviction queue/session store. Only
+        // used when PULSE_INGEST_DRIVER=redis; otherwise harmless.
+        'pulse' => [
+            'url' => env('PULSE_REDIS_URL'),
+            'host' => env('PULSE_REDIS_HOST', env('REDIS_HOST', '127.0.0.1')),
+            'username' => env('PULSE_REDIS_USERNAME'),
+            'password' => env('PULSE_REDIS_PASSWORD'),
+            'port' => env('PULSE_REDIS_PORT', env('REDIS_PORT', '6379')),
+            'database' => env('PULSE_REDIS_DB', '0'),
             'max_retries' => env('REDIS_MAX_RETRIES', 3),
             'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
             'backoff_base' => env('REDIS_BACKOFF_BASE', 100),

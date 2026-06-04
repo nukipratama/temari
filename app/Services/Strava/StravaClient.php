@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
+use Laravel\Pulse\Facades\Pulse;
 
 class StravaClient
 {
@@ -104,6 +105,9 @@ class StravaClient
     {
         foreach (self::RATE_LIMITS as $key => [$max]) {
             if (RateLimiter::tooManyAttempts($key, $max)) {
+                // Surface exhaustion as a trend on the /pulse Strava-health card.
+                Pulse::record('strava_rate_limited', $key)->count();
+
                 throw new StravaRateLimitedException(
                     "Strava rate limit exhausted for bucket [{$key}]; retry in ".RateLimiter::availableIn($key).'s.',
                 );

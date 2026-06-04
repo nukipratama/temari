@@ -57,8 +57,12 @@ services:
             MYSQL_PASSWORD: '${DB_PASSWORD}'
             MYSQL_ALLOW_EMPTY_PASSWORD: 1
             MYSQL_EXTRA_OPTIONS: '${MYSQL_EXTRA_OPTIONS:-}'
+            DB_ANALYTICS_DATABASE: '${DB_ANALYTICS_DATABASE:-teman_lari_analytics}'
         volumes:
             - 'sail-mysql:/var/lib/mysql'
+            # Creates the analytics schema + grant on a FRESH volume only.
+            # Existing volumes: run `make analytics-init` once.
+            - './docker/mysql/init:/docker-entrypoint-initdb.d:ro'
     redis:
         <<: *redis-base
         ports:

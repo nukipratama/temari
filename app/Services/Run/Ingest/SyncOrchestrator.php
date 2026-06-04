@@ -12,6 +12,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pulse\Facades\Pulse;
 
 class SyncOrchestrator
 {
@@ -56,6 +57,9 @@ class SyncOrchestrator
                 'user_id' => $user->id,
                 'inserted' => $inserted,
             ]);
+
+            // Sync-run outcome for the /pulse Strava-health card trend.
+            Pulse::record('strava_sync', 'inserted', $inserted)->sum()->count();
 
             return $inserted;
         } finally {

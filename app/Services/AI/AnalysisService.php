@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Laravel\Pulse\Facades\Pulse;
 
 class AnalysisService
 {
@@ -116,6 +117,9 @@ class AnalysisService
             'status' => AnalysisStatus::Failed,
             'error' => $error,
         ]);
+
+        // Feed the /pulse AI Pipeline-health card's failure-rate trend.
+        Pulse::record('ai_failure', $row->analysis_type->value)->count();
     }
 
     private function dispatchRow(

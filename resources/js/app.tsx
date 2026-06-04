@@ -1,8 +1,12 @@
 import { createInertiaApp } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 import type { ComponentType } from 'react';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'TemanLari';
+
+installGlobalErrorReporting();
 
 void createInertiaApp({
     title: (title) => (title ? `${title} · ${APP_NAME}` : APP_NAME),
@@ -19,7 +23,11 @@ void createInertiaApp({
         return module.default;
     },
     setup({ el, App, props }) {
-        createRoot(el).render(<App {...props} />);
+        createRoot(el).render(
+            <ErrorBoundary>
+                <App {...props} />
+            </ErrorBoundary>,
+        );
     },
     progress: {
         color: '#0E7A4C',

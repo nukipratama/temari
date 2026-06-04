@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pulse\Facades\Pulse;
 
 /**
  * Strava push subscription endpoint.
@@ -56,6 +57,10 @@ class StravaWebhookController extends Controller
         $aspectType = (string) $request->input('aspect_type', '');
         $objectId = (int) $request->input('object_id');
         $athleteId = (int) $request->input('owner_id');
+
+        // Heartbeat: a flatline on the /pulse Strava-health card means Strava
+        // stopped delivering and we're silently leaning on the hourly poll.
+        Pulse::record('strava_webhook', $aspectType !== '' ? $aspectType : 'unknown')->count();
 
         $connection = StravaConnection::query()
             ->where('strava_athlete_id', $athleteId)
@@ -107,6 +112,7 @@ class StravaWebhookController extends Controller
         $authorized = $request->input('updates.authorized');
         if ($authorized === 'false' || $authorized === false) {
             $connection->markRevoked();
+            Pulse::record('strava_revoked', 'webhook_deauth')->count();
             Log::info('strava.webhook deauthorized — connection revoked', [
                 'strava_athlete_id' => $connection->strava_athlete_id,
             ]);
