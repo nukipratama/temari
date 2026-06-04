@@ -4,11 +4,10 @@
 # Override the compose file with: make COMPOSE="docker compose -f compose.yaml" <target>
 
 COMPOSE ?= docker compose -f compose.prod.yaml
-ANALYTICS_DB ?= teman_lari_analytics
 
 .DEFAULT_GOAL := help
 .PHONY: help ps logs logs-app logs-horizon logs-pulse tail shell tinker artisan \
-        health pulse-restart pulse-clear analytics-init restart up down test pint stan
+        health pulse-restart pulse-clear restart up down test pint stan
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -54,18 +53,6 @@ pulse-clear: ## Wipe all stored Pulse data
 
 restart: ## Recreate prod containers with the current image
 	$(COMPOSE) up -d
-
-analytics-init: ## One-time: create analytics schema + grant, migrate, backfill from main
-	@echo ">> create schema + grant (reuses the initdb script)"
-	$(COMPOSE) exec -T mysql sh /docker-entrypoint-initdb.d/01-analytics-db.sh
-	@echo ">> migrate analytics schema"
-	$(COMPOSE) exec -T app php artisan migrate --database=analytics --path=database/migrations/analytics --force
-	@echo ">> backfill existing usage rows (INSERT IGNORE; safe to re-run)"
-	$(COMPOSE) exec -T mysql sh -c 'mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" -e "INSERT IGNORE INTO $(ANALYTICS_DB).ai_token_usages (id,user_id,kind,prompt_tokens,completion_tokens,total_tokens,latency_ms,truncated,model,created_at) SELECT id,user_id,kind,prompt_tokens,completion_tokens,total_tokens,latency_ms,truncated,model,created_at FROM $$MYSQL_DATABASE.ai_token_usages;"' \
-		|| echo "   (no source table — fresh install, nothing to backfill)"
-	@echo ">> row counts (drop the orphan main table only once these match):"
-	$(COMPOSE) exec -T mysql sh -c 'mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" -e "SELECT (SELECT COUNT(*) FROM $$MYSQL_DATABASE.ai_token_usages) AS main_rows, (SELECT COUNT(*) FROM $(ANALYTICS_DB).ai_token_usages) AS analytics_rows;"' \
-		|| true
 
 # ---- Dev (Sail) ----
 

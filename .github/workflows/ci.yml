@@ -228,8 +228,34 @@ jobs:
           echo "Backup OK: $out ($size bytes)"
           ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz | tail -n +11 | xargs -r rm
 
+      - name: Backup analytics schema before migrate (if present)
+        # ai_token_usages cost history lives in its own schema, so it needs its
+        # own dump in the rollback safety net. Skipped before the schema exists
+        # (first deploy). Distinct filename so the main prune glob won't catch it.
+        run: |
+          out="$BACKUP_DIR/analytics-pre-deploy-${{ github.sha }}.sql.gz"
+          if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "USE $adb"' 2>/dev/null; then
+            set -o pipefail
+            $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" -p"$DB_PASSWORD" --databases "$adb"' \
+              | gzip > "$out"
+            echo "Analytics backup OK: $out ($(stat -c%s "$out") bytes)"
+            ls -1t "$BACKUP_DIR"/analytics-pre-deploy-*.sql.gz | tail -n +11 | xargs -r rm
+          else
+            echo "Analytics schema not present yet — skipping (first deploy)."
+          fi
+
       - name: Migrate (one-shot, on the new image)
         run: $COMPOSE run --rm app php artisan migrate --force
+
+      - name: Bootstrap + migrate analytics schema (seamless; no manual step)
+        # Make the analytics schema self-bootstrapping so no manual step is
+        # needed: create the schema as root (the app may connect as a non-root
+        # user) + grant, then apply analytics migrations as the app user. Both
+        # idempotent — safe on every deploy. The create+grant SQL is piped into
+        # the mysql container to avoid SQL-quoting hell in YAML.
+        run: |
+          $COMPOSE exec -T mysql sh < docker/mysql/init/01-analytics-db.sh
+          $COMPOSE run --rm app php artisan migrate --database=analytics --path=database/migrations/analytics --force
 
       - name: Roll app, workers + Pulse daemons onto the new image
         # pulse-check (Servers recorder), pulse-work (drains the ingest stream)
