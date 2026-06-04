@@ -247,10 +247,16 @@ jobs:
         run: $COMPOSE run --rm app php artisan migrate --force
 
       - name: Migrate analytics schema
-        # Create + grant (root, via the piped script) then migrate as the app
-        # user. Idempotent.
+        # Create the schema with the app's OWN working credentials, then migrate.
+        # The deploy can't use root (prod root password-auth is unreliable
+        # post-init), but DB_USERNAME/DB_PASSWORD are what the app authenticates
+        # with — so when that user may create schemas (e.g. connects as root)
+        # this is fully automatic. If it's a locked-down user, CREATE is denied
+        # and the step no-ops. Best-effort (continue-on-error) so it never blocks
+        # the deploy; the usage recorder swallows write failures regardless.
+        continue-on-error: true
         run: |
-          $COMPOSE exec -T mysql sh < docker/mysql/init/01-analytics-db.sh
+          $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS $adb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"'
           $COMPOSE run --rm app php artisan migrate --database=analytics --path=database/migrations/analytics --force
 
       - name: Roll app, workers + Pulse daemons onto the new image

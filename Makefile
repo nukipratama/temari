@@ -1,9 +1,11 @@
-# Container interaction helpers.
-#   Prod targets drive the homelab stack (compose.prod.yaml).
-#   Dev shortcuts delegate to Laravel Sail.
-# Override the compose file with: make COMPOSE="docker compose -f compose.yaml" <target>
+# Container interaction helpers. COMPOSE auto-detects the stack so the same
+# `make <target>` works in both places: prod compose on the homelab (where the
+# host secrets file /opt/teman-lari/.env exists), dev compose otherwise.
+# Override with: make COMPOSE="docker compose -f compose.yaml" <target>
+#   Dev shortcuts (up/down/test/pint/stan) delegate to Laravel Sail.
+#   Note: prod-only targets (logs-horizon, logs-pulse, health) have no dev equivalent.
 
-COMPOSE ?= docker compose -f compose.prod.yaml
+COMPOSE ?= docker compose -f $(if $(wildcard /opt/teman-lari/.env),compose.prod.yaml,compose.yaml)
 
 .DEFAULT_GOAL := help
 .PHONY: help ps logs logs-app logs-horizon logs-pulse tail shell tinker artisan \
