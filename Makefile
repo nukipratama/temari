@@ -2,14 +2,13 @@
 # `make <target>` works in both places: prod compose on the homelab (where the
 # host secrets file /opt/teman-lari/.env exists), dev compose otherwise.
 # Override with: make COMPOSE="docker compose -f compose.yaml" <target>
-#   Dev shortcuts (up/down/test/pint/stan) delegate to Laravel Sail.
-#   Note: prod-only targets (logs-horizon, logs-pulse, health) have no dev equivalent.
+#   Prod/homelab-only helpers. For dev use ./vendor/bin/sail directly.
 
 COMPOSE ?= docker compose -f $(if $(wildcard /opt/teman-lari/.env),compose.prod.yaml,compose.yaml)
 
 .DEFAULT_GOAL := help
-.PHONY: help ps logs logs-app logs-horizon logs-pulse tail shell tinker artisan \
-        health pulse-restart pulse-clear restart up down test pint stan
+.PHONY: help ps logs logs-app logs-horizon logs-pulse tail shell tinker \
+        health pulse-restart pulse-clear restart strava-doctor strava-webhook
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -36,13 +35,10 @@ tail: ## Tail the persisted daily log file (survives deploys via app_logs)
 	$(COMPOSE) exec app sh -c 'tail -f storage/logs/laravel-$$(date +%Y-%m-%d).log'
 
 shell: ## Open a shell in the app container
-	$(COMPOSE) exec app bash
+	$(COMPOSE) exec app sh
 
 tinker: ## Open tinker in the app container
 	$(COMPOSE) exec app php artisan tinker
-
-artisan: ## Run an artisan command, e.g. make artisan cmd="route:list"
-	$(COMPOSE) exec app php artisan $(cmd)
 
 health: ## Hit /up from inside the app container (deps-aware healthcheck)
 	$(COMPOSE) exec app wget -qO- http://127.0.0.1:7001/up && echo " OK"
@@ -56,19 +52,8 @@ pulse-clear: ## Wipe all stored Pulse data
 restart: ## Recreate prod containers with the current image
 	$(COMPOSE) up -d
 
-# ---- Dev (Sail) ----
+strava-doctor: ## Strava health snapshot, e.g. make strava-doctor ARGS="--repair --user=1"
+	$(COMPOSE) exec app php artisan strava:doctor $(ARGS)
 
-up: ## Start the dev stack
-	./vendor/bin/sail up -d
-
-down: ## Stop the dev stack
-	./vendor/bin/sail down
-
-test: ## Run the test suite (parallel)
-	./vendor/bin/sail pest --parallel
-
-pint: ## Format PHP (Pint)
-	./vendor/bin/sail bin pint
-
-stan: ## Run PHPStan
-	./vendor/bin/sail bin phpstan analyse
+strava-webhook: ## Manage Strava webhook subscription, e.g. make strava-webhook ARGS="--action=view"
+	$(COMPOSE) exec app php artisan strava:webhook-subscribe $(ARGS)

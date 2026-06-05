@@ -37,9 +37,12 @@ services:
         networks:
             - sail
         depends_on:
-            - mysql
-            - redis
-            - mailpit
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            db-init:
+                condition: service_completed_successfully
     mysql:
         <<: *mysql-base
         command:
@@ -60,22 +63,32 @@ services:
             DB_ANALYTICS_DATABASE: '${DB_ANALYTICS_DATABASE:-teman_lari_analytics}'
         volumes:
             - 'sail-mysql:/var/lib/mysql'
-            # Creates the analytics schema + grant on a FRESH volume only.
-            # Existing volumes: run `make analytics-init` once.
-            - './docker/mysql/init:/docker-entrypoint-initdb.d:ro'
+    # One-shot: ensure the app schemas (main + analytics) exist + grant the app user, as
+    # root, once mysql is healthy. Replaces the initdb mount so it covers existing volumes
+    # too. Idempotent; exits when done. The app waits on it via depends_on.
+    db-init:
+        image: 'mysql:8.4'
+        restart: 'no'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_USER: '${DB_USERNAME}'
+            DB_DATABASE: '${DB_DATABASE}'
+            DB_ANALYTICS_DATABASE: '${DB_ANALYTICS_DATABASE:-teman_lari_analytics}'
+            DB_HOST: 'mysql'
+        depends_on:
+            mysql:
+                condition: service_healthy
+        volumes:
+            - './docker/mysql/db-init.sh:/db-init.sh:ro'
+        entrypoint: ['sh', '/db-init.sh']
+        networks:
+            - sail
     redis:
         <<: *redis-base
         ports:
             - '${FORWARD_REDIS_PORT:-6379}:6379'
         volumes:
             - 'sail-redis:/data'
-    mailpit:
-        image: 'axllent/mailpit:latest'
-        ports:
-            - '${FORWARD_MAILPIT_PORT:-1025}:1025'
-            - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
-        networks:
-            - sail
     mysql_test:
         <<: *mysql-base
         # Test workload: tmpfs storage, no durability, minimal connections.
