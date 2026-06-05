@@ -249,14 +249,20 @@ jobs:
         # recreate. No-op when nothing changed; --wait blocks until mysql is healthy.
         run: $COMPOSE up -d --wait --no-deps mysql
 
-      - name: Ensure databases (root, idempotent)
-        # Run the create + grant INSIDE the mysql container as root via 127.0.0.1 (prod
-        # root is localhost-only; the docker-out-of-docker runner makes bind-mounting a
-        # script unreliable). Creates the main + analytics schemas and grants the app user.
-        # Idempotent + blocking; heals existing volumes too. `-e` makes a failure stop the deploy.
+      - name: Ensure databases (idempotent, early-exit)
+        # Steady state: if the app user can already reach the analytics schema, skip — no
+        # root needed (so this never touches root once bootstrapped). First time only:
+        # create both schemas + grant the app user as root via 127.0.0.1, inside the mysql
+        # container (prod root is localhost-only; the docker-out-of-docker runner makes
+        # bind-mounting a script unreliable). Blocking; `-e` makes a real failure stop the deploy.
         run: |
           $COMPOSE exec -T mysql sh -ec '
-            for db in "${DB_DATABASE:-teman_lari}" "${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; do
+            adb="${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"
+            if mysql -h 127.0.0.1 -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "USE $adb" 2>/dev/null; then
+              echo "analytics schema already reachable by app user — skipping bootstrap"
+              exit 0
+            fi
+            for db in "${DB_DATABASE:-teman_lari}" "$adb"; do
               mysql -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS $db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON $db.* TO '"'"'$DB_USERNAME'"'"'@'"'"'%'"'"';"
               echo "schema $db ready"
             done
