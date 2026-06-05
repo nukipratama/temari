@@ -221,11 +221,17 @@ jobs:
             'mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE"' \
             | gzip > "$out"
           size=$(stat -c%s "$out")
-          if [ "$size" -lt 1024 ]; then
-            echo "::error::Backup at $out is only $size bytes"
+          # A fresh DB (0 tables — first deploy, or right after a reinit) legitimately
+          # dumps to a tiny file; the migrate step below populates it. Only treat a tiny
+          # dump as a failed backup when the schema actually has tables to lose.
+          tables=$($COMPOSE exec -T mysql sh -c \
+            'mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
+            | tr -d '[:space:]')
+          if [ "$size" -lt 1024 ] && [ "${tables:-0}" -gt 0 ]; then
+            echo "::error::Backup at $out is only $size bytes (schema has $tables tables)"
             exit 1
           fi
-          echo "Backup OK: $out ($size bytes)"
+          echo "Backup OK: $out ($size bytes, $tables tables)"
           ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz | tail -n +11 | xargs -r rm
 
       - name: Backup analytics schema
