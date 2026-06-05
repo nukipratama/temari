@@ -41,8 +41,6 @@ services:
                 condition: service_healthy
             redis:
                 condition: service_healthy
-            db-init:
-                condition: service_completed_successfully
     mysql:
         <<: *mysql-base
         command:
@@ -63,35 +61,10 @@ services:
             DB_ANALYTICS_DATABASE: '${DB_ANALYTICS_DATABASE:-teman_lari_analytics}'
         volumes:
             - 'sail-mysql:/var/lib/mysql'
-    # One-shot: ensure the app schemas (main + analytics) exist + grant the app user, as
-    # root, once mysql is healthy. Replaces the initdb mount so it covers existing volumes
-    # too. Idempotent; exits when done. The app waits on it via depends_on.
-    db-init:
-        image: 'mysql:8.4'
-        restart: 'no'
-        environment:
-            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
-            MYSQL_USER: '${DB_USERNAME}'
-            DB_DATABASE: '${DB_DATABASE}'
-            DB_ANALYTICS_DATABASE: '${DB_ANALYTICS_DATABASE:-teman_lari_analytics}'
-            DB_HOST: 'mysql'
-        depends_on:
-            mysql:
-                condition: service_healthy
-        # SQL inlined (no bind mount) so it works identically on the homelab's
-        # docker-out-of-docker runner. `$$` escapes compose interpolation.
-        entrypoint:
-            - sh
-            - -ec
-            - |
-                for db in "$${DB_DATABASE:-teman_lari}" "$${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; do
-                  mysql -h "$${DB_HOST:-mysql}" -uroot -p"$$MYSQL_ROOT_PASSWORD" \
-                    -e "CREATE DATABASE IF NOT EXISTS $$db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON $$db.* TO '$${MYSQL_USER:-$$DB_USERNAME}'@'%';"
-                  echo "schema $$db ready"
-                done
-                mysql -h "$${DB_HOST:-mysql}" -uroot -p"$$MYSQL_ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
-        networks:
-            - sail
+            # Dev only: creates main + analytics schemas + grant on a FRESH volume via
+            # initdb (bind mounts work on local Docker Desktop). Prod can't rely on this
+            # (docker-out-of-docker) and bootstraps via the CI "Ensure databases" step.
+            - './docker/mysql/init:/docker-entrypoint-initdb.d:ro'
     redis:
         <<: *redis-base
         ports:

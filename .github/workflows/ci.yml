@@ -244,18 +244,25 @@ jobs:
           fi
 
       - name: Ensure databases (root, idempotent)
-        # One-shot db-init sidecar: creates the main + analytics schemas and grants the
-        # app user, as root, once mysql is healthy. Covers existing volumes too (initdb
-        # only fires on an empty data dir). Blocking — a real failure must stop the deploy.
-        run: $COMPOSE run --rm db-init
+        # Run the create + grant INSIDE the mysql container as root via 127.0.0.1 — the
+        # exact connection the healthcheck proves works (prod root is localhost-only, and
+        # the homelab runner is docker-out-of-docker so bind-mounting a script is unreliable).
+        # Creates the main + analytics schemas and grants the app user. Idempotent + blocking;
+        # heals existing volumes too. `-e` makes a real failure stop the deploy.
+        run: |
+          $COMPOSE exec -T mysql sh -ec '
+            for db in "${DB_DATABASE:-teman_lari}" "${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; do
+              mysql -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS $db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON $db.* TO '"'"'$DB_USERNAME'"'"'@'"'"'%'"'"';"
+              echo "schema $db ready"
+            done
+            mysql -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"'
 
       - name: Migrate (one-shot, on the new image)
-        # --no-deps: schemas are already ensured above; don't re-trigger the db-init edge.
-        run: $COMPOSE run --rm --no-deps app php artisan migrate --force
+        run: $COMPOSE run --rm app php artisan migrate --force
 
       - name: Migrate analytics schema
-        # Schema guaranteed by db-init above; just migrate. Blocking (no continue-on-error).
-        run: $COMPOSE run --rm --no-deps app php artisan migrate --database=analytics --path=database/migrations/analytics --force
+        # Schema guaranteed by the Ensure databases step above; just migrate. Blocking.
+        run: $COMPOSE run --rm app php artisan migrate --database=analytics --path=database/migrations/analytics --force
 
       - name: Roll app, workers + Pulse daemons onto the new image
         # pulse-check (Servers recorder), pulse-work (drains the ingest stream)
