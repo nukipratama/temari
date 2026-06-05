@@ -187,7 +187,12 @@ services:
           memory: 96m
 
   mysql:
-    image: mysql:8.4
+    # Custom image = stock mysql + the bootstrap baked into initdb (see docker/mysql/
+    # Dockerfile), so a fresh volume self-initializes on any machine. compose builds it
+    # on `up` if missing; existing volumes are unaffected (initdb only runs once).
+    image: teman-lari/mysql:8.4
+    build:
+      context: ./docker/mysql
     restart: unless-stopped
     env_file: *app-env-file
     command:

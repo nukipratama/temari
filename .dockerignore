@@ -16,6 +16,12 @@ vendor
 public/build
 public/hot
 
+# Locally-generated, dev-context manifests (list dev-only providers like
+# laravel/boost) — must NOT leak into the prod image or package:discover fails
+# loading a class absent from the --no-dev vendor. Regenerated in the image.
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+
 storage/logs/*
 !storage/logs/.gitignore
 storage/framework/cache/*
