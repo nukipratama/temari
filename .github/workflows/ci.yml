@@ -243,12 +243,17 @@ jobs:
             echo "Analytics schema not present yet — skipping (first deploy)."
           fi
 
+      - name: Apply mysql config + env (recreate if changed, wait healthy)
+        # A running container keeps the env it started with, so host .env changes
+        # (e.g. MYSQL_ROOT_PASSWORD) and compose config changes only take effect on
+        # recreate. No-op when nothing changed; --wait blocks until mysql is healthy.
+        run: $COMPOSE up -d --wait --no-deps mysql
+
       - name: Ensure databases (root, idempotent)
-        # Run the create + grant INSIDE the mysql container as root via 127.0.0.1 — the
-        # exact connection the healthcheck proves works (prod root is localhost-only, and
-        # the homelab runner is docker-out-of-docker so bind-mounting a script is unreliable).
-        # Creates the main + analytics schemas and grants the app user. Idempotent + blocking;
-        # heals existing volumes too. `-e` makes a real failure stop the deploy.
+        # Run the create + grant INSIDE the mysql container as root via 127.0.0.1 (prod
+        # root is localhost-only; the docker-out-of-docker runner makes bind-mounting a
+        # script unreliable). Creates the main + analytics schemas and grants the app user.
+        # Idempotent + blocking; heals existing volumes too. `-e` makes a failure stop the deploy.
         run: |
           $COMPOSE exec -T mysql sh -ec '
             for db in "${DB_DATABASE:-teman_lari}" "${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; do
