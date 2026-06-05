@@ -203,6 +203,15 @@ jobs:
       - name: Build new image
         run: $COMPOSE build app
 
+      - name: Bring up the data + cache layer
+        # Cold-start support: the steps below assume mysql/redis are running. On a fresh
+        # machine this starts them (building the custom mysql image, whose initdb
+        # self-bootstraps the schemas + app user + grants on the new volume); on an
+        # existing machine it's a no-op apart from adopting an image/config change.
+        # --wait blocks until healthchecks pass. So a new box needs only the secrets in
+        # /opt/teman-lari/.env + a push — the deploy brings the stack online itself.
+        run: $COMPOSE up -d --wait --wait-timeout 300 mysql redis-data redis-cache pulse-redis
+
       - name: Tag new image with git SHA
         run: docker tag teman-lari/app:latest teman-lari/app:${{ github.sha }}
 
