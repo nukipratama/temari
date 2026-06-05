@@ -236,9 +236,20 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-    volumes:
-      - ./docker/mysql/db-init.sh:/db-init.sh:ro
-    entrypoint: ["sh", "/db-init.sh"]
+    # SQL is inlined (no bind mount): the homelab runner is docker-out-of-docker, so a
+    # relative bind source resolves to a path the host daemon can't see and Docker
+    # auto-creates it as an empty dir. Run the create + grant directly as root instead.
+    # `$$` escapes compose interpolation so the container shell expands the vars at runtime.
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        for db in "$${DB_DATABASE:-teman_lari}" "$${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; do
+          mysql -h "$${DB_HOST:-mysql}" -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+            -e "CREATE DATABASE IF NOT EXISTS $$db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON $$db.* TO '$${MYSQL_USER:-$$DB_USERNAME}'@'%';"
+          echo "schema $$db ready"
+        done
+        mysql -h "$${DB_HOST:-mysql}" -uroot -p"$$MYSQL_ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
     networks: [internal]
 
   # Durable redis: queue jobs + Horizon state. AOF on, no eviction.
