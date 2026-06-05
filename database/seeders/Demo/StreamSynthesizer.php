@@ -56,6 +56,19 @@ class StreamSynthesizer
             }
         }
 
+        // Scale velocities so accumulated distance matches the blueprint
+        // exactly, compensating for drift from per-step jitter.
+        if ($acc > 0.0 && $acc !== (float) $blueprint->distanceM) {
+            $scale = (float) $blueprint->distanceM / $acc;
+            $distance = [];
+            $acc = 0.0;
+            foreach ($velocity as $v) {
+                $scaled = $v * $scale;
+                $acc += $scaled;
+                $distance[] = round($acc, 2);
+            }
+        }
+
         $streams = [
             'time' => ['data' => $time],
             'velocity_smooth' => ['data' => $velocity],
