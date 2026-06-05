@@ -42,6 +42,8 @@ class SplitsBuilder
             $splits[] = $this->splitRow($splitIndex, $startIdx, $n - 1, $time, $distance, $heartrate);
         }
 
+        $this->normalizeLastSplitDistance($splits, $distance);
+
         return $splits;
     }
 
@@ -77,5 +79,24 @@ class SplitsBuilder
         }
 
         return $row;
+    }
+
+    /**
+     * @param  list<array<string, int|float>>  $splits
+     * @param  list<int|float|array{float, float}>  $distance
+     */
+    private function normalizeLastSplitDistance(array &$splits, array $distance): void
+    {
+        if ($splits === []) {
+            return;
+        }
+
+        $totalStreamDist = (float) end($distance);
+        $acc = 0.0;
+        for ($i = 0; $i < count($splits) - 1; $i++) {
+            $acc += (float) $splits[$i]['distance'];
+        }
+
+        $splits[count($splits) - 1]['distance'] = round($totalStreamDist - $acc, 1);
     }
 }

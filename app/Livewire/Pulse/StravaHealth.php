@@ -39,8 +39,8 @@ class StravaHealth extends Card
             ->count();
 
         $rateLimits = [
-            '15 menit' => $this->headroom('strava-api:15min', 200),
-            'harian' => $this->headroom('strava-api:daily', 2000),
+            '15 min' => $this->headroom('strava-api:15min', 200),
+            'daily' => $this->headroom('strava-api:daily', 2000),
         ];
 
         [$trends, $time, $runAt] = $this->remember(fn (): array => [
@@ -65,6 +65,7 @@ class StravaHealth extends Card
             'stranded' => $stranded,
             'rateLimits' => $rateLimits,
             'trends' => $trends,
+            'webhookStatus' => $this->webhookStatus(),
         ]);
     }
 
@@ -74,5 +75,18 @@ class StravaHealth extends Card
     private function headroom(string $key, int $max): array
     {
         return ['remaining' => max(0, RateLimiter::remaining($key, $max)), 'max' => $max];
+    }
+
+    /**
+     * @return array{configured: bool, subscription_id: string|null}
+     */
+    private function webhookStatus(): array
+    {
+        $subscriptionId = config('services.strava.webhook_subscription_id');
+
+        return [
+            'configured' => filled($subscriptionId),
+            'subscription_id' => $subscriptionId,
+        ];
     }
 }

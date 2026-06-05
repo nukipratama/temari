@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+container="teman-lari-prod-app-1"
+
+if ! docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+    echo "Error: container ${container} is not running" >&2
+    exit 1
+fi
+
+docker exec "${container}" php artisan "$@"

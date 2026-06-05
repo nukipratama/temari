@@ -292,8 +292,10 @@ class DemoRunSeeder
             })
             ->get();
 
+        $demoGeneratedAt = Carbon::now()->subHours(2);
+
         foreach ($rows as $row) {
-            $this->analysisService->markDone($row, $this->filler->fillFor($row));
+            $this->analysisService->markDone($row, $this->filler->fillFor($row), $demoGeneratedAt);
         }
 
         return $rows->count();

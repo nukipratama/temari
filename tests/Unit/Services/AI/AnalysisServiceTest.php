@@ -298,7 +298,7 @@ it('applies delaySeconds when dispatching (row)', function (): void {
     Carbon::setTestNow();
 });
 
-it('markDone records content + model_version + generated_at', function (): void {
+it('markDone records content and generated_at', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
@@ -306,13 +306,27 @@ it('markDone records content + model_version + generated_at', function (): void 
         'discriminator' => '2026-05-18',
     ]);
 
-    $this->service->markDone($row, 'final narrative', 'gpt-4-x');
+    $this->service->markDone($row, 'final narrative');
 
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('final narrative')
-        ->and($fresh->model_version)->toBe('gpt-4-x')
         ->and($fresh->generated_at)->not->toBeNull();
+});
+
+it('markDone uses supplied generatedAt when given', function (): void {
+    $row = Analysis::factory()->queued()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'discriminator' => '2026-05-18',
+    ]);
+
+    $past = Carbon::now()->subHours(2);
+    $this->service->markDone($row, 'demo content', $past);
+
+    $fresh = $row->fresh();
+    expect($fresh->generated_at->toIso8601String())->toBe($past->toIso8601String());
 });
 
 it('markFailed records error message without clearing prior content', function (): void {

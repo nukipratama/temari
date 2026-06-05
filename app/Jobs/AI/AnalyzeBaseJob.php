@@ -18,13 +18,6 @@ abstract class AnalyzeBaseJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [10, 60];
 
-    protected function modelVersion(): ?string
-    {
-        $deployment = config('azure_openai.deployment');
-
-        return is_string($deployment) && $deployment !== '' ? $deployment : null;
-    }
-
     /**
      * Let `UnavailableException` (transient Azure failures) flow through silently
      * after marking the row(s) failed; rethrow everything else so the queue

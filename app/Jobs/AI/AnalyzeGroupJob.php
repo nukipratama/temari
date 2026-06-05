@@ -69,11 +69,9 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
      */
     private function finalizePending(Collection $pending, AnalysisService $service, array $payload): void
     {
-        $version = $this->modelVersion();
-
-        DB::transaction(function () use ($pending, $payload, $version, $service): void {
+        DB::transaction(function () use ($pending, $payload, $service): void {
             foreach ($pending as $key => $row) {
-                $service->markDone($row, $payload[$key], $version);
+                $service->markDone($row, $payload[$key]);
             }
         });
     }

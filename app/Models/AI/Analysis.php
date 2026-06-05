@@ -24,7 +24,6 @@ use Override;
  * @property AnalysisStatus $status
  * @property string|null $content
  * @property string|null $error
- * @property string|null $model_version
  * @property Carbon|null $generated_at
  * @property Carbon|null $queued_at
  * @property int $attempts
@@ -39,7 +38,6 @@ use Override;
     'status',
     'content',
     'error',
-    'model_version',
     'generated_at',
     'queued_at',
     'attempts',

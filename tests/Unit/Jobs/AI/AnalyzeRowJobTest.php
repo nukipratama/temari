@@ -22,11 +22,6 @@ function fakeSuccessRowJob(int $id): AnalyzeRowJob
         {
             return 'generated';
         }
-
-        protected function modelVersion(): ?string
-        {
-            return 'test-model';
-        }
     };
 }
 
@@ -60,7 +55,7 @@ function makeRowForRowJobTest(): Analysis
     ]);
 }
 
-it('marks row Done with content + model_version on successful generation', function (): void {
+it('marks row Done with content on successful generation', function (): void {
     $row = makeRowForRowJobTest();
 
     fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
@@ -68,7 +63,6 @@ it('marks row Done with content + model_version on successful generation', funct
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('generated')
-        ->and($fresh->model_version)->toBe('test-model')
         ->and($fresh->attempts)->toBe(1);
 });
 

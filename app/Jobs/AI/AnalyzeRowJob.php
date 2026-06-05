@@ -27,7 +27,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
 
         try {
             $content = $this->generateContent($row);
-            $service->markDone($row, $content, $this->modelVersion());
+            $service->markDone($row, $content);
         } catch (Throwable $e) {
             $service->markFailed($row, $e->getMessage());
             $this->rethrowIfUnexpected($e);

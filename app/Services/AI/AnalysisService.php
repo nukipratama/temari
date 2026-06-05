@@ -100,14 +100,13 @@ class AnalysisService
         ]);
     }
 
-    public function markDone(Analysis $row, string $content, ?string $modelVersion = null): void
+    public function markDone(Analysis $row, string $content, ?Carbon $generatedAt = null): void
     {
         $row->update([
             'status' => AnalysisStatus::Done,
             'content' => $content,
             'error' => null,
-            'model_version' => $modelVersion,
-            'generated_at' => Carbon::now(),
+            'generated_at' => $generatedAt ?? Carbon::now(),
         ]);
     }
 

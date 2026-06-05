@@ -1,7 +1,7 @@
 <x-pulse::card :cols="$cols" :rows="$rows" :class="$class">
     <x-pulse::card-header
-        name="Narasi AI"
-        details="gagal {{ $this->periodForHumans() }}: {{ number_format($failuresInPeriod) }}"
+        name="AI Pipeline"
+        details="failed {{ $this->periodForHumans() }}: {{ number_format($failuresInPeriod) }}"
     >
         <x-slot:icon>
             <x-pulse::icons.sparkles />
@@ -33,9 +33,9 @@
                 </colgroup>
                 <x-pulse::thead>
                     <tr>
-                        <x-pulse::th>Subjek</x-pulse::th>
-                        <x-pulse::th class="text-right">Percobaan</x-pulse::th>
-                        <x-pulse::th class="text-right">Terakhir</x-pulse::th>
+                        <x-pulse::th>Subject</x-pulse::th>
+                        <x-pulse::th class="text-right">Attempts</x-pulse::th>
+                        <x-pulse::th class="text-right">Last</x-pulse::th>
                     </tr>
                 </x-pulse::thead>
                 <tbody>

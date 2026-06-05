@@ -29,7 +29,6 @@ class AnalysisFactory extends Factory
             'status' => AnalysisStatus::Pending,
             'content' => null,
             'error' => null,
-            'model_version' => null,
             'generated_at' => null,
             'queued_at' => null,
             'attempts' => 0,

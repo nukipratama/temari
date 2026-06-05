@@ -81,3 +81,73 @@ it('passes the webhook self-handshake when the callback echoes the challenge', f
         ->expectsOutputToContain('Webhook self-handshake: PASS')
         ->assertSuccessful();
 });
+
+it('e2e passes all checks when healthy', function (): void {
+    config([
+        'services.strava.client_id' => '123',
+        'services.strava.client_secret' => 'secret',
+        'services.strava.webhook_verify_token' => 'verify-tok',
+    ]);
+    Http::fake([
+        route('strava.webhook.verify').'*' => function ($request) {
+            parse_str((string) parse_url((string) $request->url(), PHP_URL_QUERY), $query);
+
+            return Http::response(['hub.challenge' => $query['hub_challenge'] ?? '']);
+        },
+    ]);
+
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    Activity::factory()->for($user)->analyzed()->create();
+
+    $this->artisan('strava:doctor', ['--e2e' => true])
+        ->expectsOutputToContain('PASS  OAuth credentials')
+        ->expectsOutputToContain('PASS  Active connections')
+        ->expectsOutputToContain('PASS  Webhook self-handshake')
+        ->expectsOutputToContain('PASS  Rate limit headroom (15 min)')
+        ->expectsOutputToContain('PASS  Rate limit headroom (daily)')
+        ->expectsOutputToContain('PASS  No stranded activities')
+        ->expectsOutputToContain('Results: 6 passed, 0 failed')
+        ->assertSuccessful();
+});
+
+it('e2e fails when oauth credentials are missing', function (): void {
+    config([
+        'services.strava.client_id' => '',
+        'services.strava.client_secret' => null,
+    ]);
+
+    $this->artisan('strava:doctor', ['--e2e' => true])
+        ->expectsOutputToContain('FAIL  OAuth credentials')
+        ->assertFailed();
+});
+
+it('e2e fails when stranded activities exist for active connections', function (): void {
+    config([
+        'services.strava.client_id' => '123',
+        'services.strava.client_secret' => 'secret',
+    ]);
+
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    Activity::factory()->for($user)->create(['analyzed_at' => null, 'detail_fail_count' => 0]);
+
+    $this->artisan('strava:doctor', ['--e2e' => true])
+        ->expectsOutputToContain('FAIL  No stranded activities')
+        ->assertFailed();
+});
+
+it('e2e ignores stranded activities from revoked connections', function (): void {
+    config([
+        'services.strava.client_id' => '123',
+        'services.strava.client_secret' => 'secret',
+    ]);
+
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->revoked()->create();
+    Activity::factory()->for($user)->create(['analyzed_at' => null, 'detail_fail_count' => 0]);
+
+    $this->artisan('strava:doctor', ['--e2e' => true])
+        ->expectsOutputToContain('PASS  No stranded activities')
+        ->assertFailed(); // still fails on "Active connections" (none active)
+});

@@ -13,6 +13,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * One-stop health check for the Strava ingestion pipeline: per-athlete
@@ -22,7 +23,8 @@ use Illuminate\Database\Eloquent\Collection;
  */
 #[Signature('strava:doctor
     {--user= : Only this user id; otherwise every connected athlete}
-    {--repair : Re-dispatch ingestion for activities stuck without analysis}')]
+    {--repair : Re-dispatch ingestion for activities stuck without analysis}
+    {--e2e : Run all checks and report pass/fail summary}')]
 #[Description('Diagnose Strava connection + ingestion health (optionally repair stranded activities).')]
 class DoctorCommand extends Command
 {
@@ -30,6 +32,10 @@ class DoctorCommand extends Command
 
     public function handle(): int
     {
+        if ($this->option('e2e')) {
+            return $this->e2eCheck();
+        }
+
         $users = $this->resolveUsers();
         if ($users->isEmpty()) {
             $this->warn('No users with a Strava connection found.');
@@ -48,6 +54,52 @@ class DoctorCommand extends Command
         $this->reportWebhook();
 
         return self::SUCCESS;
+    }
+
+    private function e2eCheck(): int
+    {
+        $passes = 0;
+        $failures = 0;
+
+        $checks = [
+            'OAuth credentials' => function (): bool {
+                $clientId = config('services.strava.client_id');
+                $clientSecret = config('services.strava.client_secret');
+
+                return filled($clientId) && filled($clientSecret);
+            },
+            'Active connections' => fn (): bool => User::query()
+                ->whereHas('stravaConnection', fn (Builder $q): Builder => $q->whereNull('revoked_at'))
+                ->exists(),
+            'Webhook self-handshake' => function (): bool {
+                $callbackUrl = route('strava.webhook.verify');
+                $verifyToken = (string) config('services.strava.webhook_verify_token');
+
+                return $verifyToken !== '' && app(StravaWebhookProbe::class)->probe($callbackUrl, $verifyToken)['passed'];
+            },
+            'Rate limit headroom (15 min)' => fn (): bool => RateLimiter::remaining('strava-api:15min', 200) > 0,
+            'Rate limit headroom (daily)' => fn (): bool => RateLimiter::remaining('strava-api:daily', 2000) > 0,
+            'No stranded activities' => fn (): bool => Activity::query()
+                ->whereHas('user.stravaConnection', fn (Builder $q): Builder => $q->whereNull('revoked_at'))
+                ->whereNull('analyzed_at')
+                ->where('detail_fail_count', '<', self::DETAIL_FETCH_MAX_ATTEMPTS)
+                ->doesntExist(),
+        ];
+
+        foreach ($checks as $label => $check) {
+            if ($check()) {
+                $this->info("  PASS  {$label}");
+                $passes++;
+            } else {
+                $this->error("  FAIL  {$label}");
+                $failures++;
+            }
+        }
+
+        $this->newLine();
+        $this->line("Results: {$passes} passed, {$failures} failed");
+
+        return $failures > 0 ? self::FAILURE : self::SUCCESS;
     }
 
     /**
