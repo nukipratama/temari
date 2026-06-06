@@ -124,7 +124,7 @@ export default function HariIni({
                 ) : (
                     <>
                         {/* VITAL CHIPS — above hero, full width 3-up */}
-                        <section className="mt-6">
+                        <section className="mt-8">
                             <VitalChips briefing={briefing} load={load} />
                         </section>
 
