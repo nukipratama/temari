@@ -23,9 +23,10 @@ interface TemariCharacterProps {
 
 const BODY_COLOR = '#f0d9b0';
 const BODY_SHADE = '#dcc18b';
+const BODY_HIGHLIGHT = '#fae8ce';
 const OUTLINE = '#3b2f1f';
-const OUTLINE_W = 1.2;
 const CHEEK_COLOR = '#e87a5e';
+const OUTLINE_W = 1.2;
 const INK_DARK = '#122218';
 const INK_MED = '#3b4a40';
 const TANK_COLOR = '#0e7a4c';
@@ -132,7 +133,24 @@ function TemariCharacterImpl({
 
     return (
         <svg viewBox="-4 -10 108 110" width={size} height={size} className={className} aria-hidden>
-            <ellipse cx={50} cy={95} rx={24} ry={2} fill={INK_DARK} opacity={0.14} />
+            <defs>
+                {/* Fur radial gradient — lighter center, darker edges */}
+                <radialGradient id="char-fur-grad" cx="50%" cy="40%" r="55%">
+                    <stop offset="0%" stopColor={BODY_HIGHLIGHT} />
+                    <stop offset="70%" stopColor={BODY_COLOR} />
+                    <stop offset="100%" stopColor={BODY_SHADE} />
+                </radialGradient>
+                {/* Cheek blush */}
+                <radialGradient id="char-cheek-grad" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor={CHEEK_COLOR} stopOpacity="0.7" />
+                    <stop offset="100%" stopColor={CHEEK_COLOR} stopOpacity="0" />
+                </radialGradient>
+                {/* Drop shadow */}
+                <filter id="char-shadow" x="-20%" y="-10%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor={OUTLINE} floodOpacity="0.12" />
+                </filter>
+            </defs>
+            <ellipse cx={50} cy={95} rx={24} ry={2} fill={INK_DARK} opacity={0.1} />
 
             {/* Tail pom-pom — wagging */}
             <g transform="translate(73 62)">
@@ -142,6 +160,8 @@ function TemariCharacterImpl({
                 </motion.g>
             </g>
 
+            {/* Character body with drop shadow */}
+            <g filter="url(#char-shadow)">
             {/* Legs (stub + sneaker per side) — animated alternately during
                 running stride. Each side lifts ~4 units when its arm swings
                 back, matching cross-pattern of human gait. */}
@@ -157,7 +177,7 @@ function TemariCharacterImpl({
                 <g transform={bodyTransform}>
                     <path
                         d="M 34 52 Q 30 64 32 76 Q 33 80 40 80 L 60 80 Q 67 80 68 76 Q 70 64 66 52 Z"
-                        fill={BODY_COLOR}
+                        fill="url(#char-fur-grad)"
                         stroke={OUTLINE}
                         strokeWidth={OUTLINE_W}
                         strokeLinejoin="round"
@@ -226,7 +246,7 @@ function TemariCharacterImpl({
                 <Ear side="left" rotate={v.earRotateLeft} moodColor={v.moodColor} motionOff={motionOff} />
                 <Ear side="right" rotate={v.earRotateRight} moodColor={v.moodColor} motionOff={motionOff} />
 
-                {/* Head */}
+                {/* Head — gradient fill */}
                 <rect
                     x={26}
                     y={16}
@@ -234,7 +254,7 @@ function TemariCharacterImpl({
                     height={36}
                     rx={17}
                     ry={16}
-                    fill={BODY_COLOR}
+                    fill="url(#char-fur-grad)"
                     stroke={OUTLINE}
                     strokeWidth={OUTLINE_W}
                 />
@@ -243,6 +263,8 @@ function TemariCharacterImpl({
                     fill={BODY_SHADE}
                     opacity={0.5}
                 />
+                {/* Forehead highlight */}
+                <ellipse cx={50} cy={22} rx={16} ry={8} fill={BODY_HIGHLIGHT} opacity={0.3} />
 
                 {/* Headband + flag tail */}
                 <rect
@@ -258,9 +280,9 @@ function TemariCharacterImpl({
                 <circle cx={50} cy={24.5} r={1.1} fill="#ffffff" opacity={0.85} />
                 <HeadbandFlag moodColor={v.moodColor} motionOff={motionOff} />
 
-                {/* Cheeks */}
-                <ellipse cx={33} cy={40} rx={3} ry={2.2} fill={CHEEK_COLOR} opacity={0.6} />
-                <ellipse cx={67} cy={40} rx={3} ry={2.2} fill={CHEEK_COLOR} opacity={0.6} />
+                {/* Cheeks — soft blush */}
+                <ellipse cx={33} cy={40} rx={5} ry={3.5} fill="url(#char-cheek-grad)" />
+                <ellipse cx={67} cy={40} rx={5} ry={3.5} fill="url(#char-cheek-grad)" />
 
                 {/* Eyebrows */}
                 <path d={v.eyebrowLeft} stroke={INK_MED} strokeWidth={1.6} strokeLinecap="round" fill="none" />
@@ -275,6 +297,7 @@ function TemariCharacterImpl({
 
             <Accessory kind={v.accessory} moodColor={v.moodColor} />
             <UnlockedExtras unlocks={unlockedAccessories} />
+            </g> {/* end shadow filter group */}
             <Particles kind={v.particles} moodColor={v.moodColor} motionOff={motionOff} />
         </svg>
     );
@@ -320,7 +343,7 @@ function Arm({ side, rotate, moodColor, mood, swing = false, motionOff = false }
                 cy={7}
                 rx={5}
                 ry={6.5}
-                fill={BODY_COLOR}
+                fill="url(#char-fur-grad)"
                 stroke={OUTLINE}
                 strokeWidth={OUTLINE_W}
             />
