@@ -29,6 +29,13 @@ class HandleInertiaRequests extends Middleware
     private const int STRAVA_SYNC_CACHE_SECONDS = 120;
 
     /**
+     * TTL for the goals summary share. Goals only change when an activity is
+     * ingested (minutes apart), so a short cache trades negligible staleness
+     * for eliminating ~10 DB queries per page load.
+     */
+    private const int GOALS_SUMMARY_CACHE_SECONDS = 120;
+
+    /**
      * @return array<string, mixed>
      */
     #[Override]
@@ -86,10 +93,22 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
+        return Cache::remember(
+            "goals-summary:{$user->id}",
+            self::GOALS_SUMMARY_CACHE_SECONDS,
+            fn (): array => $this->computeGoalsSummary($user),
+        );
+    }
+
+    /**
+     * @return array{total: int, completed: int, closest: list<array{id: string, title: string, current: int|float, target: int|float, unit: string}>}
+     */
+    private function computeGoalsSummary(User $user): array
+    {
         $resolver = app(GoalResolver::class);
         $goals = $resolver->forUser($user);
         $completed = count(array_filter($goals, fn (array $g): bool => $g['is_completed']));
-        $closest = $resolver->closestToCompletion($user, 3);
+        $closest = $resolver->closestToCompletion($user, 3, $goals);
 
         return [
             'total' => count($goals),

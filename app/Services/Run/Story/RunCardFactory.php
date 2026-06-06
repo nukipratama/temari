@@ -121,6 +121,9 @@ class RunCardFactory
      *  +1 per badge earned
      *  +1 zone discipline (<10% Z3+ on >=10km)
      *  +1 weekly consistency (>=3 runs this week)
+     *
+     * @param  array<string, mixed>  $summary
+     * @param  array<int, string>  $badges
      */
     public function rarityScore(
         Activity $activity,

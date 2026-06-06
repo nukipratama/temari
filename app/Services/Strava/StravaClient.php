@@ -50,7 +50,7 @@ class StravaClient
     /**
      * Remaining headroom for a user's rate-limit buckets.
      *
-     * @return array{15min: int, daily: int}
+     * @return array{'15min': int, 'daily': int}
      */
     public function rateLimitRemaining(int $userId): array
     {

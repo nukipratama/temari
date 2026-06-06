@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use Throwable;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;
@@ -69,7 +70,7 @@ class SyncOrchestrator
             $this->logSync($user->id, 'success', $inserted);
 
             return $inserted;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logSync($user->id, 'error', 0, $e->getMessage());
 
             throw $e;
@@ -114,7 +115,7 @@ class SyncOrchestrator
             $this->logSync($user->id, 'success', 1);
 
             return true;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logSync($user->id, 'error', 0, $e->getMessage());
 
             throw $e;
@@ -123,7 +124,8 @@ class SyncOrchestrator
 
     private function logSync(int $userId, string $status, int $activitiesSynced, ?string $error = null): void
     {
-        $remaining = $this->client->rateLimitRemaining($userId);
+        // Rate-limit headroom is only meaningful after a successful API call.
+        $remaining = $error === null ? $this->client->rateLimitRemaining($userId) : null;
 
         StravaSyncLog::log($userId, $status, $activitiesSynced, 0, $error, $remaining);
     }

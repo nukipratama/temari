@@ -173,7 +173,9 @@ class AnalysisService
                 User::query()->findOrFail($row->subject_id),
                 $row->discriminator !== null ? Carbon::parse($row->discriminator) : Carbon::today(),
             ),
-            default => $this->filler->fillFor($row),
+            AnalysisType::RunInsightTechnical,
+            AnalysisType::RunInsightSplits,
+            AnalysisType::RunInsightZones => $this->filler->fillFor($row),
         };
     }
 

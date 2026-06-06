@@ -91,6 +91,45 @@ class RunCard extends Model
     ];
 
     /**
+     * Badges tracked by the gamification unlock criteria.
+     *
+     * @var list<string>
+     */
+    private const array TRACKED_BADGES = [
+        self::BADGE_ANAK_MALAM,
+        self::BADGE_ANAK_PAGI,
+        self::BADGE_PEJUANG_HUJAN,
+        self::BADGE_NEGATIVE_SPLIT,
+        self::BADGE_HARI_PANAS,
+        self::BADGE_Z2_MASTER,
+    ];
+
+    /**
+     * Count how many of this user's cards carry each tracked badge.
+     * Single query, counts in PHP to avoid N per-badge round-trips.
+     *
+     * @return array<string, int>
+     */
+    public static function badgeCountsForUser(int $userId): array
+    {
+        $counts = array_fill_keys(self::TRACKED_BADGES, 0);
+
+        $allBadges = self::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $userId))
+            ->pluck('badges');
+
+        foreach ($allBadges as $cardBadges) {
+            foreach ($cardBadges ?? [] as $badge) {
+                if (isset($counts[$badge])) {
+                    $counts[$badge]++;
+                }
+            }
+        }
+
+        return $counts;
+    }
+
+    /**
      * @return BelongsTo<Activity, $this>
      */
     public function activity(): BelongsTo

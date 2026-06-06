@@ -7,82 +7,16 @@ parameters:
 			path: app/Http/Controllers/TokenUsageController.php
 
 		-
-			message: '#^Method App\\Livewire\\Pulse\\StravaHealth\:\:perUserSyncHistory\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
+			message: '#^Method App\\Livewire\\Pulse\\StravaHealth\:\:perUserSyncHistory\(\) should return list\<array\{user_id\: int, user_name\: string, last_sync\: string\|null, status\: string, rate_limit_15min_remaining\: int\|null, rate_limit_daily_remaining\: int\|null, is_failed\: bool\}\> but returns list\<array\{user_id\: int, user_name\: string, last_sync\: mixed, status\: mixed, ''15min_remaining''\: mixed, daily_remaining\: mixed, is_failed\: bool\}\>\.$#'
+			identifier: return.type
 			count: 1
 			path: app/Livewire/Pulse/StravaHealth.php
 
 		-
-			message: '#^PHPDoc tag @return has invalid value \(list\<array\{user_id\: int, user_name\: string, last_sync\: string\|null, status\: string, 15min_remaining\: int\|null, daily_remaining\: int\|null, is_failed\: bool\}\>\)\: Unexpected token "min_remaining", expected ''\}'' at offset 105 on line 2$#'
-			identifier: phpDoc.parseError
+			message: '#^Match expression does not handle remaining values\: App\\Services\\AI\\AnalysisType\:\:AkuProfileVoice\|App\\Services\\AI\\AnalysisType\:\:BriefingFeaturedKartuVoice\|App\\Services\\AI\\AnalysisType\:\:BriefingHeadline\|App\\Services\\AI\\AnalysisType\:\:BriefingMascotVoice\|App\\Services\\AI\\AnalysisType\:\:BriefingSuggestion\|App\\Services\\AI\\AnalysisType\:\:CardFlavor\|App\\Services\\AI\\AnalysisType\:\:DailyGreeting\|App\\Services\\AI\\AnalysisType\:\:MonthlyRecap\|App\\Services\\AI\\AnalysisType\:\:PersonaSummary\|App\\Services\\AI\\AnalysisType\:\:PostRunSpeech\|App\\Services\\AI\\AnalysisType\:\:PrContext\|App\\Services\\AI\\AnalysisType\:\:WeeklyRecap$#'
+			identifier: match.unhandled
 			count: 1
-			path: app/Livewire/Pulse/StravaHealth.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Livewire/Pulse/StravaHealth.php
-
-		-
-			message: '#^Method App\\Models\\Analytics\\StravaSyncLog\:\:log\(\) has parameter \$rateLimits with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Models/Analytics/StravaSyncLog.php
-
-		-
-			message: '#^PHPDoc tag @param has invalid value \(array\{15min\: int, daily\: int\}\|null  \$rateLimits\)\: Unexpected token "min", expected ''\}'' at offset 169 on line 5$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: app/Models/Analytics/StravaSyncLog.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ActivityDetail\:\:\$avg_pace\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
-
-		-
-			message: '#^Method App\\Services\\AI\\RuleBased\\RuleBasedInsightBuilder\:\:appendDecouplingPart\(\) has parameter \$parts with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
-
-		-
-			message: '#^Method App\\Services\\AI\\RuleBased\\RuleBasedInsightBuilder\:\:appendElevationPart\(\) has parameter \$parts with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
-
-		-
-			message: '#^Method App\\Services\\AI\\RuleBased\\RuleBasedInsightBuilder\:\:appendPaceVariabilityPart\(\) has parameter \$parts with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
-
-		-
-			message: '#^Method App\\Services\\AI\\RuleBased\\RuleBasedInsightBuilder\:\:appendSplitDirectionPart\(\) has parameter \$parts with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
-
-		-
-			message: '#^Method App\\Services\\AI\\RuleBased\\RuleBasedInsightBuilder\:\:appendVariabilityCommentPart\(\) has parameter \$parts with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
-
-		-
-			message: '#^Method App\\Services\\AI\\RuleBased\\RuleBasedInsightBuilder\:\:deriveZonePctFromMinutes\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
-
-		-
-			message: '#^Method App\\Services\\AI\\RuleBased\\RuleBasedInsightBuilder\:\:resolveZonePercentages\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
+			path: app/Services/AI/AnalysisService.php
 
 		-
 			message: '#^Offset ''pace'' on array\{km\: int, pace\: string\} on left side of \?\? always exists and is not nullable\.$#'
@@ -95,69 +29,3 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
-
-		-
-			message: '#^Parameter \#2 \$parts of method App\\Services\\AI\\RuleBased\\RuleBasedInsightBuilder\:\:appendKmRangePart\(\) expects list\<string\>, array given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
-
-		-
-			message: '#^Parameter \#3 \$parts of method App\\Services\\AI\\RuleBased\\RuleBasedInsightBuilder\:\:appendPaceComparisonPart\(\) expects list\<string\>, array given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
-
-		-
-			message: '#^Comparison operation "\>\=" between 0 and 3 is always false\.$#'
-			identifier: greaterOrEqual.alwaysFalse
-			count: 2
-			path: app/Services/Gamification/UnlockEngine.php
-
-		-
-			message: '#^Comparison operation "\>\=" between 0 and 5 is always false\.$#'
-			identifier: greaterOrEqual.alwaysFalse
-			count: 3
-			path: app/Services/Gamification/UnlockEngine.php
-
-		-
-			message: '#^Offset ''badgeCounts'' on array\{user\: App\\Models\\User, prCount\: int, activityCount\: int, totalDistanceM\: float, rarityCounts\: array\<string, int\>, streakWeeks\: int, twoWeekStreak\: int, tenKPlus\: int\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 5
-			path: app/Services/Gamification/UnlockEngine.php
-
-		-
-			message: '#^Offset ''fastPace'' does not exist on array\{user\: App\\Models\\User, prCount\: int, activityCount\: int, totalDistanceM\: float, rarityCounts\: array\<string, int\>, streakWeeks\: int, twoWeekStreak\: int, tenKPlus\: int\}\.$#'
-			identifier: offsetAccess.notFound
-			count: 1
-			path: app/Services/Gamification/UnlockEngine.php
-
-		-
-			message: '#^Offset ''fiveKPlus'' does not exist on array\{user\: App\\Models\\User, prCount\: int, activityCount\: int, totalDistanceM\: float, rarityCounts\: array\<string, int\>, streakWeeks\: int, twoWeekStreak\: int, tenKPlus\: int\}\.$#'
-			identifier: offsetAccess.notFound
-			count: 1
-			path: app/Services/Gamification/UnlockEngine.php
-
-		-
-			message: '#^Method App\\Services\\Run\\Story\\RunCardFactory\:\:rarityScore\(\) has parameter \$badges with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Run/Story/RunCardFactory.php
-
-		-
-			message: '#^Method App\\Services\\Run\\Story\\RunCardFactory\:\:rarityScore\(\) has parameter \$summary with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Run/Story/RunCardFactory.php
-
-		-
-			message: '#^Method App\\Services\\Strava\\StravaClient\:\:rateLimitRemaining\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Strava/StravaClient.php
-
-		-
-			message: '#^PHPDoc tag @return has invalid value \(array\{15min\: int, daily\: int\}\)\: Unexpected token "min", expected ''\}'' at offset 93 on line 4$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: app/Services/Strava/StravaClient.php

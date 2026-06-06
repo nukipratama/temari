@@ -58,7 +58,9 @@ final class RuleBasedInsightBuilder
         return 'Sesi ini ' . implode(', ', $parts) . '.';
     }
 
-    /** @param list<string> $parts */
+    /**
+     * @param  list<string>  $parts
+     */
     private function appendCadencePart(ActivityDetail $detail, array &$parts): void
     {
         $cadence = $detail->average_cadence !== null
@@ -77,7 +79,9 @@ final class RuleBasedInsightBuilder
         $parts[] = "cadence {$cadence} spm ({$label})";
     }
 
-    /** @param list<string> $parts */
+    /**
+     * @param  list<string>  $parts
+     */
     private function appendHrPart(ActivityDetail $detail, array &$parts): void
     {
         $avgHr = $detail->average_heartrate !== null
@@ -104,7 +108,10 @@ final class RuleBasedInsightBuilder
         $parts[] = "HR rata-rata {$avgHr} ({$label})";
     }
 
-    /** @param array<string, mixed> $summary @param list<string> $parts */
+    /**
+     * @param  array<string, mixed>  $summary
+     * @param  list<string>  $parts
+     */
     private function appendDecouplingPart(array $summary, array &$parts): void
     {
         $raw = $summary['decoupling_pct'] ?? null;
@@ -120,7 +127,10 @@ final class RuleBasedInsightBuilder
         }
     }
 
-    /** @param array<string, mixed> $summary @param list<string> $parts */
+    /**
+     * @param  array<string, mixed>  $summary
+     * @param  list<string>  $parts
+     */
     private function appendElevationPart(array $summary, array &$parts): void
     {
         $ascent = $summary['ascent_m'] ?? null;
@@ -129,7 +139,10 @@ final class RuleBasedInsightBuilder
         }
     }
 
-    /** @param array<string, mixed> $summary @param list<string> $parts */
+    /**
+     * @param  array<string, mixed>  $summary
+     * @param  list<string>  $parts
+     */
     private function appendPaceVariabilityPart(array $summary, array &$parts): void
     {
         $raw = $summary['pace_variability_sec'] ?? null;
@@ -138,7 +151,9 @@ final class RuleBasedInsightBuilder
         }
     }
 
-    /** @param list<string> $parts */
+    /**
+     * @param  list<string>  $parts
+     */
     private function appendPaceComparisonPart(Activity $activity, ActivityDetail $detail, array &$parts): void
     {
         $userAvg = $this->userAveragePace($activity->user_id);
@@ -168,6 +183,7 @@ final class RuleBasedInsightBuilder
             return 'Data split belum cukup buat dianalisis.';
         }
 
+        /** @var list<string> $parts */
         $parts = [];
         $this->appendSplitDirectionPart($summary, $parts);
         $this->appendKmRangePart($perKm, $parts);
@@ -176,7 +192,10 @@ final class RuleBasedInsightBuilder
         return ucfirst(implode('. ', $parts)) . '.';
     }
 
-    /** @param array<string, mixed> $summary @param list<string> $parts */
+    /**
+     * @param  array<string, mixed>  $summary
+     * @param  list<string>  $parts
+     */
     private function appendSplitDirectionPart(array $summary, array &$parts): void
     {
         $parts[] = match ($summary['negative_split'] ?? null) {
@@ -206,7 +225,7 @@ final class RuleBasedInsightBuilder
 
         $fastest = (int) array_keys($paces, min($paces), true)[0];
         $slowest = (int) array_keys($paces, max($paces), true)[0];
-        $rangeSec = max($paces) - min($paces);
+        $rangeSec = max(array_values($paces)) - min(array_values($paces));
 
         $parts[] = match (true) {
             $rangeSec > 30 => $this->kmRangeWide($perKm, $fastest, $slowest),
@@ -226,7 +245,10 @@ final class RuleBasedInsightBuilder
         return "km {$fastest} tercepat ({$fastestPace}), km {$slowest} paling lambat, selisih cukup besar";
     }
 
-    /** @param array<string, mixed> $summary @param list<string> $parts */
+    /**
+     * @param  array<string, mixed>  $summary
+     * @param  list<string>  $parts
+     */
     private function appendVariabilityCommentPart(array $summary, array &$parts): void
     {
         $raw = $summary['pace_variability_sec'] ?? null;
@@ -254,13 +276,17 @@ final class RuleBasedInsightBuilder
             return 'Data heart rate zone belum tersedia.';
         }
 
+        /** @var list<string> $parts */
         $parts = [];
         $this->appendZoneAnalysis($zonePct, $summary, $parts);
 
         return ucfirst(implode(', ', $parts)) . '.';
     }
 
-    /** @param array<string, mixed> $summary @return array<string, float> */
+    /**
+     * @param  array<string, mixed>  $summary
+     * @return array<string, float>
+     */
     private function resolveZonePercentages(array $summary): array
     {
         $zonePct = StreamSummary::zonePct($summary);
@@ -276,7 +302,10 @@ final class RuleBasedInsightBuilder
         return $this->deriveZonePctFromMinutes($zoneMin);
     }
 
-    /** @param array<string, mixed> $zoneMin @return array<string, float> */
+    /**
+     * @param  array<string, mixed>  $zoneMin
+     * @return array<string, float>
+     */
     private function deriveZonePctFromMinutes(array $zoneMin): array
     {
         $totalMin = (float) array_sum($zoneMin);
@@ -410,6 +439,7 @@ final class RuleBasedInsightBuilder
      */
     private function userAveragePace(int $userId): ?float
     {
+        /** @var object{avg_pace: string|null}|null $row */
         $row = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $userId)

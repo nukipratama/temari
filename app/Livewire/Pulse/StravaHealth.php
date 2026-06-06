@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Pulse;
 
+use Illuminate\Database\Query\Builder;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\Facades\DB;
@@ -66,7 +67,7 @@ class StravaHealth extends Card
     }
 
     /**
-     * @return list<array{user_id: int, user_name: string, last_sync: string|null, status: string, 15min_remaining: int|null, daily_remaining: int|null, is_failed: bool}>
+     * @return list<array{user_id: int, user_name: string, last_sync: string|null, status: string, rate_limit_15min_remaining: int|null, rate_limit_daily_remaining: int|null, is_failed: bool}>
      */
     private function perUserSyncHistory(): array
     {
@@ -75,7 +76,7 @@ class StravaHealth extends Card
             ->select('user_id', 'status', 'synced_at', 'rate_limit_15min_remaining', 'rate_limit_daily_remaining')
             ->whereIn(
                 'id',
-                fn (\Illuminate\Database\Query\Builder $q): \Illuminate\Database\Query\Builder => $q
+                fn (Builder $q): Builder => $q
                 ->selectRaw('MAX(id)')
                 ->from('strava_sync_logs')
                 ->whereColumn('user_id', 'strava_sync_logs.user_id')
@@ -99,8 +100,8 @@ class StravaHealth extends Card
             $rows[] = [
                 'user_id' => (int) $userId,
                 'user_name' => (string) ($userNames[$userId] ?? "User {$userId}"),
-                'last_sync' => $sync?->synced_at,
-                'status' => $sync?->status ?? 'pending',
+                'last_sync' => $sync->synced_at ?? null,
+                'status' => $sync->status ?? 'pending',
                 '15min_remaining' => $sync?->rate_limit_15min_remaining,
                 'daily_remaining' => $sync?->rate_limit_daily_remaining,
                 'is_failed' => $sync !== null && \in_array($sync->status, ['error', 'rate_limited', 'token_expired', 'revoked'], true),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\Analytics;
 
+use Override;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -32,7 +33,7 @@ class StravaSyncLog extends Model
      * Central factory for writing sync-log rows. All call sites should go
      * through here so the column shape stays in one place.
      *
-     * @param  array{15min: int, daily: int}|null  $rateLimits
+     * @param  array{'15min': int, 'daily': int}|null  $rateLimits
      */
     public static function log(
         int $userId,
@@ -55,6 +56,7 @@ class StravaSyncLog extends Model
     }
 
     /** @return array<string, string> */
+    #[Override]
     protected function casts(): array
     {
         return [
