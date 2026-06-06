@@ -108,95 +108,99 @@ export default function RunsShow({
                     Riwayat · Jejak
                 </BackLink>
 
-                {/* HERO — full width */}
-                <HeroPanel className="lg:px-9 lg:py-8">
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute -right-10 -top-10 h-52 w-52 rounded-full"
-                        style={emberGlowStyle()}
-                    />
-                    <div className="relative">
-                        <div className="mb-5 flex items-start gap-4">
-                            <Temari pose={pose} size={72} animate={false} />
-                            <div className="min-w-0 flex-1">
-                                <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                                    <MoodChip mood={mood} onSky />
-                                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
-                                        {formatIdDate(detail.start_date_local, 'long')}
-                                    </span>
+                {/* HERO — stats left + route map right */}
+                <section className="grid items-stretch gap-4 lg:grid-cols-[1.4fr_1fr]">
+                    <HeroPanel className="lg:px-9 lg:py-8">
+                        <span
+                            aria-hidden
+                            className="pointer-events-none absolute -right-10 -top-10 h-52 w-52 rounded-full"
+                            style={emberGlowStyle()}
+                        />
+                        <div className="relative">
+                            <div className="mb-5 flex items-start gap-4">
+                                <Temari pose={pose} size={72} animate={false} />
+                                <div className="min-w-0 flex-1">
+                                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                                        <MoodChip mood={mood} onSky />
+                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
+                                            {formatIdDate(detail.start_date_local, 'long')}
+                                        </span>
+                                    </div>
+                                    <h1 className="font-display text-display-sm text-cream">
+                                        {detail.name ?? 'Lari'}
+                                    </h1>
                                 </div>
-                                <h1 className="font-display text-display-sm text-cream">
-                                    {detail.name ?? 'Lari'}
-                                </h1>
+                            </div>
+                            <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+                                <HeroStat label="JARAK" value={km} unit="km" />
+                                <HeroStat label="PACE" value={pace} unit="/km" />
+                                <HeroStat label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
+                                <HeroStat label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-                            <HeroStat label="JARAK" value={km} unit="km" />
-                            <HeroStat label="PACE" value={pace} unit="/km" />
-                            <HeroStat label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
-                            <HeroStat label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" />
-                        </div>
-                    </div>
-                </HeroPanel>
-
-                {/* EMBEDDED KARTU — full width below hero */}
-                <Card as="aside" padding="lg" className="mt-4 flex flex-col items-center gap-3.5">
-                    <SectionLabel>Kartu buat lari ini</SectionLabel>
-                    {card ? (
-                        <div className="flex w-full flex-col items-center gap-3.5 sm:flex-row sm:items-start sm:justify-center">
-                            <Link
-                                href={kartuUrl(card)}
-                                className="block w-full max-w-[260px] flex-none"
-                            >
-                                <Kartu
-                                    name={card.special_move}
-                                    subtitle={`${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`}
-                                    km={km}
-                                    durasi={duration === '—' ? '—' : duration}
-                                    trimp={trimp != null ? trimp : '—'}
-                                    rarity={card.rarity}
-                                    mood={mood}
-                                    badges={(card.badges ?? []).slice(0, 3)}
-                                    stats={buildCardStats(detail)}
-                                    zonePct={zonePctFromDetail(detail)}
-                                    polyline={detail.summary_polyline}
-                                    paceShape={paceShapeFromDetail(detail)}
-                                    size="md"
-                                />
-                            </Link>
-                            <p className="max-w-xs font-display text-sm italic leading-relaxed text-ink-2">
-                                &ldquo;{RARITY_LABELS[card.rarity]}, aku catat karena {detail.name ?? 'lari ini'} layak.&rdquo;
-                            </p>
-                        </div>
-                    ) : (
-                        <p className="font-display text-base italic text-ink-3">
-                            Belum ada kartu buat lari ini.
-                        </p>
-                    )}
-                </Card>
-
-                {/* KATA TEMARI header + 4-LENS GRID */}
-                <section className="mt-10">
-                    <header className="mb-4 flex items-center gap-3.5">
-                        <Temari pose="observational" size={48} animate={false} />
-                        <div>
-                            <h2 className="font-display text-headline-sm text-ink">
-                                Kata Temari
-                            </h2>
-                            <p className="mt-1 font-sans text-xs text-ink-3">Empat cara liat lari ini.</p>
-                        </div>
-                    </header>
-                    <FourLensGrid
-                        cerita={speechAnalysis}
-                        terjemahan={insightTechnical}
-                        split={insightSplits}
-                        hr={insightZones}
-                    />
+                    </HeroPanel>
+                    <MapWeatherPanel detail={detail} />
                 </section>
 
-                {/* MAP + WEATHER + DETAIL TILES */}
-                <section className="mt-10 grid gap-3.5 lg:grid-cols-[1.4fr_1fr]">
-                    <MapWeatherPanel detail={detail} />
+                {/* KATA TEMARI (70%) + KARTU (30%) */}
+                <section className="mt-8 grid gap-6 lg:grid-cols-[7fr_3fr]">
+                    <div>
+                        <header className="mb-4 flex items-center gap-3.5">
+                            <Temari pose="observational" size={48} animate={false} />
+                            <div>
+                                <h2 className="font-display text-headline-sm text-ink">
+                                    Kata Temari
+                                </h2>
+                                <p className="mt-1 font-sans text-xs text-ink-3">Empat cara liat lari ini.</p>
+                            </div>
+                        </header>
+                        <FourLensGrid
+                            cerita={speechAnalysis}
+                            terjemahan={insightTechnical}
+                            split={insightSplits}
+                            hr={insightZones}
+                        />
+                    </div>
+
+                    {/* Kartu sidebar */}
+                    <Card as="aside" padding="lg" className="flex h-fit flex-col gap-3.5">
+                        <SectionLabel>Kartu buat lari ini</SectionLabel>
+                        {card ? (
+                            <>
+                                <Link
+                                    href={kartuUrl(card)}
+                                    className="mx-auto block w-full max-w-[260px]"
+                                >
+                                    <Kartu
+                                        name={card.special_move}
+                                        subtitle={`${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`}
+                                        km={km}
+                                        durasi={duration === '—' ? '—' : duration}
+                                        trimp={trimp != null ? trimp : '—'}
+                                        rarity={card.rarity}
+                                        mood={mood}
+                                        badges={(card.badges ?? []).slice(0, 3)}
+                                        stats={buildCardStats(detail)}
+                                        zonePct={zonePctFromDetail(detail)}
+                                        polyline={detail.summary_polyline}
+                                        paceShape={paceShapeFromDetail(detail)}
+                                        size="md"
+                                    />
+                                </Link>
+                                <p className="border-t border-dashed border-cream-deep pt-3 font-display text-sm italic leading-relaxed text-ink-2">
+                                    &ldquo;{RARITY_LABELS[card.rarity]}, aku catat karena {detail.name ?? 'lari ini'} layak.&rdquo;
+                                </p>
+                            </>
+                        ) : (
+                            <p className="font-display text-base italic text-ink-3">
+                                Belum ada kartu buat lari ini.
+                            </p>
+                        )}
+                    </Card>
+                </section>
+
+                {/* DETAIL TILES */}
+                <section className="mt-10">
                     <DetailTiles detail={detail} summary={summary} />
                 </section>
 
