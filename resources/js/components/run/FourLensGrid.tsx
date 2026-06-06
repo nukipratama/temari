@@ -97,7 +97,7 @@ export default function FourLensGrid({
                 </button>
             </div>
 
-            <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="flex flex-col gap-3.5">
                 {lenses.map((lens) => (
                     <Card
                         key={lens.id}
