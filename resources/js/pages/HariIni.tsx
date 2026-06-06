@@ -432,7 +432,7 @@ function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose:
                 <Stat l="TRIMP" v={trimp != null ? String(trimp) : '—'} />
             </div>
             {note && (
-                <div className="flex items-start gap-2 px-3 text-sm leading-relaxed text-ink-2">
+                <div className="mx-auto flex max-w-md items-center gap-2 px-3 text-center text-sm leading-relaxed text-ink-2">
                     <Icon
                         icon="mdi:comment-quote-outline"
                         width={14}
