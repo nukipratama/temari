@@ -195,7 +195,7 @@ export default function RunsShow({
                         {card && (
                             <Link
                                 href={kartuUrl(card)}
-                                className="block w-full max-w-[260px]"
+                                className="block w-full max-w-[320px]"
                             >
                                 <Kartu
                                     name={card.special_move}
