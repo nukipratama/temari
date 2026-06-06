@@ -11,7 +11,6 @@ import Chip from '@/components/ui/Chip';
 import LinkCard from '@/components/ui/LinkCard';
 import Kartu from '@/components/card/Kartu';
 import FeaturedCardHero from '@/components/card/FeaturedCardHero';
-import KartuMini from '@/components/card/KartuMini';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import Temari from '@/components/temari/Temari';
@@ -33,7 +32,6 @@ import {
     formatIdDateUpper,
     formatSignedForm,
     formatWeather,
-    kartuStripItem,
     monotonyHint,
     pickFeaturedKartu,
     poseForRun,
@@ -41,7 +39,6 @@ import {
     strainHint,
     vibeSubtitleFor,
     type FeaturedCard,
-    type StripItem,
 } from './HariIni/helpers';
 import type {
     ActivityDetail,
@@ -94,10 +91,6 @@ export default function HariIni({
 
     const featured = pickFeaturedKartu(recentRuns);
     const lastRun = recentRuns[0] ?? null;
-    const cardStrip = recentRuns
-        .map((r) => kartuStripItem(r))
-        .filter((x): x is StripItem => x !== null)
-        .slice(0, 5);
 
     const now = new Date();
     const dateLine = `${ID_DATE_FMT.format(now)} · ${ID_TIME_FMT.format(now)} · ${briefing.vibeLabel}`;
@@ -130,38 +123,13 @@ export default function HariIni({
                     <EmptyRunsState />
                 ) : (
                     <>
-                        {/* HERO KARTU */}
-                        {featured && <FeaturedKartuPanel featured={featured} featuredKartuVoice={briefing.featuredKartuVoice} />}
-
-                        {/* KARTU STRIP */}
-                        <section className="mt-6">
-                            {cardStrip.length > 0 && (
-                                <>
-                                    <SectionLabel>Kartu terakhir</SectionLabel>
-                                    {/* Mobile: horizontal scroll */}
-                                    <div className="-mx-5 flex items-stretch gap-3 overflow-x-auto px-5 pb-1 scrollbar-hide sm:-mx-8 sm:px-8 lg:hidden">
-                                        {cardStrip.map((item) => (
-                                            <Link key={item.key} href={kartuUrl({ id: item.cardId })} className="flex-none block">
-                                                <KartuMini name={item.name} rarity={item.rarity} date={item.date} polyline={item.polyline} className="h-full" />
-                                            </Link>
-                                        ))}
-                                    </div>
-                                    {/* Desktop: auto-fit grid — empty tracks collapse so last card aligns with container edge */}
-                                    <div className="hidden lg:grid lg:gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
-                                        {cardStrip.map((item) => (
-                                            <Link key={item.key} href={kartuUrl({ id: item.cardId })} className="block h-full">
-                                                <KartuMini name={item.name} rarity={item.rarity} date={item.date} polyline={item.polyline} className="h-full w-full" />
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </section>
-
-                        {/* VITAL CHIPS — full width, 3-up */}
+                        {/* VITAL CHIPS — above hero, full width 3-up */}
                         <section className="mt-6">
                             <VitalChips briefing={briefing} load={load} />
                         </section>
+
+                        {/* HERO KARTU */}
+                        {featured && <FeaturedKartuPanel featured={featured} featuredKartuVoice={briefing.featuredKartuVoice} />}
 
                         {/* 3-UP */}
                         <section className="mt-8 grid gap-4 lg:grid-cols-3">
