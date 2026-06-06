@@ -108,45 +108,45 @@ export default function RunsShow({
                     Riwayat · Jejak
                 </BackLink>
 
-                {/* HERO + EMBEDDED KARTU */}
-                <section className="grid items-stretch gap-4 lg:grid-cols-[1.5fr_1fr]">
-                    <HeroPanel className="lg:px-9 lg:py-8">
-                        <span
-                            aria-hidden
-                            className="pointer-events-none absolute -right-10 -top-10 h-52 w-52 rounded-full"
-                            style={emberGlowStyle()}
-                        />
-                        <div className="relative">
-                            <div className="mb-5 flex items-start gap-4">
-                                <Temari pose={pose} size={72} animate={false} />
-                                <div className="min-w-0 flex-1">
-                                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                                        <MoodChip mood={mood} onSky />
-                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
-                                            {formatIdDate(detail.start_date_local, 'long')}
-                                        </span>
-                                    </div>
-                                    <h1 className="font-display text-display-sm text-cream">
-                                        {detail.name ?? 'Lari'}
-                                    </h1>
+                {/* HERO — full width */}
+                <HeroPanel className="lg:px-9 lg:py-8">
+                    <span
+                        aria-hidden
+                        className="pointer-events-none absolute -right-10 -top-10 h-52 w-52 rounded-full"
+                        style={emberGlowStyle()}
+                    />
+                    <div className="relative">
+                        <div className="mb-5 flex items-start gap-4">
+                            <Temari pose={pose} size={72} animate={false} />
+                            <div className="min-w-0 flex-1">
+                                <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                                    <MoodChip mood={mood} onSky />
+                                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
+                                        {formatIdDate(detail.start_date_local, 'long')}
+                                    </span>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-                                <HeroStat label="JARAK" value={km} unit="km" />
-                                <HeroStat label="PACE" value={pace} unit="/km" />
-                                <HeroStat label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
-                                <HeroStat label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" />
+                                <h1 className="font-display text-display-sm text-cream">
+                                    {detail.name ?? 'Lari'}
+                                </h1>
                             </div>
                         </div>
-                    </HeroPanel>
+                        <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+                            <HeroStat label="JARAK" value={km} unit="km" />
+                            <HeroStat label="PACE" value={pace} unit="/km" />
+                            <HeroStat label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
+                            <HeroStat label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" />
+                        </div>
+                    </div>
+                </HeroPanel>
 
-                    {/* EMBEDDED KARTU */}
-                    <Card as="aside" padding="lg" className="flex flex-col gap-3.5">
-                        <SectionLabel>Kartu buat lari ini</SectionLabel>
-                        {card ? (
+                {/* EMBEDDED KARTU — full width below hero */}
+                <Card as="aside" padding="lg" className="mt-4 flex flex-col items-center gap-3.5">
+                    <SectionLabel>Kartu buat lari ini</SectionLabel>
+                    {card ? (
+                        <div className="flex w-full flex-col items-center gap-3.5 sm:flex-row sm:items-start sm:justify-center">
                             <Link
                                 href={kartuUrl(card)}
-                                className="mx-auto block w-full max-w-[260px]"
+                                className="block w-full max-w-[260px] flex-none"
                             >
                                 <Kartu
                                     name={card.special_move}
@@ -164,18 +164,16 @@ export default function RunsShow({
                                     size="md"
                                 />
                             </Link>
-                        ) : (
-                            <p className="font-display text-base italic text-ink-3">
-                                Belum ada kartu buat lari ini.
+                            <p className="max-w-xs font-display text-sm italic leading-relaxed text-ink-2">
+                                &ldquo;{RARITY_LABELS[card.rarity]}, aku catat karena {detail.name ?? 'lari ini'} layak.&rdquo;
                             </p>
-                        )}
-                        {card && (
-                            <p className="border-t border-dashed border-cream-deep pt-3 font-display text-sm italic leading-relaxed text-ink-2">
-                                “{RARITY_LABELS[card.rarity]}, aku catat karena {detail.name ?? 'lari ini'} layak.”
-                            </p>
-                        )}
-                    </Card>
-                </section>
+                        </div>
+                    ) : (
+                        <p className="font-display text-base italic text-ink-3">
+                            Belum ada kartu buat lari ini.
+                        </p>
+                    )}
+                </Card>
 
                 {/* KATA TEMARI header + 4-LENS GRID */}
                 <section className="mt-10">

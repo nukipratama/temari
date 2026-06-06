@@ -133,11 +133,10 @@ export default function HariIni({
                         {/* HERO KARTU */}
                         {featured && <FeaturedKartuPanel featured={featured} featuredKartuVoice={briefing.featuredKartuVoice} />}
 
-                        {/* KARTU STRIP (60%) + VITAL CHIPS (40%) */}
-                        <div className="mt-6 flex flex-col gap-4 lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8">
-                            {/* 60% — kartu strip (conditionally rendered; VitalChips uses lg:col-start-2 to stay in col 2) */}
+                        {/* KARTU STRIP */}
+                        <section className="mt-6">
                             {cardStrip.length > 0 && (
-                                <section>
+                                <>
                                     <SectionLabel>Kartu terakhir</SectionLabel>
                                     {/* Mobile: horizontal scroll */}
                                     <div className="-mx-5 flex items-stretch gap-3 overflow-x-auto px-5 pb-1 scrollbar-hide sm:-mx-8 sm:px-8 lg:hidden">
@@ -155,14 +154,14 @@ export default function HariIni({
                                             </Link>
                                         ))}
                                     </div>
-                                </section>
+                                </>
                             )}
+                        </section>
 
-                            {/* 40% — vital chips, pinned to col 2 even when strip is absent */}
-                            <div className="h-full lg:col-start-2">
-                                <VitalChips briefing={briefing} load={load} />
-                            </div>
-                        </div>
+                        {/* VITAL CHIPS — full width, 3-up */}
+                        <section className="mt-6">
+                            <VitalChips briefing={briefing} load={load} />
+                        </section>
 
                         {/* 3-UP */}
                         <section className="mt-8 grid gap-4 lg:grid-cols-3">
@@ -293,7 +292,7 @@ function VitalChip({
                 <span>{label}</span>
                 {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
             </div>
-            <div className={cn('min-w-0 font-sans text-stat font-bold leading-none tabular-nums tracking-[-0.02em]', valueClass)}>
+            <div className={cn('min-w-0 font-sans text-[40px] font-bold leading-none tabular-nums tracking-[-0.02em]', valueClass)}>
                 {value}
             </div>
             {sub !== '' && <div className={cn('mt-1 font-display text-xs italic', onSky ? 'text-ink-on-sky' : 'text-ink-3')}>{sub}</div>}

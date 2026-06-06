@@ -262,39 +262,79 @@ export default function TemariProto({
                 style={{ display: 'block', overflow: 'visible' }}
                 aria-hidden
             >
+                <defs>
+                    {/* Drop shadow for lift */}
+                    <filter id="temari-shadow" x="-20%" y="-10%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#3b2f1f" floodOpacity="0.15" />
+                    </filter>
+                    {/* Fur radial gradient — lighter center, darker edges */}
+                    <radialGradient id="fur-head-grad" cx="50%" cy="40%" r="55%">
+                        <stop offset="0%" stopColor="#FAE8CE" />
+                        <stop offset="70%" stopColor={FUR} />
+                        <stop offset="100%" stopColor={FUR_SHADE} />
+                    </radialGradient>
+                    <radialGradient id="fur-body-grad" cx="50%" cy="30%" r="65%">
+                        <stop offset="0%" stopColor="#FAE8CE" />
+                        <stop offset="60%" stopColor={FUR} />
+                        <stop offset="100%" stopColor={FUR_SHADE} />
+                    </radialGradient>
+                    {/* Forehead highlight */}
+                    <radialGradient id="fur-highlight" cx="50%" cy="30%" r="40%">
+                        <stop offset="0%" stopColor="#fff" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+                    </radialGradient>
+                    {/* Cheek blush gradient */}
+                    <radialGradient id="cheek-blush-l" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor={CHEEK} stopOpacity="0.7" />
+                        <stop offset="100%" stopColor={CHEEK} stopOpacity="0" />
+                    </radialGradient>
+                    <radialGradient id="cheek-blush-r" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor={CHEEK} stopOpacity="0.7" />
+                        <stop offset="100%" stopColor={CHEEK} stopOpacity="0" />
+                    </radialGradient>
+                    {/* Inner ear shadow */}
+                    <radialGradient id="ear-inner-grad" cx="50%" cy="40%" r="55%">
+                        <stop offset="0%" stopColor={INNER_EAR} stopOpacity="0.6" />
+                        <stop offset="100%" stopColor="#B8785A" stopOpacity="0.4" />
+                    </radialGradient>
+                </defs>
+
                 {/* Aura (behind everything) */}
                 {showAura && auraColors && <AuraLayer colors={auraColors} />}
 
                 {/* Ground shadow */}
-                <ellipse cx="60" cy="130" rx="22" ry="2.5" fill={EYE} opacity="0.12" />
+                <ellipse cx="60" cy="130" rx="24" ry="3.5" fill={EYE} opacity="0.1" />
 
-                {/* Legs */}
-                <Legs sepatuColors={sepatuColors} />
+                {/* Character group with drop shadow */}
+                <g filter="url(#temari-shadow)">
+                    {/* Legs */}
+                    <Legs sepatuColors={sepatuColors} />
 
-                {/* Body (torso) */}
-                <Body
-                    kausColors={kausColors}
-                    celanaColors={celanaColors}
-                    hb={hb}
-                />
+                    {/* Body (torso) */}
+                    <Body
+                        kausColors={kausColors}
+                        celanaColors={celanaColors}
+                        hb={hb}
+                    />
 
-                {/* Arms */}
-                <Arms armRot={armRot} kausColors={kausColors} hb={hb} />
+                    {/* Arms */}
+                    <Arms armRot={armRot} kausColors={kausColors} hb={hb} />
 
-                {/* Head */}
-                <Head
-                    earTilt={earTilt}
-                    hb={hb}
-                    headbandKey={headbandKey}
-                    eyeShape={eyeShape}
-                    mouthShape={mouthShape}
-                />
+                    {/* Head */}
+                    <Head
+                        earTilt={earTilt}
+                        hb={hb}
+                        headbandKey={headbandKey}
+                        eyeShape={eyeShape}
+                        mouthShape={mouthShape}
+                    />
 
-                {/* Medal (on chest) */}
-                {medal && <MedalLayer medal={medal} />}
+                    {/* Medal (on chest) */}
+                    {medal && <MedalLayer medal={medal} />}
 
-                {/* Pita (sash across body) */}
-                {pitaColors && <PitaLayer colors={pitaColors} />}
+                    {/* Pita (sash across body) */}
+                    {pitaColors && <PitaLayer colors={pitaColors} />}
+                </g>
 
                 {/* Sparkles */}
                 {showSparkle && <Sparkles innerEarHex={INNER_EAR} />}
@@ -341,11 +381,13 @@ function Head({
         <g>
             {/* Ears */}
             <Ears tilt={earTilt} />
-            {/* Head circle */}
-            <ellipse cx="60" cy="28" rx="34" ry="30" fill={FUR} stroke={FUR_SHADE} strokeWidth="1.2" />
+            {/* Head circle — gradient fill for 3D */}
+            <ellipse cx="60" cy="28" rx="34" ry="30" fill="url(#fur-head-grad)" stroke={FUR_SHADE} strokeWidth="1.2" />
+            {/* Forehead highlight */}
+            <ellipse cx="60" cy="20" rx="22" ry="14" fill="url(#fur-highlight)" />
             {/* Headband */}
             <Headband band={hb.band} legendary={headbandKey === 'legendaris'} />
-            {/* Cheeks */}
+            {/* Cheeks — softer blush */}
             <Cheeks />
             {/* Eyes */}
             <Eyes shape={eyeShape} />
@@ -370,10 +412,10 @@ function Body({
 }>) {
     return (
         <g>
-            {/* Torso shape */}
+            {/* Torso shape — gradient fill for 3D */}
             <path
                 d="M 36 56 Q 32 70 34 86 Q 36 92 44 92 L 76 92 Q 84 92 86 86 Q 88 70 84 56 Z"
-                fill={FUR}
+                fill="url(#fur-body-grad)"
                 stroke={FUR_SHADE}
                 strokeWidth="1.2"
                 strokeLinejoin="round"
@@ -589,11 +631,11 @@ function Ears({ tilt }: Readonly<{ tilt: [number, number] }>) {
         <>
             <g transform={`translate(35, 8) rotate(${tilt[0]})`}>
                 <ellipse cx="0" cy="-10" rx="8" ry="18" fill={FUR} stroke={FUR_SHADE} strokeWidth="1.2" />
-                <ellipse cx="0" cy="-8" rx="3.5" ry="12" fill={INNER_EAR} opacity="0.55" />
+                <ellipse cx="0" cy="-8" rx="3.5" ry="12" fill="url(#ear-inner-grad)" />
             </g>
             <g transform={`translate(85, 8) rotate(${tilt[1]})`}>
                 <ellipse cx="0" cy="-10" rx="8" ry="18" fill={FUR} stroke={FUR_SHADE} strokeWidth="1.2" />
-                <ellipse cx="0" cy="-8" rx="3.5" ry="12" fill={INNER_EAR} opacity="0.55" />
+                <ellipse cx="0" cy="-8" rx="3.5" ry="12" fill="url(#ear-inner-grad)" />
             </g>
         </>
     );
@@ -619,8 +661,8 @@ function Headband({ band, legendary }: Readonly<{ band: string; legendary: boole
 function Cheeks() {
     return (
         <>
-            <ellipse cx="42" cy="40" rx="5" ry="3" fill={CHEEK} opacity="0.6" />
-            <ellipse cx="78" cy="40" rx="5" ry="3" fill={CHEEK} opacity="0.6" />
+            <ellipse cx="42" cy="40" rx="7" ry="5" fill="url(#cheek-blush-l)" />
+            <ellipse cx="78" cy="40" rx="7" ry="5" fill="url(#cheek-blush-r)" />
         </>
     );
 }
