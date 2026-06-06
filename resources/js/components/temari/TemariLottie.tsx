@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
-import TemariMascot from './TemariMascot';
+import Temari from './Temari';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type { Mood } from '@/types/inertia';
 
 const LottiePlayer = lazy(() => import('./LottiePlayer'));
@@ -12,7 +13,7 @@ interface TemariLottieProps {
     className?: string;
 }
 
-// Falls back to the SVG TemariMascot when `src` is unset — keeps the lottie-react
+// Falls back to the SVG Temari when `src` is unset — keeps the lottie-react
 // bundle out of the graph until a real rigged asset ships.
 export default function TemariLottie({
     mood,
@@ -47,12 +48,12 @@ export default function TemariLottie({
     }, [src]);
 
     if (src === null || src === undefined || src.length === 0 || errored || data === null) {
-        return <TemariMascot mood={mood} sizeClass={sizeClass} idle="mood" className={className} />;
+        return <Temari pose={MOOD_TO_POSE[mood]} size={128} animate className={className} />;
     }
 
     return (
         <div className={cn('relative', sizeClass, className)}>
-            <Suspense fallback={<TemariMascot mood={mood} sizeClass={sizeClass} />}>
+            <Suspense fallback={<Temari pose={MOOD_TO_POSE[mood]} size={128} />}>
                 <LottiePlayer animationData={data} />
             </Suspense>
         </div>

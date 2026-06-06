@@ -10,7 +10,6 @@ import ShareCardModal from "./ShareCardModal";
 import type { ShareKartuData } from "@/lib/shareCard";
 import Temari from "@/components/temari/Temari";
 import { type TemariPose } from "@/components/temari/TemariProto";
-import TemariMascot from "@/components/temari/TemariMascot";
 import { RARITY_HEX, RARITY_LABELS, badgeEmblem, badgeName, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from "@/lib/runcard";
 import { formatDuration, formatKm, formatPace, paceSecPerKm } from "@/lib/pace";
 import { csrfToken } from "@/lib/http";
@@ -202,10 +201,10 @@ export default function CardReveal({
               {/* Mascot */}
               <div className="flex justify-center">
                 {!opened ? (
-                  <TemariMascot
-                    mood="nyala"
-                    sizeClass="h-[200px] w-[200px]"
-                    idle="mood"
+                  <Temari
+                    pose="proud"
+                    size={200}
+                    animate
                   />
                 ) : (
                   <motion.div

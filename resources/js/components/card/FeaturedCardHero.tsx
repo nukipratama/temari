@@ -52,7 +52,7 @@ export default function FeaturedCardHero({
     const pips = (badges ?? []).slice(0, 3);
 
     return (
-        <div className="relative mt-12">
+        <div className="relative my-8">
             <HeroPanel className="min-h-[300px] lg:px-14 lg:py-12">
                 <span
                     aria-hidden

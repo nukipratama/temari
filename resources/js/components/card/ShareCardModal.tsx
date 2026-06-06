@@ -39,7 +39,7 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
     const temariContainerRef = useRef<HTMLDivElement>(null);
 
     // The mascot is dressed exactly as the user has it elsewhere. Read the
-    // shared equip state defensively (mirrors TemariMascot) so this still renders
+    // shared equip state defensively (mirrors Temari component) so this still renders
     // a bare bunny when there's no Inertia page context (e.g. unit tests).
     let equipped: TemariEquipped | null = null;
     try {
@@ -61,7 +61,7 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
         const container = temariContainerRef.current;
         if (!container) return;
 
-        // Give React a tick to render the TemariMascot into the hidden container.
+        // Give React a tick to render the Temari into the hidden container.
         const id = globalThis.setTimeout(() => {
             const svg = container.querySelector('svg');
             if (!svg) return;

@@ -32,7 +32,7 @@ export const breath: Variants = {
 // pulse. Longer periods (6-8s) make the cycle less perceptible.
 export const idleByMood: Record<string, Variants> = {
     // Glow = jogging FORWARD-RIGHT. 3D body rotation is applied via CSS
-    // perspective/rotateY in the TemariMascot wrapper; here we keep just the
+    // perspective/rotateY in the Temari wrapper; here we keep just the
     // subtle breath so the body has a tiny "alive" pulse on top of the 3D pose.
     glow: {
         idle: {

@@ -5,7 +5,8 @@ import { Icon } from '@iconify/react';
 import { pressShrink } from '@/lib/motion';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { aktivitasUrl } from '@/lib/routes';
-import TemariMascot from '@/components/temari/TemariMascot';
+import Temari from '@/components/temari/Temari';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
 import MoodChip from '@/components/ui/MoodChip';
 import { MOOD_LABEL } from '@/lib/mood';
 import type { ActivityDetail, Mood } from '@/types/inertia';
@@ -35,9 +36,10 @@ export default function RunListRow({ detail, mood = null, note = null }: Readonl
             whileTap={pressShrink}
             className="flex items-start gap-4 border-b border-line px-5 py-4 text-sm transition last:border-b-0 hover:bg-surface"
         >
-            <TemariMascot
-                mood={safeMood}
-                sizeClass="h-16 w-16 shrink-0"
+            <Temari
+                pose={MOOD_TO_POSE[safeMood]}
+                size={64}
+                className="shrink-0"
                 aria-label={`mood ${MOOD_LABEL[safeMood]}`}
             />
             <div className="flex min-w-0 flex-1 flex-col gap-2">

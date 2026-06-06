@@ -11,7 +11,6 @@ import RiwayatFilter, { type MoodOption, type RangeOption } from '@/components/r
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import BackLink from '@/components/ui/BackLink';
 import StravaSyncButton from '@/components/StravaSyncButton';
-import TemariMascot from '@/components/temari/TemariMascot';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
@@ -367,7 +366,7 @@ function EmptyState() {
 
     return (
         <Card tone="empty" padding="lg" className="flex flex-col items-center text-center">
-            <TemariMascot mood="enteng" sizeClass="h-32 w-32" idle="mood" />
+            <Temari pose="excited" size={128} animate />
             <p className="mt-4 font-display text-2xl italic text-ink-2">{line}</p>
             <p className="mt-2 font-sans text-sm text-ink-2">{sub}</p>
             <StravaSyncButton state={state} className="mt-4" />

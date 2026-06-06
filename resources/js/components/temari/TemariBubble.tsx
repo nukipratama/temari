@@ -1,6 +1,7 @@
 import { cn } from '@/lib/cn';
+import Temari from './Temari';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
 import AnalysisStatus from './AnalysisStatus';
-import TemariMascot from './TemariMascot';
 import type { AnalysisPayload, Mood, StoryLine } from '@/types/inertia';
 
 interface TemariBubbleProps {
@@ -21,7 +22,7 @@ export default function TemariBubble({
     const mood: Mood = line?.mood ?? 'adem';
 
     const isLarge = size === 'lg';
-    const mascotSizeClass = isLarge ? 'h-36 w-36 shrink-0' : 'h-20 w-20 shrink-0';
+    const mascotSize = isLarge ? 144 : 80;
     const bodyPad = isLarge ? 'p-5' : 'p-3';
 
     return (
@@ -32,12 +33,11 @@ export default function TemariBubble({
                 className,
             )}
         >
-            <TemariMascot
-                mood={mood}
-                sizeClass={mascotSizeClass}
-                idle={isLarge ? 'mood' : 'breath'}
-                gazeTracking={isLarge}
-                ornaments={isLarge}
+            <Temari
+                pose={MOOD_TO_POSE[mood]}
+                size={mascotSize}
+                animate
+                className="shrink-0"
                 aria-label={`Temari mood ${mood}`}
             />
             <div className="min-w-0 flex-1">

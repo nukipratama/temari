@@ -87,11 +87,11 @@ class BriefingComposer
             return null;
         }
         if ($hoursSince < 72) {
-            return "{$hoursSince}j";
+            return "{$hoursSince} jam";
         }
         $days = (int) floor($hoursSince / 24);
 
-        return "{$days}h";
+        return "{$days} hari";
     }
 
     private function streakLabel(?int $daysSince): ?string

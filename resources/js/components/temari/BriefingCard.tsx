@@ -6,8 +6,9 @@ import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatIdDate } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
 import AnalysisStatus from './AnalysisStatus';
-import TemariMascot from './TemariMascot';
+import Temari from './Temari';
 import TemariPeek from './TemariPeek';
 import type { AnalysisPayload, BriefingResult, RecoveryTone } from '@/types/inertia';
 
@@ -90,12 +91,10 @@ export default function BriefingCard({
                 {/* RIGHT 40% — mascot only */}
                 <div className="flex flex-col items-center justify-center sm:basis-2/5">
                     <div className="relative">
-                        <TemariMascot
-                            mood={briefing.mood}
-                            sizeClass="h-48 w-48 sm:h-56 sm:w-56 lg:h-60 lg:w-60"
-                            idle="mood"
-                            gazeTracking
-                            ornaments
+                        <Temari
+                            pose={MOOD_TO_POSE[briefing.mood]}
+                            size={200}
+                            animate
                             aria-label={`Temari, mood ${briefing.mood}`}
                         />
                         <TemariPeek lines={PEEK_LINES} />

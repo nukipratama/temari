@@ -4,7 +4,8 @@ import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import AnalysisStatus from './AnalysisStatus';
-import TemariMascot from './TemariMascot';
+import Temari from './Temari';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 export interface ThreadEntry {
@@ -64,7 +65,7 @@ export default function TemariThread({
             aria-label="Catatan Temari"
         >
             <header className="relative z-10 flex items-start gap-3 sm:gap-4">
-                <TemariMascot mood={mood} sizeClass="h-20 w-20 shrink-0 sm:h-28 sm:w-28" idle="mood" gazeTracking ornaments />
+                <Temari pose={MOOD_TO_POSE[mood]} size={112} animate className="shrink-0" />
                 <div className="min-w-0 flex-1 pt-2">
                     <div className="flex flex-wrap items-baseline gap-2">
                         <span className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
