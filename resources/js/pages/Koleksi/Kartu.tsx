@@ -354,9 +354,6 @@ function LegendaryTease() {
                 <div className="mb-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rarity-legendary">
                     ★ Legendaris · belum kebuka
                 </div>
-                <p className="mb-1.5 font-display text-2xl leading-tight tracking-[-0.01em] text-ink">
-                    &ldquo;Ada kartu Legendaris nungguin di sini.&rdquo; ✨
-                </p>
                 <p className="font-display text-sm italic leading-relaxed text-ink-2">
                     Buat buka: PR di 21K, atau 5 lari Nyala beruntun.
                 </p>

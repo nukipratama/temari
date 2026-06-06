@@ -112,8 +112,6 @@ export default function KoleksiRekor({
                 {progressionByCategory && Object.keys(progressionByCategory).length > 0 && (
                     <ProgressionSection byCategory={progressionByCategory} />
                 )}
-
-                <TemariFooter />
             </PageContainer>
         </AppShell>
     );
@@ -375,17 +373,6 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
                 </div>
             </div>
         </div>
-    );
-}
-
-function TemariFooter() {
-    return (
-        <Card as="section" className="mt-8 flex items-start gap-3.5">
-            <Temari pose="observational" size={56} />
-            <p className="flex-1 font-display text-[15px] italic leading-relaxed text-ink-2">
-                “Tiap kamu pecahin rekor, langsung aku catat di sini. Nggak ada yang ilang, ya.”
-            </p>
-        </Card>
     );
 }
 

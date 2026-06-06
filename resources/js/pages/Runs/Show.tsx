@@ -16,7 +16,7 @@ import { kartuUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatDurationHMS, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
-import { RARITY_LABELS, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
+import { buildCardStats, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
 import { emberGlowStyle } from '@/lib/styles';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type {
@@ -187,9 +187,6 @@ export default function RunsShow({
                                         size="md"
                                     />
                                 </Link>
-                                <p className="border-t border-dashed border-cream-deep pt-3 font-display text-sm italic leading-relaxed text-ink-2">
-                                    &ldquo;{RARITY_LABELS[card.rarity]}, aku catat karena {detail.name ?? 'lari ini'} layak.&rdquo;
-                                </p>
                             </>
                         ) : (
                             <p className="font-display text-base italic text-ink-3">
