@@ -5,10 +5,7 @@ declare(strict_types=1);
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config()->set('ai.cooldown_seconds', 300);

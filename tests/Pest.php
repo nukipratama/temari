@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\AI\AzureOpenAIClient;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
@@ -20,6 +21,8 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)->in('Feature', 'Unit');
+
+uses(RefreshDatabase::class)->in('Feature', 'Unit');
 
 pest()->beforeEach(function (): void {
     Http::preventStrayRequests();

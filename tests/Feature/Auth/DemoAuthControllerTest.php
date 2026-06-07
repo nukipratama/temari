@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Database\Seeders\Demo\DemoRunSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
-
-uses(RefreshDatabase::class);
 
 it('logs the demo user in when the flag is on and the user exists', function (): void {
     config()->set('demo.login_enabled', true);

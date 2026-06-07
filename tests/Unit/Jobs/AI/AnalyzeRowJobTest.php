@@ -8,9 +8,6 @@ use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 // Named subclasses live in a *Test.php file would trip the
 // `Tests\ => ./tests` PSR-4 rule and trigger composer warnings. Anonymous

@@ -10,11 +10,8 @@ use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Strava\ActivityFetcher;
 use App\Services\Strava\StravaClient;
 use Carbon\CarbonImmutable;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Queue::fake();

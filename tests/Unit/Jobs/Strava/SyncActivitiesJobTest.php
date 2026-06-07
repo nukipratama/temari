@@ -7,9 +7,6 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('forwards to the SyncOrchestrator for the resolved user', function (): void {
     $user = User::factory()->create();

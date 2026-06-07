@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('nulls the milestone_payload for the user\'s own activity', function (): void {
     $user = User::factory()->create();

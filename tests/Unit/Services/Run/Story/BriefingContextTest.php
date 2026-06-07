@@ -7,10 +7,7 @@ use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Story\BriefingContext;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 it('returns nulls when the user has no snapshots or activities', function (): void {
     $user = User::factory()->create();

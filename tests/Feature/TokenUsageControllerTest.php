@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 use App\Models\AI\TokenUsage;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia;
-
-uses(RefreshDatabase::class);
 
 function seedUsage(
     string $kind,

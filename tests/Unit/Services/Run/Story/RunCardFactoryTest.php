@@ -9,10 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Run\Story\RunCardFactory;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 it('defaults to biasa rarity on a featureless short run', function (): void {
     // Seed a prior activity so pertama_kali does not trigger.

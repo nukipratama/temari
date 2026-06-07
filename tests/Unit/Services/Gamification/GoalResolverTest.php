@@ -11,10 +11,7 @@ use App\Models\User;
 use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\GoalResolver;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->resolver = app(GoalResolver::class);

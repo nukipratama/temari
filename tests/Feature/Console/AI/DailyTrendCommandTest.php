@@ -7,10 +7,7 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 it('dispatches trend caption analysis for each active user in the last 7 days', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');

@@ -6,9 +6,6 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use Carbon\CarbonImmutable;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('syncs all users with a Strava connection', function (): void {
     User::factory()->withStravaConnection()->count(2)->create();

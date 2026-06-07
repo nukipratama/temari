@@ -7,10 +7,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Run\Story\Vibe;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 // Freeze "today" so Carbon::today() math is stable; afterEach prevents leak on failure.
 beforeEach(fn () => Carbon::setTestNow('2026-05-11 12:00:00'));

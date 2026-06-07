@@ -5,10 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 it('casts week_ending to a Carbon date and load metrics to floats', function (): void {
     $snap = WeeklySnapshot::factory()->create([

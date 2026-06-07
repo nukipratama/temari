@@ -5,12 +5,9 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia as Assert;
-
-uses(RefreshDatabase::class);
 
 it('reports a disconnected state when the user has no connection', function (): void {
     $user = User::factory()->create();

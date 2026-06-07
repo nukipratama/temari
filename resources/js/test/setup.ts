@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
 import { createElement, type ReactNode } from 'react';
@@ -35,8 +35,19 @@ export function makeUser(overrides: Record<string, unknown> = {}) {
     return { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null, ...overrides };
 }
 
+// Safe default fetch: any test that renders a component which fires fetch on
+// mount/interaction but doesn't stub it gets a 404 Response instead of a real
+// network call. A real Response satisfies both shapes the codebase reads off
+// fetch (`res.ok`/`res.status`/`.json()`/`.blob()`). Tests that assert specific
+// fetch behavior install their own `vi.stubGlobal('fetch', ...)`; the afterEach
+// unstub resets back to this default so those overrides don't leak.
+beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 404 }))));
+});
+
 afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     mockPageProps = { ...DEFAULT_PAGE_PROPS };
     mockUrl = DEFAULT_URL;
 });

@@ -8,9 +8,6 @@ use App\Models\StoryLine;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('hides remember_token from array serialization', function (): void {
     $user = User::factory()->create();

@@ -8,11 +8,8 @@ use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
-
-uses(RefreshDatabase::class);
 
 it('redirects unauthenticated users to login', function (): void {
     $this->get('/')->assertRedirect('/login');

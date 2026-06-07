@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('re-runs the pipeline for the given activity', function (): void {
     $activity = Activity::factory()->create();

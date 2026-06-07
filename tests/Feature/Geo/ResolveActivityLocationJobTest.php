@@ -6,10 +6,7 @@ use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\ActivityDetail;
 use App\Services\Geo\NominatimResolver;
 use App\Services\Geo\ResolvedLocation;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
-
-uses(RefreshDatabase::class);
 
 it('writes resolved location + stamps resolved_at on success', function (): void {
     $detail = ActivityDetail::factory()->create([

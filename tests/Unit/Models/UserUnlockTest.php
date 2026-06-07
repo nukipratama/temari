@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use App\Models\UserUnlock;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 it('belongs to a user', function (): void {
     $user = User::factory()->create();

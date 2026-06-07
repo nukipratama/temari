@@ -5,9 +5,6 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\RunCard;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('casts badges to an array', function (): void {
     $card = RunCard::factory()->create([

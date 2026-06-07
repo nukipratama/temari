@@ -5,10 +5,7 @@ declare(strict_types=1);
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-
-uses(RefreshDatabase::class);
 
 it('queues a resolve job for each unresolved detail with coords', function (): void {
     Queue::fake();

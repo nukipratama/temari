@@ -9,11 +9,8 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\Temari;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
-
-uses(RefreshDatabase::class);
 
 beforeEach(fn () => Carbon::setTestNow('2026-05-11 12:00:00'));
 afterEach(fn () => Carbon::setTestNow());

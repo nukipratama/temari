@@ -11,11 +11,8 @@ use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\UnlockEngine;
 use Illuminate\Database\Eloquent\Factories\Sequence;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Session;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->engine = app(UnlockEngine::class);

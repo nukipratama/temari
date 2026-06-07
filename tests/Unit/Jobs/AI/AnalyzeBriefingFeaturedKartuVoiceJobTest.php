@@ -13,10 +13,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\BriefingFeaturedKartuVoiceNarrator;
 use Illuminate\Contracts\Queue\Job as QueueJobContract;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 function mockFeaturedKartuNarrator(string $payload): void
 {

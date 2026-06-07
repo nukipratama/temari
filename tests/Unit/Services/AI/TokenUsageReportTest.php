@@ -5,10 +5,7 @@ declare(strict_types=1);
 use App\Models\AI\TokenUsage;
 use App\Models\User;
 use App\Services\AI\TokenUsageReport;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->report = new TokenUsageReport();

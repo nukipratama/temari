@@ -7,10 +7,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StravaConnection;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['services.strava.webhook_verify_token' => 'super-secret-token']);

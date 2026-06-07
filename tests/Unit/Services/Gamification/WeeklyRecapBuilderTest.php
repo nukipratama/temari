@@ -12,10 +12,7 @@ use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\GoalResolver;
 use App\Services\Gamification\WeeklyRecapBuilder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     // A fixed Wednesday so "this week" = Mon 2026-05-11 .. Sun 2026-05-17.

@@ -6,11 +6,8 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\LifetimeStats;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
-
-uses(RefreshDatabase::class);
 
 it('aggregates run count, total km and the first-run timestamp', function (): void {
     $user = User::factory()->create();

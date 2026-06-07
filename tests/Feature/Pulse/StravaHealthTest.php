@@ -5,11 +5,8 @@ declare(strict_types=1);
 use App\Livewire\Pulse\StravaHealth;
 use App\Models\StravaConnection;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
-
-uses(RefreshDatabase::class);
 
 it('renders connection states and rate-limit headroom without error', function (): void {
     Livewire::test(StravaHealth::class)

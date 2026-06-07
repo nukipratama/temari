@@ -9,6 +9,18 @@ The detailed home for project conventions. Source-of-truth docs are generated fr
 kept honest by `tests/Unit/Architecture/DesignTokenDocsTest.php` (palette/type docs) — link to
 them rather than re-copying, since copies drift.
 
+## Codebase map
+
+Backend logic is split by domain under `app/Services/`:
+- **AI/** — narrators + the Analysis pipeline (see *AI narration pipeline* below).
+- **Run/** — ingest (Strava activity → `ActivityDetail` + streams), metrics (`TrainingLoad`, `PersonalRecords`, VDOT/threshold estimators, `WeeklyAggregator`, `MilestoneDetector`), and story (`Vibe`, `Temari`, `BriefingComposer`, `RunCardFactory`).
+- **Gamification/** — `UnlockEngine`, `EquippedAccessories`, `GoalResolver`, `WeeklyRecapBuilder`.
+- **Strava/** — OAuth client, activity fetch, webhook + sync orchestration.
+- **Geo/** — polyline encode/decode + Nominatim reverse-geocode (`app/Jobs/Geo/` resolves location names).
+- **Weather/** — Open-Meteo snapshot attached per activity.
+
+Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages are Indonesian-named under `resources/js/pages/`: `HariIni` (dashboard), `Riwayat/Kalender`, `Koleksi/{Kartu,Rekor,Aksesori}`, `Runs/Show`.
+
 ## Voice & copy
 
 - **Indonesian-first.** Only running-domain terms stay English (`pace`, `HR`, `km`, `TRIMP`, `splits`).
@@ -23,7 +35,7 @@ Palette is **Daybreak** (pre-dawn Jakarta at 05:30). Tokens live in the `@theme`
 fonts, gradients, spacing) in [docs/design-tokens.md](../../../docs/design-tokens.md). Use the
 **semantic token families, never raw Tailwind colors** like `lime-500`:
 
-- `sky` / `sky-deep` / `sky-2` (`#1f2747`) — structure, dark hero panels, the only "dark" surface.
+- `sky` (`#1f2747`) / `sky-deep` (`#161b33`) / `sky-2` (`#2c355c`) — structure, dark hero panels, the only "dark" surface.
 - `horizon` / `horizon-deep` (`#e8a076` peach) — primary CTA, "earned"/PR state, Temari accent.
 - `cream` / `cream-deep` (`#f6f1e8`) — paper / secondary surface and borders.
 - `ink` / `ink-2` / `ink-3` — the 3-tier text-contrast scale (see below).
@@ -60,10 +72,9 @@ Gradient **text** is applied via
 [`<GradientText preset="horizon|cream-sun" fontSize=… />`](../../../resources/js/components/ui/GradientText.tsx),
 which clips a `linear-gradient` to the text via inline `background-clip`. Rule: **gradient text
 on numbers only**, only at large display sizes, and only one per visible viewport. Scarcity makes
-it feel premium, not Las-Vegas. Backdrop atmospherics use
-[`<MeshBackdrop variant="dawn|night|ember" />`](../../../resources/js/components/MeshBackdrop.tsx)
-(three blurred radial blobs) inside `relative overflow-hidden` parents; used mainly on the login
-page, in-app pages stay clean.
+it feel premium, not Las-Vegas. Backdrop atmospherics (e.g. the login page) are inline CSS
+`linear-gradient` + `radial-gradient` layers on the sky→horizon ramp, not a shared component;
+in-app pages stay clean.
 
 ### Dawn-shift theme
 
@@ -128,6 +139,8 @@ unconfigured-env fallback are documented in the always-on guideline ("LLM Integr
 - **1:1 class↔test.** Every concrete class has a `{Name}Test.php`, or is exempt in [tests/Unit/Architecture/EveryClassHasATestTest.php](../../../tests/Unit/Architecture/EveryClassHasATestTest.php). Frontend: co-located `{name}.test.tsx`, guarded by [resources/js/test/structure.test.ts](../../../resources/js/test/structure.test.ts).
 - **Aggregate suites** cover whole families: narrators → `NarratorsCoverageTest`, AI jobs → `JobsCoverageTest`. A new narrator/job must be registered there.
 - Structure tests live in the `structure` group and run **before** coverage in CI (fast fail). Gate: 95% line+function coverage.
+- **DB isolation is global.** `RefreshDatabase` is applied suite-wide in [tests/Pest.php](../../../tests/Pest.php) (`uses(RefreshDatabase::class)->in('Feature', 'Unit')`) — do **not** re-add it per file. It transacts both the default `mysql` and the second `analytics` connection (`$connectionsToTransact` in [tests/TestCase.php](../../../tests/TestCase.php), which rebinds `analytics` to the test DB in `setUpTraits`). Do **not** switch to `LazilyRefreshDatabase`: its deferred, manager-level trigger does not wrap the purged-and-rebound `analytics` connection, so `ai_token_usages` writes leak across tests. Eager refresh also self-heals the one DDL landmine — `StructuredChatCallerTest` drops `ai_token_usages` to simulate an insert failure (DDL implicitly commits), and the `!inTransaction()` teardown guard forces a re-migrate. The parallel suite is DB-bound (~28s on the 4-core runner), so lazy/mocking buys no wall-clock anyway.
+- **When mocking siblings helps (and when it doesn't).** Services and jobs here own their DB access (`Model::query()` in their own bodies; jobs resolve their model in `handle()`), and controllers can't shed the DB because [HandleInertiaRequests](../../../app/Http/Middleware/HandleInertiaRequests.php) queries the auth user's shared props (`EquippedAccessories`, `GoalResolver`, strava-sync, pending-reveal) on every page load. So mocking a class's injected siblings does **not** remove the DB round-trip — keep those as integration tests. Mocking pays off only for a pure delegator whose sole DB touch is an injected collaborator (e.g. `StructuredChatCallerTest` mocks `TokenUsageRecorder`). Frontend `fetch` defaults to a safe 404 stub in [resources/js/test/setup.ts](../../../resources/js/test/setup.ts); only override per-test when asserting specific calls.
 
 ## Toolchain (everything in Docker via Sail)
 

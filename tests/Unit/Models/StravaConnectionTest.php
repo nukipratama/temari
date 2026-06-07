@@ -5,11 +5,8 @@ declare(strict_types=1);
 use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
-
-uses(RefreshDatabase::class);
 
 it('encrypts the access token at rest', function (): void {
     $connection = StravaConnection::factory()->create(['access_token' => 'plain-access']);

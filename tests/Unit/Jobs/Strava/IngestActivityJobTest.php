@@ -6,9 +6,6 @@ use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('forwards to the ActivityPipeline for the resolved activity', function (): void {
     $activity = Activity::factory()->create();

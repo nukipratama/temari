@@ -6,9 +6,6 @@ use App\Jobs\Story\GenerateRunCardJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Services\Run\Story\RunCardFactory;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('forwards to RunCardFactory for the resolved activity', function (): void {
     $activity = Activity::factory()->create();

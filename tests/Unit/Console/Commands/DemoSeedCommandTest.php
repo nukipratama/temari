@@ -14,10 +14,7 @@ use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use Database\Seeders\Demo\DemoRunSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 // Freeze today so blueprint subDays() anchors and ISO-week math are stable.
 beforeEach(fn () => Carbon::setTestNow('2026-05-12 12:00:00'));
