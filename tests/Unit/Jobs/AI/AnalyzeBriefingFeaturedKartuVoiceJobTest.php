@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\AI\TransientUpstreamException;
+use App\Exceptions\AI\UnavailableException;
 use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Models\AI\Analysis;
 use App\Models\User;
@@ -9,6 +11,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\BriefingFeaturedKartuVoiceNarrator;
+use Illuminate\Contracts\Queue\Job as QueueJobContract;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -62,6 +65,56 @@ it('marks the row Failed and rethrows when the user is missing', function (): vo
 
     expect(fn () => (new AnalyzeBriefingFeaturedKartuVoiceJob($row->id))->handle(app(AnalysisService::class)))
         ->toThrow(ModelNotFoundException::class);
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+it('swallows a terminal UnavailableException so the worker does not retry', function (): void {
+    $user = User::factory()->create();
+    $mock = Mockery::mock(BriefingFeaturedKartuVoiceNarrator::class);
+    $mock->shouldReceive('generate')->andThrow(new UnavailableException('bad schema'));
+    app()->instance(BriefingFeaturedKartuVoiceNarrator::class, $mock);
+
+    $row = featuredKartuRow($user->id);
+
+    // No throw: terminal failures stay marked Failed and do not bubble to the queue.
+    (new AnalyzeBriefingFeaturedKartuVoiceJob($row->id))->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed)
+        ->and($row->fresh()->error)->toBe('bad schema');
+});
+
+it('rethrows a transient upstream failure (no Retry-After) so the queue retries', function (): void {
+    $user = User::factory()->create();
+    $mock = Mockery::mock(BriefingFeaturedKartuVoiceNarrator::class);
+    $mock->shouldReceive('generate')->andThrow(new TransientUpstreamException('azure 503'));
+    app()->instance(BriefingFeaturedKartuVoiceNarrator::class, $mock);
+
+    $row = featuredKartuRow($user->id);
+
+    expect(fn () => (new AnalyzeBriefingFeaturedKartuVoiceJob($row->id))->handle(app(AnalysisService::class)))
+        ->toThrow(TransientUpstreamException::class, 'azure 503');
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+it('releases the job with the Retry-After delay instead of rethrowing when one is given', function (): void {
+    $user = User::factory()->create();
+    $mock = Mockery::mock(BriefingFeaturedKartuVoiceNarrator::class);
+    $mock->shouldReceive('generate')->andThrow(new TransientUpstreamException('rate limited', retryAfterSeconds: 23));
+    app()->instance(BriefingFeaturedKartuVoiceNarrator::class, $mock);
+
+    $row = featuredKartuRow($user->id);
+
+    $queueJob = Mockery::mock(QueueJobContract::class);
+    $queueJob->shouldReceive('release')->once()->with(23);
+
+    $job = new AnalyzeBriefingFeaturedKartuVoiceJob($row->id);
+    $job->setJob($queueJob);
+
+    // Releasing replaces rethrow: handle() returns cleanly while the queue
+    // re-enqueues the job after the requested delay.
+    $job->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });

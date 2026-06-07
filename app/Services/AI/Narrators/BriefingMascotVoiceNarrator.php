@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
 /**
  * Generates ONLY the "Kata Temari hari ini" mascot voice line. Split from
  * {@see BriefingNarrator} so its LLM call is independent from the briefing
- * headline + suggestion — retrying one surface doesn't burn tokens for the
+ * headline + suggestion. Retrying one surface doesn't burn tokens for the
  * other.
  */
 class BriefingMascotVoiceNarrator

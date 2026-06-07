@@ -18,8 +18,11 @@ Let `Name` = `$ARGUMENTS` (StudlyCase), `snake` = its snake_case value.
    `App\Services\Run\Metrics\PaceCalculator`). No em-dashes in the prompt.
 
 2. **Job** — `app/Jobs/AI/Analyze{Name}Job.php` extending `AnalyzeRowJob`
-   (single row) or `AnalyzeGroupJob` (multi-row). Override `generateContent()`
-   to resolve the subject and call the narrator (see `AnalyzeTrendCaptionJob`).
+   (single row) or `AnalyzeGroupJob` (multi-row). For a row job, override
+   `generateContent()` to resolve the subject and call the narrator (see
+   `AnalyzeTrendCaptionJob`). For a group job, override `generateAll()` to
+   resolve the subject once and return the per-type payload (see
+   `AnalyzeBriefingJob`).
 
 3. **AnalysisType** — `app/Services/AI/AnalysisType.php`:
    - add `case {Name} = '{snake}';`

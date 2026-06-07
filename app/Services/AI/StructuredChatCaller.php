@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use Illuminate\Support\Facades\Log;
 use JsonException;
+use OpenAI\Exceptions\ErrorException;
+use OpenAI\Exceptions\RateLimitException;
+use OpenAI\Exceptions\ServerException;
+use OpenAI\Exceptions\TransporterException;
+use OpenAI\Responses\Chat\CreateResponse;
+use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
 /**
@@ -16,6 +23,12 @@ use Throwable;
  */
 final readonly class StructuredChatCaller
 {
+    /**
+     * Hard ceiling for the truncation retry's bumped token cap, so a runaway
+     * schema can't balloon a single block's cost.
+     */
+    private const int MAX_RETRY_COMPLETION_TOKENS = 4000;
+
     public function __construct(
         private AzureOpenAIClient $azure,
         private TokenUsageRecorder $usageRecorder,
@@ -39,25 +52,35 @@ final readonly class StructuredChatCaller
         $startedAt = microtime(true);
         $effectiveMaxTokens = $options->maxTokens ?? (int) config('azure_openai.max_completion_tokens');
 
-        try {
-            $response = $this->azure->client()->chat()->create([
-                'model' => (string) config('azure_openai.deployment'),
-                'messages' => [
-                    ['role' => 'system', 'content' => TemariPersona::systemPrompt()."\n\n".$systemPrompt],
-                    ['role' => 'user', 'content' => json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)],
-                ],
-                'max_completion_tokens' => $effectiveMaxTokens,
-                'temperature' => $options->temperature,
-                'response_format' => self::responseFormat($schemaName, $requiredKeys),
-            ]);
-        } catch (Throwable $e) {
-            Log::warning('narrator.ai.call', [
-                'kind' => $kind,
-                'status' => 'fail',
-                'error' => $e->getMessage(),
-                'latency_ms' => self::latencyMs($startedAt),
-            ]);
-            throw new UnavailableException('Azure OpenAI call failed: '.$e->getMessage(), previous: $e);
+        $payload = [
+            'model' => (string) config('azure_openai.deployment'),
+            'messages' => [
+                ['role' => 'system', 'content' => TemariPersona::systemPrompt()."\n\n".$systemPrompt],
+                ['role' => 'user', 'content' => json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)],
+            ],
+            'max_completion_tokens' => $effectiveMaxTokens,
+            'temperature' => $options->temperature,
+            'response_format' => self::responseFormat($schemaName, $requiredKeys),
+        ];
+
+        $response = $this->createChat($kind, $payload, $startedAt);
+
+        // One retry at a higher token cap when the model ran out of room mid-JSON.
+        // Truncated structured output is almost always unparseable; bumping the
+        // ceiling once is cheaper than dead-ending the block. Cost-bounded: a
+        // single retry, capped by self::MAX_RETRY_COMPLETION_TOKENS.
+        if (self::isTruncated($response)) {
+            $retryMaxTokens = min((int) ceil($effectiveMaxTokens * 1.5), self::MAX_RETRY_COMPLETION_TOKENS);
+            if ($retryMaxTokens > $effectiveMaxTokens) {
+                Log::warning('narrator.ai.truncated_retry', [
+                    'kind' => $kind,
+                    'max_completion_tokens' => $effectiveMaxTokens,
+                    'retry_max_completion_tokens' => $retryMaxTokens,
+                ]);
+                $effectiveMaxTokens = $retryMaxTokens;
+                $payload['max_completion_tokens'] = $effectiveMaxTokens;
+                $response = $this->createChat($kind, $payload, $startedAt);
+            }
         }
 
         $content = (string) ($response->choices[0]->message->content ?? '');
@@ -80,8 +103,7 @@ final readonly class StructuredChatCaller
         $promptTokens = (int) ($response->usage->promptTokens ?? 0);
         $completionTokens = (int) ($response->usage->completionTokens ?? 0);
         $totalTokens = (int) ($response->usage->totalTokens ?? 0);
-        $finishReason = (string) ($response->choices[0]->finishReason ?? '');
-        $truncated = $finishReason === 'length';
+        $truncated = self::isTruncated($response);
         $latencyMs = self::latencyMs($startedAt);
 
         if ($truncated) {
@@ -116,6 +138,86 @@ final readonly class StructuredChatCaller
         );
 
         return $decoded;
+    }
+
+    /**
+     * Issue one chat-completions request, mapping any Azure failure into the
+     * caller's transient/terminal exception taxonomy.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function createChat(string $kind, array $payload, float $startedAt): CreateResponse
+    {
+        try {
+            return $this->azure->client()->chat()->create($payload);
+        } catch (Throwable $e) {
+            Log::warning('narrator.ai.call', [
+                'kind' => $kind,
+                'status' => 'fail',
+                'error' => $e->getMessage(),
+                'latency_ms' => self::latencyMs($startedAt),
+            ]);
+            throw self::mapAzureThrowable($e);
+        }
+    }
+
+    /**
+     * Classify an Azure OpenAI throwable. Rate-limit (429), server error (5xx),
+     * and connection/timeout failures are transient and should let the queue
+     * retry; everything else is terminal and fails the row.
+     */
+    private static function mapAzureThrowable(Throwable $e): Throwable
+    {
+        $message = 'Azure OpenAI call failed: '.$e->getMessage();
+        $response = self::transientResponse($e);
+
+        if ($response === false) {
+            return new UnavailableException($message, previous: $e);
+        }
+
+        return new TransientUpstreamException(
+            $message,
+            $response !== null ? self::retryAfterSeconds($response) : null,
+            $e,
+        );
+    }
+
+    /**
+     * Resolve whether $e is a transient upstream failure, returning its HTTP
+     * response (for `Retry-After`), `null` when transient but response-less
+     * (connection/timeout), or `false` when the failure is terminal.
+     */
+    private static function transientResponse(Throwable $e): ResponseInterface|null|false
+    {
+        if ($e instanceof RateLimitException || $e instanceof ServerException) {
+            return $e->response;
+        }
+
+        if ($e instanceof ErrorException && ($e->getStatusCode() === 429 || $e->getStatusCode() >= 500)) {
+            return $e->response;
+        }
+
+        // TransporterException = connection refused / DNS / read timeout: transient
+        // but response-less. Anything else is a terminal (permanent) failure.
+        return $e instanceof TransporterException ? null : false;
+    }
+
+    /**
+     * Read Azure's `Retry-After` header (delta-seconds form) if present.
+     */
+    private static function retryAfterSeconds(ResponseInterface $response): ?int
+    {
+        $header = trim($response->getHeaderLine('Retry-After'));
+        if ($header === '' || ! ctype_digit($header)) {
+            return null;
+        }
+
+        return (int) $header;
+    }
+
+    private static function isTruncated(CreateResponse $response): bool
+    {
+        return (string) ($response->choices[0]->finishReason ?? '') === 'length';
     }
 
     /**

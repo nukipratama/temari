@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeBriefingJob;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeDailyGreetingJob;
@@ -20,6 +21,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
+use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\BriefingNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\DailyGreetingNarrator;
@@ -27,6 +29,7 @@ use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PersonaSummaryNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -87,6 +90,37 @@ it('AnalyzeBriefingJob falls back to today when discriminator is null', function
     Carbon::setTestNow();
 });
 
+it('AnalyzeBriefingJob does not re-invoke the narrator when its rows are already Done (no double-bill)', function (): void {
+    $user = User::factory()->create();
+
+    // Pre-seed both group rows as Done so the idempotency guard short-circuits.
+    foreach ([AnalysisType::BriefingHeadline, AnalysisType::BriefingSuggestion] as $type) {
+        Analysis::factory()->done('preexisting')->create([
+            'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => $type,
+            'discriminator' => '2026-05-18',
+        ]);
+    }
+
+    $mock = Mockery::mock(BriefingNarrator::class);
+    $mock->shouldNotReceive('generate');
+    app()->instance(BriefingNarrator::class, $mock);
+
+    (new AnalyzeBriefingJob($user->id, '2026-05-18'))->handle(app(AnalysisService::class));
+
+    $rows = Analysis::query()
+        ->where('subject_id', $user->id)
+        ->where('discriminator', '2026-05-18')
+        ->get();
+
+    expect($rows)->toHaveCount(2);
+    foreach ($rows as $row) {
+        expect($row->status)->toBe(AnalysisStatus::Done)
+            ->and($row->content)->toBe('preexisting');
+    }
+});
+
 it('AnalyzeBriefingJob marks all rows failed when user missing', function (): void {
     (new AnalyzeBriefingJob(99999, '2026-05-18'))->handle(app(AnalysisService::class));
 
@@ -95,6 +129,41 @@ it('AnalyzeBriefingJob marks all rows failed when user missing', function (): vo
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Failed);
     }
+});
+
+// ── AnalyzeBriefingMascotVoiceJob (row) ──────────────────────────────
+
+it('AnalyzeBriefingMascotVoiceJob returns the mascot voice line', function (): void {
+    $user = User::factory()->create();
+    mockNarrator(BriefingMascotVoiceNarrator::class, 'Kata Temari hari ini');
+
+    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, '2026-05-18');
+    (new AnalyzeBriefingMascotVoiceJob($row->id))->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('Kata Temari hari ini')
+        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
+});
+
+it('AnalyzeBriefingMascotVoiceJob falls back to today when discriminator is null', function (): void {
+    Carbon::setTestNow('2026-05-19 12:00:00');
+    $user = User::factory()->create();
+    mockNarrator(BriefingMascotVoiceNarrator::class, 'today mascot voice');
+
+    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, null);
+    (new AnalyzeBriefingMascotVoiceJob($row->id))->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->content)->toBe('today mascot voice')
+        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
+    Carbon::setTestNow();
+});
+
+it('AnalyzeBriefingMascotVoiceJob marks the row Failed and rethrows when the user is missing', function (): void {
+    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, 99999, AnalysisType::BriefingMascotVoice, '2026-05-18');
+
+    expect(fn () => (new AnalyzeBriefingMascotVoiceJob($row->id))->handle(app(AnalysisService::class)))
+        ->toThrow(ModelNotFoundException::class);
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 // ── AnalyzeCardFlavorJob (row) ────────────────────────────────────────

@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
+use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\DailyGreetingNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
@@ -24,6 +25,8 @@ use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendCaptionNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Story\Contracts\VerdictNarrator;
+use App\Services\Run\Story\Vibe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use OpenAI\Responses\Chat\CreateResponse;
@@ -404,4 +407,37 @@ it('AkuProfileVoiceNarrator throws on non-JSON', function (): void {
     $caller = fakeCaller('not json');
     $narrator = new AkuProfileVoiceNarrator($caller);
     $narrator->generate($user);
+})->throws(UnavailableException::class, 'non-JSON');
+
+// ── BriefingMascotVoiceNarrator ───────────────────────────────────────
+
+function bootMascotNarrator(string $content): BriefingMascotVoiceNarrator
+{
+    return new BriefingMascotVoiceNarrator(
+        app(Vibe::class),
+        app(TrainingLoad::class),
+        app(VerdictNarrator::class),
+        fakeCaller($content),
+    );
+}
+
+it('BriefingMascotVoiceNarrator returns the mascot voice on valid JSON', function (): void {
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->analyzed()->create();
+
+    $narrator = bootMascotNarrator(json_encode(['mascot_voice' => 'Aku liat km kamu naik tipis, bagus.'], JSON_THROW_ON_ERROR));
+
+    expect($narrator->generate($user, Carbon::today()))->toBe('Aku liat km kamu naik tipis, bagus.');
+});
+
+it('BriefingMascotVoiceNarrator throws on missing mascot_voice key', function (): void {
+    $user = User::factory()->create();
+    $narrator = bootMascotNarrator(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
+    $narrator->generate($user, Carbon::today());
+})->throws(UnavailableException::class, 'missing mascot_voice');
+
+it('BriefingMascotVoiceNarrator throws on non-JSON', function (): void {
+    $user = User::factory()->create();
+    $narrator = bootMascotNarrator('not json');
+    $narrator->generate($user, Carbon::today());
 })->throws(UnavailableException::class, 'non-JSON');
