@@ -97,6 +97,39 @@ export interface GoalsSummary {
     closest: GoalsSummaryItem[];
 }
 
+export interface WeeklyRecapBestCard {
+    id: number;
+    rarity: Rarity;
+    special_move: string;
+    mood: Mood | null;
+    distance_km: number | null;
+    polyline: string | null;
+    date: string | null;
+}
+
+export interface WeeklyRecapNearestGoal {
+    id: string;
+    title: string;
+    current: number;
+    target: number;
+    unit: string;
+    ratio: number;
+    remainder_label: string;
+}
+
+export interface WeeklyRecap {
+    week_start: string;
+    week_end: string;
+    this_week_km: number;
+    this_week_runs: number;
+    last_week_km: number;
+    /** Signed whole percent km change vs last week, or null when there is no comparable baseline. */
+    delta_pct: number | null;
+    streak_weeks: number;
+    best_card: WeeklyRecapBestCard | null;
+    nearest_goal: WeeklyRecapNearestGoal | null;
+}
+
 export interface AnalysisPayload {
     id: number | null;
     status: AnalysisStatus;
