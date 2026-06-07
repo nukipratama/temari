@@ -39,8 +39,16 @@ describe('pillButtonVariants', () => {
         ['horizon', 'bg-horizon'],
         ['sky', 'bg-sky'],
         ['ghost', 'border-ink/[0.18]'],
+        ['outline', 'border-cream-deep'],
     ] as const)('renders tone %s', (tone, expected) => {
         expect(pillButtonVariants({ tone })).toContain(expected);
+    });
+
+    it('gives the outline tone a cream fill with an ink-2 label', () => {
+        const cls = pillButtonVariants({ tone: 'outline' });
+        expect(cls).toContain('bg-cream');
+        expect(cls).toContain('text-ink-2');
+        expect(cls).toContain('hover:border-ink-3');
     });
 
     it('uses sm sizing when size="sm"', () => {

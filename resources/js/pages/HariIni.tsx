@@ -13,6 +13,8 @@ import Kartu from '@/components/card/Kartu';
 import FeaturedCardHero from '@/components/card/FeaturedCardHero';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
+import StatTile from '@/components/ui/StatTile';
+import ProgressBar from '@/components/ui/ProgressBar';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -21,6 +23,7 @@ import { cn } from '@/lib/cn';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import PageContainer from '@/components/ui/PageContainer';
 import { formStatusLabel } from '@/lib/formStatus';
+import { formatGoalNumber, goalProgressRatio } from '@/lib/goalProgress';
 import { renderBold } from '@/lib/richText';
 import { aktivitasUrl, kartuUrl } from '@/lib/routes';
 import { formatKm, formatPace, formatRelativeId, paceSecPerKm } from '@/lib/pace';
@@ -152,10 +155,7 @@ function KataTemariCompact({ briefing, pose }: Readonly<{ briefing: BriefingResu
         <Card padding="lg" className="flex items-start gap-3.5">
             <Temari pose={pose} size={48} animate={false} />
             <div className="min-w-0 flex-1">
-                <div className="mb-1.5 flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
-                    <span>Kata Temari hari ini</span>
-                </div>
+                <SectionLabel dot className="mb-1.5">Kata Temari hari ini</SectionLabel>
                 <AnalysisStatus
                     analysis={briefing.mascotVoice}
                     inertiaReloadProps={['briefing']}
@@ -244,11 +244,12 @@ function VitalChip({
     }[tone];
     return (
         <div className="flex h-full flex-col justify-between rounded-xl border border-line bg-surface-card px-3.5 py-4">
-            <div className="mb-1 flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />
-                <span>{label}</span>
-                {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
-            </div>
+            <SectionLabel dot dotClass={dotClass} className="mb-1">
+                <span className="inline-flex items-center gap-1.5">
+                    {label}
+                    {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
+                </span>
+            </SectionLabel>
             <div className={cn('min-w-0 font-sans text-[40px] font-bold leading-none tabular-nums tracking-[-0.02em]', valueClass)}>
                 {value}
             </div>
@@ -349,10 +350,7 @@ function SuggestionCard({ suggestion, lastRun }: Readonly<{ suggestion: Analysis
 
     return (
         <Card padding="md" as="section" className="flex h-full flex-col gap-3">
-            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
-                <span>Saran sesi dari Temari</span>
-            </div>
+            <SectionLabel dot className="mb-0">Saran sesi dari Temari</SectionLabel>
             <AnalysisStatus
                 analysis={suggestion}
                 inertiaReloadProps={['briefing']}
@@ -386,10 +384,7 @@ function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose:
 
     return (
         <LinkCard href={aktivitasUrl(run)} padding="md" className="flex h-full flex-col gap-3">
-            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
-                <span>Lari terakhir · {dateLabel}</span>
-            </div>
+            <SectionLabel dot className="mb-0">Lari terakhir · {dateLabel}</SectionLabel>
             <div className="flex items-start gap-3">
                 <Temari pose={pose} size={48} />
                 <div className="min-w-0 flex-1">
@@ -416,9 +411,9 @@ function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose:
                 </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-                <Stat l="KM" v={km} />
-                <Stat l="PACE" v={paceSec != null ? `${formatPace(paceSec)}/km` : '—'} />
-                <Stat l="TRIMP" v={trimp != null ? String(trimp) : '—'} />
+                <StatTile tone="plain" size="lg" align="center" label="KM" value={km} valueClassName="font-black tracking-tight text-ink" />
+                <StatTile tone="plain" size="lg" align="center" label="PACE" value={paceSec != null ? `${formatPace(paceSec)}/km` : '—'} valueClassName="font-black tracking-tight text-ink" />
+                <StatTile tone="plain" size="lg" align="center" label="TRIMP" value={trimp != null ? String(trimp) : '—'} valueClassName="font-black tracking-tight text-ink" />
             </div>
             {note && (
                 <div className="flex flex-1 items-center gap-2 px-3 text-sm leading-relaxed text-ink-2">
@@ -471,10 +466,7 @@ function KondisiCard({
     ];
     return (
         <Card as="section" padding="md" className="flex h-full flex-col gap-3">
-            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
-                <span>Kondisi · {snapshot ? '7 hari' : 'belum cukup data'}</span>
-            </div>
+            <SectionLabel dot className="mb-0">Kondisi · {snapshot ? '7 hari' : 'belum cukup data'}</SectionLabel>
             {rows.map(({ label, value, hint, color }) => (
                 <div
                     key={label}
@@ -522,11 +514,7 @@ function GoalsCard() {
             </SectionLabel>
             <div className="grid gap-3 sm:grid-cols-3">
                 {summary.closest.map((goal) => {
-                    const pct = goal.target > 0 ? Math.min((goal.current / goal.target) * 100, 100) : 0;
-                    const isCurrentDecimal = goal.current % 1 > 0;
-                    const isTargetDecimal = goal.target % 1 > 0;
-                    const currentDisplay = isCurrentDecimal ? goal.current.toFixed(1) : goal.current;
-                    const targetDisplay = isTargetDecimal ? goal.target.toFixed(1) : goal.target;
+                    const ratio = goalProgressRatio(goal.current, goal.target);
 
                     return (
                         <LinkCard key={goal.id} href="/target" padding="md" className="flex h-full flex-col gap-2">
@@ -536,33 +524,19 @@ function GoalsCard() {
                             <div className="mt-auto">
                                 <div className="mb-1.5 flex items-baseline justify-between">
                                     <span className="font-sans text-sm font-semibold tabular-nums text-ink">
-                                        {currentDisplay}<span className="text-ink-3">/</span>{targetDisplay}
+                                        {formatGoalNumber(goal.current)}<span className="text-ink-3">/</span>{formatGoalNumber(goal.target)}
                                     </span>
                                     <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-3">
                                         {goal.unit}
                                     </span>
                                 </div>
-                                <div className="h-1.5 overflow-hidden rounded-full bg-cream-deep">
-                                    <div
-                                        className="h-full rounded-full bg-horizon transition-all duration-500"
-                                        style={{ width: `${pct}%` }}
-                                    />
-                                </div>
+                                <ProgressBar value={ratio} tone="horizon" />
                             </div>
                         </LinkCard>
                     );
                 })}
             </div>
         </section>
-    );
-}
-
-function Stat({ l, v }: Readonly<{ l: string; v: string }>) {
-    return (
-        <div className="text-center">
-            <div className="mb-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">{l}</div>
-            <div className="font-sans text-stat font-black leading-none tabular-nums tracking-tight text-ink">{v}</div>
-        </div>
     );
 }
 

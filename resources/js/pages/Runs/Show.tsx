@@ -8,6 +8,8 @@ import Kartu from '@/components/card/Kartu';
 import BackLink from '@/components/ui/BackLink';
 import MoodChip from '@/components/ui/MoodChip';
 import SectionLabel from '@/components/ui/SectionLabel';
+import StatTile from '@/components/ui/StatTile';
+import ProgressBar from '@/components/ui/ProgressBar';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
@@ -131,10 +133,10 @@ export default function RunsShow({
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-                                <HeroStat label="JARAK" value={km} unit="km" />
-                                <HeroStat label="PACE" value={pace} unit="/km" />
-                                <HeroStat label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
-                                <HeroStat label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" />
+                                <StatTile tone="plainSky" size="md" label="JARAK" value={km} unit="km" />
+                                <StatTile tone="plainSky" size="md" label="PACE" value={pace} unit="/km" />
+                                <StatTile tone="plainSky" size="md" label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
+                                <StatTile tone="plainSky" size="md" label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" />
                             </div>
 
                             {/* KAMU VS KAMU DULU — inline in hero */}
@@ -231,20 +233,6 @@ export default function RunsShow({
                 </footer>
             </PageContainer>
         </AppShell>
-    );
-}
-
-function HeroStat({ label, value, unit }: Readonly<{ label: string; value: string; unit?: string }>) {
-    return (
-        <div>
-            <div className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">{label}</div>
-            <div className="font-sans text-3xl font-bold leading-none tabular-nums tracking-[-0.02em] text-cream sm:text-4xl">
-                {value}
-            </div>
-            {unit && (
-                <div className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-on-sky">{unit}</div>
-            )}
-        </div>
     );
 }
 
@@ -407,12 +395,12 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
                                     <span className="ml-1 font-mono text-[11px] font-medium text-ink-3">/km</span>
                                 </div>
                             </div>
-                            <div className="mt-2 h-1.5 overflow-hidden rounded bg-sky/[0.06]">
-                                <div
-                                    className={cn('h-full rounded', isFast ? 'bg-horizon' : 'bg-sky')}
-                                    style={{ width: `${pctWidth}%` }}
-                                />
-                            </div>
+                            <ProgressBar
+                                value={pctWidth / 100}
+                                tone={isFast ? 'horizon' : 'sky'}
+                                size="sm"
+                                className="mt-2"
+                            />
                             <div className="mt-2 flex items-center gap-4 font-sans text-xs tabular-nums text-ink-2">
                                 <span>♡ {row.avg_hr ?? '—'}</span>
                                 <span>↻ {row.avg_cadence_spm ?? '—'}</span>
