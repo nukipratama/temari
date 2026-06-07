@@ -75,7 +75,10 @@ RUN npm run build
 FROM dunglas/frankenphp:1-php8.4-alpine
 WORKDIR /var/www/html
 
-ENV FRANKENPHP_NUM_THREADS=auto \
+# Concrete thread count, not `auto`: the deploy runs docker-out-of-docker and
+# cgroup CPU limits don't reduce nproc, so `auto` would size off the shared
+# host's full core count and over-subscribe this 2-cpu-capped container.
+ENV FRANKENPHP_NUM_THREADS=4 \
     SERVER_NAME=:7001
 
 RUN install-php-extensions \

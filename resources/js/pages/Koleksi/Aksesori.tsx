@@ -128,7 +128,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                                 ))}
                             </ul>
                             <p className="mt-5 max-w-md font-display text-sm italic leading-relaxed text-cream/75">
-                                "Tiap kamu dapet aksesori baru, langsung aku siapin di sini." 🎀
+                                &ldquo;Tiap kamu dapet aksesori baru, langsung aku siapin di sini.&rdquo; 🎀
                             </p>
                         </div>
                     </div>

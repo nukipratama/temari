@@ -36,7 +36,8 @@ if [ -n "$STAGED_PHP" ]; then
 fi
 
 if [ -n "$STAGED_TS" ]; then
+  # tsc + eslint both run full (not staged-only): partial eslint missed
+  # cross-file/pre-existing errors and let 2 lint errors reach main.
   ./vendor/bin/sail exec -T app npm run typecheck
-  # shellcheck disable=SC2086
-  ./vendor/bin/sail exec -T app ./node_modules/.bin/eslint $STAGED_TS --max-warnings 0
+  ./vendor/bin/sail exec -T app npm run lint
 fi

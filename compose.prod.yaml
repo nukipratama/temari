@@ -31,6 +31,8 @@ x-app-env: &app-env
   # allkeys-lru and would silently log users out under cache pressure.
   SESSION_CONNECTION: default
   CACHE_STORE: redis
+  # Currently unread: bootstrap/app.php hardcodes trustProxies(at: '*'). Kept
+  # for documentation/future-use; changing it has no effect today.
   TRUSTED_PROXIES: "127.0.0.1"
   PULSE_ENABLED: "true"
   # Stable name so the Servers card isn't a random per-container hash. Ingest is
@@ -43,6 +45,10 @@ x-app-env: &app-env
   # read-only at /host so the disk metric reflects the real homelab disk.
   PULSE_SERVER_DIRECTORIES: "/host"
   OCTANE_SERVER: frankenphp
+  # NOTE: the runtime boots the Caddyfile worker directive, not `octane:start`,
+  # so these two are inert here — the live recycle/sizing knobs are `num` and
+  # `max_requests` in docker/Caddyfile. Kept (not deleted) to avoid churn and
+  # to stay correct if we ever switch to octane:start.
   OCTANE_MAX_REQUESTS: "2000"
   FRANKENPHP_NUM_WORKERS: "2"
 
