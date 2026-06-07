@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\Gamification\WeeklyRecapBuilder;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingComposer;
 use App\Services\Run\Story\Temari;
@@ -32,6 +33,7 @@ class DashboardController extends Controller
         TrainingLoad $trainingLoad,
         BriefingComposer $briefingComposer,
         WeekSummaryBuilder $weekSummaryBuilder,
+        WeeklyRecapBuilder $weeklyRecapBuilder,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -78,6 +80,7 @@ class DashboardController extends Controller
             'hasNewPr' => $this->detectNewPr($user),
             'pendingMilestone' => $this->resolvePendingMilestone($user),
             'weekVsLastWeek' => $weekSummaryBuilder->weekVsLastWeek($weeks),
+            'weeklyRecap' => $weeklyRecapBuilder->forUser($user, $today),
         ]);
     }
 

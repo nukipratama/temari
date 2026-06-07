@@ -19,6 +19,7 @@ use App\Services\AI\TokenUsageRecorder;
 use App\Services\Geo\ResolvedLocation;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Gamification\WeeklyRecap;
 use App\Services\Run\Story\BriefingResult;
 use App\Services\Run\Story\VerdictTimelineItem;
 use App\Services\Weather\WeatherSnapshot;
@@ -59,6 +60,7 @@ it('has a test class for every concrete app class', function (): void {
         BriefingResult::class,
         VerdictTimelineItem::class,
         WeatherSnapshot::class,
+        WeeklyRecap::class,             // shaped recap DTO, built + asserted via WeeklyRecapBuilderTest
         // Covered indirectly by the suites that drive them.
         TokenUsage::class,              // StructuredChatCallerTest
         TokenUsageRecorder::class,      // StructuredChatCallerTest
