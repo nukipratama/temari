@@ -32,6 +32,27 @@ describe('AksesoriUnlockModal', () => {
         expect(screen.getByText(/Ikat Kepala Luar Biasa/)).toBeInTheDocument();
     });
 
+    it('exposes a labelled modal dialog', () => {
+        render(<AksesoriUnlockModal unlock={epikUnlock} onClose={vi.fn()} />);
+        const dialog = screen.getByRole('dialog');
+        expect(dialog).toHaveAttribute('aria-modal', 'true');
+        expect(dialog).toHaveAttribute('aria-labelledby', 'aksesori-unlock-title');
+        expect(document.getElementById('aksesori-unlock-title')).toBeInTheDocument();
+    });
+
+    it('closes on the Escape key', () => {
+        const onClose = vi.fn();
+        render(<AksesoriUnlockModal unlock={epikUnlock} onClose={onClose} />);
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it('moves focus into the dialog when it opens', () => {
+        render(<AksesoriUnlockModal unlock={epikUnlock} onClose={vi.fn()} />);
+        const dialog = screen.getByRole('dialog');
+        expect(dialog.contains(document.activeElement)).toBe(true);
+    });
+
     it('calls onClose when "Nanti aja" is clicked', () => {
         const onClose = vi.fn();
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={onClose} />);

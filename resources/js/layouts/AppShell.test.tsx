@@ -1,13 +1,41 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { MotionConfigProps } from 'framer-motion';
 import AppShell from './AppShell';
 import { setMockPage } from '@/test/setup';
+
+// Spy on MotionConfig so we can assert the app tree is wrapped in it with
+// reducedMotion="user" (it renders no DOM of its own, so we can't query it).
+const motionConfigSpy = vi.fn();
+vi.mock('framer-motion', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('framer-motion')>();
+    return {
+        ...actual,
+        MotionConfig: (props: MotionConfigProps) => {
+            motionConfigSpy(props.reducedMotion);
+            return actual.MotionConfig(props);
+        },
+    };
+});
 
 const andiUser = { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null };
 
 describe('AppShell', () => {
     afterEach(() => {
         delete document.body.dataset.timeOfDay;
+        motionConfigSpy.mockClear();
+    });
+
+    it('wraps the app tree in MotionConfig reducedMotion="user"', () => {
+        setMockPage({ auth: { user: andiUser }, flash: {}, demoLoginEnabled: false });
+        render(<AppShell><p>x</p></AppShell>);
+        expect(motionConfigSpy).toHaveBeenCalledWith('user');
+    });
+
+    it('wraps the no-nav branch in MotionConfig reducedMotion="user" too', () => {
+        setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
+        render(<AppShell withNav={false}><p>x</p></AppShell>);
+        expect(motionConfigSpy).toHaveBeenCalledWith('user');
     });
 
     it('sets a data-time-of-day attribute on body via useDawnShift', () => {

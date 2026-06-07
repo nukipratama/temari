@@ -39,7 +39,7 @@ export default function RiwayatTabs({
           href={tab.href}
           aria-current={active === tab.id ? "page" : undefined}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] transition",
+            "focus-ring inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] transition",
             active === tab.id
               ? "bg-sky text-cream font-semibold shadow-sm"
               : "bg-transparent text-ink-2 hover:bg-sky/[0.06]",

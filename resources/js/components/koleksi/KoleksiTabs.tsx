@@ -35,7 +35,7 @@ export default function KoleksiTabs({ active, activeCount, className }: Readonly
                         href={tab.href}
                         aria-current={isActive ? 'page' : undefined}
                         className={cn(
-                            'inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-medium transition',
+                            'focus-ring inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-medium transition',
                             isActive
                                 ? 'bg-sky text-cream font-semibold'
                                 : 'bg-transparent text-ink-2 hover:bg-sky/[0.06]',

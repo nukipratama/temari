@@ -270,7 +270,7 @@ export default function KartuDetail({
                         {detail && (
                             <Link
                                 href={aktivitasUrl(card)}
-                                className="block"
+                                className="focus-ring block rounded-2xl"
                             >
                                 <Card padding="md" className="flex items-center gap-4">
                                     <Temari pose="proud" size={48} animate={false} />
@@ -303,7 +303,7 @@ export default function KartuDetail({
                                         <Link
                                             key={c.id}
                                             href={kartuUrl(c)}
-                                            className="block"
+                                            className="focus-ring block rounded-xl"
                                         >
                                             <div
                                                 className={cn(

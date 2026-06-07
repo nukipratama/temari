@@ -75,22 +75,26 @@ it('renders KPIs + recent runs when the user has training-load history', functio
     Carbon::setTestNow();
 });
 
-it('flags hasNewPr=true when a fresh PR is unseen, then false once user revisits', function (): void {
+it('flags hasNewPr=true for a fresh unseen PR without writing during the GET render', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
-    $user = User::factory()->create();
+    $user = User::factory()->create(['last_seen_pr_ledger_at' => null]);
     $activity = Activity::factory()->for($user)->analyzed()->create();
     PersonalRecord::factory()->for($user)->create([
         'activity_id' => $activity->id,
         'set_at' => Carbon::today()->subHour(),
     ]);
 
+    // The GET only DETECTS the PR; it must stay read-only (no marker write).
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('hasNewPr', true));
+    expect($user->refresh()->last_seen_pr_ledger_at)->toBeNull();
 
+    // A second GET still detects it as unseen — the marker never advanced on GET.
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->where('hasNewPr', false));
+        ->assertInertia(fn (Assert $page) => $page->where('hasNewPr', true));
+    expect($user->refresh()->last_seen_pr_ledger_at)->toBeNull();
 
     Carbon::setTestNow();
 });

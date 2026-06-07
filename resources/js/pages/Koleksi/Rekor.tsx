@@ -188,7 +188,7 @@ function HeroScoreboard({
                             pr.activity_id ? (
                                 <Link
                                     href={aktivitasUrl({ activity_id: pr.activity_id })}
-                                    className="text-cream underline-offset-2 hover:underline"
+                                    className="focus-ring-on-sky rounded text-cream underline-offset-2 hover:underline"
                                 >
                                     Lihat detail lari
                                 </Link>

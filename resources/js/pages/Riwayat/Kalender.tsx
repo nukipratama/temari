@@ -178,7 +178,7 @@ function MonthNav({
             {showTodayButton && (
                 <Link
                     href="/kalender"
-                    className="ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
+                    className="focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
                 >
                     Hari ini
                 </Link>
@@ -193,7 +193,7 @@ function NavButton({ href, icon, label }: Readonly<{ href: string; icon: string;
             href={href}
             aria-label={label}
             preserveScroll
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-line/60 text-ink-2 transition hover:border-line hover:bg-surface-warm hover:text-ink"
+            className="focus-ring flex h-9 w-9 items-center justify-center rounded-full border border-line/60 text-ink-2 transition hover:border-line hover:bg-surface-warm hover:text-ink"
         >
             <Icon icon={icon} width={18} height={18} aria-hidden />
         </Link>
@@ -321,7 +321,7 @@ function DayCellView({
         return (
             <Link
                 href={aktivitasUrl({ activity_id: cell.activity_id })}
-                className={cn(cellChrome)}
+                className={cn(cellChrome, 'focus-ring')}
                 aria-label={ariaLabel}
             >
                 {inner}
@@ -373,7 +373,7 @@ function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string
         return (
             <Link
                 href={aktivitasUrl({ activity_id: cell.activity_id })}
-                className={cn(chrome, 'hover:bg-sky-2')}
+                className={cn(chrome, 'focus-ring-on-sky hover:bg-sky-2')}
                 aria-label={ariaLabel}
             >
                 {inner}

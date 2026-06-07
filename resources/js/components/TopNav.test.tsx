@@ -31,6 +31,14 @@ describe('TopNav', () => {
         expect(riwayat.className).toContain('text-ink');
     });
 
+    it('gives tab links and the brand link a keyboard focus ring', () => {
+        render(<TopNav />);
+        const tab = screen.getByText('Riwayat').closest('a');
+        expect(tab?.className).toMatch(/focus-ring/);
+        const brand = screen.getByLabelText('Beranda');
+        expect(brand.className).toMatch(/focus-ring/);
+    });
+
     it('renders the disconnected Strava pill when no sync info', () => {
         render(<TopNav />);
         expect(screen.getByText('Strava')).toBeInTheDocument();

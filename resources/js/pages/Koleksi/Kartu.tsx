@@ -246,12 +246,14 @@ function RarityFilter({
                         value={search}
                         onChange={(e) => onSearchChange(e.target.value)}
                         placeholder="Cari kartu..."
+                        aria-label="Cari kartu"
                         className="w-36 rounded-full border border-cream-deep bg-cream py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-ink-3 focus:border-horizon focus:outline-none sm:w-44"
                     />
                 </div>
                 <select
                     value={sortBy}
                     onChange={(e) => onSortChange(e.target.value as SortMode)}
+                    aria-label="Urutkan"
                     className="rounded-full border border-cream-deep bg-cream px-3 py-1.5 text-xs font-medium text-ink-2 focus:border-horizon focus:outline-none"
                 >
                     {SORT_OPTIONS.map((opt) => (

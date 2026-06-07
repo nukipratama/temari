@@ -160,7 +160,7 @@ export default function RunsShow({
                                     {pastYou.past.activity_id != null && (
                                         <Link
                                             href={aktivitasUrl({ activity_id: pastYou.past.activity_id })}
-                                            className="shrink-0 rounded-full border border-cream/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream/70 transition hover:border-cream/40 hover:text-cream"
+                                            className="focus-ring-on-sky shrink-0 rounded-full border border-cream/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream/70 transition hover:border-cream/40 hover:text-cream"
                                         >
                                             Lihat →
                                         </Link>
@@ -197,7 +197,7 @@ export default function RunsShow({
                         {card && (
                             <Link
                                 href={kartuUrl(card)}
-                                className="block w-full max-w-[320px]"
+                                className="focus-ring block w-full max-w-[320px] rounded-2xl"
                             >
                                 <Kartu
                                     name={card.special_move}

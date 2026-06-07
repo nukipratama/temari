@@ -44,7 +44,7 @@ export default function MobileBottomNav() {
             key={item.id}
             href={item.href}
             className={cn(
-              "flex flex-col items-center gap-1 px-4 py-2 transition",
+              "focus-ring-on-sky flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition",
               isActive ? "text-horizon" : "text-cream/[0.55]",
             )}
             aria-current={isActive ? "page" : undefined}

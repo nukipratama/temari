@@ -56,7 +56,7 @@ export default function TopNav() {
     <header className="hidden bg-cream-deep lg:block">
       <div className="mx-auto flex w-full max-w-page items-center justify-between px-14 py-[18px] 2xl:max-w-page-2xl 2xl:px-20">
         <div className="flex items-center gap-12">
-          <Link href="/" aria-label="Beranda">
+          <Link href="/" aria-label="Beranda" className="focus-ring rounded">
             <BrandMark />
           </Link>
           <nav aria-label="Primary" className="flex items-center gap-1">
@@ -87,7 +87,7 @@ function TabLink({
       href={item.href}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "relative font-mono text-sm tracking-[0.02em] transition",
+        "focus-ring relative rounded font-mono text-sm tracking-[0.02em] transition",
         "px-[18px] py-2.5",
         isActive ? "text-ink" : "text-ink-3 hover:text-ink-2",
       )}

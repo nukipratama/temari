@@ -183,7 +183,7 @@ export default function Aku({
                         <div className="mt-4 text-right">
                             <Link
                                 href="/rekor"
-                                className="font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-horizon-deep hover:text-ember-deep"
+                                className="focus-ring rounded font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-horizon-deep hover:text-ember-deep"
                             >
                                 Semua rekor →
                             </Link>

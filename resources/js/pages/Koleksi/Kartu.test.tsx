@@ -97,6 +97,12 @@ describe('Koleksi/Kartu', () => {
         expect(screen.getAllByText(/Adem Ayem/).length).toBeGreaterThan(0);
     });
 
+    it('labels the search input and sort select for assistive tech', () => {
+        render(<KoleksiKartu cards={emptyCards()} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
+        expect(screen.getByLabelText('Cari kartu')).toBeInTheDocument();
+        expect(screen.getByLabelText('Urutkan')).toBeInTheDocument();
+    });
+
     it('skips grid cells whose card has no detail', () => {
         const cardWithoutDetail = {
             id: 9, activity_id: 99, rarity: 'common' as const, mood: 'adem' as const, special_move: 'Tanpa Detail', badges: null,

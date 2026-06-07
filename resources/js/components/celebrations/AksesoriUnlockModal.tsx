@@ -1,7 +1,9 @@
 import { router } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 import TemariProto from '@/components/temari/TemariProto';
 import { keyToPreviewEquipped } from '@/lib/equippedAccessories';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface UnlockFlash {
     unlock_key: string;
@@ -20,6 +22,23 @@ export default function AksesoriUnlockModal({
     onClose,
 }: Readonly<AksesoriUnlockModalProps>) {
     const equipped = unlock ? keyToPreviewEquipped(unlock.unlock_key) : { headband: 'epik' as const };
+    const panelRef = useRef<HTMLDivElement>(null);
+    const isOpen = unlock?.is_major === true;
+
+    useFocusTrap(isOpen, panelRef);
+
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [isOpen, onClose]);
 
     const handleEquip = () => {
         onClose();
@@ -42,6 +61,10 @@ export default function AksesoriUnlockModal({
             >
                 <motion.div
                     key="aksesori-panel"
+                    ref={panelRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="aksesori-unlock-title"
                     initial={{ opacity: 0, y: 24, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 16, scale: 0.97 }}
@@ -103,7 +126,7 @@ export default function AksesoriUnlockModal({
                         <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
                             ★ Aksesori baru
                         </div>
-                        <h2 className="mb-6 font-display text-[36px] leading-[0.95] tracking-[-0.02em] text-cream">
+                        <h2 id="aksesori-unlock-title" className="mb-6 font-display text-[36px] leading-[0.95] tracking-[-0.02em] text-cream">
                             <em className="italic text-horizon">{unlock.name}</em>
                             <br />
                             terbuka!

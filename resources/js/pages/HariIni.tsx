@@ -180,7 +180,7 @@ function ExpandableQuote({ text }: Readonly<{ text: string }>) {
                 <button
                     type="button"
                     onClick={() => setExpanded(!expanded)}
-                    className="mt-1 font-mono text-[11px] font-semibold text-horizon transition hover:text-horizon/80"
+                    className="focus-ring mt-1 rounded font-mono text-[11px] font-semibold text-horizon transition hover:text-horizon/80"
                 >
                     {expanded ? 'Tutup' : 'Baca selengkapnya'}
                 </button>
@@ -488,7 +488,7 @@ function KondisiCard({
             ))}
             <Link
                 href="/aktivitas"
-                className="mt-auto pt-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep hover:text-ember-deep"
+                className="focus-ring mt-auto rounded pt-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep hover:text-ember-deep"
             >
                 Detail teknis →
             </Link>

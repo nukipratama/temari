@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react';
+import { MotionConfig } from 'framer-motion';
 import { usePage } from '@inertiajs/react';
 import DemoBanner from '@/components/DemoBanner';
 import UnlockToast from '@/components/temari/UnlockToast';
@@ -56,14 +57,17 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
 
     if (!withNav) {
         return (
-            <div className="min-h-screen bg-cream-deep text-ink">
-                <DemoBanner />
-                {children}
-            </div>
+            <MotionConfig reducedMotion="user">
+                <div className="min-h-screen bg-cream-deep text-ink">
+                    <DemoBanner />
+                    {children}
+                </div>
+            </MotionConfig>
         );
     }
 
     return (
+        <MotionConfig reducedMotion="user">
         <div className="min-h-screen bg-cream-deep text-ink">
             <a
                 href="#main-content"
@@ -86,5 +90,6 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
             <PRMomentModal pr={prModal} onClose={() => setPrModal(null)} />
             <AksesoriUnlockModal unlock={majorUnlock} onClose={() => setMajorUnlock(null)} />
         </div>
+        </MotionConfig>
     );
 }
