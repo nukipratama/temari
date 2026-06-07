@@ -12,8 +12,8 @@ import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import BackLink from '@/components/ui/BackLink';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import Temari from '@/components/temari/Temari';
-import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
+import { poseForFormStatus } from '@/lib/temariPose';
 import { formStatusLabel } from '@/lib/formStatus';
 import { MOOD_HINT, MOOD_LABEL, MOOD_FILL, MOOD_ORDER } from '@/lib/mood';
 import { moodFromActivity } from '@/lib/moodFromActivity';
@@ -453,17 +453,3 @@ function weekRangeLabel(monday: Date): string {
     return `${start} - ${end}`;
 }
 
-function poseForFormStatus(status: FormStatus | null): TemariPose {
-    switch (status) {
-        case 'fresh':
-            return 'proud';
-        case 'optimal':
-            return 'observational';
-        case 'fatigued':
-            return 'wobble';
-        case 'overreaching':
-            return 'reading';
-        default:
-            return 'observational';
-    }
-}
