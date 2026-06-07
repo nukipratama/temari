@@ -18,13 +18,20 @@ beforeEach(function (): void {
 });
 
 /**
- * @return list<array{split: int, distance: int, elapsed_time: int}>
+ * @return list<array{split: int, distance: int, elapsed_time: int, moving_time: int}>
  */
-function evenSplits(int $count, int $elapsedTime): array
+function evenSplits(int $count, int $movingTime): array
 {
     $splits = [];
     for ($km = 1; $km <= $count; $km++) {
-        $splits[] = ['split' => $km, 'distance' => 1000, 'elapsed_time' => $elapsedTime];
+        // elapsed_time padded above moving_time so a regression back to
+        // elapsed_time would change the computed PR and fail the assertions.
+        $splits[] = [
+            'split' => $km,
+            'distance' => 1000,
+            'elapsed_time' => $movingTime + 60,
+            'moving_time' => $movingTime,
+        ];
     }
 
     return $splits;
@@ -34,12 +41,12 @@ it('interpolates time at distance from splits (no walk-past inflation)', functio
     // Half-marathon hit mid-run; later walk splits must not inflate the PR.
     $splits = [];
     for ($km = 1; $km <= 21; $km++) {
-        $splits[] = ['split' => $km, 'distance' => 1000.0, 'elapsed_time' => 480.0];
+        $splits[] = ['split' => $km, 'distance' => 1000.0, 'moving_time' => 480.0];
     }
-    $splits[] = ['split' => 22, 'distance' => 1000.0, 'elapsed_time' => 900.0];
-    $splits[] = ['split' => 23, 'distance' => 1000.0, 'elapsed_time' => 900.0];
-    $splits[] = ['split' => 24, 'distance' => 1000.0, 'elapsed_time' => 900.0];
-    $splits[] = ['split' => 25, 'distance' => 1000.0, 'elapsed_time' => 900.0];
+    $splits[] = ['split' => 22, 'distance' => 1000.0, 'moving_time' => 900.0];
+    $splits[] = ['split' => 23, 'distance' => 1000.0, 'moving_time' => 900.0];
+    $splits[] = ['split' => 24, 'distance' => 1000.0, 'moving_time' => 900.0];
+    $splits[] = ['split' => 25, 'distance' => 1000.0, 'moving_time' => 900.0];
 
     // 21 km × 480s + 97.5m of the slow km 22 ≈ 10167.75s.
     $secs = $this->records->timeAtDistance($splits, 21097.5);
@@ -47,10 +54,23 @@ it('interpolates time at distance from splits (no walk-past inflation)', functio
     expect($secs)->toBeFloat()->toEqualWithDelta(10167.75, 1.0);
 });
 
+it('uses moving_time, not elapsed_time, so paused seconds do not inflate the PR', function (): void {
+    // A paused run: each km took 600s moving but 900s elapsed (5 min of pauses).
+    // The PR must reflect the 5-km moving time (3000s), not elapsed (4500s).
+    $splits = [];
+    for ($km = 1; $km <= 5; $km++) {
+        $splits[] = ['split' => $km, 'distance' => 1000.0, 'moving_time' => 600.0, 'elapsed_time' => 900.0];
+    }
+
+    $secs = $this->records->timeAtDistance($splits, 5000.0);
+
+    expect($secs)->toBeFloat()->toEqualWithDelta(3000.0, 0.01);
+});
+
 it('returns null when splits do not reach the target distance', function (): void {
     $splits = [
-        ['split' => 1, 'distance' => 1000, 'elapsed_time' => 400],
-        ['split' => 2, 'distance' => 1000, 'elapsed_time' => 410],
+        ['split' => 1, 'distance' => 1000, 'moving_time' => 400],
+        ['split' => 2, 'distance' => 1000, 'moving_time' => 410],
     ];
 
     expect($this->records->timeAtDistance($splits, 10_000))->toBeNull();

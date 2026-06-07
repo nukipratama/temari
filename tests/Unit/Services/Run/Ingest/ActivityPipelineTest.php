@@ -337,7 +337,7 @@ it('inserts a PR row when the activity beats the user\'s ledger', function (): v
 
     $splits = [];
     for ($k = 1; $k <= 5; $k++) {
-        $splits[] = ['split' => $k, 'distance' => 1000, 'elapsed_time' => 360];
+        $splits[] = ['split' => $k, 'distance' => 1000, 'moving_time' => 360, 'elapsed_time' => 360];
     }
 
     Http::fake([

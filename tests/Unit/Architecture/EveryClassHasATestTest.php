@@ -17,7 +17,6 @@ use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
 use App\Services\AI\TokenUsageRecorder;
 use App\Services\Geo\ResolvedLocation;
 use App\Services\Run\Metrics\PaceFormatter;
-use App\Services\Gamification\GoalResolver;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Story\BriefingResult;
 use App\Services\Run\Story\VerdictTimelineItem;
@@ -66,7 +65,6 @@ it('has a test class for every concrete app class', function (): void {
         PaceFormatter::class,           // exercised across pace tests
         StreamSummary::class,           // StreamAnalysisTest
         StravaSyncLog::class,           // SyncOrchestratorTest
-        GoalResolver::class,            // GoalController feature tests
     ];
 
     $testedBasenames = collect(File::allFiles(base_path('tests')))

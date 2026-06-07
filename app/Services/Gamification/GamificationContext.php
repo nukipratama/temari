@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
+use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,6 +20,13 @@ use Illuminate\Support\Facades\DB;
  */
 readonly class GamificationContext
 {
+    /**
+     * Threshold for the "sepatu_cepat" goal: average pace under 5:30/km.
+     * 5:30/km = 330 s/km, so an average_speed of 1000/330 m/s (~3.0303)
+     * is exactly 5:30/km. A run qualifies when it is faster than that.
+     */
+    private const float FAST_PACE_SPEED_MS = 1000 / 330;
+
     /**
      * @param  array<string, int>  $rarityCounts
      * @param  array<string, int>  $badgeCounts
@@ -60,19 +69,8 @@ readonly class GamificationContext
             ->join('activity_details', 'activities.id', '=', 'activity_details.activity_id')
             ->sum('activity_details.distance');
 
-        $streakWeeks = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('runs', '>', 0)
-            ->orderByDesc('week_ending')
-            ->limit(4)
-            ->count();
-
-        $twoWeekStreak = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('runs', '>', 0)
-            ->orderByDesc('week_ending')
-            ->limit(2)
-            ->count();
+        $streakWeeks = self::consecutiveWeekStreak($user);
+        $twoWeekStreak = min($streakWeeks, 2);
 
         $tenKPlus = Activity::query()
             ->where('user_id', $user->id)
@@ -86,12 +84,12 @@ readonly class GamificationContext
 
         $halfMarathon = Activity::query()
             ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($q) => $q->where('distance', '>=', 21000))
+            ->whereHas('detail', fn ($q) => $q->where('distance', '>=', PrCategory::HalfMarathon->distanceMeters()))
             ->count();
 
         $fastPace = Activity::query()
             ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($q) => $q->where('average_speed', '>=', 3.0))
+            ->whereHas('detail', fn ($q) => $q->where('average_speed', '>=', self::FAST_PACE_SPEED_MS))
             ->count();
 
         $badgeCounts = RunCard::badgeCountsForUser($user->id);
@@ -110,5 +108,40 @@ readonly class GamificationContext
             fastPace: $fastPace,
             badgeCounts: $badgeCounts,
         );
+    }
+
+    /**
+     * Counts the run of weeks (each with runs > 0) that are consecutive,
+     * walking back from the most recent `week_ending`. Weeks are consecutive
+     * when their `week_ending` dates are exactly 7 days apart; the first gap
+     * ends the streak. Non-adjacent weeks (e.g. weeks 1, 5, 9) yield a streak
+     * of 1, not 3.
+     */
+    private static function consecutiveWeekStreak(User $user): int
+    {
+        /** @var list<Carbon> $weekEndings */
+        $weekEndings = WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('runs', '>', 0)
+            ->orderByDesc('week_ending')
+            ->pluck('week_ending')
+            ->all();
+
+        if ($weekEndings === []) {
+            return 0;
+        }
+
+        $streak = 1;
+        $previous = $weekEndings[0]->copy()->startOfDay();
+        for ($i = 1, $count = count($weekEndings); $i < $count; $i++) {
+            $current = $weekEndings[$i]->copy()->startOfDay();
+            if (abs($current->diffInDays($previous)) !== 7.0) {
+                break;
+            }
+            $streak++;
+            $previous = $current;
+        }
+
+        return $streak;
     }
 }

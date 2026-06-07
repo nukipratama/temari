@@ -103,7 +103,7 @@ class PersonalRecords
         $accTime = 0.0;
         foreach ($splits as $split) {
             $distance = (float) ($split['distance'] ?? 0);
-            $time = (float) ($split['elapsed_time'] ?? 0);
+            $time = (float) ($split['moving_time'] ?? 0);
             if ($distance <= 0 || $time <= 0) {
                 continue;
             }

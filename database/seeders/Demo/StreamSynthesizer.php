@@ -27,6 +27,8 @@ class StreamSynthesizer
         $location = $blueprint->location ?? DemoLocation::default();
 
         $time = [];
+        /** @var list<float> $rawVelocity unrounded; the scale factor and rescale both work off this series so rounding never re-introduces drift */
+        $rawVelocity = [];
         $velocity = [];
         $heartrate = [];
         $cadence = [];
@@ -40,6 +42,7 @@ class StreamSynthesizer
             $time[] = $t;
 
             $v = $this->velocityAt($blueprint, $progress, $avgSpeed, $rng);
+            $rawVelocity[] = $v;
             $velocity[] = round($v, 3);
             $acc += $v;
             $distance[] = round($acc, 2);
@@ -57,14 +60,20 @@ class StreamSynthesizer
         }
 
         // Scale velocities so accumulated distance matches the blueprint
-        // exactly, compensating for drift from per-step jitter.
+        // exactly, compensating for drift from per-step jitter. The scale
+        // factor is computed from the unrounded $acc, so the rescale must walk
+        // the same unrounded series; rounding happens only at output. Walking
+        // the rounded series here would re-introduce the drift the scale was
+        // meant to cancel.
         if ($acc > 0.0 && $acc !== (float) $blueprint->distanceM) {
             $scale = (float) $blueprint->distanceM / $acc;
+            $velocity = [];
             $distance = [];
             $acc = 0.0;
-            foreach ($velocity as $v) {
+            foreach ($rawVelocity as $v) {
                 $scaled = $v * $scale;
                 $acc += $scaled;
+                $velocity[] = round($scaled, 3);
                 $distance[] = round($acc, 2);
             }
         }
