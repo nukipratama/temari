@@ -2,6 +2,7 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import AppShell from '@/layouts/AppShell';
 import BrandMark from '@/components/BrandMark';
+import PillButton from '@/components/ui/PillButton';
 import TemariProto from '@/components/temari/TemariProto';
 import type { SharedProps } from '@/types/inertia';
 
@@ -166,15 +167,15 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending }
                 </a>
 
                 {demoLoginEnabled && (
-                    <button
-                        type="button"
+                    <PillButton
+                        tone="outline"
                         onClick={onSubmitDemo}
                         disabled={demoPending}
-                        className="relative mt-2.5 flex w-full items-center rounded-full border-[1.5px] border-cream-deep bg-transparent py-3 text-sm font-medium text-ink transition hover:border-ink-3 focus:outline-none focus:ring-4 focus:ring-horizon/20 disabled:opacity-60"
+                        className="relative mt-2.5 flex w-full items-center bg-transparent px-0 py-3 text-sm text-ink hover:text-ink disabled:opacity-60"
                     >
                         <Icon icon="mdi:play-circle-outline" width={16} height={16} aria-hidden className="absolute left-5" />
                         <span className="flex-1 px-12 text-center">Coba versi demo</span>
-                    </button>
+                    </PillButton>
                 )}
 
                 <p className="mt-6 flex items-start gap-2.5 rounded-[10px] bg-leaf/10 px-4 py-3 font-sans text-[13px] leading-relaxed text-ink-2">

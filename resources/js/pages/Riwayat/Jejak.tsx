@@ -14,6 +14,7 @@ import StravaSyncButton from '@/components/StravaSyncButton';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
+import { formStatusLabel } from '@/lib/formStatus';
 import { MOOD_HINT, MOOD_LABEL, MOOD_FILL, MOOD_ORDER } from '@/lib/mood';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
@@ -75,13 +76,6 @@ const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => 
     hint: MOOD_HINT[mood],
     swatchClass: MOOD_FILL[mood],
 }));
-
-const FORM_CHIP_LABEL: Record<FormStatus, string> = {
-    fresh: 'Segar',
-    optimal: 'Pas',
-    fatigued: 'Lelah',
-    overreaching: 'Terlalu Diforsir',
-};
 
 const FORM_CHIP_CLASS: Record<FormStatus, string> = {
     fresh: 'bg-leaf/15 text-leaf-deep',
@@ -304,7 +298,7 @@ function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow 
                         FORM_CHIP_CLASS[snapshot.form_status],
                     )}
                 >
-                    {FORM_CHIP_LABEL[snapshot.form_status]}
+                    {formStatusLabel(snapshot.form_status)}
                 </span>
             )}
         </>
@@ -383,7 +377,7 @@ function ruleBasedFallback(snap: WeeklySnapshotRow): string {
         parts.push(`Minggu ini kamu lari ${snap.runs}x sejauh ${snap.distance_km.toFixed(1)} km.`);
     }
     if (snap.form !== null && snap.form_status) {
-        const formLabel = FORM_CHIP_LABEL[snap.form_status];
+        const formLabel = formStatusLabel(snap.form_status);
         parts.push(`Form ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, status ${formLabel.toLowerCase()}.`);
     }
     return parts.join(' ') || 'Belum ada data minggu ini, sabar ya.';

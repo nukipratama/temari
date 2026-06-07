@@ -6,6 +6,7 @@ import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
+import PillButton from '@/components/ui/PillButton';
 import PrCard from '@/components/card/PrCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import Temari from '@/components/temari/Temari';
@@ -206,14 +207,15 @@ export default function Aku({
                         </p>
                     </div>
                     {identity.strava_connected ? (
-                        <button
-                            type="button"
+                        <PillButton
+                            tone="outline"
+                            size="sm"
                             onClick={() => router.post('/strava/sync', {}, { preserveScroll: true })}
-                            className="focus-ring inline-flex flex-none items-center gap-2 rounded-full border border-cream-deep bg-cream px-4 py-2 text-xs font-semibold text-ink-2 transition hover:text-ink"
+                            className="flex-none px-4 py-2 text-xs font-semibold"
                         >
                             <Icon icon="mdi:sync" width={14} height={14} aria-hidden className="text-ink-3" />
                             Sync sekarang
-                        </button>
+                        </PillButton>
                     ) : (
                         <a
                             href="/auth/strava/redirect"
@@ -226,14 +228,15 @@ export default function Aku({
                 </Card>
 
                 <div className="mt-8 flex justify-center lg:hidden">
-                    <button
-                        type="button"
+                    <PillButton
+                        tone="outline"
+                        size="sm"
                         onClick={() => router.post('/logout')}
-                        className="focus-ring inline-flex items-center gap-2 rounded-full border border-cream-deep bg-cream px-5 py-2.5 font-sans text-sm text-ink-2 transition hover:text-ink"
+                        className="px-5 py-2.5 text-sm"
                     >
                         <Icon icon="mdi:logout" width={16} height={16} aria-hidden className="text-ink-3" />
                         Keluar
-                    </button>
+                    </PillButton>
                 </div>
             </PageContainer>
         </AppShell>

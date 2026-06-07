@@ -22,4 +22,15 @@ describe('cn', () => {
         expect(cn('px-2', 'px-4')).toBe('px-4');
         expect(cn('text-sm', false, 'text-lg')).toBe('text-lg');
     });
+
+    it('keeps a label-tier utility alongside a text color', () => {
+        // text-label-* bundle no color, so they must coexist with text-ink-*.
+        expect(cn('text-label-small', 'text-ink-2')).toBe('text-label-small text-ink-2');
+        expect(cn('text-label-micro', 'text-ink-on-sky')).toBe('text-label-micro text-ink-on-sky');
+    });
+
+    it('treats the label tiers as font sizes that override each other', () => {
+        expect(cn('text-label-small', 'text-label-micro')).toBe('text-label-micro');
+        expect(cn('text-label-small', 'text-lg')).toBe('text-lg');
+    });
 });
