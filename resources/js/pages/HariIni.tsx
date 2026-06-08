@@ -12,7 +12,7 @@ import SuggestionCard from '@/components/dashboard/SuggestionCard';
 import LastLariCard, { type LastRunNote } from '@/components/dashboard/LastLariCard';
 import KondisiCard from '@/components/dashboard/KondisiCard';
 import GoalsCard from '@/components/dashboard/GoalsCard';
-import RecapCard from '@/components/dashboard/RecapCard';
+
 import { VIBE_TO_POSE, poseForRun } from '@/lib/temariPose';
 import { pickFeaturedKartu, vibeSubtitleFor } from './HariIni/helpers';
 import { formatTimeId, formatWeekdayDateId } from '@/lib/pace';
@@ -21,7 +21,6 @@ import type {
     BriefingResult,
     SharedProps,
     TrainingLoad,
-    WeeklyRecap,
     WeeklySnapshot,
 } from '@/types/inertia';
 
@@ -33,22 +32,7 @@ interface HariIniProps {
     lastRunNote?: LastRunNote | null;
     hasNewPr?: boolean;
     pendingMilestone?: PendingMilestone | null;
-    weeklyRecap?: WeeklyRecap | null;
 }
-
-// The controller always supplies a shaped recap; this default keeps the page
-// (and its many test call sites) resilient if the prop is ever absent.
-const EMPTY_RECAP: WeeklyRecap = {
-    week_start: '',
-    week_end: '',
-    this_week_km: 0,
-    this_week_runs: 0,
-    last_week_km: 0,
-    delta_pct: null,
-    streak_weeks: 0,
-    best_card: null,
-    nearest_goal: null,
-};
 
 export default function HariIni({
     briefing,
@@ -58,7 +42,6 @@ export default function HariIni({
     lastRunNote = null,
     hasNewPr = false,
     pendingMilestone = null,
-    weeklyRecap = null,
 }: Readonly<HariIniProps>) {
     const { props } = usePage<SharedProps & HariIniProps>();
     const firstName = props.auth.user?.first_name ?? '';
@@ -98,18 +81,13 @@ export default function HariIni({
                     <EmptyRunsState />
                 ) : (
                     <>
-                        {/* MINGGU KAMU — the week's "moment", right under the greeting */}
-                        <div className="mt-8">
-                            <RecapCard recap={weeklyRecap ?? EMPTY_RECAP} />
-                        </div>
+                        {/* HERO KARTU */}
+                        {featured && <FeaturedKartuPanel featured={featured} featuredKartuVoice={briefing.featuredKartuVoice} />}
 
-                        {/* VITAL CHIPS — above hero, full width 3-up */}
+                        {/* VITAL CHIPS — below hero, full width 3-up */}
                         <section className="mt-6">
                             <VitalChips briefing={briefing} load={load} />
                         </section>
-
-                        {/* HERO KARTU */}
-                        {featured && <FeaturedKartuPanel featured={featured} featuredKartuVoice={briefing.featuredKartuVoice} />}
 
                         {/* 3-UP */}
                         <section className="mt-8 grid gap-4 lg:grid-cols-3">
