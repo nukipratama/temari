@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\Gamification\EquippedAccessories;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->service = new EquippedAccessories();

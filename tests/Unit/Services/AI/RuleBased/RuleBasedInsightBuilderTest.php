@@ -7,7 +7,10 @@ use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 /**
  * Build an Activity + ActivityDetail pair for the given user with explicit

@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityStream;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 it('round-trips the streams array via the cast', function (): void {
     $payload = [

@@ -12,9 +12,12 @@ use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\Narrators\BriefingFeaturedKartuVoiceNarrator;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\TokenUsageRecorder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use OpenAI\Responses\Chat\CreateResponse;
 use OpenAI\Testing\ClientFake;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config()->set('azure_openai.uri', 'https://x.openai.azure.com/openai/deployments/x/chat/completions?api-version=2024-10-21');

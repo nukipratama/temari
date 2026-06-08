@@ -12,7 +12,10 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 function seedActivityForJob(): Activity
 {

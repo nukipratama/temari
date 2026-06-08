@@ -6,7 +6,10 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
+
+uses(RefreshDatabase::class);
 
 it('clears pending_reveal_card_id when the user posts seen for the flagged card', function (): void {
     $user = User::factory()->create();

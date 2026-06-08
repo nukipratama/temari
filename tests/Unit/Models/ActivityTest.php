@@ -10,7 +10,10 @@ use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 it('casts timestamps and counters', function (): void {
     $activity = Activity::factory()->analyzed()->create([

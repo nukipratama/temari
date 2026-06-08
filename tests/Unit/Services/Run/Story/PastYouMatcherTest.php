@@ -6,7 +6,10 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Story\PastYouMatcher;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 /**
  * @param  array<string, mixed>  $overrides

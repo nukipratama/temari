@@ -7,7 +7,10 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Run\Metrics\PersonalRecords;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();

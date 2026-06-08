@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Livewire\Pulse\AiPipelineHealth;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+
+uses(RefreshDatabase::class);
 
 it('renders the status snapshot without error', function (): void {
     Livewire::test(AiPipelineHealth::class)

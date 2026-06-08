@@ -7,7 +7,10 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Run\PrScoreboardBuilder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->builder = new PrScoreboardBuilder();

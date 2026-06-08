@@ -6,7 +6,10 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\TrainingLoad;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 // Freeze "today" so Carbon::today() math is stable; afterEach prevents leak on failure.
 beforeEach(function (): void {

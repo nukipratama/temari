@@ -5,7 +5,10 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\PersonalRecord;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 it('advances the PR-seen marker to the latest PR for the authenticated user', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');

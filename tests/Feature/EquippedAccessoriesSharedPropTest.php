@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 use App\Models\User;
 use App\Models\UserUnlock;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+
+uses(RefreshDatabase::class);
 
 it('shares the equipped accessories on every authenticated page', function (): void {
     $user = User::factory()->create();

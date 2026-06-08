@@ -6,6 +6,9 @@ use App\Jobs\Story\GenerateStoryLineJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Services\Run\Story\Temari;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 it('forwards to Temari for the resolved activity', function (): void {
     $activity = Activity::factory()->create();

@@ -11,9 +11,12 @@ use App\Models\ActivityStream;
 use App\Models\StravaConnection;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->pipeline = app(ActivityPipeline::class);

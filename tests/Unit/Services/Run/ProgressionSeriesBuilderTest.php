@@ -7,7 +7,10 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Run\ProgressionSeriesBuilder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 beforeEach(fn () => Carbon::setTestNow('2026-05-20 12:00:00'));
 afterEach(fn () => Carbon::setTestNow());

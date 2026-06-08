@@ -6,12 +6,15 @@ use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Services\Run\Ingest\ActivityPipeline;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();

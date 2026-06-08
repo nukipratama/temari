@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+
+uses(RefreshDatabase::class);
 
 it('requires authentication', function (): void {
     $this->post(route('strava.sync'))->assertRedirect(route('login'));

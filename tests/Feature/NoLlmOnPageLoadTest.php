@@ -9,7 +9,10 @@ use App\Jobs\AI\AnalyzePersonaSummaryJob;
 use App\Jobs\AI\AnalyzeTrendCaptionJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();

@@ -6,7 +6,10 @@ use App\Models\Activity;
 use App\Models\StoryLine;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 it('casts for_date to Carbon', function (): void {
     $line = StoryLine::factory()->dailyGreeting('2026-05-10')->create();

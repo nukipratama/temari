@@ -8,8 +8,11 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\StravaConnection;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
+
+uses(RefreshDatabase::class);
 
 it('renders Profile with computed identity + hero stats', function (): void {
     $user = User::factory()->create();

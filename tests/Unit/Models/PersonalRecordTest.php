@@ -7,7 +7,10 @@ use App\Models\Activity;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 it('casts value_sec to float and set_at to Carbon', function (): void {
     $pr = PersonalRecord::factory()->create([

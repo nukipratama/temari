@@ -6,8 +6,11 @@ use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     // Default: skip the webhook self-handshake so no outbound HTTP fires unless

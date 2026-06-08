@@ -6,7 +6,10 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+
+uses(RefreshDatabase::class);
 
 it('shows the user\'s cards on the gallery', function (): void {
     $user = User::factory()->create();

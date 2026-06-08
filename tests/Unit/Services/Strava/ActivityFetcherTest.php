@@ -8,9 +8,12 @@ use App\Models\User;
 use App\Services\Strava\ActivityFetcher;
 use App\Services\Strava\StravaClient;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     RateLimiter::clear('strava-api:15min');

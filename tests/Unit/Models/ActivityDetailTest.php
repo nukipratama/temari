@@ -5,7 +5,10 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
 
 it('casts numeric, boolean, datetime, and json columns', function (): void {
     $detail = ActivityDetail::factory()->create([

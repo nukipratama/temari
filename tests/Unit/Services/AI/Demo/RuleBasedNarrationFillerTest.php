@@ -10,6 +10,9 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Demo\RuleBasedNarrationFiller;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 function fillerRow(AnalysisType $type, int $subjectId): Analysis
 {

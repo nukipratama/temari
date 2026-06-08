@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\StravaConnection;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as SocialiteUser;
+
+uses(RefreshDatabase::class);
 
 // The callback dispatches a backfill job on a fresh connect; fake the bus so it
 // is recorded rather than run inline against the real Strava API.

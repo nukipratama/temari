@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Run\Metrics\VdotEstimator;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->estimator = new VdotEstimator();

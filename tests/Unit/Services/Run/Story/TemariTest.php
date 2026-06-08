@@ -12,8 +12,11 @@ use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();

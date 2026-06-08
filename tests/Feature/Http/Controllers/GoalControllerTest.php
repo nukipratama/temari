@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 use App\Models\User;
 use App\Models\UserUnlock;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+
+uses(RefreshDatabase::class);
 
 it('renders the Target page with goals for a fresh user', function (): void {
     $user = User::factory()->create();

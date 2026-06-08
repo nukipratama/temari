@@ -2,16 +2,18 @@
 
 declare(strict_types=1);
 
-use Mockery\MockInterface;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
+use App\Models\AI\TokenUsage;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\TokenUsageRecorder;
 use GuzzleHttp\Psr7\Response as Psr7Response;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use OpenAI\Exceptions\ErrorException;
 use OpenAI\Exceptions\RateLimitException;
 use OpenAI\Exceptions\ServerException;
@@ -20,28 +22,17 @@ use OpenAI\Responses\Chat\CreateResponse;
 use OpenAI\Testing\ClientFake;
 use Psr\Http\Client\ClientExceptionInterface;
 
+uses(RefreshDatabase::class);
+
 beforeEach(function (): void {
     config()->set('azure_openai.deployment', 'gpt-test');
     config()->set('azure_openai.max_completion_tokens', 200);
 });
 
 /**
- * Build a Mockery mock of the recorder that tolerates an unexpected `record()`
- * call by default, so tests that don't care about metering never fail on it.
- * Tests asserting metering override this with their own expectations.
- */
-function recorderMock(): MockInterface
-{
-    $recorder = Mockery::mock(TokenUsageRecorder::class);
-    $recorder->shouldReceive('record')->byDefault();
-
-    return $recorder;
-}
-
-/**
  * @param  array<string, int>|null  $usage  ['prompt_tokens' => …, 'completion_tokens' => …, 'total_tokens' => …]
  */
-function structuredCaller(string $content, ?array $usage = null, string $finishReason = 'stop', ?MockInterface $recorder = null): StructuredChatCaller
+function structuredCaller(string $content, ?array $usage = null, string $finishReason = 'stop'): StructuredChatCaller
 {
     $fakeArgs = [
         'choices' => [
@@ -56,19 +47,19 @@ function structuredCaller(string $content, ?array $usage = null, string $finishR
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
 
-    return new StructuredChatCaller($azure, $recorder ?? recorderMock());
+    return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
 }
 
 /**
  * @param  array<array-key, mixed>  $responses  queued ClientFake responses/throwables
  */
-function callerWithResponses(array $responses, ?MockInterface $recorder = null): StructuredChatCaller
+function callerWithResponses(array $responses): StructuredChatCaller
 {
     $client = new ClientFake($responses);
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
 
-    return new StructuredChatCaller($azure, $recorder ?? recorderMock());
+    return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
 }
 
 function fakeChatResponse(string $content, string $finishReason = 'stop'): CreateResponse
@@ -94,11 +85,10 @@ it('throws UnavailableException when a required key is missing from the structur
 })->throws(UnavailableException::class, 'missing headline');
 
 it('does not record token usage when the response is malformed', function (): void {
-    $recorder = Mockery::mock(TokenUsageRecorder::class);
-    $recorder->shouldNotReceive('record');
-
-    expect(fn () => structuredCaller('{not valid json', recorder: $recorder)->call('kind', 'sys', [], 'schema', ['headline']))
+    expect(fn () => structuredCaller('{not valid json')->call('kind', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class);
+
+    expect(TokenUsage::query()->count())->toBe(0);
 });
 
 it('returns the decoded payload when all required keys are present', function (): void {
@@ -109,51 +99,32 @@ it('returns the decoded payload when all required keys are present', function ()
 });
 
 it('records a token-usage row on successful call', function (): void {
-    $recorder = Mockery::mock(TokenUsageRecorder::class);
-    $recorder->shouldReceive('record')
-        ->once()
-        ->withArgs(function (
-            string $kind,
-            int $promptTokens,
-            int $completionTokens,
-            int $totalTokens,
-            ?string $model,
-            ?int $latencyMs,
-            bool $truncated,
-            ?int $userId,
-        ): bool {
-            expect($kind)->toBe('briefing')
-                ->and($promptTokens)->toBe(120)
-                ->and($completionTokens)->toBe(45)
-                ->and($totalTokens)->toBe(165)
-                ->and($model)->toBe('gpt-test')
-                ->and($latencyMs)->toBeGreaterThanOrEqual(0)
-                ->and($truncated)->toBeFalse()
-                ->and($userId)->toBeNull();
-
-            return true;
-        });
-
     structuredCaller(
         json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR),
         ['prompt_tokens' => 120, 'completion_tokens' => 45, 'total_tokens' => 165],
-        recorder: $recorder,
     )->call('briefing', 'sys', [], 'schema', ['headline']);
+
+    $row = TokenUsage::query()->first();
+    expect($row)->not->toBeNull()
+        ->and($row->kind)->toBe('briefing')
+        ->and($row->prompt_tokens)->toBe(120)
+        ->and($row->completion_tokens)->toBe(45)
+        ->and($row->total_tokens)->toBe(165)
+        ->and($row->model)->toBe('gpt-test')
+        ->and($row->truncated)->toBeFalse()
+        ->and($row->latency_ms)->toBeGreaterThanOrEqual(0)
+        ->and($row->user_id)->toBeNull();
 });
 
 it('records user_id when passed by the narrator', function (): void {
-    $userId = 42;
-
-    $recorder = Mockery::mock(TokenUsageRecorder::class);
-    $recorder->shouldReceive('record')
-        ->once()
-        ->withArgs(fn (string $kind, int $p, int $c, int $t, ?string $model, ?int $latencyMs, bool $truncated, ?int $passedUserId): bool => $passedUserId === $userId);
+    $user = User::factory()->create();
 
     structuredCaller(
         json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR),
         ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15],
-        recorder: $recorder,
-    )->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(userId: $userId));
+    )->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(userId: $user->id));
+
+    expect(TokenUsage::query()->first()->user_id)->toBe($user->id);
 });
 
 it('flags truncated=true when the response stays length-truncated after the single retry', function (): void {
@@ -166,16 +137,13 @@ it('flags truncated=true when the response stays length-truncated after the sing
         'usage' => ['prompt_tokens' => 80, 'completion_tokens' => 200, 'total_tokens' => 280],
     ]);
 
-    $recorder = Mockery::mock(TokenUsageRecorder::class);
-    $recorder->shouldReceive('record')
-        ->once()
-        ->withArgs(fn (string $kind, int $p, int $c, int $t, ?string $model, ?int $latencyMs, bool $truncated, ?int $userId): bool => $truncated === true);
-
     // Both the initial call and the bumped-token retry come back truncated, so
-    // the recorded usage carries truncated=true for the final response.
-    callerWithResponses([$truncated, $truncated], recorder: $recorder)
+    // the recorded usage row carries truncated=true for the final response.
+    callerWithResponses([$truncated, $truncated])
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
+    $row = TokenUsage::query()->first();
+    expect($row->truncated)->toBeTrue();
     Log::shouldHaveReceived('warning')->with('narrator.ai.truncated', Mockery::any());
     Log::shouldHaveReceived('warning')->with('narrator.ai.truncated_retry', Mockery::any());
 });
@@ -184,13 +152,12 @@ it('does not record usage when Azure call fails', function (): void {
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
 
-    $recorder = Mockery::mock(TokenUsageRecorder::class);
-    $recorder->shouldNotReceive('record');
-
-    $caller = new StructuredChatCaller($azure, $recorder);
+    $caller = new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
 
     expect(fn () => $caller->call('briefing', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class);
+
+    expect(TokenUsage::query()->count())->toBe(0);
 });
 
 it('TokenUsageRecorder logs a warning when the DB insert throws', function (): void {
@@ -210,14 +177,13 @@ it('TokenUsageRecorder logs a warning when the DB insert throws', function (): v
 it('maps a 429 rate-limit into a retryable TransientUpstreamException carrying Retry-After', function (): void {
     $response = new Psr7Response(429, ['Retry-After' => '17']);
 
-    $recorder = Mockery::mock(TokenUsageRecorder::class);
-    $recorder->shouldNotReceive('record');
-
-    expect(fn () => callerWithResponses([new RateLimitException($response)], recorder: $recorder)
+    expect(fn () => callerWithResponses([new RateLimitException($response)])
         ->call('briefing', 'sys', [], 'schema', ['headline']))
         ->toThrow(function (TransientUpstreamException $e): void {
             expect($e->retryAfterSeconds)->toBe(17);
         });
+
+    expect(TokenUsage::query()->count())->toBe(0);
 });
 
 it('leaves retryAfterSeconds null on a 429 without a numeric Retry-After header', function (): void {
