@@ -47,7 +47,7 @@ const detail: ActivityDetail & {
     location_name: 'Senayan, Jakarta Pusat',
 };
 
-const card: RunCard = {
+const runCard: RunCard = {
     id: 1,
     activity_id: 99,
     rarity: 'epic',
@@ -102,7 +102,7 @@ function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
         <RunsShow
             activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail }}
             detail={detail}
-            card={card}
+            card={runCard}
             storyLine={storyLine}
             speechAnalysis={speechAnalysis()}
             {...insightDefaults}

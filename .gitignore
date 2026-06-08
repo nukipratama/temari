@@ -55,3 +55,6 @@ frankenphp
 !.claude/skills/
 !.claude/commands/
 .claude/settings.local.json
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+graphify-out/cost.json
