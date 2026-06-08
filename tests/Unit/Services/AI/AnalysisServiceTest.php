@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\QueryException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
@@ -369,4 +370,53 @@ it('accepts a Model instance as the subject', function (): void {
     );
 
     Bus::assertDispatched(AnalyzeActivityJob::class);
+});
+
+it('does not create a duplicate weekly_recap row when re-requested', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+
+    $first = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+    $second = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($second->id)->toBe($first->id)
+        ->and(Analysis::query()
+            ->where('subject_type', WeeklySnapshot::class)
+            ->where('subject_id', $snap->id)
+            ->where('analysis_type', AnalysisType::WeeklyRecap)
+            ->count())->toBe(1);
+});
+
+it('does not create a duplicate briefing-group row when re-requested', function (): void {
+    $user = User::factory()->create();
+
+    $this->service->requestBriefingGroup($user, '2026-05-18');
+    $this->service->requestBriefingGroup($user, '2026-05-18');
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
+        ->where('subject_id', $user->id)
+        ->where('discriminator', '2026-05-18')
+        ->count())->toBe(2);
+});
+
+it('rejects a duplicate (subject_type, subject_id, analysis_type, discriminator) at the DB level', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    $attributes = [
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => '2026-W20',
+    ];
+    Analysis::factory()->create($attributes);
+
+    expect(fn (): Analysis => Analysis::factory()->create($attributes))
+        ->toThrow(QueryException::class);
 });

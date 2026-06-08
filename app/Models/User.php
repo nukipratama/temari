@@ -65,6 +65,45 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasOne<RunnerProfile, $this>
+     */
+    public function runnerProfile(): HasOne
+    {
+        return $this->hasOne(RunnerProfile::class);
+    }
+
+    /**
+     * Fixed public contract for heart-rate and cadence settings. Returns the
+     * stored runner_profiles row when present, otherwise the config('runner.*')
+     * defaults in the identical shape so callers cannot tell the difference.
+     *
+     * @return array{max_hr:int, resting_hr:int, hr_zones:array<string,array{lo:int,hi:int}>, optimal_cadence_spm:int}
+     */
+    public function hrProfile(): array
+    {
+        $profile = $this->runnerProfile;
+
+        if ($profile !== null) {
+            return [
+                'max_hr' => $profile->max_hr,
+                'resting_hr' => $profile->resting_hr,
+                'hr_zones' => $profile->hr_zones,
+                'optimal_cadence_spm' => $profile->optimal_cadence_spm,
+            ];
+        }
+
+        /** @var array<string, array{lo:int, hi:int}> $hrZones */
+        $hrZones = config('runner.hr_zones');
+
+        return [
+            'max_hr' => (int) config('runner.max_hr'),
+            'resting_hr' => (int) config('runner.resting_hr'),
+            'hr_zones' => $hrZones,
+            'optimal_cadence_spm' => (int) config('runner.optimal_cadence_spm'),
+        ];
+    }
+
+    /**
      * @return HasMany<Activity, $this>
      */
     public function activities(): HasMany

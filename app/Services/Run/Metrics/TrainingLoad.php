@@ -17,9 +17,6 @@ class TrainingLoad
 
     private const int CTL_TAU = 42;
 
-    /** History window needed for CTL to converge. */
-    private const int LOAD_LOOKBACK_DAYS = 90;
-
     /**
      * @param  array<string, float|int>  $timeInZoneMin  zone name → minutes
      */
@@ -75,19 +72,20 @@ class TrainingLoad
     }
 
     /**
+     * Loads the full TRIMP history from the user's first-ever activity so the
+     * EWMA in rollLoads converges as a continuous, window-independent series.
+     *
      * @return array<string, float>  date (Y-m-d) → summed TRIMP for that day
      */
     private function loadDailyTrimp(User $user, Carbon $asOf): array
     {
-        $cutoff = $asOf->copy()->subDays(self::LOAD_LOOKBACK_DAYS)->toDateString();
-
         /** @var Collection<int, object{dt: string, trimp_sum: float}> $rows */
         $rows = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.trimp_edwards')
             ->whereNotNull('activity_details.start_date_local')
-            ->where('activity_details.start_date_local', '>=', $cutoff)
+            ->where('activity_details.start_date_local', '<=', $asOf->copy()->endOfDay())
             ->groupBy(DB::raw('DATE(activity_details.start_date_local)'))
             ->orderBy('dt')
             ->get([
@@ -117,7 +115,11 @@ class TrainingLoad
     }
 
     /**
-     * Missing days contribute zero TRIMP so a rest day reduces fatigue but doesn't reduce fitness.
+     * Rolls a continuous ATL/CTL EWMA from the first day of the supplied map
+     * through $today. Missing days contribute zero TRIMP so a rest day reduces
+     * fatigue but doesn't reduce fitness. Callers pass the full TRIMP history
+     * (from the first-ever activity), so the EWMA state converges and the
+     * result is independent of any window length.
      *
      * @param  array<string, float>  $dailyTrimp
      * @return array{0: float, 1: float}
@@ -129,9 +131,6 @@ class TrainingLoad
         $atl = 0.0;
         $ctl = 0.0;
 
-        // Cold-starts ATL/CTL from zero at the first activity date and warms up
-        // over the decay windows. Backfilling history across a long gap therefore
-        // re-warms from the earliest synced day rather than carrying prior load.
         $startDate = Carbon::parse((string) array_key_first($dailyTrimp));
         $cursor = $startDate->copy();
         while ($cursor->lte($today)) {

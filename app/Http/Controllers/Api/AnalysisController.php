@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +25,7 @@ class AnalysisController extends Controller
     public function trigger(
         TriggerAnalysisRequest $request,
         AnalysisService $service,
+        ActivityPipeline $pipeline,
         string $type,
         int $subjectId,
     ): JsonResponse {
@@ -39,6 +41,16 @@ class AnalysisController extends Controller
 
         if ($existing?->cooldownRemaining() !== null) {
             return $this->payload($existing, $analysisType, $subjectId, $discriminator);
+        }
+
+        // A manual "Baca ulang" on a run subject recomputes its stream summary
+        // from the already-stored streams against the user's current HR zones
+        // (no Strava calls) so the regenerated narration reflects them.
+        if ($analysisType->subjectType() === Activity::class) {
+            $activity = Activity::find($subjectId);
+            if ($activity !== null) {
+                $pipeline->recomputeSummary($activity);
+            }
         }
 
         $row = $service->request(

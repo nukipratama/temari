@@ -97,6 +97,60 @@ it('rolls TRIMP into ATL/CTL/form with sane magnitudes', function (): void {
 
 });
 
+it('converges CTL to a steady load instead of the too-low 49-day cold-start value', function (): void {
+    $user = User::factory()->create();
+
+    // 200 days of steady 80 TRIMP/day. A continuous EWMA converges CTL≈79.3.
+    // The old 49-day warm-up window cold-started CTL near 55 (form over-reports
+    // fatigue). summary() now reads full history, so it must report the
+    // converged value, not the windowed one.
+    for ($i = 0; $i < 200; $i++) {
+        seedTrimpDay($user, 80.0, 199 - $i);
+    }
+
+    $summary = $this->load->summary($user);
+
+    expect($summary['ctl_42d'])->toEqualWithDelta(79.3, 0.5)
+        ->and($summary['ctl_42d'])->toBeGreaterThan(75.0);
+});
+
+it('computes a CTL independent of how many lead-in days the map carries', function (): void {
+    // Continuous EWMA: CTL on a given day depends only on the full history up
+    // to that day, not on which window a caller chose. A fully-warmed map and a
+    // truncated 49-day map must NOT agree, and the warmed one matches the
+    // hand-computed converged value.
+    $asOf = Carbon::today();
+
+    $fullMap = [];
+    for ($i = 199; $i >= 0; $i--) {
+        $fullMap[$asOf->copy()->subDays($i)->toDateString()] = 80.0;
+    }
+    $windowedMap = array_slice($fullMap, -49, null, true);
+
+    $full = $this->load->summaryFromDailyMap($fullMap, $asOf);
+    $windowed = $this->load->summaryFromDailyMap($windowedMap, $asOf);
+
+    expect($full['ctl_42d'])->toEqualWithDelta(79.3, 0.5)
+        ->and($windowed['ctl_42d'])->toEqualWithDelta(55.1, 0.5)
+        ->and($windowed['ctl_42d'])->toBeLessThan($full['ctl_42d'] - 15.0);
+});
+
+it('zero-fills gap days between sparse activities', function (): void {
+    // A 100-TRIMP day followed by 30 rest days: CTL decays across the gap but
+    // never resets, so the rest day reduces fatigue (ATL) faster than fitness.
+    $asOf = Carbon::today();
+    $map = [
+        $asOf->copy()->subDays(30)->toDateString() => 100.0,
+        $asOf->toDateString() => 100.0,
+    ];
+
+    $summary = $this->load->summaryFromDailyMap($map, $asOf);
+
+    // ATL recovers toward the latest spike; CTL stays muted by the long gap.
+    expect($summary['atl_7d'])->toBeGreaterThan($summary['ctl_42d'])
+        ->and($summary['ctl_42d'])->toBeGreaterThan(0.0);
+});
+
 it('marks fresh when fitness exceeds fatigue (taper-week shape)', function (): void {
     $user = User::factory()->create();
 

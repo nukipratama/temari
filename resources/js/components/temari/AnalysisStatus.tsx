@@ -1,13 +1,41 @@
 import { type ReactNode } from 'react';
 import { Icon } from '@iconify/react';
+import { usePage } from '@inertiajs/react';
 import { RATE_LIMITED_ERROR, useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
-import type { AnalysisPayload } from '@/types/inertia';
+import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 import UnavailableNote from './UnavailableNote';
 
 export type AnalysisStatusSize = 'sm' | 'md';
+
+/**
+ * A done block is stale when it is zone-dependent (per the server-provided
+ * `is_zone_dependent` flag) and was generated strictly before the user's zones
+ * last changed. Newer blocks (and blocks with no `generated_at` or no recorded
+ * zone change) auto-clear.
+ */
+function hasStaleZones(
+    isZoneDependent: boolean | undefined,
+    generatedAt: string | null | undefined,
+    hrZonesChangedAt: string | null | undefined,
+): boolean {
+    if (!isZoneDependent || !generatedAt || !hrZonesChangedAt) {
+        return false;
+    }
+
+    return new Date(generatedAt).getTime() < new Date(hrZonesChangedAt).getTime();
+}
+
+function StaleZonesBadge() {
+    return (
+        <span className="inline-flex items-center self-start gap-1 rounded-full bg-horizon/15 px-2 py-0.5 text-xs text-ember-deep">
+            <Icon icon="mdi:heart-pulse" aria-hidden />
+            <span>dihitung dengan zona lama</span>
+        </span>
+    );
+}
 
 interface Props {
     analysis: AnalysisPayload;
@@ -46,6 +74,7 @@ export default function AnalysisStatus({
     onSky = false,
 }: Readonly<Props>) {
     const { status, pending, error, retryAfterSeconds, trigger } = useAnalysisTrigger(analysis, inertiaReloadProps);
+    const { hrZonesChangedAt } = usePage<SharedProps>().props;
     const effectiveStatus = pending ? 'queued' : status;
     const content = analysis.content;
     const attempts = analysis.attempts ?? 0;
@@ -54,11 +83,13 @@ export default function AnalysisStatus({
 
     if (effectiveStatus === 'done' && content !== null) {
         const cooling = cooldownRemaining > 0;
+        const staleZones = hasStaleZones(analysis.is_zone_dependent, analysis.generated_at, hrZonesChangedAt);
         return (
             <div className="flex flex-col gap-1">
                 <div className={`${TEXT_SIZE[size]} whitespace-pre-line text-ink`}>
                     {renderContent ? renderContent(content) : renderBold(content)}
                 </div>
+                {staleZones && <StaleZonesBadge />}
                 {showTimestamp && analysis.generated_at && (
                     <span className="text-xs text-ink-3">
                         Dibuat {formatRelativeId(analysis.generated_at)}

@@ -42,6 +42,10 @@ interface RunsIndexProps {
     notes?: Record<number, RunNote>;
     rangeFilter: RangeFilterValue;
     rangeStart: string;
+    /** Server widened the requested range to reach an older run. */
+    rangeAutoWidened?: boolean;
+    /** Age in whole days of the newest analyzed run, or null when none exist. */
+    latestRunDaysAgo?: number | null;
     weeklySnapshots: ReadonlyArray<WeeklySnapshotRow>;
     journeyMatch?: JourneyMatchData | null;
 }
@@ -61,7 +65,7 @@ interface WeekBucket {
 export type RangeFilterValue = '8w' | '12w' | '6m' | '1y';
 
 const DEFAULT_RANGE: RangeFilterValue = '12w';
-const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'weeklySnapshots', 'notes'];
+const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'rangeAutoWidened', 'latestRunDaysAgo', 'weeklySnapshots', 'notes'];
 
 const RANGE_FILTER_OPTIONS: ReadonlyArray<RangeOption<RangeFilterValue>> = [
     { value: '8w', label: '2 bulan terakhir', hint: '8w' },
@@ -88,6 +92,8 @@ export default function RunsIndex({
     runs,
     notes = {},
     rangeFilter,
+    rangeAutoWidened = false,
+    latestRunDaysAgo = null,
     weeklySnapshots,
     journeyMatch = null,
 }: Readonly<RunsIndexProps>) {
@@ -175,6 +181,7 @@ export default function RunsIndex({
 
                 {hasRuns ? (
                     <div className="space-y-8">
+                        {rangeAutoWidened && <RangeWidenedNote rangeFilter={rangeFilter} />}
                         {buckets.map((bucket) => (
                             <WeekSection
                                 key={bucket.weekStart}
@@ -186,7 +193,7 @@ export default function RunsIndex({
                         ))}
                     </div>
                 ) : (
-                    <EmptyState />
+                    <EmptyState latestRunDaysAgo={latestRunDaysAgo} />
                 )}
             </PageContainer>
         </AppShell>
@@ -364,17 +371,52 @@ const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
     },
 };
 
-function EmptyState() {
+/** Whole days → an approximate "sekitar N minggu/hari lalu" phrase. */
+function lastRunAgoLabel(daysAgo: number): string {
+    if (daysAgo < 7) {
+        const days = Math.max(1, daysAgo);
+        return `sekitar ${days} hari lalu`;
+    }
+    const weeks = Math.round(daysAgo / 7);
+    return `sekitar ${weeks} minggu lalu`;
+}
+
+/**
+ * Banner shown above the run list when the server widened the requested window
+ * so an older run could surface. Keeps the active range chip honest.
+ */
+function RangeWidenedNote({ rangeFilter }: Readonly<{ rangeFilter: RangeFilterValue }>) {
+    const label = RANGE_FILTER_OPTIONS.find((o) => o.value === rangeFilter)?.label ?? rangeFilter;
+    return (
+        <Card tone="cream-deep" padding="sm" className="flex items-center gap-2.5">
+            <Icon icon="mdi:arrow-expand-horizontal" width={16} height={16} className="shrink-0 text-ink-3" aria-hidden />
+            <p className="font-sans text-sm text-ink-2">
+                Rentang diperlebar otomatis ke {label} biar lari terakhirmu kelihatan.
+            </p>
+        </Card>
+    );
+}
+
+function EmptyState({ latestRunDaysAgo }: Readonly<{ latestRunDaysAgo: number | null }>) {
     const { stravaSync } = usePage<SharedProps>().props;
     const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
-    const { line, sub } = EMPTY_COPY[state];
+
+    // The user HAS runs, just none inside this window. Nudge them to widen the
+    // range instead of showing the generic "connect Strava / sync" empty state.
+    const hasOlderRuns = state === 'ready' && latestRunDaysAgo !== null;
+    const { line, sub } = hasOlderRuns
+        ? {
+              line: 'Belum ada lari di rentang ini',
+              sub: `Lari terakhirmu ${lastRunAgoLabel(latestRunDaysAgo)}. Perlebar rentang waktu untuk melihatnya.`,
+          }
+        : EMPTY_COPY[state];
 
     return (
         <Card tone="empty" padding="lg" className="flex flex-col items-center text-center">
             <Temari pose="excited" size={128} animate />
             <p className="mt-4 font-display text-2xl italic text-ink-2">{line}</p>
             <p className="mt-2 font-sans text-sm text-ink-2">{sub}</p>
-            <StravaSyncButton state={state} className="mt-4" />
+            {!hasOlderRuns && <StravaSyncButton state={state} className="mt-4" />}
             <BackLink href="/" tone="accent" className="mt-4">
                 Kembali ke Hari Ini
             </BackLink>

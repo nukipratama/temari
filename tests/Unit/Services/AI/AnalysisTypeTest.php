@@ -15,3 +15,15 @@ it('maps MonthlyRecap to its job + subject type', function (): void {
     expect(AnalysisType::MonthlyRecap->jobClass())->toBe(AnalyzeMonthlyRecapJob::class)
         ->and(AnalysisType::MonthlyRecap->subjectType())->toBe(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE);
 });
+
+it('flags exactly the heart-rate-zone-derived types as zone-dependent', function (AnalysisType $type, bool $expected): void {
+    expect($type->isZoneDependent())->toBe($expected);
+})->with([
+    'zones' => [AnalysisType::RunInsightZones, true],
+    'technical' => [AnalysisType::RunInsightTechnical, true],
+    'weekly recap' => [AnalysisType::WeeklyRecap, true],
+    'splits' => [AnalysisType::RunInsightSplits, false],
+    'post-run speech' => [AnalysisType::PostRunSpeech, false],
+    'pr context' => [AnalysisType::PrContext, false],
+    'briefing headline' => [AnalysisType::BriefingHeadline, false],
+]);

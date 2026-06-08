@@ -24,7 +24,7 @@ final class RuleBasedNarrationFiller
 {
     public function fillFor(Analysis $row): string
     {
-        $seed = $row->subject_id;
+        $seed = $this->seedFor($row);
 
         return match ($row->analysis_type) {
             AnalysisType::BriefingHeadline => $this->briefingHeadline($seed),
@@ -44,6 +44,22 @@ final class RuleBasedNarrationFiller
             AnalysisType::AkuProfileVoice => $this->akuProfileVoice($seed),
             AnalysisType::MonthlyRecap => $this->monthlyRecap($seed),
         };
+    }
+
+    /**
+     * Deterministic selection seed for a row. The discriminator (when present)
+     * is folded in so discriminator-keyed types (monthly/weekly recap, daily
+     * briefing) produce distinct content per discriminator instead of repeating
+     * the same subject-only variant. A null discriminator leaves the seed equal
+     * to subject_id, preserving determinism for non-discriminated types.
+     */
+    private function seedFor(Analysis $row): int
+    {
+        if ($row->discriminator === null) {
+            return $row->subject_id;
+        }
+
+        return $row->subject_id + (int) crc32($row->discriminator);
     }
 
     private function briefingHeadline(int $seed): string

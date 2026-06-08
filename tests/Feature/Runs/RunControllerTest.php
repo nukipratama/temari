@@ -63,6 +63,61 @@ it('excludes runs outside the requested range', function (): void {
             ->where('rangeFilter', '1y'));
 });
 
+it('auto-widens the range and flags it when the newest run is outside the default window', function (): void {
+    $user = User::factory()->create();
+    $ancient = Activity::factory()->for($user)->analyzed()->create();
+    // 200 days old: outside 8w (56d), 12w (84d) and 6m (182d); reaches into 1y.
+    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(200)]);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', '1y')
+            ->where('rangeAutoWidened', true)
+            ->where('latestRunDaysAgo', 200)
+            ->has('runs', 1)
+            ->where('runs.0.detail.name', 'Ancient'));
+});
+
+it('does not widen and reports the run age when runs exist in the requested window', function (): void {
+    $user = User::factory()->create();
+    $recent = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($recent)->create(['name' => 'Recent', 'start_date_local' => Carbon::now()->subDays(3)]);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', '8w')
+            ->where('rangeAutoWidened', false)
+            ->where('latestRunDaysAgo', 3)
+            ->has('runs', 1));
+});
+
+it('reports a null run age and no widening when the user has no analyzed runs', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', '8w')
+            ->where('rangeAutoWidened', false)
+            ->where('latestRunDaysAgo', null)
+            ->where('runs', []));
+});
+
+it('keeps the requested wider range without flagging an auto-widen', function (): void {
+    $user = User::factory()->create();
+    $ancient = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(200)]);
+
+    // User explicitly asked for 1y, which already reaches the run: no widen flag.
+    $this->actingAs($user)->get('/aktivitas?range=1y')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', '1y')
+            ->where('rangeAutoWidened', false)
+            ->has('runs', 1));
+});
+
 it('falls back to the default range when the query value is invalid', function (): void {
     $user = User::factory()->create();
 

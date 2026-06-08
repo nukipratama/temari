@@ -54,6 +54,54 @@ describe('Riwayat/Jejak', () => {
         expect(screen.getByText(/Aku lagi narik lari kamu/i)).toBeInTheDocument();
     });
 
+    it('nudges to widen the range when the window is empty but older runs exist', () => {
+        setMockPage({
+            auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
+            flash: {},
+            demoLoginEnabled: false,
+            stravaSync: { state: 'ready', last_synced_at: '2026-01-01' },
+        });
+        render(
+            <RunsIndex
+                runs={[]}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                latestRunDaysAgo={84}
+                weeklySnapshots={[]}
+            />,
+        );
+        expect(screen.getByText(/Perlebar rentang waktu untuk melihatnya/i)).toBeInTheDocument();
+        expect(screen.getByText(/sekitar 12 minggu lalu/i)).toBeInTheDocument();
+    });
+
+    it('does NOT render the widen nudge when runs are present', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                latestRunDaysAgo={1}
+                weeklySnapshots={[]}
+            />,
+        );
+        expect(screen.queryByText(/Perlebar rentang waktu untuk melihatnya/i)).not.toBeInTheDocument();
+        expect(screen.getByTestId('run-row')).toBeInTheDocument();
+    });
+
+    it('shows the auto-widened banner when the server widened the range', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi', '2026-05-19T06:00:00')]}
+                rangeFilter="1y"
+                rangeStart="2025-05-19"
+                rangeAutoWidened
+                latestRunDaysAgo={200}
+                weeklySnapshots={[]}
+            />,
+        );
+        expect(screen.getByText(/Rentang diperlebar otomatis/i)).toBeInTheDocument();
+    });
+
     it('groups runs into weekly buckets + renders weekly snapshot stats', () => {
         const runs = [
             run(101, 'Pagi negatif-split', '2026-05-19T06:00:00'),

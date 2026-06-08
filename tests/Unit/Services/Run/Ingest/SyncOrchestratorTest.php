@@ -36,16 +36,18 @@ it('inserts oldest-first so DB ids are chronological', function (): void {
     expect($ids)->toBe([10, 20, 30]);
 });
 
-it('dispatches one IngestActivityJob per new activity', function (): void {
+it('inserts activity stubs but dispatches no per-activity ingest jobs', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewExternalIds')->andReturn([10, 20]);
 
-    (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
+    $inserted = (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
 
-    Queue::assertPushed(IngestActivityJob::class, 2);
+    expect($inserted)->toBe(2)
+        ->and(Activity::query()->where('user_id', $user->id)->count())->toBe(2);
+    Queue::assertNotPushed(IngestActivityJob::class);
 });
 
 it('returns 0 and does not query Strava when user has no connection', function (): void {

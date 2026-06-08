@@ -7,6 +7,7 @@ use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Middleware\ThrottlesExceptions;
 
 uses(RefreshDatabase::class);
 
@@ -21,24 +22,92 @@ it('forwards to the ActivityPipeline for the resolved activity', function (): vo
     (new IngestActivityJob($activity->id))->handle($pipeline);
 });
 
-it('re-queues with backoff instead of failing when Strava rate-limits the ingest', function (): void {
-    $activity = Activity::factory()->create();
-
-    $pipeline = Mockery::mock(ActivityPipeline::class);
-    $pipeline->shouldReceive('ingest')
-        ->once()
-        ->andThrow(new StravaRateLimitedException('rate limited'));
-
-    $job = (new IngestActivityJob($activity->id))->withFakeQueueInteractions();
-    $job->handle($pipeline);
-
-    // First attempt → 60s backoff from the exponential table.
-    $job->assertReleased(delay: 60);
-});
-
 it('quietly no-ops if the activity has been deleted before the job runs', function (): void {
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldNotReceive('ingest');
 
     (new IngestActivityJob(999_999))->handle($pipeline);
+});
+
+it('registers a ThrottlesExceptions middleware so 429 backoffs do not burn attempts', function (): void {
+    $middleware = (new IngestActivityJob(1))->middleware();
+
+    expect($middleware)->toHaveCount(1)
+        ->and($middleware[0])->toBeInstanceOf(ThrottlesExceptions::class);
+});
+
+it('does not pin a fixed $tries cap that a rate-limit backoff loop could exhaust', function (): void {
+    // A time bound (retryUntil) governs the job instead of a small $tries count,
+    // so repeated 429 backoffs never trip MaxAttemptsExceeded.
+    $job = new IngestActivityJob(1);
+
+    expect($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class)
+        ->and($job->retryUntil()->getTimestamp())->toBeGreaterThan(now()->getTimestamp())
+        ->and(property_exists($job, 'tries') ? $job->tries : null)->toBeNull();
+});
+
+it('survives many rate-limit backoffs without the throttle middleware failing the job', function (): void {
+    // The throttle middleware absorbs Strava 429s by releasing the job, far
+    // beyond the 3 releases that previously tripped MaxAttemptsExceeded.
+    $job = new IngestActivityJob(1);
+
+    $next = function () {
+        throw new StravaRateLimitedException('rate limited');
+    };
+
+    $released = 0;
+    $fakeJob = new class ($released) {
+        public bool $failed = false;
+
+        public function __construct(public int &$releaseCount)
+        {
+        }
+
+        public function release(int $delay): void
+        {
+            $this->releaseCount++;
+        }
+
+        public function fail(Throwable $e): void
+        {
+            $this->failed = true;
+        }
+
+        public function uuid(): string
+        {
+            return 'job-uuid';
+        }
+    };
+
+    $middleware = $job->middleware()[0];
+
+    for ($attempt = 0; $attempt < 10; $attempt++) {
+        $middleware->handle($fakeJob, $next);
+    }
+
+    expect($fakeJob->failed)->toBeFalse()
+        ->and($fakeJob->releaseCount)->toBe(10);
+});
+
+it('lets the throttle middleware re-raise a genuine non rate-limit failure', function (): void {
+    // maxExceptions governs genuine failures; the throttle only catches 429s,
+    // so any other throwable is re-raised for the job to count against it.
+    $job = new IngestActivityJob(1);
+    $middleware = $job->middleware()[0];
+
+    $next = function () {
+        throw new RuntimeException('genuine failure');
+    };
+
+    $fakeJob = new class () {
+        public function uuid(): string
+        {
+            return 'job-uuid';
+        }
+    };
+
+    expect(fn () => $middleware->handle($fakeJob, $next))
+        ->toThrow(RuntimeException::class, 'genuine failure');
+
+    expect($job->maxExceptions)->toBe(3);
 });

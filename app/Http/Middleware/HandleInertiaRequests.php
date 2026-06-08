@@ -65,7 +65,19 @@ class HandleInertiaRequests extends Middleware
             'pendingReveal' => fn () => $this->pendingRevealFor($user),
             'stravaSync' => fn () => $this->stravaSyncFor($user),
             'goalsSummary' => fn () => $this->goalsSummaryFor($user),
+            'hrZonesChangedAt' => fn () => $this->hrZonesChangedAtFor($user),
         ];
+    }
+
+    /**
+     * ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null
+     * when there is no runner profile or it has never changed. The front end
+     * compares this against each analysis block's `generated_at` to flag blocks
+     * computed with stale zones.
+     */
+    private function hrZonesChangedAtFor(?User $user): ?string
+    {
+        return $user?->runnerProfile?->hr_zones_changed_at?->toIso8601String();
     }
 
     /**

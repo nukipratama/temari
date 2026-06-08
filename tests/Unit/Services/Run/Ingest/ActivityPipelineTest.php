@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Models\RunCard;
+use App\Models\RunnerProfile;
 use App\Models\StoryLine;
 use App\Models\PersonalRecord;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
+use App\Models\WeeklySnapshot;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -330,6 +332,159 @@ it('produces a run card + post_run story line on a successful ingest', function 
             ->where('activity_id', $activity->id)
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->exists())->toBeTrue();
+});
+
+it('computes stream_summary using the user\'s runner-profile zones', function (): void {
+    $activity = makeActivityWithConnection();
+
+    // A single sustained HR of 150 lands in Z3 under the profile's narrow bands
+    // (Z2 138-150, Z3 150-160), but in Z2 under the config default. Asserting on
+    // the zone the minutes land in proves which zone source was used.
+    RunnerProfile::factory()->for($activity->user)->create([
+        'hr_zones' => [
+            'Z1' => ['lo' => 100, 'hi' => 138],
+            'Z2' => ['lo' => 138, 'hi' => 150],
+            'Z3' => ['lo' => 150, 'hi' => 160],
+            'Z4' => ['lo' => 160, 'hi' => 175],
+            'Z5' => ['lo' => 175, 'hi' => 999],
+        ],
+    ]);
+
+    $time = [];
+    $hr = [];
+    for ($t = 0; $t <= 1800; $t += 60) {
+        $time[] = $t;
+        $hr[] = 152;
+    }
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Z3 block', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'has_heartrate' => true, 'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    $minutes = $detail->stream_summary['time_in_zone_min'];
+    expect(($minutes['Z3'] ?? 0))->toBeGreaterThan(0)
+        ->and(($minutes['Z2'] ?? 0))->toBe(0);
+});
+
+it('falls back to config zones when the user has no runner profile', function (): void {
+    $activity = makeActivityWithConnection();
+
+    $time = [];
+    $hr = [];
+    for ($t = 0; $t <= 1800; $t += 60) {
+        $time[] = $t;
+        $hr[] = 150;
+    }
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Run', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'has_heartrate' => true, 'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    expect($detail->stream_summary)->toBeArray()->toHaveKey('time_in_zone_min')
+        ->and($detail->trimp_edwards)->toBeFloat()->toBeGreaterThan(0);
+});
+
+it('recomputeSummary refreshes a single activity from stored streams using current zones, with NO Strava HTTP', function (): void {
+    $activity = makeActivityWithConnection();
+
+    $time = [];
+    $hr = [];
+    for ($t = 0; $t <= 1800; $t += 60) {
+        $time[] = $t;
+        $hr[] = 152;
+    }
+
+    // Profile A: 152 is Z2 (band 150-160 is Z3, but 138-152 here puts it on the
+    // Z2 edge). We then change zones and expect a different distribution.
+    $profile = RunnerProfile::factory()->for($activity->user)->create([
+        'hr_zones' => [
+            'Z1' => ['lo' => 100, 'hi' => 140],
+            'Z2' => ['lo' => 140, 'hi' => 155],
+            'Z3' => ['lo' => 155, 'hi' => 165],
+            'Z4' => ['lo' => 165, 'hi' => 175],
+            'Z5' => ['lo' => 175, 'hi' => 999],
+        ],
+    ]);
+
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-05-10 06:30:00'),
+        'distance' => 5000,
+        'moving_time' => 1800,
+        'splits_metric' => [],
+    ]);
+    ActivityStream::query()->create([
+        'activity_id' => $activity->id,
+        'data' => [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+        ],
+    ]);
+
+    // Recompute under the original zones: 152 lands in Z2.
+    $this->pipeline->recomputeSummary($activity->fresh());
+    $beforeMin = $detail->fresh()->stream_summary['time_in_zone_min'];
+    expect(($beforeMin['Z2'] ?? 0))->toBeGreaterThan(0)
+        ->and(($beforeMin['Z3'] ?? 0))->toBe(0);
+
+    // Shift the band so 152 now lands in Z3, then recompute again.
+    $profile->update([
+        'hr_zones' => [
+            'Z1' => ['lo' => 100, 'hi' => 140],
+            'Z2' => ['lo' => 140, 'hi' => 150],
+            'Z3' => ['lo' => 150, 'hi' => 165],
+            'Z4' => ['lo' => 165, 'hi' => 175],
+            'Z5' => ['lo' => 175, 'hi' => 999],
+        ],
+    ]);
+
+    Http::fake();
+    $this->pipeline->recomputeSummary($activity->fresh());
+
+    $afterMin = $detail->fresh()->stream_summary['time_in_zone_min'];
+    expect(($afterMin['Z3'] ?? 0))->toBeGreaterThan(0)
+        ->and(($afterMin['Z2'] ?? 0))->toBe(0);
+
+    // Forward-only: zero outbound Strava calls.
+    Http::assertNothingSent();
+
+    // Rebuilds the week snapshot forward.
+    expect(WeeklySnapshot::query()->where('user_id', $activity->user_id)->exists())->toBeTrue();
+});
+
+it('recomputeSummary is a no-op when the activity has no stored streams', function (): void {
+    $activity = makeActivityWithConnection();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-05-10 06:30:00'),
+        'stream_summary' => null,
+    ]);
+
+    Http::fake();
+    $this->pipeline->recomputeSummary($activity->fresh());
+
+    expect($activity->detail->fresh()->stream_summary)->toBeNull();
+    Http::assertNothingSent();
 });
 
 it('inserts a PR row when the activity beats the user\'s ledger', function (): void {

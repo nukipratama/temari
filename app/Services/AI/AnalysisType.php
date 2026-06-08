@@ -82,6 +82,21 @@ enum AnalysisType: string
         };
     }
 
+    /**
+     * Whether this narrative is derived from the user's heart-rate zones, so a
+     * zone change makes copies generated beforehand stale (the "dihitung dengan
+     * zona lama" hint). Zone-agnostic types never carry it.
+     */
+    public function isZoneDependent(): bool
+    {
+        return match ($this) {
+            self::RunInsightZones,
+            self::RunInsightTechnical,
+            self::WeeklyRecap => true,
+            default => false,
+        };
+    }
+
     public function subjectType(): string
     {
         return match ($this) {

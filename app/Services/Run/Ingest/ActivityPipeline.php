@@ -145,7 +145,11 @@ class ActivityPipeline
         if ($detail->start_date_local === null) {
             return;
         }
-        $snapshot = $this->weeklyAggregator->rebuildForWeekOf($user, $detail->start_date_local);
+        $this->weeklyAggregator->rebuildForwardFrom($user, $detail->start_date_local);
+        $snapshot = WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('week_ending', $detail->start_date_local->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay()->toDateString())
+            ->first();
         if ($snapshot !== null) {
             $this->analysisService->request(
                 subjectOrType: WeeklySnapshot::class,
@@ -305,9 +309,9 @@ class ActivityPipeline
             return;
         }
 
-        /** @var array<string, array{lo: int, hi: int}> $hrZones */
-        $hrZones = config('runner.hr_zones');
-        $optimalCadence = (int) config('runner.optimal_cadence_spm');
+        $profile = $detail->activity->user->hrProfile();
+        $hrZones = $profile['hr_zones'];
+        $optimalCadence = $profile['optimal_cadence_spm'];
 
         $summary = $this->streamAnalysis->compute(
             $streams,
@@ -323,6 +327,29 @@ class ActivityPipeline
             'stream_summary' => $summary === [] ? null : $summary,
             'trimp_edwards' => $trimp,
         ]);
+    }
+
+    /**
+     * Recompute a single activity's `stream_summary` / `trimp_edwards` from its
+     * ALREADY-STORED streams using the user's CURRENT heart-rate zones, then
+     * rebuild that week's snapshot forward. Forward-only: makes ZERO Strava HTTP
+     * calls, so a user-initiated "Baca ulang" can refresh one block with new
+     * zones without re-ingesting from Strava. No-op when the activity has no
+     * stored streams or no detail row.
+     */
+    public function recomputeSummary(Activity $activity): void
+    {
+        $detail = $activity->detail;
+        $stream = $activity->stream;
+        if ($detail === null || $stream === null || $stream->data === []) {
+            return;
+        }
+
+        $this->computeAndStoreSummary($detail, $stream->data);
+
+        if ($detail->start_date_local !== null) {
+            $this->weeklyAggregator->rebuildForwardFrom($activity->user, $detail->start_date_local);
+        }
     }
 
     /**

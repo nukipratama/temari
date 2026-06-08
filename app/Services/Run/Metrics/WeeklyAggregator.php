@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use Carbon\CarbonInterface;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -25,18 +26,11 @@ class WeeklyAggregator
     public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot
     {
         $weekEnding = $when->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
-        // 49 days = 7 weeks, comfortably covers the 42-day CTL window.
-        $windowStart = $weekEnding->copy()->subDays(49)->startOfDay();
 
-        /** @var Collection<int, ActivityDetail> $details */
-        $details = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->where('activities.user_id', $user->id)
-            ->whereBetween('activity_details.start_date_local', [$windowStart, $weekEnding->copy()->endOfDay()])
-            ->orderBy('activity_details.start_date_local')
-            ->select('activity_details.*')
-            ->get();
-
+        // Load full history through this week so the CTL EWMA converges as a
+        // continuous series; a fixed warm-up window would yield a too-low,
+        // window-dependent CTL.
+        $details = $this->loadHistoryThrough($user, $weekEnding);
         if ($details->isEmpty()) {
             return null;
         }
@@ -48,6 +42,49 @@ class WeeklyAggregator
             ->where('user_id', $user->id)
             ->where('week_ending', $weekEnding->toDateString())
             ->first();
+    }
+
+    /**
+     * Rebuild the weekly snapshot for $weekAnchor's week and every later week
+     * through today. CTL is cumulative, so a backdated activity must propagate
+     * its load forward into every subsequent week's snapshot.
+     */
+    public function rebuildForwardFrom(User $user, CarbonInterface $weekAnchor): void
+    {
+        $weekEnding = Carbon::instance($weekAnchor)->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        $lastWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+
+        // Load the full history once and roll every week's snapshot from this
+        // shared series. upsertWeek filters to its own week and rolls the EWMA
+        // only through its $weekEnding, so a backdated activity propagates
+        // forward without a per-week re-query.
+        $details = $this->loadHistoryThrough($user, $lastWeekEnding);
+        if ($details->isEmpty()) {
+            return;
+        }
+
+        $dailyTrimp = $this->dailyTrimpMap($details);
+
+        while ($weekEnding->lte($lastWeekEnding)) {
+            $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp);
+            $weekEnding = $weekEnding->copy()->addWeek();
+        }
+    }
+
+    /**
+     * @return Collection<int, ActivityDetail>
+     */
+    private function loadHistoryThrough(User $user, Carbon $weekEnding): Collection
+    {
+        /** @var Collection<int, ActivityDetail> */
+        return ActivityDetail::query()
+            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+            ->where('activities.user_id', $user->id)
+            ->whereNotNull('activity_details.start_date_local')
+            ->where('activity_details.start_date_local', '<=', $weekEnding->copy()->endOfDay())
+            ->orderBy('activity_details.start_date_local')
+            ->select('activity_details.*')
+            ->get();
     }
 
     public function rebuildFor(User $user): int

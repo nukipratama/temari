@@ -80,6 +80,8 @@ export interface SharedProps {
     equippedAccessories?: EquippedAccessories | null;
     stravaSync?: StravaSync | null;
     goalsSummary?: GoalsSummary | null;
+    /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */
+    hrZonesChangedAt?: string | null;
     [key: string]: unknown;
 }
 
@@ -135,6 +137,7 @@ export interface AnalysisPayload {
     status: AnalysisStatus;
     content: string | null;
     type: AnalysisType;
+    is_zone_dependent?: boolean;
     subject_type: string;
     subject_id: number;
     discriminator: string | null;

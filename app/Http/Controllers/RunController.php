@@ -44,8 +44,20 @@ class RunController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $range = $this->resolveRange($request->query('range'));
-        $rangeStart = Carbon::today()->subDays(self::RANGE_DAYS[$range] - 1);
+        $requestedRange = $this->resolveRange($request->query('range'));
+
+        // Age (in whole days) of the newest analyzed run; null when the user has
+        // no dated analyzed runs at all. Drives both the auto-widen below and the
+        // empty-state copy on the page.
+        $latestRunDaysAgo = $this->latestRunDaysAgo($user);
+
+        // When the requested window holds no runs but an older run exists, widen
+        // to the smallest range chip that reaches that run so the page never
+        // renders empty with runs hiding just outside the window.
+        $effectiveRange = $this->widenRangeToReach($requestedRange, $latestRunDaysAgo);
+        $rangeAutoWidened = $effectiveRange !== $requestedRange;
+
+        $rangeStart = Carbon::today()->subDays(self::RANGE_DAYS[$effectiveRange] - 1);
 
         $runs = Activity::query()
             ->where('user_id', $user->id)
@@ -66,14 +78,57 @@ class RunController extends Controller
         return Inertia::render('Riwayat/Jejak', [
             'runs' => $runs->values(),
             'notes' => $this->notesForActivities($runs->pluck('id')->all()),
-            'rangeFilter' => $range,
+            'rangeFilter' => $effectiveRange,
             'rangeStart' => $rangeStart->toDateString(),
+            'rangeAutoWidened' => $rangeAutoWidened,
+            'latestRunDaysAgo' => $latestRunDaysAgo,
             'weeklySnapshots' => $weeklySnapshots->map(fn (WeeklySnapshot $row): array => [
                 ...$row->toArray(),
                 'recap_analysis' => $recapAnalyses[$row->id] ?? Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, $row->id),
             ])->values(),
             'journeyMatch' => $this->buildJourneyMatch($user),
         ]);
+    }
+
+    /**
+     * Whole days between today and the newest dated analyzed run, or null when
+     * the user has no such run. Negative ages (future-dated rows) clamp to 0.
+     */
+    private function latestRunDaysAgo(User $user): ?int
+    {
+        $latestDate = ActivityDetail::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
+            ->whereNotNull('start_date_local')
+            ->max('start_date_local');
+
+        if ($latestDate === null) {
+            return null;
+        }
+
+        return (int) max(0, Carbon::parse($latestDate)->startOfDay()->diffInDays(Carbon::today(), false));
+    }
+
+    /**
+     * Smallest range chip whose window reaches the newest run. Returns the
+     * requested range untouched when it already reaches the run (or when there
+     * is no run / the newest run falls beyond the widest window).
+     */
+    private function widenRangeToReach(string $requestedRange, ?int $latestRunDaysAgo): string
+    {
+        $requestedReaches = $latestRunDaysAgo === null
+            || $latestRunDaysAgo <= self::RANGE_DAYS[$requestedRange] - 1;
+
+        if ($requestedReaches) {
+            return $requestedRange;
+        }
+
+        foreach (self::RANGE_DAYS as $range => $days) {
+            if ($latestRunDaysAgo <= $days - 1) {
+                return $range;
+            }
+        }
+
+        return $requestedRange;
     }
 
     /**
