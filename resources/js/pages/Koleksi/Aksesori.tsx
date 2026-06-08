@@ -128,7 +128,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                                 ))}
                             </ul>
                             <p className="mt-5 max-w-md font-display text-sm italic leading-relaxed text-cream/75">
-                                "Tiap kamu dapet aksesori baru, langsung aku siapin di sini." 🎀
+                                &ldquo;Tiap kamu dapet aksesori baru, langsung aku siapin di sini.&rdquo; 🎀
                             </p>
                         </div>
                     </div>
@@ -184,16 +184,17 @@ function SlotSection({
                 ))}
             </div>
             {hasHiddenLocked && (
-                <button
-                    type="button"
+                <PillButton
+                    tone="outline"
+                    size="sm"
                     onClick={() => setShowLocked((s) => !s)}
-                    className="focus-ring mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-cream-deep bg-cream px-4 py-2 text-xs font-semibold text-ink-2 transition hover:border-ink-3 hover:text-ink sm:hidden"
+                    className="mt-3.5 gap-1.5 px-4 py-2 text-xs font-semibold sm:hidden"
                 >
                     <Icon icon={showLocked ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={14} height={14} aria-hidden />
                     {showLocked
                         ? `Sembunyikan ${locked.length} belum kebuka`
                         : `+${locked.length} belum kebuka`}
-                </button>
+                </PillButton>
             )}
         </section>
     );

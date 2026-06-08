@@ -31,7 +31,7 @@ export default function BackLink({ href, children, tone = 'muted', className }: 
         <Link
             href={href}
             className={cn(
-                'inline-flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-[0.14em] transition',
+                'focus-ring inline-flex items-center gap-1 rounded font-mono text-xs font-bold uppercase tracking-[0.14em] transition',
                 TONE_CLASS[tone],
                 className,
             )}

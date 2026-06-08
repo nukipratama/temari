@@ -95,6 +95,32 @@ describe('useAnalysisTrigger', () => {
         expect(result.current.error).toBe('network fail');
     });
 
+    it('fails gracefully (no crash) on a malformed response body', async () => {
+        fetchMock.mockResolvedValue({ ok: true, json: async () => ({ unexpected: 'shape' }) });
+
+        const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
+        await act(async () => {
+            await result.current.trigger();
+        });
+        await waitFor(() => expect(result.current.status).toBe('failed'));
+        expect(result.current.error).toBeTruthy();
+        expect(result.current.pending).toBe(false);
+    });
+
+    it('rejects a body whose retry_after_seconds is the wrong type', async () => {
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => ({ status: 'queued', retry_after_seconds: 'soon' }),
+        });
+
+        const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
+        await act(async () => {
+            await result.current.trigger();
+        });
+        await waitFor(() => expect(result.current.status).toBe('failed'));
+        expect(result.current.error).toBeTruthy();
+    });
+
     it('falls back to empty CSRF when meta tag is missing', async () => {
         document.head.innerHTML = '';
         fetchMock.mockResolvedValue({ ok: true, json: async () => payload({ status: 'queued' }) });

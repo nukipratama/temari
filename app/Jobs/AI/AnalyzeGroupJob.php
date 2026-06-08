@@ -50,8 +50,11 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         try {
             $this->finalizePending($pending, $service, $this->generateAll($subject));
         } catch (Throwable $e) {
-            $this->failPending($pending, $service, $e->getMessage());
-            $this->rethrowIfUnexpected($e);
+            $this->settleFailure(
+                $e,
+                markFailed: fn () => $this->failPending($pending, $service, $e->getMessage()),
+                markRequeued: fn () => $pending->each(fn (Analysis $row) => $service->markQueued($row)),
+            );
         }
     }
 

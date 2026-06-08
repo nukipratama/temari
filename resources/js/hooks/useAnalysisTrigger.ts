@@ -11,6 +11,24 @@ const TRIGGER_DEBOUNCE_MS = 2000;
 
 export const RATE_LIMITED_ERROR = 'rate_limited';
 
+const MALFORMED_RESPONSE_ERROR = 'Respons tidak valid dari server';
+
+/**
+ * Minimal runtime shape check for a trigger response. The fetch body is
+ * `unknown`, so we verify the two fields this hook reads (`status` string +
+ * the optional numeric `retry_after_seconds`) before trusting the cast.
+ */
+function isAnalysisPayload(value: unknown): value is AnalysisPayload {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+    const record = value as Record<string, unknown>;
+    if (typeof record.status !== 'string') {
+        return false;
+    }
+    return record.retry_after_seconds == null || typeof record.retry_after_seconds === 'number';
+}
+
 interface TriggerOptions {
     onUpdate?: (next: AnalysisPayload) => void;
 }
@@ -157,7 +175,11 @@ export function useAnalysisTrigger(
                 throw new Error(response.status === 429 ? RATE_LIMITED_ERROR : `Trigger failed (${response.status})`);
             }
 
-            const next = (await response.json()) as AnalysisPayload;
+            const body: unknown = await response.json();
+            if (!isAnalysisPayload(body)) {
+                throw new Error(MALFORMED_RESPONSE_ERROR);
+            }
+            const next = body;
             setStatus(next.status);
             setRetryAfterSeconds(next.retry_after_seconds ?? null);
             options.onUpdate?.(next);

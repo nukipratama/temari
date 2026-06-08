@@ -53,6 +53,9 @@ export function formatRelativeId(iso: string | null | undefined, now: Date = new
     const d = new Date(iso);
     const ms = now.getTime() - d.getTime();
     if (!Number.isFinite(ms)) return '—';
+    // A future or clock-skewed timestamp yields a negative delta; treat it as "just now"
+    // rather than letting "-3 jam lalu" leak into the UI.
+    if (ms < 0) return 'baru aja';
     const sec = Math.round(ms / 1000);
     if (sec < 60) return 'baru aja';
     const min = Math.floor(sec / 60);
@@ -74,6 +77,41 @@ export function formatIdDate(iso: string | null, format: 'short' | 'long' = 'sho
         return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
     }
     return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'short' });
+}
+
+/** "Senin, 11 Mei" — long weekday + numeric day + long month, no year. */
+export function formatWeekdayDateId(date: Date): string {
+    return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+/** "08:30" — 24-hour clock, zero-padded. */
+export function formatTimeId(date: Date): string {
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** "Sen, 11 Mei" — short weekday + numeric day + short month. */
+export function formatShortWeekdayDateId(date: Date): string {
+    return date.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+/** "11 Mei" — numeric day + short month, no weekday or year. */
+export function formatMonthDayId(date: Date): string {
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+}
+
+/** "Sen, 11" — short weekday + numeric day only. */
+export function formatWeekdayDayId(date: Date): string {
+    return date.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' });
+}
+
+/** "11 Mei 2026" — numeric day + long month + year, no weekday. */
+export function formatDayMonthYearId(date: Date): string {
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/** "11 Mei 2026" — zero-padded day + short month + year. */
+export function formatPaddedDayMonthYearId(date: Date): string {
+    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 const ID_MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'] as const;
@@ -119,4 +157,33 @@ export function isoDateLocal(d: Date): string {
     const m = (d.getMonth() + 1).toString().padStart(2, '0');
     const day = d.getDate().toString().padStart(2, '0');
     return `${y}-${m}-${day}`;
+}
+
+/** Today as YYYY-MM-DD in the local zone. */
+export function todayLocalIso(): string {
+    return isoDateLocal(new Date());
+}
+
+/** YYYY-MM-DD for `days` ago in the local zone. */
+export function isoDaysAgoLocal(days: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    return isoDateLocal(d);
+}
+
+/** First day of the current month as YYYY-MM-DD in the local zone. */
+export function isoStartOfMonthLocal(): string {
+    const d = new Date();
+    return isoDateLocal(new Date(d.getFullYear(), d.getMonth(), 1));
+}
+
+// Inverse of formatPace: parses "M:SS" (or "MM:SS") back to seconds-per-km.
+// Returns NaN on malformed input so callers can guard with Number.isFinite.
+export function parsePaceSec(s: string): number {
+    const parts = s.split(':');
+    if (parts.length !== 2) return Number.NaN;
+    const m = Number(parts[0]);
+    const sec = Number(parts[1]);
+    if (!Number.isFinite(m) || !Number.isFinite(sec)) return Number.NaN;
+    return m * 60 + sec;
 }

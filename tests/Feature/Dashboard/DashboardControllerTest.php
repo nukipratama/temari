@@ -75,117 +75,69 @@ it('renders KPIs + recent runs when the user has training-load history', functio
     Carbon::setTestNow();
 });
 
-it('flags hasNewPr=true when a fresh PR is unseen, then false once user revisits', function (): void {
+it('flags hasNewPr=true for a fresh unseen PR without writing during the GET render', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
-    $user = User::factory()->create();
+    $user = User::factory()->create(['last_seen_pr_ledger_at' => null]);
     $activity = Activity::factory()->for($user)->analyzed()->create();
     PersonalRecord::factory()->for($user)->create([
         'activity_id' => $activity->id,
         'set_at' => Carbon::today()->subHour(),
     ]);
 
+    // The GET only DETECTS the PR; it must stay read-only (no marker write).
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->where('hasNewPr', true));
+    expect($user->refresh()->last_seen_pr_ledger_at)->toBeNull();
 
+    // A second GET still detects it as unseen — the marker never advanced on GET.
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->where('hasNewPr', false));
+        ->assertInertia(fn (Assert $page) => $page->where('hasNewPr', true));
+    expect($user->refresh()->last_seen_pr_ledger_at)->toBeNull();
 
     Carbon::setTestNow();
 });
 
-it('returns null weekVsLastWeek when the user has fewer than 2 weekly snapshots', function (): void {
+it('includes a shaped weeklyRecap prop with the current-week range and zeroed stats for a fresh user', function (): void {
+    Carbon::setTestNow('2026-05-13 12:00:00'); // Wednesday → week Mon 05-11 .. Sun 05-17.
     $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->toDateString(),
-        'distance_km' => 25,
-        'runs' => 3,
-        'weekly_trimp' => 150,
-    ]);
 
     $this->actingAs($user)->get('/')
-        ->assertInertia(fn (Assert $page) => $page->where('weekVsLastWeek', null));
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('weeklyRecap.week_start', '2026-05-11')
+            ->where('weeklyRecap.week_end', '2026-05-17')
+            ->where('weeklyRecap.this_week_km', 0)
+            ->where('weeklyRecap.this_week_runs', 0)
+            ->where('weeklyRecap.delta_pct', null)
+            ->where('weeklyRecap.streak_weeks', 0)
+            ->where('weeklyRecap.best_card', null)
+            ->has('weeklyRecap.nearest_goal'));
+
+    Carbon::setTestNow();
 });
 
-it('computes weekVsLastWeek deltas when two consecutive weekly snapshots exist', function (): void {
+it('populates weeklyRecap km, runs, and delta from this and last weeks snapshots', function (): void {
+    Carbon::setTestNow('2026-05-13 12:00:00');
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->subWeek()->toDateString(),
-        'distance_km' => 20,
+        'week_ending' => '2026-05-10',
+        'distance_km' => 20.0,
         'runs' => 3,
-        'weekly_trimp' => 200,
     ]);
     WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->toDateString(),
-        'distance_km' => 25,
+        'week_ending' => '2026-05-17',
+        'distance_km' => 25.0,
         'runs' => 4,
-        'weekly_trimp' => 220,
     ]);
 
     $this->actingAs($user)->get('/')
         ->assertInertia(fn (Assert $page) => $page
-            ->where('weekVsLastWeek.this_week_km', 25)
-            ->where('weekVsLastWeek.this_week_runs', 4)
-            ->where('weekVsLastWeek.distance_delta_km', 5)
-            ->where('weekVsLastWeek.runs_delta', 1));
-});
+            ->where('weeklyRecap.this_week_km', 25)
+            ->where('weeklyRecap.this_week_runs', 4)
+            ->where('weeklyRecap.delta_pct', 25));
 
-it('falls back to null pace_delta when one snapshot lacks distance / runs / trimp', function (): void {
-    $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->subWeek()->toDateString(),
-        'distance_km' => null,
-        'runs' => null,
-        'weekly_trimp' => null,
-    ]);
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->toDateString(),
-        'distance_km' => 25,
-        'runs' => 4,
-        'weekly_trimp' => 220,
-    ]);
-
-    $this->actingAs($user)->get('/')
-        ->assertInertia(fn (Assert $page) => $page->where('weekVsLastWeek.pace_delta_sec', null));
-});
-
-it('falls back to null pace_delta when a snapshot lacks moving_time_sec', function (): void {
-    $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->subWeek()->toDateString(),
-        'distance_km' => 20,
-        'runs' => 3,
-        'moving_time_sec' => null, // snapshot written before moving time was tracked
-    ]);
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->toDateString(),
-        'distance_km' => 25,
-        'runs' => 4,
-        'moving_time_sec' => 8250,
-    ]);
-
-    $this->actingAs($user)->get('/')
-        ->assertInertia(fn (Assert $page) => $page->where('weekVsLastWeek.pace_delta_sec', null));
-});
-
-it('computes real pace_delta_sec from moving time over distance', function (): void {
-    $user = User::factory()->create();
-    // last week: 20 km in 7200s → 360 s/km.
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->subWeek()->toDateString(),
-        'distance_km' => 20,
-        'moving_time_sec' => 7200,
-    ]);
-    // this week: 25 km in 8250s → 330 s/km (30 s/km faster).
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->toDateString(),
-        'distance_km' => 25,
-        'moving_time_sec' => 8250,
-    ]);
-
-    $this->actingAs($user)->get('/')
-        ->assertInertia(fn (Assert $page) => $page->where('weekVsLastWeek.pace_delta_sec', -30));
+    Carbon::setTestNow();
 });
 
 it('surfaces the latest activity with un-dismissed milestone payload', function (): void {

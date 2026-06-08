@@ -9,7 +9,6 @@ import {
     kartuStripItem,
     monotonyHint,
     pickFeaturedKartu,
-    poseForRun,
     shortenLocation,
     strainHint,
     vibeSubtitleFor,
@@ -57,14 +56,6 @@ describe('formatSignedForm', () => {
 describe('vibeSubtitleFor', () => {
     it('lowercases the vibe label and wraps it in "kamu lagi …"', () => {
         expect(vibeSubtitleFor('Membara')).toBe('kamu lagi membara.');
-    });
-});
-
-describe('poseForRun', () => {
-    it('maps moodFromActivity output to a Temari pose', () => {
-        // A high-effort run reads as nyala → proud pose.
-        const run = runWith({ trimp_edwards: 200, distance: 12_000, moving_time: 3_600, average_heartrate: 170 });
-        expect(poseForRun(run)).toMatch(/proud|excited|wobble|reading|observational/);
     });
 });
 

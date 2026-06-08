@@ -3,9 +3,11 @@ import { Icon } from '@iconify/react';
 import AppShell from '@/layouts/AppShell';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import Card from '@/components/ui/Card';
+import ProgressBar from '@/components/ui/ProgressBar';
 import SectionLabel from '@/components/ui/SectionLabel';
 import PageContainer from '@/components/ui/PageContainer';
 import { cn } from '@/lib/cn';
+import { formatGoalNumber, goalProgressRatio } from '@/lib/goalProgress';
 import { RARITY_TEXT } from '@/lib/runcard';
 import type { Rarity } from '@/types/inertia';
 
@@ -96,7 +98,7 @@ export default function Target({ goals, completedCount, totalCount }: Readonly<T
 }
 
 function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
-    const pct = goal.target > 0 ? Math.min((goal.current / goal.target) * 100, 100) : 0;
+    const ratio = goalProgressRatio(goal.current, goal.target);
 
     return (
         <Card
@@ -128,27 +130,15 @@ function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
             <div className="mt-auto">
                 <div className="mb-1.5 flex items-baseline justify-between">
                     <span className="font-sans text-sm font-semibold tabular-nums text-ink">
-                        {typeof goal.current === 'number' && goal.current % 1 !== 0
-                            ? goal.current.toFixed(1)
-                            : goal.current}
+                        {formatGoalNumber(goal.current)}
                         <span className="text-ink-3">/</span>
-                        {typeof goal.target === 'number' && goal.target % 1 !== 0
-                            ? goal.target.toFixed(1)
-                            : goal.target}
+                        {formatGoalNumber(goal.target)}
                     </span>
                     <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-3">
                         {goal.unit}
                     </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-cream-deep">
-                    <div
-                        className={cn(
-                            'h-full rounded-full transition-all duration-500',
-                            goal.is_completed ? 'bg-horizon' : 'bg-sky',
-                        )}
-                        style={{ width: `${pct}%` }}
-                    />
-                </div>
+                <ProgressBar value={ratio} tone={goal.is_completed ? 'horizon' : 'sky'} />
             </div>
         </Card>
     );

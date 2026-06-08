@@ -57,6 +57,9 @@ describe('AiUsage page', () => {
         expect(screen.getByText('briefing')).toBeInTheDocument();
         // Prompt-share label
         expect(screen.getByText(/68% dari total/)).toBeInTheDocument();
+        // The 8-col kind table keeps a min-w floor so it scrolls (not clips) on mobile.
+        const kindTable = screen.getByText('run-insight').closest('table');
+        expect(kindTable?.className).toContain('min-w-[680px]');
     });
 
     it('renders an empty state when byKind is empty', () => {
@@ -86,6 +89,9 @@ describe('AiUsage page', () => {
         expect(screen.getByText('Alice')).toBeInTheDocument();
         expect(screen.getByText('Bob')).toBeInTheDocument();
         expect(screen.getByText('Breakdown per User')).toBeInTheDocument();
+        // The 6-col user table keeps a min-w floor so it scrolls (not clips) on mobile.
+        const userTable = screen.getByText('Alice').closest('table');
+        expect(userTable?.className).toContain('min-w-[520px]');
     });
 
     it('falls back to "User #ID" for deleted users (user_name null, user_id present)', () => {

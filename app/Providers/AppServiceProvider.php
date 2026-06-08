@@ -27,10 +27,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(VerdictNarrator::class, VerdictTimeline::class);
 
-        // Singleton so `withoutDispatching()` from one caller (e.g. DemoSeedCommand)
-        // also suppresses dispatches in collaborators (RunCardFactory,
-        // PersonalRecords, ActivityPipeline) that get this same instance injected.
-        $this->app->singleton(AnalysisService::class);
+        // Scoped: one shared instance per request/command (so `withoutDispatching()`
+        // reaches collaborators), flushed by Octane between requests.
+        $this->app->scoped(AnalysisService::class);
     }
 
     public function boot(): void

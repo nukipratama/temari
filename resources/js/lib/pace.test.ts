@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, formatDurationHMS, formatIdDate, formatKm, formatPace, formatRelativeId, isoDateLocal, mondayOf, paceSecPerKm, sundayOf } from './pace';
+import {
+    formatDayMonthYearId,
+    formatDuration,
+    formatDurationHMS,
+    formatIdDate,
+    formatKm,
+    formatMonthDayId,
+    formatPaddedDayMonthYearId,
+    formatPace,
+    formatRelativeId,
+    formatShortWeekdayDateId,
+    formatTimeId,
+    formatWeekdayDateId,
+    formatWeekdayDayId,
+    isoDateLocal,
+    isoDaysAgoLocal,
+    isoStartOfMonthLocal,
+    mondayOf,
+    paceSecPerKm,
+    parsePaceSec,
+    sundayOf,
+    todayLocalIso,
+} from './pace';
 
 describe('formatPace', () => {
     it("formats whole minutes as M'SS\"", () => {
@@ -165,6 +187,80 @@ describe('formatRelativeId', () => {
     it('returns "baru aja" for under a minute', () => {
         const iso = new Date(now.getTime() - 5 * 1000).toISOString();
         expect(formatRelativeId(iso, now)).toBe('baru aja');
+    });
+
+    it('clamps a future / clock-skewed timestamp to "baru aja" (no negative units)', () => {
+        const future = new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString();
+        expect(formatRelativeId(future, now)).toBe('baru aja');
+    });
+});
+
+describe('parsePaceSec', () => {
+    it('parses "M:SS" into seconds', () => {
+        expect(parsePaceSec('5:05')).toBe(305);
+        expect(parsePaceSec('6:00')).toBe(360);
+    });
+
+    it('round-trips with formatPace', () => {
+        expect(parsePaceSec(formatPace(305))).toBe(305);
+        expect(formatPace(parsePaceSec('4:30'))).toBe('4:30');
+    });
+
+    it('returns NaN on malformed input', () => {
+        expect(parsePaceSec('not-a-pace')).toBeNaN();
+        expect(parsePaceSec('5')).toBeNaN();
+        expect(parsePaceSec('5:05:05')).toBeNaN();
+        expect(parsePaceSec('a:b')).toBeNaN();
+    });
+});
+
+describe('date/time format variants', () => {
+    // 11 May 2026 is a Monday at 08:30 local.
+    const d = new Date(2026, 4, 11, 8, 30);
+
+    it('formatWeekdayDateId: long weekday + day + long month', () => {
+        expect(formatWeekdayDateId(d)).toBe('Senin, 11 Mei');
+    });
+
+    it('formatTimeId: zero-padded HH:MM', () => {
+        expect(formatTimeId(d)).toBe('08.30');
+    });
+
+    it('formatShortWeekdayDateId: short weekday + day + short month', () => {
+        expect(formatShortWeekdayDateId(d)).toBe('Sen, 11 Mei');
+    });
+
+    it('formatMonthDayId: day + short month', () => {
+        expect(formatMonthDayId(d)).toBe('11 Mei');
+    });
+
+    it('formatWeekdayDayId: short weekday + day', () => {
+        expect(formatWeekdayDayId(d)).toBe('Sen, 11');
+    });
+
+    it('formatDayMonthYearId: day + long month + year', () => {
+        expect(formatDayMonthYearId(d)).toBe('11 Mei 2026');
+    });
+
+    it('formatPaddedDayMonthYearId: padded day + short month + year', () => {
+        expect(formatPaddedDayMonthYearId(d)).toBe('11 Mei 2026');
+    });
+});
+
+describe('local-zone ISO date helpers', () => {
+    it('todayLocalIso returns YYYY-MM-DD for the local current date', () => {
+        expect(todayLocalIso()).toBe(isoDateLocal(new Date()));
+    });
+
+    it('isoDaysAgoLocal subtracts whole days in the local zone', () => {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        expect(isoDaysAgoLocal(7)).toBe(isoDateLocal(d));
+    });
+
+    it('isoStartOfMonthLocal returns the first of the current month', () => {
+        const now = new Date();
+        expect(isoStartOfMonthLocal()).toBe(isoDateLocal(new Date(now.getFullYear(), now.getMonth(), 1)));
     });
 });
 

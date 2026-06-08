@@ -58,6 +58,43 @@ class WeeklySnapshot extends Model
     }
 
     /**
+     * Counts the run of weeks (each with runs > 0) that are consecutive,
+     * walking back from the most recent `week_ending`. Weeks are consecutive
+     * when their `week_ending` dates are exactly 7 days apart; the first gap
+     * ends the streak. Non-adjacent weeks (e.g. weeks 1, 5, 9) yield a streak
+     * of 1, not 3.
+     */
+    public static function consecutiveWeekStreak(int $userId): int
+    {
+        /** @var list<Carbon> $weekEndings */
+        $weekEndings = self::query()
+            ->where('user_id', $userId)
+            ->where('runs', '>', 0)
+            ->orderByDesc('week_ending')
+            ->pluck('week_ending')
+            ->all();
+
+        if ($weekEndings === []) {
+            return 0;
+        }
+
+        $streak = 1;
+        $previous = $weekEndings[0]->copy()->startOfDay();
+
+        foreach (\array_slice($weekEndings, 1) as $weekEnding) {
+            $current = $weekEnding->copy()->startOfDay();
+            if (! $previous->copy()->subDays(7)->equalTo($current)) {
+                break;
+            }
+
+            $streak++;
+            $previous = $current;
+        }
+
+        return $streak;
+    }
+
+    /**
      * @return array<string, string>
      */
     #[Override]

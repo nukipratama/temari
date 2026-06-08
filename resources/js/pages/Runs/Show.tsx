@@ -8,13 +8,15 @@ import Kartu from '@/components/card/Kartu';
 import BackLink from '@/components/ui/BackLink';
 import MoodChip from '@/components/ui/MoodChip';
 import SectionLabel from '@/components/ui/SectionLabel';
+import StatTile from '@/components/ui/StatTile';
+import ProgressBar from '@/components/ui/ProgressBar';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
 import { aktivitasUrl, kartuUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
 import { moodFromActivity } from '@/lib/moodFromActivity';
-import { formatDurationHMS, formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
+import { formatDurationHMS, formatIdDate, formatKm, formatPace, paceSecPerKm, parsePaceSec } from '@/lib/pace';
 import { buildCardStats, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
 import { emberGlowStyle } from '@/lib/styles';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
@@ -131,10 +133,10 @@ export default function RunsShow({
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-                                <HeroStat label="JARAK" value={km} unit="km" />
-                                <HeroStat label="PACE" value={pace} unit="/km" />
-                                <HeroStat label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
-                                <HeroStat label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" />
+                                <StatTile tone="plainSky" size="md" label="JARAK" value={km} unit="km" />
+                                <StatTile tone="plainSky" size="md" label="PACE" value={pace} unit="/km" />
+                                <StatTile tone="plainSky" size="md" label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
+                                <StatTile tone="plainSky" size="md" label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" />
                             </div>
 
                             {/* KAMU VS KAMU DULU — inline in hero */}
@@ -158,7 +160,7 @@ export default function RunsShow({
                                     {pastYou.past.activity_id != null && (
                                         <Link
                                             href={aktivitasUrl({ activity_id: pastYou.past.activity_id })}
-                                            className="shrink-0 rounded-full border border-cream/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream/70 transition hover:border-cream/40 hover:text-cream"
+                                            className="focus-ring-on-sky shrink-0 rounded-full border border-cream/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream/70 transition hover:border-cream/40 hover:text-cream"
                                         >
                                             Lihat →
                                         </Link>
@@ -195,7 +197,7 @@ export default function RunsShow({
                         {card && (
                             <Link
                                 href={kartuUrl(card)}
-                                className="block w-full max-w-[320px]"
+                                className="focus-ring block w-full max-w-[320px] rounded-2xl"
                             >
                                 <Kartu
                                     name={card.special_move}
@@ -231,20 +233,6 @@ export default function RunsShow({
                 </footer>
             </PageContainer>
         </AppShell>
-    );
-}
-
-function HeroStat({ label, value, unit }: Readonly<{ label: string; value: string; unit?: string }>) {
-    return (
-        <div>
-            <div className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">{label}</div>
-            <div className="font-sans text-3xl font-bold leading-none tabular-nums tracking-[-0.02em] text-cream sm:text-4xl">
-                {value}
-            </div>
-            {unit && (
-                <div className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-on-sky">{unit}</div>
-            )}
-        </div>
     );
 }
 
@@ -311,16 +299,17 @@ function DetailTiles({
     if (detail.average_cadence != null) {
         tiles.push({ label: 'CADENCE', value: `${Math.round(detail.average_cadence * 2)}`, sub: 'spm avg' });
     }
-    if (summary.ascent_m != null) {
-        tiles.push({ label: 'ASCENT', value: `${Number(summary.ascent_m)}`, sub: 'm' });
+    const ascent = Number(summary.ascent_m);
+    if (summary.ascent_m != null && Number.isFinite(ascent)) {
+        tiles.push({ label: 'ASCENT', value: `${ascent}`, sub: 'm' });
     }
-    if (summary.decoupling_pct != null) {
-        const v = Number(summary.decoupling_pct);
+    const decoupling = Number(summary.decoupling_pct);
+    if (summary.decoupling_pct != null && Number.isFinite(decoupling)) {
         tiles.push({
             label: 'DECOUPLING',
-            value: `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`,
+            value: `${decoupling >= 0 ? '+' : ''}${decoupling.toFixed(1)}%`,
             sub: 'napas melar di paruh kedua',
-            warn: Math.abs(v) > 8,
+            warn: Math.abs(decoupling) > 8,
             wide: true,
         });
     }
@@ -407,12 +396,12 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
                                     <span className="ml-1 font-mono text-[11px] font-medium text-ink-3">/km</span>
                                 </div>
                             </div>
-                            <div className="mt-2 h-1.5 overflow-hidden rounded bg-sky/[0.06]">
-                                <div
-                                    className={cn('h-full rounded', isFast ? 'bg-horizon' : 'bg-sky')}
-                                    style={{ width: `${pctWidth}%` }}
-                                />
-                            </div>
+                            <ProgressBar
+                                value={pctWidth / 100}
+                                tone={isFast ? 'horizon' : 'sky'}
+                                size="sm"
+                                className="mt-2"
+                            />
                             <div className="mt-2 flex items-center gap-4 font-sans text-xs tabular-nums text-ink-2">
                                 <span>♡ {row.avg_hr ?? '—'}</span>
                                 <span>↻ {row.avg_cadence_spm ?? '—'}</span>
@@ -470,12 +459,8 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
 function paceSecOf(row: PerKmRow): number | null {
     if (typeof row.pace_sec === 'number') return row.pace_sec;
     if (typeof row.pace === 'string') {
-        const parts = row.pace.split(':');
-        if (parts.length === 2) {
-            const m = Number(parts[0]);
-            const s = Number(parts[1]);
-            if (Number.isFinite(m) && Number.isFinite(s)) return m * 60 + s;
-        }
+        const sec = parsePaceSec(row.pace);
+        if (Number.isFinite(sec)) return sec;
     }
     return null;
 }

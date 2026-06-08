@@ -203,6 +203,21 @@ describe('Runs/Show', () => {
         expect(screen.getByText('+12.5%')).toBeInTheDocument();
     });
 
+    it('skips the decoupling + ascent tiles when their values are non-numeric (no "NaN%")', () => {
+        const garbled = {
+            ...detail,
+            stream_summary: {
+                ...(detail.stream_summary ?? {}),
+                decoupling_pct: 'oops',
+                ascent_m: 'n/a',
+            },
+        };
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: garbled }, detail: garbled });
+        expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
+        expect(screen.queryByText('DECOUPLING')).not.toBeInTheDocument();
+        expect(screen.queryByText('ASCENT')).not.toBeInTheDocument();
+    });
+
     it('renders the empty-tiles fallback when detail has no technical numbers', () => {
         const bare = {
             ...detail,

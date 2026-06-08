@@ -1,8 +1,12 @@
+import { router } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useCallback, useRef } from 'react';
 import Temari from '@/components/temari/Temari';
 import { cn } from '@/lib/cn';
 import { aktivitasUrl } from '@/lib/routes';
 import { iconButtonVariants } from '@/lib/variants';
+import { useDismissable } from '@/hooks/useDismissable';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import PillButton from '@/components/ui/PillButton';
 import PillLink from '@/components/ui/PillLink';
 
@@ -19,6 +23,20 @@ interface PRMomentModalProps {
 }
 
 export default function PRMomentModal({ pr, onClose, onShare }: Readonly<PRMomentModalProps>) {
+    const panelRef = useRef<HTMLDivElement>(null);
+    const isOpen = pr !== null;
+
+    // Dismissing the celebration is the explicit signal that the user has SEEN
+    // the new PR, so it advances the "seen" marker server-side (the dashboard
+    // GET only detects, it never writes). preserveState/Scroll keep the page put.
+    const handleClose = useCallback(() => {
+        router.post('/api/pr-ledger/seen', {}, { preserveScroll: true, preserveState: true });
+        onClose();
+    }, [onClose]);
+
+    useDismissable(isOpen, panelRef, handleClose);
+    useFocusTrap(isOpen, panelRef);
+
     return (
         <AnimatePresence>
             {pr !== null && <motion.div
@@ -31,15 +49,17 @@ export default function PRMomentModal({ pr, onClose, onShare }: Readonly<PRMomen
                     background: 'rgba(0,0,0,0.55)',
                     backdropFilter: 'blur(4px)',
                 }}
-                onClick={onClose}
             >
                 <motion.div
                     key="pr-panel"
+                    ref={panelRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="pr-moment-title"
                     initial={{ opacity: 0, y: 24, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 16, scale: 0.97 }}
                     transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                    onClick={(e) => e.stopPropagation()}
                     className="relative w-full max-w-[390px] overflow-hidden rounded-t-3xl sm:rounded-3xl"
                     style={{
                         background:
@@ -65,7 +85,7 @@ export default function PRMomentModal({ pr, onClose, onShare }: Readonly<PRMomen
                     <div className="relative mb-8 flex justify-end">
                         <button
                             type="button"
-                            onClick={onClose}
+                            onClick={handleClose}
                             className={cn(iconButtonVariants({ onSky: true }), 'font-mono text-lg')}
                             aria-label="Tutup"
                         >
@@ -78,7 +98,7 @@ export default function PRMomentModal({ pr, onClose, onShare }: Readonly<PRMomen
                         <div className="mb-5 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-horizon">
                             ★ Rekor baru · {pr.categoryLabel}
                         </div>
-                        <h2 className="mb-6 font-display text-[30px] leading-[1.05] tracking-[-0.015em] text-cream">
+                        <h2 id="pr-moment-title" className="mb-6 font-display text-[30px] leading-[1.05] tracking-[-0.015em] text-cream">
                             Lo baru aja pecahin <em className="italic">PR.</em>
                         </h2>
                     </div>
@@ -119,7 +139,7 @@ export default function PRMomentModal({ pr, onClose, onShare }: Readonly<PRMomen
                             href={aktivitasUrl({ activity_id: pr.activityId })}
                             tone="ghost"
                             onSky
-                            onClick={onClose}
+                            onClick={handleClose}
                             className="w-full justify-center"
                         >
                             Lihat detail lari

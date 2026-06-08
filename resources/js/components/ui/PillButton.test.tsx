@@ -4,9 +4,17 @@ import { describe, expect, it, vi } from 'vitest';
 import PillButton, { type PillTone } from './PillButton';
 
 describe('PillButton', () => {
-    it.each(['horizon', 'sky', 'ghost'] satisfies PillTone[])('renders tone %s', (tone) => {
+    it.each(['horizon', 'sky', 'ghost', 'outline'] satisfies PillTone[])('renders tone %s', (tone) => {
         render(<PillButton tone={tone}>Klik</PillButton>);
         expect(screen.getByRole('button', { name: 'Klik' })).toBeInTheDocument();
+    });
+
+    it('renders the cream-bordered outline tone', () => {
+        render(<PillButton tone="outline">Keluar</PillButton>);
+        const button = screen.getByRole('button', { name: 'Keluar' });
+        expect(button.className).toMatch(/bg-cream/);
+        expect(button.className).toMatch(/border-cream-deep/);
+        expect(button.className).toMatch(/text-ink-2/);
     });
 
     it('switches ghost to onSky variant when onSky=true', () => {

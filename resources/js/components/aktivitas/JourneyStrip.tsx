@@ -1,5 +1,5 @@
 import Card from '@/components/ui/Card';
-import { formatPace } from '@/lib/pace';
+import { formatDayMonthYearId, formatPace } from '@/lib/pace';
 import { cn } from '@/lib/cn';
 
 interface ActivitySummary {
@@ -95,7 +95,7 @@ function PaceLine({ label, summary, className }: Readonly<{ label: string; summa
 
 function formatDate(iso: string): string {
     try {
-        return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        return formatDayMonthYearId(new Date(iso));
     } catch {
         return iso;
     }

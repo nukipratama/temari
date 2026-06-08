@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react';
+import { MotionConfig } from 'framer-motion';
 import { usePage } from '@inertiajs/react';
 import DemoBanner from '@/components/DemoBanner';
 import UnlockToast from '@/components/temari/UnlockToast';
@@ -9,7 +10,7 @@ import TopNav from '@/components/TopNav';
 import MobileTopBar from '@/components/MobileTopBar';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { useDawnShift } from '@/hooks/useDawnShift';
-import type { SharedProps } from '@/types/inertia';
+import type { SharedProps, UnlockFlash } from '@/types/inertia';
 
 interface AppShellProps {
     children: ReactNode;
@@ -19,20 +20,9 @@ interface AppShellProps {
 
 type PrModalData = { activityId: number; categoryLabel: string; timeDisplay: string };
 
-interface UnlockFlash {
-    unlock_key: string;
-    name: string;
-    icon: string;
-    is_major: boolean;
-}
-
-interface AppShellPageProps extends SharedProps {
-    flash: SharedProps['flash'] & { unlock?: UnlockFlash | null };
-}
-
 export default function AppShell({ children, withNav = true }: Readonly<AppShellProps>) {
     useDawnShift();
-    const { pendingReveal, flash } = usePage<AppShellPageProps>().props;
+    const { pendingReveal, flash } = usePage<SharedProps>().props;
     const pending = pendingReveal ?? null;
     const [prModal, setPrModal] = useState<PrModalData | null>(null);
     const [majorUnlock, setMajorUnlock] = useState<UnlockFlash | null>(null);
@@ -56,14 +46,17 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
 
     if (!withNav) {
         return (
-            <div className="min-h-screen bg-cream-deep text-ink">
-                <DemoBanner />
-                {children}
-            </div>
+            <MotionConfig reducedMotion="user">
+                <div className="min-h-screen bg-cream-deep text-ink">
+                    <DemoBanner />
+                    {children}
+                </div>
+            </MotionConfig>
         );
     }
 
     return (
+        <MotionConfig reducedMotion="user">
         <div className="min-h-screen bg-cream-deep text-ink">
             <a
                 href="#main-content"
@@ -76,7 +69,7 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
             <TopNav />
             <MobileTopBar />
 
-            <main id="main-content" className="pb-24 lg:pb-0">
+            <main id="main-content" className="pb-28 lg:pb-0">
                 {children}
             </main>
 
@@ -86,5 +79,6 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
             <PRMomentModal pr={prModal} onClose={() => setPrModal(null)} />
             <AksesoriUnlockModal unlock={majorUnlock} onClose={() => setMajorUnlock(null)} />
         </div>
+        </MotionConfig>
     );
 }

@@ -45,6 +45,47 @@ it('classifies seconds by HR zone and returns min + pct', function (): void {
     ]);
 });
 
+it('has gapless HR zones in config so every boundary bpm lands in exactly one zone', function (): void {
+    /** @var array<string, array{lo: int, hi: int}> $zones */
+    $zones = config('runner.hr_zones');
+    $ordered = array_values($zones);
+
+    // Each zone's hi equals the next zone's lo: no gaps, no overlaps.
+    for ($i = 0; $i < count($ordered) - 1; $i++) {
+        expect($ordered[$i]['hi'])->toBe($ordered[$i + 1]['lo']);
+    }
+
+    // Sweep every boundary bpm (each zone's lo) and assert it matches exactly
+    // one zone under the inclusive-lo / exclusive-hi rule.
+    foreach ($zones as $range) {
+        $bpm = $range['lo'];
+        $matches = 0;
+        foreach ($zones as $z) {
+            if ($bpm >= $z['lo'] && $bpm < $z['hi']) {
+                $matches++;
+            }
+        }
+        expect($matches)->toBe(1, "bpm {$bpm} should match exactly one zone");
+    }
+});
+
+it('counts a boundary bpm second into a zone using the real config zones', function (): void {
+    // 138 bpm is the Z1.hi / Z2.lo boundary. Under the gapless config it must
+    // land in Z2 and contribute its 60s; the old +1-gap config dropped it.
+    /** @var array<string, array{lo: int, hi: int}> $zones */
+    $zones = config('runner.hr_zones');
+
+    $summary = $this->analysis->compute(
+        ['time' => ['data' => [0, 60, 120]], 'heartrate' => ['data' => [138, 138]]],
+        $zones,
+        null,
+        170,
+    );
+
+    expect($summary['time_in_zone_min']['Z2'])->toBe(2.0)
+        ->and($summary['time_in_zone_pct']['Z2'])->toBe(100.0);
+});
+
 it('returns no zone summary when streams are missing HR', function (): void {
     $summary = $this->analysis->compute(
         ['time' => ['data' => [0, 60, 120]]],

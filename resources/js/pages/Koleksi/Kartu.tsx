@@ -14,7 +14,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
 import { RARITY_LABELS, RARITY_ORDER, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
-import { useState, useMemo, type ReactNode } from 'react';
+import { memo, useCallback, useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import type {
     Activity,
@@ -76,6 +76,9 @@ export default function KoleksiKartu({
     const [burstKey, setBurstKey] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<SortMode>('date');
+    // Defer the heavy grid filter/sort + per-card derived-stat passes off the
+    // keystroke so typing in the search box stays responsive on large collections.
+    const deferredSearch = useDeferredValue(search);
 
     const totalKartu = Object.values(rarityCounts).reduce((sum, n) => sum + n, 0);
     const epicCount = rarityCounts.epic + rarityCounts.legendary;
@@ -87,8 +90,8 @@ export default function KoleksiKartu({
 
     const grid = useMemo(() => {
         let filtered = rawGrid;
-        if (search.trim() !== '') {
-            const q = search.toLowerCase();
+        if (deferredSearch.trim() !== '') {
+            const q = deferredSearch.toLowerCase();
             filtered = filtered.filter((card) =>
                 card.special_move.toLowerCase().includes(q)
                 || (card.activity?.detail?.name ?? '').toLowerCase().includes(q),
@@ -102,13 +105,13 @@ export default function KoleksiKartu({
         }
         // 'date' = server order (id desc), no re-sort needed
         return sorted;
-    }, [rawGrid, search, sortBy]);
+    }, [rawGrid, deferredSearch, sortBy]);
 
-    const triggerBurstFor = (rarity: Rarity, id: number) => {
+    const triggerBurstFor = useCallback((rarity: Rarity, id: number) => {
         if (rarity === 'epic' || rarity === 'legendary') {
             setBurstKey(`card-${id}-${Date.now()}`);
         }
-    };
+    }, []);
 
     const gridBody: ReactNode =
         grid.length === 0 ? (
@@ -158,7 +161,7 @@ export default function KoleksiKartu({
 /** Collection highlight hero — same layout as the homepage featured panel. */
 function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
     const detail = featured.detail;
-    const kartuProps = {
+    const kartuProps = useMemo(() => ({
         name: featured.special_move,
         subtitle: detail ? `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}` : undefined,
         km: formatKm(detail?.distance),
@@ -173,7 +176,7 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
         paceShape: paceShapeFromDetail(detail),
         edition: featured.edition,
         size: 'md' as const,
-    };
+    }), [featured, detail]);
 
     return (
         <FeaturedCardHero
@@ -246,12 +249,14 @@ function RarityFilter({
                         value={search}
                         onChange={(e) => onSearchChange(e.target.value)}
                         placeholder="Cari kartu..."
+                        aria-label="Cari kartu"
                         className="w-36 rounded-full border border-cream-deep bg-cream py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-ink-3 focus:border-horizon focus:outline-none sm:w-44"
                     />
                 </div>
                 <select
                     value={sortBy}
                     onChange={(e) => onSortChange(e.target.value as SortMode)}
+                    aria-label="Urutkan"
                     className="rounded-full border border-cream-deep bg-cream px-3 py-1.5 text-xs font-medium text-ink-2 focus:border-horizon focus:outline-none"
                 >
                     {SORT_OPTIONS.map((opt) => (
@@ -295,16 +300,33 @@ function FilterPill({
     );
 }
 
-function CardCell({
+const CardCell = memo(function CardCell({
     card,
     onTap,
 }: Readonly<{ card: CardWithRel; onTap: (rarity: Rarity, id: number) => void }>) {
     const detail = card.activity?.detail;
-    if (!detail) return null;
-    const km = formatKm(detail.distance);
-    const durasi = detail.moving_time != null ? formatDuration(detail.moving_time) : '—';
-    const trimp = detail.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—';
-    const subtitle = `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`;
+    // The derived-stat helpers each run multiple per_km passes; memoize them per
+    // card so a parent re-render (e.g. a search keystroke) doesn't recompute every
+    // tile. `memo` already skips re-render when props are unchanged, but this keeps
+    // the work cheap on the renders that do happen (sort changes, etc.).
+    const derived = useMemo(() => {
+        if (detail == null) {
+            return null;
+        }
+        return {
+            km: formatKm(detail.distance),
+            durasi: detail.moving_time != null ? formatDuration(detail.moving_time) : '—',
+            trimp: detail.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—',
+            subtitle: `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`,
+            stats: buildCardStats(detail),
+            zonePct: zonePctFromDetail(detail),
+            paceShape: paceShapeFromDetail(detail),
+        };
+    }, [detail]);
+
+    if (detail == null || derived == null) {
+        return null;
+    }
 
     return (
         <MotionLink
@@ -315,23 +337,23 @@ function CardCell({
         >
             <Kartu
                 name={card.special_move}
-                subtitle={subtitle}
-                km={km}
-                durasi={durasi}
-                trimp={trimp}
+                subtitle={derived.subtitle}
+                km={derived.km}
+                durasi={derived.durasi}
+                trimp={derived.trimp}
                 rarity={card.rarity}
                 mood={card.mood}
                 badges={card.badges ?? []}
-                stats={buildCardStats(detail)}
-                zonePct={zonePctFromDetail(detail)}
+                stats={derived.stats}
+                zonePct={derived.zonePct}
                 polyline={detail.summary_polyline}
-                paceShape={paceShapeFromDetail(detail)}
+                paceShape={derived.paceShape}
                 edition={card.edition}
                 size="md"
             />
         </MotionLink>
     );
-}
+});
 
 function EmptyState() {
     return (

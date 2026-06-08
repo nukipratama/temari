@@ -84,6 +84,12 @@ describe('ShareCardModal', () => {
         expect(screen.getByLabelText(/Pratinjau kartu/)).toBeInTheDocument();
     });
 
+    it('moves focus into the dialog when it opens', () => {
+        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        const dialog = screen.getByRole('dialog');
+        expect(dialog.contains(document.activeElement)).toBe(true);
+    });
+
     it('fires Bagikan without crashing when share API is unavailable', async () => {
         const writeText = vi.fn(() => Promise.resolve());
         Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });

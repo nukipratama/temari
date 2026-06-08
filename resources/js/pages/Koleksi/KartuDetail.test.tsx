@@ -87,6 +87,10 @@ describe('KartuDetail', () => {
         render(<KartuDetail card={epicCard} relatedCards={relatedCards} totalForRarity={3} />);
         expect(screen.getByText('Lompatan Fajar')).toBeInTheDocument();
         expect(screen.getByText(/Kartu mirip di koleksimu/)).toBeInTheDocument();
+        // 2-up on mobile, 3-up from sm so cards aren't cramped at ~390px.
+        const relatedGrid = screen.getByText('Lompatan Fajar').closest('.grid');
+        expect(relatedGrid?.className).toContain('grid-cols-2');
+        expect(relatedGrid?.className).toContain('sm:grid-cols-3');
     });
 
     it('omits the badge lore section when badges is null', () => {

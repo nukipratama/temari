@@ -92,7 +92,7 @@ class BriefingFeaturedKartuVoiceNarrator
                 $best = [
                     'name' => $card->special_move,
                     'rarity_label' => $card->rarity->label(),
-                    'km' => $run->distance !== null ? round($run->distance / 1000, 1).'km' : '—',
+                    'km' => $run->distance !== null ? round($run->distance / 1000, 1).'km' : '-',
                     'tags' => array_slice((array) ($card->badges ?? []), 0, 3),
                 ];
             }

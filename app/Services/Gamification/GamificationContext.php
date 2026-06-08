@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
+use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
@@ -18,6 +19,13 @@ use Illuminate\Support\Facades\DB;
  */
 readonly class GamificationContext
 {
+    /**
+     * Threshold for the "sepatu_cepat" goal: average pace under 5:30/km.
+     * 5:30/km = 330 s/km, so an average_speed of 1000/330 m/s (~3.0303)
+     * is exactly 5:30/km. A run qualifies when it is faster than that.
+     */
+    private const float FAST_PACE_SPEED_MS = 1000 / 330;
+
     /**
      * @param  array<string, int>  $rarityCounts
      * @param  array<string, int>  $badgeCounts
@@ -60,19 +68,8 @@ readonly class GamificationContext
             ->join('activity_details', 'activities.id', '=', 'activity_details.activity_id')
             ->sum('activity_details.distance');
 
-        $streakWeeks = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('runs', '>', 0)
-            ->orderByDesc('week_ending')
-            ->limit(4)
-            ->count();
-
-        $twoWeekStreak = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('runs', '>', 0)
-            ->orderByDesc('week_ending')
-            ->limit(2)
-            ->count();
+        $streakWeeks = WeeklySnapshot::consecutiveWeekStreak($user->id);
+        $twoWeekStreak = min($streakWeeks, 2);
 
         $tenKPlus = Activity::query()
             ->where('user_id', $user->id)
@@ -86,12 +83,12 @@ readonly class GamificationContext
 
         $halfMarathon = Activity::query()
             ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($q) => $q->where('distance', '>=', 21000))
+            ->whereHas('detail', fn ($q) => $q->where('distance', '>=', PrCategory::HalfMarathon->distanceMeters()))
             ->count();
 
         $fastPace = Activity::query()
             ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($q) => $q->where('average_speed', '>=', 3.0))
+            ->whereHas('detail', fn ($q) => $q->where('average_speed', '>=', self::FAST_PACE_SPEED_MS))
             ->count();
 
         $badgeCounts = RunCard::badgeCountsForUser($user->id);

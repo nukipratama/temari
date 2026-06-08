@@ -1,8 +1,6 @@
 import { moodFromActivity } from '@/lib/moodFromActivity';
-import { formatDuration, formatKm, formatRelativeId } from '@/lib/pace';
+import { formatDuration, formatKm, formatRelativeId, formatShortWeekdayDateId } from '@/lib/pace';
 import { RARITY_LABELS, buildCardStats, paceShapeFromDetail, zonePctFromDetail, type CardStatStrings } from '@/lib/runcard';
-import { MOOD_TO_POSE } from '@/lib/temariPose';
-import type { TemariPose } from '@/components/temari/TemariProto';
 import type { ActivityDetail, Mood, Rarity, RunCard, ZonePct } from '@/types/inertia';
 
 export interface FeaturedCard {
@@ -30,17 +28,6 @@ export interface StripItem {
     date: string;
     polyline: string | null;
 }
-
-export const VIBE_TO_POSE: Record<string, TemariPose> = {
-    pumped: 'pumped',
-    bouncy: 'excited',
-    fresh: 'proud',
-    steady: 'observational',
-    cooked: 'wobble',
-    worn_down: 'wobble',
-    stretched_thin: 'wobble',
-    hibernating: 'reading',
-};
 
 const RARITY_RANK: Record<Rarity, number> = {
     common: 0,
@@ -108,11 +95,6 @@ export function vibeSubtitleFor(label: string): string {
     return `kamu lagi ${label.toLowerCase()}.`;
 }
 
-export function poseForRun(run: ActivityDetail): TemariPose {
-    const mood = moodFromActivity(run);
-    return MOOD_TO_POSE[mood] ?? 'observational';
-}
-
 export const MOOD_UPPER: Record<Mood, string> = {
     nyala: 'NYALA',
     enteng: 'ENTENG',
@@ -126,9 +108,7 @@ export function formatIdDateUpper(iso: string | null): string {
     if (iso == null) return '';
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })
-        .format(date)
-        .toUpperCase();
+    return formatShortWeekdayDateId(date).toUpperCase();
 }
 
 export function shortenLocation(name: string | null): string | null {

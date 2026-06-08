@@ -3,23 +3,12 @@ import { Icon } from '@iconify/react';
 import { useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import ConfettiBurst from '@/components/ConfettiBurst';
-import type { SharedProps } from '@/types/inertia';
-
-interface UnlockFlash {
-    unlock_key: string;
-    name: string;
-    icon: string;
-    is_major: boolean;
-}
-
-interface UnlockFlashProps extends SharedProps {
-    flash: SharedProps['flash'] & { unlock?: UnlockFlash | null };
-}
+import type { SharedProps, UnlockFlash } from '@/types/inertia';
 
 const DISMISS_MS = 5000;
 
 export default function UnlockToast() {
-    const { props } = usePage<UnlockFlashProps>();
+    const { props } = usePage<SharedProps>();
     const unlock = props.flash?.unlock ?? null;
     const [active, setActive] = useState<UnlockFlash | null>(null);
 

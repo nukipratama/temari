@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
+import { formatMonthDayId, formatWeekdayDayId, isoDaysAgoLocal, isoStartOfMonthLocal, todayLocalIso } from '@/lib/pace';
 import SectionHeading from '@/components/SectionHeading';
 import KpiTile from '@/components/dashboard/KpiTile';
 import PageContainer from '@/components/ui/PageContainer';
@@ -82,29 +83,12 @@ function navigate(from: string, to: string, kind: string | null): void {
     router.get('/ai-usage', params, { preserveState: true, preserveScroll: true });
 }
 
-function todayISO(): string {
-    return new Date().toISOString().slice(0, 10);
-}
-
-function isoDaysAgo(days: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    return d.toISOString().slice(0, 10);
-}
-
-function isoStartOfMonth(): string {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-}
-
 function formatDayLabel(day: string): string {
-    const d = new Date(day + 'T00:00:00');
-    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    return formatMonthDayId(new Date(day + 'T00:00:00'));
 }
 
 function formatDayLabelShort(day: string): string {
-    const d = new Date(day + 'T00:00:00');
-    return d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' });
+    return formatWeekdayDayId(new Date(day + 'T00:00:00'));
 }
 
 export default function AiUsage({
@@ -173,10 +157,10 @@ export default function AiUsage({
                     </button>
 
                     <div className="ml-auto flex flex-wrap gap-2">
-                        <PresetButton label="Hari ini" href={`/ai-usage?from=${todayISO()}&to=${todayISO()}`} />
-                        <PresetButton label="7 hari" href={`/ai-usage?from=${isoDaysAgo(6)}&to=${todayISO()}`} />
-                        <PresetButton label="30 hari" href={`/ai-usage?from=${isoDaysAgo(29)}&to=${todayISO()}`} />
-                        <PresetButton label="Bulan ini" href={`/ai-usage?from=${isoStartOfMonth()}&to=${todayISO()}`} />
+                        <PresetButton label="Hari ini" href={`/ai-usage?from=${todayLocalIso()}&to=${todayLocalIso()}`} />
+                        <PresetButton label="7 hari" href={`/ai-usage?from=${isoDaysAgoLocal(6)}&to=${todayLocalIso()}`} />
+                        <PresetButton label="30 hari" href={`/ai-usage?from=${isoDaysAgoLocal(29)}&to=${todayLocalIso()}`} />
+                        <PresetButton label="Bulan ini" href={`/ai-usage?from=${isoStartOfMonthLocal()}&to=${todayLocalIso()}`} />
                     </div>
                 </form>
 
@@ -237,7 +221,7 @@ export default function AiUsage({
                         <EmptyState />
                     ) : (
                         <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-surface-elev shadow-sm">
-                            <table className="w-full text-sm tabular-nums">
+                            <table className="w-full min-w-[680px] text-sm tabular-nums">
                                 <thead>
                                     <tr className="border-b border-line text-left text-xs text-ink-3">
                                         {COLUMNS.map((label) => (
@@ -269,7 +253,7 @@ export default function AiUsage({
                         <EmptyState />
                     ) : (
                         <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-surface-elev shadow-sm">
-                            <table className="w-full text-sm tabular-nums">
+                            <table className="w-full min-w-[520px] text-sm tabular-nums">
                                 <thead>
                                     <tr className="border-b border-line text-left text-xs text-ink-3">
                                         {USER_COLUMNS.map((label) => (

@@ -19,11 +19,12 @@ use App\Models\UserUnlock;
 readonly class GoalResolver
 {
     /**
+     * @param  GamificationContext|null  $ctx  A pre-built context to reuse; pass it when the caller already holds one to avoid re-running its ~10 queries.
      * @return list<array{id: string, title: string, description: string, slot: string, rarity: string, current: int|float, target: int|float, unit: string, is_completed: bool}>
      */
-    public function forUser(User $user): array
+    public function forUser(User $user, ?GamificationContext $ctx = null): array
     {
-        $ctx = GamificationContext::forUser($user);
+        $ctx ??= GamificationContext::forUser($user);
         /** @var list<string> $unlockedKeys */
         $unlockedKeys = array_values(UserUnlock::query()
             ->where('user_id', $user->id)

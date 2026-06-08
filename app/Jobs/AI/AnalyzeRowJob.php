@@ -29,8 +29,11 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             $content = $this->generateContent($row);
             $service->markDone($row, $content);
         } catch (Throwable $e) {
-            $service->markFailed($row, $e->getMessage());
-            $this->rethrowIfUnexpected($e);
+            $this->settleFailure(
+                $e,
+                markFailed: fn () => $service->markFailed($row, $e->getMessage()),
+                markRequeued: fn () => $service->markQueued($row),
+            );
         }
     }
 

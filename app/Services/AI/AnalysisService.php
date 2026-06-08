@@ -311,7 +311,7 @@ class AnalysisService
         );
     }
 
-    private function markQueued(Analysis $row): void
+    public function markQueued(Analysis $row): void
     {
         $row->update([
             'status' => AnalysisStatus::Queued,

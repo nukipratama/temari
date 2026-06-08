@@ -23,4 +23,9 @@ describe('BackLink', () => {
         render(<BackLink href="/x" className="mb-6">Balik</BackLink>);
         expect(screen.getByRole('link', { name: /balik/i }).className).toMatch(/mb-6/);
     });
+
+    it('carries a keyboard focus ring', () => {
+        render(<BackLink href="/x">Balik</BackLink>);
+        expect(screen.getByRole('link', { name: /balik/i }).className).toMatch(/focus-ring/);
+    });
 });

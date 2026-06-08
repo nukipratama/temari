@@ -31,7 +31,7 @@ export interface PendingReveal {
     average_heartrate?: number | null;
     stream_summary?: StreamSummary | null;
     summary_polyline?: string | null;
-    edition?: CardEdition | null;
+    edition: CardEdition;
     is_pr: boolean;
     pr_category_label: string | null;
     pr_time_display: string | null;
@@ -64,9 +64,17 @@ export interface EquippedAccessories {
     aura: string | null;
 }
 
+/** Flashed by UnlockEngine when a user earns their first new accessory in a request. */
+export interface UnlockFlash {
+    unlock_key: string;
+    name: string;
+    icon: string;
+    is_major: boolean;
+}
+
 export interface SharedProps {
     auth: { user: AuthUser | null };
-    flash: { success: string | null; error: string | null; info: string | null };
+    flash: { success: string | null; error: string | null; info: string | null; unlock?: UnlockFlash | null };
     demoLoginEnabled: boolean;
     pendingReveal?: PendingReveal | null;
     equippedAccessories?: EquippedAccessories | null;
@@ -87,6 +95,39 @@ export interface GoalsSummary {
     total: number;
     completed: number;
     closest: GoalsSummaryItem[];
+}
+
+export interface WeeklyRecapBestCard {
+    id: number;
+    rarity: Rarity;
+    special_move: string;
+    mood: Mood | null;
+    distance_km: number | null;
+    polyline: string | null;
+    date: string | null;
+}
+
+export interface WeeklyRecapNearestGoal {
+    id: string;
+    title: string;
+    current: number;
+    target: number;
+    unit: string;
+    ratio: number;
+    remainder_label: string;
+}
+
+export interface WeeklyRecap {
+    week_start: string;
+    week_end: string;
+    this_week_km: number;
+    this_week_runs: number;
+    last_week_km: number;
+    /** Signed whole percent km change vs last week, or null when there is no comparable baseline. */
+    delta_pct: number | null;
+    streak_weeks: number;
+    best_card: WeeklyRecapBestCard | null;
+    nearest_goal: WeeklyRecapNearestGoal | null;
 }
 
 export interface AnalysisPayload {
@@ -221,14 +262,6 @@ export interface PersonalRecord {
     category: string;
     value: number;
     activity?: Activity;
-}
-
-export interface FitnessChartData {
-    labels: string[];
-    ctl: (number | null)[];
-    atl: (number | null)[];
-    form: (number | null)[];
-    volume: (number | null)[];
 }
 
 export interface PaginatedResponse<T> {

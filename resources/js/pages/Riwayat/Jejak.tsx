@@ -1,6 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/JourneyStrip';
 import RingkasanCard from '@/components/aktivitas/RingkasanCard';
@@ -12,8 +12,9 @@ import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import BackLink from '@/components/ui/BackLink';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import Temari from '@/components/temari/Temari';
-import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
+import { poseForFormStatus } from '@/lib/temariPose';
+import { formStatusLabel } from '@/lib/formStatus';
 import { MOOD_HINT, MOOD_LABEL, MOOD_FILL, MOOD_ORDER } from '@/lib/mood';
 import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
@@ -76,13 +77,6 @@ const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => 
     swatchClass: MOOD_FILL[mood],
 }));
 
-const FORM_CHIP_LABEL: Record<FormStatus, string> = {
-    fresh: 'Segar',
-    optimal: 'Pas',
-    fatigued: 'Lelah',
-    overreaching: 'Terlalu Diforsir',
-};
-
 const FORM_CHIP_CLASS: Record<FormStatus, string> = {
     fresh: 'bg-leaf/15 text-leaf-deep',
     optimal: 'bg-mood-enteng/15 text-mood-enteng',
@@ -134,6 +128,26 @@ export default function RunsIndex({
         return ids;
     }, [runs, notes, moodFilter]);
 
+    // Stable prop objects so toggling a mood doesn't hand RiwayatFilter a fresh
+    // `range` literal (which never changes here) on every keystroke/toggle.
+    const rangeSection = useMemo(
+        () => ({
+            value: rangeFilter,
+            options: RANGE_FILTER_OPTIONS,
+            hrefFor: (r: RangeFilterValue) => `/aktivitas?range=${r}`,
+            only: RANGE_RELOAD_PROPS,
+        }),
+        [rangeFilter],
+    );
+    const moodSection = useMemo(
+        () => ({
+            selected: moodFilter,
+            options: MOOD_FILTER_OPTIONS,
+            onToggle: toggleMood,
+        }),
+        [moodFilter, toggleMood],
+    );
+
     const hasRuns = runs.length > 0;
 
     return (
@@ -150,17 +164,8 @@ export default function RunsIndex({
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <RiwayatTabs active="jejak" />
                         <RiwayatFilter
-                            range={{
-                                value: rangeFilter,
-                                options: RANGE_FILTER_OPTIONS,
-                                hrefFor: (r) => `/aktivitas?range=${r}`,
-                                only: RANGE_RELOAD_PROPS,
-                            }}
-                            mood={{
-                                selected: moodFilter,
-                                options: MOOD_FILTER_OPTIONS,
-                                onToggle: toggleMood,
-                            }}
+                            range={rangeSection}
+                            mood={moodSection}
                             onReset={resetFilters}
                         />
                     </div>
@@ -196,7 +201,7 @@ interface WeekSectionProps {
     matchedRunIds: ReadonlySet<number> | null;
 }
 
-function WeekSection({ bucket, snapshot, notes, matchedRunIds }: Readonly<WeekSectionProps>) {
+const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, matchedRunIds }: Readonly<WeekSectionProps>) {
     const trimpLabel = Math.round(bucket.totalTrimp);
     const matchCount = matchedRunIds
         ? bucket.runs.filter((r) => matchedRunIds.has(r.id)).length
@@ -259,7 +264,7 @@ function WeekSection({ bucket, snapshot, notes, matchedRunIds }: Readonly<WeekSe
             </div>
         </Card>
     );
-}
+});
 
 function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow }>) {
     // Monotony ≥ 1.5 and decoupling ≥ 8% are the runner-relevant alarm thresholds.
@@ -304,7 +309,7 @@ function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow 
                         FORM_CHIP_CLASS[snapshot.form_status],
                     )}
                 >
-                    {FORM_CHIP_LABEL[snapshot.form_status]}
+                    {formStatusLabel(snapshot.form_status)}
                 </span>
             )}
         </>
@@ -383,7 +388,7 @@ function ruleBasedFallback(snap: WeeklySnapshotRow): string {
         parts.push(`Minggu ini kamu lari ${snap.runs}x sejauh ${snap.distance_km.toFixed(1)} km.`);
     }
     if (snap.form !== null && snap.form_status) {
-        const formLabel = FORM_CHIP_LABEL[snap.form_status];
+        const formLabel = formStatusLabel(snap.form_status);
         parts.push(`Form ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, status ${formLabel.toLowerCase()}.`);
     }
     return parts.join(' ') || 'Belum ada data minggu ini, sabar ya.';
@@ -448,17 +453,3 @@ function weekRangeLabel(monday: Date): string {
     return `${start} - ${end}`;
 }
 
-function poseForFormStatus(status: FormStatus | null): TemariPose {
-    switch (status) {
-        case 'fresh':
-            return 'proud';
-        case 'optimal':
-            return 'observational';
-        case 'fatigued':
-            return 'wobble';
-        case 'overreaching':
-            return 'reading';
-        default:
-            return 'observational';
-    }
-}

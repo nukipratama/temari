@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { cn } from '@/lib/cn';
 import { formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
 import MotionLink from '@/components/MotionLink';
@@ -22,7 +23,7 @@ interface RunListRowProps {
     note?: RunNote | null;
 }
 
-export default function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowProps>) {
+function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowProps>) {
     const km = formatKm(detail.distance);
     const paceSec = paceSecPerKm(detail.moving_time, detail.distance);
     const paceLabel = paceSec != null ? formatPace(paceSec) : '—';
@@ -95,3 +96,5 @@ function Cell({ value, unit, emphasize = false, hideOnNarrow }: Readonly<CellPro
         </div>
     );
 }
+
+export default memo(RunListRow);

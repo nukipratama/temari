@@ -149,6 +149,28 @@ it('builds journeyMatch comparing first-ever and most-recent activities', functi
             ->where('journeyMatch.hr_improvement_bpm', 15));
 });
 
+it('folds journeyMatch to first + current boundaries and a lifetime total across many runs', function (): void {
+    $user = User::factory()->create();
+    foreach ([60, 45, 30, 1] as $i => $daysAgo) {
+        $a = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($a)->create([
+            'start_date_local' => Carbon::today()->subDays($daysAgo),
+            'distance' => 5000,
+            'moving_time' => 1800,
+            'average_heartrate' => 150 + $i,
+            'name' => "Run {$i}",
+        ]);
+    }
+
+    // First/current land on the date boundaries; total_km sums every analyzed
+    // detail (4 x 5km = 20km), proving the folded aggregate + boundary fetch.
+    $this->actingAs($user)->get('/aktivitas?range=1y')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('journeyMatch.first.name', 'Run 0')
+            ->where('journeyMatch.current.name', 'Run 3')
+            ->where('journeyMatch.total_km', 20));
+});
+
 it('shows a single run detail with Temari speech + run card', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

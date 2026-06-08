@@ -1,59 +1,29 @@
-import { Head, Link, usePage } from '@inertiajs/react';
-import { Icon } from '@iconify/react';
-import { useState } from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import AppShell from '@/layouts/AppShell';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import MilestoneBanner, { type PendingMilestone } from '@/components/MilestoneBanner';
-import MetricExplainer from '@/components/MetricExplainer';
-import type { MetricKey } from '@/lib/metricGlossary';
-import Card from '@/components/ui/Card';
-import Chip from '@/components/ui/Chip';
-import LinkCard from '@/components/ui/LinkCard';
-import Kartu from '@/components/card/Kartu';
-import FeaturedCardHero from '@/components/card/FeaturedCardHero';
-import PillButton from '@/components/ui/PillButton';
-import SectionLabel from '@/components/ui/SectionLabel';
-import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
-import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
-import { cn } from '@/lib/cn';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import PageContainer from '@/components/ui/PageContainer';
-import { formStatusLabel } from '@/lib/formStatus';
-import { renderBold } from '@/lib/richText';
-import { aktivitasUrl, kartuUrl } from '@/lib/routes';
-import { formatKm, formatPace, formatRelativeId, paceSecPerKm } from '@/lib/pace';
-import {
-    MOOD_UPPER,
-    VIBE_TO_POSE,
-    atlHint,
-    ctlHint,
-    formatIdDateUpper,
-    formatSignedForm,
-    formatWeather,
-    monotonyHint,
-    pickFeaturedKartu,
-    poseForRun,
-    shortenLocation,
-    strainHint,
-    vibeSubtitleFor,
-    type FeaturedCard,
-} from './HariIni/helpers';
+import KataTemariCompact from '@/components/dashboard/KataTemariCompact';
+import VitalChips from '@/components/dashboard/VitalChips';
+import FeaturedKartuPanel from '@/components/dashboard/FeaturedKartuPanel';
+import SuggestionCard from '@/components/dashboard/SuggestionCard';
+import LastLariCard, { type LastRunNote } from '@/components/dashboard/LastLariCard';
+import KondisiCard from '@/components/dashboard/KondisiCard';
+import GoalsCard from '@/components/dashboard/GoalsCard';
+import RecapCard from '@/components/dashboard/RecapCard';
+import { VIBE_TO_POSE, poseForRun } from '@/lib/temariPose';
+import { pickFeaturedKartu, vibeSubtitleFor } from './HariIni/helpers';
+import { formatTimeId, formatWeekdayDateId } from '@/lib/pace';
 import type {
     ActivityDetail,
-    AnalysisPayload,
     BriefingResult,
-    Mood,
     SharedProps,
     TrainingLoad,
+    WeeklyRecap,
     WeeklySnapshot,
 } from '@/types/inertia';
-
-interface LastRunNote {
-    oneline: string;
-    mood: Mood;
-}
 
 interface HariIniProps {
     briefing: BriefingResult;
@@ -63,18 +33,22 @@ interface HariIniProps {
     lastRunNote?: LastRunNote | null;
     hasNewPr?: boolean;
     pendingMilestone?: PendingMilestone | null;
+    weeklyRecap?: WeeklyRecap | null;
 }
 
-const ID_DATE_FMT = new Intl.DateTimeFormat('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-});
-
-const ID_TIME_FMT = new Intl.DateTimeFormat('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-});
+// The controller always supplies a shaped recap; this default keeps the page
+// (and its many test call sites) resilient if the prop is ever absent.
+const EMPTY_RECAP: WeeklyRecap = {
+    week_start: '',
+    week_end: '',
+    this_week_km: 0,
+    this_week_runs: 0,
+    last_week_km: 0,
+    delta_pct: null,
+    streak_weeks: 0,
+    best_card: null,
+    nearest_goal: null,
+};
 
 export default function HariIni({
     briefing,
@@ -84,6 +58,7 @@ export default function HariIni({
     lastRunNote = null,
     hasNewPr = false,
     pendingMilestone = null,
+    weeklyRecap = null,
 }: Readonly<HariIniProps>) {
     const { props } = usePage<SharedProps & HariIniProps>();
     const firstName = props.auth.user?.first_name ?? '';
@@ -93,7 +68,7 @@ export default function HariIni({
     const lastRun = recentRuns[0] ?? null;
 
     const now = new Date();
-    const dateLine = `${ID_DATE_FMT.format(now)} · ${ID_TIME_FMT.format(now)} · ${briefing.vibeLabel}`;
+    const dateLine = `${formatWeekdayDateId(now)} · ${formatTimeId(now)} · ${briefing.vibeLabel}`;
     const vibeSubtitle = vibeSubtitleFor(briefing.vibeLabel);
 
     return (
@@ -123,8 +98,13 @@ export default function HariIni({
                     <EmptyRunsState />
                 ) : (
                     <>
+                        {/* MINGGU KAMU — the week's "moment", right under the greeting */}
+                        <div className="mt-8">
+                            <RecapCard recap={weeklyRecap ?? EMPTY_RECAP} />
+                        </div>
+
                         {/* VITAL CHIPS — above hero, full width 3-up */}
-                        <section className="my-6">
+                        <section className="mt-6">
                             <VitalChips briefing={briefing} load={load} />
                         </section>
 
@@ -146,423 +126,3 @@ export default function HariIni({
         </AppShell>
     );
 }
-
-function KataTemariCompact({ briefing, pose }: Readonly<{ briefing: BriefingResult; pose: TemariPose }>) {
-    return (
-        <Card padding="lg" className="flex items-start gap-3.5">
-            <Temari pose={pose} size={48} animate={false} />
-            <div className="min-w-0 flex-1">
-                <div className="mb-1.5 flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
-                    <span>Kata Temari hari ini</span>
-                </div>
-                <AnalysisStatus
-                    analysis={briefing.mascotVoice}
-                    inertiaReloadProps={['briefing']}
-                    size="sm"
-                    renderContent={(text) => (
-                        <ExpandableQuote text={text} />
-                    )}
-                />
-            </div>
-        </Card>
-    );
-}
-
-function ExpandableQuote({ text }: Readonly<{ text: string }>) {
-    const [expanded, setExpanded] = useState(false);
-    return (
-        <div>
-            <p className={cn('whitespace-pre-line font-display text-base italic leading-relaxed text-ink', !expanded && 'line-clamp-3')}>
-                &ldquo;{renderBold(text)}&rdquo;
-            </p>
-            {text.length > 150 && (
-                <button
-                    type="button"
-                    onClick={() => setExpanded(!expanded)}
-                    className="mt-1 font-mono text-[11px] font-semibold text-horizon transition hover:text-horizon/80"
-                >
-                    {expanded ? 'Tutup' : 'Baca selengkapnya'}
-                </button>
-            )}
-        </div>
-    );
-}
-
-
-function VitalChips({ briefing, load }: Readonly<{ briefing: BriefingResult; load: TrainingLoad | null }>) {
-    // Vibe primary value: use the absolute form score as a numeric proxy
-    // (no dedicated numeric vibe score in the data model). Qualitative label
-    // moves to the sub-line.
-    const vibeValue = load?.form != null ? Math.abs(load.form).toFixed(1) : briefing.vibeLabel;
-    const vibeSub = briefing.vibeLabel.toLowerCase();
-
-    return (
-        <div className="grid h-full grid-cols-3 gap-3">
-            <VitalChip
-                label="Vibe"
-                value={vibeValue}
-                sub={vibeSub}
-                tone="horizon"
-                explainerKey="vibe_vs_mood"
-            />
-            <VitalChip
-                label="Kesiapan"
-                value={load ? formatSignedForm(load.form) : '—'}
-                sub={load ? formStatusLabel(load.form_status) : ''}
-                tone="leaf"
-                explainerKey="form"
-            />
-            <VitalChip
-                label="Recovery"
-                value={briefing.recoveryHoursLabel ?? briefing.streakLabel ?? briefing.recoveryLabel}
-                sub="dari lari terakhir"
-                tone="ink"
-            />
-        </div>
-    );
-}
-
-function VitalChip({
-    label,
-    value,
-    sub,
-    tone,
-    explainerKey,
-}: Readonly<{ label: string; value: string; sub: string; tone: 'horizon' | 'leaf' | 'ink'; explainerKey?: MetricKey }>) {
-    // Color the tiny label dot, not the number — keeps the page from feeling
-    // like a paint-store sample card while still tagging the metric's family.
-    const dotClass = {
-        horizon: 'bg-horizon',
-        leaf: 'bg-leaf',
-        ink: 'bg-ink-3',
-    }[tone];
-    const valueClass = {
-        horizon: 'text-horizon-deep',
-        leaf: 'text-leaf',
-        ink: 'text-ink',
-    }[tone];
-    return (
-        <div className="flex h-full flex-col justify-between rounded-xl border border-line bg-surface-card px-3.5 py-4">
-            <div className="mb-1 flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />
-                <span>{label}</span>
-                {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
-            </div>
-            <div className={cn('min-w-0 font-sans text-[40px] font-bold leading-none tabular-nums tracking-[-0.02em]', valueClass)}>
-                {value}
-            </div>
-            {sub !== '' && <div className="mt-1 font-display text-xs italic text-ink-3">{sub}</div>}
-        </div>
-    );
-}
-
-function FeaturedKartuPanel({
-    featured,
-    featuredKartuVoice,
-}: Readonly<{ featured: FeaturedCard; featuredKartuVoice: AnalysisPayload }>) {
-    return (
-        <FeaturedCardHero
-            eyebrow="★ Kartu dari Temari minggu ini"
-            name={featured.name}
-            rarity={featured.rarity}
-            km={featured.km}
-            stats={featured.stats}
-            durasi={featured.durasi}
-            badges={featured.badges}
-            ctaHref={kartuUrl({ id: featured.cardId })}
-            voice={
-                <AnalysisStatus
-                    analysis={featuredKartuVoice}
-                    inertiaReloadProps={['briefing']}
-                    showTimestamp={false}
-                    allowReanalyze={false}
-                    onSky
-                    renderContent={(text) => (
-                        <p className="font-display text-base italic leading-relaxed text-cream">
-                            &ldquo;{renderBold(text)}&rdquo;
-                        </p>
-                    )}
-                />
-            }
-            card={
-                <Kartu
-                    name={featured.name}
-                    subtitle={featured.subtitle}
-                    km={featured.km}
-                    durasi={featured.durasi}
-                    trimp={featured.trimp}
-                    rarity={featured.rarity}
-                    mood={featured.mood}
-                    badges={featured.badges}
-                    stats={featured.stats}
-                    zonePct={featured.zonePct}
-                    polyline={featured.polyline}
-                    paceShape={featured.paceShape}
-                    size="md"
-                    className="w-full"
-                />
-            }
-        />
-    );
-}
-
-/**
- * Renders the LLM suggestion as a structured 2-part block:
- *  - First paragraph = title (bold display, ends with a period).
- *  - Remaining paragraphs = body, separated by `\n\n`, rendered with
- *    `whitespace-pre-line` so paragraph breaks survive.
- * Falls back to a single paragraph if the LLM didn't follow the format.
- */
-function SuggestionContent({ text }: Readonly<{ text: string }>) {
-    const parts = text.split(/\n\n+/).map((s) => s.trim()).filter(Boolean);
-    if (parts.length === 0) {
-        return null;
-    }
-    const [titleRaw, ...rest] = parts;
-    const title = titleRaw.replace(/^[""]|[""]$/g, '');
-    const body = rest.join('\n\n');
-
-    return (
-        <div className="space-y-2.5">
-            <h3 className="font-display text-display-xs leading-tight tracking-[-0.01em] text-ink">
-                {renderBold(title)}
-            </h3>
-            {body !== '' && (
-                <p className="whitespace-pre-line font-sans text-sm leading-relaxed text-ink-2">
-                    {renderBold(body)}
-                </p>
-            )}
-        </div>
-    );
-}
-
-function SuggestionCard({ suggestion, lastRun }: Readonly<{ suggestion: AnalysisPayload; lastRun: ActivityDetail | null }>) {
-    const { trigger, pending } = useAnalysisTrigger(suggestion, ['briefing']);
-    const weatherChipLabel = lastRun
-        ? formatWeather(
-            lastRun.weather_temp_c ?? null,
-            lastRun.weather_humidity_pct ?? null,
-            lastRun.weather_rain_detected ?? null,
-        )
-        : null;
-
-    return (
-        <Card padding="md" as="section" className="flex h-full flex-col gap-3">
-            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
-                <span>Saran sesi dari Temari</span>
-            </div>
-            <AnalysisStatus
-                analysis={suggestion}
-                inertiaReloadProps={['briefing']}
-                allowReanalyze={false}
-                renderContent={(text) => <SuggestionContent text={text} />}
-            />
-            {weatherChipLabel && (
-                <div className="flex flex-wrap gap-1.5">
-                    <Chip>{weatherChipLabel}</Chip>
-                </div>
-            )}
-            <div className="mt-auto pt-2">
-                <PillButton tone="ghost" size="sm" onClick={trigger} disabled={pending}>
-                    {pending ? 'Lagi mikir…' : 'Saran lain'}
-                </PillButton>
-            </div>
-        </Card>
-    );
-}
-
-function LastLariCard({ run, pose, note }: Readonly<{ run: ActivityDetail; pose: TemariPose; note?: LastRunNote | null }>) {
-    const km = formatKm(run.distance);
-    const paceSec = paceSecPerKm(run.moving_time, run.distance);
-    const trimp = run.trimp_edwards != null ? Math.round(run.trimp_edwards) : null;
-    const dateLabel = formatRelativeId(run.start_date_local);
-    const locationShort = shortenLocation(run.location_name ?? null);
-    const weatherLabel = formatWeather(run.weather_temp_c ?? null, run.weather_humidity_pct ?? null, run.weather_rain_detected ?? null);
-
-    const dateUpper = formatIdDateUpper(run.start_date_local);
-    const subline = [dateUpper, note ? MOOD_UPPER[note.mood] : null].filter(Boolean).join(' · ');
-
-    return (
-        <LinkCard href={aktivitasUrl(run)} padding="md" className="flex h-full flex-col gap-3">
-            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
-                <span>Lari terakhir · {dateLabel}</span>
-            </div>
-            <div className="flex items-start gap-3">
-                <Temari pose={pose} size={48} />
-                <div className="min-w-0 flex-1">
-                    <div className="font-display text-2xl leading-tight tracking-[-0.01em] text-ink">
-                        {run.name ?? 'Lari'}
-                    </div>
-                    {subline !== '' && (
-                        <div className="mt-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
-                            {subline}
-                        </div>
-                    )}
-                    {(locationShort || weatherLabel) && (
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2">
-                            {locationShort && (
-                                <span className="inline-flex items-center gap-1">
-                                    <Icon icon="mdi:map-marker-outline" width={11} height={11} aria-hidden />
-                                    {locationShort}
-                                </span>
-                            )}
-                            {locationShort && weatherLabel && <span aria-hidden>·</span>}
-                            {weatherLabel && <span>{weatherLabel}</span>}
-                        </div>
-                    )}
-                </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-                <Stat l="KM" v={km} />
-                <Stat l="PACE" v={paceSec != null ? `${formatPace(paceSec)}/km` : '—'} />
-                <Stat l="TRIMP" v={trimp != null ? String(trimp) : '—'} />
-            </div>
-            {note && (
-                <div className="flex flex-1 items-center gap-2 px-3 text-sm leading-relaxed text-ink-2">
-                    <Icon
-                        icon="mdi:comment-quote-outline"
-                        width={14}
-                        height={14}
-                        aria-hidden
-                        className="mt-0.5 shrink-0 text-leaf-deep"
-                    />
-                    <p className="min-w-0">{renderBold(note.oneline)}</p>
-                </div>
-            )}
-            <span className="mt-auto font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep">
-                Lihat detail lari →
-            </span>
-        </LinkCard>
-    );
-}
-
-function KondisiCard({
-    load,
-    snapshot,
-}: Readonly<{ load: TrainingLoad | null; snapshot: WeeklySnapshot | null }>) {
-    const rows: ReadonlyArray<{ label: string; value: string; hint: string; color: string }> = [
-        {
-            label: 'Fondasi',
-            value: load?.ctl_42d != null ? load.ctl_42d.toFixed(1) : '—',
-            hint: ctlHint(load?.ctl_42d),
-            color: 'text-leaf',
-        },
-        {
-            label: 'Kelelahan',
-            value: load?.atl_7d != null ? load.atl_7d.toFixed(1) : '—',
-            hint: atlHint(load?.atl_7d),
-            color: 'text-ink-2',
-        },
-        {
-            label: 'Beban',
-            value: load?.strain != null ? Math.round(load.strain).toString() : '—',
-            hint: strainHint(load?.strain),
-            color: 'text-horizon',
-        },
-        {
-            label: 'Variasi',
-            value: load?.monotony != null ? load.monotony.toFixed(2) : '—',
-            hint: monotonyHint(load?.monotony),
-            color: 'text-leaf',
-        },
-    ];
-    return (
-        <Card as="section" padding="md" className="flex h-full flex-col gap-3">
-            <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-3" />
-                <span>Kondisi · {snapshot ? '7 hari' : 'belum cukup data'}</span>
-            </div>
-            {rows.map(({ label, value, hint, color }) => (
-                <div
-                    key={label}
-                    className="flex items-baseline justify-between py-1.5 border-b border-cream-deep last:border-b-0"
-                >
-                    <div>
-                        <div className="text-[13px] font-medium text-ink">{label}</div>
-                        <div className="font-display text-xs italic text-ink-3">{hint}</div>
-                    </div>
-                    <div
-                        className={cn(
-                            'font-sans text-2xl font-bold leading-none tabular-nums tracking-[-0.01em]',
-                            color,
-                        )}
-                    >
-                        {value}
-                    </div>
-                </div>
-            ))}
-            <Link
-                href="/aktivitas"
-                className="mt-auto pt-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep hover:text-ember-deep"
-            >
-                Detail teknis →
-            </Link>
-        </Card>
-    );
-}
-
-function GoalsCard() {
-    const { props } = usePage<SharedProps>();
-    const summary = props.goalsSummary;
-
-    if (!summary || summary.closest.length === 0) {
-        return null;
-    }
-
-    return (
-        <section className="mt-8">
-            <SectionLabel>
-                <span className="inline-flex items-center gap-2">
-                    <Icon icon="mdi:target" width={14} height={14} aria-hidden />
-                    Target terdekat
-                </span>
-            </SectionLabel>
-            <div className="grid gap-3 sm:grid-cols-3">
-                {summary.closest.map((goal) => {
-                    const pct = goal.target > 0 ? Math.min((goal.current / goal.target) * 100, 100) : 0;
-                    const isCurrentDecimal = goal.current % 1 > 0;
-                    const isTargetDecimal = goal.target % 1 > 0;
-                    const currentDisplay = isCurrentDecimal ? goal.current.toFixed(1) : goal.current;
-                    const targetDisplay = isTargetDecimal ? goal.target.toFixed(1) : goal.target;
-
-                    return (
-                        <LinkCard key={goal.id} href="/target" padding="md" className="flex h-full flex-col gap-2">
-                            <div className="font-display text-base leading-tight tracking-[-0.01em] text-ink">
-                                {goal.title}
-                            </div>
-                            <div className="mt-auto">
-                                <div className="mb-1.5 flex items-baseline justify-between">
-                                    <span className="font-sans text-sm font-semibold tabular-nums text-ink">
-                                        {currentDisplay}<span className="text-ink-3">/</span>{targetDisplay}
-                                    </span>
-                                    <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-3">
-                                        {goal.unit}
-                                    </span>
-                                </div>
-                                <div className="h-1.5 overflow-hidden rounded-full bg-cream-deep">
-                                    <div
-                                        className="h-full rounded-full bg-horizon transition-all duration-500"
-                                        style={{ width: `${pct}%` }}
-                                    />
-                                </div>
-                            </div>
-                        </LinkCard>
-                    );
-                })}
-            </div>
-        </section>
-    );
-}
-
-function Stat({ l, v }: Readonly<{ l: string; v: string }>) {
-    return (
-        <div className="text-center">
-            <div className="mb-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">{l}</div>
-            <div className="font-sans text-stat font-black leading-none tabular-nums tracking-tight text-ink">{v}</div>
-        </div>
-    );
-}
-
