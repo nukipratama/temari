@@ -1,16 +1,16 @@
 # Graph Report - teman-lari  (2026-06-08)
 
 ## Corpus Check
-- 922 files · ~630,244 words
+- 925 files · ~632,789 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3570 nodes · 5782 edges · 649 communities (595 shown, 54 thin omitted)
+- 3573 nodes · 5793 edges · 638 communities (590 shown, 48 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 65 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e5072b25`
+- Built from commit: `46474995`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -145,16 +145,8 @@
 - [[_COMMUNITY_Community 127|Community 127]]
 - [[_COMMUNITY_Community 128|Community 128]]
 - [[_COMMUNITY_Community 129|Community 129]]
-- [[_COMMUNITY_Community 131|Community 131]]
 - [[_COMMUNITY_Community 132|Community 132]]
-- [[_COMMUNITY_Community 133|Community 133]]
-- [[_COMMUNITY_Community 134|Community 134]]
-- [[_COMMUNITY_Community 135|Community 135]]
-- [[_COMMUNITY_Community 136|Community 136]]
 - [[_COMMUNITY_Community 137|Community 137]]
-- [[_COMMUNITY_Community 138|Community 138]]
-- [[_COMMUNITY_Community 139|Community 139]]
-- [[_COMMUNITY_Community 140|Community 140]]
 - [[_COMMUNITY_Community 141|Community 141]]
 - [[_COMMUNITY_Community 142|Community 142]]
 - [[_COMMUNITY_Community 143|Community 143]]
@@ -163,7 +155,6 @@
 - [[_COMMUNITY_Community 146|Community 146]]
 - [[_COMMUNITY_Community 147|Community 147]]
 - [[_COMMUNITY_Community 149|Community 149]]
-- [[_COMMUNITY_Community 150|Community 150]]
 - [[_COMMUNITY_Community 151|Community 151]]
 - [[_COMMUNITY_Community 152|Community 152]]
 - [[_COMMUNITY_Community 153|Community 153]]
@@ -185,7 +176,6 @@
 - [[_COMMUNITY_Community 173|Community 173]]
 - [[_COMMUNITY_Community 174|Community 174]]
 - [[_COMMUNITY_Community 175|Community 175]]
-- [[_COMMUNITY_Community 176|Community 176]]
 - [[_COMMUNITY_Community 177|Community 177]]
 - [[_COMMUNITY_Community 178|Community 178]]
 - [[_COMMUNITY_Community 179|Community 179]]
@@ -203,7 +193,6 @@
 - [[_COMMUNITY_Community 191|Community 191]]
 - [[_COMMUNITY_Community 192|Community 192]]
 - [[_COMMUNITY_Community 193|Community 193]]
-- [[_COMMUNITY_Community 194|Community 194]]
 - [[_COMMUNITY_Community 195|Community 195]]
 - [[_COMMUNITY_Community 196|Community 196]]
 - [[_COMMUNITY_Community 197|Community 197]]
@@ -220,11 +209,9 @@
 - [[_COMMUNITY_Community 208|Community 208]]
 - [[_COMMUNITY_Community 209|Community 209]]
 - [[_COMMUNITY_Community 210|Community 210]]
-- [[_COMMUNITY_Community 211|Community 211]]
 - [[_COMMUNITY_Community 212|Community 212]]
 - [[_COMMUNITY_Community 213|Community 213]]
 - [[_COMMUNITY_Community 214|Community 214]]
-- [[_COMMUNITY_Community 215|Community 215]]
 - [[_COMMUNITY_Community 216|Community 216]]
 - [[_COMMUNITY_Community 217|Community 217]]
 - [[_COMMUNITY_Community 218|Community 218]]
@@ -248,7 +235,6 @@
 - [[_COMMUNITY_Community 239|Community 239]]
 - [[_COMMUNITY_Community 241|Community 241]]
 - [[_COMMUNITY_Community 242|Community 242]]
-- [[_COMMUNITY_Community 270|Community 270]]
 - [[_COMMUNITY_Community 271|Community 271]]
 - [[_COMMUNITY_Community 272|Community 272]]
 - [[_COMMUNITY_Community 273|Community 273]]
@@ -284,7 +270,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (649 total, 54 thin omitted)
+## Communities (638 total, 48 thin omitted)
 
 ### Community 0 - "Briefing Narration Pipeline"
 Cohesion: 0.27
@@ -296,19 +282,19 @@ Nodes (25): DailyTrendCommand, AnalysisService, DemoRunSeeder, Builder, Collecti
 
 ### Community 2 - "Analysis Polling Hooks"
 Cohesion: 0.05
-Nodes (48): DEFAULT_RELOAD_PROPS, RingkasanCard(), RingkasanCardProps, ExpandableQuote(), featured, voice, SuggestionCard(), SuggestionContent() (+40 more)
+Nodes (46): DEFAULT_RELOAD_PROPS, RingkasanCard(), RingkasanCardProps, ExpandableQuote(), featured, voice, SuggestionCard(), SuggestionContent() (+38 more)
 
 ### Community 3 - "AI Analysis Service Core"
-Cohesion: 0.18
-Nodes (9): AnalysisService, Activity, Analysis, AnalysisType, Carbon, Closure, Collection, User (+1 more)
+Cohesion: 0.08
+Nodes (16): AnalysisService, AnalyzeActivityJob, AnalyzeBriefingJob, AnalyzeGroupJob, Activity, User, AnalysisService, Collection (+8 more)
 
 ### Community 4 - "Run Card & Route Display"
-Cohesion: 0.09
-Nodes (25): bareRun, richRun, moodFromActivity(), MOOD_TO_POSE, poseForFormStatus(), poseForRun(), VIBE_TO_POSE, CellProps (+17 more)
+Cohesion: 0.10
+Nodes (17): MOOD_TO_POSE, poseForFormStatus(), poseForRun(), VIBE_TO_POSE, ShowProps, TemariBubble(), TemariBubbleProps, LottiePlayer (+9 more)
 
 ### Community 5 - "Shared UI Components"
 Cohesion: 0.06
-Nodes (33): DecorativeBlur(), DecorativeBlurProps, INTENSITY, TabLink(), UserAvatar(), UserAvatarProps, Line, ProgressionChart() (+25 more)
+Nodes (35): KIND_STYLES, tempTone(), WeatherDetail, WeatherHero(), WeatherHeroProps, WeatherKind, DecorativeBlur(), DecorativeBlurProps (+27 more)
 
 ### Community 6 - "Calendar & Gamification"
 Cohesion: 0.10
@@ -316,27 +302,27 @@ Nodes (13): WeeklySnapshot, Activity, ActivityDetail, Carbon, Collection, User, 
 
 ### Community 7 - "Featured Card Hero"
 Cohesion: 0.08
-Nodes (45): FeaturedCardHero(), FeaturedCardHeroProps, statCells(), baseProps, BadgePip(), buildStatParts(), GLOW_STRENGTH, Kartu() (+37 more)
+Nodes (46): FeaturedCardHero(), FeaturedCardHeroProps, statCells(), baseProps, BadgePip(), buildStatParts(), GLOW_STRENGTH, Kartu() (+38 more)
 
 ### Community 8 - "Dashboard Temari & Suggestions"
-Cohesion: 0.09
-Nodes (18): briefingWith(), payload(), briefing, load, useCooldownCountdown(), BriefingCard(), BriefingCardProps, BriefingFooterButton() (+10 more)
+Cohesion: 0.07
+Nodes (22): CardRevealProps, commonReveal, epicReveal, fetchMock, reload, visit, bareRun, richRun (+14 more)
 
 ### Community 9 - "Weekly Recap & Share"
-Cohesion: 0.22
-Nodes (12): DELTA_CLASS, DELTA_ICON, RecapCard(), toShareData(), formatMonthDayId(), parseLocalIsoDate(), streakLabel(), weeklyDeltaDirection() (+4 more)
+Cohesion: 0.29
+Nodes (11): DELTA_CLASS, DELTA_ICON, RecapCard(), toShareData(), formatMonthDayId(), parseLocalIsoDate(), streakLabel(), weeklyDeltaDirection() (+3 more)
 
 ### Community 10 - "Share Modals & PR Celebration"
-Cohesion: 0.11
-Nodes (19): LAYOUT_LABELS, LAYOUTS, ShareCardModal(), AksesoriUnlockModal(), AksesoriUnlockModalProps, epikUnlock, minorUnlock, PrData (+11 more)
+Cohesion: 0.10
+Nodes (23): LAYOUT_LABELS, LAYOUTS, ShareCardModal(), AksesoriUnlockModal(), epikUnlock, minorUnlock, PrData, PRMomentModal() (+15 more)
 
 ### Community 11 - "Kondisi & Last Run Cards"
-Cohesion: 0.10
-Nodes (40): KondisiCard(), load, snapshot, LastLariCard(), LastRunNote, VitalChip(), VitalChips(), atlHint() (+32 more)
+Cohesion: 0.08
+Nodes (39): briefingWith(), payload(), KondisiCard(), load, snapshot, LastLariCard(), LastRunNote, briefing (+31 more)
 
 ### Community 12 - "Card Reveal & Pace Formatting"
-Cohesion: 0.10
-Nodes (32): buildSubtitle(), CardReveal(), CardRevealProps, revealPose(), commonReveal, epicReveal, fetchMock, reload (+24 more)
+Cohesion: 0.08
+Nodes (47): buildSubtitle(), CardReveal(), revealPose(), THEATRICAL_RARITIES, toFeaturedCard(), KartuDetail(), HeroScoreboard(), moodFromActivity() (+39 more)
 
 ### Community 13 - "Exceptions & Auth Models"
 Cohesion: 0.10
@@ -359,20 +345,20 @@ Cohesion: 0.11
 Nodes (15): Collection, Request, Response, User, self, User, Activity, ActivityDetail (+7 more)
 
 ### Community 18 - "Koleksi Milestones & Records"
-Cohesion: 0.04
-Nodes (46): PersonaSlice, MilestoneStrip(), MilestoneStripProps, DISTANCE_CATEGORIES, DISTANCE_ORDER, ExtendedPR, FeaturedExtras, HeroScoreboard() (+38 more)
+Cohesion: 0.06
+Nodes (26): MilestoneStrip(), MilestoneStripProps, Line, ProgressionChart(), ProgressionChartProps, ChartData, ChartOptions, DISTANCE_CATEGORIES (+18 more)
 
 ### Community 19 - "Stream Analysis & Metrics"
 Cohesion: 0.12
 Nodes (5): Carbon, User, StreamAnalysis, PaceFormatter, ThresholdEstimator
 
 ### Community 20 - "Community 20"
-Cohesion: 0.10
-Nodes (17): formatWeekdayDayId(), AiUsageProps, COLUMNS, costFmt, DailyChart(), DailyRow, estimateCost(), fmt() (+9 more)
+Cohesion: 0.09
+Nodes (19): formatWeekdayDayId(), AiUsageProps, COLUMNS, costFmt, DailyChart(), DailyRow, estimateCost(), fmt() (+11 more)
 
 ### Community 21 - "Community 21"
-Cohesion: 0.13
-Nodes (15): ITEMS, MobileBottomNav(), NavItem, activeTabFromUrl(), ITEMS, NavItem, TabId, TopNav() (+7 more)
+Cohesion: 0.08
+Nodes (22): FormSideProps, LoginProps, PILLARS, AksesoriUnlockModalProps, ITEMS, MobileBottomNav(), NavItem, activeTabFromUrl() (+14 more)
 
 ### Community 22 - "Community 22"
 Cohesion: 0.12
@@ -391,12 +377,12 @@ Cohesion: 0.12
 Nodes (17): JourneyMatchData, sundayOf(), EMPTY_COPY, FORM_CHIP_CLASS, groupByWeek(), MetricChip(), MOOD_FILTER_OPTIONS, RANGE_FILTER_OPTIONS (+9 more)
 
 ### Community 26 - "Community 26"
-Cohesion: 0.13
-Nodes (23): bunnyCache, bunnySvg(), C, DIMS, drawBadgePips(), DrawCtx, drawHeroBlock(), drawZoneBar() (+15 more)
+Cohesion: 0.06
+Nodes (53): DAYBREAK, DaybreakColor, hrZone, HrZoneKey, projectPolyline(), bunnyCache, bunnySvg(), C (+45 more)
 
 ### Community 28 - "Community 28"
-Cohesion: 0.14
-Nodes (15): MetricExplainerProps, KpiTile(), KpiTileProps, TONE_CLASS, MetricGlossaryEntry, MetricKey, Tone, LABEL_CLASS (+7 more)
+Cohesion: 0.08
+Nodes (23): HR_ZONE_COLORS, HR_ZONES, HrZoneCardProps, ZONE_EXPLAINER_KEY, ZonePct, ZoneBar(), ZoneBarProps, MetricExplainer() (+15 more)
 
 ### Community 30 - "Community 30"
 Cohesion: 0.10
@@ -420,7 +406,7 @@ Nodes (7): ErrorBoundary, Props, State, ClientErrorPayload, installGlobalErrorRe
 
 ### Community 35 - "Community 35"
 Cohesion: 0.11
-Nodes (9): DayCellView, KalenderProps, Legend(), LifetimeStats, MOOD_FILTER_OPTIONS, MOOD_GLYPH, TodayCell(), WEEKDAY_LABELS (+1 more)
+Nodes (11): formatShortDateId(), DayCellView, KalenderProps, Legend(), LifetimeEyebrow(), LifetimeStats, MOOD_FILTER_OPTIONS, MOOD_GLYPH (+3 more)
 
 ### Community 36 - "Community 36"
 Cohesion: 0.27
@@ -443,8 +429,8 @@ Cohesion: 0.19
 Nodes (11): Activity, ActivityDetail, Request, Response, User, RunController, PastYouMatcher, seedRun() (+3 more)
 
 ### Community 41 - "Community 41"
-Cohesion: 0.07
-Nodes (17): RedirectResponse, Request, Response, BelongsTo, User, Collection, User, GamificationContext (+9 more)
+Cohesion: 0.36
+Nodes (3): GamificationContext, User, GoalResolver
 
 ### Community 42 - "Community 42"
 Cohesion: 0.07
@@ -455,8 +441,8 @@ Cohesion: 0.07
 Nodes (27): Basic Link Component, Basic Usage, Client-Side Navigation, Common Pitfalls, Deferred Props, Documentation, Form Component (Recommended), Form Component Reset Props (+19 more)
 
 ### Community 44 - "Community 44"
-Cohesion: 0.25
-Nodes (6): buildSummary(), MoodSection, RangeOption, RangeSection, RiwayatFilter(), RiwayatFilterProps
+Cohesion: 0.15
+Nodes (10): buildSummary(), MoodOption, MoodSection, RangeOption, RangeSection, RiwayatFilter(), RiwayatFilterProps, MOOD_OPTIONS (+2 more)
 
 ### Community 45 - "Community 45"
 Cohesion: 0.11
@@ -467,8 +453,8 @@ Cohesion: 0.14
 Nodes (8): ActivityDetail, Closure, DemoLocation, RunBlueprint, User, DemoRunSeeder, SplitsBuilder, StreamStats
 
 ### Community 47 - "Community 47"
-Cohesion: 0.09
-Nodes (14): FormSideProps, LoginProps, PILLARS, BACK_TILES, GLOW_ALPHA, PackWrapper(), PackWrapperProps, rarityFoilTint() (+6 more)
+Cohesion: 0.24
+Nodes (6): barsFor(), RouteGlyph(), RouteGlyphProps, BrandMark(), BrandMarkProps, BunnyGlyph()
 
 ### Community 48 - "Community 48"
 Cohesion: 0.19
@@ -499,24 +485,24 @@ Cohesion: 0.24
 Nodes (4): BelongsTo, HasMany, HasOne, Activity
 
 ### Community 55 - "Community 55"
-Cohesion: 0.11
-Nodes (16): Carbon, GamificationContext, User, WeeklySnapshot, Analysis, AnalysisType, Carbon, User (+8 more)
+Cohesion: 0.09
+Nodes (20): Carbon, GamificationContext, User, WeeklySnapshot, Analysis, AnalysisType, Carbon, User (+12 more)
 
 ### Community 56 - "Community 56"
 Cohesion: 0.27
 Nodes (6): Activity, ActivityDetail, Carbon, StoryLine, User, Temari
 
 ### Community 57 - "Community 57"
-Cohesion: 0.17
-Nodes (9): drawShareCard(), ensureFonts(), Format, Layout, paintBackground(), shareCardBlob(), FailingImage, FakeImage (+1 more)
+Cohesion: 0.11
+Nodes (17): PersonaSlice, monthsSinceId(), chipVariants, Aku(), AkuProps, IdentityPayload, RekorMini(), STAT_ACCENT (+9 more)
 
 ### Community 58 - "Community 58"
 Cohesion: 0.22
 Nodes (8): AbstractProvider, RedirectResponse, RedirectResponse, Request, DemoAuthController, StravaAuthController, SocialiteUser, SymfonyRedirectResponse
 
 ### Community 59 - "Community 59"
-Cohesion: 0.18
-Nodes (7): HR_ZONE_COLORS, HR_ZONES, HrZoneCardProps, ZONE_EXPLAINER_KEY, ZonePct, ZoneBar(), ZoneBarProps
+Cohesion: 0.33
+Nodes (3): GamificationContext, User, UnlockEngine
 
 ### Community 60 - "Community 60"
 Cohesion: 0.41
@@ -551,20 +537,20 @@ Cohesion: 0.25
 Nodes (7): ChartTheme, DARK, formatNumericTooltip(), kmAxisTick(), LIGHT, tooltipFromTheme(), useChartTheme()
 
 ### Community 69 - "Community 69"
-Cohesion: 0.13
-Nodes (17): GAP_CLASS, PrCard(), PrCardProps, TIME_CLASS, cardVariants, chipVariants, rarityVariants, toggleButtonVariants (+9 more)
+Cohesion: 0.20
+Nodes (11): GAP_CLASS, PrCard(), PrCardProps, TIME_CLASS, cardVariants, Card(), CardPadding, CardProps (+3 more)
 
 ### Community 70 - "Community 70"
 Cohesion: 0.40
 Nodes (5): Request, Response, User, ProfileController, PersonaSummaryNarrator
 
 ### Community 71 - "Community 71"
-Cohesion: 0.33
-Nodes (8): KartuMini(), MOOD_FACE, MOOD_HINT, MOOD_ORDER, moodRing(), moodSigilColor(), moodToken(), ALL_MOODS
+Cohesion: 0.16
+Nodes (15): KartuMini(), PersonaBar(), PersonaBarProps, MOOD_FACE, MOOD_FILL, MOOD_HINT, MOOD_LABEL, MOOD_ORDER (+7 more)
 
 ### Community 72 - "Community 72"
-Cohesion: 0.22
-Nodes (7): PersonaBar(), PersonaBarProps, MOOD_FILL, MOOD_LABEL, MOOD_SOFT_FILL, MoodChip(), MoodChipProps
+Cohesion: 0.23
+Nodes (6): RedirectResponse, Request, Response, BelongsTo, AksesoriController, UserUnlock
 
 ### Community 73 - "Community 73"
 Cohesion: 0.22
@@ -579,16 +565,16 @@ Cohesion: 0.40
 Nodes (11): KoleksiAksesori(), mapAura(), mapCelana(), mapHeadband(), mapKaus(), mapMedal(), mapPita(), mapSepatu() (+3 more)
 
 ### Community 76 - "Community 76"
-Cohesion: 0.27
-Nodes (5): DAYBREAK, DaybreakColor, hrZone, HrZoneKey, RouteMapProps
+Cohesion: 0.38
+Nodes (3): Collection, User, EquippedAccessories
 
 ### Community 77 - "Community 77"
 Cohesion: 0.33
 Nodes (4): Analysis, AnalysisType, Builder, self
 
 ### Community 78 - "Community 78"
-Cohesion: 0.24
-Nodes (6): AnalyzePersonaSummaryJob, AnalyzeRowJob, Analysis, Analysis, AnalysisService, Carbon
+Cohesion: 0.06
+Nodes (25): AnalyzeAkuProfileVoiceJob, AnalyzeBriefingFeaturedKartuVoiceJob, AnalyzeBriefingMascotVoiceJob, AnalyzeCardFlavorJob, AnalyzeDailyGreetingJob, AnalyzeMonthlyRecapJob, AnalyzePersonaSummaryJob, AnalyzePrContextJob (+17 more)
 
 ### Community 79 - "Community 79"
 Cohesion: 0.47
@@ -615,16 +601,12 @@ Cohesion: 0.28
 Nodes (6): CollectionHeaderProps, KoleksiTab, KoleksiTabs(), KoleksiTabsProps, TabItem, TABS
 
 ### Community 86 - "Community 86"
-Cohesion: 0.28
-Nodes (9): drawFrameCornerPips(), drawHero(), drawHeroArtBadges(), drawHeroArtWindow(), drawHeroShimmer(), drawRarityFlag(), drawRoute(), paintGlow() (+1 more)
+Cohesion: 0.33
+Nodes (5): BACK_TILES, GLOW_ALPHA, PackWrapper(), PackWrapperProps, rarityFoilTint()
 
 ### Community 87 - "Community 87"
 Cohesion: 0.12
 Nodes (15): AI narration pipeline, Boost MCP tools, Codebase map, CTA contrast rule (WCAG), Dawn-shift theme, Design system, Gradient primitives, Section spacing rhythm (+7 more)
-
-### Community 88 - "Community 88"
-Cohesion: 0.32
-Nodes (6): KIND_STYLES, tempTone(), WeatherDetail, WeatherHero(), WeatherHeroProps, WeatherKind
 
 ### Community 89 - "Community 89"
 Cohesion: 0.46
@@ -671,8 +653,8 @@ Cohesion: 0.48
 Nodes (3): Activity, ActivityDetail, RunInsightNarrator
 
 ### Community 101 - "Community 101"
-Cohesion: 0.23
-Nodes (13): C, deltaColor(), DIMS, drawBrand(), drawEyebrow(), drawRecapShare(), drawStatRow(), ensureFonts() (+5 more)
+Cohesion: 0.16
+Nodes (16): C, deltaColor(), DIMS, drawBrand(), drawEyebrow(), drawRecapShare(), drawStatRow(), ensureFonts() (+8 more)
 
 ### Community 103 - "Community 103"
 Cohesion: 0.43
@@ -718,10 +700,6 @@ Nodes (3): Carbon, User, TrendCaptionNarrator
 Cohesion: 0.33
 Nodes (5): detail, doneAnalysis, epicCard, pendingAnalysis, relatedCards
 
-### Community 119 - "Community 119"
-Cohesion: 0.40
-Nodes (6): drawBrand(), drawDateFooter(), drawHeroStatGrid(), drawRute(), heroStatCells(), heroStatGridRow()
-
 ### Community 120 - "Community 120"
 Cohesion: 0.18
 Nodes (7): BaseTestCase, ExampleTest, MockInterface, TestCase, mockStravaDriver(), TestCase, ExampleTest
@@ -746,25 +724,13 @@ Nodes (13): Basic Usage, Common Patterns, Common Pitfalls, CSS-First Configurati
 Cohesion: 0.40
 Nodes (3): CalendarCell, BASE_PROPS, TWO_WEEK_CELLS
 
-### Community 131 - "Community 131"
-Cohesion: 0.19
-Nodes (7): AnalyzeAkuProfileVoiceJob, AnalyzeBriefingFeaturedKartuVoiceJob, AnalyzeBriefingMascotVoiceJob, AnalyzeRowJob, Analysis, Analysis, Analysis
-
 ### Community 132 - "Community 132"
 Cohesion: 0.15
 Nodes (12): 1. Configure the provider, 2. Create redirect and callback routes, 3. Authenticate and store the user, 4. Customize the redirect (optional), 5. Verify, Adding a Provider, Additional Features, Available Providers (+4 more)
 
-### Community 133 - "Community 133"
-Cohesion: 0.30
-Nodes (3): AnalyzeGroupJob, AnalysisService, Collection
-
 ### Community 137 - "Community 137"
 Cohesion: 0.26
 Nodes (4): HasMany, HasOne, User, Notifiable
-
-### Community 139 - "Community 139"
-Cohesion: 0.17
-Nodes (8): AnalyzeActivityJob, AnalyzeTrendCaptionJob, Activity, Analysis, builder(), makeRun(), RuleBasedInsightBuilder, User
 
 ### Community 160 - "Community 160"
 Cohesion: 0.23
@@ -811,16 +777,16 @@ Cohesion: 0.18
 Nodes (11): scripts, check, dev, post-autoload-dump, post-create-project-cmd, post-install-cmd, post-root-package-install, post-update-cmd (+3 more)
 
 ### Community 171 - "Community 171"
-Cohesion: 0.18
-Nodes (6): RecapShareModalProps, recap, RecapFormat, RecapShareData, FakeImage, recap
+Cohesion: 0.40
+Nodes (3): RecapShareModalProps, recap, RecapShareData
 
 ### Community 172 - "Community 172"
 Cohesion: 0.18
 Nodes (10): Always Implement `failed()`, Batch Related Jobs, Implement `ShouldBeUnique`, Queue & Job Best Practices, Rate Limit External API Calls in Jobs, `retryUntil()` Needs `$tries = 0`, Set `retry_after` Greater Than `timeout`, Use Exponential Backoff (+2 more)
 
 ### Community 173 - "Community 173"
-Cohesion: 0.27
-Nodes (6): TokenUsage, seedReportUsage(), Model, seedUsage(), Carbon, Carbon
+Cohesion: 0.17
+Nodes (8): TokenUsage, seedReportUsage(), BelongsTo, Model, seedUsage(), RunCard, Carbon, Carbon
 
 ### Community 174 - "Community 174"
 Cohesion: 0.20
@@ -829,10 +795,6 @@ Nodes (9): Before/after reference, Beginner-accessibility tier (obscure jargon),
 ### Community 175 - "Community 175"
 Cohesion: 0.27
 Nodes (8): formStatusLabel(), formStatusTone(), LABELS, TONES, ruleBasedFallback(), WeeklySnapshotRow, WeeklyStatusChips(), FormStatus
-
-### Community 176 - "Community 176"
-Cohesion: 0.33
-Nodes (6): pillButtonVariants, PillButton(), PillButtonProps, PillTone, PillLink(), PillLinkProps
 
 ### Community 177 - "Community 177"
 Cohesion: 0.20
@@ -845,10 +807,6 @@ Nodes (9): Add Database Indexes, Always Eager Load Relationships, Chunk Large Da
 ### Community 179 - "Community 179"
 Cohesion: 0.20
 Nodes (9): Always Queue Notifications, Events & Notifications Best Practices, Implement `HasLocalePreference` on Notifiable Models, Rely on Event Discovery, Route Notification Channels to Dedicated Queues, Run `event:cache` in Production Deploy, Use `afterCommit()` on Notifications in Transactions, Use On-Demand Notifications for Non-User Recipients (+1 more)
-
-### Community 180 - "Community 180"
-Cohesion: 0.25
-Nodes (4): user(), identity, stats, makeUser()
 
 ### Community 181 - "Community 181"
 Cohesion: 0.22
@@ -978,10 +936,6 @@ Nodes (4): DemoRunSeeder, Seeder, DatabaseSeeder, WithoutModelEvents
 Cohesion: 0.33
 Nodes (5): engines, node, private, $schema, type
 
-### Community 215 - "Community 215"
-Cohesion: 0.33
-Nodes (4): MoodOption, MOOD_OPTIONS, Range, RANGE_OPTIONS
-
 ### Community 216 - "Community 216"
 Cohesion: 0.33
 Nodes (5): Configuration Best Practices, `env()` Only in Config Files, Use `App::environment()` for Environment Checks, Use Constants and Language Files, Use Encrypted Env or External Secrets
@@ -1037,22 +991,22 @@ Nodes (3): extra, laravel, dont-discover
 ## Knowledge Gaps
 - **788 isolated node(s):** `laravel/claude-code`, `PreToolUse`, `./vendor/bin/sail`, `Laravel.phpEnvironment`, `php.version` (+783 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **54 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **48 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Controller` connect `Community 36` to `Community 64`, `Briefing Narration Pipeline`, `Community 70`, `Community 40`, `Community 41`, `Community 107`, `Community 45`, `Community 109`, `Community 110`, `Community 60`, `Rekor Controller & Gamification`, `Community 210`, `Community 53`, `Community 58`, `Community 123`, `Community 124`, `Community 31`?**
-  _High betweenness centrality (0.030) - this node is a cross-community bridge._
+- **Why does `Controller` connect `Community 36` to `Community 64`, `Briefing Narration Pipeline`, `Community 70`, `Community 72`, `Community 40`, `Community 107`, `Community 45`, `Community 109`, `Community 110`, `Community 60`, `Rekor Controller & Gamification`, `Community 210`, `Community 53`, `Community 58`, `Community 123`, `Community 124`, `Community 31`?**
+  _High betweenness centrality (0.029) - this node is a cross-community bridge._
 - **Why does `PrCategory` connect `Rekor Controller & Gamification` to `Console Commands & Scheduling`, `Calendar & Gamification`, `Community 111`?**
   _High betweenness centrality (0.023) - this node is a cross-community bridge._
-- **Why does `Model` connect `Community 173` to `AI Analysis Service Core`, `Community 41`, `Community 77`, `Community 111`, `Community 112`, `Community 80`, `Community 51`, `Community 211`, `Community 54`, `Community 61`, `Community 30`?**
+- **Why does `Model` connect `Community 173` to `AI Analysis Service Core`, `Community 72`, `Community 77`, `Community 111`, `Community 112`, `Community 80`, `Community 51`, `Community 54`, `Community 61`, `Community 30`?**
   _High betweenness centrality (0.022) - this node is a cross-community bridge._
 - **What connects `laravel/claude-code`, `PreToolUse`, `./vendor/bin/sail` to the rest of the system?**
   _788 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Console Commands & Scheduling` be split into smaller, more focused modules?**
   _Cohesion score 0.05285592497868713 - nodes in this community are weakly interconnected._
 - **Should `Analysis Polling Hooks` be split into smaller, more focused modules?**
-  _Cohesion score 0.045263157894736845 - nodes in this community are weakly interconnected._
-- **Should `Run Card & Route Display` be split into smaller, more focused modules?**
-  _Cohesion score 0.08527131782945736 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.04684684684684685 - nodes in this community are weakly interconnected._
+- **Should `AI Analysis Service Core` be split into smaller, more focused modules?**
+  _Cohesion score 0.07597402597402597 - nodes in this community are weakly interconnected._
