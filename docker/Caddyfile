@@ -4,14 +4,13 @@
 	frankenphp {
 		# Recycle each worker after a bounded number of requests to cap
 		# per-request memory growth (leak → OOM at the 1g container cap on the
-		# shared homelab). The OCTANE_MAX_REQUESTS / FRANKENPHP_NUM_WORKERS env
-		# vars in compose.prod.yaml are inert in Caddyfile-worker mode (no
-		# octane:start), so these directives are the live knobs. `num 2` mirrors
-		# the intended 2-worker sizing without depending on host core count.
+		# shared homelab). Octane's frankenphp-worker.php loop reads MAX_REQUESTS
+		# from the worker env (default 1000); `num 2` sets the 2-worker sizing
+		# independent of host core count.
 		worker {
 			file /var/www/html/public/frankenphp-worker.php
 			num 2
-			max_requests 2000
+			env MAX_REQUESTS 2000
 		}
 	}
 	admin off
