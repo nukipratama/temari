@@ -14,6 +14,8 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\Demo\RuleBasedNarrationFiller;
 use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Support\Carbon;
@@ -27,6 +29,7 @@ class AnalysisService
     public function __construct(
         private readonly RuleBasedNarrationFiller $filler,
         private readonly RuleBasedInsightBuilder $insightBuilder,
+        private readonly AppConfig $config,
     ) {
     }
 
@@ -333,6 +336,7 @@ class AnalysisService
     private function autoDispatchEnabled(): bool
     {
         return ! $this->dispatchSuppressed
+            && $this->config->boolean(AppConfigKey::AiEnabled)
             && (bool) config('ai.auto_dispatch', true)
             && filled(config('azure_openai.uri'))
             && filled(config('azure_openai.api_key'));

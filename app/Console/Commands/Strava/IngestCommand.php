@@ -6,6 +6,8 @@ namespace App\Console\Commands\Strava;
 
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -14,16 +16,18 @@ use Illuminate\Console\Command;
 #[Description('Drain pending activity stubs through the ingest pipeline, oldest-first, batched to respect Strava rate limits.')]
 class IngestCommand extends Command
 {
-    private const int DETAIL_FETCH_MAX_ATTEMPTS = 5;
-
-    public function handle(): int
+    public function handle(AppConfig $config): int
     {
+        if (! $config->boolean(AppConfigKey::StravaEnabled)) {
+            $this->warn('Strava is disabled (kill-switch); skipping ingest.');
+
+            return self::SUCCESS;
+        }
+
         $batch = max(1, (int) $this->option('batch'));
 
         $activities = Activity::query()
-            ->withStubs()
-            ->whereNull('analyzed_at')
-            ->where('detail_fail_count', '<', self::DETAIL_FETCH_MAX_ATTEMPTS)
+            ->pendingIngest()
             ->whereHas('user.stravaConnection', fn ($query) => $query->whereNull('revoked_at'))
             ->orderBy('id')
             ->limit($batch)

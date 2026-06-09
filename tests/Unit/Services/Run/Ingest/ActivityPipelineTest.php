@@ -13,6 +13,9 @@ use App\Models\StravaConnection;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
+use App\Services\Weather\OpenMeteoClient;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -189,6 +192,18 @@ it('is idempotent — re-ingesting refreshes detail and clears fail count', func
         ->and($activity->fresh()->detail_fail_count)->toBe(0);
 });
 
+it('no-ops ingest when the Strava kill-switch is off, leaving the stub pending', function (): void {
+    $activity = makeActivityWithConnection();
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
+    Http::fake();
+
+    $this->pipeline->ingest($activity);
+
+    expect($activity->fresh()->analyzed_at)->toBeNull()
+        ->and(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
+    Http::assertNothingSent();
+});
+
 it('skips when user has no Strava connection', function (): void {
     $activity = Activity::factory()->create();
     Http::fake();
@@ -307,6 +322,37 @@ it('leaves weather columns null when Open-Meteo returns nothing', function (): v
 
     $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
     expect($detail->weather_temp_c)->toBeNull();
+});
+
+it('does NOT fail ingest when the weather lookup throws (best-effort)', function (): void {
+    $activity = makeActivityWithConnection();
+
+    // Reproduce the prod incident: a __PHP_Incomplete_Class return surfaced as a
+    // TypeError. Weather must stay best-effort and never strand the activity.
+    $this->mock(OpenMeteoClient::class)
+        ->shouldReceive('fetchForActivity')
+        ->andThrow(new TypeError('simulated incomplete-class weather return'));
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Run', 'start_date_local' => '2026-05-10 06:00:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'splits_metric' => [],
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => [0, 60]],
+            'latlng' => ['data' => [[-6.2, 106.8]]],
+        ]),
+    ]);
+
+    // Resolve the pipeline AFTER binding the throwing mock.
+    app(ActivityPipeline::class)->ingest($activity);
+
+    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    expect($activity->fresh()->analyzed_at)->not->toBeNull()
+        ->and($activity->fresh()->detail_fail_count)->toBe(0)
+        ->and($detail->weather_temp_c)->toBeNull()
+        ->and(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeTrue();
 });
 
 it('produces a run card + post_run story line on a successful ingest', function (): void {

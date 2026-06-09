@@ -8,7 +8,10 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Strava\ActivityFetcher;
+use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\StravaClient;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -100,6 +103,44 @@ it('skips a revoked connection without querying Strava', function (): void {
     $fetcher->shouldNotReceive('fetchNewExternalIds');
 
     expect((new SyncOrchestrator($fetcher, $this->client))->syncUser($user))->toBe(0);
+    Queue::assertNothingPushed();
+});
+
+it('revokes the connection and returns 0 (no rethrow) when the API rejects the token with 401', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create();
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldReceive('fetchNewExternalIds')
+        ->andThrow(new StravaConnectionRevokedException('Strava rejected the access token with 401'));
+
+    $inserted = (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
+
+    expect($inserted)->toBe(0)
+        ->and($connection->fresh()->revoked_at)->not->toBeNull();
+    Queue::assertNothingPushed();
+});
+
+it('syncUser no-ops when the Strava kill-switch is off', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldNotReceive('fetchNewExternalIds');
+
+    expect((new SyncOrchestrator($fetcher, $this->client))->syncUser($user))->toBe(0);
+    Queue::assertNothingPushed();
+});
+
+it('syncSingleActivity no-ops when the Strava kill-switch is off', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+
+    expect((new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_001))->toBeFalse();
     Queue::assertNothingPushed();
 });
 

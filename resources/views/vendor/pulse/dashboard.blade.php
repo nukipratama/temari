@@ -2,6 +2,8 @@
     <livewire:pulse.servers cols="full" />
 
     {{-- Domain-specific health cards (custom). --}}
+    <livewire:pulse.system-control cols="full" rows="2" />
+
     <livewire:pulse.ai-pipeline-health cols="6" rows="2" />
 
     <livewire:pulse.strava-health cols="6" rows="2" />

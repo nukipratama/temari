@@ -35,12 +35,50 @@ class OpenMeteoClient
     ): ?WeatherSnapshot {
         $useArchive = $startedAt->diffInDays(CarbonImmutable::now()) > self::FORECAST_PAST_DAYS;
         $cacheKey = $this->cacheKey($latitude, $longitude, $startedAt);
-        $ttl = $useArchive ? self::ARCHIVE_CACHE_TTL : self::FORECAST_CACHE_TTL;
 
-        return Cache::remember(
-            $cacheKey,
-            $ttl,
-            fn (): ?WeatherSnapshot => $this->fetchUncached($latitude, $longitude, $startedAt, $useArchive),
+        // Cache the primitive shape, never the WeatherSnapshot object: a cached
+        // object can come back as __PHP_Incomplete_Class across a runtime/extension
+        // swap and blow up the return type. A non-array hit (a legacy poisoned
+        // object) is treated as a miss and refetched, so old keys self-heal.
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $this->hydrate($cached);
+        }
+
+        $snapshot = $this->fetchUncached($latitude, $longitude, $startedAt, $useArchive);
+        if ($snapshot !== null) {
+            $ttl = $useArchive ? self::ARCHIVE_CACHE_TTL : self::FORECAST_CACHE_TTL;
+            Cache::put($cacheKey, $this->dehydrate($snapshot), $ttl);
+        }
+
+        return $snapshot;
+    }
+
+    /**
+     * @return array{t: int, h: int, r: bool}
+     */
+    private function dehydrate(WeatherSnapshot $snapshot): array
+    {
+        return [
+            't' => $snapshot->tempC,
+            'h' => $snapshot->humidityPct,
+            'r' => $snapshot->rainDetected,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $cached
+     */
+    private function hydrate(array $cached): ?WeatherSnapshot
+    {
+        if (! isset($cached['t'], $cached['h'], $cached['r'])) {
+            return null;
+        }
+
+        return new WeatherSnapshot(
+            tempC: (int) $cached['t'],
+            humidityPct: (int) $cached['h'],
+            rainDetected: (bool) $cached['r'],
         );
     }
 

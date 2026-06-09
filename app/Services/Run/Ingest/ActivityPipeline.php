@@ -17,8 +17,11 @@ use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
+use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\StravaClient;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\RequestException;
@@ -33,7 +36,7 @@ use Throwable;
 // block the others.
 class ActivityPipeline
 {
-    private const int DETAIL_FETCH_MAX_ATTEMPTS = 5;
+    private const int DETAIL_FETCH_MAX_ATTEMPTS = Activity::MAX_DETAIL_FETCH_ATTEMPTS;
 
     private const string BACKFILL_SLOT_CACHE_PREFIX = 'ai.backfill.next-slot:';
 
@@ -50,11 +53,18 @@ class ActivityPipeline
         private readonly AnalysisService $analysisService,
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly MilestoneDetector $milestoneDetector,
+        private readonly AppConfig $config,
     ) {
     }
 
     public function ingest(Activity $activity): void
     {
+        // Strava kill-switch source of truth on the ingest side: leave the stub
+        // pending (analyzed_at stays null) so the drain resumes on re-enable.
+        if (! $this->config->boolean(AppConfigKey::StravaEnabled)) {
+            return;
+        }
+
         $connection = $activity->user->stravaConnection;
         if ($connection === null) {
             Log::warning('ingest skipped — user has no Strava connection', [
@@ -68,7 +78,7 @@ class ActivityPipeline
             $detail = $this->client
                 ->get($connection, "/activities/{$activity->strava_external_id}")
                 ->json();
-        } catch (StravaRateLimitedException $e) {
+        } catch (StravaRateLimitedException|StravaCircuitOpenException $e) {
             // Don't burn a retry on a fixed backoff: let the queued job re-queue
             // with an exponential delay (see IngestActivityJob).
             throw $e;
@@ -251,7 +261,7 @@ class ActivityPipeline
                 ->json();
 
             return is_array($streams) ? $streams : null;
-        } catch (StravaRateLimitedException $e) {
+        } catch (StravaRateLimitedException|StravaCircuitOpenException $e) {
             // The detail already stored; a rate-limited stream fetch should
             // re-queue the whole job rather than silently drop the streams.
             throw $e;
@@ -374,11 +384,23 @@ class ActivityPipeline
         }
 
         $startedAt = CarbonImmutable::instance($detail->start_date_local);
-        $snapshot = $this->weather->fetchForActivity(
-            (float) $latlng[0],
-            (float) $latlng[1],
-            $startedAt,
-        );
+
+        try {
+            $snapshot = $this->weather->fetchForActivity(
+                (float) $latlng[0],
+                (float) $latlng[1],
+                $startedAt,
+            );
+        } catch (Throwable $e) {
+            // Weather is best-effort (see class header): a failure here must never
+            // block ingest, or the activity is left an un-ingestable stub forever.
+            Log::warning('weather lookup failed (non-fatal)', [
+                'activity_id' => $detail->activity_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return;
+        }
 
         if ($snapshot === null) {
             return;

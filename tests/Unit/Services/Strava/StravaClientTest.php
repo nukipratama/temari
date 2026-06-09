@@ -3,10 +3,15 @@
 declare(strict_types=1);
 
 use App\Models\StravaConnection;
+use App\Services\Strava\Exceptions\StravaCircuitOpenException;
+use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\StravaClient;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -159,6 +164,23 @@ it('refreshes the token before making a GET when it is expired', function (): vo
         && $request->hasHeader('Authorization', 'Bearer fresh-access'));
 });
 
+it('throws StravaConnectionRevokedException when the API rejects the token with 401', function (): void {
+    Http::fake([
+        'www.strava.com/api/v3/*' => Http::response([
+            'message' => 'Authorization Error',
+            'errors' => [['resource' => 'Athlete', 'field' => 'access_token', 'code' => 'invalid']],
+        ], 401),
+    ]);
+
+    $connection = StravaConnection::factory()->create([
+        'access_token' => 'rejected-access',
+        'token_expires_at' => Carbon::now()->addHours(5), // clock-fresh, so no refresh
+    ]);
+
+    expect(fn () => (new StravaClient())->get($connection, 'athlete'))
+        ->toThrow(StravaConnectionRevokedException::class);
+});
+
 it('throws StravaRateLimitedException naming the exhausted bucket and retry-after seconds', function (): void {
     Http::fake();
 
@@ -194,4 +216,63 @@ it('records hits against both rate limit buckets per request', function (): void
 
     expect(RateLimiter::attempts("strava-api:{$connection->user_id}:15min"))->toBe(1)
         ->and(RateLimiter::attempts("strava-api:{$connection->user_id}:daily"))->toBe(1);
+});
+
+it('counts a 5xx toward the circuit breaker, then surfaces the request exception', function (): void {
+    Http::fake([
+        'www.strava.com/api/v3/*' => Http::response(['error' => 'boom'], 503),
+    ]);
+
+    $connection = StravaConnection::factory()->create([
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    expect(fn () => (new StravaClient())->get($connection, 'athlete'))
+        ->toThrow(RequestException::class);
+    expect((new AppConfig())->integer(AppConfigKey::StravaBreakerFailures))->toBe(1);
+});
+
+it('short-circuits with StravaCircuitOpenException and makes no HTTP call when the breaker is open', function (): void {
+    $config = new AppConfig();
+    $config->set(AppConfigKey::StravaBreakerState, 'open');
+    $config->set(AppConfigKey::StravaBreakerOpenedAt, Carbon::now()->toIso8601String());
+
+    Http::fake();
+    $connection = StravaConnection::factory()->create([
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    expect(fn () => (new StravaClient())->get($connection, 'athlete'))
+        ->toThrow(StravaCircuitOpenException::class);
+    Http::assertNothingSent();
+});
+
+it('does NOT move the breaker on a 401 (auth, not an outage)', function (): void {
+    Http::fake([
+        'www.strava.com/api/v3/*' => Http::response([], 401),
+    ]);
+
+    $connection = StravaConnection::factory()->create([
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    expect(fn () => (new StravaClient())->get($connection, 'athlete'))
+        ->toThrow(StravaConnectionRevokedException::class);
+    expect((new AppConfig())->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
+});
+
+it('resets the breaker failure streak on a successful 2xx', function (): void {
+    (new AppConfig())->set(AppConfigKey::StravaBreakerFailures, 3);
+
+    Http::fake([
+        'www.strava.com/api/v3/*' => Http::response(['ok' => true]),
+    ]);
+
+    $connection = StravaConnection::factory()->create([
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    (new StravaClient())->get($connection, 'athlete');
+
+    expect((new AppConfig())->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
 });

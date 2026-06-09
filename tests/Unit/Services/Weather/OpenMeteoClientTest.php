@@ -197,6 +197,46 @@ it('returns null when the matched hour bucket has null temp or humidity', functi
     expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
 });
 
+it('refetches when the cached value is a legacy non-array (self-heals poisoned keys)', function (): void {
+    $startedAt = CarbonImmutable::parse('2026-05-10 06:00:00');
+    // Simulate a poisoned cache entry left by an older runtime: a bare object
+    // where the array shape is now expected. It must NOT blow up the return type.
+    $key = 'weather:-6.200:106.800:2026-05-10T06:00';
+    Cache::put($key, new WeatherSnapshot(tempC: 99, humidityPct: 1, rainDetected: true), 3600);
+
+    Http::fake([
+        'api.open-meteo.com/*' => Http::response([
+            'hourly' => [
+                'time' => ['2026-05-10T06:00'],
+                'temperature_2m' => [27],
+                'relative_humidity_2m' => [80],
+                'precipitation' => [0],
+            ],
+        ]),
+    ]);
+
+    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+
+    expect($snap)->toBeInstanceOf(WeatherSnapshot::class)->and($snap->tempC)->toBe(27);
+    Http::assertSentCount(1);
+});
+
+it('round-trips the cached array shape back into a WeatherSnapshot', function (): void {
+    $startedAt = CarbonImmutable::parse('2026-05-10 06:00:00');
+    $key = 'weather:-6.200:106.800:2026-05-10T06:00';
+    Cache::put($key, ['t' => 21, 'h' => 64, 'r' => true], 3600);
+
+    Http::fake(); // any HTTP call would fail the assertion below
+
+    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+
+    expect($snap)->toBeInstanceOf(WeatherSnapshot::class)
+        ->and($snap->tempC)->toBe(21)
+        ->and($snap->humidityPct)->toBe(64)
+        ->and($snap->rainDetected)->toBeTrue();
+    Http::assertNothingSent();
+});
+
 it('distinguishes cache keys by hour-bucket', function (): void {
     Http::fake([
         'api.open-meteo.com/*' => Http::sequence()

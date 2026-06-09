@@ -6,6 +6,8 @@ use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 
@@ -13,6 +15,17 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Queue::fake();
+});
+
+it('no-ops when the Strava kill-switch is off', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    Activity::factory()->for($user)->stub()->count(3)->create();
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
+
+    $this->artisan('strava:ingest')->assertSuccessful();
+
+    Queue::assertNothingPushed();
 });
 
 it('dispatches an IngestActivityJob for each pending stub', function (): void {

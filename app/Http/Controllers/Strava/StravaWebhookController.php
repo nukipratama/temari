@@ -93,6 +93,8 @@ class StravaWebhookController extends Controller
                 return;
             }
 
+            // The Strava kill-switch is enforced downstream in SyncOrchestrator;
+            // a disabled sync no-ops the job rather than being gated here.
             SyncActivitiesJob::dispatch($connection->user_id, $stravaActivityId);
 
             return;

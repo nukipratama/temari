@@ -8,6 +8,7 @@ use App\Listeners\VerifyDependencies;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\VerdictTimeline;
+use App\Support\Config\AppConfig;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Events\DiagnosingHealth;
@@ -30,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
         // Scoped: one shared instance per request/command (so `withoutDispatching()`
         // reaches collaborators), flushed by Octane between requests.
         $this->app->scoped(AnalysisService::class);
+
+        // Scoped so its per-request/per-job read memo collapses repeat lookups but
+        // stays fresh across requests and queue jobs (DB remains source of truth).
+        $this->app->scoped(AppConfig::class);
     }
 
     public function boot(): void

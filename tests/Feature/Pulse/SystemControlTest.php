@@ -1,0 +1,59 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Livewire\Pulse\SystemControl;
+use App\Models\Activity;
+use App\Services\Strava\StravaCircuitBreaker;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+
+uses(RefreshDatabase::class);
+
+it('renders the switches, breaker state and backlog without error', function (): void {
+    Livewire::test(SystemControl::class)
+        ->assertOk()
+        ->assertSee('Kill-switches')
+        ->assertSee('circuit breaker')
+        ->assertSee('pending')
+        ->assertSee('stranded');
+});
+
+it('counts pending vs stranded activities correctly', function (): void {
+    Activity::factory()->stub()->count(2)->create(['detail_fail_count' => 0]);
+    Activity::factory()->stub()->create(['detail_fail_count' => 5]); // stranded
+
+    Livewire::test(SystemControl::class)
+        ->assertOk()
+        ->assertSee('pending')
+        ->assertSee('stranded');
+});
+
+it('toggleAi flips the AI kill-switch in app_config', function (): void {
+    expect(app(AppConfig::class)->boolean(AppConfigKey::AiEnabled))->toBeTrue();
+
+    Livewire::test(SystemControl::class)->call('toggleAi');
+
+    expect((new AppConfig())->boolean(AppConfigKey::AiEnabled))->toBeFalse();
+});
+
+it('toggleStrava flips the Strava kill-switch in app_config', function (): void {
+    Livewire::test(SystemControl::class)->call('toggleStrava');
+
+    expect((new AppConfig())->boolean(AppConfigKey::StravaEnabled))->toBeFalse();
+});
+
+it('resetBreaker force-closes an open breaker', function (): void {
+    $breaker = new StravaCircuitBreaker(new AppConfig());
+    for ($i = 0; $i < 5; $i++) {
+        $breaker->recordFailure();
+    }
+    expect($breaker->state())->toBe(StravaCircuitBreaker::STATE_OPEN);
+
+    Livewire::test(SystemControl::class)->call('resetBreaker');
+
+    expect((new StravaCircuitBreaker(new AppConfig()))->state())
+        ->toBe(StravaCircuitBreaker::STATE_CLOSED);
+});

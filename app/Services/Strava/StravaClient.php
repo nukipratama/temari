@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Strava;
 
 use App\Models\StravaConnection;
+use App\Services\Strava\Exceptions\StravaCircuitOpenException;
+use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -32,19 +35,61 @@ class StravaClient
 
     private const int RATE_LIMIT_DAILY_DECAY = 24 * 60 * 60;
 
+    public function __construct(private readonly ?StravaCircuitBreaker $breaker = null)
+    {
+    }
+
     /**
      * @param  array<string, mixed>  $query
      */
     public function get(StravaConnection $connection, string $path, array $query = []): Response
     {
+        $breaker = $this->breaker();
+        if (! $breaker->allowsRequest()) {
+            throw new StravaCircuitOpenException(
+                "Strava circuit breaker is open; skipped request to [{$path}].",
+            );
+        }
+
         $connection = $this->refreshIfExpired($connection);
 
         $this->guardRateLimit($connection->user_id);
 
-        return Http::baseUrl(self::API_BASE_URL)
-            ->withToken($connection->access_token)
-            ->get($path, $query)
-            ->throw();
+        try {
+            $response = Http::baseUrl(self::API_BASE_URL)
+                ->withToken($connection->access_token)
+                ->get($path, $query);
+        } catch (ConnectionException $e) {
+            // Transport failure / timeout: Strava is unreachable — count it.
+            $breaker->recordFailure();
+
+            throw $e;
+        }
+
+        if ($response->status() === 401) {
+            // 401 is a per-connection auth problem, not a Strava outage: leave the
+            // breaker untouched and surface it so the caller revokes the token.
+            throw new StravaConnectionRevokedException(
+                "Strava rejected the access token with 401 for [{$path}]: {$response->body()}",
+            );
+        }
+
+        if ($response->serverError()) {
+            // 5xx: Strava itself is failing — count toward the breaker.
+            $breaker->recordFailure();
+
+            return $response->throw();
+        }
+
+        // 2xx (or a non-5xx 4xx like 404) means Strava is reachable and healthy.
+        $breaker->recordSuccess();
+
+        return $response->throw();
+    }
+
+    private function breaker(): StravaCircuitBreaker
+    {
+        return $this->breaker ?? app(StravaCircuitBreaker::class);
     }
 
     /**

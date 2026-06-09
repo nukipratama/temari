@@ -10,7 +10,10 @@ use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\User;
 use App\Services\Strava\ActivityFetcher;
+use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\StravaClient;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -24,11 +27,16 @@ class SyncOrchestrator
     public function __construct(
         private readonly ActivityFetcher $fetcher,
         private readonly StravaClient $client,
+        private readonly ?AppConfig $config = null,
     ) {
     }
 
     public function syncUser(User $user, ?CarbonImmutable $since = null): int
     {
+        if (! $this->stravaEnabled()) {
+            return 0;
+        }
+
         $connection = $user->stravaConnection;
         if ($connection === null || $connection->isRevoked()) {
             return 0;
@@ -61,6 +69,20 @@ class SyncOrchestrator
             $this->logSync($user->id, 'success', $inserted);
 
             return $inserted;
+        } catch (StravaConnectionRevokedException $e) {
+            // The token was rejected with a 401. Trip the per-connection breaker:
+            // revoke so sync stops picking this connection every hour instead of
+            // crashing the scheduled command (parity with the SyncActivitiesJob
+            // token-refresh-failure path).
+            $connection->markRevoked();
+            Pulse::record('strava_revoked', 'api_401')->count();
+            $this->logSync($user->id, 'error', 0, $e->getMessage());
+            Log::warning('strava-sync revoked connection after API 401', [
+                'user_id' => $user->id,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return 0;
         } catch (Throwable $e) {
             $this->logSync($user->id, 'error', 0, $e->getMessage());
 
@@ -77,6 +99,10 @@ class SyncOrchestrator
      */
     public function syncSingleActivity(User $user, int $externalId): bool
     {
+        if (! $this->stravaEnabled()) {
+            return false;
+        }
+
         $connection = $user->stravaConnection;
         if ($connection === null || $connection->isRevoked()) {
             return false;
@@ -112,6 +138,17 @@ class SyncOrchestrator
 
             throw $e;
         }
+    }
+
+    /**
+     * Source of truth for the Strava kill-switch on the sync side — entry points
+     * (command, job, webhook) can skip eagerly, but every sync path bottoms out
+     * here so a missed guard still fails safe. Resolved lazily so the heavily
+     * unit-tested constructor signature stays two-arg.
+     */
+    private function stravaEnabled(): bool
+    {
+        return ($this->config ?? app(AppConfig::class))->boolean(AppConfigKey::StravaEnabled);
     }
 
     private function logSync(int $userId, string $status, int $activitiesSynced, ?string $error = null): void

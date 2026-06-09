@@ -28,8 +28,6 @@ use Illuminate\Support\Facades\RateLimiter;
 #[Description('Diagnose Strava connection + ingestion health (optionally repair stranded activities).')]
 class DoctorCommand extends Command
 {
-    private const int DETAIL_FETCH_MAX_ATTEMPTS = 5;
-
     public function handle(): int
     {
         if ($this->option('e2e')) {
@@ -82,10 +80,8 @@ class DoctorCommand extends Command
             'Rate limit headroom (15 min)' => fn (): bool => $sampleUserId !== null && RateLimiter::remaining("strava-api:{$sampleUserId}:15min", 200) > 0,
             'Rate limit headroom (daily)' => fn (): bool => $sampleUserId !== null && RateLimiter::remaining("strava-api:{$sampleUserId}:daily", 2000) > 0,
             'No stranded activities' => fn (): bool => Activity::query()
-                ->withStubs()
+                ->pendingIngest()
                 ->whereHas('user.stravaConnection', fn (Builder $q): Builder => $q->whereNull('revoked_at'))
-                ->whereNull('analyzed_at')
-                ->where('detail_fail_count', '<', self::DETAIL_FETCH_MAX_ATTEMPTS)
                 ->doesntExist(),
         ];
 
@@ -222,10 +218,8 @@ class DoctorCommand extends Command
     private function strandedQuery(int $userId): Builder
     {
         return Activity::query()
-            ->withStubs()
-            ->where('user_id', $userId)
-            ->whereNull('analyzed_at')
-            ->where('detail_fail_count', '<', self::DETAIL_FETCH_MAX_ATTEMPTS);
+            ->pendingIngest()
+            ->where('user_id', $userId);
     }
 
     /**

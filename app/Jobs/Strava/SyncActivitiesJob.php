@@ -6,6 +6,8 @@ namespace App\Jobs\Strava;
 
 use App\Models\User;
 use App\Services\Run\Ingest\SyncOrchestrator;
+use App\Services\Strava\Exceptions\StravaCircuitOpenException;
+use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -58,6 +60,27 @@ class SyncActivitiesJob implements ShouldQueue
             ]);
 
             $this->release(60);
+        } catch (StravaCircuitOpenException) {
+            // Strava is down and the breaker is open. Don't burn $tries hammering
+            // it — drop this run; the hourly scheduled sync recovers once the
+            // breaker half-opens.
+            Log::info('strava-sync skipped — circuit breaker open', [
+                'user_id' => $user->id,
+            ]);
+        } catch (StravaConnectionRevokedException $e) {
+            // The API rejected the access token with a 401 (athlete deauthorized).
+            // Same outcome as a failed refresh: revoke so we stop retrying.
+            $connection = $user->stravaConnection;
+            if ($connection !== null) {
+                $connection->markRevoked();
+            }
+
+            Pulse::record('strava_revoked', 'api_401')->count();
+
+            Log::warning('strava-sync revoked connection after API 401', [
+                'user_id' => $user->id,
+                'reason' => $e->getMessage(),
+            ]);
         } catch (StravaTokenRefreshFailedException $e) {
             // A rejected refresh means the athlete revoked us (or rotated the
             // refresh token out from under us). Mark the connection revoked so

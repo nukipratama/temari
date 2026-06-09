@@ -54,6 +54,13 @@ class Activity extends Model
     use HasFactory;
 
     /**
+     * Attempts the ingest pipeline makes to fetch an activity's detail before
+     * giving up. A stub below this count is still retryable (pending); at or
+     * above it the row is stranded. Single source of truth for the threshold.
+     */
+    public const int MAX_DETAIL_FETCH_ATTEMPTS = 5;
+
+    /**
      * Opt out of {@see AnalyzedScope} to include un-ingested stubs. Only the
      * Strava sync/ingest pipeline (which creates, drains and processes stubs)
      * should use this; everything user-facing must keep the default scope.
@@ -64,6 +71,20 @@ class Activity extends Model
     protected function withStubs(Builder $query): void
     {
         $query->withoutGlobalScope(AnalyzedScope::class);
+    }
+
+    /**
+     * Stubs still awaiting ingest and below the give-up threshold — the set the
+     * `strava:ingest` drain works through, oldest-first.
+     *
+     * @param  Builder<Activity>  $query
+     */
+    #[Scope]
+    protected function pendingIngest(Builder $query): void
+    {
+        $query->withStubs()
+            ->whereNull('analyzed_at')
+            ->where('detail_fail_count', '<', self::MAX_DETAIL_FETCH_ATTEMPTS);
     }
 
     /**

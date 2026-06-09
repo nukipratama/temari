@@ -14,6 +14,8 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -253,6 +255,20 @@ it('withoutDispatching restores prior suppression state on exit', function (): v
 
 it('does not dispatch when ai.auto_dispatch config is false', function (): void {
     config(['ai.auto_dispatch' => false]);
+    $snap = WeeklySnapshot::factory()->create();
+
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Done);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('does not dispatch when the AI kill-switch is off', function (): void {
+    app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);
     $snap = WeeklySnapshot::factory()->create();
 
     $row = $this->service->request(

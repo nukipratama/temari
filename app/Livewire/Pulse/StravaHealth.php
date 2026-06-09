@@ -6,6 +6,7 @@ namespace App\Livewire\Pulse;
 
 use Illuminate\Database\Query\Builder;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
+use App\Models\Activity;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
@@ -35,7 +36,7 @@ class StravaHealth extends Card
 
         $stranded = DB::table('activities')
             ->whereNull('analyzed_at')
-            ->where('detail_fail_count', '<', 5)
+            ->where('detail_fail_count', '<', Activity::MAX_DETAIL_FETCH_ATTEMPTS)
             ->count();
 
         [$trends, $time, $runAt] = $this->remember(fn (): array => [
