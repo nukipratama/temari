@@ -1,5 +1,5 @@
 import Card from '@/components/ui/Card';
-import { formatDayMonthYearId, formatPace } from '@/lib/pace';
+import { formatShortDateTimeId, formatPace } from '@/lib/pace';
 import { cn } from '@/lib/cn';
 
 interface ActivitySummary {
@@ -46,7 +46,7 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                 {first.date && (
                     <>
                         {' '}
-                        di <span className="font-semibold">{formatDate(first.date)}</span>
+                        di <span className="font-semibold">{formatShortDateTimeId(first.date)}</span>
                     </>
                 )}
                 .
@@ -91,12 +91,4 @@ function PaceLine({ label, summary, className }: Readonly<{ label: string; summa
             {paceLabel && <>· pace {paceLabel}/km</>}
         </p>
     );
-}
-
-function formatDate(iso: string): string {
-    try {
-        return formatDayMonthYearId(new Date(iso));
-    } catch {
-        return iso;
-    }
 }

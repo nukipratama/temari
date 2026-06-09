@@ -67,4 +67,21 @@ describe('RunListRow', () => {
         const strong = screen.getByText('PR');
         expect(strong.tagName).toBe('STRONG');
     });
+
+    it('shows the as-recorded start time next to the date', () => {
+        render(<RunListRow detail={detail({ start_date_local: '2026-05-10T07:00:00' })} />);
+        expect(screen.getByText('· 07.00')).toBeInTheDocument();
+    });
+
+    it('renders the literal wall-clock time even when serialized with a UTC Z (no zone shift)', () => {
+        // Laravel sends the naive cast as `...Z`; the time must stay 06.52, not
+        // shift to the viewer/test-runner timezone.
+        render(<RunListRow detail={detail({ start_date_local: '2026-06-09T06:52:54.000000Z' })} />);
+        expect(screen.getByText('· 06.52')).toBeInTheDocument();
+    });
+
+    it('omits the time when start_date_local has no time component', () => {
+        render(<RunListRow detail={detail({ start_date_local: '2026-05-10' })} />);
+        expect(screen.queryByText(/^· \d{2}\.\d{2}$/)).not.toBeInTheDocument();
+    });
 });

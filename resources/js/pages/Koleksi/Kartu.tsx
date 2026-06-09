@@ -11,7 +11,7 @@ import { cn } from '@/lib/cn';
 import { pressShrink } from '@/lib/motion';
 import { kartuUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
-import { formatDuration, formatIdDate, formatKm } from '@/lib/pace';
+import { formatDuration, formatNaiveIdDate, formatKm } from '@/lib/pace';
 import { RARITY_LABELS, RARITY_ORDER, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
 import { memo, useCallback, useDeferredValue, useMemo, useState, type ReactNode } from 'react';
@@ -163,7 +163,7 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
     const detail = featured.detail;
     const kartuProps = useMemo(() => ({
         name: featured.special_move,
-        subtitle: detail ? `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}` : undefined,
+        subtitle: detail ? `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}` : undefined,
         km: formatKm(detail?.distance),
         durasi: detail?.moving_time != null ? formatDuration(detail.moving_time) : '—',
         trimp: detail?.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—',
@@ -317,7 +317,7 @@ const CardCell = memo(function CardCell({
             km: formatKm(detail.distance),
             durasi: detail.moving_time != null ? formatDuration(detail.moving_time) : '—',
             trimp: detail.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—',
-            subtitle: `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`,
+            subtitle: `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`,
             stats: buildCardStats(detail),
             zonePct: zonePctFromDetail(detail),
             paceShape: paceShapeFromDetail(detail),

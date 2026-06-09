@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
-import { formatIdDate, formatKm } from '@/lib/pace';
+import { formatNaiveIdDate, formatKm } from '@/lib/pace';
 import { aktivitasUrl } from '@/lib/routes';
 
 interface PastMatch {
@@ -62,7 +62,7 @@ export default function PastYouStrip({ match, currentDistance, className }: Read
                 {match.past.name ?? 'Aktivitas dulu'}
             </p>
             <p className="text-[11px] text-ink-3">
-                {formatIdDate(match.past.start_date_local, 'long')}
+                {formatNaiveIdDate(match.past.start_date_local, 'long')}
             </p>
         </>
     );

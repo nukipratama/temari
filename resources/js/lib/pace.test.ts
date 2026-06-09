@@ -6,9 +6,13 @@ import {
     formatIdDate,
     formatKm,
     formatMonthDayId,
+    formatNaiveIdDate,
+    formatNaiveRelativeId,
+    formatNaiveTimeId,
     formatPaddedDayMonthYearId,
     formatPace,
     formatRelativeId,
+    formatShortDateTimeId,
     formatShortWeekdayDateId,
     formatTimeId,
     formatWeekdayDateId,
@@ -18,6 +22,7 @@ import {
     isoStartOfMonthLocal,
     mondayOf,
     paceSecPerKm,
+    parseNaiveLocalDate,
     parsePaceSec,
     sundayOf,
     todayLocalIso,
@@ -130,6 +135,47 @@ describe('formatIdDate', () => {
         const result = formatIdDate('2026-05-11T08:00:00', 'long');
         expect(result).toMatch(/\d{4}/);
     });
+
+    it('returns dash for non-parseable input', () => {
+        expect(formatIdDate('totally-not-a-date')).toBe('—');
+    });
+});
+
+describe('formatNaiveIdDate', () => {
+    it('renders the as-recorded date even when an offset would shift it across midnight', () => {
+        // new Date() would read this as 2026-05-12T02:00Z and render 12 Mei in a
+        // UTC runtime; the component parse must keep the wall-clock 11 Mei.
+        expect(formatNaiveIdDate('2026-05-11T18:00:00-08:00')).toContain('11');
+        expect(formatNaiveIdDate('2026-05-11T18:00:00.000000Z')).toContain('11');
+    });
+
+    it('returns dash for null and non-parseable input', () => {
+        expect(formatNaiveIdDate(null)).toBe('—');
+        expect(formatNaiveIdDate('totally-not-a-date')).toBe('—');
+    });
+});
+
+describe('parseNaiveLocalDate', () => {
+    it('builds a local Date from the string components, ignoring any offset', () => {
+        const d = parseNaiveLocalDate('2026-05-11T18:30:15-08:00');
+        expect(d).not.toBeNull();
+        expect(d?.getFullYear()).toBe(2026);
+        expect(d?.getMonth()).toBe(4);
+        expect(d?.getDate()).toBe(11);
+        expect(d?.getHours()).toBe(18);
+        expect(d?.getMinutes()).toBe(30);
+        expect(d?.getSeconds()).toBe(15);
+    });
+
+    it('defaults a date-only string to local midnight', () => {
+        const d = parseNaiveLocalDate('2026-05-11');
+        expect(d?.getHours()).toBe(0);
+        expect(d?.getDate()).toBe(11);
+    });
+
+    it('returns null when the string does not lead with a date', () => {
+        expect(parseNaiveLocalDate('totally-not-a-date')).toBeNull();
+    });
 });
 
 describe('formatRelativeId', () => {
@@ -193,6 +239,26 @@ describe('formatRelativeId', () => {
         const future = new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString();
         expect(formatRelativeId(future, now)).toBe('baru aja');
     });
+
+});
+
+describe('formatNaiveRelativeId', () => {
+    it('measures the delta from the as-recorded wall clock, ignoring any offset', () => {
+        // Wall clock 09:00 vs a local-now of 12:00 → 3 jam lalu. new Date() would
+        // shift the -08:00 input to 17:00Z and clamp it to "baru aja" instead.
+        const localNow = new Date(2026, 4, 20, 12, 0, 0);
+        expect(formatNaiveRelativeId('2026-05-20T09:00:00-08:00', localNow)).toBe('3 jam lalu');
+    });
+
+    it('returns dash for null and non-parseable input', () => {
+        expect(formatNaiveRelativeId(null)).toBe('—');
+        expect(formatNaiveRelativeId('totally-not-a-date')).toBe('—');
+    });
+
+    it('falls back to the naive short date for old timestamps', () => {
+        const localNow = new Date(2026, 4, 20, 12, 0, 0);
+        expect(formatNaiveRelativeId('2026-01-02T06:30:00.000000Z', localNow)).toContain('2');
+    });
 });
 
 describe('parsePaceSec', () => {
@@ -244,6 +310,49 @@ describe('date/time format variants', () => {
 
     it('formatPaddedDayMonthYearId: padded day + short month + year', () => {
         expect(formatPaddedDayMonthYearId(d)).toBe('11 Mei 2026');
+    });
+});
+
+describe('formatNaiveTimeId', () => {
+    it('returns null for null / undefined / date-only / malformed', () => {
+        expect(formatNaiveTimeId(null)).toBeNull();
+        expect(formatNaiveTimeId(undefined)).toBeNull();
+        expect(formatNaiveTimeId('2026-06-09')).toBeNull();
+        expect(formatNaiveTimeId('not-a-date')).toBeNull();
+    });
+
+    it('reads the literal wall-clock HH.MM from the string', () => {
+        expect(formatNaiveTimeId('2026-06-09T06:52:00')).toBe('06.52');
+        expect(formatNaiveTimeId('2026-06-09T06:52')).toBe('06.52');
+    });
+
+    it('does NOT shift the hour when the string carries a UTC Z (no timezone math)', () => {
+        // Laravel serializes the naive datetime cast with a trailing Z. The hour
+        // must render as recorded (06.52), never reinterpreted as UTC and shifted.
+        expect(formatNaiveTimeId('2026-06-09T06:52:54.000000Z')).toBe('06.52');
+    });
+
+    it('does NOT shift the hour under an explicit offset suffix', () => {
+        expect(formatNaiveTimeId('2026-06-09T23:15:00+09:00')).toBe('23.15');
+    });
+});
+
+describe('formatShortDateTimeId', () => {
+    it('returns dash for null / undefined', () => {
+        expect(formatShortDateTimeId(null)).toBe('—');
+        expect(formatShortDateTimeId(undefined)).toBe('—');
+    });
+
+    it('combines short date and naive wall-clock time', () => {
+        expect(formatShortDateTimeId('2026-06-09T06:52:00')).toBe('9 Jun 2026 · 06.52');
+    });
+
+    it('drops the time half for a date-only string', () => {
+        expect(formatShortDateTimeId('2026-06-09')).toBe('9 Jun 2026');
+    });
+
+    it('renders the as-recorded hour even with a trailing Z', () => {
+        expect(formatShortDateTimeId('2026-06-09T06:52:54.000000Z')).toBe('9 Jun 2026 · 06.52');
     });
 });
 
