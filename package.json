@@ -53,5 +53,8 @@
         "react-dom": "^19.2.6",
         "react-leaflet": "^5.0.0",
         "tailwind-merge": "^3.6.0"
+    },
+    "overrides": {
+        "shell-quote": "1.8.4"
     }
 }
