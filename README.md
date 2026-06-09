@@ -1,6 +1,6 @@
 # TemanLari
 
-A self-hosted, Strava-connected personal running dashboard with a built-in companion (**Temari**) that narrates each run. UI in Bahasa Indonesia. Containerized end-to-end — Laravel Sail in dev, FrankenPHP behind a Cloudflare Tunnel in prod — and continuously deployed to a homelab on every merge to `main`.
+A self-hosted, Strava-connected personal running dashboard with a built-in companion (**Temari**) that narrates each run. UI in Bahasa Indonesia. Containerized end-to-end — Laravel Sail in dev, FrankenPHP behind a Cloudflare Tunnel in prod — and continuously deployed to a single self-hosted host on every merge to `main`.
 
 > **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and the Temari mascot are all shipping. Daybreak palette (pre-dawn peach `horizon` + cream paper + navy `sky`), intentionally far from Strava orange. Light-mode only.
 
@@ -102,7 +102,7 @@ gh pr create --fill           # or open in the GitHub UI
 
 ## Deployment
 
-- **Target**: homelab, single Docker host, behind an existing Cloudflare Tunnel.
+- **Target**: a single self-hosted Docker host, behind an existing Cloudflare Tunnel.
 - **Runtime**: FrankenPHP — Caddy + PHP in one container, listening on `:7001`.
 - **Trigger**: every push to `main`.
 
@@ -130,16 +130,16 @@ Defined in [compose.prod.yaml](compose.prod.yaml) + [Dockerfile](Dockerfile) + [
 
 1. PR merges to `main`.
 2. The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) waits for `lint` + `pest` to pass.
-3. The job runs on the self-hosted runner registered for this repo (label `homelab`). The runner is a containerized wrapper around the official `actions/runner` binary, in `--ephemeral` mode, with `network_mode: host`. Sudo lives inside the runner image only — no `NOPASSWD` grant on the host. Outbound long-poll only — no inbound port.
-4. On the homelab box, the job: tags the current `:latest` as `:previous`, builds a new image, tags it with the git SHA, runs `migrate --force`, rolls `app`/`horizon`/`scheduler`, runs `artisan optimize`, recycles Horizon workers via `horizon:terminate`, healthchecks `/up`, and prunes images older than 7 days.
+3. The job runs on a containerized self-hosted runner registered for this repo, connecting outbound-only (no inbound port).
+4. On the host, the job: tags the current `:latest` as `:previous`, builds a new image, tags it with the git SHA, runs `migrate --force`, rolls `app`/`horizon`/`scheduler`, runs `artisan optimize`, recycles Horizon workers via `horizon:terminate`, healthchecks `/up`, and prunes images older than 7 days.
 
-### Setup (one-time, all in GitHub UI)
+### Setup (one-time, on the host)
 
-`compose.prod.yaml` reads every prod-side secret from environment variables — no on-host `.env` file. The `deploy` job pulls them from repo Secrets and passes them to compose, which substitutes `${VAR}` at parse time. Nothing sensitive is ever written to disk on the homelab.
+Prod secrets and per-host config live in `/opt/teman-lari/.env` on the host (root-owned, `640`, readable by the runner) — not committed, and nothing flows through GitHub Actions secrets. Compose loads the file via `env_file:` on each service.
 
-In **repo Settings → Secrets and variables → Actions → Secrets**, add:
+Create `/opt/teman-lari/.env` with:
 
-| Secret                | Value                                                                                                |
+| Key                   | Value                                                                                                |
 |:----------------------|:-----------------------------------------------------------------------------------------------------|
 | `APP_KEY`             | `base64:...` (generate: `php -r 'echo "base64:".base64_encode(random_bytes(32))."\n";'`)             |
 | `APP_URL`             | The Cloudflare-fronted public URL (`https://<your-domain>`)                                          |

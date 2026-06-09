@@ -95,8 +95,8 @@ FROM dunglas/frankenphp@${FRANKENPHP_DIGEST}
 WORKDIR /var/www/html
 
 # Concrete thread count, not `auto`: the deploy runs docker-out-of-docker and
-# cgroup CPU limits don't reduce nproc, so `auto` would size off the shared
-# host's full core count and over-subscribe this 2-cpu-capped container.
+# cgroup CPU limits don't reduce nproc, so `auto` would size off the host's
+# full core count and over-subscribe this 2-cpu-capped container.
 ENV FRANKENPHP_NUM_THREADS=4 \
     SERVER_NAME=:7001
 

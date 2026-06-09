@@ -3,8 +3,8 @@
 	auto_https off
 	frankenphp {
 		# Recycle each worker after a bounded number of requests to cap
-		# per-request memory growth (leak → OOM at the 1g container cap on the
-		# shared homelab). Octane's frankenphp-worker.php loop reads MAX_REQUESTS
+		# per-request memory growth (leak → OOM at the 1g container cap).
+		# Octane's frankenphp-worker.php loop reads MAX_REQUESTS
 		# from the worker env (default 1000); `num 2` sets the 2-worker sizing
 		# independent of host core count.
 		worker {
