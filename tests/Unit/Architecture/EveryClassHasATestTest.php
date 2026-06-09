@@ -9,6 +9,7 @@ use App\Http\Controllers\GoalController;
 use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\MilestoneController;
 use App\Http\Controllers\PrLedgerController;
+use App\Events\ActivityIngested;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\AI\TokenUsage;
 use App\Models\Analytics\StravaSyncLog;
@@ -55,6 +56,7 @@ it('has a test class for every concrete app class', function (): void {
         GoalController::class,        // goal feature tests
         HandleInertiaRequests::class, // framework wiring
         // Immutable value objects / DTOs (no behaviour to unit-test).
+        ActivityIngested::class,         // event payload, asserted via DispatchPostRunAnalysisTest + ActivityPipelineCascadeTest
         ChatCallOptions::class,
         ResolvedLocation::class,
         BriefingResult::class,

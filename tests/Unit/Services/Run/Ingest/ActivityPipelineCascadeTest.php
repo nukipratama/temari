@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeBriefingJob;
-use App\Jobs\AI\AnalyzeDailyGreetingJob;
-use App\Jobs\AI\AnalyzeWeeklyRecapJob;
+use App\Events\ActivityIngested;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    Bus::fake();
+    // Fake only ActivityIngested so the AI fan-out (DispatchPostRunAnalysis) does
+    // not run here — the fan-out is covered by DispatchPostRunAnalysisTest. The
+    // pipeline's job is simply to emit the event once the run is persisted.
+    Event::fake([ActivityIngested::class]);
     $this->pipeline = app(ActivityPipeline::class);
 });
 
@@ -49,36 +49,26 @@ function ingestSeed(): Activity
     return $activity;
 }
 
-it('cascades 4 dispatches after a successful ingest (activity + briefing + greeting + weekly)', function (): void {
+it('emits ActivityIngested with the activity id after a successful ingest', function (): void {
     $activity = ingestSeed();
 
     $this->pipeline->ingest($activity);
 
-    Bus::assertDispatched(AnalyzeActivityJob::class);
-    Bus::assertDispatched(AnalyzeBriefingJob::class);
-    Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
-    Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
-});
-
-it('dispatches AnalyzeActivityJob exactly once per ingest (debounced via the group routing)', function (): void {
-    $activity = ingestSeed();
-
-    $this->pipeline->ingest($activity);
-
-    Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
-});
-
-it('uses today as discriminator for briefing/greeting/trend', function (): void {
-    Carbon::setTestNow('2026-05-19 12:00:00');
-    $activity = ingestSeed();
-
-    $this->pipeline->ingest($activity);
-
-    Bus::assertDispatched(
-        AnalyzeBriefingJob::class,
-        fn (AnalyzeBriefingJob $job): bool => $job->discriminator === '2026-05-19',
+    Event::assertDispatched(
+        ActivityIngested::class,
+        fn (ActivityIngested $event): bool => $event->activityId === $activity->id,
     );
-    // Row job carries no discriminator; asserting it dispatched at all is enough.
-    Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
-    Carbon::setTestNow();
+});
+
+it('does not emit ActivityIngested when the detail fetch fails', function (): void {
+    $activity = Activity::factory()->stub()->create(['strava_external_id' => 999]);
+    StravaConnection::factory()->for($activity->user)->create([
+        'access_token' => 'tok',
+        'token_expires_at' => Carbon::now()->addHours(2),
+    ]);
+    Http::fake(['strava.com/api/v3/activities/999' => Http::response(['error' => 'down'], 500)]);
+
+    $this->pipeline->ingest($activity);
+
+    Event::assertNotDispatched(ActivityIngested::class);
 });

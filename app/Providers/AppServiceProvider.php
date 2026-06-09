@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Events\ActivityIngested;
+use App\Listeners\DispatchPostRunAnalysis;
 use App\Listeners\VerifyDependencies;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
@@ -51,6 +53,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Deepen the `/up` health route to fail when MySQL or Redis is unreachable.
         Event::listen(DiagnosingHealth::class, VerifyDependencies::class);
+
+        // Post-ingest AI analysis fan-out runs in its own queued job.
+        Event::listen(ActivityIngested::class, DispatchPostRunAnalysis::class);
 
         // Edge basicauth (docker/Caddyfile) gates these in prod. The `?Authenticatable`
         // param is what makes the gate accept guests — a zero-param closure 403s them.
