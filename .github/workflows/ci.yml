@@ -1,7 +1,9 @@
 name: CI
 
 on:
+  pull_request:
   push:
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -41,6 +43,20 @@ jobs:
           echo "backend=$backend" >> "$GITHUB_OUTPUT"
           echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
           echo "Result: backend=$backend frontend=$frontend"
+
+  # Runs on every event, independent of the path filter.
+  secret-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   backend-tests:
     needs: changes
@@ -270,9 +286,23 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
+  # Single required check for branch protection.
+  ci-gate:
+    needs: [backend-tests, frontend-tests, secret-scan]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require upstream jobs to have succeeded (or cleanly skipped)
+        run: |
+          for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}"; do
+            [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a test job did not pass ($r)"; exit 1; }
+          done
+          [ "${{ needs.secret-scan.result }}" = "success" ] \
+            || { echo "::error::secret-scan did not pass (${{ needs.secret-scan.result }})"; exit 1; }
+
   deploy:
     name: Deploy
-    needs: [backend-tests, frontend-tests]
+    needs: [ci-gate]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: [self-hosted, homelab]
     concurrency:
@@ -281,7 +311,7 @@ jobs:
     timeout-minutes: 15
     env:
       # All app secrets + per-host config live in /opt/teman-lari/.env on the
-      # homelab runner, loaded by compose via `env_file:`. The workflow no
+      # self-hosted runner, loaded by compose via `env_file:`. The workflow no
       # longer needs GitHub Secrets for these — see compose.prod.yaml.
       COMPOSE: docker compose -f compose.prod.yaml
       BACKUP_DIR: /var/lib/teman-lari-backups
