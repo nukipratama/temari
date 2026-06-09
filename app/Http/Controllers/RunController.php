@@ -31,6 +31,7 @@ class RunController extends Controller
     /**
      * Range chip → days back from today. Default `8w` keeps the page snappy
      * for typical browsing while letting users pull up to a year on demand.
+     * {@see self::RANGE_ALL} is the unbounded escalation (every run, any age).
      */
     private const array RANGE_DAYS = [
         '8w' => 56,
@@ -38,6 +39,9 @@ class RunController extends Controller
         '6m' => 182,
         '1y' => 365,
     ];
+
+    /** Unbounded range: no lower bound, every analyzed run regardless of age. */
+    private const string RANGE_ALL = 'all';
 
     public function index(Request $request): Response
     {
@@ -47,29 +51,27 @@ class RunController extends Controller
         $requestedRange = $this->resolveRange($request->query('range'));
 
         // Age (in whole days) of the newest analyzed run; null when the user has
-        // no dated analyzed runs at all. Drives both the auto-widen below and the
-        // empty-state copy on the page.
+        // no dated analyzed runs at all. Drives the auto-widen below.
         $latestRunDaysAgo = $this->latestRunDaysAgo($user);
 
-        // When the requested window holds no runs but an older run exists, widen
-        // to the smallest range chip that reaches that run so the page never
-        // renders empty with runs hiding just outside the window.
+        // If the user has runs, always show them: widen to the smallest range
+        // that reaches the newest run, escalating past every preset to "all" so
+        // the page never asks the user to widen the window by hand.
         $effectiveRange = $this->widenRangeToReach($requestedRange, $latestRunDaysAgo);
         $rangeAutoWidened = $effectiveRange !== $requestedRange;
-
-        $rangeStart = Carbon::today()->subDays(self::RANGE_DAYS[$effectiveRange] - 1);
+        $rangeStart = $this->rangeStartFor($effectiveRange);
 
         $runs = Activity::query()
             ->where('user_id', $user->id)
             ->whereNotNull('analyzed_at')
-            ->whereHas('detail', fn ($q) => $q->where('start_date_local', '>=', $rangeStart))
+            ->whereHas('detail', fn ($q) => $rangeStart === null ? $q : $q->where('start_date_local', '>=', $rangeStart))
             ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards'])])
             ->orderByDesc('id')
             ->get();
 
         $weeklySnapshots = WeeklySnapshot::query()
             ->where('user_id', $user->id)
-            ->where('week_ending', '>=', $rangeStart)
+            ->when($rangeStart !== null, fn ($q) => $q->where('week_ending', '>=', $rangeStart))
             ->orderByDesc('week_ending')
             ->get();
 
@@ -79,7 +81,7 @@ class RunController extends Controller
             'runs' => $runs->values(),
             'notes' => $this->notesForActivities($runs->pluck('id')->all()),
             'rangeFilter' => $effectiveRange,
-            'rangeStart' => $rangeStart->toDateString(),
+            'rangeStart' => $rangeStart?->toDateString(),
             'rangeAutoWidened' => $rangeAutoWidened,
             'latestRunDaysAgo' => $latestRunDaysAgo,
             'weeklySnapshots' => $weeklySnapshots->map(fn (WeeklySnapshot $row): array => [
@@ -109,16 +111,17 @@ class RunController extends Controller
     }
 
     /**
-     * Smallest range chip whose window reaches the newest run. Returns the
-     * requested range untouched when it already reaches the run (or when there
-     * is no run / the newest run falls beyond the widest window).
+     * Smallest range whose window reaches the newest run, escalating to "all"
+     * (no lower bound) when the run is older than every preset. Returns the
+     * requested range untouched when the user has no runs or it already reaches.
      */
     private function widenRangeToReach(string $requestedRange, ?int $latestRunDaysAgo): string
     {
-        $requestedReaches = $latestRunDaysAgo === null
+        $alreadyReaches = $latestRunDaysAgo === null
+            || $requestedRange === self::RANGE_ALL
             || $latestRunDaysAgo <= self::RANGE_DAYS[$requestedRange] - 1;
 
-        if ($requestedReaches) {
+        if ($alreadyReaches) {
             return $requestedRange;
         }
 
@@ -128,7 +131,19 @@ class RunController extends Controller
             }
         }
 
-        return $requestedRange;
+        return self::RANGE_ALL;
+    }
+
+    /**
+     * Lower bound for a range, or null for "all" (no lower bound, show every run).
+     */
+    private function rangeStartFor(string $range): ?Carbon
+    {
+        if ($range === self::RANGE_ALL) {
+            return null;
+        }
+
+        return Carbon::today()->subDays(self::RANGE_DAYS[$range] - 1);
     }
 
     /**
@@ -213,7 +228,11 @@ class RunController extends Controller
     {
         $candidate = is_string($raw) ? $raw : '';
 
-        return array_key_exists($candidate, self::RANGE_DAYS) ? $candidate : '8w';
+        if ($candidate === self::RANGE_ALL || array_key_exists($candidate, self::RANGE_DAYS)) {
+            return $candidate;
+        }
+
+        return '8w';
     }
 
     /**

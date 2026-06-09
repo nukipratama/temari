@@ -54,7 +54,7 @@ describe('Riwayat/Jejak', () => {
         expect(screen.getByText(/Aku lagi narik lari kamu/i)).toBeInTheDocument();
     });
 
-    it('nudges to widen the range when the window is empty but older runs exist', () => {
+    it('shows the connection-state empty copy without asking the user to widen', () => {
         setMockPage({
             auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
             flash: {},
@@ -66,26 +66,34 @@ describe('Riwayat/Jejak', () => {
                 runs={[]}
                 rangeFilter="8w"
                 rangeStart="2026-04-13"
-                latestRunDaysAgo={84}
                 weeklySnapshots={[]}
             />,
         );
-        expect(screen.getByText(/Perlebar rentang waktu untuk melihatnya/i)).toBeInTheDocument();
-        expect(screen.getByText(/sekitar 12 minggu lalu/i)).toBeInTheDocument();
+        // The page auto-widens, so there is no "widen the range yourself" nudge.
+        expect(screen.getByText(/Belum ada lari yang bisa ditampilkan/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Perlebar rentang waktu/i)).not.toBeInTheDocument();
     });
 
-    it('does NOT render the widen nudge when runs are present', () => {
+    it('hides the sync button while a sync is already running', () => {
+        // state defaults to 'syncing' in beforeEach.
+        render(
+            <RunsIndex runs={[]} rangeFilter="8w" rangeStart="2026-04-13" weeklySnapshots={[]} />,
+        );
+        expect(screen.getByText(/Aku lagi narik lari kamu/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /sync/i })).not.toBeInTheDocument();
+    });
+
+    it('renders runs with no auto-widen banner by default', () => {
         render(
             <RunsIndex
                 runs={[run(101, 'Pagi', '2026-05-19T06:00:00')]}
                 rangeFilter="8w"
                 rangeStart="2026-04-13"
-                latestRunDaysAgo={1}
                 weeklySnapshots={[]}
             />,
         );
-        expect(screen.queryByText(/Perlebar rentang waktu untuk melihatnya/i)).not.toBeInTheDocument();
         expect(screen.getByTestId('run-row')).toBeInTheDocument();
+        expect(screen.queryByText(/diperlebar otomatis|Menampilkan semua lari/i)).not.toBeInTheDocument();
     });
 
     it('shows the auto-widened banner when the server widened the range', () => {
@@ -95,11 +103,23 @@ describe('Riwayat/Jejak', () => {
                 rangeFilter="1y"
                 rangeStart="2025-05-19"
                 rangeAutoWidened
-                latestRunDaysAgo={200}
                 weeklySnapshots={[]}
             />,
         );
         expect(screen.getByText(/Rentang diperlebar otomatis/i)).toBeInTheDocument();
+    });
+
+    it('shows the "semua lari" note when widened all the way', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi', '2026-05-19T06:00:00')]}
+                rangeFilter="all"
+                rangeStart={null}
+                rangeAutoWidened
+                weeklySnapshots={[]}
+            />,
+        );
+        expect(screen.getByText(/Menampilkan semua lari kamu/i)).toBeInTheDocument();
     });
 
     it('groups runs into weekly buckets + renders weekly snapshot stats', () => {

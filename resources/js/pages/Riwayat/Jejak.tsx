@@ -41,7 +41,7 @@ interface RunsIndexProps {
     runs: ReadonlyArray<Activity & { detail: ActivityDetail }>;
     notes?: Record<number, RunNote>;
     rangeFilter: RangeFilterValue;
-    rangeStart: string;
+    rangeStart: string | null;
     /** Server widened the requested range to reach an older run. */
     rangeAutoWidened?: boolean;
     /** Age in whole days of the newest analyzed run, or null when none exist. */
@@ -62,7 +62,7 @@ interface WeekBucket {
     totalTrimp: number;
 }
 
-export type RangeFilterValue = '8w' | '12w' | '6m' | '1y';
+export type RangeFilterValue = '8w' | '12w' | '6m' | '1y' | 'all';
 
 const DEFAULT_RANGE: RangeFilterValue = '12w';
 const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'rangeAutoWidened', 'latestRunDaysAgo', 'weeklySnapshots', 'notes'];
@@ -72,6 +72,7 @@ const RANGE_FILTER_OPTIONS: ReadonlyArray<RangeOption<RangeFilterValue>> = [
     { value: '12w', label: '3 bulan terakhir', hint: '12w' },
     { value: '6m', label: 'Setengah tahun', hint: '6m' },
     { value: '1y', label: 'Setahun penuh', hint: '1y' },
+    { value: 'all', label: 'Semua lari', hint: 'all' },
 ];
 
 const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => ({
@@ -93,7 +94,6 @@ export default function RunsIndex({
     notes = {},
     rangeFilter,
     rangeAutoWidened = false,
-    latestRunDaysAgo = null,
     weeklySnapshots,
     journeyMatch = null,
 }: Readonly<RunsIndexProps>) {
@@ -193,7 +193,7 @@ export default function RunsIndex({
                         ))}
                     </div>
                 ) : (
-                    <EmptyState latestRunDaysAgo={latestRunDaysAgo} />
+                    <EmptyState />
                 )}
             </PageContainer>
         </AppShell>
@@ -363,23 +363,13 @@ const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
     },
     syncing: {
         line: 'Aku lagi narik lari kamu 🏃‍♀️',
-        sub: 'Sebentar ya, riwayatnya muncul begitu lari pertama masuk.',
+        sub: 'Sebentar ya, riwayatnya muncul begitu lari pertama selesai diproses.',
     },
     ready: {
-        line: 'Belum ada lari di rentang ini',
-        sub: 'Coba ganti filter, atau sync lagi kalau baru kelar lari.',
+        line: 'Belum ada lari yang bisa ditampilkan',
+        sub: 'Lari baru muncul di sini begitu selesai diproses. Coba sync lagi kalau baru kelar lari.',
     },
 };
-
-/** Whole days → an approximate "sekitar N minggu/hari lalu" phrase. */
-function lastRunAgoLabel(daysAgo: number): string {
-    if (daysAgo < 7) {
-        const days = Math.max(1, daysAgo);
-        return `sekitar ${days} hari lalu`;
-    }
-    const weeks = Math.round(daysAgo / 7);
-    return `sekitar ${weeks} minggu lalu`;
-}
 
 /**
  * Banner shown above the run list when the server widened the requested window
@@ -387,36 +377,33 @@ function lastRunAgoLabel(daysAgo: number): string {
  */
 function RangeWidenedNote({ rangeFilter }: Readonly<{ rangeFilter: RangeFilterValue }>) {
     const label = RANGE_FILTER_OPTIONS.find((o) => o.value === rangeFilter)?.label ?? rangeFilter;
+    const message =
+        rangeFilter === 'all'
+            ? 'Menampilkan semua lari kamu, biar lari terakhir tetap kelihatan.'
+            : `Rentang diperlebar otomatis ke ${label} biar lari terakhirmu kelihatan.`;
     return (
         <Card tone="cream-deep" padding="sm" className="flex items-center gap-2.5">
             <Icon icon="mdi:arrow-expand-horizontal" width={16} height={16} className="shrink-0 text-ink-3" aria-hidden />
-            <p className="font-sans text-sm text-ink-2">
-                Rentang diperlebar otomatis ke {label} biar lari terakhirmu kelihatan.
-            </p>
+            <p className="font-sans text-sm text-ink-2">{message}</p>
         </Card>
     );
 }
 
-function EmptyState({ latestRunDaysAgo }: Readonly<{ latestRunDaysAgo: number | null }>) {
+function EmptyState() {
     const { stravaSync } = usePage<SharedProps>().props;
     const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
+    const { line, sub } = EMPTY_COPY[state];
 
-    // The user HAS runs, just none inside this window. Nudge them to widen the
-    // range instead of showing the generic "connect Strava / sync" empty state.
-    const hasOlderRuns = state === 'ready' && latestRunDaysAgo !== null;
-    const { line, sub } = hasOlderRuns
-        ? {
-              line: 'Belum ada lari di rentang ini',
-              sub: `Lari terakhirmu ${lastRunAgoLabel(latestRunDaysAgo)}. Perlebar rentang waktu untuk melihatnya.`,
-          }
-        : EMPTY_COPY[state];
-
+    // The page auto-widens to show any run the user has, so reaching the empty
+    // state means there is genuinely nothing to show yet. The copy explains why
+    // per connection state; the sync button is hidden while a sync is already
+    // running (nothing for the user to do but wait).
     return (
         <Card tone="empty" padding="lg" className="flex flex-col items-center text-center">
             <Temari pose="excited" size={128} animate />
             <p className="mt-4 font-display text-2xl italic text-ink-2">{line}</p>
             <p className="mt-2 font-sans text-sm text-ink-2">{sub}</p>
-            {!hasOlderRuns && <StravaSyncButton state={state} className="mt-4" />}
+            {state !== 'syncing' && <StravaSyncButton state={state} className="mt-4" />}
             <BackLink href="/" tone="accent" className="mt-4">
                 Kembali ke Hari Ini
             </BackLink>

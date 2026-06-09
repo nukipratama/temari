@@ -66,12 +66,22 @@ it('accumulates stats from activities and PRs', function (): void {
         ['category' => '10km'],
         ['category' => 'half_marathon'],
     )->create();
-    Activity::factory()->for($user)->count(5)->create();
+    Activity::factory()->for($user)->analyzed()->count(5)->create();
 
     $ctx = GamificationContext::forUser($user);
 
     expect($ctx->prCount)->toBe(3)
         ->and($ctx->activityCount)->toBe(5);
+});
+
+it('counts only ingested runs, ignoring un-analyzed stubs', function (): void {
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->analyzed()->count(3)->create();
+    // A stub still in the sync backlog (no analyzed_at) has no data and must not
+    // advance run-count goals/unlocks (1 / 10 / 50 runs).
+    Activity::factory()->for($user)->create(['analyzed_at' => null]);
+
+    expect(GamificationContext::forUser($user)->activityCount)->toBe(3);
 });
 
 it('converts totalDistanceM to km', function (): void {

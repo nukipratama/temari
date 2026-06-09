@@ -79,6 +79,34 @@ it('auto-widens the range and flags it when the newest run is outside the defaul
             ->where('runs.0.detail.name', 'Ancient'));
 });
 
+it('escalates to the all range so a run older than every preset still shows', function (): void {
+    $user = User::factory()->create();
+    $ancient = Activity::factory()->for($user)->analyzed()->create();
+    // 400 days old: beyond 8w/12w/6m/1y, so auto-widen falls through to "all".
+    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(400)]);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', 'all')
+            ->where('rangeAutoWidened', true)
+            ->where('rangeStart', null)
+            ->has('runs', 1)
+            ->where('runs.0.detail.name', 'Ancient'));
+});
+
+it('accepts an explicit all range with no lower bound', function (): void {
+    $user = User::factory()->create();
+    $ancient = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(900)]);
+
+    $this->actingAs($user)->get('/aktivitas?range=all')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', 'all')
+            ->where('rangeAutoWidened', false)
+            ->has('runs', 1));
+});
+
 it('does not widen and reports the run age when runs exist in the requested window', function (): void {
     $user = User::factory()->create();
     $recent = Activity::factory()->for($user)->analyzed()->create();

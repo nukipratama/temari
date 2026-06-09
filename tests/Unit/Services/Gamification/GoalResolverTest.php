@@ -165,7 +165,7 @@ it('counts night-run badges toward pita_malam', function (): void {
 
 it('counts activities toward kaus_pemula, sepatu_basic and kaus_legendaris', function (): void {
     $user = User::factory()->create();
-    Activity::factory()->for($user)->count(10)->create();
+    Activity::factory()->for($user)->analyzed()->count(10)->create();
 
     $byId = goalsById($this->resolver, $user);
 
