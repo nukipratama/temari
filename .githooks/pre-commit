@@ -14,6 +14,33 @@ EOF
   exit 1
 fi
 
+# --- Secret scan (gitleaks): block staged credential leaks before they ever
+# enter history. Runs on ALL staged files — before the PHP/TS early-exit below —
+# since a secret can hide in a .env, .json, .yml or .md just as easily.
+if [ "${SKIP_GITLEAKS:-0}" != "1" ]; then
+  if command -v gitleaks >/dev/null 2>&1; then
+    if ! gitleaks git --staged --redact --no-banner; then
+      cat >&2 <<'EOF'
+
+pre-commit: gitleaks flagged a possible secret in your staged changes (see above).
+
+  → Real credential?  Remove it from the diff AND rotate it (assume it's burned).
+  → False positive?   Add an allowlist entry to .gitleaks.toml.
+  → Bypass once:       SKIP_GITLEAKS=1 git commit ...   (not recommended)
+EOF
+      exit 1
+    fi
+  else
+    cat >&2 <<'EOF'
+pre-commit: gitleaks is not installed — the secret scan cannot run.
+
+  → Install:  brew install gitleaks   (https://github.com/gitleaks/gitleaks)
+  → Bypass once (not recommended):  SKIP_GITLEAKS=1 git commit ...
+EOF
+    exit 1
+  fi
+fi
+
 STAGED_PHP=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.php$' || true)
 STAGED_TS=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx)$' || true)
 
