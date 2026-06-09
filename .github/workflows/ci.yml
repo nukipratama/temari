@@ -19,7 +19,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
@@ -51,10 +51,10 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v3
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -87,7 +87,7 @@ jobs:
           --health-cmd="redis-cli ping"
           --health-interval=5s --health-timeout=2s --health-retries=10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Show runner resources
         # Surfaces what this runner actually offers — paratest/vitest scale to
@@ -106,7 +106,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ env.PHP_VERSION }}
           coverage: pcov
@@ -124,7 +124,7 @@ jobs:
             opcache.jit_buffer_size=0
 
       - name: Cache composer vendor
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: vendor
           key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
@@ -219,7 +219,7 @@ jobs:
     if: ${{ needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Show runner resources
         run: |
@@ -236,7 +236,7 @@ jobs:
 
       - name: Setup Node
         id: setup-node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: '.nvmrc'
           cache: npm
@@ -245,7 +245,7 @@ jobs:
       # hit, `npm ci` is skipped entirely (the download cache is a fallback).
       - name: Cache node_modules
         id: node_modules_cache
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: node_modules
           key: node_modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('package-lock.json') }}
@@ -316,7 +316,7 @@ jobs:
       COMPOSE: docker compose -f compose.prod.yaml
       BACKUP_DIR: /var/lib/teman-lari-backups
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Tag current :latest as :previous (rollback target)
         run: |
