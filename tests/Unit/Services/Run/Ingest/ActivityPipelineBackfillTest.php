@@ -2,72 +2,59 @@
 
 declare(strict_types=1);
 
+// Backfill stagger now lives in DispatchPostRunAnalysis (the queued listener that
+// owns the post-ingest AI fan-out), so these cases drive the listener directly.
+// Kept here as the backfill-delay regression suite.
+
+use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\Activity;
-use App\Models\StravaConnection;
-use App\Services\Run\Ingest\ActivityPipeline;
+use App\Models\ActivityDetail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
     Cache::flush();
-    RateLimiter::clear('strava-api:15min');
-    RateLimiter::clear('strava-api:daily');
     Carbon::setTestNow('2026-05-20 12:00:00');
     config()->set('ai.backfill_threshold_hours', 24);
     config()->set('ai.backfill_stagger_seconds', 360);
-    $this->pipeline = app(ActivityPipeline::class);
 });
 
 afterEach(function (): void {
     Carbon::setTestNow();
 });
 
-function backfillIngestSeed(string $startDate, ?int $userId = null): Activity
+function backfillSeed(string $startDate, ?int $userId = null): Activity
 {
     $activity = $userId === null
-        ? Activity::factory()->create(['strava_external_id' => random_int(1, 1_000_000)])
-        : Activity::factory()->create(['user_id' => $userId, 'strava_external_id' => random_int(1, 1_000_000)]);
+        ? Activity::factory()->create(['analyzed_at' => Carbon::now()])
+        : Activity::factory()->create(['user_id' => $userId, 'analyzed_at' => Carbon::now()]);
 
-    if (! StravaConnection::query()->where('user_id', $activity->user_id)->exists()) {
-        StravaConnection::factory()->for($activity->user)->create([
-            'access_token' => 'tok',
-            'token_expires_at' => Carbon::now()->addHours(2),
-        ]);
-    }
-
-    Http::fake([
-        "strava.com/api/v3/activities/{$activity->strava_external_id}" => Http::response([
-            'name' => 'Run',
-            'start_date_local' => $startDate,
-            'distance' => 5000.0,
-            'moving_time' => 1500,
-            'elapsed_time' => 1500,
-            'average_speed' => 3.33,
-            'total_elevation_gain' => 10.0,
-            'has_heartrate' => false,
-            'splits_metric' => [],
-            'map' => ['summary_polyline' => 'poly'],
-            'start_latlng' => null,
-        ]),
-        "strava.com/api/v3/activities/{$activity->strava_external_id}/streams*" => Http::response([]),
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse($startDate),
+        'distance' => 5000.0,
+        'moving_time' => 1500,
     ]);
 
     return $activity;
 }
 
-it('fresh activities (started within threshold) dispatch with zero delay', function (): void {
-    $activity = backfillIngestSeed('2026-05-20 06:00:00'); // 6 hours ago
+function fireDispatch(Activity $activity): void
+{
+    app(DispatchPostRunAnalysis::class)->handle(new ActivityIngested($activity->id));
+}
 
-    $this->pipeline->ingest($activity);
+it('fresh activities (started within threshold) dispatch with zero delay', function (): void {
+    $activity = backfillSeed('2026-05-20 06:00:00'); // 6 hours ago
+
+    fireDispatch($activity);
 
     Bus::assertDispatched(
         AnalyzeActivityJob::class,
@@ -77,9 +64,9 @@ it('fresh activities (started within threshold) dispatch with zero delay', funct
 });
 
 it('backfilled activities dispatch with staggered delay per user', function (): void {
-    $userActivity1 = backfillIngestSeed('2026-04-01 06:00:00'); // ~50 days ago
+    $userActivity1 = backfillSeed('2026-04-01 06:00:00'); // ~50 days ago
 
-    $this->pipeline->ingest($userActivity1);
+    fireDispatch($userActivity1);
 
     Bus::assertDispatched(
         AnalyzeActivityJob::class,
@@ -90,8 +77,8 @@ it('backfilled activities dispatch with staggered delay per user', function (): 
 
     Bus::fake();
 
-    $userActivity2 = backfillIngestSeed('2026-04-02 06:00:00', $userActivity1->user_id);
-    $this->pipeline->ingest($userActivity2);
+    $userActivity2 = backfillSeed('2026-04-02 06:00:00', $userActivity1->user_id);
+    fireDispatch($userActivity2);
 
     Bus::assertDispatched(
         AnalyzeActivityJob::class,
@@ -100,12 +87,12 @@ it('backfilled activities dispatch with staggered delay per user', function (): 
 });
 
 it('backfill stagger is isolated per user', function (): void {
-    $userA = backfillIngestSeed('2026-04-01 06:00:00');
-    $this->pipeline->ingest($userA);
+    $userA = backfillSeed('2026-04-01 06:00:00');
+    fireDispatch($userA);
     Bus::fake();
 
-    $userB = backfillIngestSeed('2026-04-01 06:00:00');
-    $this->pipeline->ingest($userB);
+    $userB = backfillSeed('2026-04-01 06:00:00');
+    fireDispatch($userB);
 
     // User B's first backfill should NOT inherit user A's slot
     Bus::assertDispatched(
@@ -115,13 +102,13 @@ it('backfill stagger is isolated per user', function (): void {
 });
 
 it('logs ai.backfill.queued when a non-zero delay is applied', function (): void {
-    $first = backfillIngestSeed('2026-04-01 06:00:00');
-    $this->pipeline->ingest($first);
+    $first = backfillSeed('2026-04-01 06:00:00');
+    fireDispatch($first);
     Bus::fake();
     Log::spy();
 
-    $second = backfillIngestSeed('2026-04-02 06:00:00', $first->user_id);
-    $this->pipeline->ingest($second);
+    $second = backfillSeed('2026-04-02 06:00:00', $first->user_id);
+    fireDispatch($second);
 
     Log::shouldHaveReceived('info')->atLeast()->once()->with(
         'ai.backfill.queued',

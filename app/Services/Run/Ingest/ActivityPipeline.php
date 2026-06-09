@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use App\Events\ActivityIngested;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
-use App\Models\WeeklySnapshot;
-use App\Services\AI\AnalysisType;
-use App\Services\AI\AnalysisService;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Gamification\MilestoneDetector;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -26,7 +24,6 @@ use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
@@ -38,10 +35,6 @@ class ActivityPipeline
 {
     private const int DETAIL_FETCH_MAX_ATTEMPTS = Activity::MAX_DETAIL_FETCH_ATTEMPTS;
 
-    private const string BACKFILL_SLOT_CACHE_PREFIX = 'ai.backfill.next-slot:';
-
-    private const int BACKFILL_SLOT_CACHE_TTL_HOURS = 2;
-
     public function __construct(
         private readonly StravaClient $client,
         private readonly StreamAnalysis $streamAnalysis,
@@ -50,7 +43,6 @@ class ActivityPipeline
         private readonly OpenMeteoClient $weather,
         private readonly RunCardFactory $cardFactory,
         private readonly Temari $temari,
-        private readonly AnalysisService $analysisService,
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly MilestoneDetector $milestoneDetector,
         private readonly AppConfig $config,
@@ -119,98 +111,10 @@ class ActivityPipeline
         $this->cardFactory->build($activity, $detailModel);
         $this->temari->postRunLine($activity, $detailModel);
         $this->milestoneDetector->detect($activity, $detailModel, $newPrCategories);
-        $this->cascadeAfterIngest($activity, $detailModel);
-    }
 
-    private function cascadeAfterIngest(Activity $activity, ActivityDetail $detail): void
-    {
-        $user = $activity->user;
-        $today = Carbon::today()->toDateString();
-        $delaySec = $this->backfillDelaySeconds($activity, $detail);
-
-        $this->analysisService->requestActivityGroup($activity, delaySeconds: $delaySec);
-        $this->analysisService->requestBriefingGroup($user, $today, invalidate: true, delaySeconds: $delaySec);
-        // BriefingMascotVoice was split out of the briefing group; dispatch it
-        // independently so its own LLM call runs alongside the briefing group.
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
-            subjectId: $user->id,
-            type: AnalysisType::BriefingMascotVoice,
-            discriminator: $today,
-            delaySeconds: $delaySec,
-            invalidate: true,
-        );
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
-            subjectId: $user->id,
-            type: AnalysisType::DailyGreeting,
-            discriminator: $today,
-            delaySeconds: $delaySec,
-            invalidate: true,
-        );
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
-            subjectId: $user->id,
-            type: AnalysisType::TrendCaption,
-            discriminator: $today,
-            delaySeconds: $delaySec,
-            invalidate: true,
-        );
-
-        if ($detail->start_date_local === null) {
-            return;
-        }
-        $snapshot = $this->weeklyAggregator->rebuildForwardFrom($user, $detail->start_date_local);
-        if ($snapshot !== null) {
-            $this->analysisService->request(
-                subjectOrType: WeeklySnapshot::class,
-                subjectId: $snapshot->id,
-                type: AnalysisType::WeeklyRecap,
-                delaySeconds: $delaySec,
-                invalidate: true,
-            );
-        }
-    }
-
-    /**
-     * Activities started more than `ai.backfill_threshold_hours` ago are
-     * treated as backfill — their cascade gets staggered behind any other
-     * backfilled cascades queued in the last 2 hours for this user. Fresh
-     * runs (or activities with no start timestamp) bypass the cache and
-     * dispatch immediately at delay=0.
-     */
-    private function backfillDelaySeconds(Activity $activity, ActivityDetail $detail): int
-    {
-        $startedAt = $detail->start_date_local;
-        if ($startedAt === null) {
-            return 0;
-        }
-
-        $thresholdHours = (int) config('ai.backfill_threshold_hours', 24);
-        if (Carbon::now()->diffInHours($startedAt, absolute: true) < $thresholdHours) {
-            return 0;
-        }
-
-        $staggerSec = max(1, (int) config('ai.backfill_stagger_seconds', 360));
-        $key = self::BACKFILL_SLOT_CACHE_PREFIX.$activity->user_id;
-        $now = Carbon::now();
-
-        $cached = Cache::get($key);
-        $slotAt = ($cached instanceof Carbon && $cached->gt($now)) ? $cached : $now->copy();
-        $delaySec = (int) $now->diffInSeconds($slotAt, absolute: true);
-
-        Cache::put($key, $slotAt->copy()->addSeconds($staggerSec), $now->copy()->addHours(self::BACKFILL_SLOT_CACHE_TTL_HOURS));
-
-        if ($delaySec > 0) {
-            Log::info('ai.backfill.queued', [
-                'activity_id' => $activity->id,
-                'user_id' => $activity->user_id,
-                'delay_sec' => $delaySec,
-                'slot_at' => $slotAt->toIso8601String(),
-            ]);
-        }
-
-        return $delaySec;
+        // Hand off the AI analysis fan-out to a queued listener so this pipeline
+        // stays ignorant of which analyses run. See DispatchPostRunAnalysis.
+        ActivityIngested::dispatch($activity->id);
     }
 
     /**
