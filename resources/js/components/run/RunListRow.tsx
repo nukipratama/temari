@@ -10,6 +10,7 @@ import Temari from '@/components/temari/Temari';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 import MoodChip from '@/components/ui/MoodChip';
 import { MOOD_LABEL } from '@/lib/mood';
+import { renderBold } from '@/lib/richText';
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
 export interface RunNote {
@@ -68,7 +69,7 @@ function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowPro
                             aria-hidden
                             className="mt-0.5 shrink-0 text-leaf-deep"
                         />
-                        <p className="min-w-0">{note.oneline}</p>
+                        <p className="min-w-0">{renderBold(note.oneline)}</p>
                     </div>
                 )}
             </div>

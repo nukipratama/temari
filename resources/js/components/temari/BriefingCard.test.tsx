@@ -119,6 +119,17 @@ describe('BriefingCard', () => {
         expect(screen.getAllByText(/Lagi dipikirin Temari/).length).toBeGreaterThan(0);
     });
 
+    it('renders **bold** markers in the mascot voice bubble as <strong>', () => {
+        render(
+            <BriefingCard
+                briefing={makeBriefing({
+                    mascotVoice: analysisPayload('dapet **PR** juga', 'done', 'briefing_mascot_voice'),
+                })}
+            />,
+        );
+        expect(screen.getByText('PR').tagName).toBe('STRONG');
+    });
+
     it('ticks down the re-analyze cooldown each second', () => {
         vi.useFakeTimers();
         try {

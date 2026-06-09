@@ -112,7 +112,7 @@ export default function BriefingCard({
                         aria-hidden
                         className="absolute left-2.5 top-2.5 text-leaf-deep"
                     />
-                    {briefing.mascotVoice.content}
+                    {renderBold(briefing.mascotVoice.content)}
                 </div>
             )}
 

@@ -61,4 +61,10 @@ describe('RunListRow', () => {
         render(<RunListRow detail={detail({ trimp_edwards: 220 })} />);
         expect(screen.getByText('Lemes')).toBeInTheDocument();
     });
+
+    it('renders **bold** markers in the note as <strong>', () => {
+        render(<RunListRow detail={detail()} note={{ oneline: 'dapet **PR** juga', mood: 'nyala' }} />);
+        const strong = screen.getByText('PR');
+        expect(strong.tagName).toBe('STRONG');
+    });
 });
