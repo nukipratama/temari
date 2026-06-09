@@ -44,8 +44,6 @@ interface RunsIndexProps {
     rangeStart: string | null;
     /** Server widened the requested range to reach an older run. */
     rangeAutoWidened?: boolean;
-    /** Age in whole days of the newest analyzed run, or null when none exist. */
-    latestRunDaysAgo?: number | null;
     weeklySnapshots: ReadonlyArray<WeeklySnapshotRow>;
     journeyMatch?: JourneyMatchData | null;
 }
@@ -65,7 +63,7 @@ interface WeekBucket {
 export type RangeFilterValue = '8w' | '12w' | '6m' | '1y' | 'all';
 
 const DEFAULT_RANGE: RangeFilterValue = '12w';
-const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'rangeAutoWidened', 'latestRunDaysAgo', 'weeklySnapshots', 'notes'];
+const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'rangeAutoWidened', 'weeklySnapshots', 'notes'];
 
 const RANGE_FILTER_OPTIONS: ReadonlyArray<RangeOption<RangeFilterValue>> = [
     { value: '8w', label: '2 bulan terakhir', hint: '8w' },

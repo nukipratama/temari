@@ -83,7 +83,6 @@ class RunController extends Controller
             'rangeFilter' => $effectiveRange,
             'rangeStart' => $rangeStart?->toDateString(),
             'rangeAutoWidened' => $rangeAutoWidened,
-            'latestRunDaysAgo' => $latestRunDaysAgo,
             'weeklySnapshots' => $weeklySnapshots->map(fn (WeeklySnapshot $row): array => [
                 ...$row->toArray(),
                 'recap_analysis' => $recapAnalyses[$row->id] ?? Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, $row->id),

@@ -371,15 +371,15 @@ class RunCardFactory
     }
 
     /**
-     * Whether this is the user's first ingested activity. Un-analyzed stubs in a
-     * sync backlog must not suppress the "PertamaKali" badge on the real first run.
+     * Whether this is the user's first ingested activity. The AnalyzedScope
+     * excludes un-analyzed stubs, so a sync backlog cannot suppress the
+     * "PertamaKali" badge on the real first run.
      */
     private function isFirstRunEver(Activity $activity): bool
     {
         return Activity::query()
             ->where('user_id', $activity->user_id)
             ->where('id', '!=', $activity->id)
-            ->whereNotNull('analyzed_at')
             ->doesntExist();
     }
 

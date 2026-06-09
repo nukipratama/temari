@@ -54,9 +54,9 @@ readonly class GamificationContext
     public static function forUser(User $user): self
     {
         $prCount = PersonalRecord::query()->where('user_id', $user->id)->count();
-        // Only ingested runs count toward goals/unlocks; un-analyzed stubs have
-        // no data yet and must not advance milestones (1 / 10 / 50 runs).
-        $activityCount = Activity::query()->where('user_id', $user->id)->whereNotNull('analyzed_at')->count();
+        // Stubs are excluded by the AnalyzedScope, so this counts only ingested
+        // runs toward goals/unlocks (1 / 10 / 50 runs).
+        $activityCount = Activity::query()->where('user_id', $user->id)->count();
 
         $rarityCounts = RunCard::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))

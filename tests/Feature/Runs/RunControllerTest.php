@@ -74,7 +74,6 @@ it('auto-widens the range and flags it when the newest run is outside the defaul
         ->assertInertia(fn (Assert $page) => $page
             ->where('rangeFilter', '1y')
             ->where('rangeAutoWidened', true)
-            ->where('latestRunDaysAgo', 200)
             ->has('runs', 1)
             ->where('runs.0.detail.name', 'Ancient'));
 });
@@ -107,7 +106,7 @@ it('accepts an explicit all range with no lower bound', function (): void {
             ->has('runs', 1));
 });
 
-it('does not widen and reports the run age when runs exist in the requested window', function (): void {
+it('does not widen when runs exist in the requested window', function (): void {
     $user = User::factory()->create();
     $recent = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($recent)->create(['name' => 'Recent', 'start_date_local' => Carbon::now()->subDays(3)]);
@@ -117,11 +116,10 @@ it('does not widen and reports the run age when runs exist in the requested wind
         ->assertInertia(fn (Assert $page) => $page
             ->where('rangeFilter', '8w')
             ->where('rangeAutoWidened', false)
-            ->where('latestRunDaysAgo', 3)
             ->has('runs', 1));
 });
 
-it('reports a null run age and no widening when the user has no analyzed runs', function (): void {
+it('does not widen when the user has no analyzed runs', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/aktivitas')
@@ -129,7 +127,6 @@ it('reports a null run age and no widening when the user has no analyzed runs', 
         ->assertInertia(fn (Assert $page) => $page
             ->where('rangeFilter', '8w')
             ->where('rangeAutoWidened', false)
-            ->where('latestRunDaysAgo', null)
             ->where('runs', []));
 });
 
