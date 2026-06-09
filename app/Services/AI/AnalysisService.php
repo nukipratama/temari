@@ -59,7 +59,7 @@ class AnalysisService
         bool $invalidate = false,
     ): Analysis {
         $subjectType = $subjectOrType instanceof Model ? $subjectOrType::class : $subjectOrType;
-        $groupJobClass = $this->groupJobFor($type);
+        $groupJobClass = $type->groupJobClass();
 
         if ($groupJobClass !== null) {
             $groupDiscriminator = $groupJobClass === AnalyzeActivityJob::class ? null : $discriminator;
@@ -81,21 +81,6 @@ class AnalysisService
     public function requestBriefingGroup(User $user, string $discriminator, bool $invalidate = false, ?int $delaySeconds = null): void
     {
         $this->dispatchGroup(AnalyzeBriefingJob::class, $user->id, $discriminator, $invalidate, $delaySeconds);
-    }
-
-    /**
-     * @return class-string<AnalyzeGroupJob>|null
-     */
-    private function groupJobFor(AnalysisType $type): ?string
-    {
-        if (in_array($type, AnalyzeActivityJob::groupedTypes(), strict: true)) {
-            return AnalyzeActivityJob::class;
-        }
-        if (in_array($type, AnalyzeBriefingJob::groupedTypes(), strict: true)) {
-            return AnalyzeBriefingJob::class;
-        }
-
-        return null;
     }
 
     public function markProcessing(Analysis $row): void

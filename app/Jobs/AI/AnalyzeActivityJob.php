@@ -17,12 +17,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     #[Override]
     public static function groupedTypes(): array
     {
-        return [
-            AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsightTechnical,
-            AnalysisType::RunInsightSplits,
-            AnalysisType::RunInsightZones,
-        ];
+        return AnalysisType::groupedBy(self::class);
     }
 
     #[Override]

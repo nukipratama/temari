@@ -12,6 +12,7 @@ use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeDailyGreetingJob;
+use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePersonaSummaryJob;
 use App\Jobs\AI\AnalyzePrContextJob;
@@ -47,6 +48,69 @@ enum AnalysisType: string
     public const string PERSONA_SUMMARY_SUBJECT_TYPE = 'persona_summary_user';
     public const string AKU_PROFILE_VOICE_SUBJECT_TYPE = 'aku_profile_voice_user';
     public const string MONTHLY_RECAP_SUBJECT_TYPE = 'monthly_recap_user_month';
+
+    /**
+     * The multi-row group job this type is dispatched through (the whole group
+     * is upserted + queued together), or null for single-row / on-demand types
+     * dispatched individually. Single source of truth for grouping — both
+     * {@see AnalyzeGroupJob::groupedTypes()} implementations and
+     * AnalysisService derive from this.
+     *
+     * @return class-string<AnalyzeGroupJob>|null
+     */
+    public function groupJobClass(): ?string
+    {
+        return match ($this) {
+            self::PostRunSpeech,
+            self::RunInsightTechnical,
+            self::RunInsightSplits,
+            self::RunInsightZones => AnalyzeActivityJob::class,
+            // BriefingMascotVoice / BriefingFeaturedKartuVoice are intentionally
+            // NOT grouped here — they split into their own jobs so the "Kata
+            // Temari" / featured-card surfaces retry without re-billing the
+            // headline + suggestion.
+            self::BriefingHeadline,
+            self::BriefingSuggestion => AnalyzeBriefingJob::class,
+            default => null,
+        };
+    }
+
+    /**
+     * All analysis types dispatched through the given group job, in enum order.
+     *
+     * @param  class-string<AnalyzeGroupJob>  $groupJobClass
+     * @return array<int, self>
+     */
+    public static function groupedBy(string $groupJobClass): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            static fn (self $type): bool => $type->groupJobClass() === $groupJobClass,
+        ));
+    }
+
+    /** How often this type is meant to (re)generate; governs cascade dispatch. */
+    public function cadence(): AnalysisCadence
+    {
+        return match ($this) {
+            self::PostRunSpeech,
+            self::RunInsightTechnical,
+            self::RunInsightSplits,
+            self::RunInsightZones,
+            self::CardFlavor,
+            self::PrContext => AnalysisCadence::PerActivity,
+            self::BriefingHeadline,
+            self::BriefingSuggestion,
+            self::BriefingMascotVoice,
+            self::BriefingFeaturedKartuVoice,
+            self::DailyGreeting,
+            self::TrendCaption => AnalysisCadence::Daily,
+            self::WeeklyRecap => AnalysisCadence::Weekly,
+            self::MonthlyRecap => AnalysisCadence::Monthly,
+            self::PersonaSummary,
+            self::AkuProfileVoice => AnalysisCadence::OnDemand,
+        };
+    }
 
     /** @return class-string<AnalyzeBaseJob> */
     public function jobClass(): string
