@@ -37,12 +37,12 @@ x-app-env: &app-env
   PULSE_ENABLED: "true"
   # Stable name so the Servers card isn't a random per-container hash. Ingest is
   # offloaded to a dedicated pulse-redis (drained by pulse-work) — see below.
-  PULSE_SERVER_NAME: teman-lari-homelab
+  PULSE_SERVER_NAME: teman-lari-prod
   PULSE_INGEST_DRIVER: redis
   PULSE_REDIS_CONNECTION: pulse
   PULSE_REDIS_HOST: pulse-redis
   # Servers recorder runs only in pulse-check, which bind-mounts the host root
-  # read-only at /host so the disk metric reflects the real homelab disk.
+  # read-only at /host so the disk metric reflects the real host disk.
   PULSE_SERVER_DIRECTORIES: "/host"
   OCTANE_SERVER: frankenphp
   # NOTE: the runtime boots the Caddyfile worker directive, not `octane:start`,
@@ -121,7 +121,7 @@ services:
           memory: 256m
 
   # Pulse Servers recorder daemon. Without this the /pulse Servers card is empty.
-  # Bind-mounts the host root read-only so the disk metric is the real homelab
+  # Bind-mounts the host root read-only so the disk metric is the real host
   # disk, not this container's overlay fs (PULSE_SERVER_DIRECTORIES=/host).
   pulse-check:
     <<: *app-base

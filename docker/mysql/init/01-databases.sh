@@ -6,7 +6,7 @@
 #   - dev: auto-runs at initdb on a FRESH volume (mounted into
 #     /docker-entrypoint-initdb.d by compose.yaml; connects over the socket).
 #   - prod: run once after (re)initializing the mysql data, piped over stdin so no
-#     bind mount is needed on the self-hosted homelab runner:
+#     bind mount is needed on the self-hosted runner:
 #
 #       docker compose -f compose.prod.yaml exec -T mysql sh < docker/mysql/init/01-databases.sh
 #

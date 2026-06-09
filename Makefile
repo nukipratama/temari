@@ -1,8 +1,8 @@
 # Container interaction helpers. COMPOSE auto-detects the stack so the same
-# `make <target>` works in both places: prod compose on the homelab (where the
+# `make <target>` works in both places: prod compose on the host (where the
 # host secrets file /opt/teman-lari/.env exists), dev compose otherwise.
 # Override with: make COMPOSE="docker compose -f compose.yaml" <target>
-#   Prod/homelab-only helpers. For dev use ./vendor/bin/sail directly.
+#   Prod-only helpers. For dev use ./vendor/bin/sail directly.
 
 COMPOSE ?= docker compose -f $(if $(wildcard /opt/teman-lari/.env),compose.prod.yaml,compose.yaml)
 
@@ -14,7 +14,7 @@ help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 		| awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-# ---- Prod / homelab (COMPOSE=compose.prod.yaml) ----
+# ---- Prod (COMPOSE=compose.prod.yaml) ----
 
 ps: ## List prod containers + state
 	$(COMPOSE) ps
