@@ -89,10 +89,8 @@ class WebhookSubscribeCommand extends Command
         $this->line("Callback URL: {$callbackUrl}");
         $this->line('Verify token length: '.mb_strlen((string) $verifyToken));
 
-        // Strava synchronously GETs the callback during create and only accepts
-        // the subscription if it echoes the challenge. Probe it ourselves first
-        // so a failure points at the real cause (stale container env, Cloudflare
-        // intercepting the bot, unreachable URL) instead of a blind Strava 4xx.
+        // Strava synchronously GETs the callback during create and subscribes
+        // only if it echoes the challenge; the probe replays that handshake.
         $probe = app(StravaWebhookProbe::class)->probe($callbackUrl, (string) $verifyToken);
         if (! $probe['passed']) {
             $this->error("Self-verify failed ({$probe['status']}): the callback did not echo the challenge.");
@@ -112,7 +110,12 @@ class WebhookSubscribeCommand extends Command
         ]);
 
         if ($response->failed()) {
-            $this->error("Strava rejected the subscription ({$response->status()}): {$response->body()}");
+            $body = $response->body();
+            $this->error("Strava rejected the subscription ({$response->status()}): {$body}");
+
+            if (str_contains($body, 'GET to callback URL')) {
+                $this->warn('The app and token are fine (the callback just echoed the self-check). Strava still got a non-200, which points at the edge, not the app: Cloudflare Bot Fight Mode challenges datacenter callers like Strava (AWS), and the self-probe runs from a trusted IP so it cannot see this. Disable Bot Fight Mode for the zone (the free plan cannot scope it per path), then retry.');
+            }
 
             return self::FAILURE;
         }

@@ -89,6 +89,29 @@ it('surfaces a Strava error when create is rejected', function (): void {
 
     $this->artisan('strava:webhook-subscribe', ['--action' => 'create'])
         ->expectsOutputToContain('Strava rejected the subscription')
+        ->doesntExpectOutputToContain('Cloudflare')
+        ->assertFailed();
+});
+
+it('hints at the edge when self-verify passes but Strava cannot GET a 200', function (): void {
+    Http::fake([
+        route('strava.webhook.verify').'*' => fakeCallbackEchoes(),
+        'www.strava.com/api/v3/push_subscriptions' => Http::response([
+            'message' => 'Bad Request',
+            'errors' => [[
+                'resource' => 'PushSubscription',
+                'field' => 'callback url',
+                'code' => 'GET to callback URL does not return 200',
+            ]],
+        ], 400),
+    ]);
+
+    // expectsOutputToContain binds each line to the first matching assertion;
+    // assert one hint token that no earlier-asserted line also contains.
+    $this->artisan('strava:webhook-subscribe', ['--action' => 'create'])
+        ->expectsOutputToContain('Self-verify passed')
+        ->expectsOutputToContain('Strava rejected the subscription')
+        ->expectsOutputToContain('Cloudflare')
         ->assertFailed();
 });
 

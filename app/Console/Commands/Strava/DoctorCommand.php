@@ -174,7 +174,7 @@ class DoctorCommand extends Command
         if ($verifyToken === '') {
             $this->warn('Webhook self-handshake: SKIPPED (STRAVA_WEBHOOK_VERIFY_TOKEN not configured).');
         } elseif (app(StravaWebhookProbe::class)->probe($callbackUrl, $verifyToken)['passed']) {
-            $this->info('Webhook self-handshake: PASS (callback echoed the challenge).');
+            $this->info('Webhook self-handshake: PASS (origin echoed the challenge). Probes from a trusted IP, so it does not prove Strava reaches the edge: if a subscription still fails with "GET to callback URL does not return 200", check Cloudflare Bot Fight Mode.');
         } else {
             $this->error('Webhook self-handshake: FAIL. Strava would reject a subscription. Check the app container env (verify token) and Cloudflare access to /strava/webhook.');
         }
