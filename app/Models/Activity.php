@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use App\Models\Scopes\AnalyzedScope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Database\Factories\ActivityFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,6 +38,7 @@ use Override;
  * @property-read Collection<int, StoryLine> $storyLines
  * @property-read StoryLine|null $postRunStoryLine
  */
+#[ScopedBy([AnalyzedScope::class])]
 #[Fillable([
     'user_id',
     'strava_external_id',
@@ -47,6 +52,19 @@ class Activity extends Model
 {
     /** @use HasFactory<ActivityFactory> */
     use HasFactory;
+
+    /**
+     * Opt out of {@see AnalyzedScope} to include un-ingested stubs. Only the
+     * Strava sync/ingest pipeline (which creates, drains and processes stubs)
+     * should use this; everything user-facing must keep the default scope.
+     *
+     * @param  Builder<Activity>  $query
+     */
+    #[Scope]
+    protected function withStubs(Builder $query): void
+    {
+        $query->withoutGlobalScope(AnalyzedScope::class);
+    }
 
     /**
      * @return BelongsTo<User, $this>

@@ -19,6 +19,7 @@ use App\Http\Controllers\PrLedgerController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
+use App\Http\Controllers\RunnerZonesController;
 use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Http\Controllers\Strava\SyncController;
 use App\Http\Controllers\TokenUsageController;
@@ -65,6 +66,9 @@ Route::middleware('auth')->group(function (): void {
         ->name('api.aksesori.equip');
 
     Route::get('/profil', ProfileController::class)->name('profil');
+
+    Route::get('/pengaturan/zona', [RunnerZonesController::class, 'index'])->name('pengaturan.zona');
+    Route::patch('/pengaturan/zona', [RunnerZonesController::class, 'update'])->name('pengaturan.zona.update');
 
     Route::post('/strava/sync', SyncController::class)
         ->middleware('throttle:strava-sync')

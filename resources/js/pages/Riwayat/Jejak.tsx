@@ -41,7 +41,13 @@ interface RunsIndexProps {
     runs: ReadonlyArray<Activity & { detail: ActivityDetail }>;
     notes?: Record<number, RunNote>;
     rangeFilter: RangeFilterValue;
-    rangeStart: string;
+    rangeStart: string | null;
+    /** Server widened the requested range to reach an older run. */
+    rangeAutoWidened?: boolean;
+    /** Older runs beyond the per-page cap were dropped from this list. */
+    runsTruncated?: boolean;
+    /** The per-page cap, shown in the truncation note. */
+    maxRuns?: number;
     weeklySnapshots: ReadonlyArray<WeeklySnapshotRow>;
     journeyMatch?: JourneyMatchData | null;
 }
@@ -58,16 +64,17 @@ interface WeekBucket {
     totalTrimp: number;
 }
 
-export type RangeFilterValue = '8w' | '12w' | '6m' | '1y';
+export type RangeFilterValue = '8w' | '12w' | '6m' | '1y' | 'all';
 
 const DEFAULT_RANGE: RangeFilterValue = '12w';
-const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'weeklySnapshots', 'notes'];
+const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'rangeAutoWidened', 'runsTruncated', 'maxRuns', 'weeklySnapshots', 'notes'];
 
 const RANGE_FILTER_OPTIONS: ReadonlyArray<RangeOption<RangeFilterValue>> = [
     { value: '8w', label: '2 bulan terakhir', hint: '8w' },
     { value: '12w', label: '3 bulan terakhir', hint: '12w' },
     { value: '6m', label: 'Setengah tahun', hint: '6m' },
     { value: '1y', label: 'Setahun penuh', hint: '1y' },
+    { value: 'all', label: 'Semua lari', hint: 'all' },
 ];
 
 const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => ({
@@ -88,6 +95,9 @@ export default function RunsIndex({
     runs,
     notes = {},
     rangeFilter,
+    rangeAutoWidened = false,
+    runsTruncated = false,
+    maxRuns = 0,
     weeklySnapshots,
     journeyMatch = null,
 }: Readonly<RunsIndexProps>) {
@@ -175,6 +185,8 @@ export default function RunsIndex({
 
                 {hasRuns ? (
                     <div className="space-y-8">
+                        {rangeAutoWidened && <RangeWidenedNote rangeFilter={rangeFilter} />}
+                        {runsTruncated && <RunsTruncatedNote maxRuns={maxRuns} />}
                         {buckets.map((bucket) => (
                             <WeekSection
                                 key={bucket.weekStart}
@@ -356,25 +368,58 @@ const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
     },
     syncing: {
         line: 'Aku lagi narik lari kamu 🏃‍♀️',
-        sub: 'Sebentar ya, riwayatnya muncul begitu lari pertama masuk.',
+        sub: 'Sebentar ya, riwayatnya muncul begitu lari pertama selesai diproses.',
     },
     ready: {
-        line: 'Belum ada lari di rentang ini',
-        sub: 'Coba ganti filter, atau sync lagi kalau baru kelar lari.',
+        line: 'Belum ada lari yang bisa ditampilkan',
+        sub: 'Lari baru muncul di sini begitu selesai diproses. Coba sync lagi kalau baru kelar lari.',
     },
 };
+
+/**
+ * Banner shown above the run list when the server widened the requested window
+ * so an older run could surface. Keeps the active range chip honest.
+ */
+function RunsTruncatedNote({ maxRuns }: Readonly<{ maxRuns: number }>) {
+    return (
+        <Card tone="cream-deep" padding="sm" className="flex items-center gap-2.5">
+            <Icon icon="mdi:history" width={16} height={16} className="shrink-0 text-ink-3" aria-hidden />
+            <p className="font-sans text-sm text-ink-2">
+                Menampilkan {maxRuns} lari terbaru. Lari yang lebih lama belum dimuat.
+            </p>
+        </Card>
+    );
+}
+
+function RangeWidenedNote({ rangeFilter }: Readonly<{ rangeFilter: RangeFilterValue }>) {
+    const label = RANGE_FILTER_OPTIONS.find((o) => o.value === rangeFilter)?.label ?? rangeFilter;
+    const message =
+        rangeFilter === 'all'
+            ? 'Menampilkan semua lari kamu, biar lari terakhir tetap kelihatan.'
+            : `Rentang diperlebar otomatis ke ${label} biar lari terakhirmu kelihatan.`;
+    return (
+        <Card tone="cream-deep" padding="sm" className="flex items-center gap-2.5">
+            <Icon icon="mdi:arrow-expand-horizontal" width={16} height={16} className="shrink-0 text-ink-3" aria-hidden />
+            <p className="font-sans text-sm text-ink-2">{message}</p>
+        </Card>
+    );
+}
 
 function EmptyState() {
     const { stravaSync } = usePage<SharedProps>().props;
     const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
     const { line, sub } = EMPTY_COPY[state];
 
+    // The page auto-widens to show any run the user has, so reaching the empty
+    // state means there is genuinely nothing to show yet. The copy explains why
+    // per connection state; the sync button is hidden while a sync is already
+    // running (nothing for the user to do but wait).
     return (
         <Card tone="empty" padding="lg" className="flex flex-col items-center text-center">
             <Temari pose="excited" size={128} animate />
             <p className="mt-4 font-display text-2xl italic text-ink-2">{line}</p>
             <p className="mt-2 font-sans text-sm text-ink-2">{sub}</p>
-            <StravaSyncButton state={state} className="mt-4" />
+            {state !== 'syncing' && <StravaSyncButton state={state} className="mt-4" />}
             <BackLink href="/" tone="accent" className="mt-4">
                 Kembali ke Hari Ini
             </BackLink>

@@ -60,7 +60,6 @@ class CalendarController extends Controller
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->whereHas('activity', fn ($q) => $q
                 ->where('user_id', $user->id)
-                ->whereNotNull('analyzed_at')
                 ->whereHas('detail', fn ($q) => $q->whereDate('start_date_local', Carbon::today())))
             ->orderByDesc('id')
             ->value('speech');

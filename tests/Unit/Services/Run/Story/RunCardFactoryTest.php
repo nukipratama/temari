@@ -7,6 +7,7 @@ use App\Models\RunCard;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\RunnerProfile;
 use App\Models\User;
 use App\Services\Run\Story\RunCardFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,10 +42,10 @@ it('defaults to biasa rarity on a featureless short run', function (): void {
 });
 
 it('promotes to epik when this activity broke a PR on a long run', function (): void {
-    // Seed a prior activity so pertama_kali and first-distance-bracket do not
-    // inflate the score beyond what we assert.
+    // Seed a prior analyzed activity so pertama_kali and first-distance-bracket
+    // do not inflate the score beyond what we assert.
     $user = User::factory()->create();
-    $prev = Activity::factory()->for($user)->create();
+    $prev = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($prev)->create([
         'distance' => 8_000,
         'start_date_local' => Carbon::parse('2026-04-20 10:00:00'),
@@ -113,8 +114,8 @@ it('promotes to legendaris on a half-marathon PR with clean zone split', functio
 
 it('promotes to langka on a negative split with badges pushing score to 4-5', function (): void {
     $user = User::factory()->create();
-    // Prior activity at 6km so pertama_kali doesn't fire, and 8km won't be a new bracket.
-    $prev = Activity::factory()->for($user)->create();
+    // Prior analyzed activity at 6km so pertama_kali doesn't fire, and 8km won't be a new bracket.
+    $prev = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($prev)->create([
         'distance' => 6_000,
         'moving_time' => 2_400,
@@ -496,6 +497,25 @@ it('awards pertama_kali badge on the very first run', function (): void {
     expect($card->badges)->toContain('pertama_kali');
 });
 
+it('still awards pertama_kali when an un-analyzed stub exists in the sync backlog', function (): void {
+    $user = User::factory()->create();
+    // A stub from an in-flight sync (no analyzed_at) must not suppress the badge
+    // on the user's real first ingested run.
+    Activity::factory()->for($user)->create(['analyzed_at' => null]);
+
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_000,
+        'start_date_local' => Carbon::parse('2026-05-10 10:00:00'),
+        'average_heartrate' => 150,
+        'max_heartrate' => 190,
+    ]);
+
+    $card = app(RunCardFactory::class)->build($activity, $detail);
+
+    expect($card->badges)->toContain('pertama_kali');
+});
+
 it('awards kilat badge when pace is under 5:00/km', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
@@ -619,6 +639,61 @@ it('awards santai badge when avg HR < 70% max', function (): void {
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
     expect($card->badges)->toContain('santai');
+});
+
+it('does not award keras when avg HR is moderate against the athlete max HR', function (): void {
+    // avg 130 against an athlete max of 190 is 0.68, comfortably easy. Under the
+    // old run-peak denominator (130/150 = 0.87) this run was mislabeled keras.
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['max_hr' => 190]);
+    $prev = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($prev)->create([
+        'distance' => 3_000,
+        'start_date_local' => Carbon::parse('2026-04-20 10:00:00'),
+    ]);
+
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_000,
+        'start_date_local' => Carbon::parse('2026-05-10 10:00:00'),
+        'average_heartrate' => 130,
+        'max_heartrate' => 150,
+        'weather_temp_c' => 25,
+        'weather_rain_detected' => false,
+        'total_elevation_gain' => 0,
+    ]);
+
+    $card = app(RunCardFactory::class)->build($activity, $detail);
+
+    expect($card->badges)->not->toContain('keras');
+    expect($card->badges)->toContain('santai');
+});
+
+it('awards keras when avg HR is near the athlete max HR', function (): void {
+    // avg 170 against an athlete max of 190 is 0.89, a genuinely hard effort.
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['max_hr' => 190]);
+    $prev = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($prev)->create([
+        'distance' => 3_000,
+        'start_date_local' => Carbon::parse('2026-04-20 10:00:00'),
+    ]);
+
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_000,
+        'start_date_local' => Carbon::parse('2026-05-10 10:00:00'),
+        'average_heartrate' => 170,
+        'max_heartrate' => 185,
+        'weather_temp_c' => 25,
+        'weather_rain_detected' => false,
+        'total_elevation_gain' => 0,
+    ]);
+
+    $card = app(RunCardFactory::class)->build($activity, $detail);
+
+    expect($card->badges)->toContain('keras');
+    expect($card->badges)->not->toContain('santai');
 });
 
 it('awards rajin badge on 3+ consecutive running days', function (): void {

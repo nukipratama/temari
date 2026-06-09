@@ -33,6 +33,7 @@ class ActivityFetcher
     public function fetchNewExternalIds(StravaConnection $connection, ?CarbonImmutable $since = null): array
     {
         $existing = Activity::query()
+            ->withStubs()
             ->where('user_id', $connection->user_id)
             ->pluck('strava_external_id')
             ->map(fn (int|string $id): int => (int) $id)

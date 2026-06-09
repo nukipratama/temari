@@ -47,6 +47,12 @@ final class RuleBasedInsightBuilder
     private const int PACE_DIFF_NOTICEABLE = 15;
     private const int PACE_DIFF_WIDE = 30;
 
+    // Recent-window size for the rolling pace average (runs)
+    private const int ROLLING_PACE_WINDOW = 30;
+
+    // Positive-split detection: second half slower than first by this fraction
+    private const float POSITIVE_SPLIT_MARGIN = 0.015;
+
     /**
      * @return array{technical: string, splits: string, zones: string}
      */
@@ -208,7 +214,7 @@ final class RuleBasedInsightBuilder
 
         /** @var list<string> $parts */
         $parts = [];
-        $this->appendSplitDirectionPart($summary, $parts);
+        $this->appendSplitDirectionPart($summary, $perKm, $parts);
         $this->appendKmRangePart($perKm, $parts);
         $this->appendVariabilityCommentPart($summary, $parts);
 
@@ -216,16 +222,55 @@ final class RuleBasedInsightBuilder
     }
 
     /**
+     * Describes split direction. A genuine negative split (second half faster)
+     * is flagged upstream via `negative_split`. When that is not set, the run is
+     * either a genuine positive split (second half meaningfully slower) or an
+     * even effort, distinguished here from the per-km paces.
+     *
      * @param  array<string, mixed>  $summary
+     * @param  array<int, array{km: int, pace: string}>  $perKm
      * @param  list<string>  $parts
      */
-    private function appendSplitDirectionPart(array $summary, array &$parts): void
+    private function appendSplitDirectionPart(array $summary, array $perKm, array &$parts): void
     {
-        $parts[] = match ($summary['negative_split'] ?? null) {
-            true => 'negative split, paruh kedua lebih cepat dari awal',
-            false => 'positive split, pace melambat di paruh kedua',
-            default => 'pacing cukup merata dari awal sampai akhir',
-        };
+        if (($summary['negative_split'] ?? null) === true) {
+            $parts[] = 'negative split, paruh kedua lebih cepat dari awal';
+
+            return;
+        }
+
+        $parts[] = $this->isPositiveSplit($perKm)
+            ? 'positive split, pace melambat di paruh kedua'
+            : 'pacing cukup merata dari awal sampai akhir';
+    }
+
+    /**
+     * True when the second half is meaningfully slower than the first, i.e. the
+     * mean second-half pace (sec/km) exceeds the first-half mean by the margin.
+     *
+     * @param  array<int, array{km: int, pace: string}>  $perKm
+     */
+    private function isPositiveSplit(array $perKm): bool
+    {
+        $paces = [];
+        foreach ($perKm as $km) {
+            $parsed = $this->parsePaceToSeconds($km['pace']);
+            if ($parsed !== null) {
+                $paces[] = $parsed;
+            }
+        }
+
+        if (count($paces) < 2) {
+            return false;
+        }
+
+        $half = (int) ceil(count($paces) / 2);
+        $firstHalf = array_slice($paces, 0, $half);
+        $secondHalf = array_slice($paces, $half);
+        $firstAvg = array_sum($firstHalf) / count($firstHalf);
+        $secondAvg = array_sum($secondHalf) / count($secondHalf);
+
+        return $secondAvg > $firstAvg * (1 + self::POSITIVE_SPLIT_MARGIN);
     }
 
     /**
@@ -458,12 +503,16 @@ final class RuleBasedInsightBuilder
     }
 
     /**
-     * User's rolling average pace (sec/km) from their last 30 activities.
+     * User's rolling average pace (sec/km) over their most recent runs.
+     *
+     * The pace of each of the last {@see self::ROLLING_PACE_WINDOW} runs is
+     * fetched, then averaged in PHP. Averaging directly in SQL alongside a
+     * LIMIT would not work: AVG() collapses to a single row, so the LIMIT is
+     * ignored and the all-time average leaks through instead of the recent one.
      */
     private function userAveragePace(int $userId): ?float
     {
-        /** @var object{avg_pace: string|null}|null $row */
-        $row = ActivityDetail::query()
+        $paces = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $userId)
             ->whereNotNull('activity_details.distance')
@@ -471,11 +520,17 @@ final class RuleBasedInsightBuilder
             ->whereNotNull('activity_details.moving_time')
             ->where('activity_details.moving_time', '>', 0)
             ->orderByDesc('activity_details.start_date_local')
-            ->limit(30)
-            ->selectRaw('AVG(activity_details.moving_time / (activity_details.distance / 1000)) as avg_pace')
-            ->first();
+            ->limit(self::ROLLING_PACE_WINDOW)
+            ->select('activity_details.distance', 'activity_details.moving_time')
+            ->get()
+            ->map(fn (ActivityDetail $detail): ?float => $detail->paceSecPerKm())
+            ->filter(fn (?float $pace): bool => $pace !== null);
 
-        return $row?->avg_pace !== null ? (float) $row->avg_pace : null;
+        if ($paces->isEmpty()) {
+            return null;
+        }
+
+        return $paces->sum() / $paces->count();
     }
 
     /**

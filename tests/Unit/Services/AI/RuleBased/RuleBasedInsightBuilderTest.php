@@ -160,6 +160,75 @@ it('compares pace against the user rolling average (faster / slower)', function 
     'slower' => [3300, 'lebih santai dari biasanya'],       // 330 sec/km, 30s slower
 ]);
 
+it('averages only the last 30 runs, excluding older ones, for the rolling pace', function (): void {
+    $user = User::factory()->create();
+
+    // 30 recent runs at 10km in 3000s => 300 sec/km. These are the window.
+    foreach (range(1, 30) as $i) {
+        $recent = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($recent)->create([
+            'distance' => 10000.0,
+            'moving_time' => 3000,
+            'start_date_local' => Carbon::today()->subDays($i),
+        ]);
+    }
+
+    // 10 much older, very slow runs (10km in 6000s => 600 sec/km). If these
+    // leaked into the average the mean would climb toward 600 and the current
+    // 300 sec/km run would read as "lebih cepat". They must be excluded.
+    foreach (range(1, 10) as $i) {
+        $old = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($old)->create([
+            'distance' => 10000.0,
+            'moving_time' => 6000,
+            'start_date_local' => Carbon::today()->subDays(100 + $i),
+        ]);
+    }
+
+    // Current run also at 300 sec/km: equal to the last-30 mean => no faster/slower phrase.
+    [$activity, $detail] = makeRun($user, [
+        'moving_time' => 3000,
+        'start_date_local' => Carbon::today(),
+    ]);
+
+    expect(builder()->runInsightTechnical($activity, $detail))
+        ->not->toContain('lebih cepat dari rata-rata kamu')
+        ->not->toContain('lebih santai dari biasanya');
+});
+
+it('compares against the recent window so an old all-time average does not skew it', function (): void {
+    $user = User::factory()->create();
+
+    // 30 recent runs at 270 sec/km (10km in 2700s).
+    foreach (range(1, 30) as $i) {
+        $recent = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($recent)->create([
+            'distance' => 10000.0,
+            'moving_time' => 2700,
+            'start_date_local' => Carbon::today()->subDays($i),
+        ]);
+    }
+
+    // Older slow runs that would lift an all-time average well above 300.
+    foreach (range(1, 20) as $i) {
+        $old = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($old)->create([
+            'distance' => 10000.0,
+            'moving_time' => 6000, // 600 sec/km
+            'start_date_local' => Carbon::today()->subDays(100 + $i),
+        ]);
+    }
+
+    // Current run at 300 sec/km: slower than the recent 270 window by 30s.
+    [$activity, $detail] = makeRun($user, [
+        'moving_time' => 3000,
+        'start_date_local' => Carbon::today(),
+    ]);
+
+    expect(builder()->runInsightTechnical($activity, $detail))
+        ->toContain('lebih santai dari biasanya');
+});
+
 it('omits pace comparison when the user has no rolling average', function (): void {
     $user = User::factory()->create();
     [$activity, $detail] = makeRun($user, [
@@ -224,25 +293,59 @@ it('returns the not-enough-data message for splits without enough per-km entries
     'per_km not array' => [['per_km' => 'nope']],
 ]);
 
-it('describes negative, positive, and even split direction', function (?bool $neg, string $expected): void {
+it('labels a genuine negative split as negative when flagged upstream', function (): void {
     $user = User::factory()->create();
     [, $detail] = makeRun($user, [
         'stream_summary' => [
-            'negative_split' => $neg,
+            'negative_split' => true,
             'per_km' => [
-                ['km' => 1, 'pace' => '5:00'],
-                ['km' => 2, 'pace' => '5:00'],
+                ['km' => 1, 'pace' => '5:10'],
+                ['km' => 2, 'pace' => '4:50'], // second half faster
             ],
         ],
     ]);
 
-    expect(builder()->runInsightSplits($detail))->toContain($expected);
+    expect(builder()->runInsightSplits($detail))->toContain('Negative split');
+});
+
+it('labels a flat run as merata, never positive split, when not a negative split', function (?bool $neg): void {
+    $user = User::factory()->create();
+    [, $detail] = makeRun($user, [
+        'stream_summary' => [
+            'negative_split' => $neg, // false or absent => not a strong negative split
+            'per_km' => [
+                ['km' => 1, 'pace' => '5:00'],
+                ['km' => 2, 'pace' => '5:00'], // even effort, no real slow-down
+            ],
+        ],
+    ]);
+
+    expect(builder()->runInsightSplits($detail))
+        ->toContain('Pacing cukup merata')
+        ->not->toContain('positive split')
+        ->not->toContain('Positive split');
 })->with([
-    // First part of the sentence, so ucfirst() capitalises the lead word.
-    'negative' => [true, 'Negative split'],
-    'positive' => [false, 'Positive split'],
-    'even' => [null, 'Pacing cukup merata'],
+    'explicit false' => [false],
+    'absent flag' => [null],
 ]);
+
+it('labels a genuine positive split when the second half slows meaningfully', function (): void {
+    $user = User::factory()->create();
+    [, $detail] = makeRun($user, [
+        'stream_summary' => [
+            'negative_split' => false,
+            'per_km' => [
+                ['km' => 1, 'pace' => '4:40'],
+                ['km' => 2, 'pace' => '4:40'],
+                ['km' => 3, 'pace' => '5:20'],
+                ['km' => 4, 'pace' => '5:20'], // second half >1.5% slower
+            ],
+        ],
+    ]);
+
+    expect(builder()->runInsightSplits($detail))
+        ->toContain('Positive split, pace melambat di paruh kedua');
+});
 
 it('describes km range bands (wide, moderate, tight)', function (array $perKm, string $expected): void {
     $user = User::factory()->create();

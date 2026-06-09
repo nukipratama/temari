@@ -22,7 +22,10 @@ class ActivityFactory extends Factory
             'user_id' => User::factory(),
             'strava_external_id' => fake()->unique()->numberBetween(1_000_000_000, 9_999_999_999),
             'fetched_at' => now(),
-            'analyzed_at' => null,
+            // Activities are ingested (analyzed) by default; the AnalyzedScope
+            // hides stubs, so a default factory row must be visible. Use stub()
+            // to model a freshly-synced, not-yet-ingested activity.
+            'analyzed_at' => now(),
             'detail_fail_count' => 0,
         ];
     }
@@ -31,6 +34,14 @@ class ActivityFactory extends Factory
     {
         return $this->state(fn (): array => [
             'analyzed_at' => now(),
+        ]);
+    }
+
+    /** A synced-but-not-yet-ingested activity (hidden by the AnalyzedScope). */
+    public function stub(): static
+    {
+        return $this->state(fn (): array => [
+            'analyzed_at' => null,
         ]);
     }
 }

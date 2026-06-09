@@ -68,7 +68,7 @@ class ProgressionSeriesBuilder
         $since = Carbon::now()->subWeeks(self::LOOKBACK_WEEKS)->startOfWeek(Carbon::MONDAY);
 
         $rows = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
             ->where(function ($q) use ($bands): void {
                 foreach ($bands as $band) {
                     $q->orWhereBetween('distance', [$band['min'], $band['max']]);

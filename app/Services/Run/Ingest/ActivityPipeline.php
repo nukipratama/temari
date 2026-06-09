@@ -91,8 +91,18 @@ class ActivityPipeline
             $this->storeStreams($activity, $streams);
         }
 
-        $this->computeAndStoreSummary($detailModel, $streams);
+        $this->computeAndStoreSummary($activity, $detailModel, $streams);
         $this->lookupWeather($detailModel, $streams);
+
+        // The run's data is now stored, so mark it ingested before the derivation
+        // and narration layers below. Those re-load the activity via relations
+        // (e.g. $card->activity) that pass through the AnalyzedScope, so the row
+        // must already be visible rather than a stub.
+        $activity->update([
+            'analyzed_at' => now(),
+            'detail_fail_count' => 0,
+        ]);
+
         $newPrCategories = $this->personalRecords->detectAndStore($activity, $detailModel);
 
         // Story layer must run after PR detection — Temari mood reads PR rows.
@@ -100,11 +110,6 @@ class ActivityPipeline
         $this->temari->postRunLine($activity, $detailModel);
         $this->milestoneDetector->detect($activity, $detailModel, $newPrCategories);
         $this->cascadeAfterIngest($activity, $detailModel);
-
-        $activity->update([
-            'analyzed_at' => now(),
-            'detail_fail_count' => 0,
-        ]);
     }
 
     private function cascadeAfterIngest(Activity $activity, ActivityDetail $detail): void
@@ -145,7 +150,7 @@ class ActivityPipeline
         if ($detail->start_date_local === null) {
             return;
         }
-        $snapshot = $this->weeklyAggregator->rebuildForWeekOf($user, $detail->start_date_local);
+        $snapshot = $this->weeklyAggregator->rebuildForwardFrom($user, $detail->start_date_local);
         if ($snapshot !== null) {
             $this->analysisService->request(
                 subjectOrType: WeeklySnapshot::class,
@@ -299,15 +304,18 @@ class ActivityPipeline
     /**
      * @param  array<string, mixed>|null  $streams
      */
-    private function computeAndStoreSummary(ActivityDetail $detail, ?array $streams): void
+    private function computeAndStoreSummary(Activity $activity, ActivityDetail $detail, ?array $streams): void
     {
         if ($streams === null) {
             return;
         }
 
-        /** @var array<string, array{lo: int, hi: int}> $hrZones */
-        $hrZones = config('runner.hr_zones');
-        $optimalCadence = (int) config('runner.optimal_cadence_spm');
+        // Take the activity explicitly rather than via $detail->activity: during
+        // ingest the row is still a stub, and the AnalyzedScope would resolve the
+        // belongsTo back to null.
+        $profile = $activity->user->hrProfile();
+        $hrZones = $profile['hr_zones'];
+        $optimalCadence = $profile['optimal_cadence_spm'];
 
         $summary = $this->streamAnalysis->compute(
             $streams,
@@ -323,6 +331,29 @@ class ActivityPipeline
             'stream_summary' => $summary === [] ? null : $summary,
             'trimp_edwards' => $trimp,
         ]);
+    }
+
+    /**
+     * Recompute a single activity's `stream_summary` / `trimp_edwards` from its
+     * ALREADY-STORED streams using the user's CURRENT heart-rate zones, then
+     * rebuild that week's snapshot forward. Forward-only: makes ZERO Strava HTTP
+     * calls, so a user-initiated "Baca ulang" can refresh one block with new
+     * zones without re-ingesting from Strava. No-op when the activity has no
+     * stored streams or no detail row.
+     */
+    public function recomputeSummary(Activity $activity): void
+    {
+        $detail = $activity->detail;
+        $stream = $activity->stream;
+        if ($detail === null || $stream === null || $stream->data === []) {
+            return;
+        }
+
+        $this->computeAndStoreSummary($activity, $detail, $stream->data);
+
+        if ($detail->start_date_local !== null) {
+            $this->weeklyAggregator->rebuildForwardFrom($activity->user, $detail->start_date_local);
+        }
     }
 
     /**

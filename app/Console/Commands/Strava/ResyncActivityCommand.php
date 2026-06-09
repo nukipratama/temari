@@ -17,7 +17,7 @@ class ResyncActivityCommand extends Command
     public function handle(ActivityPipeline $pipeline): int
     {
         $activityId = $this->argument('activity');
-        $activity = Activity::query()->find($activityId);
+        $activity = Activity::query()->withStubs()->find($activityId);
         if ($activity === null) {
             $this->error("Activity {$activityId} not found.");
 

@@ -36,6 +36,14 @@ class HandleInertiaRequests extends Middleware
     private const int GOALS_SUMMARY_CACHE_SECONDS = 120;
 
     /**
+     * TTL for the HR-zones-changed marker. It only moves when the user saves
+     * their zones (which busts the cache via {@see RunnerProfile}), so the TTL
+     * is just a safety net; the win is skipping a runnerProfile lookup on every
+     * page load for the common case of no custom profile.
+     */
+    private const int HR_ZONES_CHANGED_CACHE_SECONDS = 300;
+
+    /**
      * @return array<string, mixed>
      */
     #[Override]
@@ -65,7 +73,30 @@ class HandleInertiaRequests extends Middleware
             'pendingReveal' => fn () => $this->pendingRevealFor($user),
             'stravaSync' => fn () => $this->stravaSyncFor($user),
             'goalsSummary' => fn () => $this->goalsSummaryFor($user),
+            'hrZonesChangedAt' => fn () => $this->hrZonesChangedAtFor($user),
         ];
+    }
+
+    /**
+     * ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null
+     * when there is no runner profile or it has never changed. The front end
+     * compares this against each analysis block's `generated_at` to flag blocks
+     * computed with stale zones.
+     */
+    private function hrZonesChangedAtFor(?User $user): ?string
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        // Wrap in an array so a null marker (the common no-custom-profile case)
+        // is still cached; Cache::remember treats a bare null as a miss and
+        // would re-query every request.
+        return Cache::remember(
+            "hr-zones-changed-at:{$user->id}",
+            self::HR_ZONES_CHANGED_CACHE_SECONDS,
+            fn (): array => ['at' => $user->runnerProfile?->hr_zones_changed_at?->toIso8601String()],
+        )['at'];
     }
 
     /**
@@ -144,18 +175,20 @@ class HandleInertiaRequests extends Middleware
             return ['state' => 'revoked', 'last_synced_at' => null];
         }
 
-        // Use the most-recent activity ingest timestamp as the human-facing
-        // "last synced" marker. Strava connection itself doesn't store a
-        // sync timestamp; we tag every activity via fetched_at.
+        // "Last synced" reflects the most recent Strava pull, so it counts
+        // stubs too (a just-synced run that has not been ingested yet still
+        // means we synced). withStubs() opts out of the analyzed-only scope.
         $latest = Activity::query()
+            ->withStubs()
             ->where('user_id', $user->id)
             ->whereNotNull('fetched_at')
             ->orderByDesc('fetched_at')
             ->value('fetched_at');
 
+        // "ready" once at least one run is fully ingested; the scope already
+        // restricts to analyzed rows, so exists() answers that directly.
         $hasAnalyzed = Activity::query()
             ->where('user_id', $user->id)
-            ->whereNotNull('analyzed_at')
             ->exists();
 
         return [

@@ -47,3 +47,9 @@ Schedule::command('ai:daily-trend')->dailyAt('05:00');
 // "already done" idempotency guards in AnalysisService / AnalyzeGroupJob, so it
 // never re-bills LLM narration for activities already analyzed.
 Schedule::command('strava:sync')->hourly()->withoutOverlapping();
+
+// Every 5 minutes: drain a small batch of pending activity stubs into the
+// ingest pipeline. Stubs are inserted by strava:sync / webhooks without an
+// immediate per-activity dispatch; this drainer paces them so a backlog never
+// thundering-herds Strava into a 429 storm.
+Schedule::command('strava:ingest')->everyFiveMinutes()->withoutOverlapping();

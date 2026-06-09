@@ -321,7 +321,7 @@ class RunCardFactory
             $badges[] = Badge::Jauh->value;
         }
 
-        $badges = array_merge($badges, $this->zoneAndEffortBadges($detail, $summary, $hour));
+        $badges = array_merge($badges, $this->zoneAndEffortBadges($activity, $detail, $summary, $hour));
 
         if ($streak + 1 >= self::CONSECUTIVE_DAYS_BERTURUT) {
             $badges[] = Badge::Berturut->value;
@@ -339,7 +339,7 @@ class RunCardFactory
      * @param  array<string, mixed>  $summary
      * @return list<string>
      */
-    private function zoneAndEffortBadges(ActivityDetail $detail, array $summary, ?int $hour): array
+    private function zoneAndEffortBadges(Activity $activity, ActivityDetail $detail, array $summary, ?int $hour): array
     {
         $badges = [];
 
@@ -350,10 +350,10 @@ class RunCardFactory
         if ($hour !== null && $hour < 6) {
             $badges[] = Badge::AnakDingin->value;
         }
-        if ($this->isHardEffort($detail)) {
+        if ($this->isHardEffort($activity, $detail)) {
             $badges[] = Badge::Keras->value;
         }
-        if ($this->isEasyEffort($detail)) {
+        if ($this->isEasyEffort($activity, $detail)) {
             $badges[] = Badge::Santai->value;
         }
 
@@ -371,7 +371,9 @@ class RunCardFactory
     }
 
     /**
-     * Whether this is the user's very first activity.
+     * Whether this is the user's first ingested activity. The AnalyzedScope
+     * excludes un-analyzed stubs, so a sync backlog cannot suppress the
+     * "PertamaKali" badge on the real first run.
      */
     private function isFirstRunEver(Activity $activity): bool
     {
@@ -434,38 +436,46 @@ class RunCardFactory
     }
 
     /**
-     * Hard effort: average HR > 85% of max HR.
+     * Hard effort: average HR > 85% of the athlete's max HR.
      */
-    private function isHardEffort(ActivityDetail $detail): bool
+    private function isHardEffort(Activity $activity, ActivityDetail $detail): bool
     {
-        $ratio = $this->hrRatio($detail);
+        $ratio = $this->hrRatio($activity, $detail);
 
         return $ratio !== null && $ratio > 0.85;
     }
 
     /**
-     * Easy effort: average HR < 70% of max HR.
+     * Easy effort: average HR < 70% of the athlete's max HR.
      */
-    private function isEasyEffort(ActivityDetail $detail): bool
+    private function isEasyEffort(Activity $activity, ActivityDetail $detail): bool
     {
-        $ratio = $this->hrRatio($detail);
+        $ratio = $this->hrRatio($activity, $detail);
 
         return $ratio !== null && $ratio < 0.70;
     }
 
     /**
-     * Average HR as a fraction of max HR. Null when data is missing.
+     * Average HR as a fraction of the athlete's true max HR, taken from the
+     * user's hrProfile rather than this run's own peak HR. Null when avg HR is
+     * missing. The athlete max falls back to the hrProfile default, which is
+     * never zero, so the denominator is always positive.
      */
-    private function hrRatio(ActivityDetail $detail): ?float
+    private function hrRatio(Activity $activity, ActivityDetail $detail): ?float
     {
         $avg = $detail->average_heartrate;
-        $max = $detail->max_heartrate;
 
-        if ($avg === null || $max === null || $max <= 0) {
+        if ($avg === null) {
             return null;
         }
 
-        return $avg / $max;
+        $athleteMaxHr = $activity->user->hrProfile()['max_hr'];
+
+        if ($athleteMaxHr <= 0) {
+            return null;
+        }
+
+        return $avg / $athleteMaxHr;
     }
 
     /**

@@ -152,3 +152,124 @@ it('rebuildForWeekOf returns null when user has no runs', function (): void {
 
     expect($snap)->toBeNull();
 });
+
+it('rebuildForWeekOf computes the converged CTL, not the too-low windowed value', function (): void {
+    // 200 days of steady 80 TRIMP/day ending on a COMPLETED past week, so CTL is
+    // measured as-of the last active day (no in-progress-week zero-decay). A
+    // continuous CTL converges near 80; the old 49-day warm-up window cold-started
+    // it near 55.
+    $user = User::factory()->create();
+    $weekEnding = Carbon::today()->subWeek()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+    for ($i = 0; $i < 200; $i++) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => 8000,
+            'moving_time' => 2400,
+            'trimp_edwards' => 80.0,
+            'start_date_local' => $weekEnding->copy()->subDays(199 - $i),
+        ]);
+    }
+
+    $snap = $this->aggregator->rebuildForWeekOf($user, $weekEnding);
+
+    expect($snap)->not->toBeNull()
+        ->and((float) $snap->ctl_42d)->toBeGreaterThan(75.0);
+});
+
+it('rebuildForwardFrom rebuilds every week from the anchor through today', function (): void {
+    $user = User::factory()->create();
+    foreach ([21, 14, 7, 0] as $daysAgo) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => 8000,
+            'moving_time' => 2400,
+            'trimp_edwards' => 60.0,
+            'start_date_local' => Carbon::today()->subDays($daysAgo),
+        ]);
+    }
+
+    $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(21));
+
+    // Frozen Mon 2026-05-11; 21 days back spans 4 ISO weeks ending Sunday.
+    expect(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(4);
+});
+
+it('rebuildForwardFrom propagates a backdated activity forward into later weeks CTL', function (): void {
+    // Steady baseline across several weeks, fully populated first.
+    $user = User::factory()->create();
+    for ($i = 0; $i < 35; $i++) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => 6000,
+            'moving_time' => 1800,
+            'trimp_edwards' => 40.0,
+            'start_date_local' => Carbon::today()->subDays(34 - $i),
+        ]);
+    }
+    $this->aggregator->rebuildFor($user);
+
+    $latestWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString();
+    $ctlBefore = (float) WeeklySnapshot::query()
+        ->where('user_id', $user->id)
+        ->where('week_ending', $latestWeekEnding)
+        ->value('ctl_42d');
+
+    // Backdate a big TRIMP day into the oldest week (webhook old-upload case).
+    $backdate = Carbon::today()->subDays(33);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 20000,
+        'moving_time' => 7200,
+        'trimp_edwards' => 300.0,
+        'start_date_local' => $backdate,
+    ]);
+
+    $this->aggregator->rebuildForwardFrom($user, $backdate);
+
+    $ctlAfter = (float) WeeklySnapshot::query()
+        ->where('user_id', $user->id)
+        ->where('week_ending', $latestWeekEnding)
+        ->value('ctl_42d');
+
+    // A cumulative CTL must carry the backdated load forward to the latest week.
+    expect($ctlAfter)->toBeGreaterThan($ctlBefore);
+});
+
+it('measures the in-progress week CTL as-of today, not the future Sunday', function (): void {
+    // setTestNow is a Monday, so the current week's Sunday is in the future.
+    // Steady load up to today should leave CTL near convergence; rolling the
+    // EWMA out to Sunday would zero-fill the unseen days and deflate it.
+    $user = User::factory()->create();
+    for ($i = 0; $i < 200; $i++) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => 8000,
+            'moving_time' => 2400,
+            'trimp_edwards' => 80.0,
+            'start_date_local' => Carbon::today()->subDays(199 - $i),
+        ]);
+    }
+
+    $snap = $this->aggregator->rebuildForWeekOf($user, Carbon::today());
+
+    expect($snap)->not->toBeNull()
+        ->and((float) $snap->ctl_42d)->toBeGreaterThan(75.0);
+});
+
+it('rebuildForwardFrom returns the anchor week snapshot', function (): void {
+    $user = User::factory()->create();
+    $anchor = Carbon::today()->subDays(21);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000,
+        'moving_time' => 2400,
+        'trimp_edwards' => 80.0,
+        'start_date_local' => $anchor,
+    ]);
+
+    $snap = $this->aggregator->rebuildForwardFrom($user, $anchor);
+
+    expect($snap)->toBeInstanceOf(WeeklySnapshot::class)
+        ->and($snap->week_ending->toDateString())
+        ->toBe($anchor->copy()->endOfWeek(Carbon::SUNDAY)->toDateString());
+});

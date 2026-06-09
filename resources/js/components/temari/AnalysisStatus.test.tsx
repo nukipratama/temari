@@ -1,7 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import AnalysisStatus from './AnalysisStatus';
+import { setMockPage } from '@/test/setup';
 import type { AnalysisPayload } from '@/types/inertia';
+
+const BADGE_TEXT = /dihitung dengan zona lama/;
+const OLD_TS = '2026-01-01T00:00:00+00:00';
+const NEW_TS = '2026-02-01T00:00:00+00:00';
 
 function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
     return {
@@ -9,6 +14,7 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
         status: 'pending',
         content: null,
         type: 'briefing_headline',
+        is_zone_dependent: false,
         subject_type: 'briefing_user_day',
         subject_id: 1,
         discriminator: null,
@@ -146,5 +152,83 @@ describe('AnalysisStatus', () => {
         );
         const body = container.querySelector('div.text-sm');
         expect(body).not.toBeNull();
+    });
+
+    describe('stale-zones badge', () => {
+        it('shows on a zone-dependent block generated before the zones changed', () => {
+            setMockPage({ hrZonesChangedAt: NEW_TS });
+            render(
+                <AnalysisStatus
+                    analysis={payload({
+                        status: 'done',
+                        content: 'zona',
+                        is_zone_dependent: true,
+                        generated_at: OLD_TS,
+                    })}
+                />,
+            );
+            expect(screen.getByText(BADGE_TEXT)).toBeInTheDocument();
+        });
+
+        it('hides when the block was generated after the zones changed', () => {
+            setMockPage({ hrZonesChangedAt: OLD_TS });
+            render(
+                <AnalysisStatus
+                    analysis={payload({
+                        status: 'done',
+                        content: 'zona',
+                        is_zone_dependent: true,
+                        generated_at: NEW_TS,
+                    })}
+                />,
+            );
+            expect(screen.queryByText(BADGE_TEXT)).not.toBeInTheDocument();
+        });
+
+        it('hides for zone-agnostic analysis types even when stale', () => {
+            setMockPage({ hrZonesChangedAt: NEW_TS });
+            render(
+                <AnalysisStatus
+                    analysis={payload({
+                        status: 'done',
+                        content: 'pidato',
+                        is_zone_dependent: false,
+                        generated_at: OLD_TS,
+                    })}
+                />,
+            );
+            expect(screen.queryByText(BADGE_TEXT)).not.toBeInTheDocument();
+        });
+
+        it('hides when hrZonesChangedAt is null', () => {
+            setMockPage({ hrZonesChangedAt: null });
+            render(
+                <AnalysisStatus
+                    analysis={payload({
+                        status: 'done',
+                        content: 'zona',
+                        is_zone_dependent: true,
+                        generated_at: OLD_TS,
+                    })}
+                />,
+            );
+            expect(screen.queryByText(BADGE_TEXT)).not.toBeInTheDocument();
+        });
+
+        it('shows for any zone-dependent block regardless of its type', () => {
+            setMockPage({ hrZonesChangedAt: NEW_TS });
+            render(
+                <AnalysisStatus
+                    analysis={payload({
+                        status: 'done',
+                        content: 'x',
+                        type: 'weekly_recap',
+                        is_zone_dependent: true,
+                        generated_at: OLD_TS,
+                    })}
+                />,
+            );
+            expect(screen.getByText(BADGE_TEXT)).toBeInTheDocument();
+        });
     });
 });

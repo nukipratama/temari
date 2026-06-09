@@ -143,8 +143,11 @@ class StravaWebhookController extends Controller
 
     private function deleteLocalActivity(StravaConnection $connection, int $stravaActivityId): void
     {
-        // Cascades to detail / stream / card rows via FK on delete.
+        // Cascades to detail / stream / card rows via FK on delete. withStubs()
+        // so a delete webhook for a not-yet-ingested activity still removes it
+        // (the AnalyzedScope would otherwise hide the stub from this query).
         $deleted = Activity::query()
+            ->withStubs()
             ->where('user_id', $connection->user_id)
             ->where('strava_external_id', $stravaActivityId)
             ->delete();

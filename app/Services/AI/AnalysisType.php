@@ -82,6 +82,25 @@ enum AnalysisType: string
         };
     }
 
+    /**
+     * Whether this narrative is derived from the user's heart-rate zones, so a
+     * zone change makes copies generated beforehand stale (the "dihitung dengan
+     * zona lama" hint). Zone-agnostic types never carry it.
+     *
+     * Only the zone breakdown ({@see self::RunInsightZones}) and the weekly
+     * recap (zone-weighted TRIMP / CTL) read the configured zones. The technical
+     * insight uses cadence, decoupling, the run's own peak HR, and elevation,
+     * none of which move when zones change, so it is excluded.
+     */
+    public function isZoneDependent(): bool
+    {
+        return match ($this) {
+            self::RunInsightZones,
+            self::WeeklyRecap => true,
+            default => false,
+        };
+    }
+
     public function subjectType(): string
     {
         return match ($this) {

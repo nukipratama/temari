@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use Carbon\CarbonInterface;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -25,18 +26,11 @@ class WeeklyAggregator
     public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot
     {
         $weekEnding = $when->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
-        // 49 days = 7 weeks, comfortably covers the 42-day CTL window.
-        $windowStart = $weekEnding->copy()->subDays(49)->startOfDay();
 
-        /** @var Collection<int, ActivityDetail> $details */
-        $details = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->where('activities.user_id', $user->id)
-            ->whereBetween('activity_details.start_date_local', [$windowStart, $weekEnding->copy()->endOfDay()])
-            ->orderBy('activity_details.start_date_local')
-            ->select('activity_details.*')
-            ->get();
-
+        // Load a converged lead-in window through this week so the CTL EWMA
+        // settles as a continuous series; a short warm-up window would yield a
+        // too-low, window-dependent CTL.
+        $details = $this->loadHistoryThrough($user, $weekEnding, $this->leadInStart($weekEnding));
         if ($details->isEmpty()) {
             return null;
         }
@@ -44,10 +38,72 @@ class WeeklyAggregator
         $dailyTrimp = $this->dailyTrimpMap($details);
         $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp);
 
+        return $this->snapshotFor($user, $weekEnding);
+    }
+
+    /**
+     * Rebuild the weekly snapshot for $weekAnchor's week and every later week
+     * through today, returning the anchor week's snapshot. CTL is cumulative, so
+     * a backdated activity must propagate its load forward into every subsequent
+     * week's snapshot.
+     */
+    public function rebuildForwardFrom(User $user, CarbonInterface $weekAnchor): ?WeeklySnapshot
+    {
+        $anchorWeekEnding = Carbon::instance($weekAnchor)->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        $lastWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+
+        // Load the lead-in window once (sized so even the anchor week has a
+        // converged CTL) and roll every week's snapshot from this shared series.
+        // upsertWeek filters to its own week and rolls the EWMA only through its
+        // $weekEnding, so a backdated activity propagates forward in one query.
+        $details = $this->loadHistoryThrough($user, $lastWeekEnding, $this->leadInStart($anchorWeekEnding));
+        if ($details->isEmpty()) {
+            return null;
+        }
+
+        $dailyTrimp = $this->dailyTrimpMap($details);
+
+        $weekEnding = $anchorWeekEnding->copy();
+        while ($weekEnding->lte($lastWeekEnding)) {
+            $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp);
+            $weekEnding = $weekEnding->copy()->addWeek();
+        }
+
+        return $this->snapshotFor($user, $anchorWeekEnding);
+    }
+
+    /**
+     * Start of the converged lead-in window for a week, so the CTL EWMA has
+     * enough history before $weekEnding to settle (see {@see TrainingLoad}).
+     */
+    private function leadInStart(Carbon $weekEnding): Carbon
+    {
+        return $weekEnding->copy()->subDays(TrainingLoad::CONVERGED_LOOKBACK_DAYS)->startOfDay();
+    }
+
+    private function snapshotFor(User $user, Carbon $weekEnding): ?WeeklySnapshot
+    {
         return WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->where('week_ending', $weekEnding->toDateString())
             ->first();
+    }
+
+    /**
+     * @return Collection<int, ActivityDetail>
+     */
+    private function loadHistoryThrough(User $user, Carbon $weekEnding, Carbon $from): Collection
+    {
+        /** @var Collection<int, ActivityDetail> */
+        return ActivityDetail::query()
+            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+            ->where('activities.user_id', $user->id)
+            ->whereNotNull('activity_details.start_date_local')
+            ->where('activity_details.start_date_local', '>=', $from)
+            ->where('activity_details.start_date_local', '<=', $weekEnding->copy()->endOfDay())
+            ->orderBy('activity_details.start_date_local')
+            ->select('activity_details.*')
+            ->get();
     }
 
     public function rebuildFor(User $user): int
@@ -103,7 +159,12 @@ class WeeklyAggregator
         $movingTimeSec = (int) round((float) $weekDetails->sum('moving_time'));
         $avgDecoupling = $this->averageDecoupling($weekDetails);
 
-        $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $weekEnding);
+        // For the in-progress week, measure ATL/CTL as-of today rather than the
+        // future Sunday, so days that have not happened yet are not zero-filled
+        // (which would understate current fitness). Past weeks are unaffected.
+        $today = Carbon::today()->startOfDay();
+        $loadAsOf = $weekEnding->lessThan($today) ? $weekEnding : $today;
+        $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $weekEnding, $loadAsOf);
 
         WeeklySnapshot::query()->updateOrCreate(
             [

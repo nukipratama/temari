@@ -124,6 +124,23 @@ it('removes the local activity on an activity delete event', function (): void {
         ->and(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
 });
 
+it('removes a not-yet-ingested stub activity on a delete event', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);
+    // A stub (analyzed_at null) is hidden by the AnalyzedScope; the delete must
+    // still reach it via withStubs().
+    $stub = Activity::factory()->for($user)->stub()->create(['strava_external_id' => 9_006]);
+
+    $this->postJson(route('strava.webhook.handle'), [
+        'object_type' => 'activity',
+        'object_id' => 9_006,
+        'aspect_type' => 'delete',
+        'owner_id' => 42,
+    ])->assertOk();
+
+    expect(Activity::query()->withStubs()->whereKey($stub->id)->exists())->toBeFalse();
+});
+
 it('revokes the connection on athlete deauthorization', function (): void {
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);

@@ -32,20 +32,22 @@ it('inserts oldest-first so DB ids are chronological', function (): void {
     $inserted = (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
 
     expect($inserted)->toBe(3);
-    $ids = Activity::query()->orderBy('id')->pluck('strava_external_id')->all();
+    $ids = Activity::query()->withStubs()->orderBy('id')->pluck('strava_external_id')->all();
     expect($ids)->toBe([10, 20, 30]);
 });
 
-it('dispatches one IngestActivityJob per new activity', function (): void {
+it('inserts activity stubs but dispatches no per-activity ingest jobs', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewExternalIds')->andReturn([10, 20]);
 
-    (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
+    $inserted = (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
 
-    Queue::assertPushed(IngestActivityJob::class, 2);
+    expect($inserted)->toBe(2)
+        ->and(Activity::query()->withStubs()->where('user_id', $user->id)->count())->toBe(2);
+    Queue::assertNotPushed(IngestActivityJob::class);
 });
 
 it('returns 0 and does not query Strava when user has no connection', function (): void {
@@ -125,20 +127,20 @@ it('inserts and queues exactly one IngestActivityJob for a single webhook activi
     $result = (new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_001);
 
     expect($result)->toBeTrue()
-        ->and(Activity::query()->where('user_id', $user->id)->where('strava_external_id', 9_001)->exists())->toBeTrue();
+        ->and(Activity::query()->withStubs()->where('user_id', $user->id)->where('strava_external_id', 9_001)->exists())->toBeTrue();
     Queue::assertPushed(IngestActivityJob::class, 1);
 });
 
 it('re-uses the existing row when a webhook update arrives for a known activity', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
-    Activity::factory()->for($user)->create(['strava_external_id' => 9_002]);
+    Activity::factory()->for($user)->stub()->create(['strava_external_id' => 9_002]);
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
 
     (new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_002);
 
-    expect(Activity::query()->where('user_id', $user->id)->where('strava_external_id', 9_002)->count())->toBe(1);
+    expect(Activity::query()->withStubs()->where('user_id', $user->id)->where('strava_external_id', 9_002)->count())->toBe(1);
     Queue::assertPushed(IngestActivityJob::class, 1);
 });
 

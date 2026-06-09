@@ -63,6 +63,100 @@ it('excludes runs outside the requested range', function (): void {
             ->where('rangeFilter', '1y'));
 });
 
+it('auto-widens the range and flags it when the newest run is outside the default window', function (): void {
+    $user = User::factory()->create();
+    $ancient = Activity::factory()->for($user)->analyzed()->create();
+    // 200 days old: outside 8w (56d), 12w (84d) and 6m (182d); reaches into 1y.
+    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(200)]);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', '1y')
+            ->where('rangeAutoWidened', true)
+            ->has('runs', 1)
+            ->where('runs.0.detail.name', 'Ancient'));
+});
+
+it('escalates to the all range so a run older than every preset still shows', function (): void {
+    $user = User::factory()->create();
+    $ancient = Activity::factory()->for($user)->analyzed()->create();
+    // 400 days old: beyond 8w/12w/6m/1y, so auto-widen falls through to "all".
+    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(400)]);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', 'all')
+            ->where('rangeAutoWidened', true)
+            ->where('rangeStart', null)
+            ->where('runsTruncated', false)
+            ->has('runs', 1)
+            ->where('runs.0.detail.name', 'Ancient'));
+});
+
+it('caps the runs list and flags truncation when a range holds more than the cap', function (): void {
+    $user = User::factory()->create();
+    // One past the 365 cap so truncation triggers; range=all has no lower bound.
+    Activity::factory()->for($user)->analyzed()->has(ActivityDetail::factory(), 'detail')->count(366)->create();
+
+    $this->actingAs($user)->get('/aktivitas?range=all')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('runsTruncated', true)
+            ->where('maxRuns', 365)
+            ->has('runs', 365));
+});
+
+it('accepts an explicit all range with no lower bound', function (): void {
+    $user = User::factory()->create();
+    $ancient = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(900)]);
+
+    $this->actingAs($user)->get('/aktivitas?range=all')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', 'all')
+            ->where('rangeAutoWidened', false)
+            ->has('runs', 1));
+});
+
+it('does not widen when runs exist in the requested window', function (): void {
+    $user = User::factory()->create();
+    $recent = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($recent)->create(['name' => 'Recent', 'start_date_local' => Carbon::now()->subDays(3)]);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', '8w')
+            ->where('rangeAutoWidened', false)
+            ->has('runs', 1));
+});
+
+it('does not widen when the user has no analyzed runs', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', '8w')
+            ->where('rangeAutoWidened', false)
+            ->where('runs', []));
+});
+
+it('keeps the requested wider range without flagging an auto-widen', function (): void {
+    $user = User::factory()->create();
+    $ancient = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(200)]);
+
+    // User explicitly asked for 1y, which already reaches the run: no widen flag.
+    $this->actingAs($user)->get('/aktivitas?range=1y')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rangeFilter', '1y')
+            ->where('rangeAutoWidened', false)
+            ->has('runs', 1));
+});
+
 it('falls back to the default range when the query value is invalid', function (): void {
     $user = User::factory()->create();
 

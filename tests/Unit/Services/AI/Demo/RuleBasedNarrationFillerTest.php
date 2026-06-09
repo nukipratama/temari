@@ -14,11 +14,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-function fillerRow(AnalysisType $type, int $subjectId): Analysis
+function fillerRow(AnalysisType $type, int $subjectId, ?string $discriminator = null): Analysis
 {
     $row = new Analysis();
     $row->analysis_type = $type;
     $row->subject_id = $subjectId;
+    $row->discriminator = $discriminator;
 
     return $row;
 }
@@ -91,6 +92,35 @@ it('varies the ecosystem briefing voices by seed deterministically', function ()
 
     expect($voiceA)->toBe($voiceAAgain)
         ->and($voiceA)->not->toBe($voiceB);
+});
+
+it('varies discriminator-keyed copy across discriminators for the same subject', function (): void {
+    $filler = new RuleBasedNarrationFiller();
+
+    // Same subject, different month discriminators must not read byte-identical.
+    $january = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 1, '2026-02'));
+    $may = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 1, '2026-05'));
+
+    expect($january)->not->toBe($may);
+});
+
+it('is deterministic for the same subject and discriminator', function (): void {
+    $filler = new RuleBasedNarrationFiller();
+
+    $first = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 7, '2026-03'));
+    $second = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 7, '2026-03'));
+
+    expect($first)->toBe($second);
+});
+
+it('keeps the subject-only seed when the discriminator is null', function (): void {
+    $filler = new RuleBasedNarrationFiller();
+
+    // A null discriminator must leave the seed equal to subject_id so existing
+    // non-discriminated determinism (and the first-variant default) is preserved.
+    $copy = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 0, null));
+
+    expect($copy)->toBe('Bulan ini ritme kamu jalan terus. Gak ngotot, gak juga ngilang. Konsisten yang aku suka.');
 });
 
 it('returns deterministic copy for every subject-free analysis arm', function (AnalysisType $type, string $expected): void {

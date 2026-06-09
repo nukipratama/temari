@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -24,13 +25,15 @@ class AnalysisController extends Controller
     public function trigger(
         TriggerAnalysisRequest $request,
         AnalysisService $service,
+        ActivityPipeline $pipeline,
         string $type,
         int $subjectId,
     ): JsonResponse {
         // Validation in TriggerAnalysisRequest guarantees a known type.
         $analysisType = AnalysisType::from($type);
 
-        $this->authorizeSubject($this->user($request), $analysisType, $subjectId);
+        $user = $this->user($request);
+        $this->authorizeSubject($user, $analysisType, $subjectId);
         $discriminator = $request->discriminator();
 
         $existing = Analysis::query()
@@ -39,6 +42,21 @@ class AnalysisController extends Controller
 
         if ($existing?->cooldownRemaining() !== null) {
             return $this->payload($existing, $analysisType, $subjectId, $discriminator);
+        }
+
+        // A manual "Baca ulang" on a zone-dependent run block recomputes its
+        // stream summary from the already-stored streams (no Strava calls) so
+        // the regenerated narration reflects the user's current zones. Skipped
+        // unless the user has a custom profile, since without one the stored
+        // summary already used the config defaults that hrProfile() returns.
+        if ($analysisType->isZoneDependent()
+            && $analysisType->subjectType() === Activity::class
+            && $user->runnerProfile !== null
+        ) {
+            $activity = Activity::find($subjectId);
+            if ($activity !== null) {
+                $pipeline->recomputeSummary($activity);
+            }
         }
 
         $row = $service->request(

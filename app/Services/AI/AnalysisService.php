@@ -278,13 +278,15 @@ class AnalysisService
 
         $rows = new Collection();
         foreach ($groupTypes as $type) {
-            $row = $existing->get($type->value) ?? Analysis::query()->create([
-                'subject_type' => $subjectType,
-                'subject_id' => $subjectId,
-                'analysis_type' => $type,
-                'discriminator' => $discriminator,
-                ...$defaults,
-            ]);
+            $row = $existing->get($type->value) ?? Analysis::query()->firstOrCreate(
+                [
+                    'subject_type' => $subjectType,
+                    'subject_id' => $subjectId,
+                    'analysis_type' => $type,
+                    'discriminator' => $discriminator,
+                ],
+                $defaults,
+            );
             $rows->put($type->value, $row);
         }
 

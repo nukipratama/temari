@@ -79,7 +79,7 @@ class BriefingFeaturedKartuVoiceNarrator
     {
         $runs = ActivityDetail::query()
             ->select(['id', 'activity_id', 'distance'])
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
             ->with(['activity.runCard:id,activity_id,rarity,special_move,badges'])
             ->orderByDesc('start_date_local')
             ->limit(8)

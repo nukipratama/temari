@@ -51,16 +51,7 @@ class SyncOrchestrator
 
             $inserted = $this->insertActivityRows($user->id, $newIds);
 
-            foreach (Activity::query()
-                ->where('user_id', $user->id)
-                ->whereIn('strava_external_id', $newIds)
-                ->orderBy('id')
-                ->lazy() as $activity
-            ) {
-                IngestActivityJob::dispatch($activity->id);
-            }
-
-            Log::info('strava-sync queued ingestion', [
+            Log::info('strava-sync inserted activity stubs', [
                 'user_id' => $user->id,
                 'inserted' => $inserted,
             ]);
@@ -95,6 +86,7 @@ class SyncOrchestrator
             $this->insertActivityRows($user->id, [$externalId]);
 
             $activity = Activity::query()
+                ->withStubs()
                 ->where('user_id', $user->id)
                 ->where('strava_external_id', $externalId)
                 ->first();

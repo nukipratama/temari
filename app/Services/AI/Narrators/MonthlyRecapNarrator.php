@@ -67,7 +67,7 @@ class MonthlyRecapNarrator
         [$start, $end] = $this->monthBounds($month);
 
         $aggregate = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'))
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
             ->whereBetween('start_date_local', [$start, $end])
             ->selectRaw('COUNT(*) AS runs, COALESCE(SUM(distance), 0) AS total_distance, COALESCE(MAX(distance), 0) AS longest')
             ->first();

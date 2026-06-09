@@ -79,13 +79,10 @@ class DoctorCommand extends Command
 
                 return $verifyToken !== '' && app(StravaWebhookProbe::class)->probe($callbackUrl, $verifyToken)['passed'];
             },
-            'Rate limit headroom (15 min)' => function () use ($sampleUserId): bool {
-                return $sampleUserId !== null && RateLimiter::remaining("strava-api:{$sampleUserId}:15min", 200) > 0;
-            },
-            'Rate limit headroom (daily)' => function () use ($sampleUserId): bool {
-                return $sampleUserId !== null && RateLimiter::remaining("strava-api:{$sampleUserId}:daily", 2000) > 0;
-            },
+            'Rate limit headroom (15 min)' => fn (): bool => $sampleUserId !== null && RateLimiter::remaining("strava-api:{$sampleUserId}:15min", 200) > 0,
+            'Rate limit headroom (daily)' => fn (): bool => $sampleUserId !== null && RateLimiter::remaining("strava-api:{$sampleUserId}:daily", 2000) > 0,
             'No stranded activities' => fn (): bool => Activity::query()
+                ->withStubs()
                 ->whereHas('user.stravaConnection', fn (Builder $q): Builder => $q->whereNull('revoked_at'))
                 ->whereNull('analyzed_at')
                 ->where('detail_fail_count', '<', self::DETAIL_FETCH_MAX_ATTEMPTS)
@@ -117,6 +114,7 @@ class DoctorCommand extends Command
             $connection = $user->stravaConnection;
             $counts = $this->activityCounts($user->id);
             $lastFetched = Activity::query()
+                ->withStubs()
                 ->where('user_id', $user->id)
                 ->whereNotNull('fetched_at')
                 ->max('fetched_at');
@@ -205,7 +203,7 @@ class DoctorCommand extends Command
      */
     private function activityCounts(int $userId): array
     {
-        $base = Activity::query()->where('user_id', $userId);
+        $base = Activity::query()->withStubs()->where('user_id', $userId);
 
         return [
             'total' => (clone $base)->count(),
@@ -224,6 +222,7 @@ class DoctorCommand extends Command
     private function strandedQuery(int $userId): Builder
     {
         return Activity::query()
+            ->withStubs()
             ->where('user_id', $userId)
             ->whereNull('analyzed_at')
             ->where('detail_fail_count', '<', self::DETAIL_FETCH_MAX_ATTEMPTS);

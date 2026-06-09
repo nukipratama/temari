@@ -43,12 +43,12 @@ class LifetimeStats
      */
     private function compute(User $user): array
     {
-        $totalRuns = $user->activities()->whereNotNull('analyzed_at')->count();
+        $totalRuns = $user->activities()->count();
 
         $aggregates = ActivityDetail::query()
             ->whereHas(
                 'activity',
-                fn ($q) => $q->where('user_id', $user->id)->whereNotNull('analyzed_at'),
+                fn ($q) => $q->where('user_id', $user->id),
             )
             ->selectRaw('SUM(distance) AS total_distance, MIN(start_date_local) AS first_run_at')
             ->first();
