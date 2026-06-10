@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Services\AI\RuleBased;
 
 use App\Enums\Badge;
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
+use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 
 /**
@@ -15,13 +17,18 @@ use App\Services\AI\AnalysisType;
  * - DemoSeedCommand to backfill Analysis rows without spending LLM tokens
  * - BriefingComposer when Azure OpenAI is unconfigured (empty env)
  *
- * Output is deterministic (seeded selection) and Temari-voiced. Each method
- * offers multiple variants so demo users see personality, not repetition.
- * Users with a configured Azure can re-trigger via "Baca ulang" to get
- * real LLM output.
+ * Output is deterministic and Temari-voiced. Where the subject's real data is
+ * available it drives the copy (delegating run-insight types to the shared
+ * {@see RuleBasedInsightBuilder} so demo output matches production), falling
+ * back to seeded variants only when the subject row is missing. Users with a
+ * configured Azure can re-trigger via "Baca ulang" to get real LLM output.
  */
 final class RuleBasedNarrationFiller
 {
+    public function __construct(
+        private readonly RuleBasedInsightBuilder $insightBuilder,
+    ) {}
+
     public function fillFor(Analysis $row): string
     {
         $seed = $this->seedFor($row);
@@ -99,19 +106,47 @@ final class RuleBasedNarrationFiller
         ], $seed);
     }
 
+    private function detailFor(int $activityId): ?ActivityDetail
+    {
+        return ActivityDetail::query()->where('activity_id', $activityId)->first();
+    }
+
     private function postRunSpeech(int $activityId): string
     {
-        $detail = ActivityDetail::query()->where('activity_id', $activityId)->first();
+        $detail = $this->detailFor($activityId);
         if ($detail === null) {
             return 'Selesai juga. Konsisten kayak gini yang aku suka.';
         }
         $km = $detail->distance !== null ? number_format($detail->distance / 1000, 1) : '?';
 
-        return $this->select([
+        $base = $this->select([
             "Lari {$km} km kelar. Pace-nya keangkut sampai akhir, bagus.",
             "Selesai {$km} km. Ritme kamu rapi, aku suka.",
             "{$km} km masuk. Konsisten kayak gini yang bikin progres.",
         ], $activityId);
+
+        return $base . $this->postRunCoda($detail, $activityId);
+    }
+
+    /**
+     * One short data-driven coda for the post-run line, picked from whichever
+     * real signal the run actually carries (negative split / heat / rain),
+     * seeded so a given run always reads the same. Empty when nothing stands out.
+     */
+    private function postRunCoda(ActivityDetail $detail, int $seed): string
+    {
+        $summary = is_array($detail->stream_summary) ? $detail->stream_summary : [];
+        $codas = [];
+        if (($summary['negative_split'] ?? false) === true) {
+            $codas[] = ' Paruh kedua malah lebih kencang, mantap.';
+        }
+        if ($detail->weather_rain_detected === true) {
+            $codas[] = ' Hujan-hujan tetap jalan, salut.';
+        } elseif ($detail->weather_temp_c !== null && $detail->weather_temp_c >= 31) {
+            $codas[] = " Padahal {$detail->weather_temp_c} derajat, gerah banget.";
+        }
+
+        return $codas === [] ? '' : $codas[abs($seed) % count($codas)];
     }
 
     private function dailyGreeting(int $seed): string
@@ -127,64 +162,63 @@ final class RuleBasedNarrationFiller
 
     private function runInsightTechnical(int $activityId): string
     {
-        $detail = ActivityDetail::query()->where('activity_id', $activityId)->first();
-        if ($detail === null) {
+        $activity = Activity::query()->with('detail')->find($activityId);
+        if ($activity?->detail === null) {
             return 'Detail teknis-nya belum kebaca lengkap.';
         }
-        $cadence = $detail->average_cadence !== null ? (int) round($detail->average_cadence * 2) : null;
-        $hr = $detail->average_heartrate !== null ? (int) round($detail->average_heartrate) : null;
 
-        if ($cadence === null && $hr === null) {
-            return 'Sesi ini metrik-nya konsisten.';
-        }
-
-        $parts = [];
-        if ($cadence !== null) {
-            $parts[] = match (true) {
-                $cadence < 165 => "cadence rata-rata {$cadence}, masih di bawah ideal. Coba langkah lebih pendek tapi lebih sering",
-                $cadence < 175 => "cadence rata-rata {$cadence}, udah di zona oke",
-                default => "cadence rata-rata {$cadence}, langkah ringan dan efisien",
-            };
-        }
-        if ($hr !== null) {
-            $parts[] = match (true) {
-                $hr < 140 => "HR rata-rata {$hr}, sesi ini beneran easy",
-                $hr < 160 => "HR rata-rata {$hr}, zona moderat",
-                default => "HR rata-rata {$hr}, cukup intens untuk sesi ini",
-            };
-        }
-
-        return 'Sesi ini ' . implode('. ', $parts) . '.';
+        // Same code path as production, so demo + unconfigured-env output is the
+        // run's real cadence / decoupling / HR story, not a generic template.
+        return $this->insightBuilder->runInsightTechnical($activity, $activity->detail);
     }
 
-    private function runInsightSplits(int $seed): string
+    private function runInsightSplits(int $activityId): string
     {
-        return $this->select([
-            'Pacing kamu cenderung stabil dari awal sampai akhir. Negative split kecil di bagian akhir lebih baik daripada positive split besar.',
-            'Splits kamu rapi, gak ada km yang melar jauh. Konsistensi kayak gini yang bikin progres.',
-            'Paruh pertama dan kedua hampir mirip, pacing dijaga stabil. Ini tanda control yang bagus.',
-            'Ada sedikit variasi di tengah tapi overall pace-nya terkontrol. Solid buat sesi ini.',
-        ], $seed);
+        $detail = $this->detailFor($activityId);
+        if ($detail === null) {
+            return 'Splits-nya belum kebaca lengkap.';
+        }
+
+        return $this->insightBuilder->runInsightSplits($detail);
     }
 
-    private function runInsightZones(int $seed): string
+    private function runInsightZones(int $activityId): string
     {
-        return $this->select([
-            'Distribusi zone-nya didominasi easy/zone 2. Cocok buat base building, gak overstrain.',
-            'Mayoritas waktu di zona rendah, aerobic base lagi diperkuat. Strategi yang sabar.',
-            'Zone 2 jadi tulang punggung sesi ini. Base aerobik yang solid dapet dari konsistensi kayak gini.',
-            'HR dijaga di zona nyaman sebagian besar waktu. Gak ada spike berarti, rapi.',
-        ], $seed);
+        $detail = $this->detailFor($activityId);
+        if ($detail === null) {
+            return 'Distribusi zone-nya belum kebaca lengkap.';
+        }
+
+        return $this->insightBuilder->runInsightZones($detail);
     }
 
-    private function weeklyRecap(int $seed): string
+    private function weeklyRecap(int $snapshotId): string
     {
+        $snapshot = WeeklySnapshot::query()->find($snapshotId);
+        if ($snapshot === null || $snapshot->runs === null || $snapshot->runs < 1) {
+            return $this->select([
+                'Minggu ini ritme kamu cukup teratur. Volume lari masuk akal, recovery juga keurus.',
+                'Volume minggu ini oke, gak kebanyakan tapi gak juga kosong. Balance yang sehat.',
+                'Satu minggu lagi kelar. Jarak dan frekuensi lari kamu masuk akal, terus pelan-pelan aja.',
+                'Minggu yang konsisten tanpa drama. Kadang kayak gini yang dibutuhin, stabil naik.',
+            ], $snapshotId);
+        }
+
+        $km = number_format((float) $snapshot->distance_km, 1);
+        $runs = $snapshot->runs;
+        $closer = match ($snapshot->form_status) {
+            'fresh' => 'Badan lagi seger, ada ruang buat naik pelan-pelan.',
+            'optimal' => 'Kondisi pas banget, pertahanin ritme ini.',
+            'fatigued' => 'Mulai kerasa capek, sisipin recovery minggu depan.',
+            'overreaching' => 'Bebannya udah tinggi, jangan lupa istirahat cukup.',
+            default => 'Stabil terus pelan-pelan aja.',
+        };
+
         return $this->select([
-            'Minggu ini ritme kamu cukup teratur. Volume lari masuk akal, recovery juga keurus.',
-            'Volume minggu ini oke, gak kebanyakan tapi gak juga kosong. Balance yang sehat.',
-            'Satu minggu lagi kelar. Jarak dan frekuensi lari kamu masuk akal, terus pelan-pelan aja.',
-            'Minggu yang konsisten tanpa drama. Kadang kayak gini yang dibutuhin, stabil naik.',
-        ], $seed);
+            "{$km} km dalam {$runs} lari minggu ini. {$closer}",
+            "Minggu ini kekumpul {$km} km dari {$runs} sesi. {$closer}",
+            "{$runs} lari, total {$km} km. {$closer}",
+        ], $snapshotId);
     }
 
     private function prContext(int $seed): string
