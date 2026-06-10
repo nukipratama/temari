@@ -6,6 +6,9 @@
 
     <livewire:pulse.strava-health cols="6" rows="2" />
 
+    {{-- Did the scheduled commands actually run? --}}
+    <livewire:pulse.scheduler-health cols="full" />
+
     {{-- Stock performance cards. --}}
     <livewire:pulse.queues cols="4" />
 
