@@ -6,7 +6,7 @@ import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { renderBold } from '@/lib/richText';
 import { aktivitasUrl } from '@/lib/routes';
-import { formatKm, formatPace, formatNaiveRelativeId, paceSecPerKm } from '@/lib/pace';
+import { formatKm, formatPace, formatNaiveRelativeId, formatNaiveTimeId, paceSecPerKm } from '@/lib/pace';
 import { MOOD_UPPER, formatIdDateUpper, formatWeather, shortenLocation } from '@/pages/HariIni/helpers';
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
@@ -24,7 +24,8 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
     const weatherLabel = formatWeather(run.weather_temp_c ?? null, run.weather_humidity_pct ?? null, run.weather_rain_detected ?? null);
 
     const dateUpper = formatIdDateUpper(run.start_date_local);
-    const subline = [dateUpper, note ? MOOD_UPPER[note.mood] : null].filter(Boolean).join(' · ');
+    const timeLabel = formatNaiveTimeId(run.start_date_local);
+    const subline = [dateUpper, timeLabel, note ? MOOD_UPPER[note.mood] : null].filter(Boolean).join(' · ');
 
     return (
         <LinkCard href={aktivitasUrl(run)} padding="md" className="flex h-full flex-col gap-3">

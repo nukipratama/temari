@@ -58,4 +58,10 @@ describe('LastLariCard', () => {
         const link = screen.getByRole('link');
         expect(link).toHaveAttribute('href', '/aktivitas/99');
     });
+
+    it('shows the run start time in the subline', () => {
+        // start_date_local 07:00 renders as the as-recorded naive wall clock.
+        render(<LastLariCard run={richRun} pose="proud" note={{ oneline: 'x', mood: 'mumet' }} />);
+        expect(screen.getByText(/· 07\.00 ·/)).toBeInTheDocument();
+    });
 });
