@@ -19,7 +19,7 @@ class DemoAuthController extends Controller
         $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->first();
         if ($user === null) {
             return redirect()->route('login')->withErrors([
-                'demo' => 'Demo user belum di-seed. Jalankan `php artisan demo:seed --fresh` dulu.',
+                'demo' => 'Demo user belum di-seed. Jalankan `php artisan demo:seed` dulu.',
             ]);
         }
 

@@ -27,16 +27,17 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     // The seed is heavy (~126 runs) and deterministic (frozen clock). It is the
     // suite's single slowest unit of work, so this file runs it as few times as
     // possible: ONE seed feeds every completeness assertion below, then a SECOND
-    // --fresh seed proves idempotency — two seeds total, not the original five.
-    $exitCode = $this->artisan('demo:seed', ['--fresh' => true])->run();
+    // bare seed proves idempotency — two seeds total, not the original five.
+    $exitCode = $this->artisan('demo:seed')->run();
     expect($exitCode)->toBe(0);
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 
     // Core row counts — 35 scripted + RNG fillers @ 65% over ~180d; exact match fails loud on drift.
-    $activityCount = Activity::query()->where('user_id', $user->id)->count();
+    $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
+    $activityCount = $activityIds->count();
     expect($activityCount)->toBe(126)
-        ->and(RunCard::query()->whereIn('activity_id', Activity::query()->where('user_id', $user->id)->pluck('id'))->count())
+        ->and(RunCard::query()->whereIn('activity_id', $activityIds)->count())
         ->toBe($activityCount)
         ->and(StoryLine::query()->where('user_id', $user->id)->where('kind', StoryLine::KIND_POST_RUN)->count())
         ->toBe($activityCount)
@@ -87,10 +88,19 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     $maxRank = (clone $cardQuery)->get()->max(fn (RunCard $card): int => $card->rarity->rank());
     expect($queued->rarity->rank())->toBe($maxRank);
 
-    // Idempotency: a second --fresh seed wipes + rebuilds to the same row count
-    // (deterministic blueprint + frozen clock). Reusing the first seed above as
-    // the baseline keeps this file at two seeds total instead of the original five.
-    $this->artisan('demo:seed', ['--fresh' => true])->assertSuccessful();
-    $reseededUser = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
-    expect(Activity::query()->where('user_id', $reseededUser->id)->count())->toBe($activityCount);
+    // Idempotency: a second *bare* seed (no wipe) converges to the same row counts
+    // instead of duplicating or hitting the (user_id, strava_external_id) unique
+    // constraint. Every row is keyed on a deterministic identity via updateOrCreate.
+    $cardCount = RunCard::query()->whereIn('activity_id', $activityIds)->count();
+    $snapshotCount = WeeklySnapshot::query()->where('user_id', $user->id)->count();
+    $prCount = PersonalRecord::query()->where('user_id', $user->id)->count();
+
+    $this->artisan('demo:seed')->assertSuccessful();
+
+    $reseededActivityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
+    expect(User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->count())->toBe(1)
+        ->and($reseededActivityIds)->toHaveCount($activityCount)
+        ->and(RunCard::query()->whereIn('activity_id', $reseededActivityIds)->count())->toBe($cardCount)
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe($snapshotCount)
+        ->and(PersonalRecord::query()->where('user_id', $user->id)->count())->toBe($prCount);
 });

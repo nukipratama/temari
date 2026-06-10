@@ -86,19 +86,19 @@ class DemoRunSeeder
     }
 
     /**
-     * @param  bool  $fresh  truncate prior demo runs/cards/snapshots first
+     * Idempotent: every row is keyed on a deterministic identity (blueprint seed,
+     * activity_id, ISO week, …) via updateOrCreate, so re-running converges to the
+     * same dataset instead of duplicating or hitting the unique constraint.
+     *
      * @param  Closure(string): void|null  $log  optional reporter (command::info etc.)
      */
-    public function seed(bool $fresh = false, ?Closure $log = null): int
+    public function seed(?Closure $log = null): int
     {
         $log ??= static fn (string $_): null => null;
 
         $count = 0;
 
-        $this->analysisService->withoutDispatching(function () use ($fresh, $log, &$count): void {
-            if ($fresh) {
-                $this->nukeDemoUser($log);
-            }
+        $this->analysisService->withoutDispatching(function () use ($log, &$count): void {
             $user = $this->ensureDemoUser($log);
 
             $blueprints = $this->library->all();
@@ -328,50 +328,22 @@ class DemoRunSeeder
         return $user;
     }
 
-    private function nukeDemoUser(Closure $log): void
-    {
-        $user = User::query()->where('email', self::DEMO_USER_EMAIL)->first();
-        if ($user === null) {
-            return;
-        }
-
-        // ai_analyses is polymorphic (no FK), so cascade-on-delete from `users`
-        // doesn't catch it — wipe it explicitly before the user goes away.
-        $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
-        $weeklyIds = WeeklySnapshot::query()->where('user_id', $user->id)->pluck('id');
-        $prIds = PersonalRecord::query()->where('user_id', $user->id)->pluck('id');
-        $cardIds = RunCard::query()->whereIn('activity_id', $activityIds)->pluck('id');
-
-        Analysis::query()
-            ->where(function ($q) use ($user, $activityIds, $weeklyIds, $prIds, $cardIds): void {
-                $q->where(fn ($qq) => $qq->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
-                    ->orWhere(fn ($qq) => $qq->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $weeklyIds))
-                    ->orWhere(fn ($qq) => $qq->where('subject_type', PersonalRecord::class)->whereIn('subject_id', $prIds))
-                    ->orWhere(fn ($qq) => $qq->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
-                    ->orWhere(fn ($qq) => $qq->whereIn('subject_type', [
-                        AnalysisType::BRIEFING_SUBJECT_TYPE,
-                        AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
-                        AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
-                    ])->where('subject_id', $user->id));
-            })
-            ->delete();
-
-        $user->delete();
-        $log("Nuked prior demo user (id={$user->id}) + all related analyses/activities/cards/story lines/PRs/snapshots");
-    }
-
     private function seedOne(User $user, RunBlueprint $blueprint): void
     {
         $streams = $this->synthesizer->build($blueprint);
         $splits = $this->splitsBuilder->build($streams);
 
-        $activity = Activity::query()->create([
-            'user_id' => $user->id,
-            'strava_external_id' => (int) ('9' . str_pad((string) $blueprint->seed(), 9, '0', STR_PAD_LEFT)),
-            'fetched_at' => $blueprint->startsAt->copy()->addHour(),
-            'analyzed_at' => $blueprint->startsAt->copy()->addHour(),
-            'detail_fail_count' => 0,
-        ]);
+        $activity = Activity::query()->updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'strava_external_id' => (int) ('9' . str_pad((string) $blueprint->seed(), 9, '0', STR_PAD_LEFT)),
+            ],
+            [
+                'fetched_at' => $blueprint->startsAt->copy()->addHour(),
+                'analyzed_at' => $blueprint->startsAt->copy()->addHour(),
+                'detail_fail_count' => 0,
+            ],
+        );
 
         $distanceStream = $streams['distance']['data'] ?? [];
         $hrStream = $streams['heartrate']['data'] ?? [];
@@ -379,8 +351,9 @@ class DemoRunSeeder
 
         $location = $blueprint->location ?? DemoLocation::default();
 
-        $detail = ActivityDetail::query()->create([
+        $detail = ActivityDetail::query()->updateOrCreate([
             'activity_id' => $activity->id,
+        ], [
             'name' => $blueprint->name ?? 'Run',
             'start_date_local' => $blueprint->startsAt,
             'distance' => $distanceStream === [] ? 0.0 : round((float) end($distanceStream), 1),
@@ -407,8 +380,9 @@ class DemoRunSeeder
             'weather_rain_detected' => $blueprint->weatherRainDetected,
         ]);
 
-        ActivityStream::query()->create([
+        ActivityStream::query()->updateOrCreate([
             'activity_id' => $activity->id,
+        ], [
             'data' => $streams,
         ]);
 
