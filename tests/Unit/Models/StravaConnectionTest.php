@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -110,4 +111,30 @@ it('excludes revoked connections from the active scope', function (): void {
     $ids = StravaConnection::query()->active()->pluck('id')->all();
 
     expect($ids)->toBe([$active->id]);
+});
+
+it('purges the user un-ingested stubs on revoke, leaving analyzed runs and other users intact', function (): void {
+    $userA = User::factory()->create();
+    $conn = StravaConnection::factory()->for($userA)->create();
+    Activity::factory()->stub()->for($userA)->count(3)->create(); // un-ingested stubs
+    Activity::factory()->for($userA)->create();                   // analyzed run (default state)
+
+    $userB = User::factory()->create();
+    Activity::factory()->stub()->for($userB)->create();           // unrelated user's stub
+
+    $conn->markRevoked();
+
+    expect(Activity::withStubs()->where('user_id', $userA->id)->whereNull('analyzed_at')->count())->toBe(0)
+        ->and(Activity::withStubs()->where('user_id', $userA->id)->whereNotNull('analyzed_at')->count())->toBe(1)
+        ->and(Activity::withStubs()->where('user_id', $userB->id)->whereNull('analyzed_at')->count())->toBe(1);
+});
+
+it('does not purge stubs when markRevoked is a no-op (already revoked)', function (): void {
+    $user = User::factory()->create();
+    $conn = StravaConnection::factory()->for($user)->create(['revoked_at' => Carbon::now()]);
+    Activity::factory()->stub()->for($user)->create();
+
+    $conn->markRevoked(); // already revoked → early return, no purge
+
+    expect(Activity::withStubs()->where('user_id', $user->id)->whereNull('analyzed_at')->count())->toBe(1);
 });

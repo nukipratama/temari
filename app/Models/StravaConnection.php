@@ -69,6 +69,16 @@ class StravaConnection extends Model
         }
 
         $this->update(['revoked_at' => Carbon::now()]);
+
+        // Purge this user's un-ingested stubs: the ingest drain only selects
+        // activities whose connection is non-revoked, so stubs inserted before a
+        // mid-sync 401 would otherwise sit orphaned forever. withStubs() opts out
+        // of AnalyzedScope (which forces analyzed_at IS NOT NULL) — without it this
+        // delete would match nothing.
+        Activity::withStubs()
+            ->where('user_id', $this->user_id)
+            ->whereNull('analyzed_at')
+            ->delete();
     }
 
     /**
