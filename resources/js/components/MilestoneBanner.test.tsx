@@ -1,7 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MilestoneBanner, { type PendingMilestone } from './MilestoneBanner';
+
+// The dismiss endpoint returns plain JSON, so the banner posts via fetch
+// (not Inertia's router). Stub it so dismissing in any test stays inert.
+const fetchMock = vi.fn(() => Promise.resolve(new Response('{"ok":true}', { status: 200 })));
+beforeEach(() => {
+    fetchMock.mockClear();
+    vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
 
 describe('MilestoneBanner', () => {
     it('renders nothing when pending is null', () => {
@@ -52,20 +62,17 @@ describe('MilestoneBanner', () => {
         },
     );
 
-    it('POSTs to the dismiss endpoint and hides itself when "Tutup" is clicked', async () => {
-        const spy = vi.spyOn(router, 'post').mockImplementation(() => {});
+    it('POSTs to the dismiss endpoint via fetch and hides itself when "Tutup" is clicked', async () => {
         const pending: PendingMilestone = {
             activity_id: 99,
             milestones: [{ kind: 'pr', label: 'PR!', body: 'x' }],
         };
         render(<MilestoneBanner pending={pending} />);
         fireEvent.click(screen.getByRole('button', { name: 'Tutup' }));
-        expect(spy).toHaveBeenCalledWith(
+        expect(fetchMock).toHaveBeenCalledWith(
             '/api/milestones/99/dismiss',
-            {},
-            expect.objectContaining({ preserveScroll: true, preserveState: true }),
+            expect.objectContaining({ method: 'POST' }),
         );
         await waitFor(() => expect(screen.queryByText('PR!')).not.toBeInTheDocument());
-        spy.mockRestore();
     });
 });

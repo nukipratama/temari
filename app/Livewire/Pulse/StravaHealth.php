@@ -127,15 +127,16 @@ class StravaHealth extends Card
     }
 
     /**
-     * @return array{configured: bool, subscription_id: string|null}
+     * Only whether the webhook is configured — the subscription id is an opaque
+     * Strava identifier with no diagnostic value on the dashboard, so it's not
+     * surfaced.
+     *
+     * @return array{configured: bool}
      */
     private function webhookStatus(): array
     {
-        $subscriptionId = config('services.strava.webhook_subscription_id');
-
         return [
-            'configured' => filled($subscriptionId),
-            'subscription_id' => $subscriptionId,
+            'configured' => filled(config('services.strava.webhook_subscription_id')),
         ];
     }
 }

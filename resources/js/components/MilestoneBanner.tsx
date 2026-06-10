@@ -1,10 +1,10 @@
-import { router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import DecorativeBlur from '@/components/DecorativeBlur';
 import { cn } from '@/lib/cn';
+import { postJson } from '@/lib/http';
 
 export interface MilestoneEntry {
     kind: 'pr' | 'longest_ever' | 'first_ever_distance' | 'first_ever_pace';
@@ -46,10 +46,9 @@ export default function MilestoneBanner({ pending }: Readonly<MilestoneBannerPro
 
     const dismiss = () => {
         setOpen(false);
-        router.post(`/api/milestones/${pending.activity_id}/dismiss`, {}, {
-            preserveScroll: true,
-            preserveState: true,
-        });
+        // The dismiss endpoint returns plain JSON, so it must go through fetch —
+        // Inertia's router rejects non-Inertia responses.
+        void postJson(`/api/milestones/${pending.activity_id}/dismiss`);
     };
 
     return (

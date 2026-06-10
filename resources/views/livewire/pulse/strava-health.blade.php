@@ -102,7 +102,7 @@
             <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 @if ($webhookStatus['configured'])
                     <span class="inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
-                    <span>Webhook subscribed (ID: {{ $webhookStatus['subscription_id'] }})</span>
+                    <span>Webhook subscribed</span>
                 @else
                     <span class="inline-block h-2 w-2 rounded-full bg-amber-500"></span>
                     <span>Webhook not configured</span>

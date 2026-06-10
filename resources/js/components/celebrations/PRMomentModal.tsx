@@ -1,8 +1,8 @@
-import { router } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useRef } from 'react';
 import Temari from '@/components/temari/Temari';
 import { cn } from '@/lib/cn';
+import { postJson } from '@/lib/http';
 import { aktivitasUrl } from '@/lib/routes';
 import { iconButtonVariants } from '@/lib/variants';
 import { useDismissable } from '@/hooks/useDismissable';
@@ -28,9 +28,10 @@ export default function PRMomentModal({ pr, onClose, onShare }: Readonly<PRMomen
 
     // Dismissing the celebration is the explicit signal that the user has SEEN
     // the new PR, so it advances the "seen" marker server-side (the dashboard
-    // GET only detects, it never writes). preserveState/Scroll keep the page put.
+    // GET only detects, it never writes). The endpoint returns plain JSON, so it
+    // must go through fetch — Inertia's router rejects non-Inertia responses.
     const handleClose = useCallback(() => {
-        router.post('/api/pr-ledger/seen', {}, { preserveScroll: true, preserveState: true });
+        void postJson('/api/pr-ledger/seen');
         onClose();
     }, [onClose]);
 

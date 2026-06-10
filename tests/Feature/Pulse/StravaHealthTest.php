@@ -57,13 +57,14 @@ it('counts a revoked connection in the revoked bucket', function (): void {
         ->assertSee('revoked');
 });
 
-it('shows webhook subscribed when subscription id is configured', function (): void {
+it('shows webhook subscribed without leaking the subscription id', function (): void {
     config(['services.strava.webhook_subscription_id' => '42']);
 
     Livewire::test(StravaHealth::class)
         ->assertOk()
         ->assertSee('Webhook subscribed')
-        ->assertSee('ID: 42');
+        ->assertDontSee('ID:')
+        ->assertDontSee('42');
 });
 
 it('shows webhook not configured when subscription id is empty', function (): void {

@@ -1,7 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
-import { router } from '@inertiajs/react';
 import PRMomentModal from './PRMomentModal';
 
 type Pr = NonNullable<ComponentProps<typeof PRMomentModal>['pr']>;
@@ -9,6 +8,17 @@ type Pr = NonNullable<ComponentProps<typeof PRMomentModal>['pr']>;
 function pr(overrides: Partial<Pr> = {}): Pr {
     return { activityId: 42, categoryLabel: '5K', timeDisplay: '22:15', ...overrides };
 }
+
+// The seen-marker endpoint returns plain JSON, so the modal posts via fetch
+// (not Inertia's router). Stub it so dismissing in any test stays inert.
+const fetchMock = vi.fn(() => Promise.resolve(new Response('{"ok":true}', { status: 200 })));
+beforeEach(() => {
+    fetchMock.mockClear();
+    vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
 
 describe('PRMomentModal', () => {
     it('renders nothing when pr is null', () => {
@@ -63,14 +73,12 @@ describe('PRMomentModal', () => {
         expect(dialog.contains(document.activeElement)).toBe(true);
     });
 
-    it('advances the PR-seen marker on close', () => {
-        vi.mocked(router.post).mockClear();
+    it('advances the PR-seen marker on close via fetch (endpoint returns plain JSON)', () => {
         render(<PRMomentModal pr={pr()} onClose={vi.fn()} />);
         fireEvent.click(screen.getByLabelText('Tutup'));
-        expect(router.post).toHaveBeenCalledWith(
+        expect(fetchMock).toHaveBeenCalledWith(
             '/api/pr-ledger/seen',
-            {},
-            expect.objectContaining({ preserveScroll: true, preserveState: true }),
+            expect.objectContaining({ method: 'POST' }),
         );
     });
 
