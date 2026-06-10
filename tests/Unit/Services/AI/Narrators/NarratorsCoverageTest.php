@@ -177,6 +177,37 @@ it('RunInsightNarrator does not fatal when the stream summary is null', function
     expect($payload['zones'])->toBe('z');
 });
 
+it('RunInsightNarrator feeds training-load + pace-variability + zone-minutes into the context', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update([
+        'trimp_edwards' => 92.4,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 70, 'Z3' => 30],
+            'time_in_zone_min' => ['Z2' => 32, 'Z3' => 14],
+            'pace_variability_sec' => 11.3,
+            'ascent_m' => 48,
+        ],
+    ]);
+
+    $context = (new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}')))->context($d->fresh());
+
+    expect($context['trimp'])->toBe(92.4)
+        ->and($context['pace_variability_sec'])->toBe(11.3)
+        ->and($context['time_in_zone_min'])->toBe(['Z2' => 32, 'Z3' => 14])
+        ->and($context['ascent_m'])->toBe(48);
+});
+
+it('RunInsightNarrator leaves the new context fields null when no stream summary', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => null, 'trimp_edwards' => null]);
+
+    $context = (new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}')))->context($d->fresh());
+
+    expect($context['trimp'])->toBeNull()
+        ->and($context['pace_variability_sec'])->toBeNull()
+        ->and($context['time_in_zone_min'])->toBeNull();
+});
+
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
 
 it('WeeklyRecapNarrator returns narrative on valid JSON', function (): void {
