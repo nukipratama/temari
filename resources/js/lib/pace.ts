@@ -200,10 +200,13 @@ export function monthsSinceId(iso: string | null | undefined): number | null {
     return Math.max(0, (now.getFullYear() - Number(y)) * 12 + (now.getMonth() + 1 - Number(m)));
 }
 
-// Local-zone Monday-of-week. toISOString() would shift to UTC and roll the date
-// across midnight in non-UTC zones — past incidents traced week-snapshot bugs to that.
+// Local-zone Monday-of-week. Parses the iso by its own wall-clock components
+// (not new Date(iso), which reads a trailing Z/offset as UTC and can roll a
+// late-evening run into the next day's week for a non-UTC viewer) so a run is
+// always bucketed into the week it was actually run. Falls back to new Date for
+// inputs the naive parser can't read.
 export function mondayOf(iso: string): Date {
-    const d = new Date(iso);
+    const d = parseNaiveLocalDate(iso) ?? new Date(iso);
     d.setHours(0, 0, 0, 0);
     const offset = (d.getDay() + 6) % 7;
     d.setDate(d.getDate() - offset);

@@ -388,6 +388,14 @@ describe('mondayOf / sundayOf / isoDateLocal', () => {
         expect(isoDateLocal(monday)).toBe('2026-05-18');
     });
 
+    it('mondayOf buckets by the as-recorded local day, ignoring a trailing offset', () => {
+        // Sunday 2026-06-07 22:00 belongs to the week of Mon 2026-06-01.
+        // new Date() would read the -05:00 offset as 2026-06-08T03:00Z and, in a
+        // UTC runtime, snap to Mon 2026-06-08 (the WRONG week).
+        const monday = mondayOf('2026-06-07T22:00:00-05:00');
+        expect(isoDateLocal(monday)).toBe('2026-06-01');
+    });
+
     it('sundayOf advances the given Monday by six days', () => {
         const sunday = sundayOf(new Date(2026, 4, 18));
         expect(isoDateLocal(sunday)).toBe('2026-05-24');
