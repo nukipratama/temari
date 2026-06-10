@@ -16,7 +16,7 @@ import { cn } from '@/lib/cn';
 import { aktivitasUrl, kartuUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
 import { moodFromActivity } from '@/lib/moodFromActivity';
-import { formatDurationHMS, formatIdDate, formatKm, formatPace, paceSecPerKm, parsePaceSec } from '@/lib/pace';
+import { formatDurationHMS, formatIdDate, formatKm, formatNaiveIdDate, formatPace, formatShortDateTimeId, paceSecPerKm, parsePaceSec } from '@/lib/pace';
 import { buildCardStats, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
 import { emberGlowStyle } from '@/lib/styles';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
@@ -124,7 +124,7 @@ export default function RunsShow({
                                     <div className="mb-1.5 flex flex-wrap items-center gap-2">
                                         <MoodChip mood={mood} onSky />
                                         <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
-                                            {formatIdDate(detail.start_date_local, 'long')}
+                                            {formatShortDateTimeId(detail.start_date_local)}
                                         </span>
                                     </div>
                                     <h1 className="font-display text-display-sm text-cream">
@@ -201,7 +201,7 @@ export default function RunsShow({
                             >
                                 <Kartu
                                     name={card.special_move}
-                                    subtitle={`${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`}
+                                    subtitle={`${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`}
                                     km={km}
                                     durasi={duration === '—' ? '—' : duration}
                                     trimp={trimp != null ? trimp : '—'}

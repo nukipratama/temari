@@ -6,7 +6,7 @@ import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { renderBold } from '@/lib/richText';
 import { aktivitasUrl } from '@/lib/routes';
-import { formatKm, formatPace, formatRelativeId, paceSecPerKm } from '@/lib/pace';
+import { formatKm, formatPace, formatNaiveRelativeId, paceSecPerKm } from '@/lib/pace';
 import { MOOD_UPPER, formatIdDateUpper, formatWeather, shortenLocation } from '@/pages/HariIni/helpers';
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
@@ -19,7 +19,7 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
     const km = formatKm(run.distance);
     const paceSec = paceSecPerKm(run.moving_time, run.distance);
     const trimp = run.trimp_edwards != null ? Math.round(run.trimp_edwards) : null;
-    const dateLabel = formatRelativeId(run.start_date_local);
+    const dateLabel = formatNaiveRelativeId(run.start_date_local);
     const locationShort = shortenLocation(run.location_name ?? null);
     const weatherLabel = formatWeather(run.weather_temp_c ?? null, run.weather_humidity_pct ?? null, run.weather_rain_detected ?? null);
 

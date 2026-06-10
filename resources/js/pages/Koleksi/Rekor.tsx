@@ -15,7 +15,7 @@ import SplitsSparkline from '@/components/run/SplitsSparkline';
 import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import PageContainer from '@/components/ui/PageContainer';
-import { formatDurationHMS, formatIdDate } from '@/lib/pace';
+import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
 import { emberGlowStyle } from '@/lib/styles';
@@ -180,7 +180,7 @@ function HeroScoreboard({
             </div>
             <div className="relative mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <Caption label="Tipe" value={runName} />
-                <Caption label="Hari" value={formatIdDate(pr.set_at, 'long')} />
+                <Caption label="Hari" value={formatNaiveIdDate(pr.set_at, 'long')} />
                 <Caption
                     label="Tempat"
                     value={
@@ -315,7 +315,7 @@ function Medallion({ pr }: Readonly<{ pr: ExtendedPR }>) {
         <PrCard
             category={PR_CATEGORY_LABELS[pr.category] ?? pr.category}
             time={formatPrValue(pr.category, pr.value_sec)}
-            setAt={formatIdDate(pr.set_at, 'short')}
+            setAt={formatNaiveIdDate(pr.set_at, 'short')}
             activityId={pr.activity_id}
             runName={pr.activity?.detail?.name ?? 'Lari'}
             size="lg"
@@ -372,7 +372,7 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
             <div className="border-t border-cream/10 pt-2.5">
                 <div className="font-sans text-xs text-cream/85">{runName}</div>
                 <div className="font-mono text-xs uppercase tracking-[0.12em] text-ink-on-sky">
-                    {formatIdDate(pr.set_at, 'short')}
+                    {formatNaiveIdDate(pr.set_at, 'short')}
                 </div>
             </div>
         </div>

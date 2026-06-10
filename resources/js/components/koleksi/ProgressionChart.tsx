@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo } from 'react';
 import { cn } from '@/lib/cn';
-import { formatDurationHMS, formatIdDate } from '@/lib/pace';
+import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
 
 const Line = lazy(() => import('react-chartjs-2').then((m) => ({ default: m.Line })));
 
@@ -33,7 +33,7 @@ export default function ProgressionChart({
     className,
 }: Readonly<ProgressionChartProps>) {
     const data = useMemo(() => ({
-        labels: weeks.map((w) => formatIdDate(w, 'short')),
+        labels: weeks.map((w) => formatNaiveIdDate(w, 'short')),
         datasets: [
             {
                 label: 'Best time',

@@ -1,5 +1,5 @@
 import { moodFromActivity } from '@/lib/moodFromActivity';
-import { formatDuration, formatKm, formatRelativeId, formatShortWeekdayDateId } from '@/lib/pace';
+import { formatDuration, formatKm, formatNaiveRelativeId, formatShortWeekdayDateId, parseNaiveLocalDate } from '@/lib/pace';
 import { RARITY_LABELS, buildCardStats, paceShapeFromDetail, zonePctFromDetail, type CardStatStrings } from '@/lib/runcard';
 import type { ActivityDetail, Mood, Rarity, RunCard, ZonePct } from '@/types/inertia';
 
@@ -41,7 +41,7 @@ function toFeaturedCard(r: ActivityDetail, card: RunCard): FeaturedCard {
     return {
         cardId: card.id,
         name: card.special_move,
-        subtitle: `${RARITY_LABELS[card.rarity]} · ${formatRelativeId(r.start_date_local)}`,
+        subtitle: `${RARITY_LABELS[card.rarity]} · ${formatNaiveRelativeId(r.start_date_local)}`,
         km: formatKm(r.distance),
         durasi: r.moving_time != null ? formatDuration(r.moving_time) : '—',
         trimp: r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',
@@ -82,7 +82,7 @@ export function kartuStripItem(run: ActivityDetail): StripItem | null {
         cardId: card.id,
         name: card.special_move,
         rarity: card.rarity,
-        date: formatRelativeId(run.start_date_local),
+        date: formatNaiveRelativeId(run.start_date_local),
         polyline: run.summary_polyline ?? null,
     };
 }
@@ -106,8 +106,10 @@ export const MOOD_UPPER: Record<Mood, string> = {
 
 export function formatIdDateUpper(iso: string | null): string {
     if (iso == null) return '';
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return '';
+    // Component-parsed (not new Date(iso)) so the naive backend datetime's
+    // trailing Z can't shift the weekday/date for non-WIB viewers.
+    const date = parseNaiveLocalDate(iso);
+    if (date === null) return '';
     return formatShortWeekdayDateId(date).toUpperCase();
 }
 

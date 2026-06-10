@@ -17,7 +17,7 @@ import ShareCardModal from '@/components/card/ShareCardModal';
 import type { ShareKartuData } from '@/lib/shareCard';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
-import { formatDuration, formatIdDate, formatKm, formatPaddedDayMonthYearId, formatPace, formatTimeId, paceSecPerKm } from '@/lib/pace';
+import { formatDuration, formatNaiveIdDate, formatKm, formatNaiveTimeId, formatPace, formatShortDateId, paceSecPerKm } from '@/lib/pace';
 import { RARITY_BORDER, RARITY_LABELS, RARITY_POSE, avgCadenceFromDetail, badgeEmblem, badgeName, buildCardStats, fastestKmFromDetail, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
 import type { ActivityDetail, AnalysisPayload, CardEdition, Mood, Rarity } from '@/types/inertia';
@@ -73,7 +73,7 @@ export default function KartuDetail({
         detail?.trimp_edwards == null ? '—' : String(Math.round(detail.trimp_edwards));
     const sharePaceSec = paceSecPerKm(detail?.moving_time, detail?.distance);
     const subtitle = detail
-        ? `${detail.name ?? 'Lari'} · ${formatIdDate(detail.start_date_local, 'short')}`
+        ? `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`
         : null;
     const badges = (card.badges ?? []).slice(0, 3);
     const rarityLabel = RARITY_LABELS[card.rarity];
@@ -109,8 +109,9 @@ export default function KartuDetail({
 
     const shareDate = detail?.start_date_local
         ? (() => {
-              const d = new Date(detail.start_date_local);
-              return `${formatPaddedDayMonthYearId(d)}\n${formatTimeId(d)}`;
+              const time = formatNaiveTimeId(detail.start_date_local);
+              const date = formatShortDateId(detail.start_date_local);
+              return time === null ? date : `${date}\n${time}`;
           })()
         : null;
 
@@ -280,7 +281,7 @@ export default function KartuDetail({
                                             {detail.name ?? 'Lari'}
                                         </div>
                                         <div className="mt-1 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2">
-                                            {formatIdDate(detail.start_date_local, 'long')}
+                                            {formatNaiveIdDate(detail.start_date_local, 'long')}
                                         </div>
                                     </div>
                                     <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep">
@@ -314,7 +315,7 @@ export default function KartuDetail({
                                                 </div>
                                                 <div className="mt-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2">
                                                     {rarityLabel} ·{' '}
-                                                    {formatIdDate(
+                                                    {formatNaiveIdDate(
                                                         c.detail?.start_date_local ?? null,
                                                         'short',
                                                     )}

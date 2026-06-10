@@ -13,7 +13,7 @@ import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
-import { formatIdDate, formatShortDateId, monthsSinceId } from '@/lib/pace';
+import { formatIdDate, formatNaiveIdDate, formatShortDateId, monthsSinceId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
@@ -296,7 +296,7 @@ function RekorMini({ pr }: Readonly<{ pr: TopPrEntry }>) {
         <PrCard
             category={PR_CATEGORY_LABELS[pr.category] ?? pr.category}
             time={formatPrValue(pr.category, pr.value_sec)}
-            setAt={formatIdDate(pr.set_at, 'short')}
+            setAt={formatNaiveIdDate(pr.set_at, 'short')}
             activityId={pr.activity_id}
         />
     );

@@ -118,6 +118,19 @@ describe('Runs/Show', () => {
         expect(screen.getAllByText('Morning Run').length).toBeGreaterThan(0);
     });
 
+    it('renders the as-recorded date and start time in the hero', () => {
+        renderShow();
+        // start_date_local '2026-05-10T07:00:00' → wall-clock date + time, no zone shift.
+        expect(screen.getByText('10 Mei 2026 · 07.00')).toBeInTheDocument();
+    });
+
+    it('renders the literal hero time even when serialized with a UTC Z', () => {
+        renderShow({
+            detail: { ...detail, start_date_local: '2026-06-09T06:52:54.000000Z' },
+        });
+        expect(screen.getByText('9 Jun 2026 · 06.52')).toBeInTheDocument();
+    });
+
     it('renders the four-lens grid with the Kata Temari header', () => {
         renderShow();
         expect(screen.getByText('Kata Temari')).toBeInTheDocument();

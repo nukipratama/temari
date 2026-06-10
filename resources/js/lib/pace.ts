@@ -47,14 +47,23 @@ export function formatDurationHMS(seconds: number | null | undefined): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// "5 menit lalu", "2 jam lalu", "kemarin", "3 hari lalu". Falls back to '—' on null/invalid.
-export function formatRelativeId(iso: string | null | undefined, now: Date = new Date()): string {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    const ms = now.getTime() - d.getTime();
+// Builds a Date from the string's own Y-M-D[ H:M:S] components in the runtime's
+// local zone, ignoring any trailing Z/offset. Backend datetimes here are naive
+// wall-clock values (Strava's start_date_local) that Laravel serializes with a
+// misleading trailing Z — `new Date(iso)` would reinterpret them as UTC and
+// shift the date/hour for non-WIB viewers. Null when the string doesn't lead
+// with a date.
+export function parseNaiveLocalDate(iso: string): Date | null {
+    const match = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(iso);
+    if (!match) return null;
+    const [, y, m, d, h, min, s] = match;
+    return new Date(Number(y), Number(m) - 1, Number(d), Number(h ?? 0), Number(min ?? 0), Number(s ?? 0));
+}
+
+// Shared wording for the relative formatters below. Negative (future/skewed)
+// deltas clamp to "baru aja" rather than leaking "-3 jam lalu" into the UI.
+function relativeIdFromDelta(ms: number, iso: string, naive: boolean): string {
     if (!Number.isFinite(ms)) return '—';
-    // A future or clock-skewed timestamp yields a negative delta; treat it as "just now"
-    // rather than letting "-3 jam lalu" leak into the UI.
     if (ms < 0) return 'baru aja';
     const sec = Math.round(ms / 1000);
     if (sec < 60) return 'baru aja';
@@ -67,16 +76,51 @@ export function formatRelativeId(iso: string | null | undefined, now: Date = new
     if (day < 7) return `${day} hari lalu`;
     const week = Math.floor(day / 7);
     if (week < 5) return `${week} minggu lalu`;
-    return formatIdDate(iso, 'short');
+    return naive ? formatNaiveIdDate(iso, 'short') : formatIdDate(iso, 'short');
 }
 
-export function formatIdDate(iso: string | null, format: 'short' | 'long' = 'short'): string {
+// "5 menit lalu", "2 jam lalu", "kemarin", "3 hari lalu" for TRUE INSTANTS
+// (created_at / generated_at / fetched_at style UTC timestamps, or local Dates
+// round-tripped through toISOString). Falls back to '—' on null/invalid.
+// For naive wall-clock values (start_date_local), use formatNaiveRelativeId.
+export function formatRelativeId(iso: string | null | undefined, now: Date = new Date()): string {
     if (!iso) return '—';
-    const d = new Date(iso);
+    return relativeIdFromDelta(now.getTime() - new Date(iso).getTime(), iso, false);
+}
+
+// Relative wording for NAIVE wall-clock values (Strava's start_date_local,
+// serialized with a misleading trailing Z): the delta is measured against the
+// as-recorded local clock, so a 06:30 run reads "12 jam lalu" at 18:30 local
+// instead of being shifted by the viewer's offset.
+export function formatNaiveRelativeId(iso: string | null | undefined, now: Date = new Date()): string {
+    if (!iso) return '—';
+    const d = parseNaiveLocalDate(iso);
+    if (d === null) return '—';
+    return relativeIdFromDelta(now.getTime() - d.getTime(), iso, true);
+}
+
+function idDateFromDate(d: Date, format: 'short' | 'long'): string {
+    if (Number.isNaN(d.getTime())) return '—';
     if (format === 'long') {
         return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
     }
     return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'short' });
+}
+
+// Weekday + date for TRUE INSTANTS (see formatRelativeId). For naive
+// wall-clock values (start_date_local, pr.set_at), use formatNaiveIdDate.
+export function formatIdDate(iso: string | null, format: 'short' | 'long' = 'short'): string {
+    if (!iso) return '—';
+    return idDateFromDate(new Date(iso), format);
+}
+
+// Weekday + date for NAIVE wall-clock values: component-parsed so the
+// as-recorded date can't roll across midnight under the viewer's offset.
+export function formatNaiveIdDate(iso: string | null, format: 'short' | 'long' = 'short'): string {
+    if (!iso) return '—';
+    const d = parseNaiveLocalDate(iso);
+    if (d === null) return '—';
+    return idDateFromDate(d, format);
 }
 
 /** "Senin, 11 Mei" — long weekday + numeric day + long month, no year. */
@@ -124,6 +168,27 @@ export function formatShortDateId(iso: string | null | undefined): string {
     if (!match) return iso;
     const [, y, m, d] = match;
     return `${Number(d)} ${ID_MONTH_SHORT[Number(m) - 1]} ${y}`;
+}
+
+// "06.52" — zero-padded HH.MM read straight from the naive datetime string, so
+// the as-recorded wall-clock renders identically in any runtime timezone. Never
+// goes through `new Date(iso)`, which would parse a trailing Z/offset as UTC and
+// shift the hour. Returns null when the string carries no time component.
+export function formatNaiveTimeId(iso: string | null | undefined): string | null {
+    if (!iso) return null;
+    const match = /T(\d{2}):(\d{2})/.exec(iso);
+    if (!match) return null;
+    const [, h, m] = match;
+    return `${h}.${m}`;
+}
+
+// "19 Feb 2026 · 06.52" — short date + naive wall-clock time, both parsed from
+// the string components so neither the date nor the hour shifts under a non-WIB
+// runtime. Drops the time half when the string is date-only.
+export function formatShortDateTimeId(iso: string | null | undefined): string {
+    const date = formatShortDateId(iso);
+    const time = formatNaiveTimeId(iso);
+    return time === null ? date : `${date} · ${time}`;
 }
 
 export function monthsSinceId(iso: string | null | undefined): number | null {

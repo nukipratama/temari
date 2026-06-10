@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { cn } from '@/lib/cn';
-import { formatIdDate, formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
+import { formatKm, formatNaiveIdDate, formatNaiveTimeId, formatPace, paceSecPerKm } from '@/lib/pace';
 import MotionLink from '@/components/MotionLink';
 import { Icon } from '@iconify/react';
 import { pressShrink } from '@/lib/motion';
@@ -31,6 +31,7 @@ function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowPro
     const hr = detail.average_heartrate != null ? Math.round(detail.average_heartrate) : null;
     const trimp = detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
     const safeMood: Mood = note?.mood ?? mood ?? moodFromActivity(detail);
+    const startTime = formatNaiveTimeId(detail.start_date_local);
 
     return (
         <MotionLink
@@ -49,7 +50,10 @@ function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowPro
                     <div className="min-w-0 flex-1">
                         <div className="truncate font-medium text-ink">{detail.name ?? 'Run'}</div>
                         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-3">
-                            <span>{formatIdDate(detail.start_date_local)}</span>
+                            <span>
+                                {formatNaiveIdDate(detail.start_date_local)}
+                                {startTime && <span className="text-ink-2"> · {startTime}</span>}
+                            </span>
                             <MoodChip mood={safeMood} size="sm" />
                         </div>
                     </div>
