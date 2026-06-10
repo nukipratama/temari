@@ -17,7 +17,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\Demo\RuleBasedNarrationFiller;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Geo\PolylineEncoder;
 use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PersonalRecords;

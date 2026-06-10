@@ -9,7 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\Demo\RuleBasedNarrationFiller;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);

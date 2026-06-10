@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\AI\Demo;
+namespace App\Services\AI\RuleBased;
 
 use App\Enums\Badge;
 use App\Models\ActivityDetail;
