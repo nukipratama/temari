@@ -342,6 +342,12 @@ class AnalysisService
         if ($delaySeconds !== null && $delaySeconds > 0) {
             $pending->delay($delaySeconds);
         }
+
+        // Defer the actual enqueue until any surrounding DB transaction commits
+        // (e.g. ActivityPipeline::ingest wraps the story layer, which dispatches
+        // CardFlavor). Without this the job could run before — or be orphaned by
+        // a rollback of — the Analysis row it targets. A no-op when not in a txn.
+        $pending->afterCommit();
     }
 
     private function autoDispatchEnabled(): bool

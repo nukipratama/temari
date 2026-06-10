@@ -11,6 +11,8 @@ use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
 use App\Models\WeeklySnapshot;
+use App\Events\ActivityIngested;
+use App\Services\Gamification\MilestoneDetector;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Weather\OpenMeteoClient;
@@ -18,6 +20,7 @@ use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -561,4 +564,31 @@ it('inserts a PR row when the activity beats the user\'s ledger', function (): v
         ->where('user_id', $activity->user_id)
         ->where('category', '5km')
         ->value('value_sec'))->toBe(1800.0);
+});
+
+it('rolls back analyzed_at and skips the cascade when the story layer throws', function (): void {
+    $activity = makeActivityWithConnection();
+    Event::fake([ActivityIngested::class]);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Run', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800, 'splits_metric' => [],
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    // The last story step throws deterministically; card + story line already ran
+    // inside the transaction, so the whole block (incl. analyzed_at) must roll back.
+    $this->mock(MilestoneDetector::class)
+        ->shouldReceive('detect')->andThrow(new RuntimeException('boom'));
+
+    expect(fn () => app(ActivityPipeline::class)->ingest($activity))
+        ->toThrow(RuntimeException::class, 'boom');
+
+    $stub = Activity::withStubs()->find($activity->id);
+    expect($stub->analyzed_at)->toBeNull()                                                  // re-drainable
+        ->and(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeFalse() // card rolled back
+        ->and(StoryLine::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
+    Event::assertNotDispatched(ActivityIngested::class);
 });

@@ -24,6 +24,7 @@ use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
@@ -96,24 +97,30 @@ class ActivityPipeline
         $this->computeAndStoreSummary($activity, $detailModel, $streams);
         $this->lookupWeather($detailModel, $streams);
 
-        // The run's data is now stored, so mark it ingested before the derivation
-        // and narration layers below. Those re-load the activity via relations
-        // (e.g. $card->activity) that pass through the AnalyzedScope, so the row
-        // must already be visible rather than a stub.
-        $activity->update([
-            'analyzed_at' => now(),
-            'detail_fail_count' => 0,
-        ]);
+        // analyzed_at + the derivation/story layer commit atomically: if any of
+        // PR / card / Temari / milestone throws, analyzed_at rolls back too, so
+        // the stub stays drainable instead of being stranded "analyzed" with a
+        // half-built story and no AI cascade. All of these are same-connection DB
+        // writes (no HTTP, no queued jobs — the Strava/weather fetches above ran
+        // outside the txn), and within the txn the uncommitted analyzed_at is
+        // visible to the AnalyzedScope relations the story layer re-loads.
+        DB::transaction(function () use ($activity, $detailModel): void {
+            $activity->update([
+                'analyzed_at' => now(),
+                'detail_fail_count' => 0,
+            ]);
 
-        $newPrCategories = $this->personalRecords->detectAndStore($activity, $detailModel);
+            $newPrCategories = $this->personalRecords->detectAndStore($activity, $detailModel);
 
-        // Story layer must run after PR detection — Temari mood reads PR rows.
-        $this->cardFactory->build($activity, $detailModel);
-        $this->temari->postRunLine($activity, $detailModel);
-        $this->milestoneDetector->detect($activity, $detailModel, $newPrCategories);
+            // Story layer must run after PR detection — Temari mood reads PR rows.
+            $this->cardFactory->build($activity, $detailModel);
+            $this->temari->postRunLine($activity, $detailModel);
+            $this->milestoneDetector->detect($activity, $detailModel, $newPrCategories);
+        });
 
-        // Hand off the AI analysis fan-out to a queued listener so this pipeline
-        // stays ignorant of which analyses run. See DispatchPostRunAnalysis.
+        // After commit only: a story-layer throw rolled the whole block back, so
+        // the cascade never fires for a half-ingested run. Hand off the AI fan-out
+        // to a queued listener (see DispatchPostRunAnalysis).
         ActivityIngested::dispatch($activity->id);
     }
 
