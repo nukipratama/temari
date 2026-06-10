@@ -147,7 +147,9 @@ return [
 
     'recorders' => [
         CacheInteractions::class => [
-            'enabled' => env('PULSE_CACHE_INTERACTIONS_ENABLED', true),
+            // Off by default: the Cache card was dropped from the dashboard, so
+            // nothing consumes this and it would only burn ingest/storage.
+            'enabled' => env('PULSE_CACHE_INTERACTIONS_ENABLED', false),
             'sample_rate' => env('PULSE_CACHE_INTERACTIONS_SAMPLE_RATE', 1),
             'ignore' => [
                 ...Pulse::defaultVendorCacheKeys(),
@@ -237,7 +239,9 @@ return [
         ],
 
         UserJobs::class => [
-            'enabled' => env('PULSE_USER_JOBS_ENABLED', true),
+            // Off by default: only fed the Usage (top-users) card, which is
+            // meaningless for this 1-2 user app and was dropped from the dashboard.
+            'enabled' => env('PULSE_USER_JOBS_ENABLED', false),
             'sample_rate' => env('PULSE_USER_JOBS_SAMPLE_RATE', 1),
             'ignore' => [
                 // '/^Package\\\\Jobs\\\\/',
@@ -245,7 +249,8 @@ return [
         ],
 
         UserRequests::class => [
-            'enabled' => env('PULSE_USER_REQUESTS_ENABLED', true),
+            // Off by default: only fed the dropped Usage (top-users) card.
+            'enabled' => env('PULSE_USER_REQUESTS_ENABLED', false),
             'sample_rate' => env('PULSE_USER_REQUESTS_SAMPLE_RATE', 1),
             'ignore' => [
                 '#^/'.env('PULSE_PATH', 'pulse').'$#', // Pulse dashboard...

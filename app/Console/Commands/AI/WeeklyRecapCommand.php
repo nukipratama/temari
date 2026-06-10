@@ -31,6 +31,7 @@ class WeeklyRecapCommand extends Command
         $primary = WeeklySnapshot::query()
             ->where('week_ending', $lastWeekEnding)
             ->where('runs', '>', 0)
+            ->whereHas('user', fn ($query) => $query->where('is_demo', false))
             ->get();
 
         foreach ($primary as $snapshot) {
@@ -74,6 +75,7 @@ class WeeklyRecapCommand extends Command
             ->where('week_ending', '>=', $sweepFrom)
             ->where('week_ending', '<', $lastWeekEnding)
             ->where('runs', '>', 0)
+            ->whereHas('user', fn ($query) => $query->where('is_demo', false))
             ->get();
 
         foreach ($snapshots as $snapshot) {

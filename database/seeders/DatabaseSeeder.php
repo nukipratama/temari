@@ -20,8 +20,6 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        // `migrate:fresh --seed` starts from an empty DB, so no prior demo
-        // rows to wipe — seed straight in for a full, login-ready demo dataset.
-        $demoRunSeeder->seed(fresh: false, log: fn (string $line) => $this->command?->line($line));
+        $demoRunSeeder->seed(log: fn (string $line) => $this->command->line($line));
     }
 }

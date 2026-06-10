@@ -8,6 +8,7 @@ use App\Models\Analytics\StravaSyncLog;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -18,10 +19,11 @@ use Illuminate\Support\Facades\Log;
 use Override;
 
 /**
+ * @property bool $is_demo
  * @property Carbon|null $last_seen_pr_ledger_at
  * @property int|null $pending_reveal_card_id
  */
-#[Fillable(['name', 'email', 'avatar_url', 'last_seen_pr_ledger_at', 'pending_reveal_card_id'])]
+#[Fillable(['name', 'email', 'avatar_url', 'is_demo', 'last_seen_pr_ledger_at', 'pending_reveal_card_id'])]
 #[Hidden(['remember_token'])]
 class User extends Authenticatable
 {
@@ -52,8 +54,23 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'is_demo' => 'boolean',
             'last_seen_pr_ledger_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Excludes the seeded demo account so scheduled work (strava:sync/ingest, the
+     * AI recaps) never spends a real Strava call or LLM token on it. Local (not
+     * global) so the demo stays fully visible in the app UI. Relation sub-queries
+     * filter on `is_demo` directly (`whereHas('user', fn ($q) => $q->where(...))`)
+     * since the scope isn't visible on a generically-typed related builder.
+     *
+     * @param  Builder<User>  $query
+     */
+    public function scopeNotDemo(Builder $query): void
+    {
+        $query->where('is_demo', false);
     }
 
     /**

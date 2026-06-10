@@ -6,12 +6,15 @@ namespace App\Providers;
 
 use App\Events\ActivityIngested;
 use App\Listeners\DispatchPostRunAnalysis;
+use App\Listeners\RecordScheduledTaskRun;
 use App\Listeners\VerifyDependencies;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\VerdictTimeline;
 use App\Support\Config\AppConfig;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
@@ -56,6 +59,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Post-ingest AI analysis fan-out runs in its own queued job.
         Event::listen(ActivityIngested::class, DispatchPostRunAnalysis::class);
+
+        // Scheduler heartbeat: record every command's last run for the Pulse card.
+        Event::listen(ScheduledTaskFinished::class, [RecordScheduledTaskRun::class, 'finished']);
+        Event::listen(ScheduledTaskFailed::class, [RecordScheduledTaskRun::class, 'failed']);
 
         // Edge basicauth (docker/Caddyfile) gates these in prod. The `?Authenticatable`
         // param is what makes the gate accept guests — a zero-param closure 403s them.
