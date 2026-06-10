@@ -151,6 +151,33 @@ it('re-dispatches when status is failed', function (): void {
         ->and($row->error)->toBeNull();
 });
 
+it('requestDeferred creates a Pending row and never dispatches', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+
+    $row = $this->service->requestDeferred(
+        WeeklySnapshot::class,
+        $snap->id,
+        AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Pending)
+        ->and($row->queued_at)->toBeNull();
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('requestDeferred leaves an existing Done row untouched', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    $this->service->markDone($row, 'recap minggu lalu');
+
+    $again = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+
+    expect($again->id)->toBe($row->id)
+        ->and($again->status)->toBe(AnalysisStatus::Done)
+        ->and($again->content)->toBe('recap minggu lalu');
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
 it('requestActivityGroup creates 4 rows and dispatches one AnalyzeActivityJob', function (): void {
     $activity = Activity::factory()->create();
 

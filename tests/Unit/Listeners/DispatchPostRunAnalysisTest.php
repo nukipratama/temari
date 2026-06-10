@@ -10,6 +10,11 @@ use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
+use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -39,7 +44,7 @@ function fire(Activity $activity): void
     app(DispatchPostRunAnalysis::class)->handle(new ActivityIngested($activity->id));
 }
 
-it('fans out activity + briefing + greeting + weekly analyses', function (): void {
+it('fans out activity + briefing + greeting analyses', function (): void {
     $activity = analyzedActivity();
 
     fire($activity);
@@ -47,7 +52,40 @@ it('fans out activity + briefing + greeting + weekly analyses', function (): voi
     Bus::assertDispatched(AnalyzeActivityJob::class);
     Bus::assertDispatched(AnalyzeBriefingJob::class);
     Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
-    Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('stages the weekly recap Pending without an LLM dispatch (weekly cadence)', function (): void {
+    $activity = analyzedActivity();
+
+    fire($activity);
+
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+
+    $snapshot = WeeklySnapshot::query()->where('user_id', $activity->user_id)->firstOrFail();
+    $row = Analysis::query()
+        ->where('subject_type', WeeklySnapshot::class)
+        ->where('subject_id', $snapshot->id)
+        ->where('analysis_type', AnalysisType::WeeklyRecap)
+        ->firstOrFail();
+    expect($row->status)->toBe(AnalysisStatus::Pending);
+});
+
+it('leaves a Done weekly recap untouched on re-ingest (no mid-week invalidation)', function (): void {
+    $activity = analyzedActivity();
+    fire($activity);
+
+    $snapshot = WeeklySnapshot::query()->where('user_id', $activity->user_id)->firstOrFail();
+    $row = Analysis::query()
+        ->where('subject_type', WeeklySnapshot::class)
+        ->where('subject_id', $snapshot->id)
+        ->firstOrFail();
+    app(AnalysisService::class)->markDone($row, 'recap dari Baca ulang');
+
+    fire($activity);
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->toBe('recap dari Baca ulang');
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
 it('dispatches AnalyzeActivityJob exactly once (grouped routing)', function (): void {

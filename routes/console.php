@@ -48,6 +48,14 @@ Artisan::command('dev:fresh {--force : Required outside the local environment}',
 // 05:00 local time: refresh trend caption for active users (last 7 days).
 Schedule::command('ai:daily-trend')->dailyAt('05:00');
 
+// Monday 05:30: narrate last week's recap once per user, on final data. The
+// per-ingest cascade only stages the row Pending (weekly cadence) — this is
+// the single scheduled LLM call that fills it.
+Schedule::command('ai:weekly-recap')->weeklyOn(1, '05:30');
+
+// 1st of the month 05:45: same pattern for the monthly recap.
+Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45');
+
 // Hourly fallback poll behind the Strava webhook: catches activities Strava
 // failed to push (delivery is best-effort). Ingest only — it leans on the
 // "already done" idempotency guards in AnalysisService / AnalyzeGroupJob, so it

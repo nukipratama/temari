@@ -79,12 +79,14 @@ class DispatchPostRunAnalysis implements ShouldQueue
         }
         $snapshot = $this->weeklyAggregator->rebuildForwardFrom($user, $detail->start_date_local);
         if ($snapshot !== null) {
-            $this->analysisService->request(
-                subjectOrType: WeeklySnapshot::class,
-                subjectId: $snapshot->id,
-                type: AnalysisType::WeeklyRecap,
-                delaySeconds: $delaySec,
-                invalidate: true,
+            // Weekly cadence: regenerating the recap of a still-unfinished week
+            // on every run was the single biggest LLM re-bill. The row is staged
+            // Pending here; ai:weekly-recap narrates it once the week closes.
+            // "Baca ulang" can still force a mid-week narration on demand.
+            $this->analysisService->requestDeferred(
+                WeeklySnapshot::class,
+                $snapshot->id,
+                AnalysisType::WeeklyRecap,
             );
         }
     }

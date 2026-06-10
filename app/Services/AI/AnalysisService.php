@@ -73,6 +73,32 @@ class AnalysisService
         return $this->dispatchRow($subjectType, $subjectId, $type, $discriminator, $invalidate, $delaySeconds);
     }
 
+    /**
+     * Upsert the Analysis row as Pending without dispatching, filling, or
+     * invalidating. For windowed cadences (weekly/monthly) the LLM generation
+     * is deferred to the scheduled command that fires once the window closes,
+     * instead of re-billing the narration on every ingest inside the window.
+     * The row stays visible to the UI (empty state + manual "Baca ulang").
+     */
+    public function requestDeferred(
+        Model|string $subjectOrType,
+        int $subjectId,
+        AnalysisType $type,
+        ?string $discriminator = null,
+    ): Analysis {
+        $subjectType = $subjectOrType instanceof Model ? $subjectOrType::class : $subjectOrType;
+
+        return Analysis::query()->firstOrCreate(
+            [
+                'subject_type' => $subjectType,
+                'subject_id' => $subjectId,
+                'analysis_type' => $type,
+                'discriminator' => $discriminator,
+            ],
+            ['status' => AnalysisStatus::Pending],
+        );
+    }
+
     public function requestActivityGroup(Activity $activity, bool $invalidate = false, ?int $delaySeconds = null): void
     {
         $this->dispatchGroup(AnalyzeActivityJob::class, $activity->id, null, $invalidate, $delaySeconds);
