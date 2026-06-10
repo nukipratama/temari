@@ -21,6 +21,31 @@ it('renders the switches, breaker state and backlog without error', function ():
         ->assertSee('stranded');
 });
 
+it('shows an ok health badge when the breaker is closed and nothing is stranded', function (): void {
+    Livewire::test(SystemControl::class)
+        ->assertOk()
+        ->assertSee('health: ok');
+});
+
+it('shows an alert health badge when activities are stranded', function (): void {
+    Activity::factory()->stub()->create(['detail_fail_count' => 5, 'analyzed_at' => null]);
+
+    Livewire::test(SystemControl::class)
+        ->assertOk()
+        ->assertSee('health: alert');
+});
+
+it('shows an alert health badge when the breaker is open', function (): void {
+    $breaker = new StravaCircuitBreaker(new AppConfig());
+    for ($i = 0; $i < 5; $i++) {
+        $breaker->recordFailure();
+    }
+
+    Livewire::test(SystemControl::class)
+        ->assertOk()
+        ->assertSee('health: alert');
+});
+
 it('counts pending vs stranded activities correctly', function (): void {
     Activity::factory()->stub()->count(2)->create(['detail_fail_count' => 0]);
     Activity::factory()->stub()->create(['detail_fail_count' => 5]); // stranded

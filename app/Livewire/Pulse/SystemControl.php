@@ -51,15 +51,23 @@ class SystemControl extends Card
             ->selectRaw('SUM(detail_fail_count >= ?) AS stranded', [$max])
             ->first();
 
+        $breaker = app(StravaCircuitBreaker::class)->snapshot();
+        $stranded = (int) ($backlog->stranded ?? 0);
+
         return View::make('livewire.pulse.system-control', [
             'cols' => $this->cols,
             'rows' => $this->rows,
             'class' => $this->class,
             'aiEnabled' => $config->boolean(AppConfigKey::AiEnabled),
             'stravaEnabled' => $config->boolean(AppConfigKey::StravaEnabled),
-            'breaker' => app(StravaCircuitBreaker::class)->snapshot(),
+            'breaker' => $breaker,
             'pending' => (int) ($backlog->pending ?? 0),
-            'stranded' => (int) ($backlog->stranded ?? 0),
+            'stranded' => $stranded,
+            'severity' => match (true) {
+                $breaker['state'] === 'open' || $stranded > 0 => 'alert',
+                $breaker['state'] === 'half_open' => 'warn',
+                default => 'ok',
+            },
         ]);
     }
 

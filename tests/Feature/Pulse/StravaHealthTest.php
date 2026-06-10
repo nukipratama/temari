@@ -19,6 +19,33 @@ it('renders connection states and rate-limit headroom without error', function (
         ->assertSee('synced');
 });
 
+it('shows an ok health badge when there are no connection problems', function (): void {
+    Livewire::test(StravaHealth::class)
+        ->assertOk()
+        ->assertSee('health: ok');
+});
+
+it('shows a warn health badge when a connection token has expired', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create([
+        'revoked_at' => null,
+        'token_expires_at' => Carbon::now()->subDay(),
+    ]);
+
+    Livewire::test(StravaHealth::class)
+        ->assertOk()
+        ->assertSee('health: warn');
+});
+
+it('shows an alert health badge when a connection is revoked', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['revoked_at' => Carbon::now()]);
+
+    Livewire::test(StravaHealth::class)
+        ->assertOk()
+        ->assertSee('health: alert');
+});
+
 it('counts a revoked connection in the revoked bucket', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create([

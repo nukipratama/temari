@@ -58,6 +58,8 @@ class AiPipelineHealth extends Card
             ];
         });
 
+        $failed = (int) ($statusCounts[AnalysisStatus::Failed->value] ?? 0);
+
         return View::make('livewire.pulse.ai-pipeline-health', [
             'cols' => $this->cols,
             'rows' => $this->rows,
@@ -68,6 +70,7 @@ class AiPipelineHealth extends Card
                 ->mapWithKeys(fn (AnalysisStatus $s): array => [$s->value => (int) ($statusCounts[$s->value] ?? 0)]),
             'recentFailures' => $recentFailures,
             'trend' => $trend,
+            'severity' => $failed > 0 ? 'alert' : 'ok',
         ]);
     }
 }

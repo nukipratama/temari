@@ -48,6 +48,15 @@ class StravaHealth extends Card
         ]);
 
         $perUser = $this->perUserSyncHistory();
+        $webhookStatus = $this->webhookStatus();
+
+        $connectionStates = [
+            'active' => (int) ($connections->active ?? 0),
+            'token_expired' => (int) ($connections->token_expired ?? 0),
+            'revoked' => (int) ($connections->revoked ?? 0),
+        ];
+
+        $anyUserFailed = collect($perUser)->contains(fn (array $row): bool => $row['is_failed']);
 
         return View::make('livewire.pulse.strava-health', [
             'cols' => $this->cols,
@@ -55,15 +64,20 @@ class StravaHealth extends Card
             'class' => $this->class,
             'time' => $time,
             'runAt' => $runAt,
-            'connections' => [
-                'active' => (int) ($connections->active ?? 0),
-                'token_expired' => (int) ($connections->token_expired ?? 0),
-                'revoked' => (int) ($connections->revoked ?? 0),
-            ],
+            'connections' => $connectionStates,
             'stranded' => $stranded,
             'trends' => $trends,
             'perUser' => $perUser,
-            'webhookStatus' => $this->webhookStatus(),
+            'webhookStatus' => $webhookStatus,
+            // Operational health only — a missing webhook is a config state with
+            // its own indicator below, not a runtime failure, so it stays out of
+            // the rollup (it would otherwise pin the badge to warn in every env
+            // that doesn't run the webhook).
+            'severity' => match (true) {
+                $connectionStates['revoked'] > 0 || $anyUserFailed => 'alert',
+                $connectionStates['token_expired'] > 0 || $stranded > 0 || $trends['rate_limited'] > 0 => 'warn',
+                default => 'ok',
+            },
         ]);
     }
 

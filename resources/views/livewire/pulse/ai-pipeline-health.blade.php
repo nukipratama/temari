@@ -6,6 +6,9 @@
         <x-slot:icon>
             <x-pulse::icons.sparkles />
         </x-slot:icon>
+        <x-slot:actions>
+            @include('livewire.pulse.partials.status-badge', ['severity' => $severity])
+        </x-slot:actions>
     </x-pulse::card-header>
 
     <x-pulse::scroll :expand="$expand" wire:poll.5s="">
