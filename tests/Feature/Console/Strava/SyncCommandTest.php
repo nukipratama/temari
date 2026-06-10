@@ -34,6 +34,20 @@ it('syncs all users with a Strava connection', function (): void {
     $this->artisan('strava:sync')->assertSuccessful();
 });
 
+it('skips the demo user even with an active connection', function (): void {
+    User::factory()->demo()->withStravaConnection()->create();
+    $real = User::factory()->withStravaConnection()->create();
+
+    $orchestrator = Mockery::mock(SyncOrchestrator::class);
+    $orchestrator->shouldReceive('syncUser')
+        ->once()
+        ->withArgs(fn (User $arg): bool => $arg->is($real))
+        ->andReturn(0);
+    $this->app->instance(SyncOrchestrator::class, $orchestrator);
+
+    $this->artisan('strava:sync')->assertSuccessful();
+});
+
 it('keeps syncing other users and still succeeds when one connection throws', function (): void {
     User::factory()->withStravaConnection()->count(2)->create();
 

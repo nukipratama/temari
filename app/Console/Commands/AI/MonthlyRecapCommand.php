@@ -24,6 +24,7 @@ class MonthlyRecapCommand extends Command
         $activeUserIds = Activity::query()
             ->whereHas('detail', fn ($query) => $query
                 ->whereBetween('start_date_local', [$start, $start->copy()->endOfMonth()]))
+            ->whereHas('user', fn ($query) => $query->where('is_demo', false))
             ->distinct()
             ->pluck('user_id');
 

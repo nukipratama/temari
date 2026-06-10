@@ -23,7 +23,7 @@ class DailyTrendCommand extends Command
 
         $activeUserIds = Activity::query()
             ->where('analyzed_at', '>=', Carbon::today()->subDays(7))
-            ->whereIn('user_id', User::query()->select('id'))
+            ->whereIn('user_id', User::query()->notDemo()->select('id'))
             ->distinct()
             ->pluck('user_id');
 

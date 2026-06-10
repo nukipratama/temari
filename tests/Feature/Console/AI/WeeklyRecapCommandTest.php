@@ -113,6 +113,34 @@ it('self-heals a stalled prior-week recap (Pending) without touching Done ones',
     Carbon::setTestNow();
 });
 
+it('skips the demo user\'s snapshot', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+
+    $real = User::factory()->create();
+    $realSnap = WeeklySnapshot::factory()->for($real)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+    $demo = User::factory()->demo()->create();
+    WeeklySnapshot::factory()->for($demo)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    $captured = [];
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldReceive('request')
+        ->once()
+        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
+            $captured[] = $subjectId;
+
+            return new Analysis();
+        });
+    $this->app->instance(AnalysisService::class, $service);
+
+    $this->artisan('ai:weekly-recap')
+        ->expectsOutputToContain('Dispatched weekly recap for 1 snapshots')
+        ->assertSuccessful();
+
+    expect($captured)->toBe([$realSnap->id]);
+
+    Carbon::setTestNow();
+});
+
 it('dispatches nothing when last week has no snapshots with runs', function (): void {
     Carbon::setTestNow('2026-05-18 05:30:00');
 

@@ -23,6 +23,7 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'avatar_url' => fake()->imageUrl(192, 192, 'people'),
+            'is_demo' => false,
             'remember_token' => Str::random(10),
         ];
     }
@@ -30,5 +31,10 @@ class UserFactory extends Factory
     public function withStravaConnection(): static
     {
         return $this->has(StravaConnection::factory(), 'stravaConnection');
+    }
+
+    public function demo(): static
+    {
+        return $this->state(['is_demo' => true]);
     }
 }

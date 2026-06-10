@@ -28,6 +28,7 @@ class IngestCommand extends Command
 
         $activities = Activity::query()
             ->pendingIngest()
+            ->whereHas('user', fn ($query) => $query->where('is_demo', false))
             ->whereHas('user.stravaConnection', fn ($query) => $query->whereNull('revoked_at'))
             ->orderBy('id')
             ->limit($batch)

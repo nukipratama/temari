@@ -53,6 +53,41 @@ it('dispatches the monthly recap once per user who ran last month', function ():
     Carbon::setTestNow();
 });
 
+it('skips the demo user even if they ran last month', function (): void {
+    Carbon::setTestNow('2026-06-01 05:45:00');
+
+    $real = User::factory()->create();
+    $realActivity = Activity::factory()->for($real)->create();
+    ActivityDetail::factory()->for($realActivity)->create([
+        'start_date_local' => Carbon::parse('2026-05-14 06:30:00'),
+    ]);
+
+    $demo = User::factory()->demo()->create();
+    $demoActivity = Activity::factory()->for($demo)->create();
+    ActivityDetail::factory()->for($demoActivity)->create([
+        'start_date_local' => Carbon::parse('2026-05-14 06:30:00'),
+    ]);
+
+    $captured = [];
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldReceive('request')
+        ->once()
+        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
+            $captured[] = $subjectId;
+
+            return new Analysis();
+        });
+    $this->app->instance(AnalysisService::class, $service);
+
+    $this->artisan('ai:monthly-recap')
+        ->expectsOutputToContain('Dispatched monthly recap for 1 active users (2026-05).')
+        ->assertSuccessful();
+
+    expect($captured)->toBe([$real->id]);
+
+    Carbon::setTestNow();
+});
+
 it('dispatches nothing when nobody ran last month', function (): void {
     Carbon::setTestNow('2026-06-01 05:45:00');
 

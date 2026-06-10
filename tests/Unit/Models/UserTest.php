@@ -31,6 +31,20 @@ it('returns null stravaConnection when none is attached', function (): void {
     expect($user->stravaConnection)->toBeNull();
 });
 
+it('notDemo scope excludes demo users', function (): void {
+    $real = User::factory()->create();
+    User::factory()->demo()->create();
+
+    expect(User::query()->notDemo()->pluck('id')->all())->toBe([$real->id]);
+});
+
+it('casts is_demo to a boolean and defaults it to false', function (): void {
+    $user = User::factory()->create();
+
+    expect($user->is_demo)->toBeFalse()
+        ->and(User::factory()->demo()->create()->is_demo)->toBeTrue();
+});
+
 it('has many activities', function (): void {
     $user = User::factory()->create();
     Activity::factory()->for($user)->count(2)->create();
