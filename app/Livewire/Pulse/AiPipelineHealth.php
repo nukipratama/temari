@@ -7,17 +7,20 @@ namespace App\Livewire\Pulse;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Contracts\Support\Renderable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 use Laravel\Pulse\Livewire\Card;
+use stdClass;
 
 /**
  * AI narration pipeline health, on the /pulse dashboard: a live status snapshot
  * of the ai_analyses rows, the most recent failures with their stored error,
- * and the failure-rate trend recorded in AnalysisService::markFailed().
+ * the failure-rate trend recorded in AnalysisService::markFailed(), and the
+ * per-kind LLM token spend recorded in TokenUsageRecorder.
  *
  * Not lazy: it sits at the top of the dashboard (always in the initial
- * viewport) and its two queries are cheap, so deferring buys nothing.
+ * viewport) and its queries are cheap, so deferring buys nothing.
  */
 class AiPipelineHealth extends Card
 {
@@ -36,9 +39,24 @@ class AiPipelineHealth extends Card
             ->limit(25)
             ->get(['subject_type', 'subject_id', 'analysis_type', 'attempts', 'error', 'updated_at']);
 
-        [$failuresInPeriod, $time, $runAt] = $this->remember(
-            fn (): int => $this->asCount($this->aggregateTotal('ai_failure', 'count')),
-        );
+        [$trend, $time, $runAt] = $this->remember(function (): array {
+            /** @var Collection<int, stdClass> $tokenRows */
+            $tokenRows = $this->aggregate('ai_tokens', 'sum');
+
+            $tokensPerKind = $tokenRows
+                ->map(fn (stdClass $row): array => [
+                    'kind' => (string) $row->key,
+                    'tokens' => (int) $row->sum,
+                ])
+                ->values()
+                ->all();
+
+            return [
+                'failures' => $this->asCount($this->aggregateTotal('ai_failure', 'count')),
+                'tokensPerKind' => $tokensPerKind,
+                'tokensTotal' => array_sum(array_column($tokensPerKind, 'tokens')),
+            ];
+        });
 
         return View::make('livewire.pulse.ai-pipeline-health', [
             'cols' => $this->cols,
@@ -49,7 +67,7 @@ class AiPipelineHealth extends Card
             'statuses' => collect(AnalysisStatus::cases())
                 ->mapWithKeys(fn (AnalysisStatus $s): array => [$s->value => (int) ($statusCounts[$s->value] ?? 0)]),
             'recentFailures' => $recentFailures,
-            'failuresInPeriod' => $failuresInPeriod,
+            'trend' => $trend,
         ]);
     }
 }

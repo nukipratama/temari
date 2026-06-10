@@ -14,6 +14,8 @@ use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\TokenUsageRecorder;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Pulse\Entry;
+use Laravel\Pulse\Facades\Pulse;
 use OpenAI\Exceptions\ErrorException;
 use OpenAI\Exceptions\RateLimitException;
 use OpenAI\Exceptions\ServerException;
@@ -170,6 +172,62 @@ it('TokenUsageRecorder logs a warning when the DB insert throws', function (): v
     Log::shouldHaveReceived('warning')
         ->once()
         ->with('token_usage.record_failed', Mockery::on(fn (array $ctx) => $ctx['kind'] === 'briefing'));
+});
+
+// ── Pulse token metering (ai_tokens, per kind) ─────────────────────────
+
+it('meters total tokens to Pulse as an ai_tokens sum entry keyed by kind', function (): void {
+    $entry = Mockery::mock(Entry::class);
+    $entry->shouldReceive('sum')->once()->andReturnSelf();
+
+    Pulse::shouldReceive('record')
+        ->once()
+        ->with('ai_tokens', 'briefing', 165)
+        ->andReturn($entry);
+
+    structuredCaller(
+        json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR),
+        ['prompt_tokens' => 120, 'completion_tokens' => 45, 'total_tokens' => 165],
+    )->call('briefing', 'sys', [], 'schema', ['headline']);
+});
+
+it('does not meter to Pulse when the Azure call fails', function (): void {
+    Pulse::shouldReceive('record')->never();
+
+    $azure = Mockery::mock(AzureOpenAIClient::class);
+    $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
+
+    $caller = new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
+
+    expect(fn () => $caller->call('briefing', 'sys', [], 'schema', ['headline']))
+        ->toThrow(UnavailableException::class);
+});
+
+it('TokenUsageRecorder still meters to Pulse when the DB insert throws', function (): void {
+    Log::spy();
+    Schema::drop('ai_token_usages');
+
+    $entry = Mockery::mock(Entry::class);
+    $entry->shouldReceive('sum')->once()->andReturnSelf();
+    Pulse::shouldReceive('record')
+        ->once()
+        ->with('ai_tokens', 'briefing', 15)
+        ->andReturn($entry);
+
+    app(TokenUsageRecorder::class)->record('briefing', 10, 5, 15, 'gpt-test');
+});
+
+it('TokenUsageRecorder still records the DB row and never throws when Pulse recording fails', function (): void {
+    Log::spy();
+
+    Pulse::shouldReceive('record')->andThrow(new RuntimeException('pulse down'));
+
+    app(TokenUsageRecorder::class)->record('briefing', 10, 5, 15, 'gpt-test');
+
+    expect(TokenUsage::query()->count())->toBe(1);
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->with('token_usage.pulse_record_failed', Mockery::on(fn (array $ctx) => $ctx['kind'] === 'briefing'));
 });
 
 // ── B1: transient vs terminal Azure-failure classification ────────────
