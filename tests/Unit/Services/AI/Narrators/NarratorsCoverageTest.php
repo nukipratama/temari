@@ -211,6 +211,33 @@ it('WeeklyRecapNarrator throws on non-JSON', function (): void {
     $narrator->generate($snap);
 })->throws(UnavailableException::class, 'non-JSON');
 
+it('WeeklyRecapNarrator feeds the previous week deltas when a prior snapshot exists', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-10', 'distance_km' => 20.0, 'runs' => 3, 'moving_time_sec' => 7200,
+    ]);
+    $current = WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-17', 'distance_km' => 28.0, 'runs' => 4, 'moving_time_sec' => 9600,
+    ]);
+
+    $context = (new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($current);
+
+    expect($context['prev_distance_km'])->toBe(20.0)
+        ->and($context['prev_runs'])->toBe(3)
+        ->and($context['prev_pace_sec_per_km'])->not->toBeNull();
+});
+
+it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', function (): void {
+    $user = User::factory()->create();
+    $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
+
+    $context = (new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($current);
+
+    expect($context['prev_distance_km'])->toBeNull()
+        ->and($context['prev_runs'])->toBeNull()
+        ->and($context['prev_pace_sec_per_km'])->toBeNull();
+});
+
 // ── PrContextNarrator ─────────────────────────────────────────────────
 
 it('PrContextNarrator returns flavor on valid JSON', function (): void {
@@ -366,7 +393,32 @@ it('MonthlyRecapNarrator pulls month totals + mood mix into the context payload'
     expect($context['total_distance_km'])->toBe(8.0);
     expect($context['longest_run_km'])->toBe(8.0);
     expect($context['mood_mix'][0]['mood'])->toBe('nyala');
+    expect($context['pr_count'])->toBe(0);
+    expect($context['weekly_distance_km'])->toBeArray();
     expect($narrator->generate($user, $month))->toBe('Bulan ini mostly nyala.');
+});
+
+it('MonthlyRecapNarrator counts PRs and buckets distance by week within the month', function (): void {
+    $user = User::factory()->create();
+    $month = '2026-05';
+
+    // Week 1 (May 1-7): one 6km run. Week 3 (May 15-21): one 10km run.
+    foreach ([['2026-05-03', 6000.0], ['2026-05-19', 10000.0]] as [$date, $meters]) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => Carbon::parse($date . 'T06:00'),
+            'distance' => $meters,
+        ]);
+    }
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km', 'set_at' => Carbon::parse('2026-05-19T06:30'),
+    ]);
+
+    $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, $month);
+
+    expect($context['pr_count'])->toBe(1)
+        ->and($context['weekly_distance_km'][0])->toBe(6.0)
+        ->and($context['weekly_distance_km'][2])->toBe(10.0);
 });
 
 // ── AkuProfileVoiceNarrator ───────────────────────────────────────────

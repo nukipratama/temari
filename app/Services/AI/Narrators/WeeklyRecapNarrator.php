@@ -12,11 +12,17 @@ use App\Services\Run\Metrics\PaceCalculator;
 class WeeklyRecapNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 2-3 kalimat baca kondisi minggu pengguna, maksimal 65 kata.
+        Tugas: 3-4 kalimat baca kondisi minggu pengguna, maksimal 90 kata.
 
         Cakupan: rangkum VIBE minggu ini pakai data konkret. Sebutkan 1-2
         angka yang menonjol (total km, jumlah lari, perubahan pace, atau
         pergeseran form). Tutup dengan 1 observasi atau dorongan halus.
+
+        Kalau data minggu lalu (prev_*) tersedia, WAJIB selipkan 1 perbandingan
+        week-over-week yang konkret: arah dan selisihnya, contoh "naik 4 km dari
+        minggu lalu", "pace 8 detik lebih cepat", "frekuensi turun dari 4 ke 2
+        lari". Kalau prev_* null (minggu pertama), lewati perbandingan, jangan
+        mengarang angka.
 
         Sesuaikan tone ke form_status:
         - fresh: energik, mengajak manfaatkan. "Kamu lagi fresh, minggu depan
@@ -48,32 +54,57 @@ class WeeklyRecapNarrator
 
     public function generate(WeeklySnapshot $snapshot): string
     {
-        $paceSecPerKm = PaceCalculator::secPerKm(
-            $snapshot->distance_km === null ? null : $snapshot->distance_km * 1000,
-            $snapshot->moving_time_sec,
-        );
-
         $decoded = $this->caller->call(
             kind: 'weekly_recap',
             systemPrompt: self::SYSTEM_PROMPT,
-            context: [
-                'week_ending' => $snapshot->week_ending->toDateString(),
-                'runs' => $snapshot->runs,
-                'distance_km' => $snapshot->distance_km,
-                'pace_sec_per_km' => $paceSecPerKm,
-                'weekly_trimp' => $snapshot->weekly_trimp,
-                'ctl_42d' => $snapshot->ctl_42d,
-                'atl_7d' => $snapshot->atl_7d,
-                'form' => $snapshot->form,
-                'form_status' => $snapshot->form_status,
-                'monotony' => $snapshot->monotony,
-                'strain' => $snapshot->strain,
-            ],
+            context: $this->context($snapshot),
             schemaName: 'TemariWeeklyRecap',
             requiredKeys: ['narrative'],
             options: new ChatCallOptions(temperature: 0.7, userId: $snapshot->user_id, maxTokens: 1500),
         );
 
         return (string) $decoded['narrative'];
+    }
+
+    /**
+     * @return array{week_ending: string, runs: int|null, distance_km: float|null, pace_sec_per_km: float|null, weekly_trimp: float|null, ctl_42d: float|null, atl_7d: float|null, form: float|null, form_status: string|null, monotony: float|null, strain: float|null, prev_runs: int|null, prev_distance_km: float|null, prev_pace_sec_per_km: float|null}
+     */
+    public function context(WeeklySnapshot $snapshot): array
+    {
+        $previous = $this->previousWeek($snapshot);
+
+        return [
+            'week_ending' => $snapshot->week_ending->toDateString(),
+            'runs' => $snapshot->runs,
+            'distance_km' => $snapshot->distance_km,
+            'pace_sec_per_km' => $this->paceFor($snapshot),
+            'weekly_trimp' => $snapshot->weekly_trimp,
+            'ctl_42d' => $snapshot->ctl_42d,
+            'atl_7d' => $snapshot->atl_7d,
+            'form' => $snapshot->form,
+            'form_status' => $snapshot->form_status,
+            'monotony' => $snapshot->monotony,
+            'strain' => $snapshot->strain,
+            'prev_runs' => $previous?->runs,
+            'prev_distance_km' => $previous?->distance_km,
+            'prev_pace_sec_per_km' => $previous === null ? null : $this->paceFor($previous),
+        ];
+    }
+
+    private function paceFor(WeeklySnapshot $snapshot): ?float
+    {
+        return PaceCalculator::secPerKm(
+            $snapshot->distance_km === null ? null : $snapshot->distance_km * 1000,
+            $snapshot->moving_time_sec,
+        );
+    }
+
+    /** The user's snapshot for the week ending 7 days before this one, if any. */
+    private function previousWeek(WeeklySnapshot $snapshot): ?WeeklySnapshot
+    {
+        return WeeklySnapshot::query()
+            ->where('user_id', $snapshot->user_id)
+            ->whereDate('week_ending', $snapshot->week_ending->copy()->subWeek())
+            ->first();
     }
 }

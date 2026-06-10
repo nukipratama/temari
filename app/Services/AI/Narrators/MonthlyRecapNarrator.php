@@ -5,26 +5,31 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\ActivityDetail;
+use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class MonthlyRecapNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 3-4 kalimat baca bulan lari pengguna, maksimal 85 kata.
+        Tugas: 3-4 kalimat baca bulan lari pengguna, maksimal 100 kata.
 
         Cakupan: total km + jumlah lari + lari terjauh + distribusi mood
-        (nyala/enteng/oleng/lemes/mumet/adem) untuk bulan itu.
+        (nyala/enteng/oleng/lemes/mumet/adem) + jumlah PR + progres mingguan
+        di dalam bulan itu.
 
         Struktur yang diharapkan:
         1. Buka dengan angka konkret (total km, jumlah lari).
         2. Narasi mood: mood mana yang dominan dan apa artinya. Gunakan data
            mood_mix -- sebut persentase kalau menonjol (mis. "60% sesi kamu
            adem, cuma 2 kali nyala").
-        3. Highlight: lari terjauh, PR, atau pergeseran tren.
+        3. Highlight: lari terjauh, jumlah PR (pr_count) kalau ada, atau
+           progres mingguan dari weekly_distance_km (mis. "naik tiap minggu"
+           atau "konsisten di kisaran 10 km"). Pakai 1 yang paling menonjol.
         4. Tutup: 1 refleksi singkat atau dorongan untuk bulan depan.
 
         Sesuaikan tone:
@@ -60,21 +65,27 @@ class MonthlyRecapNarrator
     }
 
     /**
-     * @return array{month: string, total_runs: int, total_distance_km: float, longest_run_km: float, mood_mix: list<array{mood: string, count: int, percent: float}>}
+     * @return array{month: string, total_runs: int, total_distance_km: float, longest_run_km: float, pr_count: int, weekly_distance_km: list<float>, mood_mix: list<array{mood: string, count: int, percent: float}>}
      */
     public function context(User $user, string $month): array
     {
         [$start, $end] = $this->monthBounds($month);
 
-        $aggregate = ActivityDetail::query()
+        $details = ActivityDetail::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
             ->whereBetween('start_date_local', [$start, $end])
-            ->selectRaw('COUNT(*) AS runs, COALESCE(SUM(distance), 0) AS total_distance, COALESCE(MAX(distance), 0) AS longest')
-            ->first();
+            ->get(['start_date_local', 'distance']);
 
-        $runs = (int) ($aggregate?->getAttribute('runs') ?? 0);
-        $totalMeters = (float) ($aggregate?->getAttribute('total_distance') ?? 0);
-        $longestMeters = (float) ($aggregate?->getAttribute('longest') ?? 0);
+        $runs = $details->count();
+        $totalMeters = (float) $details->sum('distance');
+        $longestMeters = (float) $details->max('distance');
+
+        $prCount = PersonalRecord::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('set_at', [$start, $end])
+            ->count();
+
+        $weeklyKm = $this->weeklyDistanceKm($details, $start);
 
         $moodRows = StoryLine::query()
             ->where('user_id', $user->id)
@@ -101,8 +112,41 @@ class MonthlyRecapNarrator
             'total_runs' => $runs,
             'total_distance_km' => round($totalMeters / 1000, 1),
             'longest_run_km' => round($longestMeters / 1000, 2),
+            'pr_count' => $prCount,
+            'weekly_distance_km' => $weeklyKm,
             'mood_mix' => $moodMix,
         ];
+    }
+
+    /**
+     * Per-week distance (km, 1dp) bucketed into the calendar weeks of the month,
+     * so the narrator can read the within-month progression. Week 0 = the first
+     * 7 days from the month start, and so on (4-5 buckets per month).
+     *
+     * @param  Collection<int, ActivityDetail>  $details
+     * @return list<float>
+     */
+    private function weeklyDistanceKm(Collection $details, Carbon $start): array
+    {
+        $buckets = [];
+        foreach ($details as $detail) {
+            if ($detail->start_date_local === null) {
+                continue;
+            }
+            $week = intdiv((int) $start->diffInDays($detail->start_date_local, absolute: false), 7);
+            $buckets[$week] = ($buckets[$week] ?? 0.0) + (float) ($detail->distance ?? 0);
+        }
+        if ($buckets === []) {
+            return [];
+        }
+
+        ksort($buckets);
+        $weeks = [];
+        for ($i = 0; $i <= max(array_keys($buckets)); $i++) {
+            $weeks[] = round(($buckets[$i] ?? 0.0) / 1000, 1);
+        }
+
+        return $weeks;
     }
 
     /**
