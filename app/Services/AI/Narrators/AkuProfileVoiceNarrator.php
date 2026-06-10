@@ -8,6 +8,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\UserUnlock;
+use App\Models\WeeklySnapshot;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use Illuminate\Support\Carbon;
@@ -15,14 +16,18 @@ use Illuminate\Support\Carbon;
 class AkuProfileVoiceNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 2-3 kalimat (maksimal 60 kata) Temari menyapa pengguna di halaman
+        Tugas: 2-3 kalimat (maksimal 70 kata) Temari menyapa pengguna di halaman
         profil. Temari ngebaca ringkasan perjalanan lari pengguna: total km, total
-        lari, lari terjauh, rekor, aksesori yang udah kebuka, dan persona lari
-        (distribusi mood 12 minggu terakhir).
+        lari, lari terjauh, rekor, aksesori yang udah kebuka, streak mingguan, dan
+        jam lari favorit.
 
         Tone: hangat, personal, gak generik. Sebutkan angka spesifik
         (total km, jumlah lari). Kalau ada rekor, akui. Kalau aksesori baru
         kebuka, congrats. Kalau baru mulai, dorong. Gak pake em-dash.
+
+        Kalau weekly_streak >= 2, akui ritmenya (mis. "konsisten 4 minggu
+        beruntun"). Kalau favorite_time ada, selipkan karakternya secara natural
+        (pagi = anak pagi, malam = pelari malam), jangan dipaksa kalau null.
 
         Bahasa: Indonesia, istilah running tetap bahasa Inggris (pace, cadence,
         HR, split, easy, tempo).
@@ -80,7 +85,44 @@ class AkuProfileVoiceNarrator
             'pr_count' => $prCount,
             'unlocked_accessories' => $unlockCount,
             'total_accessories' => $totalAccessories,
+            'weekly_streak' => WeeklySnapshot::consecutiveWeekStreak($user->id),
+            'favorite_time' => $this->favoriteTimeBucket($user),
             'strava_connected' => $user->stravaConnection !== null,
         ];
+    }
+
+    /**
+     * The time-of-day bucket (pagi/siang/sore/malam) the user runs in most
+     * often, or null when they have no timestamped runs.
+     */
+    private function favoriteTimeBucket(User $user): ?string
+    {
+        $byHour = ActivityDetail::query()
+            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->whereNotNull('start_date_local')
+            ->selectRaw('HOUR(start_date_local) AS h, COUNT(*) AS c')
+            ->groupBy('h')
+            ->pluck('c', 'h');
+
+        if ($byHour->isEmpty()) {
+            return null;
+        }
+
+        $buckets = ['pagi' => 0, 'siang' => 0, 'sore' => 0, 'malam' => 0];
+        foreach ($byHour as $hour => $count) {
+            $buckets[$this->timeBucket((int) $hour)] += (int) $count;
+        }
+
+        return array_keys($buckets, max($buckets))[0];
+    }
+
+    private function timeBucket(int $hour): string
+    {
+        return match (true) {
+            $hour >= 4 && $hour < 10 => 'pagi',
+            $hour >= 10 && $hour < 15 => 'siang',
+            $hour >= 15 && $hour < 19 => 'sore',
+            default => 'malam',
+        };
     }
 }

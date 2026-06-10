@@ -326,6 +326,41 @@ it('TrendCaptionNarrator throws on non-JSON', function (): void {
     $narrator->generate($user, Carbon::today());
 })->throws(UnavailableException::class, 'non-JSON');
 
+it('TrendCaptionNarrator derives the 4-week CTL + volume deltas', function (): void {
+    $user = User::factory()->create();
+    // 8 weeks of data: CTL climbs 30 -> 44, volume recent 4w sum vs prior 4w sum.
+    $ctls = [30, 32, 34, 36, 38, 40, 42, 44];
+    $kms = [10, 10, 10, 10, 12, 12, 12, 12];
+    foreach ($ctls as $i => $ctl) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::parse('2026-03-08')->addWeeks($i)->toDateString(),
+            'distance_km' => $kms[$i],
+            'ctl_42d' => $ctl,
+        ]);
+    }
+
+    $context = (new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class)))
+        ->context($user, Carbon::parse('2026-05-01'));
+
+    // CTL: latest 44 minus the one 4 weeks earlier (36) = 8.0.
+    expect($context['ctl_delta_4w'])->toBe(8.0)
+        ->and($context['volume_recent_4w_km'])->toBe(48.0)  // 12*4
+        ->and($context['volume_prev_4w_km'])->toBe(40.0);   // 10*4
+});
+
+it('TrendCaptionNarrator leaves the 4-week deltas null without enough history', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-03', 'distance_km' => 12, 'ctl_42d' => 30,
+    ]);
+
+    $context = (new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class)))
+        ->context($user, Carbon::parse('2026-05-04'));
+
+    expect($context['ctl_delta_4w'])->toBeNull()
+        ->and($context['volume_recent_4w_km'])->toBeNull();
+});
+
 // ── CardFlavorNarrator ────────────────────────────────────────────────
 
 function cardFixture(): RunCard
@@ -396,6 +431,28 @@ it('PersonaSummaryNarrator returns an empty mix for a user with no story lines',
     $caller = fakeCaller(json_encode(['narrative' => 'x'], JSON_THROW_ON_ERROR));
     $narrator = new PersonaSummaryNarrator($caller);
     expect($narrator->personaMix($user))->toBe([]);
+});
+
+it('PersonaSummaryNarrator splits the persona mix into recent vs earlier halves', function (): void {
+    $user = User::factory()->create();
+    // Earlier half (8 weeks ago): adem-dominant. Recent half (1 week ago): nyala-dominant.
+    $seed = function (string $mood, int $weeksAgo) use ($user): void {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        StoryLine::factory()->for($user)->create([
+            'activity_id' => $activity->id,
+            'mood' => $mood,
+            'created_at' => Carbon::now()->subWeeks($weeksAgo),
+        ]);
+    };
+    $seed('adem', 8);
+    $seed('adem', 8);
+    $seed('nyala', 1);
+
+    $context = (new PersonaSummaryNarrator(fakeCaller('{"narrative":"x"}')))->context($user->fresh());
+
+    expect($context['persona_mix_earlier'][0]['mood'])->toBe('adem')
+        ->and($context['persona_mix_recent'][0]['mood'])->toBe('nyala')
+        ->and($context['total_runs'])->toBe(3);
 });
 
 // ── MonthlyRecapNarrator ──────────────────────────────────────────────
@@ -475,7 +532,34 @@ it('AkuProfileVoiceNarrator builds context from user stats', function (): void {
     $context = $narrator->context($user->fresh());
     expect($context['total_runs'])->toBe(1)
         ->and($context['total_km'])->toBe(5.0)
-        ->and($context['longest_run_km'])->toBe(5.0);
+        ->and($context['longest_run_km'])->toBe(5.0)
+        // 07:00 falls in the pagi bucket; streak needs no snapshots so 0.
+        ->and($context['favorite_time'])->toBe('pagi')
+        ->and($context['weekly_streak'])->toBe(0);
+});
+
+it('AkuProfileVoiceNarrator reads the weekly streak and the most common run time', function (): void {
+    $user = User::factory()->create();
+    // Two consecutive weeks with runs -> streak 2.
+    foreach ([0, 1] as $weeksBack) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->subWeeks($weeksBack)->toDateString(),
+            'runs' => 3,
+        ]);
+    }
+    // Most runs in the evening (malam).
+    foreach (['2026-05-10T20:00', '2026-05-12T21:00', '2026-05-14T07:00'] as $when) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => 5000.0,
+            'start_date_local' => Carbon::parse($when),
+        ]);
+    }
+
+    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}')))->context($user->fresh());
+
+    expect($context['weekly_streak'])->toBe(2)
+        ->and($context['favorite_time'])->toBe('malam');
 });
 
 it('AkuProfileVoiceNarrator throws on missing profile_voice key', function (): void {
