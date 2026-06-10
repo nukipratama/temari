@@ -46,33 +46,32 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $delaySec = $this->backfillDelaySeconds($activity, $detail);
 
         $this->analysisService->requestActivityGroup($activity, delaySeconds: $delaySec);
-        $this->analysisService->requestBriefingGroup($user, $today, invalidate: true, delaySeconds: $delaySec);
+
+        // Daily cadence: the briefing set is generated once per day. The first
+        // run of the day creates it; later runs find the rows Done and skip,
+        // so a 3-run day no longer re-bills the morning briefing 3x. The
+        // rule-based TrendCaption costs no tokens, so it alone keeps
+        // invalidate to refresh the chart caption with the new run included.
+        $this->analysisService->requestBriefingGroup($user, $today, delaySeconds: $delaySec);
         // BriefingMascotVoice was split out of the briefing group; dispatch it
         // independently so its own LLM call runs alongside the briefing group.
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
-            subjectId: $user->id,
-            type: AnalysisType::BriefingMascotVoice,
-            discriminator: $today,
-            delaySeconds: $delaySec,
-            invalidate: true,
-        );
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
-            subjectId: $user->id,
-            type: AnalysisType::DailyGreeting,
-            discriminator: $today,
-            delaySeconds: $delaySec,
-            invalidate: true,
-        );
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
-            subjectId: $user->id,
-            type: AnalysisType::TrendCaption,
-            discriminator: $today,
-            delaySeconds: $delaySec,
-            invalidate: true,
-        );
+        // Rule-based types (TrendCaption) regenerate freely each run; the
+        // LLM ones are debounced to once per day via invalidate=false.
+        $dailyRowTypes = [
+            AnalysisType::BriefingMascotVoice,
+            AnalysisType::DailyGreeting,
+            AnalysisType::TrendCaption,
+        ];
+        foreach ($dailyRowTypes as $type) {
+            $this->analysisService->request(
+                subjectOrType: $type->subjectType(),
+                subjectId: $user->id,
+                type: $type,
+                discriminator: $today,
+                delaySeconds: $delaySec,
+                invalidate: $type->isRuleBased(),
+            );
+        }
 
         if ($detail->start_date_local === null) {
             return;
