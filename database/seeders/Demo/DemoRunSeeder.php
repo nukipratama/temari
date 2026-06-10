@@ -308,6 +308,7 @@ class DemoRunSeeder
             [
                 'name' => 'Demo Runner',
                 'avatar_url' => null,
+                'is_demo' => true,
             ],
         );
 

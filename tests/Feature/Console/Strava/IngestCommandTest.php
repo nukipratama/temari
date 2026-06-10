@@ -98,6 +98,16 @@ it('skips activities whose detail_fail_count has reached the cap', function (): 
     Queue::assertPushed(IngestActivityJob::class, 1);
 });
 
+it('skips activities belonging to the demo user', function (): void {
+    $demo = User::factory()->demo()->create();
+    StravaConnection::factory()->for($demo)->create();
+    Activity::factory()->for($demo)->stub()->create();
+
+    $this->artisan('strava:ingest')->assertSuccessful();
+
+    Queue::assertNotPushed(IngestActivityJob::class);
+});
+
 it('skips activities of users whose Strava connection is revoked', function (): void {
     $revokedUser = User::factory()->create();
     StravaConnection::factory()->for($revokedUser)->revoked()->create();

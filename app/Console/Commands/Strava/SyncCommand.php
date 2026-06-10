@@ -69,6 +69,7 @@ class SyncCommand extends Command
     private function resolveUsers(): Collection
     {
         return User::query()
+            ->notDemo()
             ->whereHas('stravaConnection', fn ($query) => $query->whereNull('revoked_at'))
             ->with('stravaConnection')
             ->when($this->option('user'), fn ($query, $userId) => $query->whereKey($userId))

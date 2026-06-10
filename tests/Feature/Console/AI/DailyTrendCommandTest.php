@@ -56,6 +56,34 @@ it('dispatches trend caption analysis for each active user in the last 7 days', 
     Carbon::setTestNow();
 });
 
+it('skips the demo user even with recent analyzed activity', function (): void {
+    Carbon::setTestNow('2026-05-11 12:00:00');
+
+    $real = User::factory()->create();
+    Activity::factory()->for($real)->create(['analyzed_at' => Carbon::today()->subDays(1)]);
+    $demo = User::factory()->demo()->create();
+    Activity::factory()->for($demo)->create(['analyzed_at' => Carbon::today()->subDays(1)]);
+
+    $captured = [];
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldReceive('request')
+        ->once()
+        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
+            $captured[] = $subjectId;
+
+            return new Analysis();
+        });
+    $this->app->instance(AnalysisService::class, $service);
+
+    $this->artisan('ai:daily-trend')
+        ->expectsOutputToContain('Dispatched trend caption analysis for 1 active users.')
+        ->assertSuccessful();
+
+    expect($captured)->toBe([$real->id]);
+
+    Carbon::setTestNow();
+});
+
 it('reports zero active users when no analyzed activities are recent', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
 
