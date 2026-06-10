@@ -8,8 +8,8 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Services\AI\ChatCallOptions;
+use App\Services\AI\Context\ActivityNarrationContext;
 use App\Services\AI\StructuredChatCaller;
-use App\Services\Run\Metrics\StreamSummary;
 
 use function is_string;
 
@@ -51,21 +51,20 @@ class PostRunSpeechNarrator
     /** @return array<string, mixed> */
     private function buildContext(ActivityDetail $detail, string $mood, bool $hasPr): array
     {
-        $summary = $detail->streamSummary();
-        $zonePct = StreamSummary::zonePct($summary);
-        $dominantZone = $zonePct === []
+        $shared = ActivityNarrationContext::fromDetail($detail);
+        $dominantZone = $shared->zonePct === []
             ? null
-            : array_search(max($zonePct), $zonePct, strict: true);
+            : array_search(max($shared->zonePct), $shared->zonePct, strict: true);
 
         return [
             'mood' => $mood,
             'has_pr' => $hasPr,
-            'distance_km' => round(((float) ($detail->distance ?? 0)) / 1000, 1),
+            'distance_km' => $shared->distanceKm(1),
             'dominant_zone' => is_string($dominantZone) ? $dominantZone : null,
-            'decoupling_pct' => $summary['decoupling_pct'] ?? null,
-            'negative_split' => $summary['negative_split'] ?? null,
-            'weather_temp_c' => $detail->weather_temp_c,
-            'weather_rain' => $detail->weather_rain_detected,
+            'decoupling_pct' => $shared->decouplingPct,
+            'negative_split' => $shared->negativeSplit,
+            'weather_temp_c' => $shared->weatherTempC,
+            'weather_rain' => $shared->weatherRain,
         ];
     }
 }

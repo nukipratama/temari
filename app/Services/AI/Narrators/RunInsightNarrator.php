@@ -7,8 +7,8 @@ namespace App\Services\AI\Narrators;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Services\AI\ChatCallOptions;
+use App\Services\AI\Context\ActivityNarrationContext;
 use App\Services\AI\StructuredChatCaller;
-use App\Services\Run\Metrics\StreamSummary;
 
 class RunInsightNarrator
 {
@@ -86,22 +86,22 @@ class RunInsightNarrator
     private function buildContext(ActivityDetail $detail): array
     {
         $summary = $detail->streamSummary();
-        $zonePct = StreamSummary::zonePct($summary);
+        $shared = ActivityNarrationContext::fromDetail($detail);
 
         return [
-            'distance_km' => round(((float) ($detail->distance ?? 0)) / 1000, 2),
+            'distance_km' => $shared->distanceKm(2),
             'moving_time_sec' => $detail->moving_time,
             'avg_hr' => $detail->average_heartrate,
             'max_hr' => $detail->max_heartrate,
             'avg_cadence_spm' => $detail->average_cadence !== null
                 ? (int) round((float) $detail->average_cadence * 2)
                 : null,
-            'decoupling_pct' => $summary['decoupling_pct'] ?? null,
-            'negative_split' => $summary['negative_split'] ?? null,
-            'zone_pct' => $zonePct,
+            'decoupling_pct' => $shared->decouplingPct,
+            'negative_split' => $shared->negativeSplit,
+            'zone_pct' => $shared->zonePct,
             'per_km' => $summary['per_km'] ?? null,
             'ascent_m' => $summary['ascent_m'] ?? null,
-            'weather_temp_c' => $detail->weather_temp_c,
+            'weather_temp_c' => $shared->weatherTempC,
             'weather_humidity_pct' => $detail->weather_humidity_pct,
         ];
     }
