@@ -1,6 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
 import AppShell from '@/layouts/AppShell';
-import ConfettiBurst from '@/components/ConfettiBurst';
 import MilestoneBanner, { type PendingMilestone } from '@/components/MilestoneBanner';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
@@ -30,7 +29,6 @@ interface HariIniProps {
     snapshot: WeeklySnapshot | null;
     recentRuns: ActivityDetail[];
     lastRunNote?: LastRunNote | null;
-    hasNewPr?: boolean;
     pendingMilestone?: PendingMilestone | null;
 }
 
@@ -40,7 +38,6 @@ export default function HariIni({
     snapshot,
     recentRuns,
     lastRunNote = null,
-    hasNewPr = false,
     pendingMilestone = null,
 }: Readonly<HariIniProps>) {
     const { props } = usePage<SharedProps & HariIniProps>();
@@ -57,7 +54,6 @@ export default function HariIni({
     return (
         <AppShell>
             <Head title="Hari Ini" />
-            <ConfettiBurst burstKey={hasNewPr ? 'pr-detected' : null} />
             <PageContainer>
                 <MilestoneBanner pending={pendingMilestone} />
 

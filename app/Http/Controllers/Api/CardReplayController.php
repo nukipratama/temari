@@ -13,10 +13,7 @@ use Illuminate\Http\Request;
 class CardReplayController extends Controller
 {
     /**
-     * Re-arm the reveal for an owned card so the user can re-watch it. Sets the
-     * same pending_reveal_card_id the reveal pipeline already drives, plus a
-     * one-shot session marker so the next pendingReveal payload knows this is a
-     * replay (and suppresses the PR celebration).
+     * Re-arm the reveal for an owned card so the user can re-watch it.
      */
     public function __invoke(Request $request, RunCard $card): JsonResponse
     {
@@ -29,7 +26,6 @@ class CardReplayController extends Controller
         }
 
         $user->forceFill(['pending_reveal_card_id' => $card->id])->save();
-        $request->session()->flash('reveal_replay', true);
 
         return response()->json(['replay' => true]);
     }

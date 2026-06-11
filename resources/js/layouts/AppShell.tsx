@@ -3,7 +3,6 @@ import { MotionConfig } from 'framer-motion';
 import { usePage } from '@inertiajs/react';
 import UnlockToast from '@/components/temari/UnlockToast';
 import CardReveal from '@/components/card/CardReveal';
-import PRMomentModal from '@/components/celebrations/PRMomentModal';
 import AksesoriUnlockModal from '@/components/celebrations/AksesoriUnlockModal';
 import TopNav from '@/components/TopNav';
 import MobileTopBar from '@/components/MobileTopBar';
@@ -17,13 +16,10 @@ interface AppShellProps {
     withNav?: boolean;
 }
 
-type PrModalData = { activityId: number; categoryLabel: string; timeDisplay: string };
-
 export default function AppShell({ children, withNav = true }: Readonly<AppShellProps>) {
     useDawnShift();
     const { pendingReveal, flash } = usePage<SharedProps>().props;
     const pending = pendingReveal ?? null;
-    const [prModal, setPrModal] = useState<PrModalData | null>(null);
     const [majorUnlock, setMajorUnlock] = useState<UnlockFlash | null>(null);
 
     const unlock = flash?.unlock ?? null;
@@ -32,16 +28,6 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
             setMajorUnlock(unlock);
         }
     }, [unlock]);
-
-    const handlePrMoment = () => {
-        if (pending?.is_pr && pending.pr_category_label && pending.pr_time_display) {
-            setPrModal({
-                activityId: pending.activity_id,
-                categoryLabel: pending.pr_category_label,
-                timeDisplay: pending.pr_time_display,
-            });
-        }
-    };
 
     if (!withNav) {
         return (
@@ -72,8 +58,7 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
 
             <MobileBottomNav />
             <UnlockToast />
-            {pending && <CardReveal pending={pending} onPrMoment={handlePrMoment} />}
-            <PRMomentModal pr={prModal} onClose={() => setPrModal(null)} />
+            {pending && <CardReveal pending={pending} />}
             <AksesoriUnlockModal unlock={majorUnlock} onClose={() => setMajorUnlock(null)} />
         </div>
         </MotionConfig>

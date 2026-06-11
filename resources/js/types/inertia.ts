@@ -32,11 +32,6 @@ export interface PendingReveal {
     stream_summary?: StreamSummary | null;
     summary_polyline?: string | null;
     edition: CardEdition;
-    is_pr: boolean;
-    pr_category_label: string | null;
-    pr_time_display: string | null;
-    /** True when this reveal is a user-triggered re-watch, not a fresh card. */
-    is_replay?: boolean;
 }
 
 export type StravaSyncState = 'disconnected' | 'revoked' | 'syncing' | 'ready';

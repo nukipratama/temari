@@ -17,7 +17,6 @@ import type { ActivityDetail, PendingReveal, Rarity } from "@/types/inertia";
 
 interface CardRevealProps {
   pending: PendingReveal;
-  onPrMoment?: () => void;
 }
 
 const THEATRICAL_RARITIES: ReadonlyArray<Rarity> = [
@@ -36,7 +35,6 @@ function revealPose(opened: boolean, rarity: Rarity): TemariPose {
 
 export default function CardReveal({
   pending,
-  onPrMoment,
 }: Readonly<CardRevealProps>) {
   const theatrical = THEATRICAL_RARITIES.includes(pending.rarity);
   const rarityHex = RARITY_HEX[pending.rarity];
@@ -74,13 +72,8 @@ export default function CardReveal({
   }, [pending.card_id]);
 
   const dismiss = useCallback((): void => {
-    // A replay re-watches an old card; don't re-fire the PR celebration.
-    if (pending.is_pr && !pending.is_replay && onPrMoment) {
-      onPrMoment();
-    }
-    // Await markSeen before reloading — same race guard as viewKoleksi.
     void markSeen().then(() => router.reload({ only: ["pendingReveal"] }));
-  }, [markSeen, pending.is_pr, pending.is_replay, onPrMoment]);
+  }, [markSeen]);
 
   // Await markSeen before navigating — prevents the Inertia request from
   // arriving before the seen POST clears pending_reveal_card_id.

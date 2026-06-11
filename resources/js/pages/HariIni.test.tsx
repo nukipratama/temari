@@ -333,13 +333,6 @@ describe('HariIni', () => {
         expect(screen.getByText(/Halo,/)).toBeInTheDocument();
     });
 
-    it('fires the PR confetti burst when hasNewPr is true', () => {
-        render(
-            <HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} hasNewPr />,
-        );
-        expect(screen.getByText('Vibe')).toBeInTheDocument();
-    });
-
     it('shows em-dash / empty vital chips and "belum cukup data" when load and snapshot are null', () => {
         render(
             <HariIni briefing={briefing} load={null} snapshot={null} recentRuns={[detailWithCard]} />,
