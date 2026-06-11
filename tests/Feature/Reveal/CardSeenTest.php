@@ -105,24 +105,6 @@ it('forbids replaying another user\'s card', function (): void {
     expect($owner->fresh()->pending_reveal_card_id)->toBeNull();
 });
 
-it('flags pendingReveal.is_replay on the request following a replay', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create();
-    $card = RunCard::factory()->for($activity)->create(['rarity' => 'epic']);
-
-    // The replay POST flashes the marker; the follow-up page load consumes it.
-    $this->actingAs($user)
-        ->postJson("/api/kartu/{$card->id}/replay")
-        ->assertSuccessful();
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('pendingReveal.card_id', $card->id)
-            ->where('pendingReveal.is_replay', true));
-});
-
 it('shares pendingReveal payload (incl. km/duration/trimp) when a card is flagged', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

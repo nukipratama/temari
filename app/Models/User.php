@@ -20,10 +20,9 @@ use Override;
 
 /**
  * @property bool $is_demo
- * @property Carbon|null $last_seen_pr_ledger_at
  * @property int|null $pending_reveal_card_id
  */
-#[Fillable(['name', 'email', 'avatar_url', 'is_demo', 'last_seen_pr_ledger_at', 'pending_reveal_card_id'])]
+#[Fillable(['name', 'email', 'avatar_url', 'is_demo', 'pending_reveal_card_id'])]
 #[Hidden(['remember_token'])]
 class User extends Authenticatable
 {
@@ -55,7 +54,6 @@ class User extends Authenticatable
     {
         return [
             'is_demo' => 'boolean',
-            'last_seen_pr_ledger_at' => 'datetime',
         ];
     }
 

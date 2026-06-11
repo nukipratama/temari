@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Models\Activity;
-use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Services\Gamification\EquippedAccessories;
@@ -198,17 +197,13 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, mood: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null, summary_polyline: string|null, edition: array{index: int, total: int}, is_pr: bool, pr_category_label: string|null, pr_time_display: string|null, is_replay: bool}|null
+     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, mood: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null, summary_polyline: string|null, edition: array{index: int, total: int}}|null
      */
     private function pendingRevealFor(?User $user): ?array
     {
         if ($user === null || $user->pending_reveal_card_id === null) {
             return null;
         }
-
-        // A re-watch (set by CardReplayController) flashes this marker so the
-        // reveal can skip the PR celebration on replays.
-        $isReplay = (bool) session('reveal_replay', false);
 
         $card = RunCard::query()
             ->whereKey($user->pending_reveal_card_id)
@@ -228,11 +223,6 @@ class HandleInertiaRequests extends Middleware
 
         $detail = $card->activity->detail;
 
-        $pr = PersonalRecord::query()
-            ->where('user_id', $user->id)
-            ->where('activity_id', $card->activity_id)
-            ->first();
-
         return [
             'card_id' => $card->id,
             'activity_id' => $card->activity_id,
@@ -248,10 +238,6 @@ class HandleInertiaRequests extends Middleware
             'stream_summary' => $detail?->stream_summary,
             'summary_polyline' => $detail?->summary_polyline,
             'edition' => $this->editionFor($user, $card),
-            'is_pr' => $pr !== null,
-            'pr_category_label' => $pr?->category->label(),
-            'pr_time_display' => $pr !== null ? $this->formatSeconds((int) $pr->value_sec) : null,
-            'is_replay' => $isReplay,
         ];
     }
 
@@ -272,19 +258,6 @@ class HandleInertiaRequests extends Middleware
             'index' => (clone $sameRarity)->where('id', '<=', $card->id)->count(),
             'total' => $sameRarity->count(),
         ];
-    }
-
-    private function formatSeconds(int $totalSec): string
-    {
-        $h = intdiv($totalSec, 3600);
-        $m = intdiv($totalSec % 3600, 60);
-        $s = $totalSec % 60;
-
-        if ($h > 0) {
-            return sprintf('%d:%02d:%02d', $h, $m, $s);
-        }
-
-        return sprintf('%d:%02d', $m, $s);
     }
 
 }

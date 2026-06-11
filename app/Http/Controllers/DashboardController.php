@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -74,7 +73,6 @@ class DashboardController extends Controller
             'recentRuns' => $recentRuns,
             'lastRunNote' => $lastRunNote,
             'trendAnalysis' => $this->resolveTrendCaption($user, $today),
-            'hasNewPr' => $this->detectNewPr($user),
             'pendingMilestone' => $this->resolvePendingMilestone($user),
             'weeklyRecap' => $weeklyRecapBuilder->forUser($user, $today),
         ]);
@@ -137,32 +135,6 @@ class DashboardController extends Controller
             'activity_id' => $activity->id,
             'milestones' => array_values($payload),
         ];
-    }
-
-    /**
-     * Read-only detection of a fresh, unseen PR. The dashboard GET must not
-     * mutate the user: advancing the "seen" marker happens on an explicit
-     * POST (PrLedgerController::seen) when the celebration UI is dismissed.
-     */
-    private function detectNewPr(User $user): bool
-    {
-        $latest = PersonalRecord::query()
-            ->where('user_id', $user->id)
-            ->orderByDesc('set_at')
-            ->value('set_at');
-
-        if ($latest === null) {
-            return false;
-        }
-
-        $latestAt = Carbon::parse($latest);
-        $seenAt = $user->last_seen_pr_ledger_at;
-
-        if ($seenAt !== null && $seenAt->gte($latestAt)) {
-            return false;
-        }
-
-        return true;
     }
 
     /**

@@ -34,9 +34,6 @@ const epicReveal: PendingReveal = {
   moving_time_sec: 3480,
   trimp_edwards: 161,
   edition: { index: 3, total: 7 },
-  is_pr: false,
-  pr_category_label: null,
-  pr_time_display: null,
 };
 
 const commonReveal: PendingReveal = {
@@ -51,9 +48,6 @@ const commonReveal: PendingReveal = {
   moving_time_sec: 1800,
   trimp_edwards: 42,
   edition: { index: 1, total: 1 },
-  is_pr: false,
-  pr_category_label: null,
-  pr_time_display: null,
 };
 
 const fetchMock = vi.fn(() =>
@@ -129,30 +123,6 @@ describe("CardReveal", () => {
       expect.objectContaining({ method: "POST" }),
     );
     expect(reload).toHaveBeenCalledWith({ only: ["pendingReveal"] });
-  });
-
-  it("fires onPrMoment on dismiss for a fresh PR reveal", async () => {
-    const onPrMoment = vi.fn();
-    render(
-      <CardReveal
-        pending={{ ...epicReveal, is_pr: true }}
-        onPrMoment={onPrMoment}
-      />,
-    );
-    await userEvent.setup().keyboard("{Escape}");
-    expect(onPrMoment).toHaveBeenCalledTimes(1);
-  });
-
-  it("suppresses onPrMoment when the PR reveal is a replay", async () => {
-    const onPrMoment = vi.fn();
-    render(
-      <CardReveal
-        pending={{ ...epicReveal, is_pr: true, is_replay: true }}
-        onPrMoment={onPrMoment}
-      />,
-    );
-    await userEvent.setup().keyboard("{Escape}");
-    expect(onPrMoment).not.toHaveBeenCalled();
   });
 
   it("Escape key dismisses the reveal modal", async () => {
