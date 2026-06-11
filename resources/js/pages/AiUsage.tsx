@@ -293,7 +293,7 @@ function DailyChart({ data }: Readonly<{ data: DailyRow[] }>) {
                 </span>
             </div>
 
-            <div className="flex items-end gap-1.5" style={{ height: 180 }}>
+            <div className="flex gap-1.5" style={{ height: 180 }}>
                 {data.map((d) => {
                     const heightPct = Math.max((d.total / maxTotal) * 100, 2);
                     const dayCost = estimateCost(d.total);
