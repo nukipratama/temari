@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { usePage } from '@inertiajs/react';
-import DemoBanner from '@/components/DemoBanner';
 import UnlockToast from '@/components/temari/UnlockToast';
 import CardReveal from '@/components/card/CardReveal';
 import PRMomentModal from '@/components/celebrations/PRMomentModal';
@@ -48,7 +47,6 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
         return (
             <MotionConfig reducedMotion="user">
                 <div className="min-h-screen bg-cream-deep text-ink">
-                    <DemoBanner />
                     {children}
                 </div>
             </MotionConfig>
@@ -65,7 +63,6 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
                 Lompat ke konten
             </a>
 
-            <DemoBanner />
             <TopNav />
             <MobileTopBar />
 
