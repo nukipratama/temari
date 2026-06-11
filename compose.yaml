@@ -9,9 +9,7 @@ x-mysql-base: &mysql-base
         timeout: 5s
 
 x-redis-base: &redis-base
-    # Pin to 7 to match prod (compose.prod.yaml). `redis:alpine` now floats to
-    # Redis 8, which would run a different major locally than we deploy.
-    image: 'redis:7-alpine'
+    image: 'redis:8-alpine'
     networks:
         - sail
     healthcheck:

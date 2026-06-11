@@ -52,6 +52,16 @@ x-app-env: &app-env
   OCTANE_MAX_REQUESTS: "2000"
   FRANKENPHP_NUM_WORKERS: "2"
 
+x-redis-prod-base: &redis-prod-base
+  image: redis:8-alpine
+  restart: unless-stopped
+  networks: [internal]
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 10s
+    timeout: 3s
+    retries: 5
+
 x-app-base: &app-base
   image: *app-image
   build:
@@ -168,8 +178,7 @@ services:
   # backlog here LRU-trims (just lost metrics) instead of filling the noeviction
   # queue/session store and breaking job dispatch.
   pulse-redis:
-    image: redis:7-alpine
-    restart: unless-stopped
+    <<: *redis-prod-base
     command:
       - "redis-server"
       - "--appendonly"
@@ -180,12 +189,6 @@ services:
       - "64mb"
       - "--maxmemory-policy"
       - "allkeys-lru"
-    networks: [internal]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
     deploy:
       resources:
         limits:
@@ -232,8 +235,7 @@ services:
 
   # Durable redis: queue jobs + Horizon state. AOF on, no eviction.
   redis-data:
-    image: redis:7-alpine
-    restart: unless-stopped
+    <<: *redis-prod-base
     command:
       - "redis-server"
       - "--appendonly"
@@ -246,12 +248,6 @@ services:
       - "noeviction"
     volumes:
       - redis_data:/data
-    networks: [internal]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
     deploy:
       resources:
         limits:
@@ -260,8 +256,7 @@ services:
 
   # Volatile redis: cache + sessions. No AOF, LRU eviction, pure RAM.
   redis-cache:
-    image: redis:7-alpine
-    restart: unless-stopped
+    <<: *redis-prod-base
     command:
       - "redis-server"
       - "--appendonly"
@@ -272,12 +267,6 @@ services:
       - "180mb"
       - "--maxmemory-policy"
       - "allkeys-lru"
-    networks: [internal]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
     deploy:
       resources:
         limits:

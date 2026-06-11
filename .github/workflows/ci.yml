@@ -79,9 +79,7 @@ jobs:
           --health-interval=5s --health-timeout=2s --health-retries=10
           --tmpfs /var/lib/mysql:rw
       redis:
-        # Pin to 7 to match prod (compose.prod.yaml). `redis:alpine` now floats
-        # to Redis 8, which would test a different major than we deploy.
-        image: redis:7-alpine
+        image: redis:8-alpine
         ports: ['0:6379']
         options: >-
           --health-cmd="redis-cli ping"

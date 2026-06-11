@@ -10,7 +10,7 @@ A self-hosted, Strava-connected personal running dashboard with a built-in compa
 - **Frontend**: Inertia 2 + React 19 + TypeScript · Tailwind v4 (`@tailwindcss/vite`) · Framer Motion · Vitest
 - **Data**: MySQL 8.4 + Redis (separate dev / test / prod stacks for parity)
 - **Async**: Horizon (queues) · Scheduler
-- **Observability**: Telescope (dev) · Pulse (perf) · Mailpit (dev mail catcher)
+- **Observability**: Telescope (dev) · Pulse (perf)
 - **LLM**: Azure OpenAI via `openai-php/laravel` for briefing/verdict narration; when credentials are unset, narration silently falls back to deterministic rule-based content. Per-block `AnalysisStatus` (pending / failed + a "Coba lagi" retry button) is the source of truth — there is no global "mode darurat" chip
 - **Tests**: Pest 4 (95% line coverage gate) · Vitest (95% lines + functions gate)
 - **AI dev**: Laravel Boost — `CLAUDE.md` + `.claude/skills/*` for AI-paired work; `laravel/claude-code` plugin enabled in `.claude/settings.json`
@@ -61,8 +61,6 @@ Frontend pages live in [resources/js/pages/](resources/js/pages/), components in
 | Vite HMR       | 7002      | 5173           |
 | MySQL (dev)    | 7003      | 3306           |
 | Redis (dev)    | 7004      | 6379           |
-| Mailpit SMTP   | 7005      | 1025           |
-| Mailpit UI     | 7006      | 8025           |
 
 The test stack (`mysql_test`, `redis_test`) runs on the compose network only — no host port forwards.
 
@@ -72,7 +70,7 @@ The test stack (`mysql_test`, `redis_test`) runs on the compose network only —
 
 **Frontend** — Vitest with jsdom against React 19 + Inertia components. Same 1:1 convention. Gates: 95% lines + 95% functions ([vitest.config.ts](vitest.config.ts)). Branches relaxed because hitting every `?? null` fallback in defensive code is contortionist, not signal.
 
-CI uses GitHub Actions service containers (`mysql:8.4` + `redis:alpine`) for the PHP suite — every workflow run gets a fresh DB. FE suite is pure-node, no services.
+CI uses GitHub Actions service containers (`mysql:8.4` + `redis:8-alpine`) for the PHP suite — every workflow run gets a fresh DB. FE suite is pure-node, no services.
 
 `TelescopeServiceProvider` and `HorizonServiceProvider` are excluded from coverage in `phpunit.xml` — both are framework-wiring with closures that only fire under runtime conditions and aren't meaningfully testable in isolation.
 
@@ -84,7 +82,7 @@ CI uses GitHub Actions service containers (`mysql:8.4` + `redis:alpine`) for the
 | commit-msg      | Conventional Commits format check                                      |
 | pre-push        | Block direct pushes to `main` (force or not). Use feature branch + PR  |
 | CI — `lint`     | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
-| CI — `pest`     | `pest --coverage --min=95` against mysql:8.4 + redis:alpine services   |
+| CI — `pest`     | `pest --coverage --min=95` against mysql:8.4 + redis:8-alpine services |
 | CI — `vitest`   | `npm run test:coverage` — 95% lines + functions, jsdom only            |
 | CI — `deploy`   | On push to `main`: build prod image, migrate, roll containers, recycle Horizon, healthcheck `/up` |
 
