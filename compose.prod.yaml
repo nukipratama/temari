@@ -205,10 +205,10 @@ services:
     restart: unless-stopped
     env_file: *app-env-file
     command:
-      - "--innodb-buffer-pool-size=768M"
+      - "--innodb-buffer-pool-size=1536M"
+      - "--innodb-redo-log-capacity=536870912"
       - "--innodb-flush-log-at-trx-commit=2"
       - "--innodb-flush-method=O_DIRECT"
-      - "--innodb-log-file-size=256M"
       # app workers + horizon (≤10) + scheduler + adhoc artisan ≈ 25 peak.
       - "--max-connections=40"
       - "--performance-schema=OFF"
@@ -231,7 +231,7 @@ services:
       resources:
         limits:
           cpus: "1.5"
-          memory: 1g
+          memory: 2g
 
   # Durable redis: queue jobs + Horizon state. AOF on, no eviction.
   redis-data:
