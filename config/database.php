@@ -202,17 +202,16 @@ return [
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
         ],
 
-        // Dedicated ingest buffer for Pulse (prod: the `pulse-redis` container).
-        // MUST stay off the durable `default` instance so a Pulse backlog can
-        // LRU-trim instead of filling the noeviction queue/session store. Only
-        // used when PULSE_INGEST_DRIVER=redis; otherwise harmless.
+        // Pulse ingest buffer — DB 2 on the shared Redis instance, keeping it
+        // namespaced away from queue/session data (DB 0) and cache (DB 1).
+        // Only used when PULSE_INGEST_DRIVER=redis; otherwise harmless.
         'pulse' => [
             'url' => env('PULSE_REDIS_URL'),
             'host' => env('PULSE_REDIS_HOST', env('REDIS_HOST', '127.0.0.1')),
             'username' => env('PULSE_REDIS_USERNAME'),
             'password' => env('PULSE_REDIS_PASSWORD'),
             'port' => env('PULSE_REDIS_PORT', env('REDIS_PORT', '6379')),
-            'database' => env('PULSE_REDIS_DB', '0'),
+            'database' => env('PULSE_REDIS_DB', '2'),
             'max_retries' => env('REDIS_MAX_RETRIES', 3),
             'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
             'backoff_base' => env('REDIS_BACKOFF_BASE', 100),

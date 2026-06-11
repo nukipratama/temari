@@ -11,7 +11,7 @@
         </x-slot:actions>
     </x-pulse::card-header>
 
-    <x-pulse::scroll :expand="$expand" wire:poll.5s="">
+    <x-pulse::scroll :expand="$expand" wire:poll.30s="">
         <div class="space-y-4">
             <div>
                 <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Connections</div>

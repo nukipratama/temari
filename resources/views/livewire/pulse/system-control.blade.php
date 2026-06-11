@@ -8,7 +8,7 @@
         </x-slot:actions>
     </x-pulse::card-header>
 
-    <x-pulse::scroll :expand="$expand" wire:poll.5s="">
+    <x-pulse::scroll :expand="$expand" wire:poll.15s="">
         <div class="space-y-4">
             {{-- Kill-switches --}}
             <div>

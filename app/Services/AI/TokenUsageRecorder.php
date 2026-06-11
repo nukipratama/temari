@@ -7,7 +7,6 @@ namespace App\Services\AI;
 use App\Models\AI\TokenUsage;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
-use Laravel\Pulse\Facades\Pulse;
 use Throwable;
 
 class TokenUsageRecorder
@@ -38,18 +37,6 @@ class TokenUsageRecorder
             // Metering must never tank the job after a successful Azure call —
             // otherwise the retry would double-bill.
             Log::warning('token_usage.record_failed', [
-                'kind' => $kind,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        // Feed the /pulse AI Pipeline card's per-kind token trend. Same
-        // never-throw guarantee as the DB insert, and independent of it so a
-        // hiccup in one sink doesn't drop the other.
-        try {
-            Pulse::record('ai_tokens', $kind, $totalTokens)->sum();
-        } catch (Throwable $e) {
-            Log::warning('token_usage.pulse_record_failed', [
                 'kind' => $kind,
                 'error' => $e->getMessage(),
             ]);

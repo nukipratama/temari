@@ -22,28 +22,31 @@ x-app-env: &app-env
   DB_CONNECTION: mysql
   DB_HOST: mysql
   DB_PORT: "3306"
-  REDIS_HOST: redis-data
-  REDIS_CACHE_HOST: redis-cache
+  # Single Redis instance; DB 0 = queue/sessions (noeviction), DB 1 = cache,
+  # DB 2 = pulse ingest buffer. All three connections point at the same host.
+  REDIS_HOST: redis
+  REDIS_CACHE_HOST: redis
   REDIS_PORT: "6379"
   QUEUE_CONNECTION: redis
   SESSION_DRIVER: redis
-  # Sessions live on the durable (noeviction) Redis. The cache connection has
-  # allkeys-lru and would silently log users out under cache pressure.
+  # Sessions live on DB 0 (noeviction). Cache on DB 1 (same instance, but
+  # volatile-ok keys are namespaced away from queue/session keys by DB number).
   SESSION_CONNECTION: default
   CACHE_STORE: redis
-  # Currently unread: bootstrap/app.php hardcodes trustProxies(at: '*'). Kept
-  # for documentation/future-use; changing it has no effect today.
-  TRUSTED_PROXIES: "127.0.0.1"
   PULSE_ENABLED: "true"
   # Stable name so the Servers card isn't a random per-container hash. Ingest is
-  # offloaded to a dedicated pulse-redis (drained by pulse-work) — see below.
+  # buffered in Redis DB 2 (drained by the pulse service).
   PULSE_SERVER_NAME: teman-lari-prod
   PULSE_INGEST_DRIVER: redis
   PULSE_REDIS_CONNECTION: pulse
-  PULSE_REDIS_HOST: pulse-redis
-  # Servers recorder runs only in pulse-check, which bind-mounts the host root
+  PULSE_REDIS_HOST: redis
+  PULSE_REDIS_DB: "2"
+  # Servers recorder runs in the pulse service, which bind-mounts the host root
   # read-only at /host so the disk metric reflects the real host disk.
   PULSE_SERVER_DIRECTORIES: "/host"
+  # Currently unread: bootstrap/app.php hardcodes trustProxies(at: '*'). Kept
+  # for documentation/future-use; changing it has no effect today.
+  TRUSTED_PROXIES: "127.0.0.1"
   OCTANE_SERVER: frankenphp
   # NOTE: the runtime boots the Caddyfile worker directive, not `octane:start`,
   # so these two are inert here — the live recycle/sizing knobs are `num` and
@@ -73,9 +76,7 @@ x-app-base: &app-base
   depends_on:
     mysql:
       condition: service_healthy
-    redis-data:
-      condition: service_healthy
-    redis-cache:
+    redis:
       condition: service_healthy
   networks: [internal]
   volumes:
@@ -117,7 +118,7 @@ services:
       resources:
         limits:
           cpus: "1.0"
-          memory: 512m
+          memory: 1g
 
   scheduler:
     <<: *app-base
@@ -130,19 +131,12 @@ services:
           cpus: "0.5"
           memory: 256m
 
-  # Pulse Servers recorder daemon. Without this the /pulse Servers card is empty.
-  # Bind-mounts the host root read-only so the disk metric is the real host
-  # disk, not this container's overlay fs (PULSE_SERVER_DIRECTORIES=/host).
-  pulse-check:
+  # Combined Pulse daemon: pulse:check (Servers recorder) + pulse:work (ingest drain).
+  # Bind-mounts host root read-only so the disk metric reflects the real host disk.
+  # pulse:check runs in the background; pulse:work is PID 1 and receives SIGTERM.
+  pulse:
     <<: *app-base
-    command: ["php", "artisan", "pulse:check"]
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis-cache:
-        condition: service_healthy
-      pulse-redis:
-        condition: service_healthy
+    command: ["/bin/sh", "-c", "php artisan pulse:check & exec php artisan pulse:work"]
     volumes:
       - app_logs:/var/www/html/storage/logs
       - /:/host:ro
@@ -151,49 +145,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 128m
-
-  # Drains the Pulse ingest stream (pulse-redis) into MySQL. If this is down the
-  # dashboard silently stops updating — entries buffer in pulse-redis (LRU).
-  pulse-work:
-    <<: *app-base
-    command: ["php", "artisan", "pulse:work"]
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis-cache:
-        condition: service_healthy
-      pulse-redis:
-        condition: service_healthy
-    healthcheck:
-      disable: true
-    deploy:
-      resources:
-        limits:
-          cpus: "0.25"
-          memory: 128m
-
-  # Dedicated ingest buffer for Pulse. MUST be separate from redis-data: a Pulse
-  # backlog here LRU-trims (just lost metrics) instead of filling the noeviction
-  # queue/session store and breaking job dispatch.
-  pulse-redis:
-    <<: *redis-prod-base
-    command:
-      - "redis-server"
-      - "--appendonly"
-      - "no"
-      - "--save"
-      - ""
-      - "--maxmemory"
-      - "64mb"
-      - "--maxmemory-policy"
-      - "allkeys-lru"
-    deploy:
-      resources:
-        limits:
-          cpus: "0.25"
-          memory: 96m
+          cpus: "0.5"
+          memory: 256m
 
   mysql:
     # Custom image = stock mysql + the bootstrap baked into initdb (see docker/mysql/
@@ -233,8 +186,14 @@ services:
           cpus: "1.5"
           memory: 2g
 
-  # Durable redis: queue jobs + Horizon state. AOF on, no eviction.
-  redis-data:
+  # Single Redis instance with DB-level separation:
+  #   DB 0 = queue jobs + Horizon state + sessions (noeviction)
+  #   DB 1 = cache (REDIS_CACHE_DB=1, keys namespaced away from queue)
+  #   DB 2 = Pulse ingest buffer (PULSE_REDIS_DB=2, LRU-safe via allkeys-lru
+  #           is NOT used here — noeviction is safer for the combined store;
+  #           at current usage ~37 MB across all three DBs, 512 MB is ample)
+  # AOF everysec provides queue durability without the fsync overhead of always.
+  redis:
     <<: *redis-prod-base
     command:
       - "redis-server"
@@ -243,7 +202,7 @@ services:
       - "--appendfsync"
       - "everysec"
       - "--maxmemory"
-      - "180mb"
+      - "512mb"
       - "--maxmemory-policy"
       - "noeviction"
     volumes:
@@ -251,27 +210,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 256m
-
-  # Volatile redis: cache + sessions. No AOF, LRU eviction, pure RAM.
-  redis-cache:
-    <<: *redis-prod-base
-    command:
-      - "redis-server"
-      - "--appendonly"
-      - "no"
-      - "--save"
-      - ""
-      - "--maxmemory"
-      - "180mb"
-      - "--maxmemory-policy"
-      - "allkeys-lru"
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 256m
+          cpus: "0.75"
+          memory: 640m
 
 volumes:
   mysql_data:

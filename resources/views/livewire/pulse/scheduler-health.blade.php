@@ -5,20 +5,22 @@
         </x-slot:icon>
     </x-pulse::card-header>
 
-    <x-pulse::scroll :expand="$expand" wire:poll.5s="">
+    <x-pulse::scroll :expand="$expand" wire:poll.30s="">
         @if ($tasks->isEmpty())
             <x-pulse::no-results />
         @else
             <div class="space-y-2">
                 @foreach ($tasks as $task)
-                    <div @class([
-                        'rounded-lg p-2 ring-1',
-                        'ring-rose-500/30 bg-rose-500/5' => $task['status'] === 'failed',
-                        'ring-amber-500/30 bg-amber-500/5' => $task['status'] === 'late',
-                        'ring-gray-900/5 dark:ring-gray-100/10' => $task['status'] === 'ok',
-                    ])>
+                    <div class="rounded-lg p-2 ring-1 ring-gray-900/5 dark:ring-gray-100/10">
                         <div class="flex items-center justify-between gap-2">
-                            <div class="min-w-0">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span @class([
+                                    'inline-block h-2 w-2 rounded-full shrink-0',
+                                    'bg-rose-500' => $task['status'] === 'failed',
+                                    'bg-amber-500' => $task['status'] === 'late',
+                                    'bg-emerald-500' => $task['status'] === 'ok',
+                                ])></span>
+                                <div class="min-w-0">
                                 <div class="truncate text-sm font-bold text-gray-900 dark:text-gray-100">{{ $task['command'] }}</div>
                                 <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                     @if ($task['lastRunAt'])
@@ -29,6 +31,7 @@
                                     @if ($task['runtimeMs'] !== null)
                                         · {{ $task['runtimeMs'] >= 1000 ? round($task['runtimeMs'] / 1000, 1).'s' : $task['runtimeMs'].'ms' }}
                                     @endif
+                                </div>
                                 </div>
                             </div>
                             <div @class([

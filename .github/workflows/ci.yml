@@ -332,7 +332,7 @@ jobs:
         # existing machine it's a no-op apart from adopting an image/config change.
         # --wait blocks until healthchecks pass. So a new box needs only the secrets in
         # /opt/teman-lari/.env + a push — the deploy brings the stack online itself.
-        run: $COMPOSE up -d --wait --wait-timeout 300 mysql redis-data redis-cache pulse-redis
+        run: $COMPOSE up -d --wait --wait-timeout 300 mysql redis
 
       - name: Tag new image with git SHA
         run: docker tag teman-lari/app:latest teman-lari/app:${{ github.sha }}
@@ -398,14 +398,11 @@ jobs:
         # This step just migrates as the app user; blocking, so it fails loudly if missing.
         run: $COMPOSE run --rm app php artisan migrate --database=analytics --path=database/migrations/analytics --force
 
-      - name: Roll app, workers + Pulse daemons onto the new image
-        # pulse-check (Servers recorder), pulse-work (drains the ingest stream)
-        # and pulse-redis (dedicated ingest buffer) must come up too — the app
-        # now ingests Pulse via redis, so pulse-redis has to be running. The
-        # recreate gives Horizon fresh workers on the new code, so no separate
+      - name: Roll app, workers + Pulse daemon onto the new image
+        # The recreate gives Horizon fresh workers on the new code, so no separate
         # horizon:terminate recycle is needed. The scheduler is deliberately left
         # stopped here and only resumed once the deploy is green (below).
-        run: $COMPOSE up -d --no-deps app horizon pulse-check pulse-work pulse-redis
+        run: $COMPOSE up -d --no-deps app horizon pulse
 
       - name: Optimize caches
         # Runs inside the running container where compose.prod.yaml's env
@@ -424,7 +421,7 @@ jobs:
           echo "Healthcheck failed"; exit 1
 
       - name: Smoke test
-        # /login is a public Inertia page that exercises session driver (redis-cache)
+        # /login is a public Inertia page that exercises session driver (redis)
         # and the Vite manifest. /up only proves the framework booted.
         run: |
           curl -fsS -o /dev/null -w "HTTP %{http_code} in %{time_total}s\n" \
