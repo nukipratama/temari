@@ -332,7 +332,7 @@ jobs:
         # existing machine it's a no-op apart from adopting an image/config change.
         # --wait blocks until healthchecks pass. So a new box needs only the secrets in
         # /opt/teman-lari/.env + a push — the deploy brings the stack online itself.
-        run: $COMPOSE up -d --wait --wait-timeout 300 mysql redis
+        run: $COMPOSE up -d --remove-orphans --wait --wait-timeout 300 mysql redis
 
       - name: Tag new image with git SHA
         run: docker tag teman-lari/app:latest teman-lari/app:${{ github.sha }}
