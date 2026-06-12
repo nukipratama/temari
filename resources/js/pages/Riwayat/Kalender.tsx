@@ -124,19 +124,29 @@ export default function Kalender({
 
                 <Legend className="mb-4" />
 
-                <div className="overflow-x-auto rounded-2xl border border-line/70 bg-surface-warm">
-                    <div className="min-w-[840px]">
-                        <CalendarHeader />
-                        {weeks.map((week) => (
-                            <WeekRowView
-                                key={week.weekStart}
-                                week={week}
-                                todayQuote={todayQuote}
-                                moodFilter={moodFilter}
-                            />
-                        ))}
+                <div className="relative">
+                    <div className="overflow-x-auto rounded-2xl border border-line/70 bg-surface-warm">
+                        <div className="min-w-[840px]">
+                            <CalendarHeader />
+                            {weeks.map((week) => (
+                                <WeekRowView
+                                    key={week.weekStart}
+                                    week={week}
+                                    todayQuote={todayQuote}
+                                    moodFilter={moodFilter}
+                                />
+                            ))}
+                        </div>
                     </div>
+                    {/* Mobile-only: the 7-day grid is wider than the viewport, so hint that it scrolls. */}
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-2xl bg-gradient-to-l from-surface-warm to-transparent lg:hidden"
+                    />
                 </div>
+                <p className="mt-2 text-label-micro text-ink-3 lg:hidden">
+                    Geser buat lihat seminggu penuh →
+                </p>
             </PageContainer>
         </AppShell>
     );

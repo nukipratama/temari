@@ -107,12 +107,4 @@ describe('Aku', () => {
         fireEvent.click(screen.getByText('Sync sekarang'));
         expect(router.post).toHaveBeenCalledWith('/strava/sync', {}, { preserveScroll: true });
     });
-
-    it('renders the mobile-only logout footer + posts to /logout on click', () => {
-        vi.mocked(router.post).mockReset();
-        render(<Aku identity={identity} stats={stats} />);
-        const keluar = screen.getByText('Keluar');
-        fireEvent.click(keluar);
-        expect(router.post).toHaveBeenCalledWith('/logout');
-    });
 });

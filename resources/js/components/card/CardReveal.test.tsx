@@ -72,6 +72,11 @@ describe("CardReveal", () => {
     expect(screen.getByText(/Aku lagi baca lari kamu/)).toBeInTheDocument();
   });
 
+  it("makes the dialog vertically scrollable so CTAs stay reachable on short viewports", () => {
+    render(<CardReveal pending={epicReveal} />);
+    expect(screen.getByRole("dialog").className).toContain("overflow-y-auto");
+  });
+
   it("mounts the card wrapped in foil for theatrical (epic+) reveals", () => {
     render(<CardReveal pending={epicReveal} />);
     // No reveal happens until the pack is torn.

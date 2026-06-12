@@ -226,18 +226,6 @@ export default function Aku({
                         </a>
                     )}
                 </Card>
-
-                <div className="mt-8 flex justify-center lg:hidden">
-                    <PillButton
-                        tone="outline"
-                        size="sm"
-                        onClick={() => router.post('/logout')}
-                        className="px-5 py-2.5 text-sm"
-                    >
-                        <Icon icon="mdi:logout" width={16} height={16} aria-hidden className="text-ink-3" />
-                        Keluar
-                    </PillButton>
-                </div>
             </PageContainer>
         </AppShell>
     );

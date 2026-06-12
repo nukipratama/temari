@@ -179,7 +179,7 @@ export default function CardReveal({
         role="dialog"
         aria-modal="true"
         aria-label="Kartu baru"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-sky-deep/80 px-4 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex justify-center overflow-y-auto bg-sky-deep/80 px-4 py-6 backdrop-blur-md"
         onClick={() => { if (opened) dismiss(); }}
       >
         <ConfettiBurst burstKey={confettiKey} />
@@ -188,7 +188,7 @@ export default function CardReveal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-3xl"
+          className="my-auto w-full max-w-3xl"
         >
           <HeroPanel className="px-8 py-10 sm:px-12 sm:py-12">
             <div className="grid items-center gap-9 lg:grid-cols-[200px_1fr]">

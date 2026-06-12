@@ -1,7 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import BrandMark from '@/components/BrandMark';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
-import UserAvatar from '@/components/UserAvatar';
+import UserMenu from '@/components/UserMenu';
 import type { SharedProps } from '@/types/inertia';
 
 /**
@@ -22,12 +22,7 @@ export default function MobileTopBar() {
             <div className="flex items-center gap-2">
                 <StravaSyncBadge sync={stravaSync} density="compact" />
                 {user && (
-                    <UserAvatar
-                        name={user.name}
-                        avatarUrl={user.avatar_url}
-                        size="sm"
-                        className="ring-2 ring-cream-deep"
-                    />
+                    <UserMenu name={user.name} avatarUrl={user.avatar_url} />
                 )}
             </div>
         </header>
