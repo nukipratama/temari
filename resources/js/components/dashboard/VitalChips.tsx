@@ -66,7 +66,7 @@ function VitalChip({
                     {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
                 </span>
             </SectionLabel>
-            <div className={cn('min-w-0 font-sans text-[40px] font-bold leading-none tabular-nums tracking-[-0.02em]', valueClass)}>
+            <div className={cn('min-w-0 font-sans text-stat-fluid font-bold tabular-nums tracking-[-0.02em]', valueClass)}>
                 {value}
             </div>
             {sub !== '' && <div className="mt-1 font-display text-xs italic text-ink-3">{sub}</div>}

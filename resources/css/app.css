@@ -78,6 +78,11 @@
     --text-stat: 32px;
     --text-stat--line-height: 1;
 
+    /* Fluid variant for stat numbers in narrow grid columns (e.g. the 3-up
+       VitalChips row): shrinks on small viewports so signed values still fit. */
+    --text-stat-fluid: clamp(24px, 6.5vw, 40px);
+    --text-stat-fluid--line-height: 1;
+
     /* ─── Daybreak palette — pre-dawn Jakarta at 05:30. ─────────────
        Hex values mirror DAYBREAK constants in the prototype source. */
 

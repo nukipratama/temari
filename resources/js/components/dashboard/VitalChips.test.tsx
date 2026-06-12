@@ -60,6 +60,12 @@ describe('VitalChips', () => {
         expect(screen.getByText('41j')).toBeInTheDocument();
     });
 
+    it('scales the value with a fluid clamp so it fits the narrow mobile column', () => {
+        render(<VitalChips briefing={briefing} load={load} />);
+        // The signed form value must shrink below 40px on narrow viewports.
+        expect(screen.getByText('-2.5').className).toContain('text-stat-fluid');
+    });
+
     it('falls back to em-dash and the qualitative vibe label when load is null', () => {
         render(<VitalChips briefing={briefing} load={null} />);
         // Vibe value falls back to the label; Kesiapan falls back to "—".

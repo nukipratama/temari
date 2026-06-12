@@ -3,17 +3,17 @@ import { extendTailwindMerge } from 'tailwind-merge';
 /**
  * tailwind-merge, taught about the project's typography-tier utilities.
  *
- * `.text-label-small` / `.text-label-micro` (defined in resources/css/app.css)
- * bundle font-family/size/weight/tracking but no color. Out of the box
- * tailwind-merge misreads their `text-` prefix as a text-*color* and drops them
- * when a real color (`text-ink-2`) is merged in the same call, silently
- * stripping the mono-caps styling. Registering them in the `font-size` group
+ * `.text-label-small` / `.text-label-micro` / `.text-stat-fluid` (defined in
+ * resources/css/app.css) bundle font size (and family/tracking) but no color.
+ * Out of the box tailwind-merge misreads their `text-` prefix as a text-*color*
+ * and drops them when a real color (`text-ink-2`) is merged in the same call,
+ * silently stripping the styling. Registering them in the `font-size` group
  * makes them coexist with a color again.
  */
 const twMerge = extendTailwindMerge({
     extend: {
         classGroups: {
-            'font-size': ['text-label-small', 'text-label-micro'],
+            'font-size': ['text-label-small', 'text-label-micro', 'text-stat-fluid'],
         },
     },
 });
