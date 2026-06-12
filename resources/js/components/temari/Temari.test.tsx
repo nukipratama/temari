@@ -27,7 +27,6 @@ describe('Temari', () => {
             equippedAccessories: {
                 ikat_kepala: 'accessory.ikat_kepala_legendaris',
                 medal: 'accessory.medal_emas',
-                pita: 'accessory.pita_maraton',
                 kaus: 'accessory.kaus_hujan',
                 celana: 'accessory.celana_split',
                 sepatu: 'accessory.sepatu_cepat',
@@ -40,7 +39,6 @@ describe('Temari', () => {
                 equipped: {
                     headband: 'legendaris',
                     medal: 'emas',
-                    pita: 'maraton',
                     kaus: 'hujan',
                     celana: 'split',
                     sepatu: 'cepat',
@@ -55,7 +53,6 @@ describe('Temari', () => {
             equippedAccessories: {
                 ikat_kepala: 'accessory.ikat_kepala_epik',
                 medal: null,
-                pita: null,
                 kaus: null,
                 celana: null,
                 sepatu: null,
@@ -68,7 +65,6 @@ describe('Temari', () => {
                 equipped: {
                     headband: 'epik',
                     medal: 'none',
-                    pita: null,
                     kaus: null,
                     celana: null,
                     sepatu: null,

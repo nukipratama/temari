@@ -63,8 +63,8 @@ it('returns the full goal catalog at zero progress for a fresh user', function (
 
     $goals = $this->resolver->forUser($user);
 
-    // 4 medal + 4 ikat_kepala + 4 pita + 4 kaus + 4 celana + 4 sepatu + 4 aura.
-    expect($goals)->toHaveCount(28);
+    // 4 medal + 4 ikat_kepala + 4 kaus + 4 celana + 4 sepatu + 4 aura.
+    expect($goals)->toHaveCount(24);
 
     foreach ($goals as $goal) {
         expect($goal['is_completed'])->toBeFalse()
@@ -74,7 +74,6 @@ it('returns the full goal catalog at zero progress for a fresh user', function (
 
     $byId = collect($goals)->keyBy('id');
     expect($byId['accessory.medal_pertama']['current'])->toBe(0)
-        ->and($byId['accessory.pita_jarak']['current'])->toBe(0.0)
         ->and($byId['accessory.sepatu_cepat']['current'])->toBe(0);
 });
 
@@ -123,7 +122,7 @@ it('counts rarity cards toward ikat_kepala goals', function (): void {
         ->and($byId['accessory.ikat_kepala_legendaris']['current'])->toBe(1); // 1 legendary, target 1
 });
 
-it('tracks consecutive-week streak for pita_konsisten and aura_pemanasan', function (): void {
+it('tracks consecutive-week streak for aura_pemanasan', function (): void {
     $user = User::factory()->create();
     // 3 consecutive weeks ending on adjacent Sundays.
     $base = Carbon::parse('2026-05-31');
@@ -136,11 +135,10 @@ it('tracks consecutive-week streak for pita_konsisten and aura_pemanasan', funct
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.pita_konsisten']['current'])->toBe(3)   // streak 3, target 4
-        ->and($byId['accessory.aura_pemanasan']['current'])->toBe(2); // min(streak, 2)
+    expect($byId['accessory.aura_pemanasan']['current'])->toBe(2); // min(streak, 2)
 });
 
-it('tracks accumulated distance toward the pita and sepatu km goals', function (): void {
+it('tracks accumulated distance toward sepatu km goals', function (): void {
     $user = User::factory()->create();
     // 60 km total across two runs.
     makeActivity($user, ['distance' => 40000.0]);
@@ -148,19 +146,7 @@ it('tracks accumulated distance toward the pita and sepatu km goals', function (
 
     $byId = goalsById($this->resolver, $user);
 
-    expect($byId['accessory.pita_jarak']['current'])->toBe(60.0)       // /100
-        ->and($byId['accessory.pita_maraton']['current'])->toBe(60.0)  // /500
-        ->and($byId['accessory.sepatu_legendaris']['current'])->toBe(60.0); // /1000
-});
-
-it('counts night-run badges toward pita_malam', function (): void {
-    $user = User::factory()->create();
-    makeCard($user, Rarity::Common, [Badge::AnakMalam->value]);
-    makeCard($user, Rarity::Common, [Badge::AnakMalam->value]);
-
-    $byId = goalsById($this->resolver, $user);
-
-    expect($byId['accessory.pita_malam']['current'])->toBe(2); // target 5
+    expect($byId['accessory.sepatu_legendaris']['current'])->toBe(60.0); // /1000
 });
 
 it('counts activities toward kaus_pemula, sepatu_basic and kaus_legendaris', function (): void {

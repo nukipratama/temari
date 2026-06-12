@@ -153,7 +153,7 @@ it('upserts the daily greeting (no dup on second call)', function (): void {
 
 it('maps each mood to its public accessory token', function (): void {
     expect(Temari::accessoryForMoodPublic(Temari::MOOD_NYALA))->toBe('headband')
-        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_ENTENG))->toBe('pita')
+        ->and(Temari::accessoryForMoodPublic(Temari::MOOD_ENTENG))->toBeNull()
         ->and(Temari::accessoryForMoodPublic(Temari::MOOD_ADEM))->toBe('mata-ngantuk')
         ->and(Temari::accessoryForMoodPublic(Temari::MOOD_LEMES))->toBeNull()
         ->and(Temari::accessoryForMoodPublic(Temari::MOOD_MUMET))->toBeNull()

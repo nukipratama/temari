@@ -86,7 +86,7 @@ class Temari
     {
         return match ($mood) {
             self::MOOD_NYALA => 'headband',
-            self::MOOD_ENTENG => 'pita',
+            self::MOOD_ENTENG => null,
             self::MOOD_ADEM => 'mata-ngantuk',
             default => null,
         };

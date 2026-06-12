@@ -13,7 +13,6 @@ import PageContainer from '@/components/ui/PageContainer';
 import {
     mapHeadband,
     mapMedal,
-    mapPita,
     mapKaus,
     mapCelana,
     mapSepatu,
@@ -40,7 +39,6 @@ interface AksesoriItem {
 interface EquippedPayload {
     medal: string | null;
     ikat_kepala: string | null;
-    pita: string | null;
     kaus: string | null;
     celana: string | null;
     sepatu: string | null;
@@ -55,14 +53,13 @@ interface AksesoriProps {
 const SLOT_LABEL: Record<Slot, string> = {
     medal: 'Medali',
     ikat_kepala: 'Ikat Kepala',
-    pita: 'Pita',
     kaus: 'Kaus',
     celana: 'Celana',
     sepatu: 'Sepatu',
     aura: 'Aura',
 };
 
-const SLOT_ORDER: Slot[] = ['medal', 'ikat_kepala', 'pita', 'kaus', 'celana', 'sepatu', 'aura'];
+const SLOT_ORDER: Slot[] = ['medal', 'ikat_kepala', 'kaus', 'celana', 'sepatu', 'aura'];
 
 export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriProps>) {
     const unlockedCount = items.filter((i) => i.unlocked).length;
@@ -73,7 +70,6 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
     const previewEquipped: TemariEquipped = {
         headband: equipped.ikat_kepala ? mapHeadband(equipped.ikat_kepala) : null,
         medal: mapMedal(equipped.medal),
-        pita: mapPita(equipped.pita),
         kaus: mapKaus(equipped.kaus),
         celana: mapCelana(equipped.celana),
         sepatu: mapSepatu(equipped.sepatu),
@@ -104,9 +100,9 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                 />
 
                 <HeroPanel className="mt-8 lg:px-14 lg:py-12">
-                    <div className="grid items-center gap-10 lg:grid-cols-[260px_1fr]">
+                    <div className="grid items-center gap-8 lg:gap-10 lg:grid-cols-[220px_1fr]">
                         <div className="flex justify-center">
-                            <TemariProto pose="proud" size={260} equipped={previewEquipped} />
+                            <TemariProto pose="proud" size={220} equipped={previewEquipped} animate />
                         </div>
                         <div>
                             <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">

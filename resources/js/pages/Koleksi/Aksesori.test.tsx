@@ -5,12 +5,11 @@ import KoleksiAksesori from './Aksesori';
 import { setMockPage } from '@/test/setup';
 import type { EquippedAccessories } from '@/types/inertia';
 
-type Slot = 'medal' | 'ikat_kepala' | 'pita' | 'kaus' | 'celana' | 'sepatu' | 'aura';
+type Slot = 'medal' | 'ikat_kepala' | 'kaus' | 'celana' | 'sepatu' | 'aura';
 
 const emptyEquipped: EquippedAccessories = {
     medal: null,
     ikat_kepala: null,
-    pita: null,
     kaus: null,
     celana: null,
     sepatu: null,
@@ -47,8 +46,8 @@ describe('Koleksi/Aksesori', () => {
         ];
         render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
         expect(screen.getByText(/Dandanin Temari/)).toBeInTheDocument();
-        // 7 slot labels appear in the equipped strip with "belum dipake" status.
-        expect(screen.getAllByText(/belum dipake/).length).toBe(7);
+        // 6 slot labels appear in the equipped strip with "belum dipake" status.
+        expect(screen.getAllByText(/belum dipake/).length).toBe(6);
     });
 
     it('renders unlocked + equipped state per item', () => {
@@ -56,7 +55,6 @@ describe('Koleksi/Aksesori', () => {
             item('accessory.ikat_kepala_legendaris', 'ikat_kepala', true, true),
             item('accessory.ikat_kepala_epik', 'ikat_kepala', true, false),
             item('accessory.medal_emas', 'medal', true, true),
-            item('accessory.pita_konsisten', 'pita', true, true),
         ];
         render(
             <KoleksiAksesori
@@ -65,7 +63,6 @@ describe('Koleksi/Aksesori', () => {
                     ...emptyEquipped,
                     ikat_kepala: 'accessory.ikat_kepala_legendaris',
                     medal: 'accessory.medal_emas',
-                    pita: 'accessory.pita_konsisten',
                 }}
             />,
         );

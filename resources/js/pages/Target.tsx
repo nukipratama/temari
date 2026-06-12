@@ -32,19 +32,17 @@ interface TargetProps {
 const SLOT_LABEL: Record<string, string> = {
     medal: 'Medali',
     ikat_kepala: 'Ikat Kepala',
-    pita: 'Pita',
     kaus: 'Kaus',
     celana: 'Celana',
     sepatu: 'Sepatu',
     aura: 'Aura',
 };
 
-const SLOT_ORDER = ['medal', 'ikat_kepala', 'pita', 'kaus', 'celana', 'sepatu', 'aura'] as const;
+const SLOT_ORDER = ['medal', 'ikat_kepala', 'kaus', 'celana', 'sepatu', 'aura'] as const;
 
 const SLOT_ICONS: Record<string, string> = {
     medal: 'mdi:medal',
     ikat_kepala: 'mdi:bandage',
-    pita: 'mdi:ribbon',
     kaus: 'mdi:tshirt-crew',
     celana: 'mdi:lingerie',
     sepatu: 'mdi:shoe-sneaker',

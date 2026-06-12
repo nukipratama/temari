@@ -15,10 +15,6 @@ export const ACCESSORY_KEYS = {
     medalEmas: 'accessory.medal_emas',
     medalPerak: 'accessory.medal_perak',
     medalPlatina: 'accessory.medal_platina',
-    pitaKonsisten: 'accessory.pita_konsisten',
-    pitaJarak: 'accessory.pita_jarak',
-    pitaMalam: 'accessory.pita_malam',
-    pitaMaraton: 'accessory.pita_maraton',
     kausPemula: 'accessory.kaus_pemula',
     kausPagi: 'accessory.kaus_pagi',
     kausHujan: 'accessory.kaus_hujan',
@@ -84,12 +80,6 @@ const VARIANT_MAPS = {
         medal_emas: 'emas',
         medal_pertama: 'pertama',
     } as Record<string, TemariEquipped['medal']>,
-    pita: {
-        pita_maraton: 'maraton',
-        pita_malam: 'malam',
-        pita_jarak: 'jarak',
-        pita_konsisten: 'konsisten',
-    } as Record<string, TemariEquipped['pita']>,
     kaus: {
         kaus_legendaris: 'legendaris',
         kaus_hujan: 'hujan',
@@ -132,11 +122,6 @@ export function mapMedal(key: string | null): TemariEquipped['medal'] {
     return VARIANT_MAPS.medal[suffixOf(key)] ?? 'pertama';
 }
 
-export function mapPita(key: string | null): TemariEquipped['pita'] {
-    if (!key) return null;
-    return VARIANT_MAPS.pita[suffixOf(key)] ?? 'konsisten';
-}
-
 export function mapKaus(key: string | null): TemariEquipped['kaus'] {
     if (!key) return null;
     return VARIANT_MAPS.kaus[suffixOf(key)] ?? 'pemula';
@@ -166,7 +151,6 @@ export function serverToEquipped(ea: EquippedAccessories): TemariEquipped {
     return {
         headband: mapHeadband(ea.ikat_kepala),
         medal: mapMedal(ea.medal),
-        pita: mapPita(ea.pita),
         kaus: mapKaus(ea.kaus),
         celana: mapCelana(ea.celana),
         sepatu: mapSepatu(ea.sepatu),
@@ -182,7 +166,6 @@ export function serverToEquipped(ea: EquippedAccessories): TemariEquipped {
 const SLOT_PREFIXES = [
     'ikat_kepala',
     'medal',
-    'pita',
     'kaus',
     'celana',
     'sepatu',
@@ -194,7 +177,6 @@ type SlotName = typeof SLOT_PREFIXES[number];
 const SLOT_MAPPER: Record<SlotName, (key: string) => TemariEquipped[keyof TemariEquipped]> = {
     ikat_kepala: (key) => mapHeadband(key),
     medal: (key) => mapMedal(key),
-    pita: (key) => mapPita(key),
     kaus: (key) => mapKaus(key),
     celana: (key) => mapCelana(key),
     sepatu: (key) => mapSepatu(key),
@@ -205,7 +187,6 @@ const SLOT_MAPPER: Record<SlotName, (key: string) => TemariEquipped[keyof Temari
 const SLOT_KEYS: Record<SlotName, keyof TemariEquipped> = {
     ikat_kepala: 'headband',
     medal: 'medal',
-    pita: 'pita',
     kaus: 'kaus',
     celana: 'celana',
     sepatu: 'sepatu',

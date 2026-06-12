@@ -104,7 +104,6 @@ class UnlockEngine
         return [
             ...$this->eligibleMedal($ctx),
             ...$this->eligibleIkatKepala($ctx),
-            ...$this->eligiblePita($ctx),
             ...$this->eligibleKaus($ctx),
             ...$this->eligibleCelana($ctx),
             ...$this->eligibleSepatu($ctx),
@@ -149,27 +148,6 @@ class UnlockEngine
         }
         if (($rc[Rarity::Legendary->value] ?? 0) >= 1) {
             $keys[] = 'accessory.ikat_kepala_legendaris';
-        }
-
-        return $keys;
-    }
-
-    /** @return list<string> */
-    private function eligiblePita(GamificationContext $ctx): array
-    {
-        $keys = [];
-
-        if ($ctx->streakWeeks >= 4) {
-            $keys[] = 'accessory.pita_konsisten';
-        }
-        if ($ctx->totalDistanceM >= 100_000) {
-            $keys[] = 'accessory.pita_jarak';
-        }
-        if ($ctx->totalDistanceM >= 500_000) {
-            $keys[] = 'accessory.pita_maraton';
-        }
-        if (($ctx->badgeCounts[Badge::AnakMalam->value] ?? 0) >= 5) {
-            $keys[] = 'accessory.pita_malam';
         }
 
         return $keys;

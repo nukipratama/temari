@@ -21,7 +21,6 @@ it('shares the equipped accessories on every authenticated page', function (): v
         ->assertInertia(fn (Assert $page) => $page
             ->where('equippedAccessories.ikat_kepala', 'accessory.ikat_kepala_epik')
             ->where('equippedAccessories.medal', 'accessory.medal_emas')
-            ->where('equippedAccessories.pita', null)
             ->where('equippedAccessories.aura', null));
 });
 

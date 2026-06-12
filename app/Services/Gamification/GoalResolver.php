@@ -36,7 +36,6 @@ readonly class GoalResolver
         return [
             ...$this->medalGoals($ctx, $unlockedKeys, $catalog),
             ...$this->ikatKepalaGoals($ctx, $unlockedKeys, $catalog),
-            ...$this->pitaGoals($ctx, $unlockedKeys, $catalog),
             ...$this->kausGoals($ctx, $unlockedKeys, $catalog),
             ...$this->celanaGoals($ctx, $unlockedKeys, $catalog),
             ...$this->sepatuGoals($ctx, $unlockedKeys, $catalog),
@@ -139,63 +138,6 @@ readonly class GoalResolver
                 'is_completed' => \in_array($g['id'], $unlockedKeys, true),
             ];
         }, $items);
-    }
-
-    /**
-     * @param  list<string>  $unlockedKeys
-     * @param  array<string, array{rarity?: string}>  $catalog
-     * @return list<array{id: string, title: string, description: string, slot: string, rarity: string, current: int|float, target: int|float, unit: string, is_completed: bool}>
-     */
-    private function pitaGoals(GamificationContext $ctx, array $unlockedKeys, array $catalog): array
-    {
-        $bc = $ctx->badgeCounts;
-
-        return [
-            [
-                'id' => 'accessory.pita_konsisten',
-                'title' => '4 minggu beruntun lari',
-                'description' => 'Lari di 4 minggu berturut-turut.',
-                'slot' => 'pita',
-                'rarity' => $this->rarityForKey('accessory.pita_konsisten', $catalog),
-                'current' => min($ctx->streakWeeks, 4),
-                'target' => 4,
-                'unit' => 'minggu',
-                'is_completed' => \in_array('accessory.pita_konsisten', $unlockedKeys, true),
-            ],
-            [
-                'id' => 'accessory.pita_jarak',
-                'title' => 'Akumulasi jarak 100 km',
-                'description' => 'Akumulasi jarak 100 km.',
-                'slot' => 'pita',
-                'rarity' => $this->rarityForKey('accessory.pita_jarak', $catalog),
-                'current' => min($ctx->totalDistanceKm(), 100),
-                'target' => 100,
-                'unit' => 'km',
-                'is_completed' => \in_array('accessory.pita_jarak', $unlockedKeys, true),
-            ],
-            [
-                'id' => 'accessory.pita_malam',
-                'title' => '5 lari malam',
-                'description' => 'Selesaikan 5 lari malam (setelah jam 9 malam).',
-                'slot' => 'pita',
-                'rarity' => $this->rarityForKey('accessory.pita_malam', $catalog),
-                'current' => min($bc[Badge::AnakMalam->value] ?? 0, 5),
-                'target' => 5,
-                'unit' => 'lari',
-                'is_completed' => \in_array('accessory.pita_malam', $unlockedKeys, true),
-            ],
-            [
-                'id' => 'accessory.pita_maraton',
-                'title' => 'Akumulasi jarak 500 km',
-                'description' => 'Akumulasi jarak 500 km.',
-                'slot' => 'pita',
-                'rarity' => $this->rarityForKey('accessory.pita_maraton', $catalog),
-                'current' => min($ctx->totalDistanceKm(), 500),
-                'target' => 500,
-                'unit' => 'km',
-                'is_completed' => \in_array('accessory.pita_maraton', $unlockedKeys, true),
-            ],
-        ];
     }
 
     /**

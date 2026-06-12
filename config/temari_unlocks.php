@@ -11,7 +11,7 @@ declare(strict_types=1);
 | icon (Iconify), a short description, a rarity tier, and a criteria
 | summary shown in locked silhouette state on the Profil koleksi grid.
 |
-| 28 items across 7 slots (4 per slot). Slots: medal, ikat_kepala, pita,
+| 24 items across 6 slots (4 per slot). Slots: medal, ikat_kepala,
 | kaus, celana, sepatu, aura.
 |
 */
@@ -83,40 +83,6 @@ return [
         'icon' => 'mdi:bandage',
         'description' => 'Ikat kepala emas, cuma buat yang punya kartu Legendaris.',
         'criteria' => 'Dapatkan 1 kartu Legendaris.',
-    ],
-
-    // ── Pita (4) ───────────────────────────────────────────────────────
-    'accessory.pita_konsisten' => [
-        'name' => 'Pita Konsisten',
-        'slot' => 'pita',
-        'rarity' => 'common',
-        'icon' => 'mdi:ribbon',
-        'description' => 'Pita buat 4 minggu beruntun lari.',
-        'criteria' => 'Lari di 4 minggu berturut-turut.',
-    ],
-    'accessory.pita_jarak' => [
-        'name' => 'Pita Penjelajah',
-        'slot' => 'pita',
-        'rarity' => 'uncommon',
-        'icon' => 'mdi:ribbon',
-        'description' => 'Pita buat yang total jarak udah 100 km.',
-        'criteria' => 'Akumulasi jarak 100 km.',
-    ],
-    'accessory.pita_malam' => [
-        'name' => 'Pita Pejuang Malam',
-        'slot' => 'pita',
-        'rarity' => 'rare',
-        'icon' => 'mdi:ribbon',
-        'description' => 'Pita buat yang sering lari malem, 5 kali.',
-        'criteria' => 'Selesaikan 5 lari malam (setelah jam 9 malam).',
-    ],
-    'accessory.pita_maraton' => [
-        'name' => 'Pita Maraton',
-        'slot' => 'pita',
-        'rarity' => 'epic',
-        'icon' => 'mdi:ribbon',
-        'description' => 'Pita spesial buat yang total jarak udah 500 km.',
-        'criteria' => 'Akumulasi jarak 500 km.',
     ],
 
     // ── Kaus (4) ───────────────────────────────────────────────────────

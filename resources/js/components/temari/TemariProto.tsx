@@ -15,7 +15,6 @@ export type TemariPose =
 export interface TemariEquipped {
     headband?: 'ember' | 'epik' | 'legendaris' | null;
     medal?: 'pertama' | 'emas' | 'perak' | 'platina' | 'none';
-    pita?: 'konsisten' | 'jarak' | 'malam' | 'maraton' | boolean | null;
     kaus?: 'pemula' | 'pagi' | 'hujan' | 'legendaris' | null;
     celana?: 'ringan' | 'jarak' | 'split' | 'maraton' | null;
     sepatu?: 'basic' | 'cepat' | 'tahan' | 'legendaris' | null;
@@ -41,6 +40,7 @@ const INNER_EAR = '#E8A076';
 const EYE = '#1A1812';
 const CHEEK = '#E89B8E';
 const OUTLINE = '#3b2f1f';
+const DEFAULT_SHIRT = '#0e7a4c';
 
 // ── Headband palette ────────────────────────────────────────────────
 
@@ -100,15 +100,6 @@ const AURA_PALETTE: Record<string, { inner: string; mid: string; outer: string }
     jagoan: { inner: '#D8F0FF', mid: '#D9B23A', outer: '#B8941E' },
 };
 
-// ── Pita (ribbon) palette ───────────────────────────────────────────
-
-const PITA_PALETTE: Record<string, { fill: string; stroke: string; knot: string }> = {
-    konsisten: { fill: '#6B8E6F', stroke: '#5C7C60', knot: '#5C7C60' },
-    jarak: { fill: '#D9764A', stroke: '#B75F37', knot: '#B75F37' },
-    malam: { fill: '#5E89B5', stroke: '#4A6F94', knot: '#4A6F94' },
-    maraton: { fill: '#D9B23A', stroke: '#B8941E', knot: '#B8941E' },
-};
-
 // ── Pose configs ────────────────────────────────────────────────────
 
 const EAR_TILT: Record<TemariPose, [number, number]> = {
@@ -158,7 +149,6 @@ const POSE_ANIM: Record<TemariPose, string> = {
     glow: 'temari-bob 3.2s ease-in-out infinite, temari-breathe 3.2s ease-in-out infinite',
 };
 
-const DEFAULT_MEDAL_POSES = new Set<TemariPose>(['proud', 'pumped', 'holding', 'observational', 'glow']);
 const SPARKLE_POSES = new Set<TemariPose>(['pumped', 'excited', 'glow']);
 
 // ── Arm swing per pose ──────────────────────────────────────────────
@@ -176,27 +166,10 @@ const ARM_ROTATION: Record<TemariPose, [number, number]> = {
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-function resolveMedalKey(
-    pose: TemariPose,
-    equipped: TemariEquipped | null,
-): string | null {
-    if (equipped?.medal) {
-        if (equipped.medal === 'none') return null;
-        return equipped.medal;
-    }
-    return DEFAULT_MEDAL_POSES.has(pose) ? 'pertama' : null;
-}
-
 function resolveAuraKey(equipped: TemariEquipped | null): string | null {
     if (!equipped?.aura) return null;
     if (typeof equipped.aura === 'string') return equipped.aura;
     return 'pemanasan';
-}
-
-function resolvePitaKey(equipped: TemariEquipped | null): string | null {
-    if (!equipped?.pita) return null;
-    if (typeof equipped.pita === 'string') return equipped.pita;
-    return 'konsisten';
 }
 
 // ── Main component ──────────────────────────────────────────────────
@@ -209,18 +182,17 @@ export default function TemariProto({
     animate = false,
     className,
 }: Readonly<TemariProtoProps>) {
-    // Full-body viewBox: head at y~0..56, body at y~56..96, legs at y~96..130,
-    // with padding for ears/sparkles/aura. ViewBox: x[0..120], y[-12..134] = 146 tall.
-    // Tight fit — ground shadow bottom is at y≈133.5; overflow:visible handles
-    // decorative elements (ears, sparkles, aura) that extend beyond the box.
+    // Full-body viewBox: head at y~0..56, body at y~56..96, legs at y~96..130.
+    // y starts at -24 so ears (tip y≈-20 on excited pose) are never clipped when
+    // the SVG is rasterized to canvas for the share card. ViewBox: x[0..120], y[-24..134] = 158 tall.
     const viewW = 120;
-    const viewH = 146;
+    const viewH = 158;
     const aspectHeight = (size * viewH) / viewW;
 
-    const headbandKey = equipped?.headband ?? 'ember';
-    const hb = HEADBAND_PALETTE[headbandKey] ?? HEADBAND_PALETTE.ember;
+    const headbandKey = equipped?.headband ?? null;
+    const hb = HEADBAND_PALETTE[headbandKey ?? 'ember'] ?? HEADBAND_PALETTE.ember;
 
-    const medalKey = resolveMedalKey(pose, equipped);
+    const medalKey = (!equipped?.medal || equipped.medal === 'none') ? null : equipped.medal;
     const medal = medalKey ? (MEDAL_PALETTE[medalKey] ?? MEDAL_PALETTE.pertama) : null;
 
     const auraKey = resolveAuraKey(equipped);
@@ -228,9 +200,6 @@ export default function TemariProto({
     const auraColors = auraKey ? (AURA_PALETTE[auraKey] ?? AURA_PALETTE.pemanasan) : null;
 
     const showSparkle = SPARKLE_POSES.has(pose) || showAura;
-    const pitaKey = resolvePitaKey(equipped);
-    const pitaColors = pitaKey ? (PITA_PALETTE[pitaKey] ?? PITA_PALETTE.konsisten) : null;
-
     const kausKey = equipped?.kaus ?? null;
     const kausColors = kausKey ? (KAUS_PALETTE[kausKey] ?? KAUS_PALETTE.pemula) : null;
 
@@ -258,7 +227,7 @@ export default function TemariProto({
             data-tone={tone}
         >
             <svg
-                viewBox={`0 -12 ${viewW} ${viewH}`}
+                viewBox={`0 -24 ${viewW} ${viewH}`}
                 width={size}
                 height={aspectHeight}
                 style={{ display: 'block', overflow: 'visible' }}
@@ -316,11 +285,11 @@ export default function TemariProto({
                     <Body
                         kausColors={kausColors}
                         celanaColors={celanaColors}
-                        hb={hb}
+                        emblemColor={headbandKey ? hb.band : FUR_SHADE}
                     />
 
                     {/* Arms */}
-                    <Arms armRot={armRot} kausColors={kausColors} hb={hb} />
+                    <Arms armRot={armRot} kausColors={kausColors} wristColor={headbandKey ? hb.band : FUR_SHADE} />
 
                     {/* Head */}
                     <Head
@@ -333,9 +302,6 @@ export default function TemariProto({
 
                     {/* Medal (on chest) */}
                     {medal && <MedalLayer medal={medal} />}
-
-                    {/* Pita (sash across body) */}
-                    {pitaColors && <PitaLayer colors={pitaColors} />}
                 </g>
 
                 {/* Sparkles */}
@@ -375,7 +341,7 @@ function Head({
 }: Readonly<{
     earTilt: [number, number];
     hb: HeadbandPalette;
-    headbandKey: string;
+    headbandKey: string | null;
     eyeShape: EyeShape;
     mouthShape: MouthShape;
 }>) {
@@ -387,14 +353,14 @@ function Head({
             <ellipse cx="60" cy="28" rx="34" ry="30" fill="url(#fur-head-grad)" stroke={FUR_SHADE} strokeWidth="1.2" />
             {/* Forehead highlight */}
             <ellipse cx="60" cy="20" rx="22" ry="14" fill="url(#fur-highlight)" />
-            {/* Headband */}
-            <Headband band={hb.band} legendary={headbandKey === 'legendaris'} />
+            {/* Headband — only when equipped */}
+            {headbandKey && <Headband band={hb.band} legendary={headbandKey === 'legendaris'} />}
             {/* Cheeks — softer blush */}
             <Cheeks />
             {/* Eyes */}
             <Eyes shape={eyeShape} />
             {/* Nose dot */}
-            <ellipse cx="60" cy="42" rx="2.5" ry="2" fill={hb.band} />
+            <ellipse cx="60" cy="42" rx="2.5" ry="2" fill={headbandKey ? hb.band : FUR_SHADE} />
             {/* Mouth */}
             <Mouth shape={mouthShape} />
         </g>
@@ -406,11 +372,11 @@ function Head({
 function Body({
     kausColors,
     celanaColors,
-    hb,
+    emblemColor,
 }: Readonly<{
     kausColors: { fill: string; trim: string; emblem: string } | null;
     celanaColors: { fill: string; stripe: string } | null;
-    hb: HeadbandPalette;
+    emblemColor: string;
 }>) {
     return (
         <g>
@@ -466,7 +432,7 @@ function Body({
                         strokeLinecap="round"
                     />
                     {/* Chest emblem — small "T" */}
-                    <circle cx="60" cy="66" r="3.2" fill={hb.band} stroke={OUTLINE} strokeWidth="0.6" />
+                    <circle cx="60" cy="66" r="3.2" fill={emblemColor} stroke={OUTLINE} strokeWidth="0.6" />
                     <text
                         x="60"
                         y="67.5"
@@ -483,7 +449,7 @@ function Body({
                 <g>
                     <path
                         d="M 36 55 Q 35 64 34 78 L 86 78 Q 85 64 84 55 Q 76 58 60 58 Q 44 58 36 55 Z"
-                        fill="#0e7a4c"
+                        fill={DEFAULT_SHIRT}
                         stroke={OUTLINE}
                         strokeWidth={0.8}
                         strokeLinejoin="round"
@@ -497,7 +463,7 @@ function Body({
                         strokeLinecap="round"
                     />
                     {/* Default chest emblem */}
-                    <circle cx="60" cy="66" r="3.2" fill={hb.band} stroke={OUTLINE} strokeWidth="0.6" />
+                    <circle cx="60" cy="66" r="3.2" fill={emblemColor} stroke={OUTLINE} strokeWidth="0.6" />
                     <text
                         x="60"
                         y="67.5"
@@ -520,30 +486,46 @@ function Body({
 function Arms({
     armRot,
     kausColors,
-    hb,
+    wristColor,
 }: Readonly<{
     armRot: [number, number];
     kausColors: { fill: string; trim: string; emblem: string } | null;
-    hb: HeadbandPalette;
+    wristColor: string;
 }>) {
-    const sleeveColor = kausColors ? kausColors.fill : '#0e7a4c';
+    const sleeveColor = kausColors ? kausColors.fill : DEFAULT_SHIRT;
     return (
         <>
-            {/* Left arm */}
+            {/* Left arm — tapered from shoulder to paw */}
             <g transform={`translate(36, 58) rotate(${armRot[0]})`}>
-                <ellipse cx="-4" cy="8" rx="5" ry="7" fill={FUR} stroke={FUR_SHADE} strokeWidth="1" />
-                {/* Sleeve band */}
-                <rect x="-8.5" y="3" width="9" height="2.8" fill={sleeveColor} stroke={OUTLINE} strokeWidth="0.5" rx="0.5" />
+                {/* Arm body — tapers shoulder→wrist */}
+                <path
+                    d="M -4.5 0 C -6 4 -6 10 -5 14 C -4.5 16 -2 17 0 17 C 2 17 4.5 16 5 14 C 6 10 6 4 4.5 0 Z"
+                    fill={FUR}
+                    stroke={FUR_SHADE}
+                    strokeWidth="1"
+                />
+                {/* Paw stub */}
+                <ellipse cx="0" cy="18.5" rx="4.5" ry="3.5" fill={FUR} stroke={FUR_SHADE} strokeWidth="0.8" />
+                {/* Sleeve band near shoulder */}
+                <path d="M -5 2 Q 0 4.5 5 2 L 5 5.5 Q 0 7.5 -5 5.5 Z" fill={sleeveColor} stroke={OUTLINE} strokeWidth="0.4" />
                 {/* Wristband */}
-                <rect x="-8" y="10" width="8" height="2" fill={hb.band} stroke={OUTLINE} strokeWidth="0.3" rx="0.5" />
+                <rect x="-4" y="14" width="8" height="2" rx="1" fill={wristColor} stroke={OUTLINE} strokeWidth="0.3" />
             </g>
-            {/* Right arm */}
+            {/* Right arm — tapered from shoulder to paw */}
             <g transform={`translate(84, 58) rotate(${armRot[1]})`}>
-                <ellipse cx="4" cy="8" rx="5" ry="7" fill={FUR} stroke={FUR_SHADE} strokeWidth="1" />
-                {/* Sleeve band */}
-                <rect x="-0.5" y="3" width="9" height="2.8" fill={sleeveColor} stroke={OUTLINE} strokeWidth="0.5" rx="0.5" />
+                {/* Arm body */}
+                <path
+                    d="M -4.5 0 C -6 4 -6 10 -5 14 C -4.5 16 -2 17 0 17 C 2 17 4.5 16 5 14 C 6 10 6 4 4.5 0 Z"
+                    fill={FUR}
+                    stroke={FUR_SHADE}
+                    strokeWidth="1"
+                />
+                {/* Paw stub */}
+                <ellipse cx="0" cy="18.5" rx="4.5" ry="3.5" fill={FUR} stroke={FUR_SHADE} strokeWidth="0.8" />
+                {/* Sleeve band near shoulder */}
+                <path d="M -5 2 Q 0 4.5 5 2 L 5 5.5 Q 0 7.5 -5 5.5 Z" fill={sleeveColor} stroke={OUTLINE} strokeWidth="0.4" />
                 {/* Wristband */}
-                <rect x="0" y="10" width="8" height="2" fill={hb.band} stroke={OUTLINE} strokeWidth="0.3" rx="0.5" />
+                <rect x="-4" y="14" width="8" height="2" rx="1" fill={wristColor} stroke={OUTLINE} strokeWidth="0.3" />
             </g>
         </>
     );
@@ -557,8 +539,8 @@ function Legs({ sepatuColors }: Readonly<{ sepatuColors: { upper: string; sole: 
         <g>
             {/* Left leg */}
             <g transform="translate(48, 92)">
-                {/* Thigh stub */}
-                <rect x="-3.5" y="0" width="7" height="14" rx="3" fill={FUR} stroke={FUR_SHADE} strokeWidth="0.8" />
+                {/* Thigh — tapers from hip to knee with slight forward lean */}
+                <path d="M -4 0 Q -4.5 7 -3.5 14 L 3.5 14 Q 4.5 7 4 0 Z" fill={FUR} stroke={FUR_SHADE} strokeWidth="0.8" />
                 {/* Shoe */}
                 <g stroke={OUTLINE} strokeWidth="0.8" strokeLinejoin="round">
                     <path d="M -8 12 L 6 12 Q 8 15 6 18 Q 6 21 4 21 L -6 21 Q -9 21 -9 18 Q -10 14 -8 12 Z" fill={shoe.upper} />
@@ -568,8 +550,8 @@ function Legs({ sepatuColors }: Readonly<{ sepatuColors: { upper: string; sole: 
             </g>
             {/* Right leg */}
             <g transform="translate(72, 92)">
-                {/* Thigh stub */}
-                <rect x="-3.5" y="0" width="7" height="14" rx="3" fill={FUR} stroke={FUR_SHADE} strokeWidth="0.8" />
+                {/* Thigh — tapers from hip to knee */}
+                <path d="M -4 0 Q -4.5 7 -3.5 14 L 3.5 14 Q 4.5 7 4 0 Z" fill={FUR} stroke={FUR_SHADE} strokeWidth="0.8" />
                 {/* Shoe */}
                 <g stroke={OUTLINE} strokeWidth="0.8" strokeLinejoin="round">
                     <path d="M -6 12 L 8 12 Q 10 14 9 18 Q 9 21 6 21 L -4 21 Q -7 21 -7 18 Q -8 14 -6 12 Z" fill={shoe.upper} />
@@ -587,10 +569,10 @@ function MedalLayer({
     medal,
 }: Readonly<{ medal: { coin: string; glow: string; ring: boolean } }>) {
     return (
-        <g transform="translate(60, 96)">
-            {/* Ribbon */}
-            <path d="M -10 -8 L -3 4 L 0 -2 Z" fill="#6B8E6F" />
-            <path d="M 10 -8 L 3 4 L 0 -2 Z" fill="#6B8E6F" opacity="0.85" />
+        <g transform="translate(60, 70)">
+            {/* Ribbon draping from collar */}
+            <path d="M -5 -12 L -2 2 L 0 -4 Z" fill="#6B8E6F" />
+            <path d="M 5 -12 L 2 2 L 0 -4 Z" fill="#6B8E6F" opacity="0.85" />
             {/* Coin */}
             <circle cx="0" cy="8" r="9" fill={medal.coin} stroke={FUR_SHADE} strokeWidth="1" />
             <circle cx="0" cy="8" r="6" fill="none" stroke="#fff" strokeWidth="0.8" opacity="0.5" />
@@ -610,18 +592,6 @@ function MedalLayer({
             {medal.ring && (
                 <circle cx="0" cy="8" r="13" fill="none" stroke={medal.glow} strokeWidth="1.5" opacity="0.6" />
             )}
-        </g>
-    );
-}
-
-// ── Pita (ribbon sash) ────────────────────────────────────────────────
-
-function PitaLayer({ colors }: Readonly<{ colors: { fill: string; stroke: string; knot: string } }>) {
-    return (
-        <g>
-            <path d="M 32 62 L 88 78 L 86 84 L 30 68 Z" fill={colors.fill} />
-            <path d="M 32 62 L 88 78" stroke={colors.stroke} strokeWidth="0.6" />
-            <circle cx="88" cy="81" r="3" fill={colors.knot} />
         </g>
     );
 }
@@ -646,12 +616,19 @@ function Ears({ tilt }: Readonly<{ tilt: [number, number] }>) {
 function Headband({ band, legendary }: Readonly<{ band: string; legendary: boolean }>) {
     return (
         <>
-            <rect x="26" y="14" width="68" height="8" rx="2" fill={band} />
-            <rect x="60" y="10" width="7" height="5" rx="1" fill={band} transform="rotate(28 64 13)" />
-            <rect x="63" y="12" width="5" height="12" rx="1" fill={band} transform="rotate(28 66 18)" />
+            {/* Arc band — follows the head ellipse curve (head: cx=60 cy=28 rx=34 ry=30) */}
+            <path
+                d="M 28 22 A 32 10 0 0 1 92 22 L 91 27 A 31 9 0 0 0 29 27 Z"
+                fill={band}
+                strokeLinejoin="round"
+            />
+            {/* Knot on right side near ear */}
+            <path d="M 89 20 L 95 16 L 93 22 L 99 24 L 92 26 Z" fill={band} opacity="0.9" />
+            {/* Tail dangling down */}
+            <path d="M 92 25 Q 98 30 97 37" stroke={band} strokeWidth="2.5" fill="none" strokeLinecap="round" />
             {legendary && (
                 <path
-                    d="M 60 17 l 1 -3 l 1 3 l 3 1 l -3 1 l -1 3 l -1 -3 l -3 -1 z"
+                    d="M 60 22 l 1 -3 l 1 3 l 3 1 l -3 1 l -1 3 l -1 -3 l -3 -1 z"
                     fill="#fff"
                     opacity="0.95"
                 />

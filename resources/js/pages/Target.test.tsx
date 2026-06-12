@@ -58,7 +58,7 @@ describe('Target', () => {
     it('formats fractional current/target values to one decimal', () => {
         const { container } = render(
             <Target
-                goals={[makeGoal({ slot: 'pita', unit: 'km', current: 12.5, target: 100.5 })]}
+                goals={[makeGoal({ slot: 'sepatu', unit: 'km', current: 12.5, target: 100.5 })]}
                 completedCount={0}
                 totalCount={1}
             />,

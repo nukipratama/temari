@@ -159,7 +159,7 @@ function HeroScoreboard({
                 </div>
                 <div className="flex flex-col items-center gap-4 lg:items-stretch">
                     <div className="flex justify-center">
-                        <Temari pose="glow" size={180} />
+                        <Temari pose="glow" size={160} />
                     </div>
                     {pr.context_analysis && (
                         <div className="rounded-2xl border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">

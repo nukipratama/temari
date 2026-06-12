@@ -44,27 +44,20 @@ describe('TemariProto', () => {
         expect(container.querySelector('#temari-aura-grad')).toBeInTheDocument();
     });
 
-    it('renders the pita sash when equipped.pita is set', () => {
-        const { container } = render(<TemariProto equipped={{ pita: 'konsisten' }} />);
-        const paths = Array.from(container.querySelectorAll('path'));
-        const hasPita = paths.some((p) => p.getAttribute('d')?.startsWith('M 32 62'));
-        expect(hasPita).toBe(true);
-    });
-
-    it('renders a default bronze medal for proud / pumped / etc.', () => {
-        const { container } = render(<TemariProto pose="proud" />);
-        const transformed = Array.from(container.querySelectorAll('g')).find(
-            (g) => g.getAttribute('transform') === 'translate(60, 96)',
-        );
-        expect(transformed).toBeTruthy();
-    });
-
     it('skips the medal when equipped.medal === "none"', () => {
         const { container } = render(<TemariProto pose="proud" equipped={{ medal: 'none' }} />);
         const transformed = Array.from(container.querySelectorAll('g')).find(
-            (g) => g.getAttribute('transform') === 'translate(60, 96)',
+            (g) => g.getAttribute('transform') === 'translate(60, 70)',
         );
         expect(transformed).toBeFalsy();
+    });
+
+    it('renders no medal when nothing is equipped', () => {
+        const { container } = render(<TemariProto pose="proud" />);
+        const medalGroup = Array.from(container.querySelectorAll('g')).find(
+            (g) => g.getAttribute('transform') === 'translate(60, 70)',
+        );
+        expect(medalGroup).toBeFalsy();
     });
 
     it('respects the size prop on the outer wrapper', () => {
@@ -76,7 +69,7 @@ describe('TemariProto', () => {
     it('renders the full-body viewBox with torso and legs', () => {
         const { container } = render(<TemariProto />);
         const svg = container.querySelector('svg');
-        expect(svg?.getAttribute('viewBox')).toBe('0 -12 120 146');
+        expect(svg?.getAttribute('viewBox')).toBe('0 -24 120 158');
     });
 
     it('renders kaus layer when equipped.kaus is set', () => {
@@ -106,7 +99,7 @@ describe('TemariProto', () => {
     it('renders platina medal with a glow ring', () => {
         const { container } = render(<TemariProto equipped={{ medal: 'platina' }} />);
         const medalGroup = Array.from(container.querySelectorAll('g')).find(
-            (g) => g.getAttribute('transform') === 'translate(60, 96)',
+            (g) => g.getAttribute('transform') === 'translate(60, 70)',
         );
         expect(medalGroup).toBeTruthy();
         const rings = Array.from(medalGroup!.querySelectorAll('circle'));

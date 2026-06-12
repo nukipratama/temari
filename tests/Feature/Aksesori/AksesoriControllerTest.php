@@ -24,9 +24,8 @@ it('renders the catalog + equipped slots', function (): void {
             ->component('Koleksi/Aksesori')
             ->where('equipped.ikat_kepala', 'accessory.ikat_kepala_epik')
             ->where('equipped.medal', null)
-            ->where('equipped.pita', null)
             ->where('equipped.aura', null)
-            ->has('items', 28));
+            ->has('items', 24));
 });
 
 it('equips an ikat_kepala + un-equips the previous sibling', function (): void {
@@ -76,14 +75,12 @@ it('resolves equipped unlock keys per slot', function (): void {
     $user = User::factory()->create();
     UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.ikat_kepala_legendaris']);
     UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_emas']);
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.pita_konsisten']);
 
     $this->actingAs($user)->get('/aksesori')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('equipped.ikat_kepala', 'accessory.ikat_kepala_legendaris')
-            ->where('equipped.medal', 'accessory.medal_emas')
-            ->where('equipped.pita', 'accessory.pita_konsisten'));
+            ->where('equipped.medal', 'accessory.medal_emas'));
 });
 
 it('resolves medal slot when medal_pertama is equipped', function (): void {

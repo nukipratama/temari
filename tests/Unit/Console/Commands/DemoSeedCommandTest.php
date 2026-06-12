@@ -58,10 +58,9 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         'accessory.medal_emas',
         'accessory.ikat_kepala_legendaris',
         'accessory.ikat_kepala_epik',
-        'accessory.pita_konsisten',
     );
     $equipped = UserUnlock::query()->where('user_id', $user->id)->where('equipped', true)->pluck('unlock_key')->all();
-    expect($equipped)->toContain('accessory.ikat_kepala_legendaris', 'accessory.medal_emas', 'accessory.pita_konsisten');
+    expect($equipped)->toContain('accessory.ikat_kepala_legendaris', 'accessory.medal_emas');
 
     // Persona summary is backfilled to a done analysis row.
     $persona = Analysis::query()

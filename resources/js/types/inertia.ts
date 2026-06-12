@@ -47,12 +47,11 @@ export interface StravaSync {
 }
 
 /** Resolved server-side from the user's equipped UserUnlock rows. */
-export type EquippedSlot = 'medal' | 'ikat_kepala' | 'pita' | 'kaus' | 'celana' | 'sepatu' | 'aura';
+export type EquippedSlot = 'medal' | 'ikat_kepala' | 'kaus' | 'celana' | 'sepatu' | 'aura';
 
 export interface EquippedAccessories {
     medal: string | null;
     ikat_kepala: string | null;
-    pita: string | null;
     kaus: string | null;
     celana: string | null;
     sepatu: string | null;

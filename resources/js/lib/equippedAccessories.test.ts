@@ -5,7 +5,6 @@ import type { EquippedAccessories } from '@/types/inertia';
 const emptyEquipped: EquippedAccessories = {
     medal: null,
     ikat_kepala: null,
-    pita: null,
     kaus: null,
     celana: null,
     sepatu: null,
@@ -13,9 +12,9 @@ const emptyEquipped: EquippedAccessories = {
 };
 
 describe('ACCESSORY_KEYS', () => {
-    it('contains all 28 unlock keys', () => {
+    it('contains all 24 unlock keys', () => {
         const keys = Object.values(ACCESSORY_KEYS);
-        expect(keys).toHaveLength(28);
+        expect(keys).toHaveLength(24);
     });
 });
 
@@ -31,12 +30,10 @@ describe('equippedToKeys', () => {
             ...emptyEquipped,
             ikat_kepala: ACCESSORY_KEYS.ikatKepalaLegendaris,
             medal: ACCESSORY_KEYS.medalEmas,
-            pita: ACCESSORY_KEYS.pitaKonsisten,
         });
         expect(result).toContain(ACCESSORY_KEYS.ikatKepalaLegendaris);
         expect(result).toContain(ACCESSORY_KEYS.medalEmas);
-        expect(result).toContain(ACCESSORY_KEYS.pitaKonsisten);
-        expect(result).toHaveLength(3);
+        expect(result).toHaveLength(2);
     });
 
     it('returns only the equipped keys, skipping null slots', () => {

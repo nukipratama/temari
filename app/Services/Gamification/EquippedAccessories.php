@@ -23,7 +23,7 @@ class EquippedAccessories
      */
     public function slots(): array
     {
-        return ['medal', 'ikat_kepala', 'pita', 'kaus', 'celana', 'sepatu', 'aura'];
+        return ['medal', 'ikat_kepala', 'kaus', 'celana', 'sepatu', 'aura'];
     }
 
     /**

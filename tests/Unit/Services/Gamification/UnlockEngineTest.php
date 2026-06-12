@@ -103,19 +103,6 @@ it('grants ikat_kepala_epik after three Epik run cards', function (): void {
         ->toContain('accessory.ikat_kepala_epik');
 });
 
-it('grants pita_konsisten after four weekly snapshots with runs', function (): void {
-    $user = User::factory()->create();
-    foreach (range(1, 4) as $i) {
-        WeeklySnapshot::factory()->for($user)->create([
-            'week_ending' => Carbon::today()->subWeeks($i)->toDateString(),
-            'runs' => 3,
-        ]);
-    }
-
-    expect($this->engine->grantEligible($user))
-        ->toContain('accessory.pita_konsisten');
-});
-
 it('flashes a toast payload to the session when a session is active', function (): void {
     Session::start();
     config()->set('temari_unlocks', [

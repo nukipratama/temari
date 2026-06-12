@@ -20,7 +20,6 @@ it('maps unlock keys to slots via the catalog config', function (string $key, ?s
     ['accessory.ikat_kepala_epik', 'ikat_kepala'],
     ['accessory.medal_emas', 'medal'],
     ['accessory.medal_pertama', 'medal'],
-    ['accessory.pita_konsisten', 'pita'],
     ['accessory.kaus_pemula', 'kaus'],
     ['accessory.celana_ringan', 'celana'],
     ['accessory.sepatu_basic', 'sepatu'],
@@ -33,7 +32,6 @@ it('returns an empty equipped set for a null user', function (): void {
     expect($result)->toBe([
         'medal' => null,
         'ikat_kepala' => null,
-        'pita' => null,
         'kaus' => null,
         'celana' => null,
         'sepatu' => null,
@@ -52,7 +50,6 @@ it('returns an empty equipped set when nothing is equipped', function (): void {
     expect($result)->toBe([
         'medal' => null,
         'ikat_kepala' => null,
-        'pita' => null,
         'kaus' => null,
         'celana' => null,
         'sepatu' => null,
@@ -64,14 +61,12 @@ it('resolves equipped accessories into unlock keys per slot', function (): void 
     $user = User::factory()->create();
     UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.ikat_kepala_legendaris']);
     UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_emas']);
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.pita_konsisten']);
     // An unlocked-but-unequipped medal must not leak into the result.
     UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_pertama', 'equipped' => false]);
 
     expect($this->service->forUser($user))->toBe([
         'medal' => 'accessory.medal_emas',
         'ikat_kepala' => 'accessory.ikat_kepala_legendaris',
-        'pita' => 'accessory.pita_konsisten',
         'kaus' => null,
         'celana' => null,
         'sepatu' => null,

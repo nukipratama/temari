@@ -132,7 +132,6 @@ class DemoRunSeeder
                 ->whereIn('unlock_key', [
                     'accessory.ikat_kepala_legendaris',
                     'accessory.medal_emas',
-                    'accessory.pita_konsisten',
                 ])
                 ->update(['equipped' => true]);
 
