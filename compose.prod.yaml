@@ -10,6 +10,7 @@ x-app-env-file: &app-env-file
   - /opt/teman-lari/.env
 
 x-app-env: &app-env
+  TZ: Asia/Jakarta
   APP_NAME: "TemanLari - Setiap Langkah Berarti"
   APP_ENV: production
   APP_DEBUG: "false"
