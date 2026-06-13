@@ -116,7 +116,7 @@ it('uses today as the briefing discriminator', function (): void {
     Carbon::setTestNow();
 });
 
-it('does not re-bill the daily briefing set on the second run of the day', function (): void {
+it('refreshes the daily briefing set on the second run of the day', function (): void {
     Carbon::setTestNow('2026-05-19 06:00:00');
     $first = analyzedActivity('2026-05-19 05:30:00');
     fire($first);
@@ -137,7 +137,36 @@ it('does not re-bill the daily briefing set on the second run of the day', funct
     $second = analyzedActivity('2026-05-19 17:30:00', $first->user_id);
     fire($second);
 
-    // The new run still gets its own narration; the daily set is debounced.
+    // A second run today re-narrates the whole daily set so each block reflects
+    // both of today's runs, not just the morning one.
+    Bus::assertDispatched(AnalyzeActivityJob::class);
+    Bus::assertDispatched(AnalyzeBriefingJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
+    Carbon::setTestNow();
+});
+
+it('does not re-bill the daily set when backfilling a previous-day run', function (): void {
+    Carbon::setTestNow('2026-05-19 09:00:00');
+    $today = analyzedActivity('2026-05-19 06:00:00');
+    fire($today);
+
+    // Today's daily set finishes generating (rows flip to Done).
+    Analysis::query()
+        ->whereIn('analysis_type', [
+            AnalysisType::BriefingHeadline->value,
+            AnalysisType::BriefingSuggestion->value,
+            AnalysisType::BriefingMascotVoice->value,
+            AnalysisType::DailyGreeting->value,
+        ])
+        ->get()
+        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'sudah jadi'));
+
+    Bus::fake();
+    // Backfilling a run from two days ago must not re-bill today's daily set.
+    $backfill = analyzedActivity('2026-05-17 06:00:00', $today->user_id);
+    fire($backfill);
+
     Bus::assertDispatched(AnalyzeActivityJob::class);
     Bus::assertNotDispatched(AnalyzeBriefingJob::class);
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);

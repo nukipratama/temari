@@ -47,19 +47,18 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $detail = $activity->detail;
         $today = Carbon::today()->toDateString();
         $delaySec = $this->backfillDelaySeconds($activity, $detail);
+        $isToday = $detail->start_date_local?->toDateString() === $today;
 
         $this->analysisService->requestActivityGroup($activity, delaySeconds: $delaySec);
 
-        // Daily cadence: the briefing set is generated once per day. The first
-        // run of the day creates it; later runs find the rows Done and skip,
-        // so a 3-run day no longer re-bills the morning briefing 3x. The
-        // rule-based TrendCaption costs no tokens, so it alone keeps
-        // invalidate to refresh the chart caption with the new run included.
-        $this->analysisService->requestBriefingGroup($user, $today, delaySeconds: $delaySec);
+        // Daily cadence: when the ingested run is today's, refresh the whole
+        // daily AI set so each block narrates with every run done so far today.
+        // Backfill of a previous day leaves the Done LLM rows untouched (only
+        // the free rule-based TrendCaption refreshes), so re-ingesting old days
+        // never re-bills the briefing.
+        $this->analysisService->requestBriefingGroup($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
         // BriefingMascotVoice was split out of the briefing group; dispatch it
         // independently so its own LLM call runs alongside the briefing group.
-        // Rule-based types (TrendCaption) regenerate freely each run; the
-        // LLM ones are debounced to once per day via invalidate=false.
         $dailyRowTypes = [
             AnalysisType::BriefingMascotVoice,
             AnalysisType::DailyGreeting,
@@ -72,7 +71,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
                 type: $type,
                 discriminator: $today,
                 delaySeconds: $delaySec,
-                invalidate: $type->isRuleBased(),
+                invalidate: $isToday || $type->isRuleBased(),
             );
         }
 
