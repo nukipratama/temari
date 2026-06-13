@@ -75,6 +75,7 @@ export default function KartuMini({
                         size={26}
                         equipped={{ headband: RARITY_HEADBAND[rarity], medal: 'none' }}
                         animate={false}
+                        dropShadow={false}
                     />
                 </span>
             </div>

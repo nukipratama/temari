@@ -96,6 +96,39 @@ describe('TemariProto', () => {
         expect(hasSepatu).toBe(true);
     });
 
+    it('renders a shaded limb and fist on each arm', () => {
+        const { container } = render(<TemariProto pose="proud" />);
+        const limbs = Array.from(container.querySelectorAll('path')).filter(
+            (p) => p.getAttribute('stroke') === 'url(#fur-arm-grad)',
+        );
+        const fists = Array.from(container.querySelectorAll('circle')).filter(
+            (c) => c.getAttribute('fill') === 'url(#fur-fist-grad)',
+        );
+        expect(limbs).toHaveLength(2);
+        expect(fists).toHaveLength(2);
+    });
+
+    it.each(['holding', 'reading'] as const)('grips a book in the %s pose', (pose) => {
+        const { container } = render(<TemariProto pose={pose} />);
+        expect(container.querySelector('#temari-book-glow')).toBeInTheDocument();
+    });
+
+    it.each(['proud', 'pumped', 'excited', 'wobble', 'observational', 'glow'] as const)(
+        'shows no held book in the %s pose',
+        (pose) => {
+            const { container } = render(<TemariProto pose={pose} />);
+            expect(container.querySelector('#temari-book-glow')).not.toBeInTheDocument();
+        },
+    );
+
+    it('applies the drop-shadow filter by default and omits it when dropShadow=false', () => {
+        const withShadow = render(<TemariProto pose="proud" />);
+        expect(withShadow.container.querySelector('g[filter="url(#temari-shadow)"]')).toBeInTheDocument();
+
+        const noShadow = render(<TemariProto pose="proud" dropShadow={false} />);
+        expect(noShadow.container.querySelector('g[filter="url(#temari-shadow)"]')).not.toBeInTheDocument();
+    });
+
     it('renders platina medal with a glow ring', () => {
         const { container } = render(<TemariProto equipped={{ medal: 'platina' }} />);
         const medalGroup = Array.from(container.querySelectorAll('g')).find(
@@ -103,7 +136,7 @@ describe('TemariProto', () => {
         );
         expect(medalGroup).toBeTruthy();
         const rings = Array.from(medalGroup!.querySelectorAll('circle'));
-        const glowRing = rings.find((c) => c.getAttribute('r') === '13');
+        const glowRing = rings.find((c) => c.getAttribute('r') === '9.5');
         expect(glowRing).toBeTruthy();
     });
 });

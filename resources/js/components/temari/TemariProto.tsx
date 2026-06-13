@@ -29,6 +29,13 @@ export interface TemariProtoProps {
     equipped?: TemariEquipped | null;
     /** `true` = pose-driven animation, `false` = static, string = explicit CSS animation. */
     animate?: boolean | string;
+    /**
+     * Soft SVG drop shadow under the character. Default `true`. Set `false` when
+     * the mascot sits inside a 3D-transformed ancestor (e.g. the `.kartu-tilt`
+     * card corner) — Chromium won't rasterise an SVG filter under `perspective()`,
+     * which makes the whole filtered group vanish.
+     */
+    dropShadow?: boolean;
     className?: string;
 }
 
@@ -36,6 +43,7 @@ export interface TemariProtoProps {
 
 const FUR = '#F2DAB6';
 const FUR_SHADE = '#DCC097';
+const FUR_DARK = '#BE9759';
 const INNER_EAR = '#E8A076';
 const EYE = '#1A1812';
 const CHEEK = '#E89B8E';
@@ -164,6 +172,10 @@ const ARM_ROTATION: Record<TemariPose, [number, number]> = {
     glow: [-25, 25],
 };
 
+// Poses where Temari grips a book in both fists. The forearms bend inward to a
+// fixed grip (ARM_ROTATION is ignored) so the fists stay locked on the book.
+const HELD_POSES = new Set<TemariPose>(['holding', 'reading']);
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 function resolveAuraKey(equipped: TemariEquipped | null): string | null {
@@ -180,6 +192,7 @@ export default function TemariProto({
     tone = 'cream',
     equipped = null,
     animate = false,
+    dropShadow = true,
     className,
 }: Readonly<TemariProtoProps>) {
     // Full-body viewBox: head at y~0..56, body at y~56..96, legs at y~96..130.
@@ -213,6 +226,7 @@ export default function TemariProto({
     const eyeShape = EYE_BY_POSE[pose];
     const mouthShape = MOUTH_BY_POSE[pose];
     const armRot = ARM_ROTATION[pose];
+    const held = HELD_POSES.has(pose);
 
     let rootAnim: CSSProperties['animation'] = 'none';
     if (animate !== false) {
@@ -238,17 +252,32 @@ export default function TemariProto({
                     <filter id="temari-shadow" x="-20%" y="-10%" width="140%" height="140%">
                         <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#3b2f1f" floodOpacity="0.15" />
                     </filter>
-                    {/* Fur radial gradient — lighter center, darker edges */}
-                    <radialGradient id="fur-head-grad" cx="50%" cy="40%" r="55%">
-                        <stop offset="0%" stopColor="#FAE8CE" />
-                        <stop offset="70%" stopColor={FUR} />
-                        <stop offset="100%" stopColor={FUR_SHADE} />
+                    {/* Fur radial gradient — lit top-left, deep shade bottom-right */}
+                    <radialGradient id="fur-head-grad" cx="42%" cy="34%" r="62%">
+                        <stop offset="0%" stopColor="#FFF3DD" />
+                        <stop offset="55%" stopColor={FUR} />
+                        <stop offset="82%" stopColor={FUR_SHADE} />
+                        <stop offset="100%" stopColor={FUR_DARK} />
                     </radialGradient>
-                    <radialGradient id="fur-body-grad" cx="50%" cy="30%" r="65%">
-                        <stop offset="0%" stopColor="#FAE8CE" />
-                        <stop offset="60%" stopColor={FUR} />
-                        <stop offset="100%" stopColor={FUR_SHADE} />
+                    <radialGradient id="fur-body-grad" cx="42%" cy="28%" r="72%">
+                        <stop offset="0%" stopColor="#FFF3DD" />
+                        <stop offset="50%" stopColor={FUR} />
+                        <stop offset="82%" stopColor={FUR_SHADE} />
+                        <stop offset="100%" stopColor={FUR_DARK} />
                     </radialGradient>
+                    {/* Garment form-shading overlay — top highlight → bottom shade, works on any fill */}
+                    <linearGradient id="garment-shade" x1="18%" y1="0%" x2="62%" y2="100%">
+                        <stop offset="0%" stopColor="#fff" stopOpacity="0.28" />
+                        <stop offset="34%" stopColor="#fff" stopOpacity="0" />
+                        <stop offset="64%" stopColor="#000" stopOpacity="0" />
+                        <stop offset="100%" stopColor="#000" stopOpacity="0.34" />
+                    </linearGradient>
+                    {/* Metallic coin sheen — diagonal highlight → shade */}
+                    <linearGradient id="coin-sheen" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#fff" stopOpacity="0.6" />
+                        <stop offset="44%" stopColor="#fff" stopOpacity="0" />
+                        <stop offset="100%" stopColor="#000" stopOpacity="0.3" />
+                    </linearGradient>
                     {/* Forehead highlight */}
                     <radialGradient id="fur-highlight" cx="50%" cy="30%" r="40%">
                         <stop offset="0%" stopColor="#fff" stopOpacity="0.35" />
@@ -268,6 +297,19 @@ export default function TemariProto({
                         <stop offset="0%" stopColor={INNER_EAR} stopOpacity="0.6" />
                         <stop offset="100%" stopColor="#B8785A" stopOpacity="0.4" />
                     </radialGradient>
+                    {/* Arm limb — bright lit top edge → deep shaded underside for a rounded 3D tube */}
+                    <linearGradient id="fur-arm-grad" x1="20%" y1="0%" x2="80%" y2="100%">
+                        <stop offset="0%" stopColor="#FFF3DD" />
+                        <stop offset="42%" stopColor={FUR} />
+                        <stop offset="78%" stopColor="#D2B485" />
+                        <stop offset="100%" stopColor={FUR_DARK} />
+                    </linearGradient>
+                    {/* Fist/hand — strong highlight top-left → dark bottom-right for volume */}
+                    <radialGradient id="fur-fist-grad" cx="36%" cy="30%" r="75%">
+                        <stop offset="0%" stopColor="#FFF6E6" />
+                        <stop offset="50%" stopColor={FUR} />
+                        <stop offset="100%" stopColor={FUR_DARK} />
+                    </radialGradient>
                 </defs>
 
                 {/* Aura (behind everything) */}
@@ -276,8 +318,8 @@ export default function TemariProto({
                 {/* Ground shadow */}
                 <ellipse cx="60" cy="130" rx="24" ry="3.5" fill={EYE} opacity="0.1" />
 
-                {/* Character group with drop shadow */}
-                <g filter="url(#temari-shadow)">
+                {/* Character group with drop shadow (skipped inside 3D-tilt cards) */}
+                <g filter={dropShadow ? 'url(#temari-shadow)' : undefined}>
                     {/* Legs */}
                     <Legs sepatuColors={sepatuColors} />
 
@@ -289,7 +331,10 @@ export default function TemariProto({
                     />
 
                     {/* Arms */}
-                    <Arms armRot={armRot} kausColors={kausColors} wristColor={headbandKey ? hb.band : FUR_SHADE} />
+                    <Arms armRot={armRot} held={held} kausColors={kausColors} wristColor={headbandKey ? hb.band : FUR_SHADE} />
+
+                    {/* Soft shadow the head casts onto the chest */}
+                    <ellipse cx="60" cy="57" rx="17" ry="5" fill={OUTLINE} opacity="0.13" />
 
                     {/* Head */}
                     <Head
@@ -302,6 +347,10 @@ export default function TemariProto({
 
                     {/* Medal (on chest) */}
                     {medal && <MedalLayer medal={medal} />}
+
+                    {/* Book gripped in both paws — drawn last so it sits in front of the
+                        chest/medal and the paws read as holding it up to read */}
+                    {held && <HeldObject />}
                 </g>
 
                 {/* Sparkles */}
@@ -412,6 +461,8 @@ function Body({
                     strokeLinejoin="round"
                 />
             )}
+            {/* Shorts form-shading — top light → bottom shade */}
+            <path d="M 34 78 Q 33 84 34 86 Q 36 92 44 92 L 76 92 Q 84 92 86 86 Q 87 84 86 78 Z" fill="url(#garment-shade)" />
 
             {/* Kaus (shirt/jersey) — upper torso */}
             {kausColors ? (
@@ -477,6 +528,8 @@ function Body({
                     </text>
                 </g>
             )}
+            {/* Shirt form-shading — top light → bottom shade */}
+            <path d="M 36 55 Q 35 64 34 78 L 86 78 Q 85 64 84 55 Q 76 58 60 58 Q 44 58 36 55 Z" fill="url(#garment-shade)" />
         </g>
     );
 }
@@ -485,49 +538,185 @@ function Body({
 
 function Arms({
     armRot,
+    held,
     kausColors,
     wristColor,
 }: Readonly<{
     armRot: [number, number];
+    held: boolean;
     kausColors: { fill: string; trim: string; emblem: string } | null;
     wristColor: string;
 }>) {
     const sleeveColor = kausColors ? kausColors.fill : DEFAULT_SHIRT;
+    // Held poses keep the arms unrotated — the bent-inward grip geometry already
+    // brings both hands to the book at centre. Otherwise the arms hang at the
+    // sides and swing slightly OUTWARD with energy (negate ARM_ROTATION, which
+    // was tuned for the old raised arms, so the hands stay clear of the body).
+    const [rotL, rotR] = held ? [0, 0] : [-armRot[0], -armRot[1]];
     return (
         <>
-            {/* Left arm — tapered from shoulder to paw */}
-            <g transform={`translate(36, 58) rotate(${armRot[0]})`}>
-                {/* Arm body — tapers shoulder→wrist */}
-                <path
-                    d="M -4.5 0 C -6 4 -6 10 -5 14 C -4.5 16 -2 17 0 17 C 2 17 4.5 16 5 14 C 6 10 6 4 4.5 0 Z"
-                    fill={FUR}
-                    stroke={FUR_SHADE}
-                    strokeWidth="1"
-                />
-                {/* Paw stub */}
-                <ellipse cx="0" cy="18.5" rx="4.5" ry="3.5" fill={FUR} stroke={FUR_SHADE} strokeWidth="0.8" />
-                {/* Sleeve band near shoulder */}
-                <path d="M -5 2 Q 0 4.5 5 2 L 5 5.5 Q 0 7.5 -5 5.5 Z" fill={sleeveColor} stroke={OUTLINE} strokeWidth="0.4" />
-                {/* Wristband */}
-                <rect x="-4" y="14" width="8" height="2" rx="1" fill={wristColor} stroke={OUTLINE} strokeWidth="0.3" />
-            </g>
-            {/* Right arm — tapered from shoulder to paw */}
-            <g transform={`translate(84, 58) rotate(${armRot[1]})`}>
-                {/* Arm body */}
-                <path
-                    d="M -4.5 0 C -6 4 -6 10 -5 14 C -4.5 16 -2 17 0 17 C 2 17 4.5 16 5 14 C 6 10 6 4 4.5 0 Z"
-                    fill={FUR}
-                    stroke={FUR_SHADE}
-                    strokeWidth="1"
-                />
-                {/* Paw stub */}
-                <ellipse cx="0" cy="18.5" rx="4.5" ry="3.5" fill={FUR} stroke={FUR_SHADE} strokeWidth="0.8" />
-                {/* Sleeve band near shoulder */}
-                <path d="M -5 2 Q 0 4.5 5 2 L 5 5.5 Q 0 7.5 -5 5.5 Z" fill={sleeveColor} stroke={OUTLINE} strokeWidth="0.4" />
-                {/* Wristband */}
-                <rect x="-4" y="14" width="8" height="2" rx="1" fill={wristColor} stroke={OUTLINE} strokeWidth="0.3" />
-            </g>
+            <Arm side="left" rot={rotL} held={held} sleeveColor={sleeveColor} wristColor={wristColor} />
+            <Arm side="right" rot={rotR} held={held} sleeveColor={sleeveColor} wristColor={wristColor} />
         </>
+    );
+}
+
+// Arm geometry, built per side in one un-mirrored frame so the light stays
+// consistently top-left across both arms (mirroring via scale would flip the
+// shading and kill the 3D read). `s` = inward sign (+1 left, -1 right); a runner's
+// bent elbow — upper arm down the side, forearm angled forward to a relaxed fist.
+// `held` swings the forearm further in so both fists meet on a book.
+function armGeo(s: number, held: boolean): {
+    d: string;
+    sleeve: string;
+    elbow: readonly [number, number] | null;
+    wrist: readonly [number, number];
+    fist: readonly [number, number];
+} {
+    if (held) {
+        // Forearm bends up and inward so both hands grip a book at centre.
+        return {
+            d: `M 0 1 Q ${1 * s} 6 ${1.6 * s} 9 Q ${6 * s} 11.8 ${11.6 * s} 13`,
+            sleeve: `M 0 1 Q ${1 * s} 5 ${1.5 * s} 8`,
+            elbow: [1.6 * s, 9],
+            wrist: [9.4 * s, 12.2],
+            fist: [11.6 * s, 13.4],
+        };
+    }
+    // Relaxed: arm hangs down the side, bowing slightly outward, hand low at the hip.
+    return {
+        d: `M 0 1 Q ${-2 * s} 12 ${-1.4 * s} 21 Q ${-1.1 * s} 24 ${-0.7 * s} 25`,
+        sleeve: `M 0 1 Q ${-1.5 * s} 7 ${-1.5 * s} 11`,
+        elbow: null,
+        wrist: [-0.7 * s, 23.8],
+        fist: [-0.7 * s, 27.6],
+    };
+}
+
+function Arm({
+    side,
+    rot,
+    held,
+    sleeveColor,
+    wristColor,
+}: Readonly<{ side: 'left' | 'right'; rot: number; held: boolean; sleeveColor: string; wristColor: string }>) {
+    // Shoulder pivots sit at the torso's upper edge (x≈36/84, y56) so the arm
+    // overlaps the body with no gap; the whole arm swings around that pivot.
+    const pivotX = side === 'left' ? 36 : 84;
+    const s = side === 'left' ? 1 : -1; // +x is inward for the left arm
+    const geo = armGeo(s, held);
+    return (
+        <g transform={`translate(${pivotX}, 58) rotate(${rot})`}>
+            {/* Contact shadow where the arm tucks under the shoulder */}
+            <ellipse cx="0" cy="2.5" rx="4.6" ry="3" fill={OUTLINE} opacity="0.1" />
+            {/* Limb — outline → gradient fill → underside shadow → top rim-light = rounded 3D tube */}
+            <path d={geo.d} fill="none" stroke={FUR_DARK} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={geo.d} fill="none" stroke="url(#fur-arm-grad)" strokeWidth="6.6" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={geo.d} fill="none" stroke={FUR_DARK} strokeWidth="3" strokeLinecap="round" opacity="0.3" transform="translate(0.7, 1.3)" />
+            {/* Elbow ambient occlusion (bent poses only) */}
+            {geo.elbow && <ellipse cx={geo.elbow[0]} cy={geo.elbow[1]} rx="2.4" ry="2" fill={FUR_DARK} opacity="0.18" />}
+            <path d={geo.d} fill="none" stroke="#FFF6E6" strokeWidth="1.8" strokeLinecap="round" opacity="0.55" transform="translate(-0.7, -1.4)" />
+            {/* Sleeve over the shoulder */}
+            <path d={geo.sleeve} fill="none" stroke={sleeveColor} strokeWidth="7.4" strokeLinecap="round" />
+            <path d={geo.sleeve} fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" opacity="0.12" transform="translate(0.6, 1.1)" />
+            {/* Fist */}
+            <Fist cx={geo.fist[0]} cy={geo.fist[1]} thumb={s} wrist={geo.wrist} wristColor={wristColor} />
+        </g>
+    );
+}
+
+function Fist({
+    cx,
+    cy,
+    thumb,
+    wrist,
+    wristColor,
+}: Readonly<{ cx: number; cy: number; thumb: number; wrist: readonly [number, number]; wristColor: string }>) {
+    return (
+        <g>
+            {/* Cast shadow on the body under the fist */}
+            <ellipse cx={cx + 1.2} cy={cy + 3.6} rx="4.4" ry="2.2" fill={OUTLINE} opacity="0.16" />
+            {/* Wristband between forearm and fist */}
+            <ellipse cx={wrist[0]} cy={wrist[1]} rx="3.4" ry="2.2" fill={wristColor} stroke={OUTLINE} strokeWidth="0.3" />
+            {/* Fist — gradient sphere with an outline */}
+            <circle cx={cx} cy={cy} r="4.8" fill={FUR_DARK} />
+            <circle cx={cx} cy={cy} r="4.4" fill="url(#fur-fist-grad)" />
+            {/* Thumb wrapped over the front (inward side) */}
+            <ellipse
+                cx={cx + 2.6 * thumb}
+                cy={cy + 1.2}
+                rx="1.8"
+                ry="2.3"
+                fill="url(#fur-fist-grad)"
+                stroke={FUR_DARK}
+                strokeWidth="0.5"
+                transform={`rotate(${20 * thumb} ${cx + 2.6 * thumb} ${cy + 1.2})`}
+            />
+            {/* Knuckle creases */}
+            <path
+                d={`M ${cx - 1.6 * thumb} ${cy - 1.3} L ${cx - 1.6 * thumb} ${cy + 1.3} M ${cx + 0.6 * thumb} ${cy - 1.6} L ${cx + 0.6 * thumb} ${cy + 1}`}
+                stroke={FUR_DARK}
+                strokeWidth="0.5"
+                strokeLinecap="round"
+                opacity="0.6"
+            />
+            {/* Specular highlight — world top-left */}
+            <circle cx={cx - 1.6} cy={cy - 1.8} r="1.7" fill="#FFF6E6" opacity="0.65" />
+        </g>
+    );
+}
+
+// ── Held object (book) ─────────────────────────────────────────────────
+
+function HeldObject() {
+    return (
+        <g>
+            <defs>
+                <radialGradient id="temari-book-glow">
+                    <stop offset="0%" stopColor="#F5D365" stopOpacity="0.55" />
+                    <stop offset="100%" stopColor="#F5D365" stopOpacity="0" />
+                </radialGradient>
+            </defs>
+            {/* Warm glow behind the book */}
+            <ellipse
+                cx="60"
+                cy="76"
+                rx="20"
+                ry="14"
+                fill="url(#temari-book-glow)"
+                style={{ animation: 'temari-breathe 3s ease-in-out infinite', transformOrigin: '60px 76px' }}
+            />
+            {/* Open book — two pages meeting at the spine */}
+            <path
+                d="M 60 71 Q 51 68.5 48 70 L 48 81 Q 51 79.5 60 82 Z"
+                fill="#FAF3E6"
+                stroke={OUTLINE}
+                strokeWidth="0.6"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M 60 71 Q 69 68.5 72 70 L 72 81 Q 69 79.5 60 82 Z"
+                fill="#FBF6EC"
+                stroke={OUTLINE}
+                strokeWidth="0.6"
+                strokeLinejoin="round"
+            />
+            {/* Spine */}
+            <path d="M 60 71 L 60 82" stroke={OUTLINE} strokeWidth="0.7" strokeLinecap="round" />
+            {/* Text lines */}
+            <path
+                d="M 52 73.6 L 57.5 74.3 M 52 76.1 L 57.5 76.7 M 52 78.6 L 57.5 79.1"
+                stroke="#C9BCA3"
+                strokeWidth="0.5"
+                strokeLinecap="round"
+            />
+            <path
+                d="M 62.5 74.3 L 68 73.6 M 62.5 76.7 L 68 76.1 M 62.5 79.1 L 68 78.6"
+                stroke="#C9BCA3"
+                strokeWidth="0.5"
+                strokeLinecap="round"
+            />
+        </g>
     );
 }
 
@@ -570,27 +759,26 @@ function MedalLayer({
 }: Readonly<{ medal: { coin: string; glow: string; ring: boolean } }>) {
     return (
         <g transform="translate(60, 70)">
-            {/* Ribbon draping from collar */}
-            <path d="M -5 -12 L -2 2 L 0 -4 Z" fill="#6B8E6F" />
-            <path d="M 5 -12 L 2 2 L 0 -4 Z" fill="#6B8E6F" opacity="0.85" />
-            {/* Coin */}
-            <circle cx="0" cy="8" r="9" fill={medal.coin} stroke={FUR_SHADE} strokeWidth="1" />
-            <circle cx="0" cy="8" r="6" fill="none" stroke="#fff" strokeWidth="0.8" opacity="0.5" />
-            <text
-                x="0"
-                y="11"
-                fontSize="7"
-                textAnchor="middle"
-                fill="#fff"
-                fontFamily="serif"
-                fontStyle="italic"
-                fontWeight="700"
-            >
-                T
-            </text>
+            {/* Ribbon — V lanyard from the collar, two tones for depth */}
+            <path d="M -5 -13 L -1.1 -1 L 1.1 -1 L -2.3 -13 Z" fill="#A8512C" />
+            <path d="M 5 -13 L 1.1 -1 L -1.1 -1 L 2.3 -13 Z" fill="#C4623F" />
+            {/* Coin — metallic disc with bezel */}
+            <circle cx="0" cy="6.5" r="6.6" fill={medal.coin} stroke={OUTLINE} strokeWidth="0.5" />
+            <circle cx="0" cy="6.5" r="6.6" fill="none" stroke="#fff" strokeWidth="0.7" opacity="0.35" />
+            <circle cx="0" cy="6.5" r="5" fill="none" stroke={OUTLINE} strokeWidth="0.4" opacity="0.22" />
+            {/* Embossed star */}
+            <path
+                d="M 0 3.1 L 0.88 5.29 L 3.23 5.45 L 1.43 6.96 L 2 9.25 L 0 8 L -2 9.25 L -1.43 6.96 L -3.23 5.45 L -0.88 5.29 Z"
+                fill="#FFF8E8"
+                opacity="0.9"
+            />
+            {/* Metallic sheen + shade */}
+            <circle cx="0" cy="6.5" r="6.6" fill="url(#coin-sheen)" />
+            {/* Specular glint */}
+            <ellipse cx="-2.4" cy="3.8" rx="1.8" ry="1.1" fill="#fff" opacity="0.55" transform="rotate(-35 -2.4 3.8)" />
             {/* Platina/perak glow ring */}
             {medal.ring && (
-                <circle cx="0" cy="8" r="13" fill="none" stroke={medal.glow} strokeWidth="1.5" opacity="0.6" />
+                <circle cx="0" cy="6.5" r="9.5" fill="none" stroke={medal.glow} strokeWidth="1.3" opacity="0.55" />
             )}
         </g>
     );
@@ -616,19 +804,26 @@ function Ears({ tilt }: Readonly<{ tilt: [number, number] }>) {
 function Headband({ band, legendary }: Readonly<{ band: string; legendary: boolean }>) {
     return (
         <>
-            {/* Arc band — follows the head ellipse curve (head: cx=60 cy=28 rx=34 ry=30) */}
+            {/* Band wrapping the forehead edge-to-edge, hugging both sides of the
+                head (head: cx=60 cy=28 rx=34 ry=30) so it reads as worn, not floating */}
             <path
-                d="M 28 22 A 32 10 0 0 1 92 22 L 91 27 A 31 9 0 0 0 29 27 Z"
+                d="M 27 19 Q 60 15 93 19 L 93 27 Q 60 23 27 27 Z"
                 fill={band}
+                stroke={OUTLINE}
+                strokeWidth="0.5"
+                strokeOpacity="0.25"
                 strokeLinejoin="round"
             />
-            {/* Knot on right side near ear */}
-            <path d="M 89 20 L 95 16 L 93 22 L 99 24 L 92 26 Z" fill={band} opacity="0.9" />
-            {/* Tail dangling down */}
-            <path d="M 92 25 Q 98 30 97 37" stroke={band} strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            {/* Lower-edge shade + top highlight for depth */}
+            <path d="M 28 26.6 Q 60 22.8 92 26.6" fill="none" stroke="#000" strokeWidth="1.1" strokeOpacity="0.12" strokeLinecap="round" />
+            <path d="M 31 18.4 Q 60 14.8 89 18.4" fill="none" stroke="#fff" strokeWidth="1.1" strokeOpacity="0.3" strokeLinecap="round" />
+            {/* Knot on the right side near the ear */}
+            <path d="M 90 20 L 97 16 L 95 22 L 100 25 L 92 26 Z" fill={band} stroke={OUTLINE} strokeWidth="0.4" strokeOpacity="0.25" strokeLinejoin="round" />
+            {/* Tail dangling down the side */}
+            <path d="M 95 23 Q 99 30 97 38" stroke={band} strokeWidth="2.6" fill="none" strokeLinecap="round" />
             {legendary && (
                 <path
-                    d="M 60 22 l 1 -3 l 1 3 l 3 1 l -3 1 l -1 3 l -1 -3 l -3 -1 z"
+                    d="M 60 19 l 1 -3 l 1 3 l 3 1 l -3 1 l -1 3 l -1 -3 l -3 -1 z"
                     fill="#fff"
                     opacity="0.95"
                 />

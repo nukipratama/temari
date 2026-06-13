@@ -165,7 +165,7 @@ function SlotSection({
     return (
         <section className="mt-8">
             <SectionLabel>{SLOT_LABEL[slot]}</SectionLabel>
-            <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {unlocked.map((item) => (
                     <AksesoriCard key={item.unlock_key} item={item} onEquip={onEquip} />
                 ))}

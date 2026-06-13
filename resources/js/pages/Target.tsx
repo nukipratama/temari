@@ -82,7 +82,7 @@ export default function Target({ goals, completedCount, totalCount }: Readonly<T
                                     {SLOT_LABEL[slot]}
                                 </span>
                             </SectionLabel>
-                            <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="grid gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                                 {goalsBySlot[slot].map((goal) => (
                                     <GoalCard key={goal.id} goal={goal} />
                                 ))}

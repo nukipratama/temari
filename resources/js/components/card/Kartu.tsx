@@ -189,6 +189,7 @@ export default function Kartu({
                         size={MASCOT_SIZE[size]}
                         equipped={{ headband: RARITY_HEADBAND[rarity], medal: 'none' }}
                         animate={isFull}
+                        dropShadow={false}
                     />
                 </span>
 
