@@ -100,7 +100,18 @@ function HeroSide() {
             <div className="relative z-10 text-center">
                 <div className="relative -mb-4 flex origin-bottom scale-75 justify-center sm:-mb-6 sm:scale-100">
                     <MascotSparkles />
-                    <TemariProto pose="proud" size={220} />
+                    <TemariProto
+                        pose="proud"
+                        size={220}
+                        equipped={{
+                            headband: 'legendaris',
+                            medal: 'platina',
+                            kaus: 'legendaris',
+                            celana: 'maraton',
+                            sepatu: 'legendaris',
+                            aura: 'jagoan',
+                        }}
+                    />
                 </div>
                 <h1 className="font-display italic text-display-2xl text-cream">
                     Lari Kamu,<br /><span className="text-horizon">Gak Sendirian.</span>
