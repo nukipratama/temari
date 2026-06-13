@@ -3,7 +3,7 @@ import { Icon } from '@iconify/react';
 import AppShell from '@/layouts/AppShell';
 import BrandMark from '@/components/BrandMark';
 import PillButton from '@/components/ui/PillButton';
-import TemariProto from '@/components/temari/TemariProto';
+import TemariProto, { type TemariEquipped } from '@/components/temari/TemariProto';
 import type { SharedProps } from '@/types/inertia';
 
 interface LoginProps {
@@ -24,6 +24,17 @@ const SUN_GLOW =
 
 const FORM_CARD_SHADOW =
     '0 20px 50px rgba(31,39,71,0.06), 0 0 0 1px rgba(31,39,71,0.06)';
+
+// Fixed showcase loadout for the marketing hero mascot: fully kitted out in
+// legendary gear, unrelated to any real user's equipped set.
+const HERO_LOADOUT: TemariEquipped = {
+    headband: 'legendaris',
+    medal: 'platina',
+    kaus: 'legendaris',
+    celana: 'maraton',
+    sepatu: 'legendaris',
+    aura: 'jagoan',
+};
 
 // Strava button keeps #FC4C02 brand orange and the official Strava glyph per their guidelines.
 // Button label is localized ("Sambungkan dengan Strava") per explicit product decision; accept
@@ -100,7 +111,7 @@ function HeroSide() {
             <div className="relative z-10 text-center">
                 <div className="relative -mb-4 flex origin-bottom scale-75 justify-center sm:-mb-6 sm:scale-100">
                     <MascotSparkles />
-                    <TemariProto pose="proud" size={220} />
+                    <TemariProto pose="proud" size={220} equipped={HERO_LOADOUT} />
                 </div>
                 <h1 className="font-display italic text-display-2xl text-cream">
                     Lari Kamu,<br /><span className="text-horizon">Gak Sendirian.</span>

@@ -33,6 +33,16 @@ x-app-env: &app-env
   # volatile-ok keys are namespaced away from queue/session keys by DB number).
   SESSION_CONNECTION: default
   CACHE_STORE: redis
+  # Pin the session cookie name and the Redis/cache key prefixes to fixed
+  # literals instead of deriving them from APP_NAME (Str::slug(APP_NAME) plus
+  # "-session" / "-database-" / "-cache-"). A cosmetic APP_NAME or tagline edit
+  # would otherwise rename the cookie and shift every Redis key prefix, logging
+  # everyone out on that deploy (PR #21's rename did exactly this). The values
+  # below equal the current APP_NAME-derived slugs, so adopting them is a no-op
+  # for existing sessions.
+  SESSION_COOKIE: temanlari-setiap-langkah-berarti-session
+  REDIS_PREFIX: temanlari-setiap-langkah-berarti-database-
+  CACHE_PREFIX: temanlari-setiap-langkah-berarti-cache-
   PULSE_ENABLED: "true"
   # Stable name so the Servers card isn't a random per-container hash. Ingest is
   # buffered in Redis DB 2 (drained by the pulse service).
@@ -60,10 +70,15 @@ x-redis-prod-base: &redis-prod-base
   restart: unless-stopped
   networks: [internal]
   healthcheck:
-    test: ["CMD", "redis-cli", "ping"]
+    # SET (not ping) so `up --wait` blocks until AOF replay finishes: Redis
+    # answers PONG while still LOADING the dataset into memory but rejects
+    # writes, so a write probe is what actually proves the keyspace is ready.
+    # Without this, app/horizon can connect mid-replay and read empty sessions.
+    test: ["CMD", "redis-cli", "SET", "__hc__", "1", "EX", "5"]
     interval: 10s
     timeout: 3s
-    retries: 5
+    retries: 10
+    start_period: 30s
 
 x-app-base: &app-base
   image: *app-image
