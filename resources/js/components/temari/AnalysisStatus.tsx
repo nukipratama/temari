@@ -45,6 +45,11 @@ interface Props {
     renderContent?: (content: string) => ReactNode;
     /** Whether to show the manual trigger button when status is `done`. */
     allowReanalyze?: boolean;
+    /**
+     * The in-progress week: its recap waits for the weekly scheduler, so the
+     * manual trigger is suppressed and the empty state reads "belum tersedia".
+     */
+    awaitingSchedule?: boolean;
     /** Whether to render the "Dibuat …" relative timestamp when status is `done`. */
     showTimestamp?: boolean;
     /** Use cream-tinted colours for non-done states when rendered on a dark sky panel. */
@@ -70,10 +75,12 @@ export default function AnalysisStatus({
     size = 'md',
     renderContent,
     allowReanalyze = true,
+    awaitingSchedule = false,
     showTimestamp = true,
     onSky = false,
 }: Readonly<Props>) {
     const { status, pending, error, retryAfterSeconds, trigger } = useAnalysisTrigger(analysis, inertiaReloadProps);
+    const canTrigger = allowReanalyze && !awaitingSchedule;
     const { hrZonesChangedAt } = usePage<SharedProps>().props;
     const effectiveStatus = pending ? 'queued' : status;
     const content = analysis.content;
@@ -95,7 +102,7 @@ export default function AnalysisStatus({
                         Dibuat {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
-                {allowReanalyze && (
+                {canTrigger && (
                     <button
                         type="button"
                         onClick={trigger}
@@ -136,7 +143,7 @@ export default function AnalysisStatus({
             <div className="flex flex-col gap-1.5">
                 <UnavailableNote size={size} />
                 {rateLimited && <RateLimitedNote />}
-                {allowReanalyze && (
+                {canTrigger && (
                     <button
                         type="button"
                         onClick={trigger}
@@ -154,10 +161,10 @@ export default function AnalysisStatus({
     return (
         <div className="flex flex-col gap-1.5">
             <span className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}>
-                <Icon icon="mdi:sparkles-outline" aria-hidden />
-                <span>Belum dibaca Temari.</span>
+                <Icon icon={awaitingSchedule ? 'mdi:clock-outline' : 'mdi:sparkles-outline'} aria-hidden />
+                <span>{awaitingSchedule ? 'Recap minggu ini belum tersedia.' : 'Belum dibaca Temari.'}</span>
             </span>
-            {allowReanalyze && (
+            {canTrigger && (
                 <button
                     type="button"
                     onClick={trigger}

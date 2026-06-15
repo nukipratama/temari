@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { memo, type CSSProperties } from 'react';
 
 import { cn } from '@/lib/cn';
 
@@ -186,7 +186,7 @@ function resolveAuraKey(equipped: TemariEquipped | null): string | null {
 
 // ── Main component ──────────────────────────────────────────────────
 
-export default function TemariProto({
+function TemariProto({
     pose = 'proud',
     size = 140,
     tone = 'cream',
@@ -914,3 +914,34 @@ function Sparkles({ innerEarHex }: Readonly<{ innerEarHex: string }>) {
         </g>
     );
 }
+
+/**
+ * Field-level comparison so a parent that re-renders with a fresh inline
+ * `equipped={{...}}` object doesn't force this 900-line SVG tree to rebuild.
+ */
+function equippedEqual(a: TemariEquipped | null, b: TemariEquipped | null): boolean {
+    if (a === b) {
+        return true;
+    }
+    if (a === null || b === null) {
+        return false;
+    }
+    return a.headband === b.headband
+        && a.medal === b.medal
+        && a.kaus === b.kaus
+        && a.celana === b.celana
+        && a.sepatu === b.sepatu
+        && a.aura === b.aura;
+}
+
+function propsEqual(a: Readonly<TemariProtoProps>, b: Readonly<TemariProtoProps>): boolean {
+    return a.pose === b.pose
+        && a.size === b.size
+        && a.tone === b.tone
+        && a.animate === b.animate
+        && a.dropShadow === b.dropShadow
+        && a.className === b.className
+        && equippedEqual(a.equipped ?? null, b.equipped ?? null);
+}
+
+export default memo(TemariProto, propsEqual);

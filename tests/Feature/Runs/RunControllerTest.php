@@ -175,6 +175,20 @@ it('returns only weekly snapshots inside the range', function (): void {
             ->where('weeklySnapshots.0.distance_km', 30));
 });
 
+it('flags the in-progress week with is_current_week on each snapshot payload', function (): void {
+    $user = User::factory()->create();
+    $currentWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => $currentWeekEnding->toDateString()]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => $currentWeekEnding->copy()->subWeek()->toDateString()]);
+
+    // Ordered week_ending desc: the current week is first, the prior week second.
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('weeklySnapshots', 2)
+            ->where('weeklySnapshots.0.is_current_week', true)
+            ->where('weeklySnapshots.1.is_current_week', false));
+});
+
 it('redirects /catatan to /aktivitas', function (): void {
     $user = User::factory()->create();
 

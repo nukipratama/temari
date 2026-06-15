@@ -246,7 +246,10 @@ body {
                    rotateX(var(--tilt-x, 0deg))
                    rotateY(var(--tilt-y, 0deg));
         transition: transform 0.12s ease-out;
-        will-change: transform;
+        /* `will-change` is set per-card only while a pointer is hovering (see
+           Kartu's mousemove/leave handlers) so a grid of cards doesn't each
+           hold a permanent compositor layer — dead weight on touch, where the
+           tilt never fires. */
     }
 
     /* Rarity halo — rare+ get a calm, static glow ring around the dark frame,
@@ -309,7 +312,7 @@ body {
     }
     @keyframes temari-blink { 0%, 92%, 100% { transform: scaleY(1); } 94%, 98% { transform: scaleY(0.1); } }
 
-    .temari-root { display: inline-block; transform-origin: 50% 80%; will-change: transform; }
+    .temari-root { display: inline-block; transform-origin: 50% 80%; }
 
     @media (prefers-reduced-motion: reduce) {
         .temari-root,

@@ -130,6 +130,9 @@ export default function Kartu({
         const r = el.getBoundingClientRect();
         const x = (e.clientX - r.left) / r.width;
         const y = (e.clientY - r.top) / r.height;
+        // Promote to its own layer only while actually tilting; cleared on leave
+        // so at-rest cards (and every card on touch) don't each hold a layer.
+        el.style.willChange = 'transform';
         el.style.setProperty('--tilt-x', `${(y - 0.5) * -10}deg`);
         el.style.setProperty('--tilt-y', `${(x - 0.5) * 10}deg`);
     }
@@ -139,6 +142,7 @@ export default function Kartu({
         if (!el) return;
         el.style.removeProperty('--tilt-x');
         el.style.removeProperty('--tilt-y');
+        el.style.willChange = '';
     }
 
     const moodColor = moodSigilColor(mood);
@@ -275,7 +279,7 @@ export default function Kartu({
 
 function EditionMark({ edition }: Readonly<{ edition: CardEdition }>) {
     return (
-        <span className="inline-flex rounded-full bg-sky-deep/80 px-2 py-0.5 font-collectible text-[10px] font-semibold tabular-nums text-cream backdrop-blur-sm leading-none">
+        <span className="inline-flex rounded-full bg-sky-deep/90 px-2 py-0.5 font-collectible text-[10px] font-semibold tabular-nums text-cream leading-none">
             #{edition.index}
             <span className="opacity-60">/{edition.total}</span>
         </span>
@@ -284,7 +288,7 @@ function EditionMark({ edition }: Readonly<{ edition: CardEdition }>) {
 
 function TRIMPBadge({ trimp, mood }: Readonly<{ trimp: string | number; mood: Mood }>) {
     return (
-        <span className="inline-flex items-center gap-1 rounded-full bg-sky-deep/80 px-2 py-0.5 backdrop-blur-sm leading-none">
+        <span className="inline-flex items-center gap-1 rounded-full bg-sky-deep/90 px-2 py-0.5 leading-none">
             <span
                 aria-label={`Vibe ${MOOD_LABEL[mood]}`}
                 className={cn('h-3 w-3 shrink-0 rounded-full', MOOD_FILL[mood])}

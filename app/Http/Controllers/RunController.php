@@ -88,6 +88,7 @@ class RunController extends Controller
             ->get();
 
         $recapAnalyses = $this->recapAnalysesFor($weeklySnapshots->all());
+        $currentWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
         return Inertia::render('Riwayat/Jejak', [
             'runs' => $runs->values(),
@@ -99,6 +100,7 @@ class RunController extends Controller
             'maxRuns' => self::MAX_RUNS,
             'weeklySnapshots' => $weeklySnapshots->map(fn (WeeklySnapshot $row): array => [
                 ...$row->toArray(),
+                'is_current_week' => $row->week_ending->equalTo($currentWeekEnding),
                 'recap_analysis' => $recapAnalyses[$row->id] ?? Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, $row->id),
             ])->values(),
             'journeyMatch' => $this->buildJourneyMatch($user),

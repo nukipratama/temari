@@ -69,6 +69,23 @@ describe('AnalysisStatus', () => {
         expect(screen.getByRole('button', { name: /Minta Temari bacain/ })).toBeInTheDocument();
     });
 
+    it('shows the "belum tersedia" note and no trigger when awaitingSchedule (current week)', () => {
+        render(<AnalysisStatus analysis={payload({ status: 'pending' })} awaitingSchedule />);
+        expect(screen.getByText(/Recap minggu ini belum tersedia/)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
+    });
+
+    it('suppresses the reanalyze button on done content when awaitingSchedule', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({ status: 'done', content: 'Halo' })}
+                awaitingSchedule
+            />,
+        );
+        expect(screen.getByText('Halo')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
+    });
+
     it('shows "Dibuat X lalu" hint when generated_at is present on done content', () => {
         const ts = new Date(Date.now() - 5 * 60 * 1000).toISOString();
         render(

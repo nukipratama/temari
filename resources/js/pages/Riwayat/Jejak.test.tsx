@@ -155,6 +155,7 @@ describe('Riwayat/Jejak', () => {
                 avg_decoupling: 3.2,
                 monotony: 1.2,
                 strain: 384,
+                is_current_week: false,
                 recap_analysis: {
                     id: 1,
                     status: 'done' as const,
@@ -190,6 +191,7 @@ describe('Riwayat/Jejak', () => {
             avg_decoupling: 3.2,
             monotony: 1.2,
             strain: 384,
+            is_current_week: false,
             recap_analysis: {
                 id: 1,
                 status: 'done' as const,

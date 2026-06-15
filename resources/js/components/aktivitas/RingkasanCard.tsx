@@ -9,6 +9,8 @@ interface RingkasanCardProps {
     inertiaReloadProps?: string[];
     /** When the LLM hasn't produced a recap yet, this fallback prose stays visible. */
     fallback: string;
+    /** The in-progress week: suppress the manual trigger until the week closes. */
+    awaitingSchedule?: boolean;
     className?: string;
 }
 
@@ -24,6 +26,7 @@ export default function RingkasanCard({
     analysis,
     inertiaReloadProps = DEFAULT_RELOAD_PROPS,
     fallback,
+    awaitingSchedule = false,
     className,
 }: Readonly<RingkasanCardProps>) {
     return (
@@ -41,6 +44,7 @@ export default function RingkasanCard({
                 <AnalysisStatus
                     analysis={analysis}
                     inertiaReloadProps={inertiaReloadProps}
+                    awaitingSchedule={awaitingSchedule}
                     size="md"
                     renderContent={(content) => (
                         <p className="text-sm leading-relaxed text-ink">{renderBold(content)}</p>

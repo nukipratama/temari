@@ -34,6 +34,8 @@ interface WeeklySnapshotRow {
     avg_decoupling: number | null;
     monotony: number | null;
     strain: number | null;
+    /** True for the in-progress week, whose recap waits for the weekly scheduler. */
+    is_current_week: boolean;
     recap_analysis: AnalysisPayload;
 }
 
@@ -258,6 +260,7 @@ const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, matched
                             <RingkasanCard
                                 analysis={snapshot.recap_analysis}
                                 fallback={ruleBasedFallback(snapshot)}
+                                awaitingSchedule={snapshot.is_current_week}
                             />
                         </div>
                     </div>
