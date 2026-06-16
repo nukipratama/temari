@@ -9,24 +9,28 @@ use App\Models\User;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
+use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 /**
  * Minimal stand-in for the underlying queue job so we can assert release() was
- * called with a delay without booting a real queue connection.
+ * called with a delay without booting a real queue connection. Mocks the Job
+ * contract so it satisfies SyncActivitiesJob::setJob()'s type hint; the captured
+ * delay is exposed on the `releasedWith` property.
  */
-function fakeQueueJob(): object
+function fakeQueueJob(): Job
 {
-    return new class () {
-        public ?int $releasedWith = null;
+    $job = Mockery::mock(Job::class);
+    $job->releasedWith = null;
+    $job->shouldReceive('release')->andReturnUsing(function (int $delay = 0) use ($job): void {
+        $job->releasedWith = $delay;
+    });
+    $job->shouldReceive('attempts')->andReturn(1);
+    $job->shouldIgnoreMissing();
 
-        public function release(int $delay = 0): void
-        {
-            $this->releasedWith = $delay;
-        }
-    };
+    return $job;
 }
 
 it('forwards to the SyncOrchestrator for the resolved user', function (): void {
