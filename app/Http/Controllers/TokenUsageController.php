@@ -41,8 +41,11 @@ class TokenUsageController extends Controller
             'totals' => $report['totals'],
             'byKind' => $report['byKind'],
             'byUser' => $report['byUser'],
+            'byDeployment' => $report['byDeployment'],
             'daily' => $report['daily'],
             'availableKinds' => $report['availableKinds'],
+            'budget' => $report['budget'],
+            'priceSource' => $report['priceSource'],
         ]);
     }
 }
