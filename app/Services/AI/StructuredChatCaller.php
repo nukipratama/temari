@@ -51,9 +51,10 @@ final readonly class StructuredChatCaller
         $options ??= new ChatCallOptions();
         $startedAt = microtime(true);
         $effectiveMaxTokens = $options->maxTokens ?? (int) config('azure_openai.max_completion_tokens');
+        $deployment = $this->azure->deploymentFor($kind);
 
         $payload = [
-            'model' => (string) config('azure_openai.deployment'),
+            'model' => $deployment,
             'messages' => [
                 ['role' => 'system', 'content' => TemariPersona::systemPrompt()."\n\n".$systemPrompt],
                 ['role' => 'user', 'content' => json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)],
@@ -129,7 +130,7 @@ final readonly class StructuredChatCaller
             $promptTokens,
             $completionTokens,
             $totalTokens,
-            (string) config('azure_openai.deployment') ?: null,
+            $deployment !== '' ? $deployment : null,
             $latencyMs,
             $truncated,
             $options->userId,
@@ -147,7 +148,7 @@ final readonly class StructuredChatCaller
     private function createChat(string $kind, array $payload, float $startedAt): CreateResponse
     {
         try {
-            return $this->azure->client()->chat()->create($payload);
+            return $this->azure->client($kind)->chat()->create($payload);
         } catch (Throwable $e) {
             Log::warning('narrator.ai.call', [
                 'kind' => $kind,

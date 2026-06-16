@@ -12,10 +12,11 @@ class AzureOpenAIClient
 {
     private const string DEFAULT_API_VERSION = '2024-10-21';
 
-    public function client(): ClientContract
+    public function client(?string $kind = null): ClientContract
     {
-        $uri = (string) config('azure_openai.uri');
-        $apiKey = (string) config('azure_openai.api_key');
+        $profile = $this->resolveProfile($kind);
+        $uri = $profile['uri'];
+        $apiKey = $profile['api_key'];
         $timeout = (int) config('azure_openai.timeout');
 
         [$baseUri, $apiVersion] = $this->splitUri($uri);
@@ -33,6 +34,54 @@ class AzureOpenAIClient
         }
 
         return $factory->make();
+    }
+
+    /**
+     * Resolve the deployment slug for $kind, falling back to the default profile.
+     */
+    public function deploymentFor(?string $kind): string
+    {
+        return $this->resolveProfile($kind)['deployment'];
+    }
+
+    /**
+     * Resolve the routing profile for $kind. A per-kind profile is used only when
+     * BOTH its uri and api_key are non-empty; otherwise the default/primary
+     * profile is returned.
+     *
+     * @return array{uri: string, api_key: string, deployment: string}
+     */
+    private function resolveProfile(?string $kind): array
+    {
+        $default = [
+            'uri' => (string) config('azure_openai.uri'),
+            'api_key' => (string) config('azure_openai.api_key'),
+            'deployment' => (string) config('azure_openai.deployment'),
+        ];
+
+        if ($kind === null) {
+            return $default;
+        }
+
+        /** @var array{uri?: string, api_key?: string, deployment?: string}|null $profile */
+        $profile = config("azure_openai.narrators.{$kind}");
+
+        if ($profile === null) {
+            return $default;
+        }
+
+        $uri = (string) ($profile['uri'] ?? '');
+        $apiKey = (string) ($profile['api_key'] ?? '');
+
+        if ($uri === '' || $apiKey === '') {
+            return $default;
+        }
+
+        return [
+            'uri' => $uri,
+            'api_key' => $apiKey,
+            'deployment' => (string) ($profile['deployment'] ?? ''),
+        ];
     }
 
     /**

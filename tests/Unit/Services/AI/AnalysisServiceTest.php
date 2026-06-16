@@ -9,6 +9,7 @@ use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\AI\TokenUsage;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
@@ -19,6 +20,7 @@ use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
@@ -320,6 +322,48 @@ it('does not dispatch when Azure config is missing', function (): void {
 
     expect($row->status)->toBe(AnalysisStatus::Done);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('does not dispatch when today\'s LLM cost exceeds the daily ceiling', function (): void {
+    config(['azure_openai.daily_cost_ceiling' => 1.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00, 'currency' => 'USD']]]);
+    Cache::forget((string) config('azure_openai.price_cache_key'));
+
+    // 1M input @ 2.50/1M = $2.50 spent today, over the $1.00 ceiling.
+    TokenUsage::query()->create([
+        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+
+    $snap = WeeklySnapshot::factory()->create();
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Done);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('still dispatches when today\'s LLM cost is under the daily ceiling', function (): void {
+    config(['azure_openai.daily_cost_ceiling' => 100.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00, 'currency' => 'USD']]]);
+    Cache::forget((string) config('azure_openai.price_cache_key'));
+
+    TokenUsage::query()->create([
+        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+
+    $snap = WeeklySnapshot::factory()->create();
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
 it('applies delaySeconds when dispatching (row)', function (): void {

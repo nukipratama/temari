@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Laravel\Pulse\Facades\Pulse;
 
 class AnalysisService
@@ -30,6 +31,7 @@ class AnalysisService
         private readonly RuleBasedNarrationFiller $filler,
         private readonly RuleBasedInsightBuilder $insightBuilder,
         private readonly AppConfig $config,
+        private readonly LlmCostCalculator $costCalculator,
     ) {
     }
 
@@ -356,7 +358,33 @@ class AnalysisService
             && $this->config->boolean(AppConfigKey::AiEnabled)
             && (bool) config('ai.auto_dispatch', true)
             && filled(config('azure_openai.uri'))
-            && filled(config('azure_openai.api_key'));
+            && filled(config('azure_openai.api_key'))
+            && ! $this->dailyCostCeilingExceeded();
+    }
+
+    /**
+     * True when a daily_cost_ceiling is configured and today's LLM spend has
+     * already exceeded it, so further auto-dispatch is skipped to cap cost. No
+     * ceiling configured (null) means this never gates dispatch.
+     */
+    private function dailyCostCeilingExceeded(): bool
+    {
+        $ceiling = config('azure_openai.daily_cost_ceiling');
+        if ($ceiling === null) {
+            return false;
+        }
+
+        $todayCost = $this->costCalculator->dailyCost();
+        if ($todayCost <= (float) $ceiling) {
+            return false;
+        }
+
+        Log::warning('ai.daily_cost_ceiling_exceeded', [
+            'today_cost' => $todayCost,
+            'ceiling' => (float) $ceiling,
+        ]);
+
+        return true;
     }
 
     private function queueName(): string
