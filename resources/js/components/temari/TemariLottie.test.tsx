@@ -70,17 +70,24 @@ describe('TemariLottie', () => {
     });
 
     it('skips setData when the component unmounts before the fetch resolves', async () => {
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
         let resolveJson: (v: unknown) => void = () => {};
         const jsonPromise = new Promise<unknown>((res) => {
             resolveJson = res;
         });
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => jsonPromise }));
-        const { unmount } = render(<TemariLottie mood="nyala" src="/lottie/late.json" />);
+        const { container, unmount } = render(<TemariLottie mood="nyala" src="/lottie/late.json" />);
         unmount();
         // Resolve AFTER unmount — the in-flight .then chain runs but the
         // aborted check returns early before setData.
         resolveJson({ v: '5.7.0' });
         await new Promise((r) => setTimeout(r, 0));
+        // The aborted guard must prevent the post-unmount setData: React never
+        // warns about updating an unmounted component, and the player that a
+        // resolved fetch would mount never appears.
+        expect(consoleError).not.toHaveBeenCalled();
+        expect(container.querySelector('[data-testid="lottie-loaded"]')).toBeNull();
+        consoleError.mockRestore();
         vi.unstubAllGlobals();
     });
 });
