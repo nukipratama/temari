@@ -19,6 +19,7 @@ class StreamAnalysis
         300 => '5min',
         600 => '10min',
         1200 => '20min',
+        1800 => '30min',
         3600 => '60min',
     ];
 
@@ -118,7 +119,11 @@ class StreamAnalysis
         }
 
         // Two-pointer sliding window: distance covered between i..j where
-        // time[j]-time[i] >= targetSec.
+        // time[j]-time[i] >= targetSec. The window stops as soon as it crosses
+        // targetSec, so the trailing segment [j-1, j] is the one that overshoots.
+        // Trim that overshoot off the trailing edge proportionally so the credited
+        // distance maps to exactly targetSec; on uniform 1 Hz sampling the
+        // overshoot is zero and the value is unchanged.
         $bestDist = 0.0;
         $j = 0;
         $windowDist = 0.0;
@@ -128,7 +133,12 @@ class StreamAnalysis
                 $j++;
             }
             if (($time[$j] - $time[$i]) >= $targetSec) {
-                $bestDist = max($bestDist, $windowDist);
+                $overshoot = (float) ($time[$j] - $time[$i]) - $targetSec;
+                $trailingDt = (float) ($time[$j] - $time[$j - 1]);
+                $trimDist = $overshoot > 0 && $trailingDt > 0
+                    ? min($overshoot, $trailingDt) * (float) $velocity[$j - 1]
+                    : 0.0;
+                $bestDist = max($bestDist, $windowDist - $trimDist);
             }
             $windowDist -= ((float) $velocity[$i]) * ((float) ($time[$i + 1] - $time[$i]));
         }
