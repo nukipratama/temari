@@ -185,6 +185,35 @@ it('re-uses the existing row when a webhook update arrives for a known activity'
     Queue::assertPushed(IngestActivityJob::class, 1);
 });
 
+it('skips re-ingest on a duplicate webhook delivery for an already-analyzed activity', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    Activity::factory()->for($user)->analyzed()->create(['strava_external_id' => 9_010]);
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldNotReceive('fetchNewExternalIds');
+
+    $result = (new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_010);
+
+    expect($result)->toBeFalse()
+        ->and(Activity::query()->where('user_id', $user->id)->where('strava_external_id', 9_010)->count())->toBe(1);
+    Queue::assertNotPushed(IngestActivityJob::class);
+});
+
+it('still dispatches re-ingest for a stub (un-analyzed) activity on a webhook delivery', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    Activity::factory()->for($user)->stub()->create(['strava_external_id' => 9_011]);
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldNotReceive('fetchNewExternalIds');
+
+    $result = (new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_011);
+
+    expect($result)->toBeTrue();
+    Queue::assertPushed(IngestActivityJob::class, 1);
+});
+
 it('does not sync a single activity for a revoked connection', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->revoked()->create();

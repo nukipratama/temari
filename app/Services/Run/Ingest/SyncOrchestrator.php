@@ -95,7 +95,14 @@ class SyncOrchestrator
     /**
      * Ingest a single activity by its Strava external id (webhook push path).
      * Inserts the row if it is new, then dispatches exactly one IngestActivityJob.
-     * Idempotent: an already-stored activity reuses its row and re-ingests.
+     *
+     * Dedup: Strava can redeliver the same event, and the aspect type (create vs
+     * update) is not propagated down to here, so we cannot tell a genuine update
+     * apart from a duplicate create. An already-analyzed row means the detail and
+     * streams are already fetched, so re-dispatching would re-spend two Strava API
+     * calls and re-run the pipeline for nothing; we skip it. A stub (analyzed_at
+     * null) still ingests. Genuine updates re-pull via the hourly poll or a manual
+     * re-ingest, not this push path.
      */
     public function syncSingleActivity(User $user, int $externalId): bool
     {
@@ -118,6 +125,17 @@ class SyncOrchestrator
                 ->first();
 
             if ($activity === null) {
+                $this->logSync($user->id, 'success', 0);
+
+                return false;
+            }
+
+            if ($activity->analyzed_at !== null) {
+                Log::info('strava-sync skipped redundant re-ingest for already-analyzed activity', [
+                    'user_id' => $user->id,
+                    'strava_external_id' => $externalId,
+                ]);
+
                 $this->logSync($user->id, 'success', 0);
 
                 return false;
