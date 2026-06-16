@@ -20,6 +20,7 @@ use App\Services\Geo\ResolvedLocation;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Gamification\WeeklyRecap;
+use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Services\Run\Story\BriefingResult;
 use App\Services\Run\Story\VerdictTimelineItem;
 use App\Services\Weather\WeatherSnapshot;
@@ -69,6 +70,7 @@ it('has a test class for every concrete app class', function (): void {
         PaceFormatter::class,           // exercised across pace tests
         StreamSummary::class,           // StreamAnalysisTest
         StravaSyncLog::class,           // SyncOrchestratorTest
+        SumsPulseTotals::class,         // trait, exercised via AiPipelineHealthTest + StravaHealthTest
     ];
 
     $testedBasenames = collect(File::allFiles(base_path('tests')))
@@ -84,7 +86,7 @@ it('has a test class for every concrete app class', function (): void {
 
             return 'App\\'.$relative;
         })
-        ->filter(fn (string $class): bool => class_exists($class) || interface_exists($class))
+        ->filter(fn (string $class): bool => class_exists($class) || interface_exists($class) || trait_exists($class))
         ->reject(function (string $class) use ($exemptNamespaces): bool {
             foreach ($exemptNamespaces as $prefix) {
                 if (str_starts_with($class, $prefix)) {

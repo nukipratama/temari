@@ -30,7 +30,9 @@ describe('RouteGlyph', () => {
         expect(container.querySelector('[data-variant="glyph"]')).not.toBeNull();
     });
 
-    it('does not throw on a malformed polyline', () => {
-        expect(() => render(<RouteGlyph rarity="rare" polyline="!!!not-a-polyline" />)).not.toThrow();
+    it('treats a malformed polyline as no route and falls back to the glyph', () => {
+        const { container } = render(<RouteGlyph rarity="rare" polyline="!!!not-a-polyline" />);
+        expect(container.querySelector('[data-variant="route"]')).toBeNull();
+        expect(container.querySelector('[data-variant="glyph"]')).not.toBeNull();
     });
 });
