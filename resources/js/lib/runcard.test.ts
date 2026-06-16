@@ -8,6 +8,7 @@ import {
     badgeEmblem,
     badgeName,
     fastestKmFromDetail,
+    kartuPropsFromDetail,
     zonePctFromDetail,
 } from './runcard';
 import type { ActivityDetail } from '@/types/inertia';
@@ -133,5 +134,55 @@ describe('zonePctFromDetail', () => {
     it('returns null when zone data is absent or all-zero', () => {
         expect(zonePctFromDetail(detailWith(undefined))).toBeNull();
         expect(zonePctFromDetail(detailWith({ time_in_zone_pct: { Z1: 0, Z2: 0 } }))).toBeNull();
+    });
+});
+
+describe('kartuPropsFromDetail', () => {
+    const fullDetail: ActivityDetail = {
+        id: 1,
+        activity_id: 1,
+        name: 'Pagi santai',
+        start_date_local: '2026-05-11T06:30:00Z',
+        distance: 5000,
+        moving_time: 1810,
+        average_heartrate: 152.4,
+        trimp_edwards: 42.6,
+        stream_summary: {
+            per_km: [
+                { km: 1, pace: '6:00', avg_cadence_spm: 176 },
+                { km: 2, pace: '5:12', avg_cadence_spm: 180 },
+            ],
+            time_in_zone_pct: { Z1: 10, Z2: 60, Z3: 30 },
+        },
+    };
+
+    it('derives the full card prop bag with words-form duration by default', () => {
+        const props = kartuPropsFromDetail(fullDetail);
+        expect(props.km).toBe('5.00');
+        expect(props.durasi).toBe('30 menit 10 detik');
+        expect(props.trimp).toBe('43');
+        expect(props.subtitle).toContain('Pagi santai · ');
+        expect(props.stats).toEqual({ pace: '6:02/km', hr: '152 bpm', cadence: '178 spm', fastestKm: '5:12/km' });
+        expect(props.zonePct).toEqual({ Z1: 10, Z2: 60, Z3: 30 });
+        expect(props.paceShape).toEqual([360, 312]);
+    });
+
+    it('uses the digital H:MM:SS duration when durationFormat is hms', () => {
+        expect(kartuPropsFromDetail(fullDetail, { durationFormat: 'hms' }).durasi).toBe('30:10');
+    });
+
+    it('falls back to "Lari" in the subtitle when the run has no name', () => {
+        expect(kartuPropsFromDetail({ ...fullDetail, name: null }).subtitle).toContain('Lari · ');
+    });
+
+    it('uses "—" sentinels and null fields when detail is null or empty', () => {
+        const props = kartuPropsFromDetail(null);
+        expect(props.km).toBe('—');
+        expect(props.durasi).toBe('—');
+        expect(props.trimp).toBe('—');
+        expect(props.subtitle).toBeNull();
+        expect(props.stats).toEqual({ pace: undefined, hr: undefined, cadence: undefined, fastestKm: undefined });
+        expect(props.zonePct).toBeNull();
+        expect(props.paceShape).toEqual([]);
     });
 });

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
@@ -16,8 +16,8 @@ import { cn } from '@/lib/cn';
 import { aktivitasUrl, kartuUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
 import { moodFromActivity } from '@/lib/moodFromActivity';
-import { formatDurationHMS, formatIdDate, formatKm, formatNaiveIdDate, formatPace, formatShortDateTimeId, paceSecPerKm, parsePaceSec } from '@/lib/pace';
-import { buildCardStats, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
+import { formatIdDate, formatKm, formatPace, formatShortDateTimeId, paceSecPerKm, parsePaceSec } from '@/lib/pace';
+import { kartuPropsFromDetail } from '@/lib/runcard';
 import { emberGlowStyle } from '@/lib/styles';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type {
@@ -99,7 +99,8 @@ export default function RunsShow({
     const pace = paceSec != null ? formatPace(paceSec) : '—';
     const hr = detail.average_heartrate != null ? Math.round(detail.average_heartrate) : null;
     const trimp = detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
-    const duration = formatDurationHMS(detail.moving_time);
+
+    const kartuProps = useMemo(() => kartuPropsFromDetail(detail, { durationFormat: 'hms' }), [detail]);
 
     return (
         <AppShell>
@@ -201,17 +202,17 @@ export default function RunsShow({
                             >
                                 <Kartu
                                     name={card.special_move}
-                                    subtitle={`${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`}
-                                    km={km}
-                                    durasi={duration === '—' ? '—' : duration}
-                                    trimp={trimp != null ? trimp : '—'}
+                                    subtitle={kartuProps.subtitle ?? undefined}
+                                    km={kartuProps.km}
+                                    durasi={kartuProps.durasi}
+                                    trimp={kartuProps.trimp}
                                     rarity={card.rarity}
                                     mood={mood}
                                     badges={(card.badges ?? []).slice(0, 3)}
-                                    stats={buildCardStats(detail)}
-                                    zonePct={zonePctFromDetail(detail)}
+                                    stats={kartuProps.stats}
+                                    zonePct={kartuProps.zonePct}
                                     polyline={detail.summary_polyline}
-                                    paceShape={paceShapeFromDetail(detail)}
+                                    paceShape={kartuProps.paceShape}
                                     size="md"
                                 />
                             </Link>

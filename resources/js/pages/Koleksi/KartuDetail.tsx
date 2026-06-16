@@ -17,8 +17,8 @@ import ShareCardModal from '@/components/card/ShareCardModal';
 import type { ShareKartuData } from '@/lib/shareCard';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
-import { formatDuration, formatNaiveIdDate, formatKm, formatNaiveTimeId, formatPace, formatShortDateId, paceSecPerKm } from '@/lib/pace';
-import { RARITY_BORDER, RARITY_LABELS, RARITY_POSE, avgCadenceFromDetail, badgeEmblem, badgeName, buildCardStats, fastestKmFromDetail, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
+import { formatNaiveIdDate, formatNaiveTimeId, formatPace, formatShortDateId, paceSecPerKm } from '@/lib/pace';
+import { RARITY_BORDER, RARITY_LABELS, RARITY_POSE, avgCadenceFromDetail, badgeEmblem, badgeName, fastestKmFromDetail, kartuPropsFromDetail } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
 import type { ActivityDetail, AnalysisPayload, CardEdition, Mood, Rarity } from '@/types/inertia';
 
@@ -67,20 +67,12 @@ export default function KartuDetail({
     totalForRarity,
 }: Readonly<KartuDetailProps>) {
     const detail = card.detail;
-    const km = formatKm(detail?.distance);
-    const durasi = detail?.moving_time == null ? '—' : formatDuration(detail.moving_time);
-    const trimp =
-        detail?.trimp_edwards == null ? '—' : String(Math.round(detail.trimp_edwards));
+    const { km, durasi, trimp, subtitle, stats: cardStats, zonePct, paceShape } = kartuPropsFromDetail(detail);
     const sharePaceSec = paceSecPerKm(detail?.moving_time, detail?.distance);
-    const subtitle = detail
-        ? `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`
-        : null;
     const badges = (card.badges ?? []).slice(0, 3);
     const rarityLabel = RARITY_LABELS[card.rarity];
     const cadence = avgCadenceFromDetail(detail);
     const fastestKm = fastestKmFromDetail(detail);
-    const zonePct = zonePctFromDetail(detail);
-    const cardStats = buildCardStats(detail);
 
     const [shareOpen, setShareOpen] = useState(false);
     const [replaying, setReplaying] = useState(false);
@@ -182,7 +174,7 @@ export default function KartuDetail({
                                     stats={cardStats}
                                     zonePct={zonePct}
                                     polyline={detail?.summary_polyline}
-                                    paceShape={paceShapeFromDetail(detail)}
+                                    paceShape={paceShape}
                                     edition={card.edition}
                                     size="lg"
                                     className="w-full"
