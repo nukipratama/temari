@@ -101,7 +101,7 @@ class RunController extends Controller
             'weeklySnapshots' => $weeklySnapshots->map(fn (WeeklySnapshot $row): array => [
                 ...$row->toArray(),
                 'is_current_week' => $row->week_ending->equalTo($currentWeekEnding),
-                'recap_analysis' => $recapAnalyses[$row->id] ?? Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, $row->id),
+                'recap_analysis' => $recapAnalyses[$row->id],
             ])->values(),
             'journeyMatch' => $this->buildJourneyMatch($user),
         ]);
