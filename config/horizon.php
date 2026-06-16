@@ -219,7 +219,9 @@ return [
         'production' => [
             'supervisor-1' => [
                 'minProcesses' => 1,
-                'maxProcesses' => 8,
+                // Horizon container is capped at 1 vCPU / 1 GB (compose.prod.yaml).
+                // 4 workers (~128 MB each) keep memory + CPU headroom; 8 risked OOM.
+                'maxProcesses' => 4,
                 'maxJobs' => 500,
             ],
         ],
