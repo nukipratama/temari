@@ -18,23 +18,28 @@ const baseProps = {
     from: '2026-05-01',
     to: '2026-05-19',
     kind: null as string | null,
-    totals: { prompt: 600, completion: 280, total: 880, calls: 3, truncated_calls: 0 },
+    totals: { prompt: 600, completion: 280, total: 880, calls: 3, cost: 0.05, truncated_calls: 0 },
     byKind: [
-        { kind: 'run-insight', prompt: 300, completion: 150, total: 450, calls: 1, truncated_calls: 0, avg_latency_ms: 800, max_latency_ms: 800 },
-        { kind: 'briefing', prompt: 300, completion: 130, total: 430, calls: 2, truncated_calls: 0, avg_latency_ms: 1000, max_latency_ms: 1200 },
+        { kind: 'run-insight', prompt: 300, completion: 150, total: 450, calls: 1, cost: 0.03, truncated_calls: 0, avg_latency_ms: 800, max_latency_ms: 800 },
+        { kind: 'briefing', prompt: 300, completion: 130, total: 430, calls: 2, cost: 0.02, truncated_calls: 0, avg_latency_ms: 1000, max_latency_ms: 1200 },
     ],
     byUser: [
         { user_id: 1, user_name: 'Alice', prompt: 500, completion: 230, total: 730, calls: 2 },
         { user_id: 2, user_name: 'Bob', prompt: 100, completion: 50, total: 150, calls: 1 },
     ],
+    byDeployment: [
+        { deployment: 'gpt-4o-mini', prompt: 600, completion: 280, total: 880, calls: 3, cost: 0.05 },
+    ],
     daily: [
-        { day: '2026-05-18', prompt: 300, completion: 150, total: 450, calls: 1 },
-        { day: '2026-05-19', prompt: 300, completion: 130, total: 430, calls: 2 },
+        { day: '2026-05-18', prompt: 300, completion: 150, total: 450, calls: 1, cost: 0.03 },
+        { day: '2026-05-19', prompt: 300, completion: 130, total: 430, calls: 2, cost: 0.02 },
     ],
     availableKinds: [
         { value: 'briefing', label: 'BriefingHeadline' },
         { value: 'run-insight', label: 'RunInsightTechnical' },
     ],
+    budget: { todayCost: 0.02, dailyCeiling: 0.1, currency: 'USD' },
+    priceSource: 'azure-retail',
 };
 
 describe('AiUsage page', () => {
@@ -59,20 +64,51 @@ describe('AiUsage page', () => {
         expect(screen.getByText(/68% dari total/)).toBeInTheDocument();
         // The 8-col kind table keeps a min-w floor so it scrolls (not clips) on mobile.
         const kindTable = screen.getByText('run-insight').closest('table');
-        expect(kindTable?.className).toContain('min-w-[680px]');
+        expect(kindTable?.style.minWidth).toBe('760px');
     });
 
-    it('renders an empty state when byKind is empty', () => {
+    it('renders the per-deployment table with a cost column', () => {
+        render(<AiUsage {...baseProps} />);
+
+        expect(screen.getByText('Breakdown per Deployment')).toBeInTheDocument();
+        expect(screen.getByText('gpt-4o-mini')).toBeInTheDocument();
+    });
+
+    it('renders the budget gauge with ceiling and a list-price caveat', () => {
+        render(<AiUsage {...baseProps} />);
+
+        expect(screen.getByText('Anggaran Hari Ini')).toBeInTheDocument();
+        expect(screen.getByText(/list price/i)).toBeInTheDocument();
+        // Gauge progressbar reflects todayCost / dailyCeiling = 20%.
+        const gauge = screen.getByRole('progressbar', { name: /anggaran hari ini/i });
+        expect(gauge.getAttribute('aria-valuenow')).toBe('20');
+    });
+
+    it('shows a no-ceiling state when dailyCeiling is null', () => {
+        render(<AiUsage {...baseProps} budget={{ todayCost: 0.02, dailyCeiling: null, currency: 'USD' }} />);
+
+        expect(screen.getByText(/tanpa batas/i)).toBeInTheDocument();
+    });
+
+    it('shows the config-fallback caveat when priceSource is config-fallback', () => {
+        render(<AiUsage {...baseProps} priceSource="config-fallback" />);
+
+        expect(screen.getByText(/fallback dari config/i)).toBeInTheDocument();
+    });
+
+    it('renders an empty state per table when data is empty', () => {
         render(
             <AiUsage
                 {...baseProps}
-                totals={{ prompt: 0, completion: 0, total: 0, calls: 0, truncated_calls: 0 }}
+                totals={{ prompt: 0, completion: 0, total: 0, calls: 0, cost: 0, truncated_calls: 0 }}
                 byKind={[]}
                 byUser={[]}
+                byDeployment={[]}
             />,
         );
 
-        expect(screen.getAllByText('Belum ada catatan token di rentang ini.')).toHaveLength(2);
+        // One empty state each for deployment, kind, and user tables.
+        expect(screen.getAllByText('Belum ada catatan token di rentang ini.')).toHaveLength(3);
     });
 
     it('renders a per-user table with named users + share bar', () => {
@@ -91,7 +127,7 @@ describe('AiUsage page', () => {
         expect(screen.getByText('Breakdown per User')).toBeInTheDocument();
         // The 6-col user table keeps a min-w floor so it scrolls (not clips) on mobile.
         const userTable = screen.getByText('Alice').closest('table');
-        expect(userTable?.className).toContain('min-w-[520px]');
+        expect(userTable?.style.minWidth).toBe('520px');
     });
 
     it('falls back to "User #ID" for deleted users (user_name null, user_id present)', () => {
