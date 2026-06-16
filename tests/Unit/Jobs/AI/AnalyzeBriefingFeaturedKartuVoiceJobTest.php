@@ -84,7 +84,7 @@ it('swallows a terminal UnavailableException so the worker does not retry', func
         ->and($row->fresh()->error)->toBe('bad schema');
 });
 
-it('rethrows a transient upstream failure (no Retry-After) so the queue retries', function (): void {
+it('requeues a transient upstream failure (no Retry-After) so a manual retry cannot double-bill', function (): void {
     $user = User::factory()->create();
     $mock = Mockery::mock(BriefingFeaturedKartuVoiceNarrator::class);
     $mock->shouldReceive('generate')->andThrow(new TransientUpstreamException('azure 503'));
@@ -92,7 +92,37 @@ it('rethrows a transient upstream failure (no Retry-After) so the queue retries'
 
     $row = featuredKartuRow($user->id);
 
-    expect(fn () => (new AnalyzeBriefingFeaturedKartuVoiceJob($row->id))->handle(app(AnalysisService::class)))
+    $queueJob = Mockery::mock(QueueJobContract::class);
+    $queueJob->shouldReceive('attempts')->andReturn(1);
+    // Falls back to the first backoff step (10s) when there is no Retry-After.
+    $queueJob->shouldReceive('release')->once()->with(10);
+
+    $job = new AnalyzeBriefingFeaturedKartuVoiceJob($row->id);
+    $job->setJob($queueJob);
+
+    // No rethrow: the row stays Queued (not Failed) for the retry wait, so it is
+    // neither re-dispatchable nor shown as a failed "Coba lagi" block.
+    $job->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+});
+
+it('marks the row Failed and rethrows a transient upstream failure once tries are exhausted', function (): void {
+    $user = User::factory()->create();
+    $mock = Mockery::mock(BriefingFeaturedKartuVoiceNarrator::class);
+    $mock->shouldReceive('generate')->andThrow(new TransientUpstreamException('azure 503'));
+    app()->instance(BriefingFeaturedKartuVoiceNarrator::class, $mock);
+
+    $row = featuredKartuRow($user->id);
+
+    $queueJob = Mockery::mock(QueueJobContract::class);
+    $queueJob->shouldReceive('attempts')->andReturn(3); // attempts() == tries, no slot left
+    $queueJob->shouldNotReceive('release');
+
+    $job = new AnalyzeBriefingFeaturedKartuVoiceJob($row->id);
+    $job->setJob($queueJob);
+
+    expect(fn () => $job->handle(app(AnalysisService::class)))
         ->toThrow(TransientUpstreamException::class, 'azure 503');
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);

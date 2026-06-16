@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use Illuminate\Contracts\Queue\Job as JobContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -43,6 +45,41 @@ function fakeBoomRowJob(int $id): AnalyzeRowJob
             throw new RuntimeException('boom');
         }
     };
+}
+
+function fakeTransientRowJob(int $id, ?int $retryAfter = null): AnalyzeRowJob
+{
+    return new class ($id, $retryAfter) extends AnalyzeRowJob {
+        public function __construct(int $analysisId, private readonly ?int $retryAfter)
+        {
+            parent::__construct($analysisId);
+        }
+
+        protected function generateContent(Analysis $row): string
+        {
+            throw new TransientUpstreamException('rate limited', $this->retryAfter);
+        }
+    };
+}
+
+/**
+ * Bind a fake queue Job so `attempts()` and `release()` resolve against it,
+ * letting a directly-invoked job exercise the requeue branch and assert the
+ * release delay. The returned ArrayObject collects each release delay.
+ *
+ * @return ArrayObject<int, int>
+ */
+function attachFakeJob(AnalyzeRowJob $job, int $attempts): ArrayObject
+{
+    $released = new ArrayObject();
+    $fake = Mockery::mock(JobContract::class);
+    $fake->shouldReceive('attempts')->andReturn($attempts);
+    $fake->shouldReceive('release')->andReturnUsing(function (int $delay) use ($released): void {
+        $released->append($delay);
+    });
+    $job->setJob($fake);
+
+    return $released;
 }
 
 function makeRowForRowJobTest(): Analysis
@@ -104,4 +141,60 @@ it('shared retry config: tries=3, backoff=[10, 60]', function (): void {
     $job = fakeSuccessRowJob(1);
     expect($job->tries)->toBe(3)
         ->and($job->backoff)->toBe([10, 60]);
+});
+
+it('requeues (not fails) and releases on a transient error without Retry-After while tries remain', function (): void {
+    $row = makeRowForRowJobTest();
+
+    $job = fakeTransientRowJob($row->id);
+    $released = attachFakeJob($job, attempts: 1);
+    $job->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($released->getArrayCopy())->toBe([10]); // falls back to first backoff step
+});
+
+it('requeues and releases with the capped Retry-After when the upstream supplies one', function (): void {
+    $row = makeRowForRowJobTest();
+
+    $job = fakeTransientRowJob($row->id, retryAfter: 9999);
+    $released = attachFakeJob($job, attempts: 1);
+    $job->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($released->getArrayCopy())->toBe([600]); // capped at MAX_RETRY_AFTER_SECONDS
+});
+
+it('marks Failed and rethrows on a transient error once tries are exhausted', function (): void {
+    $row = makeRowForRowJobTest();
+
+    $job = fakeTransientRowJob($row->id);
+    attachFakeJob($job, attempts: 3); // attempts() == tries, no slot left
+
+    expect(fn () => $job->handle(app(AnalysisService::class)))
+        ->toThrow(TransientUpstreamException::class);
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+it('failed() marks a stranded Processing row Failed so it becomes re-dispatchable', function (): void {
+    $row = makeRowForRowJobTest();
+    $row->update(['status' => AnalysisStatus::Processing]);
+
+    fakeSuccessRowJob($row->id)->failed(new RuntimeException('worker OOM'));
+
+    $fresh = $row->fresh();
+    expect($fresh->status)->toBe(AnalysisStatus::Failed)
+        ->and($fresh->error)->toBe('worker OOM');
+});
+
+it('failed() does not clobber an already-Done row', function (): void {
+    $row = makeRowForRowJobTest();
+    $row->update(['status' => AnalysisStatus::Done, 'content' => 'kept']);
+
+    fakeSuccessRowJob($row->id)->failed(new RuntimeException('worker OOM'));
+
+    $fresh = $row->fresh();
+    expect($fresh->status)->toBe(AnalysisStatus::Done)
+        ->and($fresh->content)->toBe('kept');
 });

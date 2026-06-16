@@ -37,6 +37,21 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
         }
     }
 
+    /**
+     * Last-resort hook when the worker dies (timeout / OOM / uncaught exit)
+     * before `handle()` can settle the row, so a row stuck in `Processing` is
+     * marked `Failed` and becomes re-dispatchable instead of spinning forever.
+     */
+    public function failed(Throwable $e): void
+    {
+        $row = Analysis::query()->find($this->analysisId);
+        if ($row === null || $row->status === AnalysisStatus::Done) {
+            return;
+        }
+
+        app(AnalysisService::class)->markFailed($row, $e->getMessage());
+    }
+
     abstract protected function generateContent(Analysis $row): string;
 
     protected function discriminatorDate(Analysis $row): Carbon

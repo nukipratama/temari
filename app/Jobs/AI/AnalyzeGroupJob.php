@@ -58,6 +58,25 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         }
     }
 
+    /**
+     * Last-resort hook when the worker dies (timeout / OOM / uncaught exit)
+     * before `handle()` can settle the group, so rows stuck in `Processing`
+     * are marked `Failed` and become re-dispatchable instead of spinning.
+     */
+    public function failed(Throwable $e): void
+    {
+        $service = app(AnalysisService::class);
+
+        $pending = $service->upsertGroupRows(
+            static::subjectType(),
+            $this->subjectId,
+            $this->discriminator,
+            static::groupedTypes(),
+        )->filter(fn (Analysis $row): bool => $row->status !== AnalysisStatus::Done);
+
+        $this->failPending($pending, $service, $e->getMessage());
+    }
+
     /** @param Collection<string, Analysis> $pending */
     private function failPending(Collection $pending, AnalysisService $service, string $reason): void
     {
