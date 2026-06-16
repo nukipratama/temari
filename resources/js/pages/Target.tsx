@@ -68,7 +68,7 @@ export default function Target({ goals, completedCount, totalCount }: Readonly<T
                 <CollectionHeader
                     active="target"
                     eyebrow={eyebrow}
-                    headline1="Target kamu,"
+                    headline1="Target kamu"
                     headline2="langkah demi langkah."
                     activeCount={`${completedCount} / ${totalCount}`}
                 />
