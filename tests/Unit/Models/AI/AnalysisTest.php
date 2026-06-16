@@ -70,3 +70,44 @@ it('toPayload returns retry_after_seconds null when row is null', function (): v
     $payload = Analysis::toPayload(null, AnalysisType::BriefingHeadline, 'briefing_user_day', 1, '2026-05-20');
     expect($payload['retry_after_seconds'])->toBeNull();
 });
+
+it('payloadsForSubjects returns an empty array for no ids', function (): void {
+    expect(Analysis::payloadsForSubjects('briefing_user_day', AnalysisType::WeeklyRecap, []))->toBe([]);
+});
+
+it('payloadsForSubjects keys payloads by subject id, falling back to a pending payload', function (): void {
+    $subjectType = 'weekly_snapshot';
+
+    $done = Analysis::factory()->done('recap text')->create([
+        'subject_type' => $subjectType,
+        'subject_id' => 10,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+
+    $payloads = Analysis::payloadsForSubjects($subjectType, AnalysisType::WeeklyRecap, [10, 20]);
+
+    expect(array_keys($payloads))->toBe([10, 20])
+        ->and($payloads[10]['id'])->toBe($done->id)
+        ->and($payloads[10]['status'])->toBe('done')
+        ->and($payloads[10]['content'])->toBe('recap text')
+        ->and($payloads[20]['id'])->toBeNull()
+        ->and($payloads[20]['status'])->toBe('pending')
+        ->and($payloads[20]['subject_id'])->toBe(20);
+});
+
+it('payloadsForSubjects ignores rows of a different type or subject_type', function (): void {
+    $subjectType = 'weekly_snapshot';
+
+    Analysis::factory()->done('wrong type')->create([
+        'subject_type' => $subjectType,
+        'subject_id' => 30,
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'discriminator' => null,
+    ]);
+
+    $payloads = Analysis::payloadsForSubjects($subjectType, AnalysisType::WeeklyRecap, [30]);
+
+    expect($payloads[30]['id'])->toBeNull()
+        ->and($payloads[30]['status'])->toBe('pending');
+});

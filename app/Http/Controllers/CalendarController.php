@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use Throwable;
-use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\Run\CalendarBuilder;
 use App\Services\Run\LifetimeStats;
+use App\Services\Run\PostRunNoteReader;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -27,6 +27,7 @@ class CalendarController extends Controller
     public function __construct(
         private readonly CalendarBuilder $calendarBuilder,
         private readonly LifetimeStats $lifetimeStats,
+        private readonly PostRunNoteReader $noteReader,
     ) {
     }
 
@@ -50,19 +51,8 @@ class CalendarController extends Controller
             'todayMonth' => Carbon::today()->format('Y-m'),
             'cells' => $this->calendarBuilder->buildCells($user, $gridStart, $gridEnd, $monthStart, $monthEnd),
             'lifetime' => $this->lifetimeStats->forUser($user),
-            'todayQuote' => $this->todayQuote($user),
+            'todayQuote' => $this->noteReader->speechForToday($user->id),
         ]);
-    }
-
-    private function todayQuote(User $user): ?string
-    {
-        return StoryLine::query()
-            ->where('kind', StoryLine::KIND_POST_RUN)
-            ->whereHas('activity', fn ($q) => $q
-                ->where('user_id', $user->id)
-                ->whereHas('detail', fn ($q) => $q->whereDate('start_date_local', Carbon::today())))
-            ->orderByDesc('id')
-            ->value('speech');
     }
 
     private function resolveMonth(mixed $raw): Carbon

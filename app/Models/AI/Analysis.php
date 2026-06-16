@@ -103,6 +103,36 @@ class Analysis extends Model
     }
 
     /**
+     * Batch-resolve the payload for many subjects of one (type, subject_type)
+     * in a single query. Every requested id is present in the result; ids with
+     * no matching row get the null-row payload (status Pending), matching a
+     * per-id {@see self::toPayload()} call.
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, array<string, mixed>>  Keyed by subject id.
+     */
+    public static function payloadsForSubjects(string $subjectType, AnalysisType $type, array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = self::query()
+            ->where('subject_type', $subjectType)
+            ->where('analysis_type', $type)
+            ->whereIn('subject_id', $ids)
+            ->get()
+            ->keyBy('subject_id');
+
+        $payloads = [];
+        foreach ($ids as $id) {
+            $payloads[$id] = self::toPayload($rows->get($id), $type, $subjectType, $id);
+        }
+
+        return $payloads;
+    }
+
+    /**
      * @return array{
      *     id: int|null,
      *     status: string,

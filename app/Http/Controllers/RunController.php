@@ -11,8 +11,8 @@ use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\PastYouMatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -51,7 +51,7 @@ class RunController extends Controller
      */
     private const int MAX_RUNS = 365;
 
-    public function index(Request $request): Response
+    public function index(Request $request, PostRunNoteReader $noteReader): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -92,7 +92,7 @@ class RunController extends Controller
 
         return Inertia::render('Riwayat/Jejak', [
             'runs' => $runs->values(),
-            'notes' => $this->notesForActivities($runs->pluck('id')->all()),
+            'notes' => $noteReader->forActivities($runs->pluck('id')->all()),
             'rangeFilter' => $effectiveRange,
             'rangeStart' => $rangeStart?->toDateString(),
             'rangeAutoWidened' => $rangeAutoWidened,
@@ -114,7 +114,7 @@ class RunController extends Controller
     private function latestRunDaysAgo(User $user): ?int
     {
         $latestDate = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->forUser($user->id)
             ->whereNotNull('start_date_local')
             ->max('start_date_local');
 
@@ -181,7 +181,7 @@ class RunController extends Controller
         // start_date_local natively (no explicit filter); SUM(distance) stays
         // unfiltered to cover every analyzed detail, including null-dated ones.
         $bounds = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->forUser($user->id)
             ->selectRaw('MIN(start_date_local) as first_date, MAX(start_date_local) as latest_date, SUM(distance) as total_distance')
             ->first();
 
@@ -192,7 +192,7 @@ class RunController extends Controller
         }
 
         $boundaryDetails = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->forUser($user->id)
             ->whereIn('start_date_local', [$firstDate, $latestDate])
             ->orderBy('start_date_local')
             ->get();
@@ -251,70 +251,16 @@ class RunController extends Controller
     }
 
     /**
-     * @param  array<int, int>  $activityIds
-     * @return array<int, array{oneline: string, mood: string}>
-     */
-    private function notesForActivities(array $activityIds): array
-    {
-        if ($activityIds === []) {
-            return [];
-        }
-
-        $moodByActivity = StoryLine::query()
-            ->where('kind', StoryLine::KIND_POST_RUN)
-            ->whereIn('activity_id', $activityIds)
-            ->pluck('mood', 'activity_id');
-
-        $speechByActivity = Analysis::query()
-            ->where('subject_type', Activity::class)
-            ->where('analysis_type', AnalysisType::PostRunSpeech)
-            ->where('status', AnalysisStatus::Done)
-            ->whereIn('subject_id', $activityIds)
-            ->pluck('content', 'subject_id');
-
-        $notes = [];
-        foreach ($activityIds as $id) {
-            $speech = $speechByActivity->get($id);
-            $mood = $moodByActivity->get($id);
-            if ($speech === null || $speech === '' || $mood === null) {
-                continue;
-            }
-            $notes[$id] = ['oneline' => $speech, 'mood' => $mood];
-        }
-
-        return $notes;
-    }
-
-    /**
      * @param  array<int, WeeklySnapshot>  $snapshots
      * @return array<int, array<string, mixed>>  Keyed by snapshot id.
      */
     private function recapAnalysesFor(array $snapshots): array
     {
-        if ($snapshots === []) {
-            return [];
-        }
-
-        $ids = collect($snapshots)->pluck('id')->all();
-
-        $analyses = Analysis::query()
-            ->where('subject_type', WeeklySnapshot::class)
-            ->where('analysis_type', AnalysisType::WeeklyRecap)
-            ->whereIn('subject_id', $ids)
-            ->get()
-            ->keyBy('subject_id');
-
-        $payloads = [];
-        foreach ($snapshots as $snapshot) {
-            $payloads[$snapshot->id] = Analysis::toPayload(
-                $analyses->get($snapshot->id),
-                AnalysisType::WeeklyRecap,
-                WeeklySnapshot::class,
-                $snapshot->id,
-            );
-        }
-
-        return $payloads;
+        return Analysis::payloadsForSubjects(
+            WeeklySnapshot::class,
+            AnalysisType::WeeklyRecap,
+            collect($snapshots)->pluck('id')->all(),
+        );
     }
 
     public function show(Request $request, Activity $activity, PastYouMatcher $matcher): Response

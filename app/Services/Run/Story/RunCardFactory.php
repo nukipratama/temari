@@ -214,8 +214,8 @@ class RunCardFactory
             return false;
         }
 
-        $weekStart = $startDate->copy()->startOfWeek();
-        $weekEnd = $startDate->copy()->endOfWeek();
+        $weekStart = $startDate->copy()->startOfWeek(Carbon::MONDAY);
+        $weekEnd = $startDate->copy()->endOfWeek(Carbon::SUNDAY);
 
         $runCount = Activity::query()
             ->where('user_id', $activity->user_id)

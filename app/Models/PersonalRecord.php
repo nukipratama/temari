@@ -7,6 +7,8 @@ namespace App\Models;
 use App\Enums\PrCategory;
 use Database\Factories\PersonalRecordFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,6 +36,18 @@ class PersonalRecord extends Model
 {
     /** @use HasFactory<PersonalRecordFactory> */
     use HasFactory;
+
+    /**
+     * Records owned by the given user.
+     *
+     * @param  Builder<PersonalRecord>  $query
+     * @return Builder<PersonalRecord>
+     */
+    #[Scope]
+    protected function forUser(Builder $query, int $userId): Builder
+    {
+        return $query->where('user_id', $userId);
+    }
 
     /**
      * @return BelongsTo<User, $this>
