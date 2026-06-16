@@ -270,7 +270,7 @@ it('throws StravaRateLimitedException naming the exhausted bucket and retry-afte
     ]);
 
     for ($i = 0; $i < 200; $i++) {
-        RateLimiter::hit("strava-api:{$connection->user_id}:15min", 15 * 60);
+        RateLimiter::hit('strava-api:15min', 15 * 60);
     }
 
     try {
@@ -278,7 +278,7 @@ it('throws StravaRateLimitedException naming the exhausted bucket and retry-afte
         $this->fail('Expected StravaRateLimitedException to be thrown.');
     } catch (StravaRateLimitedException $e) {
         expect($e->getMessage())
-            ->toMatch('/^Strava rate limit exhausted for bucket \[strava-api:' . $connection->user_id . ':15min\]; retry in \d+s\.$/');
+            ->toMatch('/^Strava rate limit exhausted for bucket \[strava-api:15min\]; retry in \d+s\.$/');
     }
 
     Http::assertNothingSent();
@@ -295,8 +295,25 @@ it('records hits against both rate limit buckets per request', function (): void
 
     (new StravaClient())->get($connection, 'athlete');
 
-    expect(RateLimiter::attempts("strava-api:{$connection->user_id}:15min"))->toBe(1)
-        ->and(RateLimiter::attempts("strava-api:{$connection->user_id}:daily"))->toBe(1);
+    expect(RateLimiter::attempts('strava-api:15min'))->toBe(1)
+        ->and(RateLimiter::attempts('strava-api:daily'))->toBe(1);
+});
+
+it('shares one rate-limit budget across all athletes (per client, not per athlete)', function (): void {
+    Http::fake([
+        'www.strava.com/api/v3/*' => Http::response(['ok' => true]),
+    ]);
+
+    $athleteA = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
+    $athleteB = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
+
+    (new StravaClient())->get($athleteA, 'athlete');
+    (new StravaClient())->get($athleteB, 'athlete');
+
+    // Both athletes' calls land in the same shared bucket: Strava's limit is
+    // per client, so two athletes consume two of the app's 200/15min, not one each.
+    expect(RateLimiter::attempts('strava-api:15min'))->toBe(2)
+        ->and(RateLimiter::attempts('strava-api:daily'))->toBe(2);
 });
 
 it('counts a 5xx toward the circuit breaker, then surfaces the request exception', function (): void {
