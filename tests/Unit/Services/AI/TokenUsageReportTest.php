@@ -4,25 +4,20 @@ declare(strict_types=1);
 
 use App\Models\AI\TokenUsage;
 use App\Models\User;
-use App\Services\AI\AzureRetailPrices;
-use App\Services\AI\LlmCostCalculator;
 use App\Services\AI\TokenUsageReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config()->set('azure_openai.daily_cost_ceiling', null);
-    config()->set('azure_openai.price_cache_key', 'azure_openai.prices.refreshed');
 
-    // Deterministic rates via the refreshed-price cache: gpt-4o = 2.50 in / 10.00
-    // out, gpt-4o-mini = 0.15 / 0.60 (per 1M). With the cache warm the retail API
-    // is never hit, so the real calculator can be used.
-    Cache::forever('azure_openai.prices.refreshed', [
-        'gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00, 'currency' => 'USD'],
-        'gpt-4o-mini' => ['input_per_1m' => 0.15, 'output_per_1m' => 0.60, 'currency' => 'USD'],
+    // Deterministic manual rates: gpt-4o = 2.50 in / 10.00 out, gpt-4o-mini =
+    // 0.15 / 0.60 (per 1M).
+    config()->set('azure_openai.prices', [
+        'gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00],
+        'gpt-4o-mini' => ['input_per_1m' => 0.15, 'output_per_1m' => 0.60],
     ]);
     $this->report = app(TokenUsageReport::class);
 });
@@ -148,21 +143,6 @@ it('surfaces a configured daily ceiling and today cost in the budget block', fun
         ->and($result['budget']['todayCost'])->toBe(2.50);
 });
 
-it('marks priceSource unavailable when the retail price map cannot be resolved', function () use ($range): void {
-    Cache::forget('azure_openai.prices.refreshed');
-
-    [$from, $to] = $range();
-    expect($this->report->build($from, $to, null)['priceSource'])->toBe('unavailable');
-});
-
-it('marks priceSource azure-retail when the refreshed price cache is populated', function () use ($range): void {
-    Cache::forever('azure_openai.prices.refreshed', [
-        'gpt-4o' => ['input_per_1m' => 9.99, 'output_per_1m' => 9.99, 'currency' => 'USD'],
-    ]);
-
-    [$from, $to] = $range();
-    expect($this->report->build($from, $to, null)['priceSource'])->toBe('azure-retail');
-});
 
 it('filters by kind while leaving the daily series unfiltered', function () use ($range): void {
     seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-10'));

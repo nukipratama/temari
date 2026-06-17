@@ -39,7 +39,6 @@ const baseProps = {
         { value: 'run-insight', label: 'RunInsightTechnical' },
     ],
     budget: { todayCost: 0.02, dailyCeiling: 0.1, currency: 'USD' },
-    priceSource: 'azure-retail',
 };
 
 describe('AiUsage page', () => {
@@ -90,12 +89,6 @@ describe('AiUsage page', () => {
         render(<AiUsage {...baseProps} budget={{ todayCost: 0.02, dailyCeiling: null, currency: 'USD' }} />);
 
         expect(screen.getByText(/tanpa batas/i)).toBeInTheDocument();
-    });
-
-    it('shows the unavailable caveat when priceSource is not azure-retail', () => {
-        render(<AiUsage {...baseProps} priceSource="unavailable" />);
-
-        expect(screen.getByText(/belum bisa diestimasi/i)).toBeInTheDocument();
     });
 
     it('renders an empty state per table when data is empty', () => {

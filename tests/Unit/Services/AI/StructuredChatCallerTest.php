@@ -18,7 +18,6 @@ use OpenAI\Exceptions\ErrorException;
 use OpenAI\Exceptions\RateLimitException;
 use OpenAI\Exceptions\ServerException;
 use OpenAI\Exceptions\TransporterException;
-use OpenAI\Responses\Chat\CreateResponse;
 use OpenAI\Testing\ClientFake;
 use Psr\Http\Client\ClientExceptionInterface;
 
@@ -30,25 +29,14 @@ beforeEach(function (): void {
 });
 
 /**
- * @param  array<string, int>|null  $usage  ['prompt_tokens' => …, 'completion_tokens' => …, 'total_tokens' => …]
+ * @param  array<string, int>|null  $usage  ['prompt_tokens' => …, 'completion_tokens' => …]
  */
 function structuredCaller(string $content, ?array $usage = null, string $finishReason = 'stop'): StructuredChatCaller
 {
-    $fakeArgs = [
-        'choices' => [
-            ['message' => ['role' => 'assistant', 'content' => $content], 'finish_reason' => $finishReason],
-        ],
-    ];
-    if ($usage !== null) {
-        $fakeArgs['usage'] = $usage;
-    }
+    [$status, $reason] = $finishReason === 'length' ? ['incomplete', 'max_output_tokens'] : ['completed', null];
+    $response = fakeAzureResponse($content, $status, $reason, $usage['prompt_tokens'] ?? 10, $usage['completion_tokens'] ?? 5);
 
-    $client = new ClientFake([CreateResponse::fake($fakeArgs)]);
-    $azure = Mockery::mock(AzureOpenAIClient::class);
-    $azure->shouldReceive('client')->andReturn($client);
-    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
-
-    return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
+    return callerForClient(new ClientFake([$response]));
 }
 
 /**
@@ -56,21 +44,17 @@ function structuredCaller(string $content, ?array $usage = null, string $finishR
  */
 function callerWithResponses(array $responses): StructuredChatCaller
 {
-    $client = new ClientFake($responses);
+    return callerForClient(new ClientFake($responses));
+}
+
+function callerForClient(ClientFake $client): StructuredChatCaller
+{
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
+    $azure->shouldReceive('supportsTemperature')->andReturn(true);
 
     return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
-}
-
-function fakeChatResponse(string $content, string $finishReason = 'stop'): CreateResponse
-{
-    return CreateResponse::fake([
-        'choices' => [
-            ['message' => ['role' => 'assistant', 'content' => $content], 'finish_reason' => $finishReason],
-        ],
-    ]);
 }
 
 it('throws UnavailableException when structured output decodes to a non-object value', function (): void {
@@ -132,12 +116,7 @@ it('records user_id when passed by the narrator', function (): void {
 it('flags truncated=true when the response stays length-truncated after the single retry', function (): void {
     Log::spy();
 
-    $truncated = CreateResponse::fake([
-        'choices' => [
-            ['message' => ['role' => 'assistant', 'content' => json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR)], 'finish_reason' => 'length'],
-        ],
-        'usage' => ['prompt_tokens' => 80, 'completion_tokens' => 200, 'total_tokens' => 280],
-    ]);
+    $truncated = fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'incomplete', 'max_output_tokens', 80, 200);
 
     // Both the initial call and the bumped-token retry come back truncated, so
     // the recorded usage row carries truncated=true for the final response.
@@ -153,6 +132,7 @@ it('flags truncated=true when the response stays length-truncated after the sing
 it('does not record usage when Azure call fails', function (): void {
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
+    $azure->shouldReceive('supportsTemperature')->andReturn(true);
     $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
 
     $caller = new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
@@ -164,14 +144,7 @@ it('does not record usage when Azure call fails', function (): void {
 });
 
 it('routes the per-kind client and records the resolved deployment', function (): void {
-    $client = new ClientFake([
-        CreateResponse::fake([
-            'choices' => [
-                ['message' => ['role' => 'assistant', 'content' => json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR)], 'finish_reason' => 'stop'],
-            ],
-            'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15],
-        ]),
-    ]);
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'completed', null, 10, 5)]);
 
     $azure = Mockery::mock(AzureOpenAIClient::class);
     // The kind routes through deploymentFor(): its resolved value is the request
@@ -179,6 +152,7 @@ it('routes the per-kind client and records the resolved deployment', function ()
     // for every kind (deployment lives in the body, not the URL).
     $azure->shouldReceive('deploymentFor')->with('briefing')->andReturn('gpt-4o-briefing');
     $azure->shouldReceive('client')->andReturn($client);
+    $azure->shouldReceive('supportsTemperature')->andReturn(true);
 
     (new StructuredChatCaller($azure, app(TokenUsageRecorder::class)))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
@@ -187,18 +161,12 @@ it('routes the per-kind client and records the resolved deployment', function ()
 });
 
 it('records null deployment when the resolved deployment is empty', function (): void {
-    $client = new ClientFake([
-        CreateResponse::fake([
-            'choices' => [
-                ['message' => ['role' => 'assistant', 'content' => json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR)], 'finish_reason' => 'stop'],
-            ],
-            'usage' => ['prompt_tokens' => 1, 'completion_tokens' => 1, 'total_tokens' => 2],
-        ]),
-    ]);
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'completed', null, 1, 1)]);
 
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('deploymentFor')->andReturn('');
     $azure->shouldReceive('client')->andReturn($client);
+    $azure->shouldReceive('supportsTemperature')->andReturn(true);
 
     (new StructuredChatCaller($azure, app(TokenUsageRecorder::class)))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
@@ -281,7 +249,7 @@ it('keeps a permanent 4xx ErrorException terminal as UnavailableException', func
 });
 
 it('keeps a schema/JSON failure terminal even though the HTTP call succeeded', function (): void {
-    expect(fn () => callerWithResponses([fakeChatResponse('{not json')])
+    expect(fn () => callerWithResponses([fakeAzureResponse('{not json')])
         ->call('briefing', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class, 'non-JSON');
 });
@@ -293,8 +261,8 @@ it('retries once at a higher token cap when the first response is truncated', fu
 
     // First response truncated, second (retry) is complete and valid.
     $caller = callerWithResponses([
-        fakeChatResponse(json_encode(['headline' => 'partial'], JSON_THROW_ON_ERROR), finishReason: 'length'),
-        fakeChatResponse(json_encode(['headline' => 'complete'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(json_encode(['headline' => 'partial'], JSON_THROW_ON_ERROR), 'incomplete', 'max_output_tokens'),
+        fakeAzureResponse(json_encode(['headline' => 'complete'], JSON_THROW_ON_ERROR)),
     ]);
 
     $payload = $caller->call('briefing', 'sys', [], 'schema', ['headline'], new ChatCallOptions(maxTokens: 200));
@@ -303,15 +271,15 @@ it('retries once at a higher token cap when the first response is truncated', fu
     Log::shouldHaveReceived('warning')
         ->once()
         ->with('narrator.ai.truncated_retry', Mockery::on(
-            fn (array $ctx): bool => $ctx['max_completion_tokens'] === 200 && $ctx['retry_max_completion_tokens'] === 300,
+            fn (array $ctx): bool => $ctx['max_output_tokens'] === 200 && $ctx['retry_max_output_tokens'] === 300,
         ));
 });
 
 it('retries truncation at most once and surfaces the still-truncated second response', function (): void {
     // Both responses truncated: caller must not loop, it accepts the 2nd as-is.
     $caller = callerWithResponses([
-        fakeChatResponse(json_encode(['headline' => 'one'], JSON_THROW_ON_ERROR), finishReason: 'length'),
-        fakeChatResponse(json_encode(['headline' => 'two'], JSON_THROW_ON_ERROR), finishReason: 'length'),
+        fakeAzureResponse(json_encode(['headline' => 'one'], JSON_THROW_ON_ERROR), 'incomplete', 'max_output_tokens'),
+        fakeAzureResponse(json_encode(['headline' => 'two'], JSON_THROW_ON_ERROR), 'incomplete', 'max_output_tokens'),
     ]);
 
     $payload = $caller->call('briefing', 'sys', [], 'schema', ['headline'], new ChatCallOptions(maxTokens: 200));
@@ -325,7 +293,7 @@ it('does not retry truncation once the bumped cap would hit the ceiling', functi
 
     // maxTokens already at the ceiling: 1.5x cannot exceed it, so no retry fires.
     $caller = callerWithResponses([
-        fakeChatResponse(json_encode(['headline' => 'capped'], JSON_THROW_ON_ERROR), finishReason: 'length'),
+        fakeAzureResponse(json_encode(['headline' => 'capped'], JSON_THROW_ON_ERROR), 'incomplete', 'max_output_tokens'),
     ]);
 
     $payload = $caller->call('briefing', 'sys', [], 'schema', ['headline'], new ChatCallOptions(maxTokens: 4000));

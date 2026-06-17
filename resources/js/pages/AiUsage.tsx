@@ -81,7 +81,6 @@ interface AiUsageProps {
     daily: DailyRow[];
     availableKinds: KindOption[];
     budget: Budget;
-    priceSource: string;
 }
 
 const numberFmt = new Intl.NumberFormat('id-ID');
@@ -127,7 +126,6 @@ export default function AiUsage({
     daily,
     availableKinds,
     budget,
-    priceSource,
 }: Readonly<AiUsageProps>) {
     const [fromInput, setFromInput] = useState<string>(from);
     const [toInput, setToInput] = useState<string>(to);
@@ -217,7 +215,7 @@ export default function AiUsage({
                     />
                 </section>
 
-                <BudgetGauge budget={budget} priceSource={priceSource} />
+                <BudgetGauge budget={budget} />
 
                 {daily.length > 0 && (
                     <section className="mt-10">
@@ -283,15 +281,12 @@ export default function AiUsage({
 
 /* ─── Budget Gauge ────────────────────────────────────────────────── */
 
-function BudgetGauge({ budget, priceSource }: Readonly<{ budget: Budget; priceSource: string }>) {
+function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
     const { todayCost, dailyCeiling, currency } = budget;
     const hasCeiling = dailyCeiling !== null && dailyCeiling > 0;
     const ratio = hasCeiling ? todayCost / dailyCeiling : 0;
     const overBudget = hasCeiling && ratio > 1;
-    const caveat =
-        priceSource === 'azure-retail'
-            ? 'Estimasi memakai harga retail Azure (list price), bukan tagihan final.'
-            : 'Harga retail Azure belum tersedia, biaya belum bisa diestimasi.';
+    const caveat = 'Estimasi memakai harga list price dari config, bukan tagihan final.';
 
     return (
         <Card as="section" tone="cream" padding="md" className="mt-6 bg-surface-elev">

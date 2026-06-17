@@ -35,7 +35,6 @@ class TokenUsageReport
      *     daily: list<array{day:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
      *     availableKinds: list<array{value:string, label:string}>,
      *     budget: array{todayCost:float, dailyCeiling:float|null, currency:string},
-     *     priceSource: string,
      * }
      */
     public function build(Carbon $from, Carbon $to, ?string $kind): array
@@ -60,9 +59,8 @@ class TokenUsageReport
             'budget' => [
                 'todayCost' => $this->costCalculator->dailyCost(),
                 'dailyCeiling' => $ceiling === null ? null : (float) $ceiling,
-                'currency' => 'USD', // Azure retail prices are quoted in USD.
+                'currency' => 'USD', // Prices are quoted in USD.
             ],
-            'priceSource' => $this->costCalculator->isUsingRefreshedPrices() ? 'azure-retail' : 'unavailable',
         ];
     }
 
@@ -171,13 +169,17 @@ class TokenUsageReport
             $deployment = (string) $row->model;
             $prompt = (int) $row->prompt;
             $completion = (int) $row->completion;
+            $rate = $this->costCalculator->priceFor($deployment);
             $byDeployment[] = [
                 'deployment' => $deployment,
+                'model' => $this->costCalculator->modelFor($deployment),
                 'prompt' => $prompt,
                 'completion' => $completion,
                 'total' => (int) $row->total,
                 'calls' => (int) $row->calls,
                 'cost' => $this->costCalculator->costFor($deployment, $prompt, $completion),
+                'inputPer1m' => $rate['input_per_1m'] ?? null,
+                'outputPer1m' => $rate['output_per_1m'] ?? null,
             ];
         }
 

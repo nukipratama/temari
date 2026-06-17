@@ -45,7 +45,6 @@ class TokenUsageController extends Controller
             'daily' => $report['daily'],
             'availableKinds' => $report['availableKinds'],
             'budget' => $report['budget'],
-            'priceSource' => $report['priceSource'],
         ]);
     }
 }

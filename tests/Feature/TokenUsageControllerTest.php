@@ -81,8 +81,7 @@ it('renders the AiUsage page with totals + per-kind breakdown filtered by date',
                     'cost' => 0,
                 ])
                 ->has('byDeployment')
-                ->has('budget')
-                ->has('priceSource'),
+                ->has('budget'),
         );
 });
 

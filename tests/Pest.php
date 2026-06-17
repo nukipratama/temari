@@ -36,10 +36,43 @@ pest()->beforeEach(function (): void {
         $mock = Mockery::mock(AzureOpenAIClient::class);
         $mock->shouldReceive('client')->andReturnUsing(fn () => new ClientFake([]));
         $mock->shouldReceive('deploymentFor')->andReturn('test-deployment');
+        $mock->shouldReceive('supportsTemperature')->andReturn(true);
 
         return $mock;
     });
 })->in('Feature', 'Unit');
+
+/**
+ * Build a clean Azure Responses-API result for ClientFake. `from()` is used (not
+ * ::fake(), whose recursive merge mangles outputText) so the decoded text is
+ * exactly $content.
+ */
+function fakeAzureResponse(
+    string $content,
+    string $status = 'completed',
+    ?string $truncateReason = null,
+    int $inputTokens = 10,
+    int $outputTokens = 5,
+): OpenAI\Responses\Responses\CreateResponse {
+    return OpenAI\Responses\Responses\CreateResponse::from([
+        'id' => 'resp_test', 'object' => 'response', 'created_at' => 0, 'status' => $status, 'error' => null,
+        'incomplete_details' => $truncateReason !== null ? ['reason' => $truncateReason] : null,
+        'instructions' => null, 'max_output_tokens' => null, 'model' => 'test',
+        'output' => [[
+            'type' => 'message', 'id' => 'msg_test', 'status' => 'completed', 'role' => 'assistant',
+            'content' => [['type' => 'output_text', 'text' => $content, 'annotations' => []]],
+        ]],
+        'parallel_tool_calls' => true, 'previous_response_id' => null, 'reasoning' => null, 'store' => true,
+        'temperature' => 1.0, 'text' => ['format' => ['type' => 'text']], 'tool_choice' => 'auto', 'tools' => [],
+        'top_p' => 1.0, 'truncation' => 'disabled',
+        'usage' => [
+            'input_tokens' => $inputTokens, 'output_tokens' => $outputTokens,
+            'total_tokens' => $inputTokens + $outputTokens,
+            'input_tokens_details' => ['cached_tokens' => 0], 'output_tokens_details' => ['reasoning_tokens' => 0],
+        ],
+        'user' => null, 'metadata' => [],
+    ], OpenAI\Responses\Meta\MetaInformation::from([]));
+}
 
 /*
 |--------------------------------------------------------------------------

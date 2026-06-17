@@ -29,7 +29,6 @@ use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use OpenAI\Responses\Chat\CreateResponse;
 use OpenAI\Testing\ClientFake;
 
 uses(RefreshDatabase::class);
@@ -44,16 +43,11 @@ beforeEach(function (): void {
 
 function fakeCaller(string $content): StructuredChatCaller
 {
-    $client = new ClientFake([
-        CreateResponse::fake([
-            'choices' => [
-                ['message' => ['role' => 'assistant', 'content' => $content]],
-            ],
-        ]),
-    ]);
+    $client = new ClientFake([fakeAzureResponse($content)]);
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
+    $azure->shouldReceive('supportsTemperature')->andReturn(true);
 
     return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
 }

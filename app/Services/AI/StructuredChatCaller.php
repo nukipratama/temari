@@ -12,14 +12,15 @@ use OpenAI\Exceptions\ErrorException;
 use OpenAI\Exceptions\RateLimitException;
 use OpenAI\Exceptions\ServerException;
 use OpenAI\Exceptions\TransporterException;
-use OpenAI\Responses\Chat\CreateResponse;
+use OpenAI\Responses\Responses\CreateResponse;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
 /**
- * Thin shared wrapper around the Azure OpenAI chat completions call. Handles
- * the request, structured-JSON decoding, logging, and exception mapping that
- * every narrator otherwise duplicates.
+ * Thin shared wrapper around the Azure OpenAI Responses API call. Handles the
+ * request, structured-JSON decoding, logging, and exception mapping that every
+ * narrator otherwise duplicates. The Responses surface (vs chat completions) is
+ * what serves both chat and reasoning/codex deployments.
  */
 final readonly class StructuredChatCaller
 {
@@ -27,7 +28,7 @@ final readonly class StructuredChatCaller
      * Hard ceiling for the truncation retry's bumped token cap, so a runaway
      * schema can't balloon a single block's cost.
      */
-    private const int MAX_RETRY_COMPLETION_TOKENS = 4000;
+    private const int MAX_RETRY_OUTPUT_TOKENS = 4000;
 
     public function __construct(
         private AzureOpenAIClient $azure,
@@ -55,34 +56,39 @@ final readonly class StructuredChatCaller
 
         $payload = [
             'model' => $deployment,
-            'messages' => [
+            'input' => [
                 ['role' => 'system', 'content' => TemariPersona::systemPrompt()."\n\n".$systemPrompt],
                 ['role' => 'user', 'content' => json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)],
             ],
-            'max_completion_tokens' => $effectiveMaxTokens,
-            'temperature' => $options->temperature,
-            'response_format' => self::responseFormat($schemaName, $requiredKeys),
+            'max_output_tokens' => $effectiveMaxTokens,
+            'text' => ['format' => self::textFormat($schemaName, $requiredKeys)],
         ];
 
-        $response = $this->createChat($kind, $payload, $startedAt);
+        // Reasoning/codex deployments only accept the default temperature; chat
+        // models get the narrator's tuned value.
+        if ($this->azure->supportsTemperature($kind)) {
+            $payload['temperature'] = $options->temperature;
+        }
+
+        $response = $this->createResponse($kind, $payload, $startedAt);
 
         // Truncated structured output is unparseable, so retry once at a higher
-        // token cap, bounded by self::MAX_RETRY_COMPLETION_TOKENS.
+        // token cap, bounded by self::MAX_RETRY_OUTPUT_TOKENS.
         if (self::isTruncated($response)) {
-            $retryMaxTokens = min((int) ceil($effectiveMaxTokens * 1.5), self::MAX_RETRY_COMPLETION_TOKENS);
+            $retryMaxTokens = min((int) ceil($effectiveMaxTokens * 1.5), self::MAX_RETRY_OUTPUT_TOKENS);
             if ($retryMaxTokens > $effectiveMaxTokens) {
                 Log::warning('narrator.ai.truncated_retry', [
                     'kind' => $kind,
-                    'max_completion_tokens' => $effectiveMaxTokens,
-                    'retry_max_completion_tokens' => $retryMaxTokens,
+                    'max_output_tokens' => $effectiveMaxTokens,
+                    'retry_max_output_tokens' => $retryMaxTokens,
                 ]);
                 $effectiveMaxTokens = $retryMaxTokens;
-                $payload['max_completion_tokens'] = $effectiveMaxTokens;
-                $response = $this->createChat($kind, $payload, $startedAt);
+                $payload['max_output_tokens'] = $effectiveMaxTokens;
+                $response = $this->createResponse($kind, $payload, $startedAt);
             }
         }
 
-        $content = (string) ($response->choices[0]->message->content ?? '');
+        $content = (string) ($response->outputText ?? '');
 
         try {
             $decoded = json_decode($content, true, 16, JSON_THROW_ON_ERROR);
@@ -99,8 +105,8 @@ final readonly class StructuredChatCaller
             throw new UnavailableException("Azure OpenAI structured output missing {$missingLabel}");
         }
 
-        $promptTokens = (int) ($response->usage->promptTokens ?? 0);
-        $completionTokens = (int) ($response->usage->completionTokens ?? 0);
+        $inputTokens = (int) ($response->usage->inputTokens ?? 0);
+        $outputTokens = (int) ($response->usage->outputTokens ?? 0);
         $totalTokens = (int) ($response->usage->totalTokens ?? 0);
         $truncated = self::isTruncated($response);
         $latencyMs = self::latencyMs($startedAt);
@@ -108,8 +114,8 @@ final readonly class StructuredChatCaller
         if ($truncated) {
             Log::warning('narrator.ai.truncated', [
                 'kind' => $kind,
-                'completion_tokens' => $completionTokens,
-                'max_completion_tokens' => $effectiveMaxTokens,
+                'output_tokens' => $outputTokens,
+                'max_output_tokens' => $effectiveMaxTokens,
             ]);
         }
 
@@ -119,16 +125,17 @@ final readonly class StructuredChatCaller
             'latency_ms' => $latencyMs,
             'truncated' => $truncated,
             'usage' => [
-                'prompt' => $promptTokens,
-                'completion' => $completionTokens,
+                'input' => $inputTokens,
+                'output' => $outputTokens,
                 'total' => $totalTokens,
             ],
         ]);
 
+        // The usage table's prompt/completion columns hold input/output tokens.
         $this->usageRecorder->record(
             $kind,
-            $promptTokens,
-            $completionTokens,
+            $inputTokens,
+            $outputTokens,
             $totalTokens,
             $deployment !== '' ? $deployment : null,
             $latencyMs,
@@ -140,15 +147,15 @@ final readonly class StructuredChatCaller
     }
 
     /**
-     * Issue one chat-completions request, mapping any Azure failure into the
+     * Issue one Responses API request, mapping any Azure failure into the
      * caller's transient/terminal exception taxonomy.
      *
      * @param  array<string, mixed>  $payload
      */
-    private function createChat(string $kind, array $payload, float $startedAt): CreateResponse
+    private function createResponse(string $kind, array $payload, float $startedAt): CreateResponse
     {
         try {
-            return $this->azure->client()->chat()->create($payload);
+            return $this->azure->client()->responses()->create($payload);
         } catch (Throwable $e) {
             Log::warning('narrator.ai.call', [
                 'kind' => $kind,
@@ -216,7 +223,8 @@ final readonly class StructuredChatCaller
 
     private static function isTruncated(CreateResponse $response): bool
     {
-        return (string) ($response->choices[0]->finishReason ?? '') === 'length';
+        return $response->status === 'incomplete'
+            && $response->incompleteDetails?->reason === 'max_output_tokens';
     }
 
     /**
@@ -240,10 +248,13 @@ final readonly class StructuredChatCaller
     }
 
     /**
+     * The Responses API structured-output format (text.format): json_schema with
+     * the fields flattened, unlike chat completions' nested `json_schema` wrapper.
+     *
      * @param  list<string>  $requiredKeys
-     * @return array{type: string, json_schema: array<string, mixed>}
+     * @return array{type: string, name: string, strict: bool, schema: array<string, mixed>}
      */
-    private static function responseFormat(string $schemaName, array $requiredKeys): array
+    private static function textFormat(string $schemaName, array $requiredKeys): array
     {
         $properties = [];
         foreach ($requiredKeys as $key) {
@@ -252,15 +263,13 @@ final readonly class StructuredChatCaller
 
         return [
             'type' => 'json_schema',
-            'json_schema' => [
-                'name' => $schemaName,
-                'strict' => true,
-                'schema' => [
-                    'type' => 'object',
-                    'additionalProperties' => false,
-                    'properties' => $properties,
-                    'required' => $requiredKeys,
-                ],
+            'name' => $schemaName,
+            'strict' => true,
+            'schema' => [
+                'type' => 'object',
+                'additionalProperties' => false,
+                'properties' => $properties,
+                'required' => $requiredKeys,
             ],
         ];
     }

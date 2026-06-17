@@ -14,7 +14,6 @@ use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\TokenUsageRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use OpenAI\Responses\Chat\CreateResponse;
 use OpenAI\Testing\ClientFake;
 
 uses(RefreshDatabase::class);
@@ -30,16 +29,11 @@ beforeEach(function (): void {
 /** @return array{narrator: BriefingFeaturedKartuVoiceNarrator, client: ClientFake} */
 function bootFeaturedKartuNarrator(string $jsonContent): array
 {
-    $client = new ClientFake([
-        CreateResponse::fake([
-            'choices' => [
-                ['message' => ['role' => 'assistant', 'content' => $jsonContent]],
-            ],
-        ]),
-    ]);
+    $client = new ClientFake([fakeAzureResponse($jsonContent)]);
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
+    $azure->shouldReceive('supportsTemperature')->andReturn(true);
 
     $narrator = new BriefingFeaturedKartuVoiceNarrator(
         new StructuredChatCaller($azure, app(TokenUsageRecorder::class)),
