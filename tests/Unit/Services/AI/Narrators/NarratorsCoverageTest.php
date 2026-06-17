@@ -289,7 +289,39 @@ it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', fun
 
     expect($context['prev_distance_km'])->toBeNull()
         ->and($context['prev_runs'])->toBeNull()
-        ->and($context['prev_pace_sec_per_km'])->toBeNull();
+        ->and($context['prev_pace_sec_per_km'])->toBeNull()
+        ->and($context['prev_narrative'])->toBeNull();
+});
+
+it('WeeklyRecapNarrator feeds prev_narrative when the prior week recap is Done', function (): void {
+    $user = User::factory()->create();
+    $prior = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10']);
+    \App\Models\AI\Analysis::factory()->done('Minggu lalu kamu solid.')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $prior->id,
+        'analysis_type' => \App\Services\AI\AnalysisType::WeeklyRecap,
+    ]);
+    $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
+
+    $context = (new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($current);
+
+    expect($context['prev_narrative'])->toBe('Minggu lalu kamu solid.');
+});
+
+it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not yet Done', function (): void {
+    $user = User::factory()->create();
+    $prior = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10']);
+    \App\Models\AI\Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $prior->id,
+        'analysis_type' => \App\Services\AI\AnalysisType::WeeklyRecap,
+        'status' => \App\Services\AI\AnalysisStatus::Pending,
+    ]);
+    $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
+
+    $context = (new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($current);
+
+    expect($context['prev_narrative'])->toBeNull();
 });
 
 // ── PrContextNarrator ─────────────────────────────────────────────────

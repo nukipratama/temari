@@ -156,6 +156,7 @@ describe('Riwayat/Jejak', () => {
                 monotony: 1.2,
                 strain: 384,
                 is_current_week: false,
+                is_chain_head: true,
                 recap_analysis: {
                     id: 1,
                     status: 'done' as const,
@@ -192,6 +193,7 @@ describe('Riwayat/Jejak', () => {
             monotony: 1.2,
             strain: 384,
             is_current_week: false,
+            is_chain_head: false,
             recap_analysis: {
                 id: 1,
                 status: 'done' as const,

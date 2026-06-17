@@ -54,6 +54,21 @@ interface Props {
     showTimestamp?: boolean;
     /** Use cream-tinted colours for non-done states when rendered on a dark sky panel. */
     onSky?: boolean;
+    /**
+     * This block belongs to a connected + chained narration kind. The trigger
+     * still POSTs to this row, but the server resumes the chain from the
+     * earliest unfilled link instead of narrating this row in isolation. The
+     * "Coba lagi" / "Minta Temari bacain" actions on failed/pending links stay
+     * (they resume the chain forward), but "Baca ulang" (regenerate of a Done
+     * block) is shown only on the chain head — see {@link isChainHead}.
+     */
+    chained?: boolean;
+    /**
+     * The latest item in its chain. Only the head may regenerate (`Baca ulang`),
+     * because re-narrating a mid-history Done block would desync every later
+     * block that referenced its old narrative. Ignored unless `chained`.
+     */
+    isChainHead?: boolean;
 }
 
 const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
@@ -78,9 +93,15 @@ export default function AnalysisStatus({
     awaitingSchedule = false,
     showTimestamp = true,
     onSky = false,
+    chained = false,
+    isChainHead = false,
 }: Readonly<Props>) {
     const { status, pending, error, retryAfterSeconds, trigger } = useAnalysisTrigger(analysis, inertiaReloadProps);
     const canTrigger = allowReanalyze && !awaitingSchedule;
+    // A Done block may regenerate ("Baca ulang") in standalone mode, but in a
+    // chain only the head may, so regenerating mid-history can't desync later
+    // links. Resume actions on failed/pending links stay regardless.
+    const canRegenerate = canTrigger && (!chained || isChainHead);
     const { hrZonesChangedAt } = usePage<SharedProps>().props;
     const effectiveStatus = pending ? 'queued' : status;
     const content = analysis.content;
@@ -102,7 +123,7 @@ export default function AnalysisStatus({
                         Dibuat {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
-                {canTrigger && (
+                {canRegenerate && (
                     <button
                         type="button"
                         onClick={trigger}

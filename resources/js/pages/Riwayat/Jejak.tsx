@@ -36,6 +36,8 @@ interface WeeklySnapshotRow {
     strain: number | null;
     /** True for the in-progress week, whose recap waits for the weekly scheduler. */
     is_current_week: boolean;
+    /** True for the latest completed week, the only chain link that may regenerate. */
+    is_chain_head: boolean;
     recap_analysis: AnalysisPayload;
 }
 
@@ -261,6 +263,7 @@ const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, matched
                                 analysis={snapshot.recap_analysis}
                                 fallback={ruleBasedFallback(snapshot)}
                                 awaitingSchedule={snapshot.is_current_week}
+                                isChainHead={snapshot.is_chain_head}
                             />
                         </div>
                     </div>

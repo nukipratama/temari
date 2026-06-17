@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\AI\Analysis;
 use Database\Factories\WeeklySnapshotFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use Override;
 
@@ -55,6 +57,19 @@ class WeeklySnapshot extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Analysis rows (e.g. the WeeklyRecap narration) whose subject is this
+     * snapshot. The Analysis table stores `subject_type`/`subject_id`, so this
+     * is a class-name morph. Lets chain queries filter by recap status with a
+     * user-scoped correlated subquery instead of plucking global subject ids.
+     *
+     * @return MorphMany<Analysis, $this>
+     */
+    public function analyses(): MorphMany
+    {
+        return $this->morphMany(Analysis::class, 'subject');
     }
 
     /**

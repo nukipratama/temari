@@ -262,6 +262,100 @@ it('throws Unauthenticated when the request has no user (defensive guard)', func
         ->toThrow(AuthorizationException::class, 'Unauthenticated');
 });
 
+it('chained weekly_recap retry resumes the earliest unfilled link, not the clicked row', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    // Earliest week is still Pending; a later week was clicked.
+    $earliest = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $earliest->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'status' => AnalysisStatus::Pending,
+    ]);
+    $clicked = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+    Analysis::factory()->failed()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $clicked->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/weekly_recap/{$clicked->id}/trigger")
+        ->assertOk();
+
+    // The payload reflects the resumed (earliest) subject, not the clicked one.
+    expect($response->json('subject_id'))->toBe($earliest->id);
+
+    Carbon::setTestNow();
+});
+
+it('chained weekly_recap head regenerate (Done clicked row) re-narrates that exact row', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    // An earlier still-Pending link exists, but a Done head is being regenerated.
+    $earlier = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $earlier->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'status' => AnalysisStatus::Pending,
+    ]);
+    $head = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+    Analysis::factory()->done('latest recap')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $head->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'generated_at' => Carbon::now()->subHour(),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/weekly_recap/{$head->id}/trigger")
+        ->assertOk();
+
+    // A Done clicked row is a head regenerate → stays on the clicked (head) row.
+    expect($response->json('subject_id'))->toBe($head->id);
+
+    Carbon::setTestNow();
+});
+
+it('chained weekly_recap regenerate on a Done NON-head row resumes the chain instead (server guard)', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    // A mid-history Done row (not the head) plus a still-Pending earlier link.
+    $earliest = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $earliest->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'status' => AnalysisStatus::Pending,
+    ]);
+    $midDone = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 4]);
+    Analysis::factory()->done('mid recap')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $midDone->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'generated_at' => Carbon::now()->subHour(),
+    ]);
+    // The actual head (latest runs>0 week) sits after the clicked mid row.
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 5]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/weekly_recap/{$midDone->id}/trigger")
+        ->assertOk();
+
+    // A Done non-head POST must NOT re-narrate itself; it resumes the earliest unfilled link.
+    expect($response->json('subject_id'))->toBe($earliest->id);
+
+    Carbon::setTestNow();
+});
+
 it('handles every AnalysisType in subject authorization (no UnhandledMatchError)', function (): void {
     $user = User::factory()->create();
     $controller = new AnalysisController();

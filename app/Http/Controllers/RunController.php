@@ -90,6 +90,16 @@ class RunController extends Controller
         $recapAnalyses = $this->recapAnalysesFor($weeklySnapshots->all());
         $currentWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
+        // Chain head = the latest completed week the chain actually narrates
+        // (runs > 0, not the in-progress week). Snapshots are ordered
+        // week_ending desc, so it is the first such row. Matching the chain's
+        // runs>0 definition keeps a zero-run rest week from stealing the head
+        // and hiding "Baca ulang" on the real latest recap. Only the head may
+        // regenerate, so re-narrating mid-history can't desync later links.
+        $chainHeadId = $weeklySnapshots
+            ->first(fn (WeeklySnapshot $row): bool => (int) $row->runs > 0
+                && ! $row->week_ending->equalTo($currentWeekEnding))?->id;
+
         return Inertia::render('Riwayat/Jejak', [
             'runs' => $runs->values(),
             'notes' => $noteReader->forActivities($runs->pluck('id')->all()),
@@ -101,6 +111,7 @@ class RunController extends Controller
             'weeklySnapshots' => $weeklySnapshots->map(fn (WeeklySnapshot $row): array => [
                 ...$row->toArray(),
                 'is_current_week' => $row->week_ending->equalTo($currentWeekEnding),
+                'is_chain_head' => $row->id === $chainHeadId,
                 'recap_analysis' => $recapAnalyses[$row->id],
             ])->values(),
             'journeyMatch' => $this->buildJourneyMatch($user),

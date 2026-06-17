@@ -11,6 +11,8 @@ interface RingkasanCardProps {
     fallback: string;
     /** The in-progress week: suppress the manual trigger until the week closes. */
     awaitingSchedule?: boolean;
+    /** Weekly recap is a chained kind: retry resumes the chain, regenerate is head-only. */
+    isChainHead?: boolean;
     className?: string;
 }
 
@@ -27,6 +29,7 @@ export default function RingkasanCard({
     inertiaReloadProps = DEFAULT_RELOAD_PROPS,
     fallback,
     awaitingSchedule = false,
+    isChainHead = false,
     className,
 }: Readonly<RingkasanCardProps>) {
     return (
@@ -45,6 +48,8 @@ export default function RingkasanCard({
                     analysis={analysis}
                     inertiaReloadProps={inertiaReloadProps}
                     awaitingSchedule={awaitingSchedule}
+                    chained
+                    isChainHead={isChainHead}
                     size="md"
                     renderContent={(content) => (
                         <p className="text-sm leading-relaxed text-ink">{renderBold(content)}</p>

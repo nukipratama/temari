@@ -28,6 +28,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
         try {
             $content = $this->generateContent($row);
             $service->markDone($row, $content);
+            $this->afterDone($row, $service);
         } catch (Throwable $e) {
             $this->settleFailure(
                 $e,
@@ -55,6 +56,17 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
     }
 
     abstract protected function generateContent(Analysis $row): string;
+
+    /**
+     * Hook fired after a row is marked Done. Connected + chained narrators
+     * override this to dispatch the next chronological link in their chain
+     * (predecessor-Done-before-successor). No-op by default, so standalone
+     * narrators keep their independent per-row behavior.
+     */
+    protected function afterDone(Analysis $row, AnalysisService $service): void
+    {
+        //
+    }
 
     protected function discriminatorDate(Analysis $row): Carbon
     {

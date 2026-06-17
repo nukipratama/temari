@@ -13,12 +13,14 @@ use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class AnalysisController extends Controller
 {
@@ -42,6 +44,21 @@ class AnalysisController extends Controller
 
         if ($existing?->cooldownRemaining() !== null) {
             return $this->payload($existing, $analysisType, $subjectId, $discriminator);
+        }
+
+        // Chained kinds resume the chain rather than narrating the clicked row
+        // in isolation. Only a head regenerate (a Done row that IS the chain
+        // head) re-narrates that exact row below. Every other chained click,
+        // including a Done non-head row reached by a hand-crafted POST, resumes
+        // the earliest unfilled link forward so re-narrating mid-history never
+        // desyncs the later blocks that quoted its old narrative.
+        if ($analysisType->isChained()
+            && ! $this->isChainHeadRegenerate($user, $analysisType, $subjectId, $existing)
+        ) {
+            $resume = $this->earliestUnfilledChainLink($user, $analysisType);
+            if ($resume !== null) {
+                [$subjectId, $existing] = $resume;
+            }
         }
 
         // A manual "Baca ulang" on a zone-dependent run block recomputes its
@@ -68,6 +85,70 @@ class AnalysisController extends Controller
         );
 
         return $this->payload($row, $analysisType, $subjectId, $discriminator);
+    }
+
+    /**
+     * Whether the clicked row is a legitimate head regenerate: a Done row that
+     * is the latest narrated link of the user's chain. Only the head may
+     * regenerate; re-narrating a mid-history link would desync later blocks.
+     * Returns false for non-Done rows and for unknown chained types (which fall
+     * through to the resume path).
+     */
+    private function isChainHeadRegenerate(User $user, AnalysisType $type, int $subjectId, ?Analysis $existing): bool
+    {
+        if ($existing?->status !== AnalysisStatus::Done || $type !== AnalysisType::WeeklyRecap) {
+            return false;
+        }
+
+        $lastWeekEnding = Carbon::today()->subWeek()->endOfWeek(Carbon::SUNDAY)->startOfDay()->toDateString();
+
+        $headId = WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('week_ending', '<=', $lastWeekEnding)
+            ->where('runs', '>', 0)
+            ->orderByDesc('week_ending')
+            ->value('id');
+
+        return $headId !== null && (int) $headId === $subjectId;
+    }
+
+    /**
+     * The earliest unfilled link of the user's chain for a chained type, as a
+     * `[subjectId, existingRow]` tuple, or null when there is nothing earlier to
+     * resume (the clicked row is then used as-is). "Unfilled" = no Done recap;
+     * walking from oldest forward fills the chronological gap so each successor
+     * still reads a Done predecessor. Returns null for an unknown chained type
+     * so the caller keeps the clicked row's identity.
+     *
+     * @return array{0: int, 1: \App\Models\AI\Analysis|null}|null
+     */
+    private function earliestUnfilledChainLink(User $user, AnalysisType $type): ?array
+    {
+        if ($type !== AnalysisType::WeeklyRecap) {
+            return null;
+        }
+
+        $lastWeekEnding = Carbon::today()->subWeek()->endOfWeek(Carbon::SUNDAY)->startOfDay()->toDateString();
+
+        $earliest = WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('week_ending', '<=', $lastWeekEnding)
+            ->where('runs', '>', 0)
+            ->whereDoesntHave('analyses', fn ($query) => $query
+                ->where('analysis_type', AnalysisType::WeeklyRecap)
+                ->where('status', AnalysisStatus::Done))
+            ->orderBy('week_ending')
+            ->first();
+
+        if ($earliest === null) {
+            return null;
+        }
+
+        $existing = Analysis::query()
+            ->forSubject(WeeklySnapshot::class, $earliest->id, AnalysisType::WeeklyRecap)
+            ->first();
+
+        return [(int) $earliest->id, $existing];
     }
 
     public function show(

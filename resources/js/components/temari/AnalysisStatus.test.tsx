@@ -171,6 +171,63 @@ describe('AnalysisStatus', () => {
         expect(body).not.toBeNull();
     });
 
+    describe('chained behavior', () => {
+        it('shows "Baca ulang" on a done block when it is the chain head', () => {
+            render(
+                <AnalysisStatus
+                    analysis={payload({ status: 'done', content: 'recap', type: 'weekly_recap' })}
+                    chained
+                    isChainHead
+                />,
+            );
+            expect(screen.getByRole('button', { name: /Baca ulang/ })).toBeInTheDocument();
+        });
+
+        it('hides "Baca ulang" on a done block that is not the chain head', () => {
+            render(
+                <AnalysisStatus
+                    analysis={payload({ status: 'done', content: 'recap', type: 'weekly_recap' })}
+                    chained
+                    isChainHead={false}
+                />,
+            );
+            expect(screen.getByText('recap')).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
+        });
+
+        it('still shows "Coba lagi" on a failed chained block (resumes the chain) even when not head', () => {
+            render(
+                <AnalysisStatus
+                    analysis={payload({ status: 'failed', type: 'weekly_recap' })}
+                    chained
+                    isChainHead={false}
+                />,
+            );
+            expect(screen.getByRole('button', { name: /Coba lagi/ })).toBeInTheDocument();
+        });
+
+        it('still shows the empty-state trigger on a pending chained block even when not head', () => {
+            render(
+                <AnalysisStatus
+                    analysis={payload({ status: 'pending', type: 'weekly_recap' })}
+                    chained
+                    isChainHead={false}
+                />,
+            );
+            expect(screen.getByRole('button', { name: /Minta Temari bacain/ })).toBeInTheDocument();
+        });
+
+        it('standalone (non-chained) done block keeps "Baca ulang" regardless of isChainHead', () => {
+            render(
+                <AnalysisStatus
+                    analysis={payload({ status: 'done', content: 'x' })}
+                    isChainHead={false}
+                />,
+            );
+            expect(screen.getByRole('button', { name: /Baca ulang/ })).toBeInTheDocument();
+        });
+    });
+
     describe('stale-zones badge', () => {
         it('shows on a zone-dependent block generated before the zones changed', () => {
             setMockPage({ hrZonesChangedAt: NEW_TS });

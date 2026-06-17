@@ -135,6 +135,24 @@ enum AnalysisType: string
         };
     }
 
+    /**
+     * Connected + chained kinds: each item reads the previous same-kind
+     * narrative and is narrated only after its chronological predecessor is
+     * Done. A manual trigger on these resumes the earliest unfilled link of the
+     * user's chain rather than narrating the clicked row in isolation, and only
+     * the chain head may regenerate. See AnalysisController::trigger.
+     *
+     * Pilot: only WeeklyRecap is wired so far; later slices flip MonthlyRecap,
+     * PostRunSpeech, RunInsight*, DailyGreeting, and BriefingMascotVoice on.
+     */
+    public function isChained(): bool
+    {
+        return match ($this) {
+            self::WeeklyRecap => true,
+            default => false,
+        };
+    }
+
     public function isRuleBased(): bool
     {
         return match ($this) {

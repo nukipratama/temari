@@ -31,6 +31,16 @@ it('flags exactly the heart-rate-zone-derived types as zone-dependent', function
     'briefing headline' => [AnalysisType::BriefingHeadline, false],
 ]);
 
+it('flags only the connected + chained kinds wired so far', function (AnalysisType $type, bool $expected): void {
+    expect($type->isChained())->toBe($expected);
+})->with([
+    'weekly recap (pilot)' => [AnalysisType::WeeklyRecap, true],
+    'monthly recap (not yet wired)' => [AnalysisType::MonthlyRecap, false],
+    'post-run speech (not yet wired)' => [AnalysisType::PostRunSpeech, false],
+    'card flavor (standalone)' => [AnalysisType::CardFlavor, false],
+    'briefing headline (standalone)' => [AnalysisType::BriefingHeadline, false],
+]);
+
 it('assigns a cadence to every type', function (): void {
     foreach (AnalysisType::cases() as $type) {
         expect($type->cadence())->toBeInstanceOf(AnalysisCadence::class);

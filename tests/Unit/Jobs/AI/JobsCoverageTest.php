@@ -250,6 +250,51 @@ it('AnalyzeWeeklyRecapJob throws when snapshot missing', function (): void {
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
+it('AnalyzeWeeklyRecapJob advances the chain to the next Pending week on completion', function (): void {
+    // Auto-dispatch needs configured Azure creds + ai.enabled (default true).
+    config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
+    config()->set('azure_openai.api_key', 'fake-key');
+    config()->set('ai.backfill_stagger_seconds', 7);
+    Illuminate\Support\Facades\Bus::fake();
+
+    $user = User::factory()->create();
+    $thisWeek = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 3]);
+    $nextWeek = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+    // The next week's recap is pre-staged Pending so the chain has a link to walk to.
+    $nextRow = Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $nextWeek->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    mockNarrator(WeeklyRecapNarrator::class, 'this week narrative');
+    $thisRow = rowOf(WeeklySnapshot::class, $thisWeek->id, AnalysisType::WeeklyRecap);
+
+    (new AnalyzeWeeklyRecapJob($thisRow->id))->handle(app(AnalysisService::class));
+
+    expect($thisRow->fresh()->content)->toBe('this week narrative')
+        ->and($nextRow->fresh()->status)->toBe(AnalysisStatus::Queued);
+    Illuminate\Support\Facades\Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('AnalyzeWeeklyRecapJob does not advance when no later Pending week exists', function (): void {
+    config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
+    config()->set('azure_openai.api_key', 'fake-key');
+    Illuminate\Support\Facades\Bus::fake();
+
+    $user = User::factory()->create();
+    $thisWeek = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    mockNarrator(WeeklyRecapNarrator::class, 'tail narrative');
+    $thisRow = rowOf(WeeklySnapshot::class, $thisWeek->id, AnalysisType::WeeklyRecap);
+
+    (new AnalyzeWeeklyRecapJob($thisRow->id))->handle(app(AnalysisService::class));
+
+    expect($thisRow->fresh()->content)->toBe('tail narrative');
+    Illuminate\Support\Facades\Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
 // ── AnalyzeTrendCaptionJob (row) ─────────────────────────────────────
 
 it('AnalyzeTrendCaptionJob returns caption with discriminator', function (): void {
