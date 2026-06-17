@@ -91,6 +91,19 @@ class DispatchPostRunAnalysis implements ShouldQueue
                 AnalysisType::WeeklyRecap,
             );
         }
+
+        // Monthly cadence: same deferred staging keyed by the run's month (Y-m).
+        // The chain narrates it once the month closes (ai:monthly-recap kickoff +
+        // the daily resume sweep). Demo stays weekly-only, so it never stages a
+        // monthly row.
+        if (! $user->is_demo) {
+            $this->analysisService->requestDeferred(
+                AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                $user->id,
+                AnalysisType::MonthlyRecap,
+                $detail->start_date_local->format('Y-m'),
+            );
+        }
     }
 
     /**

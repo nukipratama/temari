@@ -27,6 +27,12 @@ Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01');
 // 1st of the month 05:45: same pattern for the monthly recap.
 Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45');
 
+// 00:01 daily: re-kick the earliest Pending link of every connected chain
+// (weekly + monthly) per user. The recovery sweep for cost-ceiling pauses (which
+// resume after dailyCost() resets at midnight) and transient link failures, so a
+// stalled link never strands the rest until the next weekly/monthly run.
+Schedule::command('ai:resume-chains')->dailyAt('00:01');
+
 // Hourly fallback poll behind the Strava webhook: catches activities Strava
 // failed to push (delivery is best-effort). Ingest only — it leans on the
 // "already done" idempotency guards in AnalysisService / AnalyzeGroupJob, so it

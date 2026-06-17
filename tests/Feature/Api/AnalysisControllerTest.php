@@ -362,6 +362,106 @@ it('chained weekly_recap regenerate on a Done NON-head row resumes the chain ins
     Carbon::setTestNow();
 });
 
+it('chained monthly_recap retry resumes the earliest unfilled month, not the clicked one', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    // Earliest month is still Pending; a later month was clicked.
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-03',
+        'status' => AnalysisStatus::Pending,
+    ]);
+    Analysis::factory()->failed()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-05',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-05")
+        ->assertOk();
+
+    // The payload reflects the resumed (earliest) month, not the clicked one.
+    expect($response->json('discriminator'))->toBe('2026-03');
+
+    Carbon::setTestNow();
+});
+
+it('chained monthly_recap head regenerate (Done clicked month) re-narrates that exact month', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    // An earlier still-Pending month exists, but a Done head is being regenerated.
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-03',
+        'status' => AnalysisStatus::Pending,
+    ]);
+    Analysis::factory()->done('latest recap')->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-05',
+        'generated_at' => Carbon::now()->subHour(),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-05")
+        ->assertOk();
+
+    // A Done clicked head month is a head regenerate → stays on the clicked month.
+    expect($response->json('discriminator'))->toBe('2026-05');
+
+    Carbon::setTestNow();
+});
+
+it('chained monthly_recap regenerate on a Done NON-head month resumes the chain instead (server guard)', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    // A mid-history Done month (not the head) plus a still-Pending earlier link.
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-03',
+        'status' => AnalysisStatus::Pending,
+    ]);
+    Analysis::factory()->done('mid recap')->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-04',
+        'generated_at' => Carbon::now()->subHour(),
+    ]);
+    // The actual head (latest month) sits after the clicked mid month.
+    Analysis::factory()->done('head recap')->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-05',
+        'generated_at' => Carbon::now()->subHour(),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-04")
+        ->assertOk();
+
+    // A Done non-head POST must NOT re-narrate itself; it resumes the earliest unfilled month.
+    expect($response->json('discriminator'))->toBe('2026-03');
+
+    Carbon::setTestNow();
+});
+
 it('handles every AnalysisType in subject authorization (no UnhandledMatchError)', function (): void {
     $user = User::factory()->create();
     $controller = new AnalysisController();

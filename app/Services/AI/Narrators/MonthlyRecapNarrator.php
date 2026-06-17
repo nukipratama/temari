@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use Illuminate\Support\Carbon;
@@ -31,6 +34,12 @@ class MonthlyRecapNarrator
            progres mingguan dari weekly_distance_km (mis. "naik tiap minggu"
            atau "konsisten di kisaran 10 km"). Pakai 1 yang paling menonjol.
         4. Tutup: 1 refleksi singkat atau dorongan untuk bulan depan.
+
+        KESINAMBUNGAN: kalau prev_narrative ada (recap bulan sebelumnya),
+        lanjutkan benang ceritanya, tunjukkan progres dari bulan lalu ke bulan
+        ini, dan variasikan cara membuka. Jangan mengulang kalimat atau angka
+        yang sama persis. Kalau prev_narrative null (bulan pertama), tulis
+        berdiri sendiri tanpa menyinggung bulan sebelumnya.
 
         Sesuaikan tone:
         - Mayoritas nyala/enteng: rayakan konsistensi.
@@ -65,7 +74,7 @@ class MonthlyRecapNarrator
     }
 
     /**
-     * @return array{month: string, total_runs: int, total_distance_km: float, longest_run_km: float, pr_count: int, weekly_distance_km: list<float>, mood_mix: list<array{mood: string, count: int, percent: float}>}
+     * @return array{month: string, total_runs: int, total_distance_km: float, longest_run_km: float, pr_count: int, weekly_distance_km: list<float>, mood_mix: list<array{mood: string, count: int, percent: float}>, prev_narrative: string|null}
      */
     public function context(User $user, string $month): array
     {
@@ -115,7 +124,34 @@ class MonthlyRecapNarrator
             'pr_count' => $prCount,
             'weekly_distance_km' => $weeklyKm,
             'mood_mix' => $moodMix,
+            'prev_narrative' => $this->prevNarrative($user, $month),
         ];
+    }
+
+    /**
+     * The previous chain link's recap narrative for continuity: the prior
+     * calendar month's MonthlyRecap content, if that row is Done. The monthly
+     * chain is keyed by the discriminator month (Y-m) under a single user
+     * subject, so "previous" is the calendar month before $month. Returns null
+     * when no Done predecessor exists (first ever month, or it is not yet
+     * narrated), so the narrator opens standalone. The chain (kickoff +
+     * AnalyzeMonthlyRecapJob propagation) guarantees the predecessor is Done
+     * before this month narrates, so steady-state always sees the prior thread.
+     */
+    public function prevNarrative(User $user, string $month): ?string
+    {
+        $previousMonth = Carbon::createFromFormat('Y-m', $month)
+            ?->subMonthNoOverflow()
+            ->format('Y-m');
+
+        if ($previousMonth === null) {
+            return null;
+        }
+
+        return Analysis::query()
+            ->forSubject(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $previousMonth)
+            ->where('status', AnalysisStatus::Done)
+            ->value('content');
     }
 
     /**

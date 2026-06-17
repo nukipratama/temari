@@ -426,3 +426,45 @@ it('AnalyzeMonthlyRecapJob fails when discriminator is missing', function (): vo
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });
+
+it('AnalyzeMonthlyRecapJob advances the chain to the next Pending month on completion', function (): void {
+    config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
+    config()->set('azure_openai.api_key', 'fake-key');
+    config()->set('ai.backfill_stagger_seconds', 7);
+    Illuminate\Support\Facades\Bus::fake();
+
+    $user = User::factory()->create();
+    // The next month's recap is pre-staged Pending so the chain has a link to walk to.
+    $nextRow = Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-05',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    mockNarrator(MonthlyRecapNarrator::class, 'this month narrative');
+    $thisRow = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-04');
+
+    (new AnalyzeMonthlyRecapJob($thisRow->id))->handle(app(AnalysisService::class));
+
+    expect($thisRow->fresh()->content)->toBe('this month narrative')
+        ->and($nextRow->fresh()->status)->toBe(AnalysisStatus::Queued);
+    Illuminate\Support\Facades\Bus::assertDispatched(AnalyzeMonthlyRecapJob::class);
+});
+
+it('AnalyzeMonthlyRecapJob does not advance when no later Pending month exists', function (): void {
+    config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
+    config()->set('azure_openai.api_key', 'fake-key');
+    Illuminate\Support\Facades\Bus::fake();
+
+    $user = User::factory()->create();
+
+    mockNarrator(MonthlyRecapNarrator::class, 'tail narrative');
+    $thisRow = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-05');
+
+    (new AnalyzeMonthlyRecapJob($thisRow->id))->handle(app(AnalysisService::class));
+
+    expect($thisRow->fresh()->content)->toBe('tail narrative');
+    Illuminate\Support\Facades\Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
+});
