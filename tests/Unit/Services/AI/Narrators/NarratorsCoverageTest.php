@@ -182,6 +182,46 @@ it('DailyGreetingNarrator throws on non-JSON response', function (): void {
     $narrator->generate($user, 'membara');
 })->throws(UnavailableException::class, 'non-JSON');
 
+it('DailyGreetingNarrator feeds prev_narrative from the prior day greeting when Done', function (): void {
+    $user = User::factory()->create();
+    \App\Models\AI\Analysis::factory()->done('Halo, kemarin kamu fresh banget.')->create([
+        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::DailyGreeting,
+        'discriminator' => '2026-05-17',
+    ]);
+
+    $context = (new DailyGreetingNarrator(fakeCaller('{"speech":"x"}')))
+        ->context($user, 'membara', Carbon::parse('2026-05-18'));
+
+    expect($context['prev_narrative'])->toBe('Halo, kemarin kamu fresh banget.');
+});
+
+it('DailyGreetingNarrator omits prev_narrative when the prior day greeting is not yet Done', function (): void {
+    $user = User::factory()->create();
+    \App\Models\AI\Analysis::factory()->create([
+        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::DailyGreeting,
+        'discriminator' => '2026-05-17',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $context = (new DailyGreetingNarrator(fakeCaller('{"speech":"x"}')))
+        ->context($user, 'membara', Carbon::parse('2026-05-18'));
+
+    expect($context['prev_narrative'])->toBeNull();
+});
+
+it('DailyGreetingNarrator leaves prev_narrative null on the first day', function (): void {
+    $user = User::factory()->create();
+
+    $context = (new DailyGreetingNarrator(fakeCaller('{"speech":"x"}')))
+        ->context($user, 'membara', Carbon::parse('2026-05-18'));
+
+    expect($context['prev_narrative'])->toBeNull();
+});
+
 // ── RunInsightNarrator ────────────────────────────────────────────────
 
 it('RunInsightNarrator returns 3-string payload on valid JSON', function (): void {
@@ -772,3 +812,40 @@ it('BriefingMascotVoiceNarrator throws on non-JSON', function (): void {
     $narrator = bootMascotNarrator('not json');
     $narrator->generate($user, Carbon::today());
 })->throws(UnavailableException::class, 'non-JSON');
+
+it('BriefingMascotVoiceNarrator feeds prev_narrative from the prior day Kata Temari when Done', function (): void {
+    $user = User::factory()->create();
+    \App\Models\AI\Analysis::factory()->done('Kemarin aku liat km kamu naik.')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-17',
+    ]);
+
+    $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-18'));
+
+    expect($context['prev_narrative'])->toBe('Kemarin aku liat km kamu naik.');
+});
+
+it('BriefingMascotVoiceNarrator omits prev_narrative when the prior day Kata Temari is not yet Done', function (): void {
+    $user = User::factory()->create();
+    \App\Models\AI\Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-17',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-18'));
+
+    expect($context['prev_narrative'])->toBeNull();
+});
+
+it('BriefingMascotVoiceNarrator leaves prev_narrative null on the first day', function (): void {
+    $user = User::factory()->create();
+
+    $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-18'));
+
+    expect($context['prev_narrative'])->toBeNull();
+});

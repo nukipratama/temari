@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\User;
+use App\Services\AI\AnalysisType;
 use App\Services\AI\ChatCallOptions;
+use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingContext;
@@ -22,6 +24,8 @@ use Illuminate\Support\Carbon;
  */
 class BriefingMascotVoiceNarrator
 {
+    use ReadsPreviousDailyNarrative;
+
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Tugas: 2-4 kalimat dalam suara Temari (mascot), pakai "aku" sebagai
         subjek. Comment observasional yang personal dan mood-aware. Boleh
@@ -54,6 +58,12 @@ class BriefingMascotVoiceNarrator
         Tapi dari mood verdict-mu, sesi tempo udah dua kali berturut.
         Kalau jadi lari lagi, aku saranin mundur sedikit ke easy."
 
+        KESINAMBUNGAN: kalau prev_narrative ada (Kata Temari hari sebelumnya),
+        lanjutkan benang ceritanya, tunjukkan progres dari sana ke hari ini,
+        dan variasikan cara membuka. Jangan mengulang kalimat atau angka yang
+        sama persis. Kalau prev_narrative null, tulis berdiri sendiri tanpa
+        menyinggung hari sebelumnya.
+
         ANTI-PATTERN:
         - "Aku liat ritme kamu masih oke beberapa hari terakhir." -- terlalu
           generik, tidak ada observasi spesifik.
@@ -74,23 +84,29 @@ class BriefingMascotVoiceNarrator
 
     public function generate(User $user, ?Carbon $asOf = null): string
     {
-        $asOf ??= Carbon::today();
-        $vibeState = $this->vibe->current($user, $asOf);
-        $load = $this->trainingLoad->summary($user, $asOf) ?? [];
-        $verdicts = $this->verdictNarrator->recent($user, 5);
-
-        $ctx = new MetricsContext($user, $vibeState, $load, $verdicts, $asOf);
-
         $decoded = $this->caller->call(
             kind: 'briefing_mascot_voice',
             systemPrompt: self::SYSTEM_PROMPT,
-            context: $this->buildContext($ctx),
+            context: $this->context($user, $asOf),
             schemaName: 'TemariMascotVoice',
             requiredKeys: ['mascot_voice'],
             options: new ChatCallOptions(userId: $user->id, maxTokens: 1500),
         );
 
         return (string) $decoded['mascot_voice'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function context(User $user, ?Carbon $asOf = null): array
+    {
+        $asOf ??= Carbon::today();
+        $vibeState = $this->vibe->current($user, $asOf);
+        $load = $this->trainingLoad->summary($user, $asOf) ?? [];
+        $verdicts = $this->verdictNarrator->recent($user, 5);
+
+        return $this->buildContext(new MetricsContext($user, $vibeState, $load, $verdicts, $asOf));
     }
 
     /**
@@ -110,6 +126,12 @@ class BriefingMascotVoiceNarrator
             'recent_runs' => $verdictSummary,
             'date' => $ctx->asOf->toDateString(),
             'context' => BriefingContext::forUser($ctx->user, $ctx->asOf)->toArray(),
+            'prev_narrative' => $this->previousDailyNarrative(
+                AnalysisType::BRIEFING_SUBJECT_TYPE,
+                $ctx->user->id,
+                AnalysisType::BriefingMascotVoice,
+                $ctx->asOf,
+            ),
         ];
     }
 }

@@ -22,6 +22,7 @@ use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Gamification\WeeklyRecap;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
+use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\Run\Story\BriefingResult;
 use App\Services\Run\Story\VerdictTimelineItem;
 use App\Services\Weather\WeatherSnapshot;
@@ -73,6 +74,7 @@ it('has a test class for every concrete app class', function (): void {
         StravaSyncLog::class,           // SyncOrchestratorTest
         SumsPulseTotals::class,         // trait, exercised via AiPipelineHealthTest + StravaHealthTest
         ReadsPreviousActivityNarrative::class, // trait, exercised via PostRunSpeechNarratorTest + RunInsightNarratorTest
+        ReadsPreviousDailyNarrative::class, // trait, exercised via DailyGreeting + BriefingMascotVoice cases in NarratorsCoverageTest
     ];
 
     $testedBasenames = collect(File::allFiles(base_path('tests')))

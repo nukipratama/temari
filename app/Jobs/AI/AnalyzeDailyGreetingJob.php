@@ -21,8 +21,9 @@ class AnalyzeDailyGreetingJob extends AnalyzeRowJob
             throw new UnavailableException("User {$row->subject_id} not found");
         }
 
-        $vibeState = app(Vibe::class)->current($user, $this->discriminatorDate($row));
+        $asOf = $this->discriminatorDate($row);
+        $vibeState = app(Vibe::class)->current($user, $asOf);
 
-        return app(DailyGreetingNarrator::class)->generate($user, $vibeState);
+        return app(DailyGreetingNarrator::class)->generate($user, $vibeState, $asOf);
     }
 }
