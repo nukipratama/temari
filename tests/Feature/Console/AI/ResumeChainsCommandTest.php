@@ -1,0 +1,151 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Models\AI\Analysis;
+use App\Models\User;
+use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+
+uses(RefreshDatabase::class);
+
+/**
+ * @param  array<int, array<string, mixed>>  $captured
+ */
+function captureResumeRequests(array &$captured): AnalysisService
+{
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldReceive('request')
+        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
+            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'invalidate');
+
+            return new Analysis();
+        });
+
+    return $service;
+}
+
+it('re-kicks the earliest Pending weekly link per user with invalidate:false', function (): void {
+    $user = User::factory()->create();
+    $earliest = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-04-05', 'runs' => 3]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $earliest->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+    // A later Pending week must NOT be the one resumed (earliest wins).
+    $later = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 4]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $later->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureResumeRequests($captured));
+
+    $this->artisan('ai:resume-chains')
+        ->expectsOutputToContain('Resumed 1 chains.')
+        ->assertSuccessful();
+
+    expect($captured)->toHaveCount(1)
+        ->and($captured[0]['subjectOrType'])->toBe(WeeklySnapshot::class)
+        ->and($captured[0]['subjectId'])->toBe($earliest->id)
+        ->and($captured[0]['type'])->toBe(AnalysisType::WeeklyRecap)
+        ->and($captured[0]['invalidate'])->toBeFalse();
+});
+
+it('re-kicks the earliest Pending monthly link per user with invalidate:false', function (): void {
+    $user = User::factory()->create();
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-03',
+        'status' => AnalysisStatus::Pending,
+    ]);
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-05',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureResumeRequests($captured));
+
+    $this->artisan('ai:resume-chains')
+        ->expectsOutputToContain('Resumed 1 chains.')
+        ->assertSuccessful();
+
+    expect($captured)->toHaveCount(1)
+        ->and($captured[0]['subjectOrType'])->toBe(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
+        ->and($captured[0]['subjectId'])->toBe($user->id)
+        ->and($captured[0]['type'])->toBe(AnalysisType::MonthlyRecap)
+        ->and($captured[0]['discriminator'])->toBe('2026-03')
+        ->and($captured[0]['invalidate'])->toBeFalse();
+});
+
+it('resumes both weekly and monthly chains in one sweep', function (): void {
+    $user = User::factory()->create();
+    $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-04',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureResumeRequests($captured));
+
+    $this->artisan('ai:resume-chains')
+        ->expectsOutputToContain('Resumed 2 chains.')
+        ->assertSuccessful();
+
+    expect(array_column($captured, 'type'))
+        ->toContain(AnalysisType::WeeklyRecap)
+        ->toContain(AnalysisType::MonthlyRecap);
+});
+
+it('skips chains with no Pending links (Done/Failed are left alone)', function (): void {
+    $user = User::factory()->create();
+    $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
+    Analysis::factory()->done('already narrated')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+    Analysis::factory()->failed()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-04',
+    ]);
+
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldNotReceive('request');
+    $this->app->instance(AnalysisService::class, $service);
+
+    $this->artisan('ai:resume-chains')
+        ->expectsOutputToContain('Resumed 0 chains.')
+        ->assertSuccessful();
+});

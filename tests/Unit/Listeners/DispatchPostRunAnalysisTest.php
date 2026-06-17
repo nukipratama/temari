@@ -94,6 +94,33 @@ it('leaves a Done weekly recap untouched on re-ingest (no mid-week invalidation)
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
+it('stages the monthly recap Pending keyed by the run month (monthly cadence)', function (): void {
+    $activity = analyzedActivity('2026-05-10 06:30:00');
+
+    fire($activity);
+
+    $row = Analysis::query()
+        ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
+        ->where('subject_id', $activity->user_id)
+        ->where('analysis_type', AnalysisType::MonthlyRecap)
+        ->where('discriminator', '2026-05')
+        ->firstOrFail();
+
+    expect($row->status)->toBe(AnalysisStatus::Pending);
+});
+
+it('does not stage a monthly recap for the demo user (monthly is real-users-only)', function (): void {
+    $demo = App\Models\User::factory()->demo()->create();
+    $activity = analyzedActivity('2026-05-10 06:30:00', $demo->id);
+
+    fire($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
+        ->where('subject_id', $demo->id)
+        ->exists())->toBeFalse();
+});
+
 it('dispatches AnalyzeActivityJob exactly once (grouped routing)', function (): void {
     $activity = analyzedActivity();
 

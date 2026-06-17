@@ -566,6 +566,43 @@ it('MonthlyRecapNarrator counts PRs and buckets distance by week within the mont
         ->and($context['weekly_distance_km'][2])->toBe(10.0);
 });
 
+it('MonthlyRecapNarrator feeds prev_narrative when the prior month recap is Done', function (): void {
+    $user = User::factory()->create();
+    \App\Models\AI\Analysis::factory()->done('Bulan lalu kamu konsisten.')->create([
+        'subject_type' => \App\Services\AI\AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => \App\Services\AI\AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-04',
+    ]);
+
+    $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, '2026-05');
+
+    expect($context['prev_narrative'])->toBe('Bulan lalu kamu konsisten.');
+});
+
+it('MonthlyRecapNarrator omits prev_narrative when the prior month recap is not yet Done', function (): void {
+    $user = User::factory()->create();
+    \App\Models\AI\Analysis::factory()->create([
+        'subject_type' => \App\Services\AI\AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => \App\Services\AI\AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-04',
+        'status' => \App\Services\AI\AnalysisStatus::Pending,
+    ]);
+
+    $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, '2026-05');
+
+    expect($context['prev_narrative'])->toBeNull();
+});
+
+it('MonthlyRecapNarrator leaves prev_narrative null on the first month', function (): void {
+    $user = User::factory()->create();
+
+    $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, '2026-05');
+
+    expect($context['prev_narrative'])->toBeNull();
+});
+
 // ── AkuProfileVoiceNarrator ───────────────────────────────────────────
 
 it('AkuProfileVoiceNarrator returns profile voice on valid JSON', function (): void {

@@ -35,7 +35,7 @@ it('flags only the connected + chained kinds wired so far', function (AnalysisTy
     expect($type->isChained())->toBe($expected);
 })->with([
     'weekly recap (pilot)' => [AnalysisType::WeeklyRecap, true],
-    'monthly recap (not yet wired)' => [AnalysisType::MonthlyRecap, false],
+    'monthly recap (wired)' => [AnalysisType::MonthlyRecap, true],
     'post-run speech (not yet wired)' => [AnalysisType::PostRunSpeech, false],
     'card flavor (standalone)' => [AnalysisType::CardFlavor, false],
     'briefing headline (standalone)' => [AnalysisType::BriefingHeadline, false],
