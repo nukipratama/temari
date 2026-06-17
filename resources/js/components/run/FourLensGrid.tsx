@@ -21,6 +21,13 @@ interface FourLensGridProps {
     terjemahan: AnalysisPayload;
     split: AnalysisPayload;
     hr: AnalysisPayload;
+    /**
+     * This run is the head of the per-activity narration chain (the latest run).
+     * Per-activity narration is connected + chained: only the head may
+     * regenerate, so the "Baca ulang semua" control shows on the head only.
+     * Historical runs are resume-only via the per-block chain actions.
+     */
+    isChainHead?: boolean;
     inertiaReloadProps?: string[];
     className?: string;
 }
@@ -62,6 +69,7 @@ export default function FourLensGrid({
     terjemahan,
     split,
     hr,
+    isChainHead = false,
     inertiaReloadProps = DEFAULT_RELOAD_PROPS,
     className,
 }: Readonly<FourLensGridProps>) {
@@ -84,18 +92,21 @@ export default function FourLensGrid({
 
     return (
         <div className={cn('flex flex-col gap-4', className)}>
-            {/* Single re-analyze control */}
-            <div className="flex justify-start">
-                <button
-                    type="button"
-                    onClick={triggerAll}
-                    disabled={bulkPending}
-                    className="focus-ring rounded inline-flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    <Icon icon={bulkPending ? 'mdi:loading' : 'mdi:refresh'} className={cn(bulkPending && 'animate-spin')} aria-hidden />
-                    {bulkPending ? 'Lagi dibaca…' : 'Baca ulang semua'}
-                </button>
-            </div>
+            {/* Single re-analyze control. Regenerate is head-only (chained kind);
+                historical runs resume per-block instead. */}
+            {isChainHead && (
+                <div className="flex justify-start">
+                    <button
+                        type="button"
+                        onClick={triggerAll}
+                        disabled={bulkPending}
+                        className="focus-ring rounded inline-flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <Icon icon={bulkPending ? 'mdi:loading' : 'mdi:refresh'} className={cn(bulkPending && 'animate-spin')} aria-hidden />
+                        {bulkPending ? 'Lagi dibaca…' : 'Baca ulang semua'}
+                    </button>
+                </div>
+            )}
 
             <div className="flex flex-col gap-3.5">
                 {lenses.map((lens) => (
@@ -120,7 +131,8 @@ export default function FourLensGrid({
                         <AnalysisStatus
                             analysis={lens.analysis}
                             inertiaReloadProps={inertiaReloadProps}
-                            allowReanalyze={false}
+                            chained
+                            isChainHead={isChainHead}
                             showTimestamp={false}
                             renderContent={(text) => (
                                 <p className="font-sans text-[15px] leading-relaxed text-ink">

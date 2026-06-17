@@ -307,11 +307,18 @@ class RunController extends Controller
             $activity->id,
         );
 
+        // Per-activity narration is a connected + chained kind: only the chain
+        // head (the user's latest run) may regenerate ("Baca ulang"); historical
+        // runs are resume-only, so re-narrating mid-history can't desync the
+        // later runs that quoted their old narrative.
+        $isChainHead = Activity::latestIdForUser($user->id) === $activity->id;
+
         return Inertia::render('Runs/Show', [
             'activity' => $activity,
             'detail' => $detail,
             'card' => $activity->runCard,
             'storyLine' => $storyLine,
+            'isChainHead' => $isChainHead,
             'speechAnalysis' => $payloadFor(AnalysisType::PostRunSpeech),
             'insightTechnical' => $payloadFor(AnalysisType::RunInsightTechnical),
             'insightSplits' => $payloadFor(AnalysisType::RunInsightSplits),

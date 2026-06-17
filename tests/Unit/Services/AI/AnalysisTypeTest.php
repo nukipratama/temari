@@ -36,7 +36,10 @@ it('flags only the connected + chained kinds wired so far', function (AnalysisTy
 })->with([
     'weekly recap (pilot)' => [AnalysisType::WeeklyRecap, true],
     'monthly recap (wired)' => [AnalysisType::MonthlyRecap, true],
-    'post-run speech (not yet wired)' => [AnalysisType::PostRunSpeech, false],
+    'post-run speech (per-activity chain)' => [AnalysisType::PostRunSpeech, true],
+    'run insight technical (per-activity chain)' => [AnalysisType::RunInsightTechnical, true],
+    'run insight splits (per-activity chain)' => [AnalysisType::RunInsightSplits, true],
+    'run insight zones (per-activity chain)' => [AnalysisType::RunInsightZones, true],
     'card flavor (standalone)' => [AnalysisType::CardFlavor, false],
     'briefing headline (standalone)' => [AnalysisType::BriefingHeadline, false],
 ]);

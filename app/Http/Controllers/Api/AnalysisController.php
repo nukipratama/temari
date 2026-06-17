@@ -52,12 +52,14 @@ class AnalysisController extends Controller
         // including a Done non-head row reached by a hand-crafted POST, resumes
         // the earliest unfilled link forward so re-narrating mid-history never
         // desyncs the later blocks that quoted its old narrative.
+        $resuming = false;
         if ($analysisType->isChained()
             && ! $this->isChainHeadRegenerate($user, $analysisType, $subjectId, $discriminator, $existing)
         ) {
             $resume = $this->earliestUnfilledChainLink($user, $analysisType);
             if ($resume !== null) {
                 [$subjectId, $discriminator, $existing] = $resume;
+                $resuming = true;
             }
         }
 
@@ -76,12 +78,16 @@ class AnalysisController extends Controller
             }
         }
 
+        // Resume = forward-fill only: dispatch the earliest unfilled link without
+        // invalidating, so already-Done sibling rows of a resumed activity group
+        // are never flipped back to Pending and re-billed. A head regenerate (or a
+        // standalone kind's "Baca ulang") invalidates to force a fresh narration.
         $row = $service->request(
             subjectOrType: $analysisType->subjectType(),
             subjectId: $subjectId,
             type: $analysisType,
             discriminator: $discriminator,
-            invalidate: true,
+            invalidate: ! $resuming,
         );
 
         return $this->payload($row, $analysisType, $subjectId, $discriminator);
@@ -107,6 +113,10 @@ class AnalysisController extends Controller
         return match ($type) {
             AnalysisType::WeeklyRecap => $subjectId === $this->weeklyChainHeadId($user),
             AnalysisType::MonthlyRecap => $discriminator !== null && $discriminator === $this->monthlyChainHeadMonth($user),
+            AnalysisType::PostRunSpeech,
+            AnalysisType::RunInsightTechnical,
+            AnalysisType::RunInsightSplits,
+            AnalysisType::RunInsightZones => $subjectId === Activity::latestIdForUser($user->id),
             default => false,
         };
     }
@@ -126,6 +136,10 @@ class AnalysisController extends Controller
         return match ($type) {
             AnalysisType::WeeklyRecap => $this->earliestUnfilledWeeklyLink($user),
             AnalysisType::MonthlyRecap => $this->earliestUnfilledMonthlyLink($user),
+            AnalysisType::PostRunSpeech,
+            AnalysisType::RunInsightTechnical,
+            AnalysisType::RunInsightSplits,
+            AnalysisType::RunInsightZones => $this->earliestUnfilledActivityLink($user, $type),
             default => null,
         };
     }
@@ -179,6 +193,41 @@ class AnalysisController extends Controller
         }
 
         return [$user->id, $earliest->discriminator, $earliest];
+    }
+
+    /**
+     * The per-activity chain's earliest unfilled (not Done) link for the clicked
+     * type. The chain is keyed by the Activity id (discriminator null) and
+     * ordered by start_date_local, so this walks the user's activities oldest
+     * first for the first one whose clicked-type row is not Done, resuming the
+     * group from there. Returns null when every activity's row is already Done
+     * (the clicked row is then used as-is, which the head-regenerate path
+     * handles).
+     *
+     * @return array{0: int, 1: string|null, 2: \App\Models\AI\Analysis|null}|null
+     */
+    private function earliestUnfilledActivityLink(User $user, AnalysisType $type): ?array
+    {
+        $earliest = Activity::query()
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activities.user_id', $user->id)
+            ->whereNotNull('activity_details.start_date_local')
+            ->whereDoesntHave('analyses', fn ($query) => $query
+                ->where('analysis_type', $type)
+                ->where('status', AnalysisStatus::Done))
+            ->orderBy('activity_details.start_date_local')
+            ->select('activities.id')
+            ->first();
+
+        if ($earliest === null) {
+            return null;
+        }
+
+        $existing = Analysis::query()
+            ->forSubject(Activity::class, (int) $earliest->id, $type)
+            ->first();
+
+        return [(int) $earliest->id, null, $existing];
     }
 
     /** The WeeklySnapshot id of the user's latest completed running week, or null. */

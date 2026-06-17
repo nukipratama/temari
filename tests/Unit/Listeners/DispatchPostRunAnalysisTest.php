@@ -222,6 +222,55 @@ it('refreshes the rule-based trend caption on every run of the day (free, no LLM
     Carbon::setTestNow();
 });
 
+it('backfill never falls into the filler branch (group rows stay non-Done)', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $backfill = analyzedActivity('2026-05-20 06:00:00');
+
+    fire($backfill);
+
+    // Backfill stages Pending then dispatches; never the create-and-fill (Done)
+    // branch that would inject rule-based prose into the connected chain.
+    $row = Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $backfill->id)
+        ->where('analysis_type', AnalysisType::PostRunSpeech)
+        ->firstOrFail();
+    expect($row->status)->not->toBe(AnalysisStatus::Done);
+    Carbon::setTestNow();
+});
+
+it('backfill kickoff dispatches the user earliest Pending group, not the just-ingested run', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    // An older run already staged Pending (e.g. an earlier ingest), still awaiting the chain.
+    $older = analyzedActivity('2026-05-10 06:00:00');
+    app(AnalysisService::class)->requestActivityGroupDeferred($older);
+
+    Bus::fake();
+    // A newer backfilled run is now ingested.
+    $newer = analyzedActivity('2026-05-20 06:00:00', $older->user_id);
+    fire($newer);
+
+    // The kickoff re-kicks the user's earliest Pending group (the older run).
+    Bus::assertDispatched(
+        AnalyzeActivityJob::class,
+        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $older->id,
+    );
+    Carbon::setTestNow();
+});
+
+it('steady-state (fresh run) dispatches the activity group immediately', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $fresh = analyzedActivity('2026-06-10 06:00:00');
+
+    fire($fresh);
+
+    Bus::assertDispatched(
+        AnalyzeActivityJob::class,
+        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $fresh->id,
+    );
+    Carbon::setTestNow();
+});
+
 it('no-ops when the activity was deleted before the queued listener ran', function (): void {
     $activity = analyzedActivity();
     $id = $activity->id;

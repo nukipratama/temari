@@ -49,6 +49,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
         try {
             $this->finalizePending($pending, $service, $this->generateAll($subject));
+            $this->afterGroupDone($service);
         } catch (Throwable $e) {
             $this->settleFailure(
                 $e,
@@ -97,6 +98,20 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
                 $service->markDone($row, $payload[$key]);
             }
         });
+    }
+
+    /**
+     * Hook fired once the whole group's rows are marked Done. Connected +
+     * chained group narrators override this to dispatch the next chronological
+     * group in their chain (predecessor-group-Done-before-successor-group). The
+     * group-level analogue of {@see AnalyzeRowJob::afterDone}. No-op by default,
+     * so standalone group narrators keep their independent behavior. Overrides
+     * must be best-effort (swallow their own errors) so a chain-advance failure
+     * never flips the already-Done, already-billed group back to Failed.
+     */
+    protected function afterGroupDone(AnalysisService $service): void
+    {
+        //
     }
 
     /**

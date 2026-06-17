@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -25,8 +27,29 @@ function captureResumeRequests(array &$captured): AnalysisService
 
             return new Analysis();
         });
+    // Per-activity chains advance through the group helper, not request().
+    $service->shouldReceive('requestActivityGroup')
+        ->andReturnUsing(function (App\Models\Activity $activity, bool $invalidate = false, ?int $delaySeconds = null) use (&$captured): void {
+            $captured[] = ['subjectOrType' => Activity::class, 'subjectId' => $activity->id, 'type' => AnalysisType::PostRunSpeech, 'discriminator' => null, 'invalidate' => $invalidate];
+        });
 
     return $service;
+}
+
+/** Seed an activity for $user dated $startDate whose post-run speech is Pending. */
+function pendingActivityChainLink(User $user, string $startDate): Activity
+{
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse($startDate)]);
+    Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    return $activity;
 }
 
 it('re-kicks the earliest Pending weekly link per user with invalidate:false', function (): void {
@@ -123,6 +146,25 @@ it('resumes both weekly and monthly chains in one sweep', function (): void {
     expect(array_column($captured, 'type'))
         ->toContain(AnalysisType::WeeklyRecap)
         ->toContain(AnalysisType::MonthlyRecap);
+});
+
+it('re-kicks the earliest Pending per-activity group per user', function (): void {
+    $user = User::factory()->create();
+    $earliest = pendingActivityChainLink($user, '2026-05-01 06:00:00');
+    // A later Pending run must NOT be the one resumed (earliest wins).
+    pendingActivityChainLink($user, '2026-05-10 06:00:00');
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureResumeRequests($captured));
+
+    $this->artisan('ai:resume-chains')
+        ->expectsOutputToContain('Resumed 1 chains.')
+        ->assertSuccessful();
+
+    expect($captured)->toHaveCount(1)
+        ->and($captured[0]['subjectOrType'])->toBe(Activity::class)
+        ->and($captured[0]['subjectId'])->toBe($earliest->id)
+        ->and($captured[0]['invalidate'])->toBeFalse();
 });
 
 it('skips chains with no Pending links (Done/Failed are left alone)', function (): void {

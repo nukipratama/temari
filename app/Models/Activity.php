@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Scope;
+use App\Models\AI\Analysis;
 use App\Models\Scopes\AnalyzedScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use Override;
 
@@ -96,6 +98,24 @@ class Activity extends Model
     }
 
     /**
+     * The id of the user's latest run by `start_date_local` (the head of the
+     * per-activity narration chain), or null when the user has no dated run.
+     * Single source of truth for "latest run", shared by the run-detail page
+     * and the chain-aware analysis trigger.
+     */
+    public static function latestIdForUser(int $userId): ?int
+    {
+        $id = self::query()
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activities.user_id', $userId)
+            ->whereNotNull('activity_details.start_date_local')
+            ->orderByDesc('activity_details.start_date_local')
+            ->value('activities.id');
+
+        return $id === null ? null : (int) $id;
+    }
+
+    /**
      * @return HasOne<ActivityDetail, $this>
      */
     public function detail(): HasOne
@@ -125,6 +145,18 @@ class Activity extends Model
     public function personalRecords(): HasMany
     {
         return $this->hasMany(PersonalRecord::class);
+    }
+
+    /**
+     * The per-activity narration rows (post_run speech + run insights), keyed by
+     * the polymorphic subject. Lets the connected + chained activity pipeline
+     * query a run's group state (e.g. earliest Pending link of a user's chain).
+     *
+     * @return MorphMany<Analysis, $this>
+     */
+    public function analyses(): MorphMany
+    {
+        return $this->morphMany(Analysis::class, 'subject');
     }
 
     /**

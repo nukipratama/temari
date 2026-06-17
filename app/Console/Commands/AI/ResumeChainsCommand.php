@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\AI;
 
+use App\Jobs\AI\AnalyzeActivityJob;
+use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
@@ -14,7 +16,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('ai:resume-chains')]
-#[Description('Daily safety net: re-kick the earliest Pending link of every connected chain (weekly + monthly) per user')]
+#[Description('Daily safety net: re-kick the earliest Pending link of every connected chain (weekly + monthly + per-activity) per user')]
 class ResumeChainsCommand extends Command
 {
     /**
@@ -27,11 +29,44 @@ class ResumeChainsCommand extends Command
      */
     public function handle(AnalysisService $service): int
     {
-        $resumed = $this->resumeWeekly($service) + $this->resumeMonthly($service);
+        $resumed = $this->resumeWeekly($service)
+            + $this->resumeMonthly($service)
+            + $this->resumePerActivity($service);
 
         $this->info("Resumed {$resumed} chains.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Per-activity chains: the user's earliest activity (by start_date_local)
+     * whose narration group is still Pending. Dispatching it (invalidate:false)
+     * re-kicks the group; AnalyzeActivityJob then walks forward. Includes demo,
+     * which keeps its per-activity rows rule-based seeded (so a demo user rarely
+     * has Pending activity groups), and any real user whose backfill paused.
+     */
+    private function resumePerActivity(AnalysisService $service): int
+    {
+        $userIds = Activity::query()
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->whereNotNull('activity_details.start_date_local')
+            ->whereHas('analyses', fn ($query) => $query
+                ->where('analysis_type', AnalysisType::PostRunSpeech)
+                ->where('status', AnalysisStatus::Pending))
+            ->distinct()
+            ->pluck('activities.user_id');
+
+        $resumed = 0;
+        foreach ($userIds as $userId) {
+            $earliest = AnalyzeActivityJob::earliestPendingActivityForUser((int) $userId);
+            if ($earliest === null) {
+                continue;
+            }
+            $service->requestActivityGroup($earliest, invalidate: false);
+            $resumed++;
+        }
+
+        return $resumed;
     }
 
     /**

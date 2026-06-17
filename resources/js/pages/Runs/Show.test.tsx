@@ -106,6 +106,7 @@ function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
             storyLine={storyLine}
             speechAnalysis={speechAnalysis()}
             {...insightDefaults}
+            isChainHead
             pastYou={null}
             {...overrides}
         />,

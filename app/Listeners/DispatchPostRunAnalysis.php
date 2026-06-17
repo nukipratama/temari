@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Events\ActivityIngested;
+use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\WeeklySnapshot;
@@ -47,10 +48,11 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $user = $activity->user;
         $detail = $activity->detail;
         $today = Carbon::today()->toDateString();
-        $delaySec = $this->backfillDelaySeconds($activity, $detail);
+        $isBackfill = $this->isBackfill($detail);
+        $delaySec = $isBackfill ? $this->backfillDelaySeconds($activity) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
 
-        $this->analysisService->requestActivityGroup($activity, delaySeconds: $delaySec);
+        $this->dispatchActivityGroup($activity, $isBackfill, $delaySec);
 
         // Daily cadence: when the ingested run is today's, refresh the whole
         // daily AI set so each block narrates with every run done so far today.
@@ -108,23 +110,53 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
     /**
      * Activities started more than `ai.backfill_threshold_hours` ago are
-     * treated as backfill — their cascade gets staggered behind any other
-     * backfilled cascades queued in the last 2 hours for this user. Fresh
-     * runs (or activities with no start timestamp) bypass the cache and
-     * dispatch immediately at delay=0.
+     * treated as backfill. A null start timestamp is steady-state (dispatch
+     * now), since the chronological chain has no place to slot an undated run.
      */
-    private function backfillDelaySeconds(Activity $activity, ActivityDetail $detail): int
+    private function isBackfill(ActivityDetail $detail): bool
     {
         $startedAt = $detail->start_date_local;
         if ($startedAt === null) {
-            return 0;
+            return false;
         }
 
         $thresholdHours = (int) config('ai.backfill_threshold_hours', 24);
-        if (Carbon::now()->diffInHours($startedAt, absolute: true) < $thresholdHours) {
-            return 0;
+
+        return Carbon::now()->diffInHours($startedAt, absolute: true) >= $thresholdHours;
+    }
+
+    /**
+     * Backfilled (old) runs stage their narration group Pending and let the
+     * chain narrate them one activity at a time, oldest first: each ingest
+     * stages its own group, and the kickoff dispatches the user's earliest
+     * Pending group, whose AnalyzeActivityJob then walks forward. Dispatching
+     * the staged earliest (invalidate:false) keeps it ceiling-safe (a tripped
+     * cost ceiling is a clean no-op, never the filler branch). Steady-state
+     * (fresh) runs keep the existing single immediate dispatch + graceful
+     * prev-lookup (the prior activity is already Done).
+     */
+    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, int $delaySec): void
+    {
+        if (! $isBackfill) {
+            $this->analysisService->requestActivityGroup($activity);
+
+            return;
         }
 
+        $this->analysisService->requestActivityGroupDeferred($activity);
+
+        $earliest = AnalyzeActivityJob::earliestPendingActivityForUser($activity->user_id);
+        if ($earliest !== null) {
+            $this->analysisService->requestActivityGroup($earliest, invalidate: false, delaySeconds: $delaySec);
+        }
+    }
+
+    /**
+     * A backfilled cascade gets staggered behind any other backfilled cascades
+     * queued in the last 2 hours for this user.
+     */
+    private function backfillDelaySeconds(Activity $activity): int
+    {
         $staggerSec = max(1, (int) config('ai.backfill_stagger_seconds', 360));
 
         // The slot read-modify-write must be atomic per user: two concurrent

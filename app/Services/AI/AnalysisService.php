@@ -106,6 +106,21 @@ class AnalysisService
         $this->dispatchGroup(AnalyzeActivityJob::class, $activity->id, null, $invalidate, $delaySeconds);
     }
 
+    /**
+     * Stage the per-activity narration group as Pending without dispatching, the
+     * group analogue of {@see self::requestDeferred()}. Backfilled (old)
+     * activities stage their group here so the chain narrates them one activity
+     * at a time (oldest first) via the kickoff + AnalyzeActivityJob propagation,
+     * rather than firing a parallel burst on ingest. The rows stay visible to the
+     * UI (empty state) until the chain reaches them.
+     */
+    public function requestActivityGroupDeferred(Activity $activity): void
+    {
+        foreach (AnalyzeActivityJob::groupedTypes() as $type) {
+            $this->requestDeferred(AnalyzeActivityJob::subjectType(), $activity->id, $type);
+        }
+    }
+
     public function requestBriefingGroup(User $user, string $discriminator, bool $invalidate = false, ?int $delaySeconds = null): void
     {
         $this->dispatchGroup(AnalyzeBriefingJob::class, $user->id, $discriminator, $invalidate, $delaySeconds);

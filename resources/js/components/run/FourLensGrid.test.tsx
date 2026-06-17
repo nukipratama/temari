@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import FourLensGrid from './FourLensGrid';
 import type { AnalysisPayload } from '@/types/inertia';
 
@@ -15,27 +15,32 @@ const defaultProps = {
 };
 
 describe('FourLensGrid', () => {
-    beforeEach(() => {
-        render(<FourLensGrid {...defaultProps} />);
-    });
-
     it('renders the four lens cards with their labels', () => {
+        render(<FourLensGrid {...defaultProps} isChainHead />);
         expect(screen.getByText('Cerita lari ini')).toBeInTheDocument();
         expect(screen.getByText('Terjemahan teknis')).toBeInTheDocument();
         expect(screen.getByText('Split paling seru')).toBeInTheDocument();
         expect(screen.getByText('Zona HR')).toBeInTheDocument();
     });
 
-    it('renders the "Baca ulang semua" button', () => {
+    it('renders analysis content when status is done', () => {
+        render(<FourLensGrid {...defaultProps} isChainHead />);
+        expect(screen.getByText('Cerita lari ini.')).toBeInTheDocument();
+    });
+
+    it('shows the head-only "Baca ulang semua" button on the chain head', () => {
+        render(<FourLensGrid {...defaultProps} isChainHead />);
         expect(screen.getByText(/Baca ulang semua/i)).toBeInTheDocument();
     });
 
-    it('renders analysis content when status is done', () => {
-        expect(screen.getByText('Cerita lari ini.')).toBeInTheDocument();
+    it('hides the "Baca ulang semua" button on a historical (non-head) run', () => {
+        render(<FourLensGrid {...defaultProps} />);
+        expect(screen.queryByText(/Baca ulang semua/i)).not.toBeInTheDocument();
     });
 
     it('disables the bulk trigger button while pending', () => {
         globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof fetch;
+        render(<FourLensGrid {...defaultProps} isChainHead />);
         fireEvent.click(screen.getByText(/Baca ulang semua/i).closest('button') as Element);
         expect(screen.getByText(/Lagi dibaca/i)).toBeInTheDocument();
     });

@@ -142,14 +142,19 @@ enum AnalysisType: string
      * user's chain rather than narrating the clicked row in isolation, and only
      * the chain head may regenerate. See AnalysisController::trigger.
      *
-     * WeeklyRecap + MonthlyRecap are wired so far; later slices flip
-     * PostRunSpeech, RunInsight*, DailyGreeting, and BriefingMascotVoice on.
+     * WeeklyRecap + MonthlyRecap + the per-activity group (PostRunSpeech +
+     * RunInsight*) are wired so far; later slices flip DailyGreeting and
+     * BriefingMascotVoice on.
      */
     public function isChained(): bool
     {
         return match ($this) {
             self::WeeklyRecap,
-            self::MonthlyRecap => true,
+            self::MonthlyRecap,
+            self::PostRunSpeech,
+            self::RunInsightTechnical,
+            self::RunInsightSplits,
+            self::RunInsightZones => true,
             default => false,
         };
     }

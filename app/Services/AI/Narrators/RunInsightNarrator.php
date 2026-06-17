@@ -6,8 +6,10 @@ namespace App\Services\AI\Narrators;
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Services\AI\AnalysisType;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Context\ActivityNarrationContext;
+use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -15,6 +17,8 @@ use Illuminate\Support\Carbon;
 
 class RunInsightNarrator
 {
+    use ReadsPreviousActivityNarrative;
+
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Tugas: 3 catatan interpretasi sesi lari, masing-masing 2-3 kalimat,
         maksimal 55 kata per catatan:
@@ -59,6 +63,12 @@ class RunInsightNarrator
             perlambat pace atau tambah run-walk."
 
         Tetap dari sudut pandang aku (Temari) yang mengamati pengguna.
+
+        KESINAMBUNGAN: kalau prev_narrative ada (catatan teknis lari sebelumnya),
+        lanjutkan benang ceritanya, tunjukkan progres atau perubahan dari sesi itu
+        ke sesi ini, dan variasikan cara membuka. Jangan mengulang kalimat yang
+        sama persis. Kalau prev_narrative null (lari pertama), tulis berdiri
+        sendiri tanpa menyinggung lari sebelumnya.
 
         KONTEKS HISTORIS (pakai kalau ada, jangan dipaksakan kalau null):
         - recent_baseline_28d: rata-rata 28 hari terakhir (pace, HR, decoupling).
@@ -136,6 +146,11 @@ class RunInsightNarrator
             'weather_humidity_pct' => $detail->weather_humidity_pct,
             'training_load' => $this->trainingLoadContext($activity, $asOf),
             'recent_baseline_28d' => $this->baseline->forUserAsOf($activity->user_id, $asOf, $activity->id),
+            'prev_narrative' => $this->previousActivityNarrative(
+                $activity,
+                $detail,
+                AnalysisType::RunInsightTechnical,
+            ),
         ];
     }
 

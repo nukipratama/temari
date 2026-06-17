@@ -179,3 +179,75 @@ it('shared retry config: tries=3, backoff=[10, 60]', function (): void {
     expect($job->tries)->toBe(3)
         ->and($job->backoff)->toBe([10, 60]);
 });
+
+/**
+ * Seed an activity for $user with a staged-Pending narration group at $startDate,
+ * the chain shape a backfill produces (rows Pending, awaiting the chain).
+ */
+function pendingActivityGroup(User $user, string $startDate): Activity
+{
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse($startDate),
+        'distance' => 5000.0,
+        'moving_time' => 1500,
+    ]);
+    StoryLine::factory()->create([
+        'activity_id' => $activity->id,
+        'user_id' => $user->id,
+        'kind' => StoryLine::KIND_POST_RUN,
+        'mood' => 'nyala',
+    ]);
+    foreach (AnalyzeActivityJob::groupedTypes() as $type) {
+        Analysis::factory()->create([
+            'subject_type' => Activity::class,
+            'subject_id' => $activity->id,
+            'analysis_type' => $type,
+            'discriminator' => null,
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }
+
+    return $activity;
+}
+
+it('advances the chain to the next chronological Pending activity group on completion', function (): void {
+    config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
+    config()->set('azure_openai.api_key', 'fake');
+
+    $user = User::factory()->create();
+    $first = pendingActivityGroup($user, '2026-05-01 06:00:00');
+    $next = pendingActivityGroup($user, '2026-05-03 06:00:00');
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldReceive('generate')->andReturn('nice run');
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+    mockInsightNarrator(['technical' => 't', 'splits' => 's', 'zones' => 'z']);
+
+    Illuminate\Support\Facades\Bus::fake();
+    (new AnalyzeActivityJob($first->id))->handle(app(AnalysisService::class));
+
+    // The next chronological activity's group is dispatched as the chain link.
+    Illuminate\Support\Facades\Bus::assertDispatched(
+        AnalyzeActivityJob::class,
+        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $next->id,
+    );
+});
+
+it('does not advance the chain when no later activity group is Pending', function (): void {
+    config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
+    config()->set('azure_openai.api_key', 'fake');
+
+    $user = User::factory()->create();
+    $only = pendingActivityGroup($user, '2026-05-01 06:00:00');
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldReceive('generate')->andReturn('nice run');
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+    mockInsightNarrator(['technical' => 't', 'splits' => 's', 'zones' => 'z']);
+
+    Illuminate\Support\Facades\Bus::fake();
+    (new AnalyzeActivityJob($only->id))->handle(app(AnalysisService::class));
+
+    Illuminate\Support\Facades\Bus::assertNotDispatched(AnalyzeActivityJob::class);
+});

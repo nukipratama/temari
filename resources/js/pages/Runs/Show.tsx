@@ -74,6 +74,8 @@ interface ShowProps {
     insightTechnical: AnalysisPayload;
     insightSplits: AnalysisPayload;
     insightZones: AnalysisPayload;
+    /** This run is the head of the per-activity narration chain (latest run). */
+    isChainHead: boolean;
     pastYou: PastYouMatch | null;
 }
 
@@ -86,6 +88,7 @@ export default function RunsShow({
     insightTechnical,
     insightSplits,
     insightZones,
+    isChainHead,
     pastYou,
 }: Readonly<ShowProps>) {
     const summary = (detail.stream_summary ?? {}) as Record<string, unknown>;
@@ -190,6 +193,7 @@ export default function RunsShow({
                             terjemahan={insightTechnical}
                             split={insightSplits}
                             hr={insightZones}
+                            isChainHead={isChainHead}
                         />
                     </div>
 

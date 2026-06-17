@@ -462,6 +462,116 @@ it('chained monthly_recap regenerate on a Done NON-head month resumes the chain 
     Carbon::setTestNow();
 });
 
+/**
+ * An activity owned by $user dated $startDate with its post-run speech row in
+ * $status, used to exercise the per-activity chain in the controller.
+ */
+function activityWithSpeech(User $user, string $startDate, AnalysisStatus $status, ?string $content = null): Activity
+{
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse($startDate)]);
+    $factory = $content !== null ? Analysis::factory()->done($content) : Analysis::factory();
+    $factory->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+        'status' => $status,
+        'generated_at' => $content !== null ? Carbon::now()->subHour() : null,
+    ]);
+
+    return $activity;
+}
+
+it('chained post_run_speech retry resumes the earliest unfilled run, not the clicked one', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
+    $clicked = activityWithSpeech($user, '2026-05-10 06:00:00', AnalysisStatus::Failed);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/post_run_speech/{$clicked->id}/trigger")
+        ->assertOk();
+
+    // The payload reflects the resumed (earliest) run, not the clicked one.
+    expect($response->json('subject_id'))->toBe($earliest->id);
+
+    Carbon::setTestNow();
+});
+
+it('chained post_run_speech head regenerate (Done latest run) re-narrates that exact run', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    // An earlier still-Pending run exists, but the Done latest run (head) is regenerated.
+    activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
+    $head = activityWithSpeech($user, '2026-05-20 06:00:00', AnalysisStatus::Done, 'latest speech');
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/post_run_speech/{$head->id}/trigger")
+        ->assertOk();
+
+    // A Done clicked head run is a head regenerate → stays on the clicked run.
+    expect($response->json('subject_id'))->toBe($head->id);
+
+    Carbon::setTestNow();
+});
+
+it('chained post_run_speech regenerate on a Done NON-head run resumes the chain instead (server guard)', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
+    $clickedMid = activityWithSpeech($user, '2026-05-10 06:00:00', AnalysisStatus::Done, 'mid speech');
+    // The actual head (latest run) sits after the clicked mid run.
+    activityWithSpeech($user, '2026-05-20 06:00:00', AnalysisStatus::Done, 'head speech');
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/post_run_speech/{$clickedMid->id}/trigger")
+        ->assertOk();
+
+    // A Done non-head POST must NOT re-narrate itself; it resumes the earliest unfilled run.
+    expect($response->json('subject_id'))->toBe($earliest->id);
+
+    Carbon::setTestNow();
+});
+
+it('chained post_run_speech resume does not re-bill an already-Done sibling row of the resumed group', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    // Enable auto-dispatch so the group invalidation path actually runs; without
+    // it dispatchGroup short-circuits and the re-bill bug can't manifest.
+    config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
+    config()->set('azure_openai.api_key', 'fake');
+    $user = User::factory()->create();
+
+    // Earliest activity: its post-run speech is Pending but a run-insight sibling
+    // is already Done (a partially-filled group). Resuming must forward-fill the
+    // Pending row only, never flip the Done sibling back to Pending (re-bill).
+    $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
+    $doneSibling = Analysis::factory()->done('zona sudah dibaca')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $earliest->id,
+        'analysis_type' => AnalysisType::RunInsightZones,
+        'discriminator' => null,
+        'generated_at' => Carbon::now()->subHour(),
+    ]);
+    $clicked = activityWithSpeech($user, '2026-05-10 06:00:00', AnalysisStatus::Failed);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/post_run_speech/{$clicked->id}/trigger")
+        ->assertOk();
+
+    expect($doneSibling->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($doneSibling->fresh()->content)->toBe('zona sudah dibaca');
+
+    Carbon::setTestNow();
+});
+
 it('handles every AnalysisType in subject authorization (no UnhandledMatchError)', function (): void {
     $user = User::factory()->create();
     $controller = new AnalysisController();

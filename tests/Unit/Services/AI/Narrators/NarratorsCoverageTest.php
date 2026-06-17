@@ -12,6 +12,8 @@ use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
@@ -106,6 +108,55 @@ it('PostRunSpeechNarrator resolves the dominant zone from a populated stream sum
     $caller = fakeCaller(json_encode(['speech' => 'Base solid'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller);
     expect($narrator->generate($a, $d->fresh(), 'nyala'))->toBe('Base solid');
+});
+
+/**
+ * Seed an earlier activity for $user with a Done analysis of $kind so the
+ * per-activity continuity lookup has a predecessor to read.
+ */
+function priorActivityWithDoneAnalysis(User $user, AnalysisType $kind, string $content, string $startDate = '2026-05-09'): Activity
+{
+    $prior = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($prior)->create([
+        'start_date_local' => Carbon::parse($startDate),
+        'distance' => 4000.0,
+        'moving_time' => 1200,
+    ]);
+    \App\Models\AI\Analysis::factory()->done($content)->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $prior->id,
+        'analysis_type' => $kind,
+        'discriminator' => null,
+    ]);
+
+    return $prior;
+}
+
+it('PostRunSpeechNarrator feeds prev_narrative from the prior activity post-run when Done', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'Lari kemarin enteng banget.');
+
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala');
+
+    expect($context['prev_narrative'])->toBe('Lari kemarin enteng banget.');
+});
+
+it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done post-run', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    // A prior activity exists but its post-run is only Pending, so it is not a usable predecessor.
+    $prior = Activity::factory()->for($a->user)->analyzed()->create();
+    ActivityDetail::factory()->for($prior)->create(['start_date_local' => Carbon::parse('2026-05-09')]);
+    \App\Models\AI\Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $prior->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala');
+
+    expect($context['prev_narrative'])->toBeNull();
 });
 
 // ── DailyGreetingNarrator ─────────────────────────────────────────────
@@ -229,6 +280,25 @@ it('RunInsightNarrator feeds the 28-day baseline + training load into the contex
     ])
         ->and($context['training_load'])->not->toBeNull()
         ->and($context['training_load'])->toHaveKeys(['acute_7d', 'chronic_42d', 'form', 'form_status']);
+});
+
+it('RunInsightNarrator feeds prev_narrative from the prior activity technical insight when Done', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    priorActivityWithDoneAnalysis($a->user, AnalysisType::RunInsightTechnical, 'Cadence kemarin 168, mulai membaik.');
+
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline());
+    $context = $narrator->context($a, $d->fresh());
+
+    expect($context['prev_narrative'])->toBe('Cadence kemarin 168, mulai membaik.');
+});
+
+it('RunInsightNarrator leaves prev_narrative null when no prior technical insight is Done', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline());
+    $context = $narrator->context($a, $d->fresh());
+
+    expect($context['prev_narrative'])->toBeNull();
 });
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
