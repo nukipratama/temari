@@ -8,7 +8,8 @@ declare(strict_types=1);
 
 return [
     // Azure resource endpoint (host only), e.g. https://my-res.openai.azure.com.
-    // AzureOpenAIClient appends /openai/deployments/{deployment}/chat/completions.
+    // AzureOpenAIClient appends /openai/v1; the deployment is sent as the request
+    // body `model`, not in the URL path.
     'uri' => (string) env('AZURE_OPENAI_URI', ''),
     'api_key' => (string) env('AZURE_OPENAI_API_KEY', ''),
     'timeout' => (int) env('AZURE_OPENAI_TIMEOUT', 15),

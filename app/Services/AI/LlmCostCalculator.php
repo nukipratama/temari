@@ -14,8 +14,8 @@ use Throwable;
  * Pure $ cost calculator. Resolves a recorded deployment to its model (config
  * azure_openai.deployments), then to a per-1M rate from the Azure Retail Prices
  * API. The retail map is fetched lazily and cached with a TTL; on a cold cache
- * the first cost computation (e.g. an /ai-usage view) refreshes it, falling back
- * to the config seed when the fetch is unavailable. Unknown models cost 0.0.
+ * the first cost computation (e.g. an /ai-usage view) refreshes it. When the
+ * fetch is unavailable rates are absent and costs read 0.0. Unknown models cost 0.0.
  */
 class LlmCostCalculator
 {
@@ -39,7 +39,9 @@ class LlmCostCalculator
 
     private bool $usingRefreshed = false;
 
-    public function __construct(private readonly AzureRetailPrices $retail) {}
+    public function __construct(private readonly AzureRetailPrices $retail)
+    {
+    }
 
     /**
      * Cost in USD for a single call's token split against the deployment's rate.
@@ -83,8 +85,7 @@ class LlmCostCalculator
 
     /**
      * True when rates came from the refreshed retail map (cache hit or a fresh
-     * fetch) rather than the config seed. Drives the 'azure-retail' vs
-     * 'config-fallback' price-source signal.
+     * fetch). Drives the 'azure-retail' vs 'unavailable' price-source signal.
      */
     public function isUsingRefreshedPrices(): bool
     {
@@ -121,8 +122,8 @@ class LlmCostCalculator
 
     /**
      * A cached refreshed map when present, otherwise a fresh retail fetch cached
-     * for PRICE_TTL_DAYS. A failed/empty fetch returns [] (so rateFor falls back
-     * to the config seed) and is not cached, so the next computation retries.
+     * for PRICE_TTL_DAYS. A failed/empty fetch returns [] (so rateFor finds no
+     * rate) and is not cached, so the next computation retries.
      *
      * @return array<string, array{input_per_1m: float, output_per_1m: float, currency: string}>
      */
@@ -154,14 +155,38 @@ class LlmCostCalculator
     private function fetchPrices(): array
     {
         try {
-            /** @var list<string> $models */
-            $models = array_values(array_unique(array_values((array) config('azure_openai.deployments', []))));
-
-            return $this->retail->fetch($models);
+            return $this->retail->fetch($this->billableModels());
         } catch (Throwable $e) {
             Log::warning('azure_prices.fetch_failed', ['error' => $e->getMessage()]);
 
             return [];
         }
+    }
+
+    /**
+     * The set of models that can actually be billed: the primary deployment and
+     * every per-narrator override, each resolved through the deployment->model
+     * map (a deployment not in the map is assumed to already be a model name).
+     * A model not in this set is never fetched, so it would silently cost 0.0.
+     *
+     * @return list<string>
+     */
+    private function billableModels(): array
+    {
+        /** @var array<string, string> $map */
+        $map = (array) config('azure_openai.deployments', []);
+
+        /** @var list<string> $deployments */
+        $deployments = array_merge(
+            [(string) config('azure_openai.deployment')],
+            array_values((array) config('azure_openai.narrators', [])),
+        );
+
+        $models = array_map(
+            static fn (string $deployment): string => (string) ($map[$deployment] ?? $deployment),
+            $deployments,
+        );
+
+        return array_values(array_unique(array_filter($models, static fn (string $model): bool => $model !== '')));
     }
 }

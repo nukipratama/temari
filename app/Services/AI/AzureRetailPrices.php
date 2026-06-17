@@ -17,8 +17,8 @@ class AzureRetailPrices
 
     /**
      * Per-1M input/output rates for the given models. Models with no matching
-     * retail meter are omitted (the caller falls back to the config seed).
-     * Throws on transport/HTTP failure so the caller can keep the seed.
+     * retail meter are omitted. Throws on transport/HTTP failure so the caller
+     * can decide how to degrade.
      *
      * @param  list<string>  $models
      * @return array<string, array{input_per_1m: float, output_per_1m: float, currency: string}>
