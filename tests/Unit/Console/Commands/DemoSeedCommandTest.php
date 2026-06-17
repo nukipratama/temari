@@ -44,7 +44,7 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         ->and(StoryLine::query()->where('user_id', $user->id)->where('kind', StoryLine::KIND_DAILY_GREETING)->count())
         ->toBe(1)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(27)
-        ->and(PersonalRecord::query()->where('user_id', $user->id)->count())->toBe(10);
+        ->and(PersonalRecord::query()->where('user_id', $user->id)->count())->toBe(11);
 
     // Rarity ladder — the seeded dataset spans up to legendary.
     $cardQuery = RunCard::query()->whereHas('activity', fn ($q) => $q->where('user_id', $user->id));
