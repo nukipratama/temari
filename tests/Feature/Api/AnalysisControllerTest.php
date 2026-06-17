@@ -273,6 +273,7 @@ it('chained weekly_recap retry resumes the earliest unfilled link, not the click
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $earliest->id,
         'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
         'status' => AnalysisStatus::Pending,
     ]);
     $clicked = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
@@ -280,6 +281,7 @@ it('chained weekly_recap retry resumes the earliest unfilled link, not the click
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $clicked->id,
         'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
     ]);
 
     $response = $this->actingAs($user)
@@ -303,6 +305,7 @@ it('chained weekly_recap head regenerate (Done clicked row) re-narrates that exa
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $earlier->id,
         'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
         'status' => AnalysisStatus::Pending,
     ]);
     $head = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
@@ -310,6 +313,7 @@ it('chained weekly_recap head regenerate (Done clicked row) re-narrates that exa
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $head->id,
         'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
         'generated_at' => Carbon::now()->subHour(),
     ]);
 
@@ -334,6 +338,7 @@ it('chained weekly_recap regenerate on a Done NON-head row resumes the chain ins
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $earliest->id,
         'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
         'status' => AnalysisStatus::Pending,
     ]);
     $midDone = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 4]);
@@ -341,6 +346,7 @@ it('chained weekly_recap regenerate on a Done NON-head row resumes the chain ins
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $midDone->id,
         'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
         'generated_at' => Carbon::now()->subHour(),
     ]);
     // The actual head (latest runs>0 week) sits after the clicked mid row.

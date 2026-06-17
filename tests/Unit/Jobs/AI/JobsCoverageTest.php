@@ -265,6 +265,7 @@ it('AnalyzeWeeklyRecapJob advances the chain to the next Pending week on complet
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $nextWeek->id,
         'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
         'status' => AnalysisStatus::Pending,
     ]);
 

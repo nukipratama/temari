@@ -300,6 +300,7 @@ it('WeeklyRecapNarrator feeds prev_narrative when the prior week recap is Done',
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $prior->id,
         'analysis_type' => \App\Services\AI\AnalysisType::WeeklyRecap,
+        'discriminator' => null,
     ]);
     $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
 
@@ -315,6 +316,7 @@ it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not ye
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $prior->id,
         'analysis_type' => \App\Services\AI\AnalysisType::WeeklyRecap,
+        'discriminator' => null,
         'status' => \App\Services\AI\AnalysisStatus::Pending,
     ]);
     $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
