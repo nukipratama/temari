@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Jobs\AI;
 
+use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\StoryLine;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
+use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
 use Override;
 
@@ -55,7 +57,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
         $speech = app(PostRunSpeechNarrator::class)
             ->generate($subject, $detail, $storyLine->mood);
 
-        $insights = app(RuleBasedInsightBuilder::class)->runInsights($subject, $detail);
+        $insights = $this->runInsights($subject);
 
         return [
             AnalysisType::PostRunSpeech->value => $speech,
@@ -63,5 +65,24 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             AnalysisType::RunInsightSplits->value => $insights['splits'],
             AnalysisType::RunInsightZones->value => $insights['zones'],
         ];
+    }
+
+    /**
+     * LLM run-insight (gpt-5.2 with historical context), degrading to the
+     * deterministic rule-based builder if the model is unavailable rather than
+     * failing the whole activity group (which also holds the post-run speech).
+     *
+     * @return array{technical: string, splits: string, zones: string}
+     */
+    private function runInsights(Activity $activity): array
+    {
+        $detail = $activity->detail;
+        assert($detail !== null);
+
+        try {
+            return app(RunInsightNarrator::class)->generate($activity, $detail);
+        } catch (UnavailableException|TransientUpstreamException) {
+            return app(RuleBasedInsightBuilder::class)->runInsights($activity, $detail);
+        }
     }
 }

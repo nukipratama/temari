@@ -44,17 +44,4 @@ class AzureOpenAIClient
 
         return (string) ($perKind ?: config('azure_openai.deployment'));
     }
-
-    /**
-     * Whether $kind's deployment accepts a custom `temperature`. Reasoning/codex
-     * deployments only allow the default and 400 on anything else, so we omit it.
-     */
-    public function supportsTemperature(?string $kind): bool
-    {
-        return ! in_array(
-            $this->deploymentFor($kind),
-            (array) config('azure_openai.reasoning_deployments', []),
-            true,
-        );
-    }
 }

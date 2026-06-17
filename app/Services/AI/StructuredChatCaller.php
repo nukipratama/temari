@@ -61,14 +61,9 @@ final readonly class StructuredChatCaller
                 ['role' => 'user', 'content' => json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)],
             ],
             'max_output_tokens' => $effectiveMaxTokens,
+            'temperature' => $options->temperature,
             'text' => ['format' => self::textFormat($schemaName, $requiredKeys)],
         ];
-
-        // Reasoning/codex deployments only accept the default temperature; chat
-        // models get the narrator's tuned value.
-        if ($this->azure->supportsTemperature($kind)) {
-            $payload['temperature'] = $options->temperature;
-        }
 
         $response = $this->createResponse($kind, $payload, $startedAt);
 

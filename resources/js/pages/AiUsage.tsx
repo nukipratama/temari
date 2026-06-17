@@ -57,6 +57,8 @@ interface DeploymentRow {
     total: number;
     calls: number;
     cost: number;
+    inputPer1m: number | null;
+    outputPer1m: number | null;
 }
 
 interface KindOption {
@@ -235,13 +237,18 @@ export default function AiUsage({
                     title="Breakdown per Deployment"
                     subtitle="Biaya per model Azure yang dipanggil."
                     tone="accent"
-                    columns={['Deployment', 'Panggilan', 'Prompt', 'Completion', 'Total', 'Biaya']}
-                    minWidth={560}
+                    columns={['Deployment', 'Harga in/out /1M', 'Panggilan', 'Prompt', 'Completion', 'Total', 'Biaya']}
+                    minWidth={640}
                     rows={byDeployment}
                     rowKey={(row) => row.deployment}
                     renderRow={(row) => (
                         <>
                             <Td className="font-medium text-ink">{row.deployment}</Td>
+                            <Td className="whitespace-nowrap text-ink-2">
+                                {row.inputPer1m === null || row.outputPer1m === null
+                                    ? '—'
+                                    : `${formatCost(row.inputPer1m, currency)} / ${formatCost(row.outputPer1m, currency)}`}
+                            </Td>
                             <Td>{fmt(row.calls)}</Td>
                             <Td>{fmt(row.prompt)}</Td>
                             <Td>{fmt(row.completion)}</Td>

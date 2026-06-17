@@ -28,7 +28,7 @@ const baseProps = {
         { user_id: 2, user_name: 'Bob', prompt: 100, completion: 50, total: 150, calls: 1 },
     ],
     byDeployment: [
-        { deployment: 'gpt-4o-mini', prompt: 600, completion: 280, total: 880, calls: 3, cost: 0.05 },
+        { deployment: 'nuki-mini', prompt: 600, completion: 280, total: 880, calls: 3, cost: 0.05, inputPer1m: 0.15, outputPer1m: 0.6 },
     ],
     daily: [
         { day: '2026-05-18', prompt: 300, completion: 150, total: 450, calls: 1, cost: 0.03 },
@@ -57,7 +57,7 @@ describe('AiUsage page', () => {
         // Total tokens (880) appears in the KPI tile and the by-deployment row.
         expect(screen.getAllByText('880').length).toBeGreaterThan(0);
         // Per-deployment row
-        expect(screen.getByText('gpt-4o-mini')).toBeInTheDocument();
+        expect(screen.getByText('nuki-mini')).toBeInTheDocument();
         // Per-kind rows
         expect(screen.getByText('run-insight')).toBeInTheDocument();
         expect(screen.getByText('briefing')).toBeInTheDocument();
@@ -72,7 +72,36 @@ describe('AiUsage page', () => {
         render(<AiUsage {...baseProps} />);
 
         expect(screen.getByText('Breakdown per Deployment')).toBeInTheDocument();
-        expect(screen.getByText('gpt-4o-mini')).toBeInTheDocument();
+        expect(screen.getByText('nuki-mini')).toBeInTheDocument();
+    });
+
+    it('shows the per-deployment input/output rate in the deployment table', () => {
+        render(
+            <AiUsage
+                {...baseProps}
+                byDeployment={[
+                    { deployment: 'nuki-5.2', prompt: 600, completion: 280, total: 880, calls: 3, cost: 0.05, inputPer1m: 1.75, outputPer1m: 14 },
+                ]}
+            />,
+        );
+
+        // The rate cell is the 2nd column: "$in / $out per 1M".
+        const rateCell = screen.getByText('nuki-5.2').closest('tr')?.querySelector('td:nth-child(2)');
+        expect(rateCell?.textContent).toMatch(/14/);
+    });
+
+    it('shows an em dash for a deployment with no configured rate', () => {
+        render(
+            <AiUsage
+                {...baseProps}
+                byDeployment={[
+                    { deployment: 'mystery-deploy', prompt: 10, completion: 5, total: 15, calls: 1, cost: 0, inputPer1m: null, outputPer1m: null },
+                ]}
+            />,
+        );
+
+        const rateCell = screen.getByText('mystery-deploy').closest('tr')?.querySelector('td:nth-child(2)');
+        expect(rateCell?.textContent).toBe('—');
     });
 
     it('renders the budget gauge with ceiling and a list-price caveat', () => {

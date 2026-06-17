@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Log;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    config()->set('azure_openai.deployments', []);
     config()->set('azure_openai.prices', [
         'gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00],
         'gpt-4o-mini' => ['input_per_1m' => 0.15, 'output_per_1m' => 0.60],
@@ -27,10 +26,9 @@ it('scales cost proportionally for sub-million token counts', function (): void 
     expect((new LlmCostCalculator())->costFor('gpt-4o', 500, 200))->toEqualWithDelta(0.00325, 1e-9);
 });
 
-it('maps an arbitrary deployment name to its model for pricing', function (): void {
-    config()->set('azure_openai.deployments', ['nuki-5.2' => 'gpt-4o']);
+it('prices a deployment directly from the config rate map', function (): void {
+    config()->set('azure_openai.prices', ['nuki-5.2' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]);
 
-    // nuki-5.2 is priced as gpt-4o.
     expect((new LlmCostCalculator())->costFor('nuki-5.2', 1_000_000, 1_000_000))->toBe(12.50);
 });
 
@@ -68,8 +66,8 @@ it('returns zero daily cost when there is no usage today', function (): void {
     expect((new LlmCostCalculator())->dailyCost())->toBe(0.0);
 });
 
-it('exposes the resolved rate and null for an unconfigured model', function (): void {
-    config()->set('azure_openai.deployments', ['nuki-5.2' => 'gpt-4o']);
+it('exposes the configured rate and null for an unconfigured deployment', function (): void {
+    config()->set('azure_openai.prices', ['nuki-5.2' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]);
 
     expect((new LlmCostCalculator())->priceFor('nuki-5.2'))->toMatchArray(['input_per_1m' => 2.50, 'output_per_1m' => 10.00])
         ->and((new LlmCostCalculator())->priceFor('mystery'))->toBeNull();

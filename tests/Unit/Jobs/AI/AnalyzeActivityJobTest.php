@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\AI\UnavailableException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -12,10 +13,24 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
+use App\Services\AI\Narrators\RunInsightNarrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
+
+/**
+ * Binds a stub RunInsightNarrator so the activity job's LLM insight call is
+ * deterministic; without it the job would hit the real Azure client.
+ *
+ * @param  array{technical: string, splits: string, zones: string}  $insights
+ */
+function mockInsightNarrator(array $insights): void
+{
+    $mock = Mockery::mock(RunInsightNarrator::class);
+    $mock->shouldReceive('generate')->andReturn($insights);
+    app()->instance(RunInsightNarrator::class, $mock);
+}
 
 function seedActivityForJob(): Activity
 {
@@ -42,6 +57,7 @@ it('writes speech + 3 insight rows Done from one job run', function (): void {
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
     $speechMock->shouldReceive('generate')->andReturn('nice run');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
+    mockInsightNarrator(['technical' => 'tech text', 'splits' => 'splits text', 'zones' => 'zones text']);
 
     (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
 
@@ -52,16 +68,39 @@ it('writes speech + 3 insight rows Done from one job run', function (): void {
         ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
 
     expect($rows)->toHaveCount(4)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('nice run');
-
-    // Rule-based insight types: content is deterministic from activity data.
-    foreach ([AnalysisType::RunInsightTechnical, AnalysisType::RunInsightSplits, AnalysisType::RunInsightZones] as $type) {
-        expect($rows[$type->value]->content)->not->toBeEmpty()
-            ->and($rows[$type->value]->status)->toBe(AnalysisStatus::Done);
-    }
+        ->and($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('nice run')
+        ->and($rows[AnalysisType::RunInsightTechnical->value]->content)->toBe('tech text')
+        ->and($rows[AnalysisType::RunInsightSplits->value]->content)->toBe('splits text')
+        ->and($rows[AnalysisType::RunInsightZones->value]->content)->toBe('zones text');
 
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Done);
+    }
+});
+
+it('degrades run-insight to rule-based content when the LLM is unavailable', function (): void {
+    $activity = seedActivityForJob();
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldReceive('generate')->andReturn('nice run');
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+
+    // LLM run-insight throws: the job should fall back to the rule-based builder,
+    // not fail the whole group.
+    $insightMock = Mockery::mock(RunInsightNarrator::class);
+    $insightMock->shouldReceive('generate')->andThrow(new UnavailableException('llm down'));
+    app()->instance(RunInsightNarrator::class, $insightMock);
+
+    (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
+
+    $rows = Analysis::query()
+        ->where('subject_id', $activity->id)
+        ->get()
+        ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
+
+    foreach ([AnalysisType::RunInsightTechnical, AnalysisType::RunInsightSplits, AnalysisType::RunInsightZones] as $type) {
+        expect($rows[$type->value]->status)->toBe(AnalysisStatus::Done)
+            ->and($rows[$type->value]->content)->not->toBeEmpty();
     }
 });
 

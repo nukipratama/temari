@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Pure $ cost calculator over the manual price map (config azure_openai.prices,
- * keyed by model). A recorded deployment is resolved to its model via the
- * deployments map, then to a per-1M rate. Unpriced models cost 0.0.
+ * keyed by deployment name — the value recorded in ai_token_usages.model). An
+ * unpriced deployment costs 0.0.
  */
 class LlmCostCalculator
 {
@@ -64,28 +64,16 @@ class LlmCostCalculator
     }
 
     /**
-     * The model a deployment is priced as: the config deployment->model map,
-     * defaulting to the deployment name when it is not listed.
-     */
-    public function modelFor(string $deployment): string
-    {
-        // Index the map directly rather than via config() dot-notation, since
-        // deployment/model names can contain dots (e.g. nuki-5.2, gpt-3.5-turbo).
-        $deployments = (array) config('azure_openai.deployments', []);
-
-        return (string) ($deployments[$deployment] ?? $deployment);
-    }
-
-    /**
-     * The per-1M rate for a deployment (resolved through its model), or null when
-     * the model has no configured rate.
+     * The per-1M rate for a deployment, or null when it has no configured rate.
      *
      * @return array{input_per_1m: float, output_per_1m: float, currency: string}|null
      */
     public function priceFor(string $deployment): ?array
     {
+        // Index the map directly rather than via config() dot-notation, since
+        // deployment names can contain dots (e.g. nuki-5.2).
         $prices = (array) config('azure_openai.prices', []);
-        $rate = $prices[$this->modelFor($deployment)] ?? null;
+        $rate = $prices[$deployment] ?? null;
 
         if (! is_array($rate) || ! isset($rate['input_per_1m'], $rate['output_per_1m'])) {
             return null;

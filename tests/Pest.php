@@ -36,7 +36,6 @@ pest()->beforeEach(function (): void {
         $mock = Mockery::mock(AzureOpenAIClient::class);
         $mock->shouldReceive('client')->andReturnUsing(fn () => new ClientFake([]));
         $mock->shouldReceive('deploymentFor')->andReturn('test-deployment');
-        $mock->shouldReceive('supportsTemperature')->andReturn(true);
 
         return $mock;
     });

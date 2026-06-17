@@ -18,13 +18,6 @@ return [
     // Primary/default deployment (model) name — the fallback for every narrator.
     'deployment' => (string) env('AZURE_OPENAI_DEPLOYMENT', ''),
 
-    // Deployments whose model rejects a custom `temperature` (reasoning/codex
-    // models, e.g. *-codex, o-series). The request omits `temperature` for these
-    // so the model's default is used; everything else gets the narrator's value.
-    'reasoning_deployments' => [
-        'nuki-5.1-codex-mini',
-    ],
-
     // Per-narrator model override (deployment name only; host + key are shared).
     // Each defaults to the general AZURE_OPENAI_DEPLOYMENT, so an unset kind just
     // uses the primary model.
@@ -44,22 +37,15 @@ return [
         'card_flavor' => (string) env('AZURE_OPENAI_CARD_FLAVOR_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
     ],
 
-    // Map each Azure deployment name to its underlying model. Pricing resolves
-    // deployment -> model. A deployment not listed is assumed to already be a
-    // model name. Recorded usage keys on the deployment name.
-    'deployments' => [
-        'nuki-5.2' => 'gpt-5.2',
-        'nuki-5.1-codex-mini' => 'gpt-5.1-codex-mini',
-    ],
-
-    // Manual per-1M-token USD rates keyed by MODEL, for the /ai-usage cost
-    // estimate. Azure's retail price catalog (Foundry Models) uses cryptic,
-    // region/tier-specific meter names that can't be matched reliably, so these
-    // are maintained by hand from https://azure.microsoft.com/pricing/details/
-    // cognitive-services/openai-service/. Values below are Global Standard.
+    // Manual per-1M-token USD rates keyed by DEPLOYMENT name (the value recorded
+    // in ai_token_usages.model), for the /ai-usage cost estimate. Azure's retail
+    // price catalog (Foundry Models) uses cryptic, region/tier-specific meter
+    // names that can't be matched reliably, so these are maintained by hand from
+    // https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/.
+    // Values are Global Standard; map the deployment to its model's published rate.
     'prices' => [
-        'gpt-5.2' => ['input_per_1m' => 1.75, 'output_per_1m' => 14.00],
-        'gpt-5.1-codex-mini' => ['input_per_1m' => 1.50, 'output_per_1m' => 6.00],
+        'nuki-5.2' => ['input_per_1m' => 1.75, 'output_per_1m' => 14.00],       // gpt-5.2
+        'nuki-5.4-mini' => ['input_per_1m' => 0.75, 'output_per_1m' => 4.50],   // gpt-5.4-mini
     ],
 
     // Nullable USD/day spend ceiling. null = no ceiling (auto-dispatch never

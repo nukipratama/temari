@@ -52,7 +52,6 @@ function callerForClient(ClientFake $client): StructuredChatCaller
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
-    $azure->shouldReceive('supportsTemperature')->andReturn(true);
 
     return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
 }
@@ -82,6 +81,17 @@ it('returns the decoded payload when all required keys are present', function ()
         ->call('kind', 'sys', [], 'schema', ['headline']);
 
     expect($payload)->toBe(['headline' => 'hi']);
+});
+
+it('sends the narrator-tuned temperature in every request', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
+
+    callerForClient($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(temperature: 0.42));
+
+    $client->assertSent(
+        OpenAI\Resources\Responses::class,
+        fn (string $method, array $params): bool => $method === 'create' && $params['temperature'] === 0.42,
+    );
 });
 
 it('records a token-usage row on successful call', function (): void {
@@ -132,7 +142,6 @@ it('flags truncated=true when the response stays length-truncated after the sing
 it('does not record usage when Azure call fails', function (): void {
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
-    $azure->shouldReceive('supportsTemperature')->andReturn(true);
     $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
 
     $caller = new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
@@ -152,7 +161,6 @@ it('routes the per-kind client and records the resolved deployment', function ()
     // for every kind (deployment lives in the body, not the URL).
     $azure->shouldReceive('deploymentFor')->with('briefing')->andReturn('gpt-4o-briefing');
     $azure->shouldReceive('client')->andReturn($client);
-    $azure->shouldReceive('supportsTemperature')->andReturn(true);
 
     (new StructuredChatCaller($azure, app(TokenUsageRecorder::class)))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
@@ -166,7 +174,6 @@ it('records null deployment when the resolved deployment is empty', function ():
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('deploymentFor')->andReturn('');
     $azure->shouldReceive('client')->andReturn($client);
-    $azure->shouldReceive('supportsTemperature')->andReturn(true);
 
     (new StructuredChatCaller($azure, app(TokenUsageRecorder::class)))
         ->call('briefing', 'sys', [], 'schema', ['headline']);

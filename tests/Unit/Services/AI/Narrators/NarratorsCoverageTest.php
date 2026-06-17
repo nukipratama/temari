@@ -24,6 +24,7 @@ use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendCaptionNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
+use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\Vibe;
@@ -47,7 +48,6 @@ function fakeCaller(string $content): StructuredChatCaller
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
-    $azure->shouldReceive('supportsTemperature')->andReturn(true);
 
     return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
 }
@@ -140,7 +140,7 @@ it('RunInsightNarrator returns 3-string payload on valid JSON', function (): voi
         'splits' => 'splits text',
         'zones' => 'zones text',
     ], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller);
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline());
     $payload = $narrator->generate($a, $d);
     expect($payload['technical'])->toBe('tech text')
         ->and($payload['splits'])->toBe('splits text')
@@ -150,14 +150,14 @@ it('RunInsightNarrator returns 3-string payload on valid JSON', function (): voi
 it('RunInsightNarrator throws on missing keys', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['technical' => 'only one'], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller);
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline());
     $narrator->generate($a, $d);
 })->throws(UnavailableException::class);
 
 it('RunInsightNarrator throws on non-JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller('not json');
-    $narrator = new RunInsightNarrator($caller);
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline());
     $narrator->generate($a, $d);
 })->throws(UnavailableException::class, 'non-JSON');
 
@@ -167,7 +167,7 @@ it('RunInsightNarrator does not fatal when the stream summary is null', function
     $caller = fakeCaller(json_encode([
         'technical' => 't', 'splits' => 's', 'zones' => 'z',
     ], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller);
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline());
     $payload = $narrator->generate($a, $d->fresh());
     expect($payload['zones'])->toBe('z');
 });
@@ -184,7 +184,8 @@ it('RunInsightNarrator feeds training-load + pace-variability + zone-minutes int
         ],
     ]);
 
-    $context = (new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}')))->context($d->fresh());
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline());
+    $context = $narrator->context($a, $d->fresh());
 
     expect($context['trimp'])->toBe(92.4)
         ->and($context['pace_variability_sec'])->toBe(11.3)
@@ -196,11 +197,38 @@ it('RunInsightNarrator leaves the new context fields null when no stream summary
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => null, 'trimp_edwards' => null]);
 
-    $context = (new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}')))->context($d->fresh());
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline());
+    $context = $narrator->context($a, $d->fresh());
 
     expect($context['trimp'])->toBeNull()
         ->and($context['pace_variability_sec'])->toBeNull()
         ->and($context['time_in_zone_min'])->toBeNull();
+});
+
+it('RunInsightNarrator feeds the 28-day baseline + training load into the context', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    // A prior run 5 days earlier seeds the rolling baseline + TRIMP history.
+    $prior = Activity::factory()->for($a->user)->analyzed()->create();
+    ActivityDetail::factory()->for($prior)->create([
+        'start_date_local' => Carbon::today()->subDays(5),
+        'distance' => 10000.0,
+        'moving_time' => 3600, // 6:00/km
+        'average_heartrate' => 150.0,
+        'trimp_edwards' => 80.0,
+        'stream_summary' => ['decoupling_pct' => 6.0, 'time_in_zone_min' => ['Z2' => 40]],
+    ]);
+
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline());
+    $context = $narrator->context($a, $d->fresh());
+
+    expect($context['recent_baseline_28d'])->toMatchArray([
+        'runs' => 1,
+        'avg_pace_sec_per_km' => 360,
+        'avg_hr' => 150,
+        'avg_decoupling_pct' => 6.0,
+    ])
+        ->and($context['training_load'])->not->toBeNull()
+        ->and($context['training_load'])->toHaveKeys(['acute_7d', 'chronic_42d', 'form', 'form_status']);
 });
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────

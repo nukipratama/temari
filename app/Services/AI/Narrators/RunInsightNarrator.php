@@ -9,6 +9,9 @@ use App\Models\ActivityDetail;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Context\ActivityNarrationContext;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\RunBaseline;
+use App\Services\Run\Metrics\TrainingLoad;
+use Illuminate\Support\Carbon;
 
 class RunInsightNarrator
 {
@@ -57,6 +60,20 @@ class RunInsightNarrator
 
         Tetap dari sudut pandang aku (Temari) yang mengamati pengguna.
 
+        KONTEKS HISTORIS (pakai kalau ada, jangan dipaksakan kalau null):
+        - recent_baseline_28d: rata-rata 28 hari terakhir (pace, HR, decoupling).
+          Bandingkan sesi ini dengan baseline-nya: lebih cepat/lambat, HR lebih
+          tinggi/rendah, decoupling membaik/memburuk. Sebut angkanya kalau bantu,
+          mis. "pace 5:30, lebih kencang dari rata-rata 5:48 sebulan terakhir".
+        - training_load: acute_7d (beban 7 hari), chronic_42d (kebugaran 42
+          hari), form (chronic - acute), form_status (fresh/optimal/fatigued/
+          overreaching). Pakai buat saran recovery yang spesifik di bagian zones:
+          form minus besar atau fatigued/overreaching = lagi numpuk lelah, arahin
+          easy/rest; fresh = segar, boleh dorong sesi kualitas.
+        - per_km bisa membawa avg_hr per km. Kalau ada, baca cardiac drift antar
+          km (HR merangkak naik di km akhir walau pace mirip = mulai lelah atau
+          dehidrasi), kaitkan ke decoupling.
+
         ANTI-PATTERN:
         - Data dump tanpa interpretasi ("cadence 172, HR 148") -- selalu
           jelaskan apa artinya.
@@ -64,8 +81,11 @@ class RunInsightNarrator
         - Menggurui. Observasi, bukan ceramah.
         PROMPT;
 
-    public function __construct(private readonly StructuredChatCaller $caller)
-    {
+    public function __construct(
+        private readonly StructuredChatCaller $caller,
+        private readonly TrainingLoad $trainingLoad,
+        private readonly RunBaseline $baseline,
+    ) {
     }
 
     /**
@@ -76,7 +96,7 @@ class RunInsightNarrator
         $decoded = $this->caller->call(
             kind: 'run_insight',
             systemPrompt: self::SYSTEM_PROMPT,
-            context: $this->context($detail),
+            context: $this->context($activity, $detail),
             schemaName: 'TemariRunInsight',
             requiredKeys: ['technical', 'splits', 'zones'],
             options: new ChatCallOptions(temperature: 0.7, userId: $activity->user_id, maxTokens: 1024),
@@ -90,10 +110,11 @@ class RunInsightNarrator
     }
 
     /** @return array<string, mixed> */
-    public function context(ActivityDetail $detail): array
+    public function context(Activity $activity, ActivityDetail $detail): array
     {
         $summary = $detail->streamSummary();
         $shared = ActivityNarrationContext::fromDetail($detail);
+        $asOf = $detail->start_date_local ?? Carbon::now();
 
         return [
             'distance_km' => $shared->distanceKm(2),
@@ -113,6 +134,29 @@ class RunInsightNarrator
             'ascent_m' => $summary['ascent_m'] ?? null,
             'weather_temp_c' => $shared->weatherTempC,
             'weather_humidity_pct' => $detail->weather_humidity_pct,
+            'training_load' => $this->trainingLoadContext($activity, $asOf),
+            'recent_baseline_28d' => $this->baseline->forUserAsOf($activity->user_id, $asOf, $activity->id),
+        ];
+    }
+
+    /**
+     * The user's fitness/fatigue state as of the run, trimmed to the fields the
+     * narrator interprets. Null when there is no TRIMP history to roll.
+     *
+     * @return array{acute_7d: float, chronic_42d: float, form: float, form_status: string}|null
+     */
+    private function trainingLoadContext(Activity $activity, Carbon $asOf): ?array
+    {
+        $load = $this->trainingLoad->summary($activity->user, $asOf);
+        if ($load === null) {
+            return null;
+        }
+
+        return [
+            'acute_7d' => $load['atl_7d'],
+            'chronic_42d' => $load['ctl_42d'],
+            'form' => $load['form'],
+            'form_status' => $load['form_status'],
         ];
     }
 }

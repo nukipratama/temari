@@ -30,7 +30,7 @@ class TokenUsageReport
      * @return array{
      *     totals: array{prompt:int, completion:int, total:int, calls:int, truncated_calls:int, cost:float},
      *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float}>,
-     *     byDeployment: list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
+     *     byDeployment: list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>,
      *     byUser: list<array{user_id:int, user_name:string|null, prompt:int, completion:int, total:int, calls:int}>,
      *     daily: list<array{day:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
      *     availableKinds: list<array{value:string, label:string}>,
@@ -151,7 +151,7 @@ class TokenUsageReport
      * Per-deployment (model) breakdown with $ cost, ordered by total tokens.
      *
      * @param  Builder  $baseQuery
-     * @return list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float}>
+     * @return list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>
      */
     private function byDeployment(Builder $baseQuery): array
     {
@@ -172,7 +172,6 @@ class TokenUsageReport
             $rate = $this->costCalculator->priceFor($deployment);
             $byDeployment[] = [
                 'deployment' => $deployment,
-                'model' => $this->costCalculator->modelFor($deployment),
                 'prompt' => $prompt,
                 'completion' => $completion,
                 'total' => (int) $row->total,
