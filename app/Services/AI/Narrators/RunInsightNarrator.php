@@ -99,7 +99,7 @@ class RunInsightNarrator
             context: $this->context($activity, $detail),
             schemaName: 'TemariRunInsight',
             requiredKeys: ['technical', 'splits', 'zones'],
-            options: new ChatCallOptions(temperature: 0.7, userId: $activity->user_id, maxTokens: 1024),
+            options: new ChatCallOptions(temperature: 0.7, userId: $activity->user_id, maxTokens: 2048),
         );
 
         return [
