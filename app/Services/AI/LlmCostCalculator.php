@@ -95,29 +95,18 @@ class LlmCostCalculator
 
     /**
      * Resolve the per-1M rate for a deployment: deployment -> model (config map,
-     * defaulting to the deployment name) -> refreshed retail rate, else the seed.
+     * defaulting to the deployment name) -> retail rate, or null when unpriced.
      *
      * @return array{input_per_1m: float, output_per_1m: float, currency: string}|null
      */
     private function rateFor(string $deployment): ?array
     {
-        // Index the maps directly rather than via config() dot-notation, since
+        // Index the map directly rather than via config() dot-notation, since
         // deployment/model names can contain dots (e.g. nuki-5.2, gpt-3.5-turbo).
         $deployments = (array) config('azure_openai.deployments', []);
         $model = (string) ($deployments[$deployment] ?? $deployment);
 
-        $seed = (array) config('azure_openai.prices', []);
-        $rate = $this->priceMap()[$model] ?? ($seed[$model] ?? null);
-
-        if (! is_array($rate) || ! isset($rate['input_per_1m'], $rate['output_per_1m'])) {
-            return null;
-        }
-
-        return [
-            'input_per_1m' => (float) $rate['input_per_1m'],
-            'output_per_1m' => (float) $rate['output_per_1m'],
-            'currency' => (string) ($rate['currency'] ?? 'USD'),
-        ];
+        return $this->priceMap()[$model] ?? null;
     }
 
     /**
@@ -166,7 +155,7 @@ class LlmCostCalculator
     {
         try {
             /** @var list<string> $models */
-            $models = array_keys((array) config('azure_openai.prices', []));
+            $models = array_values(array_unique(array_values((array) config('azure_openai.deployments', []))));
 
             return $this->retail->fetch($models);
         } catch (Throwable $e) {

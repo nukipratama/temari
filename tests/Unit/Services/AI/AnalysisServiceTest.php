@@ -326,8 +326,9 @@ it('does not dispatch when Azure config is missing', function (): void {
 
 it('does not dispatch when today\'s LLM cost exceeds the daily ceiling', function (): void {
     config(['azure_openai.daily_cost_ceiling' => 1.0]);
-    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00, 'currency' => 'USD']]]);
-    Cache::forget((string) config('azure_openai.price_cache_key'));
+    Cache::forever((string) config('azure_openai.price_cache_key'), [
+        'gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00, 'currency' => 'USD'],
+    ]);
 
     // 1M input @ 2.50/1M = $2.50 spent today, over the $1.00 ceiling.
     TokenUsage::query()->create([
@@ -348,8 +349,9 @@ it('does not dispatch when today\'s LLM cost exceeds the daily ceiling', functio
 
 it('still dispatches when today\'s LLM cost is under the daily ceiling', function (): void {
     config(['azure_openai.daily_cost_ceiling' => 100.0]);
-    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00, 'currency' => 'USD']]]);
-    Cache::forget((string) config('azure_openai.price_cache_key'));
+    Cache::forever((string) config('azure_openai.price_cache_key'), [
+        'gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00, 'currency' => 'USD'],
+    ]);
 
     TokenUsage::query()->create([
         'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,

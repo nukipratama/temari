@@ -36,25 +36,14 @@ return [
         'card_flavor' => (string) env('AZURE_OPENAI_CARD_FLAVOR_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
     ],
 
-    // Map your (arbitrary) Azure deployment names to their underlying model, so
-    // pricing can look up the right rate. A deployment not listed here is assumed
-    // to already be a model name. Recorded usage keys on the deployment name.
+    // Map each Azure deployment name to its underlying model. Pricing resolves
+    // deployment -> model, and the set of models here is what gets priced from
+    // the Azure Retail Prices API. A deployment not listed is assumed to already
+    // be a model name. Recorded usage keys on the deployment name.
     'deployments' => [
-        // 'nuki-5.2' => 'gpt-4o',
-        // 'nuki-mini' => 'gpt-4o-mini',
+        'nuki-5.2' => 'gpt-5.2',
+        'nuki-5.1-codex-mini' => 'gpt-5.1-codex-mini',
     ],
-
-    // USD list prices per 1M tokens, keyed by MODEL. Seeded with Azure retail
-    // list prices and used when the live retail map is unavailable. LlmCostCalculator
-    // lazily refreshes the retail map into the cache (price_cache_key) with a TTL,
-    // so an /ai-usage view after the TTL lapses fetches fresh prices.
-    'prices' => [
-        'gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00, 'currency' => 'USD'],
-        'gpt-4o-mini' => ['input_per_1m' => 0.15, 'output_per_1m' => 0.60, 'currency' => 'USD'],
-    ],
-
-    // Default currency for cost roll-ups when no priced deployment is present.
-    'currency' => 'USD',
 
     // Nullable USD/day spend ceiling. null = no ceiling (auto-dispatch never
     // budget-gated). When set, AnalysisService skips dispatch once today's spend

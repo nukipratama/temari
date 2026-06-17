@@ -291,7 +291,7 @@ function BudgetGauge({ budget, priceSource }: Readonly<{ budget: Budget; priceSo
     const caveat =
         priceSource === 'azure-retail'
             ? 'Estimasi memakai harga retail Azure (list price), bukan tagihan final.'
-            : 'Harga retail Azure tidak tersedia, estimasi memakai tarif fallback dari config.';
+            : 'Harga retail Azure belum tersedia, biaya belum bisa diestimasi.';
 
     return (
         <Card as="section" tone="cream" padding="md" className="mt-6 bg-surface-elev">
