@@ -10,19 +10,19 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// 05:00 local time: refresh trend caption for active users (last 7 days).
-Schedule::command('ai:daily-trend')->dailyAt('05:00');
+// 00:01 local time: refresh trend caption for active users (last 7 days).
+Schedule::command('ai:daily-trend')->dailyAt('00:01');
 
-// 05:15: generate the daily briefing set (headline, suggestion, mascot voice,
+// 00:01: generate the daily briefing set (headline, suggestion, mascot voice,
 // featured kartu voice, greeting) for all active users. Uses invalidate=false
 // on LLM types so an earlier DispatchPostRunAnalysis run is never re-billed.
-// TrendCaption is handled separately by ai:daily-trend at 05:00.
-Schedule::command('ai:daily-briefing')->dailyAt('05:15');
+// TrendCaption is handled separately by ai:daily-trend at 00:01.
+Schedule::command('ai:daily-briefing')->dailyAt('00:01');
 
-// Monday 05:30: narrate last week's recap once per user, on final data. The
+// Monday 00:01: narrate last week's recap once per user, on final data. The
 // per-ingest cascade only stages the row Pending (weekly cadence) — this is
 // the single scheduled LLM call that fills it.
-Schedule::command('ai:weekly-recap')->weeklyOn(1, '05:30');
+Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01');
 
 // 1st of the month 05:45: same pattern for the monthly recap.
 Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45');
