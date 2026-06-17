@@ -8,6 +8,8 @@ use App\Enums\Badge;
 use App\Enums\Rarity;
 use Database\Factories\RunCardFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -61,6 +63,18 @@ class RunCard extends Model
         }
 
         return $counts;
+    }
+
+    /**
+     * Cards owned by the given user (i.e. whose source activity belongs to them).
+     *
+     * @param  Builder<RunCard>  $query
+     * @return Builder<RunCard>
+     */
+    #[Scope]
+    protected function forUser(Builder $query, int $userId): Builder
+    {
+        return $query->whereHas('activity', fn ($q) => $q->where('user_id', $userId));
     }
 
     /**

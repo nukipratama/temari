@@ -14,8 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Override;
 
 /**
@@ -150,8 +150,16 @@ class User extends Authenticatable
         return $this->hasMany(StoryLine::class);
     }
 
+    /**
+     * The first whitespace token of the Strava display name, sanitized before it
+     * flows into LLM prompts. Strips CR/LF and caps length so a hostile profile
+     * name cannot inject instructions into a narrator prompt.
+     */
     public function firstName(): string
     {
-        return explode(' ', (string) $this->name)[0];
+        $token = preg_split('/\s+/', trim((string) $this->name), 2)[0] ?? '';
+        $token = str_replace(["\r", "\n"], '', $token);
+
+        return Str::limit($token, 40, '');
     }
 }

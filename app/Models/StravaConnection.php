@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Support\Carbon;
 use Database\Factories\StravaConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -52,7 +53,8 @@ class StravaConnection extends Model
      * @param  Builder<StravaConnection>  $query
      * @return Builder<StravaConnection>
      */
-    public function scopeActive(Builder $query): Builder
+    #[Scope]
+    protected function active(Builder $query): Builder
     {
         return $query->whereNull('revoked_at');
     }

@@ -4,14 +4,26 @@ declare(strict_types=1);
 
 use App\Models\AI\TokenUsage;
 use App\Models\User;
+use App\Services\AI\LlmCostCalculator;
 use App\Services\AI\TokenUsageReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->report = new TokenUsageReport();
+    $this->report = new TokenUsageReport(new LlmCostCalculator());
+
+    // Deterministic price seed for cost math: gpt-4o = 2.50 in / 10.00 out per 1M.
+    config()->set('azure_openai.prices', [
+        'gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00, 'currency' => 'USD'],
+        'gpt-4o-mini' => ['input_per_1m' => 0.15, 'output_per_1m' => 0.60, 'currency' => 'USD'],
+    ]);
+    config()->set('azure_openai.currency', 'USD');
+    config()->set('azure_openai.daily_cost_ceiling', null);
+    config()->set('azure_openai.price_cache_key', 'azure_openai.prices.refreshed');
+    Cache::forget('azure_openai.prices.refreshed');
 });
 
 function seedReportUsage(
@@ -22,6 +34,7 @@ function seedReportUsage(
     ?int $latencyMs = null,
     bool $truncated = false,
     ?int $userId = null,
+    string $model = 'gpt-4o',
 ): void {
     TokenUsage::query()->create([
         'user_id' => $userId,
@@ -29,7 +42,7 @@ function seedReportUsage(
         'prompt_tokens' => $prompt,
         'completion_tokens' => $completion,
         'total_tokens' => $prompt + $completion,
-        'model' => 'gpt-test',
+        'model' => $model,
         'latency_ms' => $latencyMs,
         'truncated' => $truncated,
         'created_at' => $when,
@@ -47,15 +60,17 @@ it('aggregates totals + per-kind ordered by total descending, excluding out-of-r
     [$from, $to] = $range();
     $result = $this->report->build($from, $to, null);
 
-    expect($result['totals'])->toBe([
+    expect($result['totals'])->toMatchArray([
         'prompt' => 600,
         'completion' => 280,
         'total' => 880,
         'calls' => 3,
         'truncated_calls' => 1,
     ])
+        // 600 in @ 2.50/1M + 280 out @ 10.00/1M = 0.0015 + 0.0028 = 0.0043
+        ->and($result['totals']['cost'])->toEqualWithDelta(0.0043, 1e-9)
         ->and($result['byKind'])->toHaveCount(2)
-        ->and($result['byKind'][0])->toBe([
+        ->and($result['byKind'][0])->toMatchArray([
             'kind' => 'run-insight',
             'prompt' => 300,
             'completion' => 150,
@@ -65,11 +80,85 @@ it('aggregates totals + per-kind ordered by total descending, excluding out-of-r
             'avg_latency_ms' => 2400,
             'max_latency_ms' => 2400,
         ])
+        // run-insight: 300 in @ 2.50/1M + 150 out @ 10.00/1M = 0.00075 + 0.0015 = 0.00225
+        ->and($result['byKind'][0]['cost'])->toBe(0.00225)
         ->and($result['byKind'][1])->toMatchArray([
             'kind' => 'briefing',
             'avg_latency_ms' => 1000,
             'max_latency_ms' => 1200,
         ]);
+});
+
+it('computes a kind-level cost and latency rolled up across multiple deployments', function () use ($range): void {
+    // Same kind, two deployments: costs and the call-weighted latency average roll up.
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-10'), latencyMs: 1000, model: 'gpt-4o');
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-11'), latencyMs: 2000, model: 'gpt-4o-mini');
+
+    [$from, $to] = $range();
+    $result = $this->report->build($from, $to, null);
+
+    expect($result['byKind'])->toHaveCount(1)
+        // 1M in @ 2.50 (gpt-4o) + 1M in @ 0.15 (gpt-4o-mini) = 2.65
+        ->and($result['byKind'][0]['cost'])->toBe(2.65)
+        // Call-weighted average of two single-call subgroups: (1000 + 2000) / 2.
+        ->and($result['byKind'][0]['avg_latency_ms'])->toBe(1500)
+        ->and($result['byKind'][0]['max_latency_ms'])->toBe(2000);
+});
+
+it('breaks usage down by deployment with per-deployment cost', function () use ($range): void {
+    seedReportUsage('briefing', 1_000_000, 1_000_000, Carbon::parse('2026-05-10'), model: 'gpt-4o');
+    seedReportUsage('run-insight', 2_000_000, 0, Carbon::parse('2026-05-11'), model: 'gpt-4o-mini');
+
+    [$from, $to] = $range();
+    $byDeployment = collect($this->report->build($from, $to, null)['byDeployment'])->keyBy('deployment');
+
+    expect($byDeployment->get('gpt-4o'))->toMatchArray([
+        'deployment' => 'gpt-4o',
+        'prompt' => 1_000_000,
+        'completion' => 1_000_000,
+        'total' => 2_000_000,
+        'calls' => 1,
+    ])
+        // 1M in @ 2.50 + 1M out @ 10.00 = 12.50
+        ->and($byDeployment->get('gpt-4o')['cost'])->toBe(12.50)
+        // gpt-4o-mini: 2M in @ 0.15/1M = 0.30
+        ->and($byDeployment->get('gpt-4o-mini')['cost'])->toBe(0.30);
+});
+
+it('reports the budget block with null ceiling and the config currency by default', function () use ($range): void {
+    [$from, $to] = $range();
+    $result = $this->report->build($from, $to, null);
+
+    expect($result['budget'])->toMatchArray([
+        'todayCost' => 0.0,
+        'dailyCeiling' => null,
+        'currency' => 'USD',
+    ]);
+});
+
+it('surfaces a configured daily ceiling and today cost in the budget block', function () use ($range): void {
+    config()->set('azure_openai.daily_cost_ceiling', 5.0);
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), model: 'gpt-4o'); // 2.50 today
+
+    [$from, $to] = [Carbon::today()->subDay(), Carbon::today()->addDay()];
+    $result = $this->report->build($from, $to, null);
+
+    expect($result['budget']['dailyCeiling'])->toBe(5.0)
+        ->and($result['budget']['todayCost'])->toBe(2.50);
+});
+
+it('marks priceSource config-fallback when the refreshed price cache is cold', function () use ($range): void {
+    [$from, $to] = $range();
+    expect($this->report->build($from, $to, null)['priceSource'])->toBe('config-fallback');
+});
+
+it('marks priceSource azure-retail when the refreshed price cache is populated', function () use ($range): void {
+    Cache::forever('azure_openai.prices.refreshed', [
+        'gpt-4o' => ['input_per_1m' => 9.99, 'output_per_1m' => 9.99, 'currency' => 'USD'],
+    ]);
+
+    [$from, $to] = $range();
+    expect($this->report->build($from, $to, null)['priceSource'])->toBe('azure-retail');
 });
 
 it('filters by kind while leaving the daily series unfiltered', function () use ($range): void {
@@ -84,6 +173,17 @@ it('filters by kind while leaving the daily series unfiltered', function () use 
         ->and($result['totals']['total'])->toBe(150)
         // daily ignores the kind filter so it still sums both kinds.
         ->and($result['daily'][0])->toMatchArray(['day' => '2026-05-10', 'total' => 600]);
+});
+
+it('sums per-day cost across deployments in the daily series', function () use ($range): void {
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-10'), model: 'gpt-4o');       // 2.50
+    seedReportUsage('run-insight', 1_000_000, 0, Carbon::parse('2026-05-10'), model: 'gpt-4o-mini'); // 0.15
+
+    [$from, $to] = $range();
+    $daily = collect($this->report->build($from, $to, null)['daily'])->keyBy('day');
+
+    expect($daily->get('2026-05-10'))->toMatchArray(['day' => '2026-05-10', 'total' => 2_000_000])
+        ->and($daily->get('2026-05-10')['cost'])->toBe(2.65);
 });
 
 it('stitches user names from the app schema and skips system (null user_id) rows', function () use ($range): void {
@@ -139,9 +239,10 @@ it('returns zeroed totals and empty breakdowns when no rows fall in range', func
     $result = $this->report->build($from, $to, null);
 
     expect($result['totals'])->toBe([
-        'prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'truncated_calls' => 0,
+        'prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'truncated_calls' => 0, 'cost' => 0.0,
     ])
         ->and($result['byKind'])->toBe([])
+        ->and($result['byDeployment'])->toBe([])
         ->and($result['byUser'])->toBe([])
         ->and($result['daily'])->toBe([])
         ->and($result['availableKinds'])->toBe([]);

@@ -30,7 +30,11 @@ describe('RouteGlyph', () => {
         expect(container.querySelector('[data-variant="glyph"]')).not.toBeNull();
     });
 
-    it('does not throw on a malformed polyline', () => {
-        expect(() => render(<RouteGlyph rarity="rare" polyline="!!!not-a-polyline" />)).not.toThrow();
+    it('treats a single-point polyline (too short to draw) as no route and falls back to the glyph', () => {
+        // One decoded coordinate (< 2 points) cannot form a path, so projectPolyline
+        // returns null and the component drops to the glyph watermark.
+        const { container } = render(<RouteGlyph rarity="rare" polyline="_p~iF~ps|U" />);
+        expect(container.querySelector('[data-variant="route"]')).toBeNull();
+        expect(container.querySelector('[data-variant="glyph"]')).not.toBeNull();
     });
 });

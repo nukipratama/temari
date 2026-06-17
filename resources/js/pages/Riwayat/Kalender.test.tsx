@@ -60,11 +60,11 @@ describe('Kalender', () => {
         expect(screen.getByText('Min')).toBeInTheDocument();
     });
 
-    it('shows the mobile-only horizontal-scroll hint for the wide week grid', () => {
+    it('shows the phone-only horizontal-scroll hint, hidden from md up where all 7 columns fit', () => {
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         const hint = screen.getByText(/Geser buat lihat seminggu penuh/);
         expect(hint).toBeInTheDocument();
-        expect(hint.className).toContain('lg:hidden');
+        expect(hint.className).toContain('md:hidden');
     });
 
     it('renders the lifetime stats eyebrow when lifetime data is provided', () => {

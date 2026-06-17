@@ -8,6 +8,7 @@ use App\Events\ActivityIngested;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Listeners\RecordScheduledTaskRun;
 use App\Listeners\VerifyDependencies;
+use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\VerdictTimeline;
@@ -64,10 +65,13 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ScheduledTaskFinished::class, [RecordScheduledTaskRun::class, 'finished']);
         Event::listen(ScheduledTaskFailed::class, [RecordScheduledTaskRun::class, 'failed']);
 
-        // Edge basicauth (docker/Caddyfile) gates these in prod. The `?Authenticatable`
-        // param is what makes the gate accept guests — a zero-param closure 403s them.
-        Gate::define('viewPulse', fn (?Authenticatable $user = null): bool => true);
-        Gate::define('viewAiUsage', fn (?Authenticatable $user = null): bool => true);
+        // Defense in depth: edge basicauth (docker/Caddyfile) is the first gate,
+        // this app-layer allow-list is the second so a Caddy misconfig can't expose
+        // the dashboards. Local dev always passes; in prod only the seeded demo user
+        // or a configured ops email does. The `?Authenticatable` param keeps the
+        // gate callable for guests (it returns false for them outside local).
+        Gate::define('viewPulse', fn (?Authenticatable $user = null): bool => self::isOpsUser($user));
+        Gate::define('viewAiUsage', fn (?Authenticatable $user = null): bool => self::isOpsUser($user));
 
         RateLimiter::for('analysis-trigger', function (Request $request): Limit {
             $perMinute = max(1, (int) config('ai.rate_limit_per_minute', 8));
@@ -91,5 +95,31 @@ class AppServiceProvider extends ServiceProvider
         // Client-error telemetry sink. IP-keyed so a single misbehaving browser
         // (error loop) can't flood the logs.
         RateLimiter::for('client-errors', fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->ip()));
+    }
+
+    /**
+     * Allow-list predicate shared by the Horizon / Pulse / ai-usage gates. Local
+     * dev always passes. In other environments the app-layer gate only engages
+     * once `app.ops_emails` (env-driven) is configured: until then it stays open
+     * so a deploy can never lock the owner out, leaving the edge basicauth as the
+     * gate. Once configured, only those emails pass, and demo accounts are
+     * excluded because demo login is public in production.
+     */
+    public static function isOpsUser(?Authenticatable $user): bool
+    {
+        if (app()->environment('local')) {
+            return true;
+        }
+
+        /** @var list<string> $opsEmails */
+        $opsEmails = (array) config('app.ops_emails', []);
+
+        if ($opsEmails === []) {
+            return true;
+        }
+
+        return $user instanceof User
+            && ! $user->is_demo
+            && in_array($user->email, $opsEmails, true);
     }
 }

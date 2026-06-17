@@ -78,7 +78,7 @@ it('skips the demo user even with recent analyzed activity', function (): void {
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('requestBriefingGroup')->once();
-    $service->shouldReceive('request')->times(3)->andReturn(new Analysis);
+    $service->shouldReceive('request')->times(3)->andReturn(new Analysis());
     $this->app->instance(AnalysisService::class, $service);
 
     $this->artisan('ai:daily-briefing')

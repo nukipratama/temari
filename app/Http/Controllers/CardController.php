@@ -25,7 +25,7 @@ class CardController extends Controller
         $rarity = \is_string($rarity) && $rarity !== '' ? $rarity : null;
 
         $page = RunCard::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->forUser($user->id)
             ->with(['activity.detail', 'activity.postRunStoryLine'])
             ->when($rarity, fn ($q) => $q->where('rarity', $rarity))
             // Newest-first: the collection reads as a chronological feed (a filter
@@ -68,7 +68,7 @@ class CardController extends Controller
             ->first();
 
         $relatedCards = RunCard::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->forUser($user->id)
             ->with(['activity.detail', 'activity.postRunStoryLine'])
             ->where('rarity', $card->rarity)
             ->where('id', '!=', $card->id)
@@ -118,7 +118,7 @@ class CardController extends Controller
     private function featuredCard(User $user, ?string $rarity, array $editions, array $counts): ?array
     {
         $query = RunCard::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->forUser($user->id)
             ->with(['activity.detail', 'activity.postRunStoryLine']);
 
         if ($rarity !== null) {
@@ -152,7 +152,7 @@ class CardController extends Controller
     private function editionIndexMap(User $user): array
     {
         return RunCard::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->forUser($user->id)
             ->selectRaw('id, ROW_NUMBER() OVER (PARTITION BY rarity ORDER BY id) AS edition_index')
             ->pluck('edition_index', 'id')
             ->map(fn ($index): int => (int) $index)
@@ -178,7 +178,7 @@ class CardController extends Controller
     private function rarityCounts(User $user): array
     {
         $rows = RunCard::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+            ->forUser($user->id)
             ->selectRaw('rarity, COUNT(*) as total')
             ->groupBy('rarity')
             ->pluck('total', 'rarity')

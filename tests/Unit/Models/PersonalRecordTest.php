@@ -12,6 +12,14 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
+it('forUser scopes to records owned by the user', function (): void {
+    $user = User::factory()->create();
+    $mine = PersonalRecord::factory()->for($user)->create();
+    PersonalRecord::factory()->create(); // another user
+
+    expect(PersonalRecord::query()->forUser($user->id)->pluck('id')->all())->toBe([$mine->id]);
+});
+
 it('casts value_sec to float and set_at to Carbon', function (): void {
     $pr = PersonalRecord::factory()->create([
         'value_sec' => '341.82',

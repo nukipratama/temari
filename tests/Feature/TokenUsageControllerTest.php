@@ -55,6 +55,7 @@ it('renders the AiUsage page with totals + per-kind breakdown filtered by date',
                     'total' => 880,
                     'calls' => 3,
                     'truncated_calls' => 1,
+                    'cost' => 0,
                 ])
                 ->has('byKind', 2)
                 ->where('byKind.0', [
@@ -66,6 +67,7 @@ it('renders the AiUsage page with totals + per-kind breakdown filtered by date',
                     'truncated_calls' => 0,
                     'avg_latency_ms' => 2400,
                     'max_latency_ms' => 2400,
+                    'cost' => 0,
                 ])
                 ->where('byKind.1', [
                     'kind' => 'briefing',
@@ -76,7 +78,11 @@ it('renders the AiUsage page with totals + per-kind breakdown filtered by date',
                     'truncated_calls' => 1,
                     'avg_latency_ms' => 1000,
                     'max_latency_ms' => 1200,
-                ]),
+                    'cost' => 0,
+                ])
+                ->has('byDeployment')
+                ->has('budget')
+                ->has('priceSource'),
         );
 });
 
@@ -111,6 +117,7 @@ it('returns zeroed totals and empty breakdown when no rows fall within range', f
                     'total' => 0,
                     'calls' => 0,
                     'truncated_calls' => 0,
+                    'cost' => 0,
                 ])
                 ->has('byKind', 0)
                 ->has('byUser', 0),

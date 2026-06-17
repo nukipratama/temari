@@ -46,6 +46,7 @@ function structuredCaller(string $content, ?array $usage = null, string $finishR
     $client = new ClientFake([CreateResponse::fake($fakeArgs)]);
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
+    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
 
     return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
 }
@@ -58,6 +59,7 @@ function callerWithResponses(array $responses): StructuredChatCaller
     $client = new ClientFake($responses);
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
+    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
 
     return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
 }
@@ -150,6 +152,7 @@ it('flags truncated=true when the response stays length-truncated after the sing
 
 it('does not record usage when Azure call fails', function (): void {
     $azure = Mockery::mock(AzureOpenAIClient::class);
+    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
     $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
 
     $caller = new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
@@ -158,6 +161,50 @@ it('does not record usage when Azure call fails', function (): void {
         ->toThrow(UnavailableException::class);
 
     expect(TokenUsage::query()->count())->toBe(0);
+});
+
+it('routes the per-kind client and records the resolved deployment', function (): void {
+    $client = new ClientFake([
+        CreateResponse::fake([
+            'choices' => [
+                ['message' => ['role' => 'assistant', 'content' => json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR)], 'finish_reason' => 'stop'],
+            ],
+            'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15],
+        ]),
+    ]);
+
+    $azure = Mockery::mock(AzureOpenAIClient::class);
+    // The resolved deployment for this kind is the per-narrator override.
+    $azure->shouldReceive('deploymentFor')->with('briefing')->andReturn('gpt-4o-briefing');
+    $azure->shouldReceive('client')->with('briefing')->andReturn($client);
+
+    (new StructuredChatCaller($azure, app(TokenUsageRecorder::class)))
+        ->call('briefing', 'sys', [], 'schema', ['headline']);
+
+    // deploymentFor('briefing') feeds both the request 'model' and the recorded
+    // usage row; the recorded deployment proves the resolved value was used (the
+    // ->with('briefing') mock expectations prove the kind was routed through).
+    expect(TokenUsage::query()->first()->model)->toBe('gpt-4o-briefing');
+});
+
+it('records null deployment when the resolved deployment is empty', function (): void {
+    $client = new ClientFake([
+        CreateResponse::fake([
+            'choices' => [
+                ['message' => ['role' => 'assistant', 'content' => json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR)], 'finish_reason' => 'stop'],
+            ],
+            'usage' => ['prompt_tokens' => 1, 'completion_tokens' => 1, 'total_tokens' => 2],
+        ]),
+    ]);
+
+    $azure = Mockery::mock(AzureOpenAIClient::class);
+    $azure->shouldReceive('deploymentFor')->andReturn('');
+    $azure->shouldReceive('client')->andReturn($client);
+
+    (new StructuredChatCaller($azure, app(TokenUsageRecorder::class)))
+        ->call('briefing', 'sys', [], 'schema', ['headline']);
+
+    expect(TokenUsage::query()->first()->model)->toBeNull();
 });
 
 it('TokenUsageRecorder logs a warning when the DB insert throws', function (): void {

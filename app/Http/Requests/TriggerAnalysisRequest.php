@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use Override;
 use App\Services\AI\AnalysisType;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -32,6 +33,7 @@ class TriggerAnalysisRequest extends FormRequest
      *
      * @return array<string, mixed>
      */
+    #[Override]
     public function validationData(): array
     {
         return [
@@ -66,6 +68,7 @@ class TriggerAnalysisRequest extends FormRequest
      * controller did before validation was extracted, while any other invalid
      * input falls back to the framework's default 422 envelope.
      */
+    #[Override]
     protected function failedValidation(Validator $validator): void
     {
         if (array_key_exists('type', $validator->errors()->toArray())) {

@@ -9,11 +9,19 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Route;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['services.strava.webhook_verify_token' => 'super-secret-token']);
+});
+
+it('rate-limits the public webhook POST route', function (): void {
+    $route = Route::getRoutes()->getByName('strava.webhook.handle');
+
+    expect($route)->not->toBeNull()
+        ->and($route->gatherMiddleware())->toContain('throttle:60,1');
 });
 
 it('echoes the challenge back when the verify token matches', function (): void {

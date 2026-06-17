@@ -12,8 +12,7 @@ import { cn } from '@/lib/cn';
 import { pressShrink } from '@/lib/motion';
 import { kartuUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
-import { formatDuration, formatNaiveIdDate, formatKm } from '@/lib/pace';
-import { RARITY_LABELS, RARITY_ORDER, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from '@/lib/runcard';
+import { RARITY_LABELS, RARITY_ORDER, kartuPropsFromDetail } from '@/lib/runcard';
 import { memo, useCallback, useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import type {
@@ -161,22 +160,20 @@ export default function KoleksiKartu({
 /** Collection highlight hero — same layout as the homepage featured panel. */
 function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
     const detail = featured.detail;
-    const kartuProps = useMemo(() => ({
-        name: featured.special_move,
-        subtitle: detail ? `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}` : undefined,
-        km: formatKm(detail?.distance),
-        durasi: detail?.moving_time != null ? formatDuration(detail.moving_time) : '—',
-        trimp: detail?.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—',
-        rarity: featured.rarity,
-        mood: featured.mood,
-        badges: featured.badges ?? [],
-        stats: buildCardStats(detail),
-        zonePct: zonePctFromDetail(detail),
-        polyline: detail?.summary_polyline,
-        paceShape: paceShapeFromDetail(detail),
-        edition: featured.edition,
-        size: 'md' as const,
-    }), [featured, detail]);
+    const kartuProps = useMemo(() => {
+        const { subtitle, ...rest } = kartuPropsFromDetail(detail);
+        return {
+            name: featured.special_move,
+            subtitle: subtitle ?? undefined,
+            ...rest,
+            rarity: featured.rarity,
+            mood: featured.mood,
+            badges: featured.badges ?? [],
+            polyline: detail?.summary_polyline,
+            edition: featured.edition,
+            size: 'md' as const,
+        };
+    }, [featured, detail]);
 
     return (
         <FeaturedCardHero
@@ -305,20 +302,7 @@ const CardCell = memo(function CardCell({
     // card so a parent re-render (e.g. a search keystroke) doesn't recompute every
     // tile. `memo` already skips re-render when props are unchanged, but this keeps
     // the work cheap on the renders that do happen (sort changes, etc.).
-    const derived = useMemo(() => {
-        if (detail == null) {
-            return null;
-        }
-        return {
-            km: formatKm(detail.distance),
-            durasi: detail.moving_time != null ? formatDuration(detail.moving_time) : '—',
-            trimp: detail.trimp_edwards != null ? String(Math.round(detail.trimp_edwards)) : '—',
-            subtitle: `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`,
-            stats: buildCardStats(detail),
-            zonePct: zonePctFromDetail(detail),
-            paceShape: paceShapeFromDetail(detail),
-        };
-    }, [detail]);
+    const derived = useMemo(() => (detail == null ? null : kartuPropsFromDetail(detail)), [detail]);
 
     if (detail == null || derived == null) {
         return null;

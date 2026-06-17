@@ -18,5 +18,7 @@ class ActivityIngested
 {
     use Dispatchable;
 
-    public function __construct(public int $activityId) {}
+    public function __construct(public int $activityId)
+    {
+    }
 }

@@ -10,6 +10,7 @@ use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
+use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -81,6 +82,17 @@ class SyncActivitiesJob implements ShouldQueue
                 'user_id' => $user->id,
                 'reason' => $e->getMessage(),
             ]);
+        } catch (StravaTokenRefreshTransientException $e) {
+            // A transient refresh failure (401 / 429 / 5xx / timeout) is NOT a
+            // deauthorization: revoking here would destroy a healthy connection
+            // and purge its un-ingested stubs over a momentary Strava blip.
+            // Release with backoff so a later attempt recovers the sync.
+            Log::warning('strava-sync released after transient token refresh failure', [
+                'user_id' => $user->id,
+                'reason' => $e->getMessage(),
+            ]);
+
+            $this->release(60);
         } catch (StravaTokenRefreshFailedException $e) {
             // A rejected refresh means the athlete revoked us (or rotated the
             // refresh token out from under us). Mark the connection revoked so

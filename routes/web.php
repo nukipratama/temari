@@ -28,7 +28,12 @@ use Illuminate\Support\Facades\Route;
 // shared verify token (handshake) and scoped to the owning athlete (events),
 // so it lives outside the auth middleware group.
 Route::get('/strava/webhook', [StravaWebhookController::class, 'verify'])->name('strava.webhook.verify');
-Route::post('/strava/webhook', [StravaWebhookController::class, 'handle'])->name('strava.webhook.handle');
+// IP rate-limited like the other public POSTs: the channel is unauthenticated,
+// so cap it to blunt amplification. 60/min is well above Strava's real delivery
+// rate (one event per activity) while still throttling a flood.
+Route::post('/strava/webhook', [StravaWebhookController::class, 'handle'])
+    ->middleware('throttle:60,1')
+    ->name('strava.webhook.handle');
 
 // Client-side error sink. Unauthenticated so it captures errors on guest pages
 // (e.g. /login) too; CSRF-exempt + IP rate-limited (low-risk telemetry).

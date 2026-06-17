@@ -4,10 +4,19 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\RunCard;
+use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
+
+it('forUser scopes to cards whose activity belongs to the user', function (): void {
+    $user = User::factory()->create();
+    $mine = RunCard::factory()->for(Activity::factory()->for($user))->create();
+    RunCard::factory()->create(); // another user
+
+    expect(RunCard::query()->forUser($user->id)->pluck('id')->all())->toBe([$mine->id]);
+});
 
 it('casts badges to an array', function (): void {
     $card = RunCard::factory()->create([

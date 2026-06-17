@@ -34,7 +34,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
     public function __construct(
         private readonly AnalysisService $analysisService,
         private readonly WeeklyAggregator $weeklyAggregator,
-    ) {}
+    ) {
+    }
 
     public function handle(ActivityIngested $event): void
     {

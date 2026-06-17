@@ -173,6 +173,66 @@ it('keeps best-effort pace at the true rate for a steady run (no window inflatio
     expect($this->analysis->bestEffortPace($time, $velocity, 300))->toBe('5:33');
 });
 
+it('keeps best-effort pace true on sparse 120s sampling (no window overshoot inflation)', function (): void {
+    // Constant 3.0 m/s (= 5:33/km) sampled every 120s. With a 300s target each
+    // window spans 360s and overshoots by a whole 120s segment; crediting the
+    // full distance to 300s would report ~4:38. The trailing-edge trim must
+    // bring it back to the true 5:33.
+    $time = [];
+    $velocity = [];
+    for ($t = 0; $t <= 1200; $t += 120) {
+        $time[] = $t;
+        $velocity[] = 3.0;
+    }
+
+    expect($this->analysis->bestEffortPace($time, $velocity, 300))->toBe('5:33');
+});
+
+it('keeps best-effort pace true across an 11s mid-run gap (auto-pause)', function (): void {
+    // Constant 3.0 m/s (= 5:33/km), 1 Hz, with one 11s time jump mid-run
+    // (a Strava auto-pause gap). The overshooting trailing segment must be
+    // trimmed so the reported pace stays 5:33 instead of inflating to ~5:23.
+    $time = [];
+    $velocity = [];
+    $cursor = 0;
+    for ($k = 0; $k < 150; $k++) {
+        $time[] = $cursor;
+        $velocity[] = 3.0;
+        $cursor += 1;
+    }
+    $time[] = $cursor;
+    $velocity[] = 3.0;
+    $cursor += 11;
+    for ($k = 0; $k < 200; $k++) {
+        $time[] = $cursor;
+        $velocity[] = 3.0;
+        $cursor += 1;
+    }
+
+    expect($this->analysis->bestEffortPace($time, $velocity, 300))->toBe('5:33');
+});
+
+it('emits the best_30min_pace window from compute()', function (): void {
+    // Steady 3.0 m/s for >30min so the 1800s window qualifies. The key name
+    // must match what PrCategory::Best30Min and ThresholdEstimator read.
+    $time = [];
+    $velocity = [];
+    for ($t = 0; $t <= 2000; $t += 10) {
+        $time[] = $t;
+        $velocity[] = 3.0;
+    }
+
+    $summary = $this->analysis->compute(
+        ['time' => ['data' => $time], 'velocity_smooth' => ['data' => $velocity]],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary)->toHaveKey('best_30min_pace')
+        ->and($summary['best_30min_pace'])->toBe('5:33');
+});
+
 it('computes per-km splits + negative_split + hr drift + cadence drop from splits', function (): void {
     $splits = [
         ['split' => 1, 'distance' => 1000, 'elapsed_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 140, 'average_cadence' => 82],

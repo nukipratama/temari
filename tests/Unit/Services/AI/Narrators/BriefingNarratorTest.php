@@ -47,6 +47,7 @@ function bootNarrator(string $jsonContent): array
     ]);
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
+    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
 
     $narrator = new BriefingNarrator(
         app(Vibe::class),
@@ -87,6 +88,7 @@ it('throws UnavailableException when the Azure HTTP call itself throws', functio
     $client = new ClientFake([new RuntimeException('Azure 500')]);
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
+    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
 
     $narrator = new BriefingNarrator(
         app(Vibe::class),

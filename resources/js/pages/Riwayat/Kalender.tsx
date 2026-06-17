@@ -126,7 +126,9 @@ export default function Kalender({
 
                 <div className="relative">
                     <div className="overflow-x-auto rounded-2xl border border-line/70 bg-surface-warm">
-                        <div className="min-w-[840px]">
+                        {/* Forces horizontal scroll on phones; from md (incl. 834px tablets) all
+                            7 weekday columns fit, so the Sunday column is no longer clipped. */}
+                        <div className="min-w-[840px] md:min-w-0">
                             <CalendarHeader />
                             {weeks.map((week) => (
                                 <WeekRowView
@@ -138,13 +140,13 @@ export default function Kalender({
                             ))}
                         </div>
                     </div>
-                    {/* Mobile-only: the 7-day grid is wider than the viewport, so hint that it scrolls. */}
+                    {/* Phone-only: the 7-day grid is wider than the viewport, so hint that it scrolls. */}
                     <div
                         aria-hidden
-                        className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-2xl bg-gradient-to-l from-surface-warm to-transparent lg:hidden"
+                        className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-2xl bg-gradient-to-l from-surface-warm to-transparent md:hidden"
                     />
                 </div>
-                <p className="mt-2 text-label-micro text-ink-3 lg:hidden">
+                <p className="mt-2 text-label-micro text-ink-3 md:hidden">
                     Geser buat lihat seminggu penuh →
                 </p>
             </PageContainer>

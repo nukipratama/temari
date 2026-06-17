@@ -9,6 +9,7 @@ use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
+use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
@@ -27,6 +28,10 @@ class StravaClient
 
     private const int REFRESH_LOCK_SECONDS = 15;
 
+    // Strava enforces rate limits per CLIENT (the whole app), not per athlete, so
+    // these buckets are keyed globally and shared across every connected user. The
+    // values are Strava's Read limits (200 / 15min, 2000 / day); they bind before
+    // the Overall limits (400 / 4000) because all of our calls are reads.
     private const int RATE_LIMIT_15MIN_MAX = 200;
 
     private const int RATE_LIMIT_15MIN_DECAY = 15 * 60;
@@ -53,7 +58,7 @@ class StravaClient
 
         $connection = $this->refreshIfExpired($connection);
 
-        $this->guardRateLimit($connection->user_id);
+        $this->guardRateLimit();
 
         try {
             $response = Http::baseUrl(self::API_BASE_URL)
@@ -70,7 +75,18 @@ class StravaClient
             // 401 is a per-connection auth problem, not a Strava outage: leave the
             // breaker untouched and surface it so the caller revokes the token.
             throw new StravaConnectionRevokedException(
-                "Strava rejected the access token with 401 for [{$path}]: {$response->body()}",
+                "Strava rejected the access token with 401 for [{$path}].",
+            );
+        }
+
+        if ($response->status() === 429) {
+            // A real Strava 429 (server-side bucket exhausted, distinct from our
+            // local guardRateLimit): surface it as a rate-limit so the caller's
+            // ThrottlesExceptions middleware absorbs it as a backoff rather than a
+            // generic failure. Don't move the breaker — Strava is up, just busy.
+            throw new StravaRateLimitedException(
+                "Strava returned 429 for [{$path}]; backing off.",
+                $this->retryAfterSeconds($response),
             );
         }
 
@@ -93,15 +109,32 @@ class StravaClient
     }
 
     /**
-     * Remaining headroom for a user's rate-limit buckets.
+     * Seconds to wait per Strava's Retry-After header on a 429, or null when the
+     * header is absent or non-numeric so the caller falls back to its default.
+     */
+    private function retryAfterSeconds(Response $response): ?int
+    {
+        $retryAfter = $response->header('Retry-After');
+
+        if (! ctype_digit($retryAfter)) {
+            return null;
+        }
+
+        return (int) $retryAfter;
+    }
+
+    /**
+     * Remaining headroom for the shared per-client rate-limit buckets. The
+     * $userId is accepted for call-site compatibility but no longer scopes the
+     * key: the budget is app-wide, so every athlete sees the same headroom.
      *
      * @return array{'15min': int, 'daily': int}
      */
     public function rateLimitRemaining(int $userId): array
     {
         return [
-            '15min' => max(0, RateLimiter::remaining($this->rateLimitKey($userId, '15min'), self::RATE_LIMIT_15MIN_MAX)),
-            'daily' => max(0, RateLimiter::remaining($this->rateLimitKey($userId, 'daily'), self::RATE_LIMIT_DAILY_MAX)),
+            '15min' => max(0, RateLimiter::remaining($this->rateLimitKey('15min'), self::RATE_LIMIT_15MIN_MAX)),
+            'daily' => max(0, RateLimiter::remaining($this->rateLimitKey('daily'), self::RATE_LIMIT_DAILY_MAX)),
         ];
     }
 
@@ -135,16 +168,36 @@ class StravaClient
 
     private function performRefresh(StravaConnection $connection): StravaConnection
     {
-        $response = Http::asForm()->post(self::TOKEN_URL, [
-            'client_id' => config('services.strava.client_id'),
-            'client_secret' => config('services.strava.client_secret'),
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $connection->refresh_token,
-        ]);
+        try {
+            $response = Http::asForm()->post(self::TOKEN_URL, [
+                'client_id' => config('services.strava.client_id'),
+                'client_secret' => config('services.strava.client_secret'),
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $connection->refresh_token,
+            ]);
+        } catch (ConnectionException $e) {
+            // Transport failure / timeout reaching the token endpoint: Strava is
+            // unreachable, not deauthorizing us. Treat it as transient so the
+            // caller backs off instead of revoking a healthy connection.
+            throw new StravaTokenRefreshTransientException(
+                "Strava token refresh could not reach the endpoint: {$e->getMessage()}",
+                previous: $e,
+            );
+        }
 
         if ($response->failed()) {
-            throw new StravaTokenRefreshFailedException(
-                "Strava token refresh failed with status {$response->status()}: {$response->body()}",
+            if ($response->status() === 400) {
+                // Only a 400 invalid_grant is a permanent deauthorization: the
+                // refresh token will never succeed, so the caller revokes.
+                throw new StravaTokenRefreshFailedException(
+                    'Strava token refresh failed with status 400 (invalid_grant).',
+                );
+            }
+
+            // 401 / 429 / 5xx are transient: the refresh may succeed on retry, so
+            // the caller releases the job and backs off instead of revoking.
+            throw new StravaTokenRefreshTransientException(
+                "Strava token refresh failed transiently with status {$response->status()}.",
             );
         }
 
@@ -157,11 +210,11 @@ class StravaClient
         return $connection;
     }
 
-    private function guardRateLimit(int $userId): void
+    private function guardRateLimit(): void
     {
         $buckets = [
-            ['key' => $this->rateLimitKey($userId, '15min'), 'max' => self::RATE_LIMIT_15MIN_MAX, 'decay' => self::RATE_LIMIT_15MIN_DECAY],
-            ['key' => $this->rateLimitKey($userId, 'daily'), 'max' => self::RATE_LIMIT_DAILY_MAX, 'decay' => self::RATE_LIMIT_DAILY_DECAY],
+            ['key' => $this->rateLimitKey('15min'), 'max' => self::RATE_LIMIT_15MIN_MAX, 'decay' => self::RATE_LIMIT_15MIN_DECAY],
+            ['key' => $this->rateLimitKey('daily'), 'max' => self::RATE_LIMIT_DAILY_MAX, 'decay' => self::RATE_LIMIT_DAILY_DECAY],
         ];
 
         foreach ($buckets as ['key' => $key, 'max' => $max]) {
@@ -179,8 +232,8 @@ class StravaClient
         }
     }
 
-    private function rateLimitKey(int $userId, string $bucket): string
+    private function rateLimitKey(string $bucket): string
     {
-        return "strava-api:{$userId}:{$bucket}";
+        return "strava-api:{$bucket}";
     }
 }

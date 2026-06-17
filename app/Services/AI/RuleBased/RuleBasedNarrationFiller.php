@@ -23,11 +23,12 @@ use App\Services\AI\AnalysisType;
  * back to seeded variants only when the subject row is missing. Users with a
  * configured Azure can re-trigger via "Baca ulang" to get real LLM output.
  */
-final class RuleBasedNarrationFiller
+final readonly class RuleBasedNarrationFiller
 {
     public function __construct(
-        private readonly RuleBasedInsightBuilder $insightBuilder,
-    ) {}
+        private RuleBasedInsightBuilder $insightBuilder,
+    ) {
+    }
 
     public function fillFor(Analysis $row): string
     {

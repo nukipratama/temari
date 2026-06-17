@@ -14,8 +14,9 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     #[Override]
     protected function gate(): void
     {
-        // Edge basicauth (docker/Caddyfile) gates /horizon in prod. The `?Authenticatable`
-        // param is what makes the gate accept guests — a zero-param closure 403s them.
-        Gate::define('viewHorizon', fn (?Authenticatable $user = null): bool => true);
+        // Defense in depth: edge basicauth (docker/Caddyfile) is the first gate on
+        // /horizon, this app-layer allow-list is the second so a Caddy misconfig
+        // can't expose it. Predicate is shared with the Pulse / ai-usage gates.
+        Gate::define('viewHorizon', fn (?Authenticatable $user = null): bool => AppServiceProvider::isOpsUser($user));
     }
 }

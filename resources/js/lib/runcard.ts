@@ -1,4 +1,4 @@
-import { formatPace, paceSecPerKm } from '@/lib/pace';
+import { formatDuration, formatDurationHMS, formatKm, formatNaiveIdDate, paceSecPerKm, formatPace } from '@/lib/pace';
 import type { ActivityDetail, Rarity, ZonePct } from '@/types/inertia';
 import type { TemariPose } from '@/components/temari/TemariProto';
 
@@ -231,5 +231,52 @@ export function buildCardStats(detail?: ActivityDetail | null): CardStatStrings 
         hr: detail?.average_heartrate != null ? `${Math.round(detail.average_heartrate)} bpm` : undefined,
         cadence: cadence != null ? `${cadence} spm` : undefined,
         fastestKm: fastestKm != null ? `${fastestKm}/km` : undefined,
+    };
+}
+
+/** The shared `<Kartu>` prop bag derived from a run's detail. */
+export interface KartuPropsFromDetail {
+    km: string;
+    durasi: string;
+    trimp: string;
+    subtitle: string | null;
+    stats: CardStatStrings;
+    zonePct: ZonePct | null;
+    paceShape: number[];
+}
+
+export interface KartuPropsOptions {
+    /**
+     * Duration display: `'words'` ("30 menit 10 detik", default) or `'hms'`
+     * (digital "0:30:10"). The run detail page uses `'hms'`; cards use words.
+     */
+    durationFormat?: 'words' | 'hms';
+}
+
+/**
+ * Derive the `km/durasi/trimp/subtitle/stats/zonePct/paceShape` prop bag a
+ * `<Kartu>` renders from a run's detail, in one place. Every `<Kartu>` call site
+ * feeds from this so the `… != null ? … : '—'` sentinels can't drift. `subtitle`
+ * is `null` when detail is absent (callers that always have a detail get the
+ * built string). `trimp` is a string (Kartu accepts `string | number`).
+ */
+export function kartuPropsFromDetail(
+    detail?: ActivityDetail | null,
+    { durationFormat = 'words' }: KartuPropsOptions = {},
+): KartuPropsFromDetail {
+    const durasi =
+        detail?.moving_time == null
+            ? '—'
+            : durationFormat === 'hms'
+              ? formatDurationHMS(detail.moving_time)
+              : formatDuration(detail.moving_time);
+    return {
+        km: formatKm(detail?.distance),
+        durasi,
+        trimp: detail?.trimp_edwards == null ? '—' : String(Math.round(detail.trimp_edwards)),
+        subtitle: detail ? `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}` : null,
+        stats: buildCardStats(detail),
+        zonePct: zonePctFromDetail(detail),
+        paceShape: paceShapeFromDetail(detail),
     };
 }

@@ -39,6 +39,7 @@ function bootFeaturedKartuNarrator(string $jsonContent): array
     ]);
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
+    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
 
     $narrator = new BriefingFeaturedKartuVoiceNarrator(
         new StructuredChatCaller($azure, app(TokenUsageRecorder::class)),

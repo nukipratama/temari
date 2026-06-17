@@ -147,11 +147,11 @@ it('keeps retrying on a 5xx detail (transient)', function (): void {
 
 it('propagates a rate-limit exception so the job can re-queue with backoff', function (): void {
     $activity = makeActivityWithConnection();
-    $userId = $activity->user_id;
 
-    // Exhaust the 15-minute bucket so the next client call throws before any HTTP.
+    // Exhaust the shared 15-minute bucket (per client, not per athlete) so the
+    // next client call throws before any HTTP.
     for ($i = 0; $i < 200; $i++) {
-        RateLimiter::hit("strava-api:{$userId}:15min", 15 * 60);
+        RateLimiter::hit('strava-api:15min', 15 * 60);
     }
     Http::fake();
 

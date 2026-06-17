@@ -139,7 +139,7 @@ class AnalysisController extends Controller
             AnalysisType::PrContext => $this->userOwns(PersonalRecord::query(), $subjectId, $user->id),
             AnalysisType::CardFlavor => RunCard::query()
                 ->whereKey($subjectId)
-                ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+                ->forUser($user->id)
                 ->exists(),
         };
 

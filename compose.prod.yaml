@@ -121,6 +121,10 @@ services:
         limits:
           cpus: "2.0"
           memory: 1g
+        # Floor: guarantee a slice during CI/build bursts on the shared 4-core
+        # host. Floors for app+mysql+redis sum to 1.5 vCPU, well under 4.
+        reservations:
+          cpus: "0.75"
 
   horizon:
     <<: *app-base
@@ -215,6 +219,9 @@ services:
         limits:
           cpus: "1.5"
           memory: 2g
+        # Floor: keep the DB responsive when a deploy build saturates the host.
+        reservations:
+          cpus: "0.5"
 
   # Single Redis instance with DB-level separation:
   #   DB 0 = queue jobs + Horizon state + sessions (noeviction)
@@ -242,6 +249,9 @@ services:
         limits:
           cpus: "0.75"
           memory: 640m
+        # Floor: queue/session/cache store must not starve during build bursts.
+        reservations:
+          cpus: "0.25"
 
 volumes:
   mysql_data:

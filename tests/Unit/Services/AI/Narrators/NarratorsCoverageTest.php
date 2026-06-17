@@ -53,6 +53,7 @@ function fakeCaller(string $content): StructuredChatCaller
     ]);
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
+    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
 
     return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
 }

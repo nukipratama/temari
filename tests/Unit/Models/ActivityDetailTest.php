@@ -4,11 +4,20 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
+
+it('forUser scopes to details whose activity belongs to the user', function (): void {
+    $user = User::factory()->create();
+    $mine = ActivityDetail::factory()->for(Activity::factory()->for($user))->create();
+    ActivityDetail::factory()->create(); // another user
+
+    expect(ActivityDetail::query()->forUser($user->id)->pluck('id')->all())->toBe([$mine->id]);
+});
 
 it('casts numeric, boolean, datetime, and json columns', function (): void {
     $detail = ActivityDetail::factory()->create([

@@ -131,6 +131,31 @@ it('AnalyzeBriefingJob marks all rows failed when user missing', function (): vo
     }
 });
 
+it('AnalyzeBriefingJob failed() marks every stranded group row Failed (and spares Done ones)', function (): void {
+    $user = User::factory()->create();
+
+    $headline = Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'discriminator' => '2026-05-18',
+        'status' => AnalysisStatus::Processing,
+    ]);
+    $suggestion = Analysis::factory()->done('kept')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'discriminator' => '2026-05-18',
+    ]);
+
+    (new AnalyzeBriefingJob($user->id, '2026-05-18'))->failed(new RuntimeException('worker timeout'));
+
+    expect($headline->fresh()->status)->toBe(AnalysisStatus::Failed)
+        ->and($headline->fresh()->error)->toBe('worker timeout')
+        ->and($suggestion->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($suggestion->fresh()->content)->toBe('kept');
+});
+
 // ── AnalyzeBriefingMascotVoiceJob (row) ──────────────────────────────
 
 it('AnalyzeBriefingMascotVoiceJob returns the mascot voice line', function (): void {
