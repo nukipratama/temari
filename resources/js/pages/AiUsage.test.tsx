@@ -92,10 +92,10 @@ describe('AiUsage page', () => {
         expect(screen.getByText(/tanpa batas/i)).toBeInTheDocument();
     });
 
-    it('shows the config-fallback caveat when priceSource is config-fallback', () => {
-        render(<AiUsage {...baseProps} priceSource="config-fallback" />);
+    it('shows the unavailable caveat when priceSource is not azure-retail', () => {
+        render(<AiUsage {...baseProps} priceSource="unavailable" />);
 
-        expect(screen.getByText(/fallback dari config/i)).toBeInTheDocument();
+        expect(screen.getByText(/belum bisa diestimasi/i)).toBeInTheDocument();
     });
 
     it('renders an empty state per table when data is empty', () => {

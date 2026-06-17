@@ -174,16 +174,15 @@ it('routes the per-kind client and records the resolved deployment', function ()
     ]);
 
     $azure = Mockery::mock(AzureOpenAIClient::class);
-    // The resolved deployment for this kind is the per-narrator override.
+    // The kind routes through deploymentFor(): its resolved value is the request
+    // body's `model` and the recorded usage row. The v1 client itself is the same
+    // for every kind (deployment lives in the body, not the URL).
     $azure->shouldReceive('deploymentFor')->with('briefing')->andReturn('gpt-4o-briefing');
-    $azure->shouldReceive('client')->with('briefing')->andReturn($client);
+    $azure->shouldReceive('client')->andReturn($client);
 
     (new StructuredChatCaller($azure, app(TokenUsageRecorder::class)))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
-    // deploymentFor('briefing') feeds both the request 'model' and the recorded
-    // usage row; the recorded deployment proves the resolved value was used (the
-    // ->with('briefing') mock expectations prove the kind was routed through).
     expect(TokenUsage::query()->first()->model)->toBe('gpt-4o-briefing');
 });
 

@@ -60,9 +60,9 @@ class TokenUsageReport
             'budget' => [
                 'todayCost' => $this->costCalculator->dailyCost(),
                 'dailyCeiling' => $ceiling === null ? null : (float) $ceiling,
-                'currency' => (string) config('azure_openai.currency', 'USD'),
+                'currency' => 'USD', // Azure retail prices are quoted in USD.
             ],
-            'priceSource' => $this->costCalculator->isUsingRefreshedPrices() ? 'azure-retail' : 'config-fallback',
+            'priceSource' => $this->costCalculator->isUsingRefreshedPrices() ? 'azure-retail' : 'unavailable',
         ];
     }
 

@@ -19,11 +19,6 @@ Schedule::command('ai:daily-trend')->dailyAt('05:00');
 // TrendCaption is handled separately by ai:daily-trend at 05:00.
 Schedule::command('ai:daily-briefing')->dailyAt('05:15');
 
-// Sunday 04:30: refresh the Azure OpenAI per-1M token price map from the public
-// Retail Prices API into the cache. On failure it logs and keeps the config seed,
-// so a missed refresh never blanks out cost reporting.
-Schedule::command('ai:refresh-azure-prices')->weeklyOn(0, '04:30');
-
 // Monday 05:30: narrate last week's recap once per user, on final data. The
 // per-ingest cascade only stages the row Pending (weekly cadence) — this is
 // the single scheduled LLM call that fills it.

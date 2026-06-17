@@ -148,7 +148,7 @@ final readonly class StructuredChatCaller
     private function createChat(string $kind, array $payload, float $startedAt): CreateResponse
     {
         try {
-            return $this->azure->client($kind)->chat()->create($payload);
+            return $this->azure->client()->chat()->create($payload);
         } catch (Throwable $e) {
             Log::warning('narrator.ai.call', [
                 'kind' => $kind,
