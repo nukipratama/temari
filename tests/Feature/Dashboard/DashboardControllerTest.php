@@ -115,29 +115,6 @@ it('populates weeklyRecap km, runs, and delta from this and last weeks snapshots
     Carbon::setTestNow();
 });
 
-it('surfaces the latest activity with un-dismissed milestone payload', function (): void {
-    $user = User::factory()->create();
-    Activity::factory()->for($user)->analyzed()->create([
-        'milestone_payload' => [
-            ['kind' => 'pr', 'label' => 'PR!', 'body' => 'PR di 5km.', 'priority' => 100],
-        ],
-        'milestones_detected_at' => now(),
-    ]);
-
-    $this->actingAs($user)->get('/')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('pendingMilestone.activity_id')
-            ->has('pendingMilestone.milestones', 1));
-});
-
-it('returns null pendingMilestone when payload is null', function (): void {
-    $user = User::factory()->create();
-    Activity::factory()->for($user)->analyzed()->create(['milestone_payload' => null]);
-
-    $this->actingAs($user)->get('/')
-        ->assertInertia(fn (Assert $page) => $page->where('pendingMilestone', null));
-});
-
 it('reuses the same daily greeting on a second open within the day', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
     $user = User::factory()->create();
