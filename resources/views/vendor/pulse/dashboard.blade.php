@@ -1,5 +1,8 @@
 <x-pulse>
-    {{-- Domain-specific health cards lead — this is what the operator checks first. --}}
+    {{-- Host vitals (CPU/memory/disk) lead: is the box healthy? --}}
+    <livewire:pulse.servers cols="full" />
+
+    {{-- Domain-specific health cards. --}}
     <livewire:pulse.ai-pipeline-health cols="6" rows="2" />
 
     <livewire:pulse.strava-health cols="6" rows="2" />
@@ -16,7 +19,4 @@
     <livewire:pulse.exceptions cols="6" />
 
     <livewire:pulse.slow-requests cols="full" />
-
-    {{-- Host vitals (CPU/memory/disk) anchor the bottom. --}}
-    <livewire:pulse.servers cols="full" />
 </x-pulse>

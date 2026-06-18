@@ -14,9 +14,10 @@ uses(RefreshDatabase::class);
 it('renders connection states and rate-limit headroom without error', function (): void {
     Livewire::test(StravaHealth::class)
         ->assertOk()
-        ->assertSee('Connections')
+        ->assertSee('active')
         ->assertSee('stranded')
-        ->assertSee('synced');
+        ->assertSee('synced')
+        ->assertSee('Shared API Budget (whole app)');
 });
 
 it('shows an ok health badge when there are no connection problems', function (): void {

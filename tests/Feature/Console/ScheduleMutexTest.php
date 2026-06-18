@@ -22,5 +22,5 @@ it('bounds the overlap expiry on the Strava drains', function (string $command, 
         ->and($event->expiresAt)->toBe($expiry, "[{$command}] overlap expiry must be bounded");
 })->with([
     'strava:ingest every 5 min' => ['strava:ingest', 10],
-    'strava:sync hourly' => ['strava:sync', 55],
+    'strava:sync running-hours' => ['strava:sync', 55],
 ]);

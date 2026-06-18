@@ -1,7 +1,7 @@
 <x-pulse::card :cols="$cols" :rows="$rows" :class="$class">
     <x-pulse::card-header
         name="Strava"
-        details="webhook {{ $this->periodForHumans() }}: {{ number_format($trends['webhook']) }}"
+        details="webhook last {{ $this->periodForHumans() }}: {{ number_format($trends['webhook']) }}"
     >
         <x-slot:icon>
             <x-pulse::icons.arrows-left-right />
@@ -14,8 +14,8 @@
     <x-pulse::scroll :expand="$expand" wire:poll.30s="">
         <div class="space-y-4">
             <div>
-                <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Connections</div>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Now</div>
+                <div class="grid grid-cols-4 gap-2">
                     <div class="rounded-lg p-2 text-center ring-1 ring-gray-900/5 dark:ring-gray-100/10">
                         <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($connections['active']) }}</div>
                         <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">active</div>
@@ -32,37 +32,54 @@
                         <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($connections['revoked']) }}</div>
                         <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">revoked</div>
                     </div>
+                    <div @class([
+                        'rounded-lg p-2 text-center ring-1',
+                        'ring-amber-500/30 bg-amber-500/5' => $stranded > 0,
+                        'ring-gray-900/5 dark:ring-gray-100/10' => $stranded === 0,
+                    ])>
+                        <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($stranded) }}</div>
+                        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">stranded</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-4 gap-2 text-center">
-                <div @class([
-                    'rounded-lg p-1 ring-1',
-                    'ring-amber-500/30 bg-amber-500/5' => $stranded > 0,
-                    'ring-transparent' => $stranded === 0,
-                ])>
-                    <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($stranded) }}</div>
-                    <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">stranded</div>
+            <div>
+                <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Last {{ $this->periodForHumans() }}</div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="rounded-lg p-2 ring-1 ring-gray-900/5 dark:ring-gray-100/10">
+                        <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($trends['synced']) }}</div>
+                        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">synced</div>
+                    </div>
+                    <div @class([
+                        'rounded-lg p-2 ring-1',
+                        'ring-amber-500/30 bg-amber-500/5' => $trends['rate_limited'] > 0,
+                        'ring-gray-900/5 dark:ring-gray-100/10' => $trends['rate_limited'] === 0,
+                    ])>
+                        <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($trends['rate_limited']) }}</div>
+                        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">rate limited</div>
+                    </div>
+                    <div @class([
+                        'rounded-lg p-2 ring-1',
+                        'ring-rose-500/30 bg-rose-500/5' => $trends['revoked'] > 0,
+                        'ring-gray-900/5 dark:ring-gray-100/10' => $trends['revoked'] === 0,
+                    ])>
+                        <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($trends['revoked']) }}</div>
+                        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">revoked</div>
+                    </div>
                 </div>
-                <div class="p-1">
-                    <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($trends['synced']) }}</div>
-                    <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">synced</div>
-                </div>
-                <div @class([
-                    'rounded-lg p-1 ring-1',
-                    'ring-amber-500/30 bg-amber-500/5' => $trends['rate_limited'] > 0,
-                    'ring-transparent' => $trends['rate_limited'] === 0,
-                ])>
-                    <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($trends['rate_limited']) }}</div>
-                    <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">rate limited</div>
-                </div>
-                <div @class([
-                    'rounded-lg p-1 ring-1',
-                    'ring-rose-500/30 bg-rose-500/5' => $trends['revoked'] > 0,
-                    'ring-transparent' => $trends['revoked'] === 0,
-                ])>
-                    <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($trends['revoked']) }}</div>
-                    <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">revoked</div>
+            </div>
+
+            <div>
+                <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Shared API Budget (whole app)</div>
+                <div class="grid grid-cols-2 gap-2 text-center">
+                    <div class="rounded-lg p-1 ring-1 ring-gray-900/5 dark:ring-gray-100/10">
+                        <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ $rateLimit['15min'] ?? '-' }}<span class="text-xs font-normal text-gray-500 dark:text-gray-400">/200</span></div>
+                        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">15 min left</div>
+                    </div>
+                    <div class="rounded-lg p-1 ring-1 ring-gray-900/5 dark:ring-gray-100/10">
+                        <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ $rateLimit['daily'] ?? '-' }}<span class="text-xs font-normal text-gray-500 dark:text-gray-400">/2k</span></div>
+                        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">daily left</div>
+                    </div>
                 </div>
             </div>
 
@@ -85,8 +102,6 @@
                                     <span class="truncate text-gray-900 dark:text-gray-100">{{ $row['user_name'] }}</span>
                                 </div>
                                 <div class="flex items-center gap-3 shrink-0 tabular-nums text-gray-500 dark:text-gray-400">
-                                    <span title="15 min remaining">{{ $row['15min_remaining'] }}/200</span>
-                                    <span title="Daily remaining">{{ $row['daily_remaining'] }}/2k</span>
                                     @if ($row['last_sync'])
                                         <span>{{ \Illuminate\Support\Carbon::parse($row['last_sync'])->diffForHumans(short: true) }}</span>
                                     @else

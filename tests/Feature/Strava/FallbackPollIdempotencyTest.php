@@ -21,7 +21,7 @@ beforeEach(function (): void {
 });
 
 /**
- * The hourly fallback poll is the scheduler's only ingest path. It must never
+ * The scheduled fallback poll is the scheduler's only ingest path. It must never
  * re-dispatch narration for activities it has already ingested: the fetcher
  * stops at the first activity it already knows about, so an already-analyzed
  * run is never handed back to the ingest pipeline, and no AI job (and no LLM

@@ -48,6 +48,7 @@ class StravaHealth extends Card
         ]);
 
         $perUser = $this->perUserSyncHistory();
+        $rateLimit = $this->globalRateLimit();
         $webhookStatus = $this->webhookStatus();
 
         $connectionStates = [
@@ -68,6 +69,7 @@ class StravaHealth extends Card
             'stranded' => $stranded,
             'trends' => $trends,
             'perUser' => $perUser,
+            'rateLimit' => $rateLimit,
             'webhookStatus' => $webhookStatus,
             // Operational health only — a missing webhook is a config state with
             // its own indicator below, not a runtime failure, so it stays out of
@@ -82,7 +84,7 @@ class StravaHealth extends Card
     }
 
     /**
-     * @return list<array{user_id: int, user_name: string, last_sync: string|null, status: string, rate_limit_15min_remaining: int|null, rate_limit_daily_remaining: int|null, is_failed: bool}>
+     * @return list<array{user_id: int, user_name: string, last_sync: string|null, status: string, is_failed: bool}>
      */
     private function perUserSyncHistory(): array
     {
@@ -117,13 +119,30 @@ class StravaHealth extends Card
                 'user_name' => (string) ($userNames[$userId] ?? "User {$userId}"),
                 'last_sync' => $sync->synced_at ?? null,
                 'status' => $sync->status ?? 'pending',
-                '15min_remaining' => $sync?->rate_limit_15min_remaining,
-                'daily_remaining' => $sync?->rate_limit_daily_remaining,
                 'is_failed' => $sync !== null && \in_array($sync->status, ['error', 'rate_limited', 'token_expired', 'revoked'], true),
             ];
         }
 
         return $rows;
+    }
+
+    /**
+     * The shared read-API budget (Strava limits per client, not per athlete), read
+     * from the newest sync log overall — one global number, not a per-user figure.
+     *
+     * @return array{15min: int|null, daily: int|null}
+     */
+    private function globalRateLimit(): array
+    {
+        $latest = DB::connection('analytics')
+            ->table('strava_sync_logs')
+            ->orderByDesc('id')
+            ->first(['rate_limit_15min_remaining', 'rate_limit_daily_remaining']);
+
+        return [
+            '15min' => $latest?->rate_limit_15min_remaining !== null ? (int) $latest->rate_limit_15min_remaining : null,
+            'daily' => $latest?->rate_limit_daily_remaining !== null ? (int) $latest->rate_limit_daily_remaining : null,
+        ];
     }
 
     /**

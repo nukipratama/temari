@@ -1,7 +1,7 @@
 <x-pulse::card :cols="$cols" :rows="$rows" :class="$class">
     <x-pulse::card-header
         name="AI Pipeline"
-        details="failed {{ $this->periodForHumans() }}: {{ number_format($trend['failures']) }}"
+        details="failed last {{ $this->periodForHumans() }}: {{ number_format($trend['failures']) }}"
     >
         <x-slot:icon>
             <x-pulse::icons.sparkles />
@@ -12,6 +12,7 @@
     </x-pulse::card-header>
 
     <x-pulse::scroll :expand="$expand" wire:poll.30s="">
+        <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Now</div>
         <div class="grid grid-cols-4 gap-2 mb-4">
             @foreach ($statusBoxes as $box)
                 <div @class([

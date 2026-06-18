@@ -45,14 +45,10 @@ Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45');
 // clean no-op on links already advancing and never re-bills Done rows.
 Schedule::command('ai:resume-chains')->hourly()->withoutOverlapping(55);
 
-// Hourly fallback poll behind the Strava webhook: catches activities Strava
-// failed to push (delivery is best-effort). Ingest only — it leans on the
-// "already done" idempotency guards in AnalysisService / AnalyzeGroupJob, so it
-// never re-bills LLM narration for activities already analyzed.
-// withoutOverlapping carries an EXPIRY so a lock stranded by a mid-run container
-// restart (deploy) or crash self-releases within one cycle instead of the 24h
-// default — a strand once silently halted the drain until manual intervention.
-Schedule::command('strava:sync')->hourly()->withoutOverlapping(55);
+// Fallback poll behind the Strava webhook, hourly during the two running peaks
+// (WIB). Bounded withoutOverlapping expiry so a strand self-releases, not 24h.
+Schedule::command('strava:sync')->hourly()->between('4:00', '10:00')->withoutOverlapping(55);
+Schedule::command('strava:sync')->hourly()->between('16:00', '22:00')->withoutOverlapping(55);
 
 // Every 5 minutes: drain a small batch of pending activity stubs into the
 // ingest pipeline. Stubs are inserted by strava:sync / webhooks without an
