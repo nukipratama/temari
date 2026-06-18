@@ -86,11 +86,7 @@ class PostRunSpeechNarrator
         return [
             'mood' => $mood,
             'has_pr' => $hasPr,
-            'insights' => [
-                'technical' => $insights['technical'],
-                'splits' => $insights['splits'],
-                'zones' => $insights['zones'],
-            ],
+            'insights' => $insights,
             'distance_km' => $shared->distanceKm(1),
             'dominant_zone' => is_string($dominantZone) ? $dominantZone : null,
             'decoupling_pct' => $shared->decouplingPct,
