@@ -45,6 +45,10 @@ class BackfillActivityWeatherCommand extends Command
 
     private function backfill(OpenMeteoClient $weather, ActivityDetail $detail): bool
     {
+        if ($detail->start_date_local === null) {
+            return false;
+        }
+
         $snapshot = $weather->fetchForActivity(
             (float) $detail->start_lat,
             (float) $detail->start_lng,

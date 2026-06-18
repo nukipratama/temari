@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
@@ -187,12 +188,12 @@ it('requests pr_context with invalidate:false so a backfill does not re-bill eac
     $mock = $this->mock(AnalysisService::class);
     $mock->shouldReceive('request')
         ->atLeast()->once()
-        ->with(
-            subjectOrType: PersonalRecord::class,
-            subjectId: Mockery::type('int'),
-            type: AnalysisType::PrContext,
-            invalidate: false,
-        );
+        // Positional matcher (named-arg with() trips a Mockery quirk): request is
+        // (subjectOrType, subjectId, type, discriminator, delaySeconds, invalidate).
+        ->withArgs(fn (...$args): bool => ($args[0] ?? null) === PersonalRecord::class
+            && ($args[2] ?? null) === AnalysisType::PrContext
+            && ($args[5] ?? true) === false)
+        ->andReturn(new Analysis());
 
     $records = app(PersonalRecords::class);
 
