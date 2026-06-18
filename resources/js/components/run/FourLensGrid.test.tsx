@@ -44,4 +44,22 @@ describe('FourLensGrid', () => {
         fireEvent.click(screen.getByText(/Baca ulang semua/i).closest('button') as Element);
         expect(screen.getByText(/Lagi dibaca/i)).toBeInTheDocument();
     });
+
+    it('drops the per-lens reanalyze buttons on the head run', () => {
+        render(<FourLensGrid {...defaultProps} isChainHead />);
+        // The single "Baca ulang semua" control replaces every per-lens "Baca ulang".
+        expect(screen.queryByText(/^Baca ulang$/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/Baca ulang semua/i)).toBeInTheDocument();
+    });
+
+    it('shows the shared cooldown countdown on the bulk button', () => {
+        const cooling = {
+            ...defaultProps,
+            cerita: { ...defaultProps.cerita, retry_after_seconds: 120 },
+        };
+        render(<FourLensGrid {...cooling} isChainHead />);
+        const button = screen.getByText(/Tunggu/i).closest('button') as HTMLButtonElement;
+        expect(button).toBeDisabled();
+        expect(button.textContent).toContain('Tunggu 2:00 ya');
+    });
 });

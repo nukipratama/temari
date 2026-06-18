@@ -3,7 +3,9 @@ import { useCallback, useMemo, useState } from 'react';
 import { Icon } from '@iconify/react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Card from '@/components/ui/Card';
+import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { csrfToken } from '@/lib/http';
+import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { cn } from '@/lib/cn';
 import type { AnalysisPayload } from '@/types/inertia';
@@ -48,6 +50,16 @@ const TONE_ICON: Record<LensConfig['tone'], string> = {
 
 const DEFAULT_RELOAD_PROPS = ['speechAnalysis', 'insightTechnical', 'insightSplits', 'insightZones'];
 
+function bulkButtonLabel(pending: boolean, cooldownRemaining: number): string {
+    if (pending) {
+        return 'Lagi dibaca…';
+    }
+    if (cooldownRemaining > 0) {
+        return `Tunggu ${formatDurationHMS(cooldownRemaining)} ya`;
+    }
+    return 'Baca ulang semua';
+}
+
 async function triggerOne(analysis: AnalysisPayload): Promise<void> {
     const base = `/api/analyses/${analysis.type}/${analysis.subject_id}/trigger`;
     const url = analysis.discriminator
@@ -82,13 +94,22 @@ export default function FourLensGrid({
         { id: 'hr', icon: 'mdi:heart-pulse', label: 'Zona HR', analysis: hr, tone: 'sky' },
     ], [cerita, terjemahan, split, hr]);
 
+    // The bulk control respects the same per-row cooldown the server enforces:
+    // it stays disabled until the longest-cooling lens unlocks. Lenses finish
+    // within seconds of each other, so the max is a faithful shared countdown.
+    const cooldownRemaining = useCooldownCountdown(
+        Math.max(...lenses.map((l) => l.analysis.retry_after_seconds ?? 0)) || null,
+    );
+    const cooling = cooldownRemaining > 0;
+    const bulkLabel = bulkButtonLabel(bulkPending, cooldownRemaining);
+
     const triggerAll = useCallback(async () => {
-        if (bulkPending) return;
+        if (bulkPending || cooling) return;
         setBulkPending(true);
         await Promise.allSettled(lenses.map((l) => triggerOne(l.analysis)));
         router.reload({ only: inertiaReloadProps });
         setBulkPending(false);
-    }, [bulkPending, lenses, inertiaReloadProps]);
+    }, [bulkPending, cooling, lenses, inertiaReloadProps]);
 
     return (
         <div className={cn('flex flex-col gap-4', className)}>
@@ -99,11 +120,11 @@ export default function FourLensGrid({
                     <button
                         type="button"
                         onClick={triggerAll}
-                        disabled={bulkPending}
+                        disabled={bulkPending || cooling}
                         className="focus-ring rounded inline-flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <Icon icon={bulkPending ? 'mdi:loading' : 'mdi:refresh'} className={cn(bulkPending && 'animate-spin')} aria-hidden />
-                        {bulkPending ? 'Lagi dibaca…' : 'Baca ulang semua'}
+                        {bulkLabel}
                     </button>
                 </div>
             )}
@@ -133,6 +154,10 @@ export default function FourLensGrid({
                             inertiaReloadProps={inertiaReloadProps}
                             chained
                             isChainHead={isChainHead}
+                            // On the head run the single "Baca ulang semua"
+                            // control replaces every per-lens action; historical
+                            // runs keep their per-block resume (failed/pending).
+                            allowReanalyze={!isChainHead}
                             showTimestamp={false}
                             renderContent={(text) => (
                                 <p className="font-sans text-[15px] leading-relaxed text-ink">
