@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react';
 import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
 import AppShell from '@/layouts/AppShell';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import Temari from '@/components/temari/Temari';
 import RiwayatFilter, { type MoodOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import { cn } from '@/lib/cn';
@@ -11,6 +12,7 @@ import { MOOD_FILL, MOOD_HINT, MOOD_LABEL, MOOD_ORDER, MOOD_SOFT_FILL, moodSigil
 import { formatPace, formatShortDateId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { aktivitasUrl } from '@/lib/routes';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 /** The monthly recap payload plus the chain-head flag the controller adds. */
@@ -85,6 +87,7 @@ export default function Kalender({
     monthlyRecap,
 }: Readonly<KalenderProps>) {
     const weeks = useMemo<WeekRow[]>(() => groupByWeek(cells), [cells]);
+    const dominantMood = useMemo(() => dominantMoodOf(cells), [cells]);
     const isCurrentMonth = month === todayMonth;
     const [moodFilter, setMoodFilter] = useState<ReadonlySet<Mood>>(new Set());
     const toggleMood = useCallback((mood: Mood) => {
@@ -129,7 +132,7 @@ export default function Kalender({
                     </div>
                 </div>
 
-                {monthlyRecap && <MonthlyRecapCard recap={monthlyRecap} monthLabel={monthLabel} />}
+                {monthlyRecap && <MonthlyRecapCard recap={monthlyRecap} monthLabel={monthLabel} mood={dominantMood} />}
 
                 <Legend className="mb-4" />
 
@@ -179,14 +182,43 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
 }
 
 /**
+ * The mood Temari wears on the month's recap: the most frequent run mood among
+ * the viewed month's own days (padding days from adjacent months are excluded).
+ * Ties resolve by {@link MOOD_ORDER} so the pick is deterministic. Null when the
+ * month has no runs, letting the card fall back to a neutral pose.
+ */
+export function dominantMoodOf(cells: ReadonlyArray<CalendarCell>): Mood | null {
+    const counts = new Map<Mood, number>();
+    for (const cell of cells) {
+        if (!cell.is_current_month || cell.mood === null) {
+            continue;
+        }
+        counts.set(cell.mood, (counts.get(cell.mood) ?? 0) + 1);
+    }
+
+    let dominant: Mood | null = null;
+    let topCount = 0;
+    for (const mood of MOOD_ORDER) {
+        const count = counts.get(mood) ?? 0;
+        if (count > topCount) {
+            topCount = count;
+            dominant = mood;
+        }
+    }
+
+    return dominant;
+}
+
+/**
  * Temari's narrative recap for the viewed month, keyed to that month's
  * MonthlyRecap analysis. MonthlyRecap is a connected + chained kind: the
  * "Coba lagi" / "Minta Temari bacain" actions resume the chain from the
  * earliest unfilled month, and "Baca ulang" (regenerate) shows only on the
  * latest narrated month (`is_chain_head`). No rule-based fallback exists for
- * monthly, so unfilled months simply show the empty / resume state.
+ * monthly, so unfilled months simply show the empty / resume state. Temari
+ * wears the month's dominant run mood, mirroring the weekly recap on Jejak.
  */
-function MonthlyRecapCard({ recap, monthLabel }: Readonly<{ recap: MonthlyRecap; monthLabel: string }>) {
+function MonthlyRecapCard({ recap, monthLabel, mood }: Readonly<{ recap: MonthlyRecap; monthLabel: string; mood: Mood | null }>) {
     return (
         <section
             className="mb-4 rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5"
@@ -195,17 +227,25 @@ function MonthlyRecapCard({ recap, monthLabel }: Readonly<{ recap: MonthlyRecap;
             <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
                 Catatan Temari · {monthLabel}
             </div>
-            <div className="mt-2">
-                <AnalysisStatus
-                    analysis={recap}
-                    inertiaReloadProps={['monthlyRecap']}
-                    chained
-                    isChainHead={recap.is_chain_head}
-                    size="md"
-                    renderContent={(content) => (
-                        <p className="text-sm leading-relaxed text-ink">{renderBold(content)}</p>
-                    )}
+            <div className="mt-2 flex items-start gap-3.5">
+                <Temari
+                    pose={mood ? MOOD_TO_POSE[mood] : 'observational'}
+                    size={48}
+                    animate={false}
+                    className="shrink-0"
                 />
+                <div className="min-w-0 flex-1">
+                    <AnalysisStatus
+                        analysis={recap}
+                        inertiaReloadProps={['monthlyRecap']}
+                        chained
+                        isChainHead={recap.is_chain_head}
+                        size="md"
+                        renderContent={(content) => (
+                            <p className="text-sm leading-relaxed text-ink">{renderBold(content)}</p>
+                        )}
+                    />
+                </div>
             </div>
         </section>
     );

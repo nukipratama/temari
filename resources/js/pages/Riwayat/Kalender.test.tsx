@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import Kalender, { type CalendarCell, type MonthlyRecap } from './Kalender';
+import Kalender, { dominantMoodOf, type CalendarCell, type MonthlyRecap } from './Kalender';
 import { makeUser, setMockPage } from '@/test/setup';
 
 function makeRecap(overrides: Partial<MonthlyRecap> = {}): MonthlyRecap {
@@ -267,5 +267,43 @@ describe('Kalender', () => {
             render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} monthlyRecap={makeRecap({ is_chain_head: false })} />);
             expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
         });
+    });
+});
+
+describe('dominantMoodOf', () => {
+    it('picks the most frequent run mood among the month\'s own days', () => {
+        const cells = cellsFor([
+            { date: '2026-05-01', day: 1, mood: 'nyala' },
+            { date: '2026-05-02', day: 2, mood: 'adem' },
+            { date: '2026-05-03', day: 3, mood: 'adem' },
+            { date: '2026-05-04', day: 4, mood: null },
+        ]);
+        expect(dominantMoodOf(cells)).toBe('adem');
+    });
+
+    it('breaks ties by MOOD_ORDER so the pick is deterministic', () => {
+        // nyala and adem each appear once; nyala is earlier in MOOD_ORDER.
+        const cells = cellsFor([
+            { date: '2026-05-01', day: 1, mood: 'adem' },
+            { date: '2026-05-02', day: 2, mood: 'nyala' },
+        ]);
+        expect(dominantMoodOf(cells)).toBe('nyala');
+    });
+
+    it('excludes padding days from adjacent months', () => {
+        const cells = cellsFor([
+            { date: '2026-04-30', day: 30, is_current_month: false, mood: 'adem' },
+            { date: '2026-04-29', day: 29, is_current_month: false, mood: 'adem' },
+            { date: '2026-05-01', day: 1, is_current_month: true, mood: 'nyala' },
+        ]);
+        expect(dominantMoodOf(cells)).toBe('nyala');
+    });
+
+    it('returns null when the month has no runs', () => {
+        const cells = cellsFor([
+            { date: '2026-05-01', day: 1 },
+            { date: '2026-05-02', day: 2 },
+        ]);
+        expect(dominantMoodOf(cells)).toBeNull();
     });
 });
