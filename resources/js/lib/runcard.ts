@@ -247,8 +247,9 @@ export interface KartuPropsFromDetail {
 
 export interface KartuPropsOptions {
     /**
-     * Duration display: `'words'` ("30 menit 10 detik", default) or `'hms'`
-     * (digital "0:30:10"). The run detail page uses `'hms'`; cards use words.
+     * Duration display: `'hms'` (digital "30:10", default) or `'words'`
+     * ("30 menit 10 detik"). Cards use HMS so the fixed-width stat-grid cell
+     * doesn't clip the long words form under `truncate`.
      */
     durationFormat?: 'words' | 'hms';
 }
@@ -262,7 +263,7 @@ export interface KartuPropsOptions {
  */
 export function kartuPropsFromDetail(
     detail?: ActivityDetail | null,
-    { durationFormat = 'words' }: KartuPropsOptions = {},
+    { durationFormat = 'hms' }: KartuPropsOptions = {},
 ): KartuPropsFromDetail {
     const durasi =
         detail?.moving_time == null

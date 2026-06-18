@@ -263,7 +263,7 @@ export default function KartuDetail({
                                 href={aktivitasUrl(card)}
                                 className="focus-ring block rounded-2xl"
                             >
-                                <Card padding="md" className="flex items-center gap-4">
+                                <Card padding="md" className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
                                     <Temari pose="proud" size={48} animate={false} />
                                     <div className="min-w-0 flex-1">
                                         <div className="mb-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
@@ -276,7 +276,7 @@ export default function KartuDetail({
                                             {formatNaiveIdDate(detail.start_date_local, 'long')}
                                         </div>
                                     </div>
-                                    <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep">
+                                    <span className="shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep">
                                         Lihat detail lari →
                                     </span>
                                 </Card>

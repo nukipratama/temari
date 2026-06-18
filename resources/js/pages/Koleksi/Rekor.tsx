@@ -85,7 +85,7 @@ export default function KoleksiRekor({
     );
     const featured = distancePRs[0] ?? personalRecords[0] ?? null;
 
-    const eyebrow = `Koleksi · ${personalRecords.length} rekor · ${distancePRs.length} distance · ${pacePRs.length} pace`;
+    const eyebrow = `Koleksi · ${personalRecords.length} rekor · ${distancePRs.length} jarak · ${pacePRs.length} pace`;
 
     return (
         <AppShell>

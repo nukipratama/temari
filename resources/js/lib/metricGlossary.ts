@@ -31,7 +31,7 @@ export const METRIC_GLOSSARY = {
     },
     form: {
         label: 'Kesiapan',
-        body: 'Seberapa siap badanmu buat lari hari ini, dari selisih Fitness dikurangi Fatigue. Positif berarti segar dan siap, negatif berarti lagi capek dari sesi keras.',
+        body: 'Seberapa siap badanmu buat lari hari ini, dari selisih Fitness dikurangi Fatigue. Positif berarti segar dan siap. Negatif belum tentu jelek: artinya kamu lagi nyimpen capek tapi masih di zona ideal buat adaptasi.',
     },
     trimp: {
         acronym: 'TRIMP',

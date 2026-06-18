@@ -6,6 +6,7 @@ describe('PR_CATEGORY_LABELS', () => {
         expect(PR_CATEGORY_LABELS['5km']).toBe('5 KM');
         expect(PR_CATEGORY_LABELS.half_marathon).toBe('Half Marathon');
         expect(PR_CATEGORY_LABELS.best_20min).toBe('Best 20 minutes');
+        expect(PR_CATEGORY_LABELS.best_30min).toBe('Best 30 minutes');
     });
 });
 

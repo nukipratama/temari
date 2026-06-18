@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { cn } from '@/lib/cn';
-import { formatKm, formatNaiveIdDate, formatNaiveTimeId, formatPace, paceSecPerKm } from '@/lib/pace';
+import { formatDurationHMS, formatKm, formatNaiveIdDate, formatNaiveTimeId, formatPace, paceSecPerKm } from '@/lib/pace';
 import MotionLink from '@/components/MotionLink';
 import { Icon } from '@iconify/react';
 import { pressShrink } from '@/lib/motion';
@@ -59,6 +59,7 @@ function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowPro
                     </div>
                     <div className="flex items-center gap-5 tabular-nums">
                         <Cell value={km} unit="km" emphasize />
+                        <Cell value={formatDurationHMS(detail.moving_time)} unit="durasi" hideOnNarrow="sm" />
                         <Cell value={paceLabel} unit="/km" hideOnNarrow="sm" />
                         <Cell value={hr ?? '—'} unit="bpm" hideOnNarrow="md" />
                         <Cell value={trimp ?? '—'} unit="TRIMP" hideOnNarrow="md" />

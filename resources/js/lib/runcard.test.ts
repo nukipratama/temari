@@ -156,10 +156,10 @@ describe('kartuPropsFromDetail', () => {
         },
     };
 
-    it('derives the full card prop bag with words-form duration by default', () => {
+    it('derives the full card prop bag with digital HMS duration by default', () => {
         const props = kartuPropsFromDetail(fullDetail);
         expect(props.km).toBe('5.00');
-        expect(props.durasi).toBe('30 menit 10 detik');
+        expect(props.durasi).toBe('30:10');
         expect(props.trimp).toBe('43');
         expect(props.subtitle).toContain('Pagi santai · ');
         expect(props.stats).toEqual({ pace: '6:02/km', hr: '152 bpm', cadence: '178 spm', fastestKm: '5:12/km' });
@@ -167,8 +167,8 @@ describe('kartuPropsFromDetail', () => {
         expect(props.paceShape).toEqual([360, 312]);
     });
 
-    it('uses the digital H:MM:SS duration when durationFormat is hms', () => {
-        expect(kartuPropsFromDetail(fullDetail, { durationFormat: 'hms' }).durasi).toBe('30:10');
+    it('uses the words-form duration when durationFormat is words', () => {
+        expect(kartuPropsFromDetail(fullDetail, { durationFormat: 'words' }).durasi).toBe('30 menit 10 detik');
     });
 
     it('falls back to "Lari" in the subtitle when the run has no name', () => {

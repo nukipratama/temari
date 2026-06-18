@@ -116,7 +116,7 @@ class WeeklySnapshot extends Model
     protected function casts(): array
     {
         return [
-            'week_ending' => 'date',
+            'week_ending' => 'date:Y-m-d',
             'distance_km' => 'float',
             'runs' => 'integer',
             'moving_time_sec' => 'integer',

@@ -27,6 +27,26 @@ it('casts week_ending to a Carbon date and load metrics to floats', function ():
         ->and($snap->runs)->toBe(3);
 });
 
+it('serializes week_ending as a plain Y-m-d string under a non-UTC timezone', function (): void {
+    $originalTimezone = config('app.timezone');
+    $originalPhpTimezone = date_default_timezone_get();
+    config(['app.timezone' => 'Asia/Jakarta']);
+    date_default_timezone_set('Asia/Jakarta');
+
+    try {
+        $snap = WeeklySnapshot::factory()->create(['week_ending' => '2026-06-14']);
+
+        $serialized = $snap->toArray()['week_ending'];
+
+        expect($serialized)->toBe('2026-06-14')
+            ->and($serialized)->not->toContain('T')
+            ->and($serialized)->not->toContain('Z');
+    } finally {
+        config(['app.timezone' => $originalTimezone]);
+        date_default_timezone_set($originalPhpTimezone);
+    }
+});
+
 it('belongs to a user', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create();

@@ -24,6 +24,12 @@ describe('RunListRow', () => {
         expect(screen.getByText('10.00')).toBeInTheDocument();
     });
 
+    it('renders the formatted moving_time as the durasi cell', () => {
+        render(<RunListRow detail={detail({ moving_time: 2054 })} />);
+        expect(screen.getByText('34:14')).toBeInTheDocument();
+        expect(screen.getByText('durasi')).toBeInTheDocument();
+    });
+
     it('falls back to "Run" when name is null', () => {
         render(<RunListRow detail={detail({ name: null })} />);
         expect(screen.getByText('Run')).toBeInTheDocument();

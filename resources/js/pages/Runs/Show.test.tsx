@@ -119,6 +119,13 @@ describe('Runs/Show', () => {
         expect(screen.getAllByText('Morning Run').length).toBeGreaterThan(0);
     });
 
+    it('renders the DURASI hero tile with the HMS-formatted moving_time', () => {
+        renderShow();
+        // moving_time 3600s → 1:00:00 in the digital H:MM:SS form.
+        expect(screen.getByText('DURASI')).toBeInTheDocument();
+        expect(screen.getByText('1:00:00')).toBeInTheDocument();
+    });
+
     it('renders the as-recorded date and start time in the hero', () => {
         renderShow();
         // start_date_local '2026-05-10T07:00:00' → wall-clock date + time, no zone shift.

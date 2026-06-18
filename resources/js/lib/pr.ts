@@ -13,6 +13,7 @@ export const PR_CATEGORY_LABELS: Record<string, string> = {
     best_5min: 'Best 5 minutes',
     best_10min: 'Best 10 minutes',
     best_20min: 'Best 20 minutes',
+    best_30min: 'Best 30 minutes',
     best_60min: 'Best 60 minutes',
 };
 
