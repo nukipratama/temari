@@ -132,7 +132,14 @@ export default function Kalender({
                     </div>
                 </div>
 
-                {monthlyRecap && <MonthlyRecapCard recap={monthlyRecap} monthLabel={monthLabel} mood={dominantMood} />}
+                {monthlyRecap && (
+                    <MonthlyRecapCard
+                        recap={monthlyRecap}
+                        monthLabel={monthLabel}
+                        mood={dominantMood}
+                        awaitingSchedule={isCurrentMonth}
+                    />
+                )}
 
                 <Legend className="mb-4" />
 
@@ -215,10 +222,17 @@ export function dominantMoodOf(cells: ReadonlyArray<CalendarCell>): Mood | null 
  * "Coba lagi" / "Minta Temari bacain" actions resume the chain from the
  * earliest unfilled month, and "Baca ulang" (regenerate) shows only on the
  * latest narrated month (`is_chain_head`). No rule-based fallback exists for
- * monthly, so unfilled months simply show the empty / resume state. Temari
- * wears the month's dominant run mood, mirroring the weekly recap on Jejak.
+ * monthly, so unfilled months simply show the empty / resume state. The
+ * still-running current month (`awaitingSchedule`) suppresses every trigger and
+ * waits for the scheduler, so its incomplete recap can't be generated on demand.
+ * Temari wears the month's dominant run mood, mirroring the weekly recap on Jejak.
  */
-function MonthlyRecapCard({ recap, monthLabel, mood }: Readonly<{ recap: MonthlyRecap; monthLabel: string; mood: Mood | null }>) {
+function MonthlyRecapCard({
+    recap,
+    monthLabel,
+    mood,
+    awaitingSchedule,
+}: Readonly<{ recap: MonthlyRecap; monthLabel: string; mood: Mood | null; awaitingSchedule: boolean }>) {
     return (
         <section
             className="mb-4 rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5"
@@ -240,6 +254,8 @@ function MonthlyRecapCard({ recap, monthLabel, mood }: Readonly<{ recap: Monthly
                         inertiaReloadProps={['monthlyRecap']}
                         chained
                         isChainHead={recap.is_chain_head}
+                        awaitingSchedule={awaitingSchedule}
+                        awaitingScheduleLabel="Recap bulan ini belum tersedia."
                         size="md"
                         renderContent={(content) => (
                             <p className="text-sm leading-relaxed text-ink">{renderBold(content)}</p>

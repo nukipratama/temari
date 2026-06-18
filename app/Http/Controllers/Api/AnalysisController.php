@@ -42,6 +42,15 @@ class AnalysisController extends Controller
             ->forSubject($analysisType->subjectType(), $subjectId, $analysisType, $discriminator)
             ->first();
 
+        // The still-running current week/month is window-gated: its recap row is
+        // staged Pending but must never be narrated on demand (it would describe
+        // an incomplete period). The scheduled command narrates it once the
+        // period closes, so a hand-crafted trigger here is a no-op that returns
+        // the inert row unchanged. The UI also hides the trigger button for it.
+        if ($this->isStillOpenRecapPeriod($analysisType, $subjectId, $discriminator)) {
+            return $this->payload($existing, $analysisType, $subjectId, $discriminator);
+        }
+
         if ($existing?->cooldownRemaining() !== null) {
             return $this->payload($existing, $analysisType, $subjectId, $discriminator);
         }
@@ -91,6 +100,25 @@ class AnalysisController extends Controller
         );
 
         return $this->payload($row, $analysisType, $subjectId, $discriminator);
+    }
+
+    /**
+     * Whether the trigger targets the still-running current recap period (this
+     * week or this month), whose recap waits for the scheduled command after the
+     * period closes. Only the windowed recap kinds can be open; every other type
+     * is always narratable on demand.
+     */
+    private function isStillOpenRecapPeriod(AnalysisType $type, int $subjectId, ?string $discriminator): bool
+    {
+        return match ($type) {
+            AnalysisType::MonthlyRecap => $discriminator !== null
+                && $discriminator > RecapPeriod::lastClosedMonth(),
+            AnalysisType::WeeklyRecap => WeeklySnapshot::query()
+                ->whereKey($subjectId)
+                ->where('week_ending', '>', RecapPeriod::lastClosedWeekEnding())
+                ->exists(),
+            default => false,
+        };
     }
 
     /**
@@ -174,7 +202,9 @@ class AnalysisController extends Controller
      * The monthly chain's earliest unfilled (not Done) month for the user. The
      * chain links are the pre-staged Analysis rows themselves (keyed by the Y-m
      * discriminator under the user subject), so this walks those rows rather than
-     * a per-month subject table.
+     * a per-month subject table. The still-running current month is excluded (its
+     * row is staged Pending but inert until the month closes), so resuming never
+     * narrates an incomplete month.
      *
      * @return array{0: int, 1: string|null, 2: \App\Models\AI\Analysis|null}|null
      */
@@ -185,6 +215,7 @@ class AnalysisController extends Controller
             ->where('subject_id', $user->id)
             ->where('analysis_type', AnalysisType::MonthlyRecap)
             ->where('status', '!=', AnalysisStatus::Done)
+            ->where('discriminator', '<=', RecapPeriod::lastClosedMonth())
             ->orderBy('discriminator')
             ->first();
 
@@ -245,13 +276,18 @@ class AnalysisController extends Controller
         return $headId === null ? null : (int) $headId;
     }
 
-    /** The latest month (Y-m) the user has a MonthlyRecap row for, or null. */
+    /**
+     * The latest closed month (Y-m) the user has a MonthlyRecap row for, or null.
+     * Capped at the last fully-closed month so the still-running current month's
+     * inert Pending row is never treated as the regenerable chain head.
+     */
     private function monthlyChainHeadMonth(User $user): ?string
     {
         return Analysis::query()
             ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
             ->where('subject_id', $user->id)
             ->where('analysis_type', AnalysisType::MonthlyRecap)
+            ->where('discriminator', '<=', RecapPeriod::lastClosedMonth())
             ->orderByDesc('discriminator')
             ->value('discriminator');
     }

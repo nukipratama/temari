@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Requests\TriggerAnalysisRequest;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -418,6 +420,93 @@ it('chained monthly_recap head regenerate (Done clicked month) re-narrates that 
         ->assertOk();
 
     // A Done clicked head month is a head regenerate → stays on the clicked month.
+    expect($response->json('discriminator'))->toBe('2026-05');
+
+    Carbon::setTestNow();
+});
+
+it('monthly_recap trigger on the still-open current month is an inert no-op (never narrated)', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    // The current month (2026-06) is staged Pending but window-gated until it
+    // closes. A hand-crafted trigger must not dispatch a narration.
+    $row = Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-06',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-06")
+        ->assertOk();
+
+    expect($response->json('status'))->toBe('pending');
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Pending);
+    Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
+
+    Carbon::setTestNow();
+});
+
+it('weekly_recap trigger on the still-open current week is an inert no-op (never narrated)', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    // A snapshot for the still-running current week (ends after the last closed
+    // week's Sunday, 2026-05-17). Its recap waits for the weekly scheduler.
+    $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-24', 'runs' => 3]);
+    $row = Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $current->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/weekly_recap/{$current->id}/trigger")
+        ->assertOk();
+
+    expect($response->json('status'))->toBe('pending');
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Pending);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+
+    Carbon::setTestNow();
+});
+
+it('chained monthly_recap head regenerate ignores the still-open current month staged row', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00');
+    config()->set('ai.cooldown_seconds', 0);
+    $user = User::factory()->create();
+
+    // The current (still-running) month is staged Pending by the post-run
+    // listener but must stay inert: it is not the chain head, and a head
+    // regenerate must never resume forward into it.
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-06',
+        'status' => AnalysisStatus::Pending,
+    ]);
+    Analysis::factory()->done('latest recap')->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-05',
+        'generated_at' => Carbon::now()->subHour(),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-05")
+        ->assertOk();
+
+    // The last closed month (2026-05) is the head and regenerates itself; the
+    // open 2026-06 row is never narrated.
     expect($response->json('discriminator'))->toBe('2026-05');
 
     Carbon::setTestNow();

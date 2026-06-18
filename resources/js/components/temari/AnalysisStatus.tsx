@@ -46,10 +46,13 @@ interface Props {
     /** Whether to show the manual trigger button when status is `done`. */
     allowReanalyze?: boolean;
     /**
-     * The in-progress week: its recap waits for the weekly scheduler, so the
-     * manual trigger is suppressed and the empty state reads "belum tersedia".
+     * The in-progress period (week or month): its recap waits for the scheduler,
+     * so the manual trigger is suppressed and the empty state reads "belum
+     * tersedia". The wording is set via {@link awaitingScheduleLabel}.
      */
     awaitingSchedule?: boolean;
+    /** Empty-state copy shown when {@link awaitingSchedule}. Defaults to the weekly wording. */
+    awaitingScheduleLabel?: string;
     /** Whether to render the "Dibuat …" relative timestamp when status is `done`. */
     showTimestamp?: boolean;
     /** Use cream-tinted colours for non-done states when rendered on a dark sky panel. */
@@ -91,6 +94,7 @@ export default function AnalysisStatus({
     renderContent,
     allowReanalyze = true,
     awaitingSchedule = false,
+    awaitingScheduleLabel = 'Recap minggu ini belum tersedia.',
     showTimestamp = true,
     onSky = false,
     chained = false,
@@ -183,7 +187,7 @@ export default function AnalysisStatus({
         <div className="flex flex-col gap-1.5">
             <span className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}>
                 <Icon icon={awaitingSchedule ? 'mdi:clock-outline' : 'mdi:sparkles-outline'} aria-hidden />
-                <span>{awaitingSchedule ? 'Recap minggu ini belum tersedia.' : 'Belum dibaca Temari.'}</span>
+                <span>{awaitingSchedule ? awaitingScheduleLabel : 'Belum dibaca Temari.'}</span>
             </span>
             {canTrigger && (
                 <button

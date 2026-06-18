@@ -235,10 +235,11 @@ describe('Kalender', () => {
             expect(screen.queryByText(/Catatan Temari/)).not.toBeInTheDocument();
         });
 
-        it('shows the empty / resume state when the month is not yet narrated', () => {
+        it('shows the empty / resume state when a past month is not yet narrated', () => {
             render(
                 <Kalender
                     {...BASE_PROPS}
+                    month="2026-04"
                     cells={TWO_WEEK_CELLS}
                     monthlyRecap={makeRecap({ status: 'pending', content: null, id: null })}
                 />,
@@ -247,10 +248,23 @@ describe('Kalender', () => {
             expect(screen.getByRole('button', { name: /Minta Temari bacain/ })).toBeInTheDocument();
         });
 
-        it('shows a "Coba lagi" resume action when the recap failed', () => {
+        it('suppresses every trigger on the still-open current month and reads "belum tersedia"', () => {
             render(
                 <Kalender
                     {...BASE_PROPS}
+                    cells={TWO_WEEK_CELLS}
+                    monthlyRecap={makeRecap({ status: 'pending', content: null, id: null, is_chain_head: false })}
+                />,
+            );
+            expect(screen.getByText('Recap bulan ini belum tersedia.')).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
+        });
+
+        it('shows a "Coba lagi" resume action when a past month recap failed', () => {
+            render(
+                <Kalender
+                    {...BASE_PROPS}
+                    month="2026-04"
                     cells={TWO_WEEK_CELLS}
                     monthlyRecap={makeRecap({ status: 'failed', content: null })}
                 />,
@@ -259,12 +273,12 @@ describe('Kalender', () => {
         });
 
         it('shows the "Baca ulang" regenerate action only on the chain-head month', () => {
-            render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} monthlyRecap={makeRecap({ is_chain_head: true })} />);
+            render(<Kalender {...BASE_PROPS} month="2026-04" cells={TWO_WEEK_CELLS} monthlyRecap={makeRecap({ is_chain_head: true })} />);
             expect(screen.getByRole('button', { name: /Baca ulang/ })).toBeInTheDocument();
         });
 
         it('hides the regenerate action on a historical (non-head) month', () => {
-            render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} monthlyRecap={makeRecap({ is_chain_head: false })} />);
+            render(<Kalender {...BASE_PROPS} month="2026-04" cells={TWO_WEEK_CELLS} monthlyRecap={makeRecap({ is_chain_head: false })} />);
             expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
         });
     });

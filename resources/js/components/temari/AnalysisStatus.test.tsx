@@ -75,6 +75,18 @@ describe('AnalysisStatus', () => {
         expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
     });
 
+    it('uses a custom awaitingScheduleLabel when provided (e.g. the current month)', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({ status: 'pending' })}
+                awaitingSchedule
+                awaitingScheduleLabel="Recap bulan ini belum tersedia."
+            />,
+        );
+        expect(screen.getByText(/Recap bulan ini belum tersedia/)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
+    });
+
     it('suppresses the reanalyze button on done content when awaitingSchedule', () => {
         render(
             <AnalysisStatus
