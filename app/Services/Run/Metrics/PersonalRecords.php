@@ -142,11 +142,16 @@ class PersonalRecords
             ],
         );
 
+        // invalidate:false so a chronological backfill (each historical run
+        // beats the same category record in turn) does not re-bill pr_context on
+        // every beat: the idempotency guard skips a row that is already Done. The
+        // narrator reads the live PR row at job time, so a still-pending row
+        // narrates the LATEST value regardless of how many beats preceded it.
         $this->analysisService->request(
             subjectOrType: PersonalRecord::class,
             subjectId: $pr->id,
             type: AnalysisType::PrContext,
-            invalidate: true,
+            invalidate: false,
         );
 
         return true;

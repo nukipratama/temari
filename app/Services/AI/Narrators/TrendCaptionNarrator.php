@@ -27,7 +27,14 @@ class TrendCaptionNarrator
         - ctl_delta_4w: perubahan CTL (fitness) 4 minggu terakhir, positif = naik.
         - volume_recent_4w_km vs volume_prev_4w_km: ayunan volume.
         Contoh "CTL naik 6 poin dalam 4 minggu" atau "volume turun dari 38 ke
-        31 km". Kalau field turunan null (pengguna baru), baca data apa adanya.
+        31 km". Kalau field turunan null (pengguna baru), baca data apa adanya,
+        tapi tetap sebut minimal 1 angka konkret dari `weeks` (mis. volume
+        minggu terakhir).
+
+        SATU PEMBACAAN SAJA: pilih satu kondisi yang koheren, jangan
+        kontradiktif dalam satu caption. Jangan gabung "form segar" dengan
+        "mulai lelah", atau "fitness naik" dengan "lagi turun". Kalau sinyalnya
+        campur, ambil yang paling kuat dan ceritakan itu saja.
 
         Contoh:
         - "Fitness naik 3 minggu berturut, volume juga meningkat. Base lagi

@@ -27,9 +27,11 @@ class MonthlyRecapNarrator
 
         Struktur yang diharapkan:
         1. Buka dengan angka konkret (total km, jumlah lari).
-        2. Narasi mood: mood mana yang dominan dan apa artinya. Gunakan data
-           mood_mix -- sebut persentase kalau menonjol (mis. "60% sesi kamu
-           adem, cuma 2 kali nyala").
+        2. Narasi mood (HANYA kalau mood_mix terisi): mood mana yang dominan
+           dan apa artinya. Gunakan data mood_mix -- sebut persentase kalau
+           menonjol (mis. "60% sesi kamu adem, cuma 2 kali nyala"). Kalau
+           mood_mix kosong atau null, LEWATI langkah ini diam-diam, langsung ke
+           highlight, jangan sebut bahwa data mood belum ada.
         3. Highlight: lari terjauh, jumlah PR (pr_count) kalau ada, atau
            progres mingguan dari weekly_distance_km (mis. "naik tiap minggu"
            atau "konsisten di kisaran 10 km"). Pakai 1 yang paling menonjol.

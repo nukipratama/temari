@@ -58,9 +58,17 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
 
         $resolved = $resolver->reverse($detail->start_lat, $detail->start_lng);
 
+        // Only stamp resolved_at on a real hit. A null is a transient Nominatim
+        // miss (rate limit / timeout / empty body): leaving resolved_at null keeps
+        // the row eligible for the geo:backfill-locations catch-up instead of
+        // marking it permanently resolved with no name.
+        if ($resolved === null) {
+            return;
+        }
+
         $detail->update([
-            'location_name' => $resolved?->name,
-            'location_country' => $resolved?->country,
+            'location_name' => $resolved->name,
+            'location_country' => $resolved->country,
             'location_resolved_at' => Carbon::now(),
         ]);
     }

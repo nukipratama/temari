@@ -106,7 +106,11 @@ class Vibe
             return null;
         }
 
-        return (int) Carbon::parse($lastRun)->startOfDay()->diffInDays($asOf->copy()->startOfDay());
+        // diffInDays is signed in Carbon 3 (default $absolute = false), so a run
+        // dated on or after $asOf must clamp to 0 days, never a negative age,
+        // matching latestRunDaysAgo() in RunController. A recent runner then
+        // reads as 0 or 1 day, never the >= 10 the matrix treats as hibernating.
+        return (int) max(0, Carbon::parse($lastRun)->startOfDay()->diffInDays($asOf->copy()->startOfDay(), false));
     }
 
     private function hasRecentPr(User $user, Carbon $asOf): bool

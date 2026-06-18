@@ -56,6 +56,16 @@ function fakeCaller(string $content): StructuredChatCaller
 
 // ── PostRunSpeechNarrator ─────────────────────────────────────────────
 
+/** @return array{technical: string, splits: string, zones: string} */
+function postRunInsightsFixture(): array
+{
+    return [
+        'technical' => 'Cadence 168, decoupling rendah.',
+        'splits' => 'Km 4 tercepat, negative split rapi.',
+        'zones' => '70% di Z2, cocok base building.',
+    ];
+}
+
 function postRunFixture(): array
 {
     $user = User::factory()->create();
@@ -73,21 +83,21 @@ it('PostRunSpeechNarrator returns speech on valid JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['speech' => 'Nice run today!'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller);
-    expect($narrator->generate($a, $d, 'nyala'))->toBe('Nice run today!');
+    expect($narrator->generate($a, $d, 'nyala', postRunInsightsFixture()))->toBe('Nice run today!');
 });
 
 it('PostRunSpeechNarrator throws on non-JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller('not json');
     $narrator = new PostRunSpeechNarrator($caller);
-    $narrator->generate($a, $d, 'nyala');
+    $narrator->generate($a, $d, 'nyala', postRunInsightsFixture());
 })->throws(UnavailableException::class, 'non-JSON');
 
 it('PostRunSpeechNarrator throws on missing key', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller);
-    $narrator->generate($a, $d, 'nyala');
+    $narrator->generate($a, $d, 'nyala', postRunInsightsFixture());
 })->throws(UnavailableException::class, 'missing speech');
 
 it('PostRunSpeechNarrator does not fatal when the stream summary is null', function (): void {
@@ -95,7 +105,7 @@ it('PostRunSpeechNarrator does not fatal when the stream summary is null', funct
     $d->update(['stream_summary' => null]);
     $caller = fakeCaller(json_encode(['speech' => 'Mantap'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller);
-    expect($narrator->generate($a, $d->fresh(), 'dim'))->toBe('Mantap');
+    expect($narrator->generate($a, $d->fresh(), 'dim', postRunInsightsFixture()))->toBe('Mantap');
 });
 
 it('PostRunSpeechNarrator resolves the dominant zone from a populated stream summary', function (): void {
@@ -107,7 +117,16 @@ it('PostRunSpeechNarrator resolves the dominant zone from a populated stream sum
     ]]);
     $caller = fakeCaller(json_encode(['speech' => 'Base solid'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller);
-    expect($narrator->generate($a, $d->fresh(), 'nyala'))->toBe('Base solid');
+    expect($narrator->generate($a, $d->fresh(), 'nyala', postRunInsightsFixture()))->toBe('Base solid');
+});
+
+it('PostRunSpeechNarrator carries the insight triplet into context', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $insights = postRunInsightsFixture();
+
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala', $insights);
+
+    expect($context['insights'])->toBe($insights);
 });
 
 /**
@@ -136,7 +155,7 @@ it('PostRunSpeechNarrator feeds prev_narrative from the prior activity post-run 
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'Lari kemarin enteng banget.');
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala');
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
     expect($context['prev_narrative'])->toBe('Lari kemarin enteng banget.');
 });
@@ -154,7 +173,7 @@ it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala');
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
     expect($context['prev_narrative'])->toBeNull();
 });
@@ -848,4 +867,41 @@ it('BriefingMascotVoiceNarrator leaves prev_narrative null on the first day', fu
     $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-18'));
 
     expect($context['prev_narrative'])->toBeNull();
+});
+
+// ── Prompt wording guards (slice 8 polish) ────────────────────────────
+
+/** Read a narrator's private SYSTEM_PROMPT constant for wording assertions. */
+function narratorPrompt(string $class): string
+{
+    return (string) (new ReflectionClass($class))->getConstant('SYSTEM_PROMPT');
+}
+
+it('MonthlyRecapNarrator prompt makes the mood step conditional on mood_mix', function (): void {
+    $prompt = narratorPrompt(MonthlyRecapNarrator::class);
+
+    expect($prompt)
+        ->toContain('HANYA kalau mood_mix terisi')
+        ->toContain('LEWATI langkah ini diam-diam')
+        ->not->toContain('—');
+});
+
+it('TrendCaptionNarrator prompt demands one coherent reading with a concrete number', function (): void {
+    $prompt = narratorPrompt(TrendCaptionNarrator::class);
+
+    expect($prompt)
+        ->toContain('SATU PEMBACAAN SAJA')
+        ->toContain('jangan')
+        ->toContain('minimal 1 angka konkret')
+        ->not->toContain('—');
+});
+
+it('RunInsightNarrator prompt steers general words to Indonesian while keeping run terms English', function (): void {
+    $prompt = narratorPrompt(RunInsightNarrator::class);
+
+    expect($prompt)
+        ->toContain('BAHASA:')
+        ->toContain('stabil/rata bukan "steady"')
+        ->toContain('negative split')
+        ->not->toContain('—');
 });

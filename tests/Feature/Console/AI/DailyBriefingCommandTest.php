@@ -2,13 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
+use App\Jobs\AI\AnalyzeDailyGreetingJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
@@ -84,6 +89,72 @@ it('skips the demo user even with recent analyzed activity', function (): void {
     $this->artisan('ai:daily-briefing')
         ->expectsOutputToContain('Dispatched daily briefing analysis for 1 active users.')
         ->assertSuccessful();
+
+    Carbon::setTestNow();
+});
+
+it('a second same-day run only fills missing types and never re-bills Done rows', function (): void {
+    // A missed-midnight tick on deploy means ai:daily-briefing runs again later
+    // the same day (now hourly). The re-run must create + dispatch ONLY the rows
+    // still missing for the day (e.g. featured_kartu_voice that never got
+    // produced), and must NOT re-dispatch (and so never re-bill) rows already
+    // Done for today.
+    Carbon::setTestNow('2026-05-11 12:00:00');
+    $today = Carbon::today()->toDateString();
+
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->create(['analyzed_at' => Carbon::today()->subDays(2)]);
+
+    // Simulate the earlier (00:01) run having already completed the mascot voice
+    // and daily greeting, but NOT the featured kartu voice (the row a missed tick
+    // left unproduced; here it is simply absent).
+    Analysis::factory()->done('kata temari kemarin')->create([
+        'subject_type' => AnalysisType::BriefingMascotVoice->subjectType(),
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => $today,
+    ]);
+    Analysis::factory()->done('selamat pagi')->create([
+        'subject_type' => AnalysisType::DailyGreeting->subjectType(),
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::DailyGreeting,
+        'discriminator' => $today,
+    ]);
+
+    // Real service + faked bus so we observe exactly what the re-run dispatches.
+    Bus::fake();
+
+    $this->artisan('ai:daily-briefing')
+        ->expectsOutputToContain('Dispatched daily briefing analysis for 1 active users.')
+        ->assertSuccessful();
+
+    // The missing type is created + dispatched once.
+    Bus::assertDispatched(AnalyzeBriefingFeaturedKartuVoiceJob::class, 1);
+    $featured = Analysis::query()
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::BriefingFeaturedKartuVoice)
+        ->where('discriminator', $today)
+        ->firstOrFail();
+    expect($featured->status)->toBe(AnalysisStatus::Queued);
+
+    // The already-Done types are neither re-dispatched nor reset (no re-bill).
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    Bus::assertNotDispatched(AnalyzeDailyGreetingJob::class);
+
+    $mascot = Analysis::query()
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::BriefingMascotVoice)
+        ->where('discriminator', $today)
+        ->firstOrFail();
+    $greeting = Analysis::query()
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::DailyGreeting)
+        ->where('discriminator', $today)
+        ->firstOrFail();
+    expect($mascot->status)->toBe(AnalysisStatus::Done)
+        ->and($mascot->content)->toBe('kata temari kemarin')
+        ->and($greeting->status)->toBe(AnalysisStatus::Done)
+        ->and($greeting->content)->toBe('selamat pagi');
 
     Carbon::setTestNow();
 });

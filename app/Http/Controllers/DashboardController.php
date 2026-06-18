@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\StoryLine;
@@ -75,37 +74,8 @@ class DashboardController extends Controller
             'recentRuns' => $recentRuns,
             'lastRunNote' => $lastRunNote,
             'trendAnalysis' => $this->resolveTrendCaption($user, $today),
-            'pendingMilestone' => $this->resolvePendingMilestone($user),
             'weeklyRecap' => $weeklyRecapBuilder->forUser($user, $today),
         ]);
-    }
-
-    /**
-     * Most-recent activity with un-dismissed milestone payload. Returns the
-     * activity id so the frontend can POST a dismiss back; the payload
-     * itself is the cached MilestoneDetector output.
-     *
-     * @return array{activity_id: int, milestones: list<array<string, mixed>>}|null
-     */
-    private function resolvePendingMilestone(User $user): ?array
-    {
-        $activity = Activity::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('milestone_payload')
-            ->orderByDesc('id')
-            ->first();
-
-        if ($activity === null) {
-            return null;
-        }
-
-        /** @var array<int, array<string, mixed>> $payload */
-        $payload = $activity->milestone_payload;
-
-        return [
-            'activity_id' => $activity->id,
-            'milestones' => array_values($payload),
-        ];
     }
 
     /**

@@ -131,7 +131,7 @@ class BriefingNarrator
             context: $this->buildContext($ctx),
             schemaName: 'TemariBriefing',
             requiredKeys: ['headline', 'suggestion'],
-            options: new ChatCallOptions(userId: $user->id, maxTokens: 900),
+            options: new ChatCallOptions(userId: $user->id, maxTokens: 1200),
         );
 
         return [

@@ -47,6 +47,7 @@ export default function CardReveal({
     globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
   const [opened, setOpened] = useState(prefersReducedMotion);
   const [showButtons, setShowButtons] = useState(prefersReducedMotion);
+  const [dismissed, setDismissed] = useState(false);
   const sentRef = useRef(false);
 
   // /api/kartu/{card}/seen returns plain JSON, so Inertia's router can't
@@ -72,6 +73,7 @@ export default function CardReveal({
   }, [pending.card_id]);
 
   const dismiss = useCallback((): void => {
+    setDismissed(true);
     void markSeen().then(() => router.reload({ only: ["pendingReveal"] }));
   }, [markSeen]);
 
@@ -172,6 +174,10 @@ export default function CardReveal({
     polyline: pending.summary_polyline ?? null,
     edition: pending.edition ?? null,
   };
+
+  // Optimistic close: hide instantly on dismiss; the seen-POST + reload run in
+  // the background (see `dismiss`). Covers Tutup, outside-click, and Escape.
+  if (dismissed) return null;
 
   return (
     <>

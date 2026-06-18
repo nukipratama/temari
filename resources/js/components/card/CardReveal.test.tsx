@@ -123,6 +123,10 @@ describe("CardReveal", () => {
     // "Tutup" is available even while the pack is still sealed.
     await u.click(screen.getByText("Tutup"));
 
+    // The dialog disappears immediately — synchronously after the click,
+    // without awaiting the seen-POST — proving the close isn't network-gated.
+    expect(screen.queryByRole("dialog")).toBeNull();
+
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/kartu/42/seen",
       expect.objectContaining({ method: "POST" }),
@@ -130,9 +134,25 @@ describe("CardReveal", () => {
     expect(reload).toHaveBeenCalledWith({ only: ["pendingReveal"] });
   });
 
-  it("Escape key dismisses the reveal modal", async () => {
+  it("Escape key closes the reveal optimistically and marks seen", async () => {
     render(<CardReveal pending={epicReveal} />);
     await userEvent.setup().keyboard("{Escape}");
+    // Closed instantly, not gated on the seen-POST resolving.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/kartu/42/seen",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("clicking outside the card closes the reveal optimistically", async () => {
+    const u = userEvent.setup();
+    render(<CardReveal pending={epicReveal} />);
+    // Outside-click only dismisses once the pack is torn (opened).
+    await u.click(screen.getByTestId("pack-wrapper"));
+    await u.click(screen.getByRole("dialog"));
+    // Closed instantly, not gated on the seen-POST resolving.
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/kartu/42/seen",
       expect.objectContaining({ method: "POST" }),
@@ -166,6 +186,8 @@ describe("CardReveal", () => {
     render(<CardReveal pending={epicReveal} />);
     const tutup = screen.getByText("Tutup");
     await u.click(tutup);
+    // The optimistic close unmounts the reveal, so the second click lands on a
+    // detached node; the sentRef guard also keeps it to a single POST.
     await u.click(tutup);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

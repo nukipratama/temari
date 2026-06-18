@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\CardSeenController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\GoalController;
 use App\Http\Controllers\Auth\StravaAuthController;
-use App\Http\Controllers\MilestoneController;
 use App\Events\ActivityIngested;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\AI\TokenUsage;
@@ -53,7 +52,6 @@ it('has a test class for every concrete app class', function (): void {
         CardReplayController::class,  // CardSeenTest (replay cases)
         LoginController::class,       // auth feature tests
         StravaAuthController::class,  // StravaAuthTest
-        MilestoneController::class,   // MilestoneDismissTest
         GoalController::class,        // goal feature tests
         HandleInertiaRequests::class, // framework wiring
         // Immutable value objects / DTOs (no behaviour to unit-test).

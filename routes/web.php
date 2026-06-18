@@ -14,7 +14,6 @@ use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GoalController;
-use App\Http\Controllers\MilestoneController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
@@ -88,9 +87,6 @@ Route::middleware('auth')->group(function (): void {
     Route::permanentRedirect('/settings', '/profil');
     Route::permanentRedirect('/pengaturan', '/profil');
     Route::permanentRedirect('/profile', '/profil');
-
-    Route::post('/api/milestones/{activity}/dismiss', [MilestoneController::class, 'dismiss'])
-        ->name('api.milestones.dismiss');
 
     Route::post('/api/kartu/{card}/seen', CardSeenController::class)
         ->name('api.kartu.seen');

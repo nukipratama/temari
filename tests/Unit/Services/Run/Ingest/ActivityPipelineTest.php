@@ -12,6 +12,7 @@ use App\Models\ActivityStream;
 use App\Models\StravaConnection;
 use App\Models\WeeklySnapshot;
 use App\Events\ActivityIngested;
+use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Services\Gamification\MilestoneDetector;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
@@ -20,6 +21,7 @@ use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -591,4 +593,52 @@ it('rolls back analyzed_at and skips the cascade when the story layer throws', f
         ->and(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeFalse() // card rolled back
         ->and(StoryLine::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
     Event::assertNotDispatched(ActivityIngested::class);
+});
+
+it('dispatches ResolveActivityLocationJob when the activity has start coords', function (): void {
+    $activity = makeActivityWithConnection();
+    Bus::fake([ResolveActivityLocationJob::class]);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Morning Run',
+            'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000.0,
+            'moving_time' => 1800,
+            'elapsed_time' => 1800,
+            'splits_metric' => [],
+            'start_latlng' => [-6.2253, 106.8090],
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->firstOrFail();
+    Bus::assertDispatched(
+        ResolveActivityLocationJob::class,
+        fn (ResolveActivityLocationJob $job): bool => $job->activityDetailId === $detail->id,
+    );
+});
+
+it('does NOT dispatch ResolveActivityLocationJob when the activity has no coords', function (): void {
+    $activity = makeActivityWithConnection();
+    Bus::fake([ResolveActivityLocationJob::class]);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Treadmill Run',
+            'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000.0,
+            'moving_time' => 1800,
+            'elapsed_time' => 1800,
+            'splits_metric' => [],
+            'start_latlng' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    Bus::assertNotDispatched(ResolveActivityLocationJob::class);
 });

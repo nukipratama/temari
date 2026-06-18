@@ -64,6 +64,11 @@ class RunInsightNarrator
 
         Tetap dari sudut pandang aku (Temari) yang mengamati pengguna.
 
+        BAHASA: kata umum pakai Indonesia (stabil/rata bukan "steady", usaha
+        bukan "effort" telanjang, "sesi kualitas" bukan "quality" telanjang).
+        Istilah lari boleh tetap English: easy, tempo, pace, cadence, base,
+        negative split, long run.
+
         KESINAMBUNGAN: kalau prev_narrative ada (catatan teknis lari sebelumnya),
         lanjutkan benang ceritanya, tunjukkan progres atau perubahan dari sesi itu
         ke sesi ini, dan variasikan cara membuka. Jangan mengulang kalimat yang
@@ -109,7 +114,7 @@ class RunInsightNarrator
             context: $this->context($activity, $detail),
             schemaName: 'TemariRunInsight',
             requiredKeys: ['technical', 'splits', 'zones'],
-            options: new ChatCallOptions(temperature: 0.7, userId: $activity->user_id, maxTokens: 2048),
+            options: new ChatCallOptions(temperature: 0.7, userId: $activity->user_id, maxTokens: 3000),
         );
 
         return [

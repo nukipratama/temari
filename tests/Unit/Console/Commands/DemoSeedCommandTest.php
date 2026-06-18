@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\RecapPeriod;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -86,6 +87,25 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     $queued = RunCard::query()->findOrFail($user->pending_reveal_card_id);
     $maxRank = (clone $cardQuery)->get()->max(fn (RunCard $card): int => $card->rarity->rank());
     expect($queued->rarity->rank())->toBe($maxRank);
+
+    // Recaps respect the closed-period cap (RecapPeriod): the demo never stages a
+    // recap for the still-running current week/month, matching real narration.
+    $openWeeklyIds = WeeklySnapshot::query()
+        ->where('user_id', $user->id)
+        ->whereDate('week_ending', '>', RecapPeriod::lastClosedWeekEnding())
+        ->pluck('id');
+    expect($openWeeklyIds)->not->toBeEmpty(); // the frozen clock leaves a current open week
+    expect(Analysis::query()
+        ->where('subject_type', WeeklySnapshot::class)
+        ->whereIn('subject_id', $openWeeklyIds)
+        ->where('analysis_type', AnalysisType::WeeklyRecap)
+        ->count())->toBe(0);
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::MonthlyRecap)
+        ->where('discriminator', '>', RecapPeriod::lastClosedMonth())
+        ->count())->toBe(0);
 
     // Idempotency: a second *bare* seed (no wipe) converges to the same row counts
     // instead of duplicating or hitting the (user_id, strava_external_id) unique

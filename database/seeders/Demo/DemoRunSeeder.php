@@ -17,6 +17,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\RecapPeriod;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Geo\PolylineEncoder;
 use App\Services\Run\Ingest\StreamAnalysis;
@@ -179,7 +180,6 @@ class DemoRunSeeder
     private function stagePendingAnalyses(User $user): void
     {
         $activities = Activity::query()->where('user_id', $user->id)->get();
-        $weeklyIds = WeeklySnapshot::query()->where('user_id', $user->id)->pluck('id')->all();
         $prIds = PersonalRecord::query()->where('user_id', $user->id)->pluck('id')->all();
         $cardIds = RunCard::query()->whereIn('activity_id', $activities->pluck('id'))->pluck('id')->all();
 
@@ -206,7 +206,15 @@ class DemoRunSeeder
                 type: AnalysisType::PrContext,
             );
         }
-        foreach ($weeklyIds as $weeklyId) {
+        // Recaps never narrate the still-running current period (see RecapPeriod),
+        // so the demo caps weekly recaps at the last fully-closed week to match
+        // real narration instead of seeding an open-week recap.
+        $lastClosedWeekEnding = RecapPeriod::lastClosedWeekEnding();
+        $closedWeeklies = WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->whereDate('week_ending', '<=', $lastClosedWeekEnding)
+            ->pluck('id');
+        foreach ($closedWeeklies as $weeklyId) {
             $this->analysisService->request(
                 subjectOrType: WeeklySnapshot::class,
                 subjectId: $weeklyId,
@@ -256,13 +264,20 @@ class DemoRunSeeder
             discriminator: Carbon::now()->isoFormat('GGGG-[W]WW'),
         );
 
-        // One monthly recap per calendar month across the seeded window.
+        // One monthly recap per calendar month across the seeded window, capped
+        // at the last fully-closed month (RecapPeriod) so the demo skips the
+        // still-running current month like real narration does.
+        $lastClosedMonth = RecapPeriod::lastClosedMonth();
         for ($m = 6; $m >= 0; $m--) {
+            $month = Carbon::today()->startOfMonth()->subMonthsNoOverflow($m)->format('Y-m');
+            if ($month > $lastClosedMonth) {
+                continue;
+            }
             $this->analysisService->request(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                 subjectId: $user->id,
                 type: AnalysisType::MonthlyRecap,
-                discriminator: Carbon::today()->startOfMonth()->subMonthsNoOverflow($m)->format('Y-m'),
+                discriminator: $month,
             );
         }
     }

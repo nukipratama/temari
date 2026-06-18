@@ -33,6 +33,67 @@ it('returns hibernating when the last run is 12 days ago', function (): void {
     expect(app(Vibe::class)->current($user))->toBe(Vibe::HIBERNATING);
 });
 
+it('does not hibernate when the last run was today', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->setTime(6, 20),
+        'trimp_edwards' => 80.0,
+    ]);
+
+    expect(app(Vibe::class)->current($user))->not->toBe(Vibe::HIBERNATING);
+});
+
+it('does not hibernate when the last run was yesterday', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->subDay()->setTime(6, 20),
+        'trimp_edwards' => 80.0,
+    ]);
+
+    expect(app(Vibe::class)->current($user))->not->toBe(Vibe::HIBERNATING);
+});
+
+it('does not hibernate when the last run is 9 days ago (just under the threshold)', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->subDays(9),
+        'trimp_edwards' => 80.0,
+    ]);
+
+    expect(app(Vibe::class)->current($user))->not->toBe(Vibe::HIBERNATING);
+});
+
+it('hibernates when the last run is exactly 10 days ago (threshold boundary)', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->subDays(10),
+        'trimp_edwards' => 80.0,
+    ]);
+
+    expect(app(Vibe::class)->current($user))->toBe(Vibe::HIBERNATING);
+});
+
+it('does not hibernate when the analysis as-of date predates the latest run', function (): void {
+    // A daily-greeting row freezes its discriminator (as-of date) at creation;
+    // a later regeneration can run with an as-of that is *before* the newest run.
+    // The signed diff would go negative, so the age must clamp to 0, not flip
+    // the runner into hibernating or report a negative age.
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->setTime(6, 20),
+        'trimp_edwards' => 80.0,
+    ]);
+
+    $asOfBeforeRun = Carbon::today()->subDays(3);
+
+    expect(app(Vibe::class)->current($user, $asOfBeforeRun))->not->toBe(Vibe::HIBERNATING);
+});
+
 it('returns pumped on a recent PR with non-negative form', function (): void {
     $user = User::factory()->create();
 

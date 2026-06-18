@@ -1,6 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
 import AppShell from '@/layouts/AppShell';
-import MilestoneBanner, { type PendingMilestone } from '@/components/MilestoneBanner';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import PageContainer from '@/components/ui/PageContainer';
@@ -29,7 +28,6 @@ interface HariIniProps {
     snapshot: WeeklySnapshot | null;
     recentRuns: ActivityDetail[];
     lastRunNote?: LastRunNote | null;
-    pendingMilestone?: PendingMilestone | null;
 }
 
 export default function HariIni({
@@ -38,7 +36,6 @@ export default function HariIni({
     snapshot,
     recentRuns,
     lastRunNote = null,
-    pendingMilestone = null,
 }: Readonly<HariIniProps>) {
     const { props } = usePage<SharedProps & HariIniProps>();
     const firstName = props.auth.user?.first_name ?? '';
@@ -55,8 +52,6 @@ export default function HariIni({
         <AppShell>
             <Head title="Hari Ini" />
             <PageContainer>
-                <MilestoneBanner pending={pendingMilestone} />
-
                 {/* HEADLINE */}
                 <header className="grid items-end gap-9 lg:grid-cols-[1.4fr_1fr]">
                     <div>
