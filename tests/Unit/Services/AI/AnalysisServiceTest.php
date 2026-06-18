@@ -505,3 +505,53 @@ it('rejects a duplicate (subject_type, subject_id, analysis_type, discriminator)
     expect(fn (): Analysis => Analysis::factory()->create($attributes))
         ->toThrow(QueryException::class);
 });
+
+it('rejects a duplicate row with a NULL discriminator at the DB level', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    $attributes = [
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ];
+    Analysis::factory()->create($attributes);
+
+    expect(fn (): Analysis => Analysis::factory()->create($attributes))
+        ->toThrow(QueryException::class);
+});
+
+it('upsertRow with a NULL discriminator collapses concurrent calls to exactly one row', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+
+    $first = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+    $second = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($second->id)->toBe($first->id)
+        ->and(Analysis::query()
+            ->where('subject_type', WeeklySnapshot::class)
+            ->where('subject_id', $snap->id)
+            ->where('analysis_type', AnalysisType::WeeklyRecap)
+            ->whereNull('discriminator')
+            ->count())->toBe(1);
+});
+
+it('upsertGroupRows with NULL discriminators collapses repeat requests to one row per type', function (): void {
+    $activity = Activity::factory()->create();
+
+    $this->service->requestActivityGroup($activity);
+    $this->service->requestActivityGroup($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $activity->id)
+        ->whereNull('discriminator')
+        ->count())->toBe(4);
+});

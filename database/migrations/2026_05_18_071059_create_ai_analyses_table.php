@@ -24,6 +24,11 @@ return new class () extends Migration {
             $table->unsignedBigInteger('subject_id');
             $table->string('analysis_type', 60);
             $table->string('discriminator', 40)->nullable();
+            // MySQL treats each NULL as distinct in a unique index, so rows with
+            // a NULL discriminator (per-activity, weekly) would escape the unique
+            // constraint and race into duplicates. Fold NULL to '' in a stored
+            // generated column and key the unique index on that instead.
+            $table->string('discriminator_key', 40)->storedAs("coalesce(discriminator, '')");
             $table->string('status', 16)->default('pending');
             $table->mediumText('content')->nullable();
             $table->text('error')->nullable();
@@ -34,7 +39,7 @@ return new class () extends Migration {
             $table->timestamps();
 
             $table->unique(
-                ['subject_type', 'subject_id', 'analysis_type', 'discriminator'],
+                ['subject_type', 'subject_id', 'analysis_type', 'discriminator_key'],
                 'ai_analyses_subject_type_disc_unique',
             );
             $table->index(['status', 'updated_at'], 'ai_analyses_status_idx');
