@@ -54,10 +54,15 @@ function seedActivityForJob(): Activity
 it('writes speech + 3 insight rows Done from one job run', function (): void {
     $activity = seedActivityForJob();
 
+    $insights = ['technical' => 'tech text', 'splits' => 'splits text', 'zones' => 'zones text'];
+
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
-    $speechMock->shouldReceive('generate')->andReturn('nice run');
+    // The generated insight triplet flows into the speech narrator's 4th arg.
+    $speechMock->shouldReceive('generate')
+        ->withArgs(fn ($a, $d, $mood, $passed): bool => $passed === $insights)
+        ->andReturn('nice run');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
-    mockInsightNarrator(['technical' => 'tech text', 'splits' => 'splits text', 'zones' => 'zones text']);
+    mockInsightNarrator($insights);
 
     (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
 
@@ -102,6 +107,54 @@ it('degrades run-insight to rule-based content when the LLM is unavailable', fun
         expect($rows[$type->value]->status)->toBe(AnalysisStatus::Done)
             ->and($rows[$type->value]->content)->not->toBeEmpty();
     }
+});
+
+it('reuses Done insight rows instead of re-billing RunInsightNarrator on a cerita-only re-dispatch', function (): void {
+    $activity = seedActivityForJob();
+
+    // The 3 insight rows are already Done with known content; only PostRunSpeech is Pending.
+    $doneContent = [
+        AnalysisType::RunInsightTechnical->value => 'stored tech',
+        AnalysisType::RunInsightSplits->value => 'stored splits',
+        AnalysisType::RunInsightZones->value => 'stored zones',
+    ];
+    foreach ($doneContent as $type => $content) {
+        Analysis::factory()->done($content)->create([
+            'subject_type' => Activity::class,
+            'subject_id' => $activity->id,
+            'analysis_type' => $type,
+            'discriminator' => null,
+        ]);
+    }
+
+    $expectedInsights = [
+        'technical' => 'stored tech',
+        'splits' => 'stored splits',
+        'zones' => 'stored zones',
+    ];
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldReceive('generate')
+        ->withArgs(fn ($a, $d, $mood, $passed): bool => $passed === $expectedInsights)
+        ->andReturn('cerita baru');
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+
+    // The insight LLM must NOT be called: the Done rows are reused verbatim.
+    $insightMock = Mockery::mock(RunInsightNarrator::class);
+    $insightMock->shouldNotReceive('generate');
+    app()->instance(RunInsightNarrator::class, $insightMock);
+
+    (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
+
+    $rows = Analysis::query()
+        ->where('subject_id', $activity->id)
+        ->get()
+        ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
+
+    expect($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('cerita baru')
+        ->and($rows[AnalysisType::RunInsightTechnical->value]->content)->toBe('stored tech')
+        ->and($rows[AnalysisType::RunInsightSplits->value]->content)->toBe('stored splits')
+        ->and($rows[AnalysisType::RunInsightZones->value]->content)->toBe('stored zones');
 });
 
 it('marks all 4 rows failed when the activity is missing', function (): void {

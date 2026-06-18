@@ -8,6 +8,7 @@ use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -140,10 +141,10 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             throw new UnavailableException("StoryLine for activity {$subject->id} missing");
         }
 
-        $speech = app(PostRunSpeechNarrator::class)
-            ->generate($subject, $detail, $storyLine->mood);
+        $insights = $this->resolveInsights($subject, $detail);
 
-        $insights = $this->runInsights($subject, $detail);
+        $speech = app(PostRunSpeechNarrator::class)
+            ->generate($subject, $detail, $storyLine->mood, $insights);
 
         return [
             AnalysisType::PostRunSpeech->value => $speech,
@@ -151,6 +152,53 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             AnalysisType::RunInsightSplits->value => $insights['splits'],
             AnalysisType::RunInsightZones->value => $insights['zones'],
         ];
+    }
+
+    /**
+     * The three run-insight analyses the post-run speech synthesizes. Reused
+     * verbatim from already-Done insight rows when present (so a cerita-only
+     * re-dispatch does not re-bill the insight LLM); otherwise generated fresh
+     * via {@see self::runInsights()}.
+     *
+     * @return array{technical: string, splits: string, zones: string}
+     */
+    private function resolveInsights(Activity $activity, ActivityDetail $detail): array
+    {
+        $reused = $this->doneInsights($activity);
+        if ($reused !== null) {
+            return $reused;
+        }
+
+        return $this->runInsights($activity, $detail);
+    }
+
+    /**
+     * The activity's three insight analyses if all of them are already Done with
+     * non-null content, else null (signalling a fresh generation is needed).
+     *
+     * @return array{technical: string, splits: string, zones: string}|null
+     */
+    private function doneInsights(Activity $activity): ?array
+    {
+        $types = [
+            'technical' => AnalysisType::RunInsightTechnical,
+            'splits' => AnalysisType::RunInsightSplits,
+            'zones' => AnalysisType::RunInsightZones,
+        ];
+
+        $resolved = [];
+        foreach ($types as $key => $type) {
+            $row = Analysis::query()
+                ->forSubject(Activity::class, $activity->id, $type)
+                ->first();
+            if ($row === null || $row->status !== AnalysisStatus::Done || $row->content === null) {
+                return null;
+            }
+
+            $resolved[$key] = $row->content;
+        }
+
+        return $resolved;
     }
 
     /**
