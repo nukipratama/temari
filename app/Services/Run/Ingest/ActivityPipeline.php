@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Ingest;
 
 use App\Events\ActivityIngested;
+use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
@@ -122,6 +123,14 @@ class ActivityPipeline
         // the cascade never fires for a half-ingested run. Hand off the AI fan-out
         // to a queued listener (see DispatchPostRunAnalysis).
         ActivityIngested::dispatch($activity->id);
+
+        // Reverse-geocode the start point so location_name is populated for GPS
+        // runs. Skip when there are no coords (treadmill / manual). afterCommit so
+        // the queued job never reads a detail the rolled-back txn never wrote; the
+        // geo:backfill-locations schedule is the catch-up for transient misses.
+        if ($detailModel->start_lat !== null && $detailModel->start_lng !== null) {
+            ResolveActivityLocationJob::dispatch($detailModel->id)->afterCommit();
+        }
     }
 
     /**

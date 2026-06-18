@@ -47,3 +47,10 @@ Schedule::command('strava:sync')->hourly()->withoutOverlapping(55);
 // immediate per-activity dispatch; this drainer paces them so a backlog never
 // thundering-herds Strava into a 429 storm.
 Schedule::command('strava:ingest')->everyFiveMinutes()->withoutOverlapping(10);
+
+// Hourly catch-up for activity reverse-geocoding: backfills start coords from the
+// summary_polyline and re-queues ResolveActivityLocationJob for any GPS run still
+// missing location_resolved_at. The per-ingest dispatch is primary; this sweeps up
+// transient Nominatim misses (the job no longer stamps resolved_at on a null hit)
+// and any rows ingested before geo-on-ingest landed.
+Schedule::command('geo:backfill-locations')->hourly()->withoutOverlapping(55);

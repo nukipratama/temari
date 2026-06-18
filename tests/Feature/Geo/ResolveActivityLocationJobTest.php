@@ -33,7 +33,7 @@ it('writes resolved location + stamps resolved_at on success', function (): void
     expect($detail->location_resolved_at)->not->toBeNull();
 });
 
-it('stamps resolved_at with null name when resolver returns null (so we don\'t retry)', function (): void {
+it('leaves resolved_at null on a transient miss so the catch-up retries', function (): void {
     $detail = ActivityDetail::factory()->create([
         'start_lat' => 0.0,
         'start_lng' => 0.0,
@@ -46,7 +46,9 @@ it('stamps resolved_at with null name when resolver returns null (so we don\'t r
 
     $detail->refresh();
     expect($detail->location_name)->toBeNull();
-    expect($detail->location_resolved_at)->not->toBeNull();
+    // A null Nominatim result is transient: the row stays eligible for the
+    // geo:backfill-locations sweep instead of being permanently marked resolved.
+    expect($detail->location_resolved_at)->toBeNull();
 });
 
 it('skips already-resolved details', function (): void {
