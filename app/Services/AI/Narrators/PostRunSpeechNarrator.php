@@ -65,7 +65,7 @@ class PostRunSpeechNarrator
             context: $this->context($activity, $detail, $mood, $insights),
             schemaName: 'TemariPostRunSpeech',
             requiredKeys: ['speech'],
-            options: new ChatCallOptions(userId: $activity->user_id, maxTokens: 1024),
+            options: new ChatCallOptions(userId: $activity->user_id, maxTokens: 1500),
         );
 
         return (string) $decoded['speech'];
