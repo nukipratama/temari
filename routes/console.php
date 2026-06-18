@@ -10,14 +10,21 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// 00:01 local time: refresh trend caption for active users (last 7 days).
-Schedule::command('ai:daily-trend')->dailyAt('00:01');
+// Hourly: refresh trend caption for active users (last 7 days). Runs every hour
+// (not a single dailyAt('00:01')) so a deploy/restart that crosses midnight and
+// skips the 00:01 tick self-heals within the hour (the scheduler never replays
+// missed ticks on its own). TrendCaption is rule-based, so a same-day re-run only
+// recomputes deterministic content (no LLM call), never re-bills.
+Schedule::command('ai:daily-trend')->hourly()->withoutOverlapping(55);
 
-// 00:01: generate the daily briefing set (headline, suggestion, mascot voice,
-// featured kartu voice, greeting) for all active users. Uses invalidate=false
-// on LLM types so an earlier DispatchPostRunAnalysis run is never re-billed.
-// TrendCaption is handled separately by ai:daily-trend at 00:01.
-Schedule::command('ai:daily-briefing')->dailyAt('00:01');
+// Hourly: generate the daily briefing set (headline, suggestion, mascot voice,
+// featured kartu voice, greeting) for all active users. Recurring (not a single
+// dailyAt('00:01')) so a missed-midnight tick on deploy self-heals within the
+// hour. Idempotent: requestBriefingGroup + the LLM row types use invalidate=false,
+// so firstOrCreate + the Done/queued dispatch guard make a same-day re-run create
+// and dispatch ONLY the still-missing types (e.g. briefing_featured_kartu_voice),
+// never re-billing rows already Done for the day.
+Schedule::command('ai:daily-briefing')->hourly()->withoutOverlapping(55);
 
 // Monday 00:01: narrate last week's recap once per user, on final data. The
 // per-ingest cascade only stages the row Pending (weekly cadence) — this is
@@ -27,11 +34,16 @@ Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01');
 // 1st of the month 05:45: same pattern for the monthly recap.
 Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45');
 
-// 00:01 daily: re-kick the earliest Pending link of every connected chain
-// (weekly + monthly) per user. The recovery sweep for cost-ceiling pauses (which
-// resume after dailyCost() resets at midnight) and transient link failures, so a
-// stalled link never strands the rest until the next weekly/monthly run.
-Schedule::command('ai:resume-chains')->dailyAt('00:01');
+// Hourly: re-kick the earliest Pending link of every connected chain (weekly +
+// monthly + per-activity) per user. The recovery sweep for cost-ceiling pauses
+// (which resume after dailyCost() resets at midnight) and transient link
+// failures, so a stalled link never strands the rest until the next
+// weekly/monthly run. Recurring (not a single dailyAt('00:01')) so a missed
+// midnight tick on deploy self-heals within the hour; running more often also
+// speeds the weekly/monthly + per-activity backfill to completion. Idempotent:
+// it only re-kicks Pending/Failed links with invalidate=false, so a re-run is a
+// clean no-op on links already advancing and never re-bills Done rows.
+Schedule::command('ai:resume-chains')->hourly()->withoutOverlapping(55);
 
 // Hourly fallback poll behind the Strava webhook: catches activities Strava
 // failed to push (delivery is best-effort). Ingest only — it leans on the
