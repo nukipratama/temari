@@ -71,7 +71,7 @@ it('narrates every completed week not yet Done, oldest first, with staggered del
     Carbon::setTestNow();
 });
 
-it('includes the demo user (no is_demo filter)', function (): void {
+it('excludes the demo user so it never auto-bills the weekly LLM', function (): void {
     Carbon::setTestNow('2026-05-18 05:30:00');
 
     $real = User::factory()->create();
@@ -83,12 +83,12 @@ it('includes the demo user (no is_demo filter)', function (): void {
     $this->app->instance(AnalysisService::class, captureWeeklyRequests($captured));
 
     $this->artisan('ai:weekly-recap')
-        ->expectsOutputToContain('Dispatched weekly recap for 2 snapshots')
+        ->expectsOutputToContain('Dispatched weekly recap for 1 snapshots')
         ->assertSuccessful();
 
     expect(array_column($captured, 'subjectId'))
         ->toContain($realSnap->id)
-        ->toContain($demoSnap->id);
+        ->not->toContain($demoSnap->id);
 
     Carbon::setTestNow();
 });

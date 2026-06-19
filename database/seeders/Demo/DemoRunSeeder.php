@@ -333,7 +333,8 @@ class DemoRunSeeder
             ],
         );
 
-        StravaConnection::query()->firstOrCreate(
+        // updateOrCreate so re-seeds converge: expiry + revoked_at heal to a healthy ACTIVE connection.
+        StravaConnection::query()->updateOrCreate(
             ['user_id' => $user->id],
             [
                 'strava_athlete_id' => 99_999_999,
@@ -341,6 +342,7 @@ class DemoRunSeeder
                 'refresh_token' => 'demo-refresh-token',
                 'token_expires_at' => Carbon::now()->addYear(),
                 'scopes' => 'read,activity:read',
+                'revoked_at' => null,
             ],
         );
 

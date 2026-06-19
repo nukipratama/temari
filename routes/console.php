@@ -31,6 +31,12 @@ Schedule::command('ai:daily-briefing')->hourly()->withoutOverlapping(55);
 // the single scheduled LLM call that fills it.
 Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01');
 
+// Monday 00:05: refresh the Aku-page persona summary + Kata Temari voice once a
+// week, just after the recap. These two have no per-run cadence, so this is
+// their only auto-refresh; persona self-throttles per ISO week and the voice is
+// invalidated weekly. Demo excluded. Mid-week freshness stays on "Baca ulang".
+Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
+
 // 1st of the month 05:45: same pattern for the monthly recap.
 Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45');
 

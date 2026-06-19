@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\StoryLine;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
@@ -114,7 +115,18 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     $snapshotCount = WeeklySnapshot::query()->where('user_id', $user->id)->count();
     $prCount = PersonalRecord::query()->where('user_id', $user->id)->count();
 
+    // Simulate a stale connection (expired + revoked); re-seed must heal it.
+    StravaConnection::query()->where('user_id', $user->id)->update([
+        'token_expires_at' => Carbon::now()->subDay(),
+        'revoked_at' => Carbon::now(),
+    ]);
+
     $this->artisan('demo:seed')->assertSuccessful();
+
+    $connection = StravaConnection::query()->where('user_id', $user->id)->firstOrFail();
+    expect(StravaConnection::query()->where('user_id', $user->id)->count())->toBe(1)
+        ->and($connection->token_expires_at->isFuture())->toBeTrue()
+        ->and($connection->revoked_at)->toBeNull();
 
     $reseededActivityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
     expect(User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->count())->toBe(1)

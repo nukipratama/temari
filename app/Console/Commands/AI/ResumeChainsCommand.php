@@ -7,6 +7,7 @@ namespace App\Console\Commands\AI;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -77,7 +78,8 @@ class ResumeChainsCommand extends Command
      * never dispatched. Capped at the latest closed week so the daily sweep never
      * narrates the still-running current week on incomplete data (the weekly
      * kickoff command owns first-narration of newly-closed/never-staged weeks).
-     * Includes demo (weekly is demo-inclusive).
+     * Demo is excluded so it never auto-bills the weekly LLM (its recap content
+     * stays the rule-based seed), matching the kickoff command.
      */
     private function resumeWeekly(AnalysisService $service): int
     {
@@ -86,6 +88,7 @@ class ResumeChainsCommand extends Command
         $earliestPerUser = WeeklySnapshot::query()
             ->where('runs', '>', 0)
             ->where('week_ending', '<=', $lastWeekEnding)
+            ->whereIn('user_id', User::query()->notDemo()->select('id'))
             ->whereHas('analyses', fn ($query) => $query
                 ->where('analysis_type', AnalysisType::WeeklyRecap)
                 ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Failed]))
@@ -111,8 +114,8 @@ class ResumeChainsCommand extends Command
      * transient failure or cost-ceiling pause left behind). Capped at the latest
      * closed month so the daily sweep never narrates the still-running current
      * month on incomplete data (the monthly kickoff command owns first-narration
-     * of newly-closed months). Demo stays weekly-only, so it never stages a
-     * monthly row and is naturally absent here.
+     * of newly-closed months). Demo never stages a monthly row, so it is
+     * naturally absent here.
      */
     private function resumeMonthly(AnalysisService $service): int
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\AI;
 
+use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -31,6 +32,7 @@ class WeeklyRecapCommand extends Command
         $snapshots = WeeklySnapshot::query()
             ->where('week_ending', '<=', $lastWeekEnding)
             ->where('runs', '>', 0)
+            ->whereIn('user_id', User::query()->notDemo()->select('id'))
             ->whereDoesntHave('analyses', fn ($query) => $query
                 ->where('analysis_type', AnalysisType::WeeklyRecap)
                 ->where('status', AnalysisStatus::Done))

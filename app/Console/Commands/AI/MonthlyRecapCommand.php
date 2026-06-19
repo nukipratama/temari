@@ -28,8 +28,8 @@ class MonthlyRecapCommand extends Command
 
         $stagger = (int) config('ai.backfill_stagger_seconds', 360);
 
-        // Demo stays weekly-only: its per-month content is the rule-based seed, so
-        // the monthly LLM chain excludes it (locked decision).
+        // Demo never auto-bills any LLM cadence: its content is the rule-based
+        // seed, so every recap chain excludes it (locked decision).
         $userIds = User::query()->notDemo()->pluck('id');
 
         $dispatched = 0;

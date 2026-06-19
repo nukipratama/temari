@@ -98,6 +98,26 @@ it('re-kicks the earliest Pending weekly link per user with invalidate:false', f
         ->and($captured[0]['invalidate'])->toBeFalse();
 });
 
+it('skips a demo user so the resume net never auto-bills its weekly LLM', function (): void {
+    $demo = User::factory()->demo()->create();
+    $snap = WeeklySnapshot::factory()->for($demo)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldNotReceive('request');
+    $this->app->instance(AnalysisService::class, $service);
+
+    $this->artisan('ai:resume-chains')
+        ->expectsOutputToContain('Resumed 0 chains.')
+        ->assertSuccessful();
+});
+
 it('re-kicks the earliest Pending monthly link per user with invalidate:false', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->create([
