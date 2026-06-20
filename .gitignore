@@ -56,3 +56,6 @@ frankenphp
 !.claude/commands/
 .claude/settings.local.json
 graphify-out/
+
+# Obsidian vault config (docs/ opens as a vault; its UI state is per-machine)
+.obsidian/

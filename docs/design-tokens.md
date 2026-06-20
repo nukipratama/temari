@@ -76,7 +76,6 @@ mapping is encoded in the role utilities below (`.text-prose`, `.text-stat`, `.t
 ## Gradients & atmospherics
 
 - `<GradientText preset="horizon|cream-sun" fontSize=… />` ([component](../resources/js/components/ui/GradientText.tsx)) clips a `linear-gradient` to text. Numbers only, large sizes only, one per viewport.
-- `<MeshBackdrop variant="dawn|night|ember" />` ([component](../resources/js/components/MeshBackdrop.tsx)) — three blurred radial blobs; `relative overflow-hidden` parent. Mainly the login page.
 
 ## Spacing rhythm
 
