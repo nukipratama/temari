@@ -4,6 +4,23 @@ A self-hosted, Strava-connected personal running dashboard with a built-in compa
 
 > **Status**: Live in prod. Strava OAuth + activity sync, briefing/verdict narration (Azure OpenAI with rule-based fallback), training-load (CTL/ATL/Form), per-run RunCards, weekly snapshots, and the Temari mascot are all shipping. Daybreak palette (pre-dawn peach `horizon` + cream paper + navy `sky`), intentionally far from Strava orange. Light-mode only.
 
+## What it is
+
+TemanLari ("running buddy") turns your Strava runs into something you look forward to opening. Each run is ingested and scored with proper running metrics — pace, splits, HR zones, training load — then dealt as a collectible **kartu** with a rarity and a vibe, and narrated by **Temari**, a mascot companion who reads your day back to you in a warm, Indonesian-first voice.
+
+It is deliberately **not** a Strava clone. The run-tracker core is correct and honest, but the point is the companion layer on top: it's built for the solo runner who finds raw dashboards cold and wants their training to feel like a story. Single-tenant and self-hosted by design.
+
+### What you get
+
+- **Daily briefing** — Temari's read on today: greeting, vitals, a session suggestion, the last run. See [docs/features/dashboard.md](docs/features/dashboard.md).
+- **Run cards & collection** — every run becomes a kartu with a rarity, vibe, badges, and special moves. See [docs/features/cards-collection.md](docs/features/cards-collection.md).
+- **Run detail** — four-lens breakdown, route map, splits, HR zones, AI insights per run. See [docs/features/run-detail.md](docs/features/run-detail.md).
+- **Training load & records** — CTL/ATL/Form, personal records, progression. See [docs/features/records.md](docs/features/records.md).
+- **Recaps** — weekly, monthly, and persona narratives in Temari's voice. See [docs/features/recaps.md](docs/features/recaps.md).
+- **Targets & accessories** — goals and unlockable mascot accessories. See [docs/features/targets-accessories.md](docs/features/targets-accessories.md).
+
+Full feature map: [docs/features/index.md](docs/features/index.md).
+
 ## Stack
 
 - **Backend**: Laravel 13 · PHP 8.4 (FrankenPHP + Octane in prod, Sail's PHP image in dev) · Larastan L8 · Pint · Rector
@@ -34,6 +51,10 @@ echo "WWWGROUP=$(id -g)" >> .env
 ```
 
 App at **http://localhost:7001**.
+
+## Documentation
+
+This README covers how to *operate* the app. For how it's *built and why*, the knowledge base lives in [docs/](docs/) as cross-linked Markdown notes — start at [docs/DESIGN.md](docs/DESIGN.md) (the apex) and follow the per-section Maps of Content: [Architecture](docs/architecture/index.md) · [Decisions (ADRs)](docs/decisions/index.md) · [Features](docs/features/index.md).
 
 ## Development
 

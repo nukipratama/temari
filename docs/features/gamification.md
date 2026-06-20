@@ -24,6 +24,8 @@ Gamification isn't a page — it's an engine that runs as each activity is inges
 
 [RunCardFactory](../../app/Services/Run/Story/RunCardFactory.php) (`build(Activity, ActivityDetail): RunCard`) is the centrepiece. It scores the run, derives a **rarity** from that score, attaches a list of **badges** (weather, distance bracket, splits, streak), and names a **special move**. It is invoked from the ingest pipeline (`app/Services/Run/Ingest/ActivityPipeline.php`) and from `app/Jobs/Story/GenerateRunCardJob.php`.
 
+The rarity isn't a coin flip: [rarityScore](../../app/Services/Run/Story/RunCardFactory.php#L129) folds a handful of run signals (distance, pace, weather, the earned badge set, PRs) into a single number, and [rarityFromScore](../../app/Services/Run/Story/RunCardFactory.php#L168) buckets that number into a tier. Tune the tier boundaries there, not in the callers. The same rarity rank is what the featured-kartu picker ranks on, see [[vibe-and-mood]].
+
 The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()` and `badgeCountsForUser()` for the collection views.
 
 [SpecialMoves](../../app/Services/Run/Story/SpecialMoves.php) (`pick(...)`) deterministically chooses a thematic name (e.g. "Closing Kick", "Easy Miles", "Red Line") from buckets keyed on zone distribution and pace — same run, same name, every time.
@@ -46,4 +48,4 @@ A PR is written by `app/Services/Run/Metrics/PersonalRecords` via `updateOrCreat
 
 ## See also
 
-[[data-model]] · [[run-ingest-pipeline]] · [[cards-collection]] · [[records]] · [[targets-accessories]] · [[temari-mascot]]
+[[data-model]] · [[run-ingest-pipeline]] · [[cards-collection]] · [[records]] · [[targets-accessories]] · [[temari-mascot]] · [[vibe-and-mood]]

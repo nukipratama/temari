@@ -33,11 +33,11 @@ A personal running companion: it connects to Strava, ingests each run, computes 
 
 Backend logic is split by domain under `app/Services/`:
 
-- **Ingestion** — Strava sync → detail/streams/weather fetch → metrics → run cards + story, all idempotent and transactional. Entry: [app/Services/Run/Ingest/ActivityPipeline.php](app/Services/Run/Ingest/ActivityPipeline.php); Strava access via [app/Services/Strava/StravaClient.php](app/Services/Strava/StravaClient.php) (circuit breaker + per-client rate limit). See [[architecture/index|Architecture → run-ingest-pipeline]].
-- **AI narration** — one narrator per analysis type → queued job → an [Analysis](app/Models/AI/Analysis.php) row (pending/queued/processing/done/failed). Orchestrated by [app/Services/AI/AnalysisService.php](app/Services/AI/AnalysisService.php). See [[architecture/index|Architecture → ai-pipeline]].
-- **Gamification** — milestones, personal records, unlocks, card rarities. Under `app/Services/Gamification/` and `app/Services/Run/Story/`.
-- **Geo / Weather** — best-effort reverse-geocode (Nominatim) and weather snapshot (Open-Meteo) augment each run. Under `app/Services/Geo/` and `app/Services/Weather/`.
-- **Frontend** — Inertia 2 + React 19 pages in `resources/js/pages/`, rendered by controllers in `app/Http/Controllers/`. See [[features/index|Features]].
+- **Ingestion** — Strava sync → detail/streams/weather fetch → metrics → run cards + story, all idempotent and transactional. Entry: [app/Services/Run/Ingest/ActivityPipeline.php](app/Services/Run/Ingest/ActivityPipeline.php); Strava access via [app/Services/Strava/StravaClient.php](app/Services/Strava/StravaClient.php) (circuit breaker + per-client rate limit). See [[run-ingest-pipeline]]; metrics in [[stream-analysis]] + [[training-load-metrics]]; Strava resilience in [[strava-client]].
+- **AI narration** — one narrator per analysis type → queued job → an [Analysis](app/Models/AI/Analysis.php) row (pending/queued/processing/done/failed). Orchestrated by [app/Services/AI/AnalysisService.php](app/Services/AI/AnalysisService.php). See [[ai-pipeline]]; prompt-context + rule-based fallback in [[ai-narration-internals]].
+- **Gamification** — milestones, personal records, unlocks, card rarities, and the daily [[vibe-and-mood]] that drives Temari's tone. Under `app/Services/Gamification/` and `app/Services/Run/Story/`.
+- **Geo / Weather** — best-effort reverse-geocode (Nominatim) and weather snapshot (Open-Meteo) augment each run. Under `app/Services/Geo/` and `app/Services/Weather/`. See [[geo-reverse-geocoding]] + [[weather-integration]].
+- **Frontend** — Inertia 2 + React 19 pages in `resources/js/pages/`, rendered by controllers in `app/Http/Controllers/`. See [[frontend-architecture]] for the wiring, [[features/index|Features]] for each screen.
 
 ## Data lifecycle (high level)
 

@@ -26,7 +26,7 @@ The app's home (`/`). It greets the runner by name, hands them Temari's read on 
 
 ## Kata Temari (briefing card)
 
-The headline's right rail is [KataTemariCompact](resources/js/components/dashboard/KataTemariCompact.tsx) — Temari's mascot beside "Kata Temari hari ini". The prose is an LLM block (`briefing.mascotVoice`) rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it shows the spinner / retry / "Baca ulang" states from the [[ai-pipeline]] and an `ExpandableQuote` for long text. The whole briefing object is assembled server-side by `BriefingComposer` (`compose`).
+The headline's right rail is [KataTemariCompact](resources/js/components/dashboard/KataTemariCompact.tsx) — Temari's mascot beside "Kata Temari hari ini". The prose is an LLM block (`briefing.mascotVoice`) rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it shows the spinner / retry / "Baca ulang" states from the [[ai-pipeline]] and an `ExpandableQuote` for long text. The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — and it isn't one narrative but **four** independent Analysis rows: headline, suggestion, mascot voice, and featured-kartu voice (the last keyed on a separate discriminator so re-picking the featured card doesn't rebill the other three). Each is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
 
 ## Vital chips
 

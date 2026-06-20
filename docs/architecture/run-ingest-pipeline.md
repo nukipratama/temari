@@ -42,8 +42,8 @@ Scheduled sync deliberately does **not** dispatch a job per stub. `strava:ingest
 
 1. **Fetch detail** `/activities/{id}` → upsert [ActivityDetail](app/Models/ActivityDetail.php) via [storeDetail()](app/Services/Run/Ingest/ActivityPipeline.php).
 2. **Fetch streams** (time/distance/HR/cadence/velocity/altitude/latlng) → upsert [ActivityStream](app/Models/ActivityStream.php). Best-effort: a 4xx (404 = no streams, treadmill/manual) is logged and ingest continues.
-3. **Compute summary** — [StreamAnalysis::compute()](app/Services/Run/Ingest/StreamAnalysis.php) derives HR time-in-zone, best-effort paces, decoupling, cadence distribution, per-km splits, etc.; [TrainingLoad::edwardsTrimp()](app/Services/Run/Metrics/TrainingLoad.php) folds zone minutes into a TRIMP. Both land on the detail row.
-4. **Weather** — [lookupWeather()](app/Services/Run/Ingest/ActivityPipeline.php) reverse-looks the start coords from the stream; best-effort, never blocks.
+3. **Compute summary** — [StreamAnalysis::compute()](app/Services/Run/Ingest/StreamAnalysis.php) derives HR time-in-zone, best-effort paces, decoupling, cadence distribution, per-km splits, etc. (see [[stream-analysis]]); [TrainingLoad::edwardsTrimp()](app/Services/Run/Metrics/TrainingLoad.php) folds zone minutes into a TRIMP (the load engine is [[training-load-metrics]]). Both land on the detail row.
+4. **Weather** — [lookupWeather()](app/Services/Run/Ingest/ActivityPipeline.php) reverse-looks the start coords from the stream; best-effort, never blocks. See [[weather-integration]].
 
 The HTTP fetches above all run **outside** any transaction.
 
@@ -51,7 +51,7 @@ The HTTP fetches above all run **outside** any transaction.
 
 Then a single [DB::transaction](app/Services/Run/Ingest/ActivityPipeline.php) commits the watermark + the whole story layer atomically: stamp `analyzed_at` + reset `detail_fail_count` → [PersonalRecords::detectAndStore()](app/Services/Run/Metrics/PersonalRecords.php) (PR detection must run first — Temari's mood reads PR rows) → [RunCardFactory::build()](app/Services/Run/Story/RunCardFactory.php) → [Temari::postRunLine()](app/Services/Run/Story/Temari.php) → [MilestoneDetector::detect()](app/Services/Gamification/MilestoneDetector.php). If any throws, `analyzed_at` rolls back with it, so the stub stays drainable rather than stranded "analyzed" with a half-built story. These are all same-connection DB writes (no HTTP, no queued dispatch inside the txn).
 
-After commit: [ActivityIngested](app/Events/ActivityIngested.php) fires the AI fan-out (see below), and `afterCommit` a [ResolveActivityLocationJob](app/Jobs/Geo/ResolveActivityLocationJob.php) reverse-geocodes the start point when coords exist.
+After commit: [ActivityIngested](app/Events/ActivityIngested.php) fires the AI fan-out (see below), and `afterCommit` a [ResolveActivityLocationJob](app/Jobs/Geo/ResolveActivityLocationJob.php) reverse-geocodes the start point when coords exist (see [[geo-reverse-geocoding]]).
 
 ## Idempotency & re-drainability
 
@@ -67,7 +67,7 @@ The pipeline is re-runnable: detail/stream/card/PR writes are all `updateOrCreat
 
 ## Strava resilience
 
-[StravaClient](app/Services/Strava/StravaClient.php) fronts every call with a circuit breaker, app-wide (per-client, not per-athlete) rate-limit buckets, and per-connection token refresh under a lock. Revocation vs. transient-refresh handling lives in [SyncActivitiesJob](app/Jobs/Strava/SyncActivitiesJob.php). The breaker + rate-limit rationale is its own decision: [[strava-circuit-breaker-rate-limit]].
+[StravaClient](app/Services/Strava/StravaClient.php) fronts every call with a circuit breaker, app-wide (per-client, not per-athlete) rate-limit buckets, and per-connection token refresh under a lock. Revocation vs. transient-refresh handling lives in [SyncActivitiesJob](app/Jobs/Strava/SyncActivitiesJob.php). The breaker + rate-limit rationale is its own decision: [[strava-circuit-breaker-rate-limit]]; the operational mechanics (state machine, buckets, token refresh) are [[strava-client]].
 
 ## Manual / scheduled entry points
 
