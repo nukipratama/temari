@@ -15,7 +15,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
 #[Signature('ai:daily-briefing')]
-#[Description('Dispatch briefing analysis for each active user (last 7 days)')]
+#[Description('Dispatch the daily kickoff (briefing set + trend caption) for each active user (last 7 days)')]
 class DailyBriefingCommand extends Command
 {
     public function handle(AnalysisService $service, FeaturedKartuResolver $featuredKartu): int
@@ -37,6 +37,14 @@ class DailyBriefingCommand extends Command
 
         foreach ($users as $user) {
             $service->requestBriefingGroup($user, $today);
+
+            $service->request(
+                subjectOrType: AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
+                subjectId: $user->id,
+                type: AnalysisType::TrendCaption,
+                discriminator: $today,
+                invalidate: true,
+            );
 
             foreach ($dailyRowTypes as $type) {
                 $service->request(
@@ -62,7 +70,7 @@ class DailyBriefingCommand extends Command
             }
         }
 
-        $this->info("Dispatched daily briefing analysis for {$users->count()} active users.");
+        $this->info("Dispatched daily kickoff (briefing + trend caption) for {$users->count()} active users.");
 
         return self::SUCCESS;
     }

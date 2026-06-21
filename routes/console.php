@@ -10,21 +10,10 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Hourly: refresh trend caption for active users (last 7 days). Runs every hour
-// (not a single dailyAt('00:01')) so a deploy/restart that crosses midnight and
-// skips the 00:01 tick self-heals within the hour (the scheduler never replays
-// missed ticks on its own). TrendCaption is rule-based, so a same-day re-run only
-// recomputes deterministic content (no LLM call), never re-bills.
-Schedule::command('ai:daily-trend')->hourly()->withoutOverlapping(55);
-
-// Hourly: generate the daily briefing set (headline, suggestion, mascot voice,
-// featured kartu voice, greeting) for all active users. Recurring (not a single
-// dailyAt('00:01')) so a missed-midnight tick on deploy self-heals within the
-// hour. Idempotent: requestBriefingGroup + the LLM row types use invalidate=false,
-// so firstOrCreate + the Done/queued dispatch guard make a same-day re-run create
-// and dispatch ONLY the still-missing types (e.g. briefing_featured_kartu_voice),
-// never re-billing rows already Done for the day.
-Schedule::command('ai:daily-briefing')->hourly()->withoutOverlapping(55);
+// 00:01: daily kickoff for active users (last 7 days) — briefing set (headline,
+// suggestion, mascot voice, featured kartu voice, greeting) + trend caption.
+// Idempotent: a same-day re-run dispatches only still-missing types, never re-bills.
+Schedule::command('ai:daily-briefing')->dailyAt('00:01');
 
 // Monday 00:01: narrate last week's recap once per user, on final data. The
 // per-ingest cascade only stages the row Pending (weekly cadence) — this is
@@ -40,31 +29,23 @@ Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
 // 1st of the month 05:45: same pattern for the monthly recap.
 Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45');
 
-// Hourly: re-kick the earliest Pending link of every connected chain (weekly +
-// monthly + per-activity) per user. The recovery sweep for cost-ceiling pauses
-// (which resume after dailyCost() resets at midnight) and transient link
-// failures, so a stalled link never strands the rest until the next
-// weekly/monthly run. Recurring (not a single dailyAt('00:01')) so a missed
-// midnight tick on deploy self-heals within the hour; running more often also
-// speeds the weekly/monthly + per-activity backfill to completion. Idempotent:
-// it only re-kicks Pending/Failed links with invalidate=false, so a re-run is a
-// clean no-op on links already advancing and never re-bills Done rows.
+// Hourly recovery sweep: re-kicks the earliest Pending/Failed link of every
+// connected chain (weekly + monthly + per-activity) per user — for cost-ceiling
+// pauses (release at the midnight dailyCost() reset) and transient link failures.
+// Idempotent (invalidate=false): a no-op on links already advancing, never re-bills.
 Schedule::command('ai:resume-chains')->hourly()->withoutOverlapping(55);
 
-// Fallback poll behind the Strava webhook, hourly during the two running peaks
-// (WIB). Bounded withoutOverlapping expiry so a strand self-releases, not 24h.
-Schedule::command('strava:sync')->hourly()->between('4:00', '10:00')->withoutOverlapping(55);
-Schedule::command('strava:sync')->hourly()->between('16:00', '22:00')->withoutOverlapping(55);
+// Fallback poll behind the Strava webhook, hourly across the two running peaks
+// (WIB: 04-10 and 16-22). Bounded withoutOverlapping so a strand self-releases, not 24h.
+Schedule::command('strava:sync')->cron('0 4-10,16-22 * * *')->withoutOverlapping(55);
 
-// Every 5 minutes: drain a small batch of pending activity stubs into the
-// ingest pipeline. Stubs are inserted by strava:sync / webhooks without an
-// immediate per-activity dispatch; this drainer paces them so a backlog never
-// thundering-herds Strava into a 429 storm.
+// Every 5 minutes: paced drain of pending activity stubs (the Strava rate-limit
+// pacer). Its input is strava:sync stubs + detail-fetch retries (webhook activities
+// self-dispatch their own ingest); batching keeps a backlog from 429-storming Strava.
 Schedule::command('strava:ingest')->everyFiveMinutes()->withoutOverlapping(10);
 
 // Hourly catch-up for activity reverse-geocoding: backfills start coords from the
 // summary_polyline and re-queues ResolveActivityLocationJob for any GPS run still
-// missing location_resolved_at. The per-ingest dispatch is primary; this sweeps up
-// transient Nominatim misses (the job no longer stamps resolved_at on a null hit)
-// and any rows ingested before geo-on-ingest landed.
+// missing location_resolved_at. Primary dispatch is per-ingest; this sweeps up
+// transient Nominatim misses and rows ingested before geo-on-ingest landed.
 Schedule::command('geo:backfill-locations')->hourly()->withoutOverlapping(55);

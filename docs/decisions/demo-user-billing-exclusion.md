@@ -11,7 +11,6 @@ code_refs:
   - app/Console/Commands/AI/ResumeChainsCommand.php
   - app/Console/Commands/AI/WeeklyProfileCommand.php
   - app/Console/Commands/AI/DailyBriefingCommand.php
-  - app/Console/Commands/AI/DailyTrendCommand.php
   - app/Console/Commands/Strava/SyncCommand.php
   - app/Console/Commands/Strava/IngestCommand.php
   - app/Console/Commands/DemoSeedCommand.php
@@ -32,8 +31,7 @@ We decided the demo account carries an `is_demo` flag and is **excluded from eve
 
 The flag and its scope live on [User](app/Models/User.php): an `is_demo` boolean cast plus a local `scopeNotDemo` (`where('is_demo', false)`). Per the code as it stands, every kickoff scheduler scopes with `notDemo()` / `is_demo = false`:
 
-- `ai:daily-briefing` — [DailyBriefingCommand](app/Console/Commands/AI/DailyBriefingCommand.php)
-- `ai:daily-trend` — [DailyTrendCommand](app/Console/Commands/AI/DailyTrendCommand.php)
+- `ai:daily-briefing` (briefing set + trend caption) — [DailyBriefingCommand](app/Console/Commands/AI/DailyBriefingCommand.php)
 - `ai:weekly-recap` — [WeeklyRecapCommand](app/Console/Commands/AI/WeeklyRecapCommand.php)
 - `ai:weekly-profile` (persona summary + Kata Temari voice) — [WeeklyProfileCommand](app/Console/Commands/AI/WeeklyProfileCommand.php)
 - `ai:monthly-recap` — [MonthlyRecapCommand](app/Console/Commands/AI/MonthlyRecapCommand.php)
