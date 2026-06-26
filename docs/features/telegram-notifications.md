@@ -3,7 +3,7 @@ title: Telegram notifications
 description: Linking a Telegram account, the per-type notification toggles, and how post-run / weekly-recap narration is pushed to the bot.
 tags: [feature, telegram]
 status: living
-reviewed: 2026-06-25
+reviewed: 2026-06-26
 code_refs:
   - app/Services/Telegram/TelegramClient.php
   - app/Services/Telegram/TelegramLinkToken.php
@@ -34,7 +34,7 @@ A bot is created in Telegram's @BotFather (`/newbot`), which also sets its name,
 
 Telegram has no OAuth, so the logged-in web session carries its identity through the bot. The Aku page ([ProfileController](../../app/Http/Controllers/ProfileController.php) `resolveTelegram()`) mints a signed deep-link token ([TelegramLinkToken](../../app/Services/Telegram/TelegramLinkToken.php), 60-min TTL) and renders a Telegram-branded "Hubungkan Telegram" button pointing at `t.me/<bot>?start=<token>`.
 
-When the user taps Start, the update reaches [HandleTelegramUpdateJob](../../app/Jobs/Telegram/HandleTelegramUpdateJob.php) — via the webhook ([TelegramWebhookController](../../app/Http/Controllers/Telegram/TelegramWebhookController.php), gated on the `X-Telegram-Bot-Api-Secret-Token` header) in prod, or `telegram:listen` in dev. It decrypts the token, then either links (storing the server-reported `chat_id` and replying with an account-naming welcome), replies "expired" without linking, or replies generically to garbage. `/stop` revokes. All reply copy is Temari-voiced in [TelegramReplies](../../app/Services/Telegram/TelegramReplies.php). The decision behind this flow is [[telegram-account-linking]].
+When the user taps Start, the update reaches [HandleTelegramUpdateJob](../../app/Jobs/Telegram/HandleTelegramUpdateJob.php) — via the webhook ([TelegramWebhookController](../../app/Http/Controllers/Telegram/TelegramWebhookController.php), CSRF-exempt and gated on the `X-Telegram-Bot-Api-Secret-Token` header) in prod, or `telegram:listen` in dev. It verifies the token (signature + expiry), then either links (storing the server-reported `chat_id`, replying with an account-naming welcome, and **consuming the token** so a leaked link can't be replayed), replies that the link is no longer valid without linking, or replies generically to garbage. `/stop` revokes. All reply copy is Temari-voiced in [TelegramReplies](../../app/Services/Telegram/TelegramReplies.php). The decision behind this flow is [[telegram-account-linking]].
 
 ## Preferences + disconnect
 
@@ -43,6 +43,8 @@ The Aku page ([Aku.tsx](../../resources/js/pages/Aku.tsx)) shows two switches (`
 ## Sending
 
 `AnalysisService::markDone()` fans out [SendTelegramNotificationJob](../../app/Jobs/Telegram/SendTelegramNotificationJob.php) for the notifiable types. The job resolves the user behind the analysis ([NotifiableAnalysis](../../app/Services/Telegram/NotifiableAnalysis.php)), then enforces: not the demo user, a non-revoked connection, the per-type opt-in on, and a `telegram_deliveries` unique-`analysis_id` claim so a Horizon retry never double-sends. The completion-hook side and its guards live in [[ai-pipeline]].
+
+The message itself ([NotifiableAnalysis::format](../../app/Services/Telegram/NotifiableAnalysis.php)) is an emoji label (🏃 post-run / 📊 weekly), the LLM narration verbatim, a one-line metrics summary (distance · duration · pace · HR, each dropped when null) for post-run, and a tap-through deep link to the activity or run-history page.
 
 ## See also
 
