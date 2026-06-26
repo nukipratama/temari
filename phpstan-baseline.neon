@@ -7,12 +7,6 @@ parameters:
 			path: app/Services/AI/TokenUsageReport.php
 
 		-
-			message: '#^Method App\\Livewire\\Pulse\\StravaHealth\:\:perUserSyncHistory\(\) should return list\<array\{user_id\: int, user_name\: string, last_sync\: string\|null, status\: string, rate_limit_15min_remaining\: int\|null, rate_limit_daily_remaining\: int\|null, is_failed\: bool\}\> but returns list\<array\{user_id\: int, user_name\: string, last_sync\: mixed, status\: mixed, ''15min_remaining''\: mixed, daily_remaining\: mixed, is_failed\: bool\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Livewire/Pulse/StravaHealth.php
-
-		-
 			message: '#^Offset ''pace'' on array\{km\: int, pace\: string\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1

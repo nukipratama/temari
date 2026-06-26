@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use App\Models\Analytics\StravaSyncLog;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -66,7 +67,8 @@ class User extends Authenticatable
      *
      * @param  Builder<User>  $query
      */
-    public function scopeNotDemo(Builder $query): void
+    #[Scope]
+    protected function notDemo(Builder $query): void
     {
         $query->where('is_demo', false);
     }

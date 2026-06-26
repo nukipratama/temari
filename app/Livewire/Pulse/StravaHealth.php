@@ -130,7 +130,7 @@ class StravaHealth extends Card
      * The shared read-API budget (Strava limits per client, not per athlete), read
      * from the newest sync log overall — one global number, not a per-user figure.
      *
-     * @return array{15min: int|null, daily: int|null}
+     * @return array{'15min': int|null, daily: int|null}
      */
     private function globalRateLimit(): array
     {
