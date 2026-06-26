@@ -20,6 +20,8 @@ use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
 use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Http\Controllers\Strava\SyncController;
+use App\Http\Controllers\Telegram\TelegramConnectionController;
+use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\TokenUsageController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +35,13 @@ Route::get('/strava/webhook', [StravaWebhookController::class, 'verify'])->name(
 Route::post('/strava/webhook', [StravaWebhookController::class, 'handle'])
     ->middleware('throttle:60,1')
     ->name('strava.webhook.handle');
+
+// Telegram bot webhook. Called by Telegram unauthenticated — gated by the secret
+// token echoed in the X-Telegram-Bot-Api-Secret-Token header. IP rate-limited
+// like the other public POSTs.
+Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])
+    ->middleware('throttle:60,1')
+    ->name('telegram.webhook.handle');
 
 // Client-side error sink. Unauthenticated so it captures errors on guest pages
 // (e.g. /login) too; CSRF-exempt + IP rate-limited (low-risk telemetry).
@@ -69,6 +78,9 @@ Route::middleware('auth')->group(function (): void {
         ->name('api.aksesori.equip');
 
     Route::get('/profil', ProfileController::class)->name('profil');
+
+    Route::patch('/profil/telegram', [TelegramConnectionController::class, 'update'])->name('telegram.preferences.update');
+    Route::delete('/profil/telegram', [TelegramConnectionController::class, 'destroy'])->name('telegram.disconnect');
 
     Route::get('/pengaturan/zona', [RunnerZonesController::class, 'index'])->name('pengaturan.zona');
     Route::patch('/pengaturan/zona', [RunnerZonesController::class, 'update'])->name('pengaturan.zona.update');

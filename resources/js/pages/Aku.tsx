@@ -1,6 +1,6 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
@@ -52,6 +52,14 @@ interface UnlockCatalogEntry {
     criteria: string;
 }
 
+interface TelegramPayload {
+    connected: boolean;
+    username: string | null;
+    connect_url: string | null;
+    notify_post_run: boolean;
+    notify_weekly_recap: boolean;
+}
+
 interface AkuProps {
     identity: IdentityPayload;
     stats: StatsPayload;
@@ -61,7 +69,16 @@ interface AkuProps {
     personaMix?: PersonaSlice[];
     personaSummary?: AnalysisPayload;
     profileVoice?: AnalysisPayload;
+    telegram?: TelegramPayload;
 }
+
+const TELEGRAM_DEFAULT: TelegramPayload = {
+    connected: false,
+    username: null,
+    connect_url: null,
+    notify_post_run: true,
+    notify_weekly_recap: true,
+};
 
 export default function Aku({
     identity,
@@ -72,6 +89,7 @@ export default function Aku({
     personaMix = [],
     personaSummary,
     profileVoice,
+    telegram = TELEGRAM_DEFAULT,
 }: Readonly<AkuProps>) {
     const sharedUser = usePage<SharedProps>().props.auth.user;
     const firstName = sharedUser?.first_name ?? identity.name.split(' ')[0] ?? '';
@@ -191,6 +209,13 @@ export default function Aku({
                 )}
 
                 <section className="mt-10">
+                    <SectionLabel>Notifikasi Telegram</SectionLabel>
+                    <Card padding="lg">
+                        <TelegramPanel telegram={telegram} />
+                    </Card>
+                </section>
+
+                <section className="mt-10">
                     <SectionLabel>Aksesori</SectionLabel>
                     <AksesoriStrip
                         unlocks={unlocks}
@@ -199,6 +224,108 @@ export default function Aku({
                 </section>
             </PageContainer>
         </AppShell>
+    );
+}
+
+function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
+    // Local state prevents a rapid-click race: if the user flips both toggles before
+    // Inertia refreshes props, the second PATCH would read stale props for the first
+    // toggle's value and silently revert it. Local state sees the latest flipped value.
+    const [postRun, setPostRun] = useState(telegram.notify_post_run);
+    const [weeklyRecap, setWeeklyRecap] = useState(telegram.notify_weekly_recap);
+
+    const savePrefs = (notifyPostRun: boolean, notifyWeeklyRecap: boolean) => {
+        router.patch(
+            '/profil/telegram',
+            { notify_post_run: notifyPostRun, notify_weekly_recap: notifyWeeklyRecap },
+            { preserveScroll: true },
+        );
+    };
+
+    if (!telegram.connected) {
+        return (
+            <div className="flex flex-col gap-4">
+                <p className="font-display text-base italic text-ink-2">
+                    Sambungin Telegram biar Temari bisa kabarin kamu tiap abis lari sama pas rekap mingguan.
+                </p>
+                {telegram.connect_url ? (
+                    <a
+                        href={telegram.connect_url}
+                        className="inline-flex items-center gap-2 self-start rounded-full bg-[#229ED9] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1c8cbf]"
+                    >
+                        <Icon icon="mdi:telegram" width={18} height={18} aria-hidden />
+                        Hubungkan Telegram
+                    </a>
+                ) : (
+                    <p className="font-sans text-[12px] text-ink-3">Bot Telegram belum dikonfigurasi.</p>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-5">
+            <div className="flex items-center justify-between gap-3">
+                <Chip tone="horizon">
+                    Telegram aktif{telegram.username ? ` · @${telegram.username}` : ''}
+                </Chip>
+                <button
+                    type="button"
+                    onClick={() => router.delete('/profil/telegram', { preserveScroll: true })}
+                    className="focus-ring rounded font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3 transition hover:text-ember-deep"
+                >
+                    Putuskan
+                </button>
+            </div>
+            <div className="flex flex-col gap-3">
+                <NotifyToggle
+                    label="Cerita abis lari"
+                    checked={postRun}
+                    onChange={(value) => {
+                        setPostRun(value);
+                        savePrefs(value, weeklyRecap);
+                    }}
+                />
+                <NotifyToggle
+                    label="Rekap mingguan"
+                    checked={weeklyRecap}
+                    onChange={(value) => {
+                        setWeeklyRecap(value);
+                        savePrefs(postRun, value);
+                    }}
+                />
+            </div>
+        </div>
+    );
+}
+
+function NotifyToggle({
+    label,
+    checked,
+    onChange,
+}: Readonly<{ label: string; checked: boolean; onChange: (value: boolean) => void }>) {
+    return (
+        <label className="flex items-center justify-between gap-3">
+            <span className="font-display text-base text-ink">{label}</span>
+            <button
+                type="button"
+                role="switch"
+                aria-checked={checked}
+                aria-label={label}
+                onClick={() => onChange(!checked)}
+                className={cn(
+                    'focus-ring relative h-6 w-11 rounded-full transition',
+                    checked ? 'bg-horizon' : 'bg-cream-deep',
+                )}
+            >
+                <span
+                    className={cn(
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white transition',
+                        checked ? 'left-[1.375rem]' : 'left-0.5',
+                    )}
+                />
+            </button>
+        </label>
     );
 }
 

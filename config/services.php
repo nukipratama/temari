@@ -47,4 +47,13 @@ return [
         'webhook_subscription_id' => env('STRAVA_WEBHOOK_SUBSCRIPTION_ID'),
     ],
 
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'bot_username' => env('TELEGRAM_BOT_USERNAME'),
+        // Random shared secret echoed back by Telegram in the
+        // X-Telegram-Bot-Api-Secret-Token header on every webhook delivery; set
+        // it when registering the webhook via `php artisan telegram:set-webhook`.
+        'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+    ],
+
 ];

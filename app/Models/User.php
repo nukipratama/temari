@@ -88,6 +88,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasOne<TelegramConnection, $this>
+     */
+    public function telegramConnection(): HasOne
+    {
+        return $this->hasOne(TelegramConnection::class);
+    }
+
+    /**
      * Fixed public contract for heart-rate and cadence settings. Returns the
      * stored runner_profiles row when present, otherwise the config('runner.*')
      * defaults in the identical shape so callers cannot tell the difference.

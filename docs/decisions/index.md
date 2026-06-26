@@ -31,3 +31,4 @@ _Infra & Strava_
 - [[fixed-session-cookie]] — fixed cookie name + Redis prefixes, not APP_NAME-derived
 - [[trust-all-proxies-cloudflare]] — trust all proxies behind the Cloudflare tunnel
 - [[defer-config-cache]] — config:cache only at deploy time, never at build or in CI tests
+- [[telegram-account-linking]] — link Telegram via a signed deep-link token; prod webhook, dev long-poll

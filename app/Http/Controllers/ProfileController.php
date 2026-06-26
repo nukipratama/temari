@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\PersonaSummaryNarrator;
+use App\Services\Telegram\TelegramLinkToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -23,6 +24,7 @@ class ProfileController extends Controller
     public function __invoke(
         Request $request,
         PersonaSummaryNarrator $personaNarrator,
+        TelegramLinkToken $telegramLinkToken,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -70,7 +72,42 @@ class ProfileController extends Controller
             'personaMix' => $personaNarrator->personaMix($user),
             'personaSummary' => $this->resolvePersonaSummary($user),
             'profileVoice' => $this->resolveProfileVoice($user),
+            'telegram' => $this->resolveTelegram($user, $telegramLinkToken),
         ]);
+    }
+
+    /**
+     * @return array{connected: bool, username: string|null, connect_url: string|null, notify_post_run: bool, notify_weekly_recap: bool}
+     */
+    private function resolveTelegram(User $user, TelegramLinkToken $linkToken): array
+    {
+        $botUsername = (string) config('services.telegram.bot_username');
+        // A fresh, signed deep-link token per render (60 min TTL). Null when the
+        // bot username isn't configured, so the UI hides the connect button.
+        $connectUrl = $botUsername !== ''
+            ? "https://t.me/{$botUsername}?start=" . $linkToken->mint($user->id)
+            : null;
+
+        $connection = $user->telegramConnection;
+        if ($connection === null) {
+            return [
+                'connected' => false,
+                'username' => null,
+                'connect_url' => $connectUrl,
+                'notify_post_run' => true,
+                'notify_weekly_recap' => true,
+            ];
+        }
+
+        $connected = ! $connection->isRevoked();
+
+        return [
+            'connected' => $connected,
+            'username' => $connected ? $connection->username : null,
+            'connect_url' => $connectUrl,
+            'notify_post_run' => $connection->notify_post_run,
+            'notify_weekly_recap' => $connection->notify_weekly_recap,
+        ];
     }
 
     /**

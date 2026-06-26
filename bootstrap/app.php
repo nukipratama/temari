@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // rate limiter, and a global JS error handler may fire without a token.
         $middleware->validateCsrfTokens(except: [
             'strava/webhook',
+            'telegram/webhook',
             'client-errors',
         ]);
     })

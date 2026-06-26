@@ -3,7 +3,7 @@ title: AI narration pipeline
 description: How AI copy flows from a narrator through a queued job into an Analysis row, with cadence, chaining, idempotency, cost ceiling, manual retry, and the rule-based fallback.
 tags: [architecture, ai]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-06-25
 code_refs:
   - app/Services/AI/AnalysisService.php
   - app/Services/AI/AnalysisType.php
@@ -61,6 +61,8 @@ There are two job base classes, both extending [AnalyzeBaseJob](app/Jobs/AI/Anal
 - **Idempotency at execution** — `AnalyzeRowJob::handle()` early-exits when the row is already `Done`; `AnalyzeGroupJob::handle()` filters out the Done rows. This makes a UI retry that races a developer's Horizon retry safe — the second run sees `Done` and stops, so the LLM is never double-billed.
 - **`afterCommit()`** — `dispatchPending()` defers the enqueue until the surrounding DB transaction commits, so a job can't run before (or be orphaned by a rollback of) the row it targets.
 - **Daily cost ceiling** — `autoDispatchEnabled()` consults `dailyCostCeilingExceeded()`. When `azure_openai.daily_cost_ceiling` is set and today's spend exceeds it, auto-dispatch is skipped (rows stay `Pending`) until midnight resets the daily cost. A null ceiling never gates.
+
+**Completion side effect (Telegram).** `AnalysisService::markDone()` fans out a Telegram push for the notifiable types. The gate is registered-type (`NotifiableAnalysis::isNotifiable()`) + not under `withoutDispatching` (so the demo seed never notifies) + a configured bot token; it then dispatches `SendTelegramNotificationJob` with `afterCommit()`. The job enforces its own demo / opt-in / connection guards and a `telegram_deliveries` unique-`analysis_id` claim, so a Horizon retry of an AI job (which re-runs `markDone`) never double-messages. See [[telegram-notifications]].
 
 ## Chained narration
 

@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { router } from '@inertiajs/react';
 import Aku from './Aku';
 import { makeUser, setMockPage } from '@/test/setup';
 
@@ -69,6 +70,69 @@ describe('Aku', () => {
         render(<Aku identity={identity} stats={stats} topPrs={topPrs} />);
         expect(screen.getByText(/Rekor terbaru/)).toBeInTheDocument();
         expect(screen.getByText(/Semua rekor/)).toBeInTheDocument();
+    });
+
+    it('shows the connect button when Telegram is not connected', () => {
+        const telegram = {
+            connected: false,
+            username: null,
+            connect_url: 'https://t.me/temari_bot?start=tok',
+            notify_post_run: true,
+            notify_weekly_recap: true,
+        };
+        render(<Aku identity={identity} stats={stats} telegram={telegram} />);
+        const link = screen.getByText('Hubungkan Telegram').closest('a');
+        expect(link).toHaveAttribute('href', 'https://t.me/temari_bot?start=tok');
+    });
+
+    it('shows the preference toggles when Telegram is connected', () => {
+        const telegram = {
+            connected: true,
+            username: 'ada_runs',
+            connect_url: null,
+            notify_post_run: true,
+            notify_weekly_recap: false,
+        };
+        render(<Aku identity={identity} stats={stats} telegram={telegram} />);
+        expect(screen.getByText(/Telegram aktif/)).toBeInTheDocument();
+        expect(screen.getByRole('switch', { name: 'Cerita abis lari' })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('switch', { name: 'Rekap mingguan' })).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('patches preferences when a toggle is flipped, carrying both current values', () => {
+        vi.mocked(router.patch).mockReset();
+        const telegram = {
+            connected: true,
+            username: null,
+            connect_url: null,
+            notify_post_run: true,
+            notify_weekly_recap: false,
+        };
+        render(<Aku identity={identity} stats={stats} telegram={telegram} />);
+
+        fireEvent.click(screen.getByRole('switch', { name: 'Rekap mingguan' }));
+
+        expect(router.patch).toHaveBeenCalledWith(
+            '/profil/telegram',
+            { notify_post_run: true, notify_weekly_recap: true },
+            { preserveScroll: true },
+        );
+    });
+
+    it('disconnects via DELETE when Putuskan is clicked', () => {
+        vi.mocked(router.delete).mockReset();
+        const telegram = {
+            connected: true,
+            username: null,
+            connect_url: null,
+            notify_post_run: true,
+            notify_weekly_recap: true,
+        };
+        render(<Aku identity={identity} stats={stats} telegram={telegram} />);
+
+        fireEvent.click(screen.getByText('Putuskan'));
+
+        expect(router.delete).toHaveBeenCalledWith('/profil/telegram', { preserveScroll: true });
     });
 
     it('renders the AksesoriStrip when unlock catalog has entries', () => {

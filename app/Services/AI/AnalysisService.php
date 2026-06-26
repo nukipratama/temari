@@ -9,11 +9,13 @@ use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeRowJob;
+use App\Jobs\Telegram\SendTelegramNotificationJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
+use App\Services\Telegram\NotifiableAnalysis;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +34,7 @@ class AnalysisService
         private readonly RuleBasedInsightBuilder $insightBuilder,
         private readonly AppConfig $config,
         private readonly LlmCostCalculator $costCalculator,
+        private readonly NotifiableAnalysis $notifiableAnalysis,
     ) {
     }
 
@@ -142,6 +145,16 @@ class AnalysisService
             'error' => null,
             'generated_at' => $generatedAt ?? Carbon::now(),
         ]);
+
+        // Fan out a Telegram push for the notifiable types. Suppressed under
+        // withoutDispatching (demo seed) and a no-op when Telegram is unconfigured;
+        // the job itself enforces the demo / opt-in / connection / idempotency
+        // guards. afterCommit so it can't run before the row it reads is committed.
+        if (! $this->dispatchSuppressed
+            && filled(config('services.telegram.bot_token'))
+            && $this->notifiableAnalysis->isNotifiable($row)) {
+            SendTelegramNotificationJob::dispatch($row->id)->afterCommit();
+        }
     }
 
     public function markFailed(Analysis $row, string $error): void

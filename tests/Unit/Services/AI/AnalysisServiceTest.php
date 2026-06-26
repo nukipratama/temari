@@ -6,6 +6,7 @@ use Illuminate\Database\QueryException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
+use App\Jobs\Telegram\SendTelegramNotificationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -553,4 +554,63 @@ it('upsertGroupRows with NULL discriminators collapses repeat requests to one ro
         ->where('subject_id', $activity->id)
         ->whereNull('discriminator')
         ->count())->toBe(4);
+});
+
+it('markDone fans out a Telegram notification for a notifiable type', function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+    $snap = WeeklySnapshot::factory()->create();
+    $row = Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+
+    $this->service->markDone($row, 'Rekap minggu ini.');
+
+    Bus::assertDispatched(
+        SendTelegramNotificationJob::class,
+        fn (SendTelegramNotificationJob $job): bool => $job->analysisId === $row->id,
+    );
+});
+
+it('markDone does not notify for a non-notifiable type', function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+    $row = Analysis::factory()->create(['analysis_type' => AnalysisType::DailyGreeting]);
+
+    $this->service->markDone($row, 'Halo!');
+
+    Bus::assertNotDispatched(SendTelegramNotificationJob::class);
+});
+
+it('markDone does not notify under withoutDispatching (demo seed)', function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+    $snap = WeeklySnapshot::factory()->create();
+    $row = Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+
+    $this->service->withoutDispatching(function () use ($row): void {
+        $this->service->markDone($row, 'Rekap seed.');
+    });
+
+    Bus::assertNotDispatched(SendTelegramNotificationJob::class);
+});
+
+it('markDone does not notify when Telegram is unconfigured', function (): void {
+    config(['services.telegram.bot_token' => null]);
+    $snap = WeeklySnapshot::factory()->create();
+    $row = Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+
+    $this->service->markDone($row, 'Rekap.');
+
+    Bus::assertNotDispatched(SendTelegramNotificationJob::class);
 });
