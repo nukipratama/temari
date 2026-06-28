@@ -6,6 +6,7 @@ namespace App\Jobs\Strava;
 
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\PersonalRecords;
@@ -43,7 +44,7 @@ class CleanupDeletedActivityJob implements ShouldQueue
             ->withStubs()
             ->where('user_id', $user->id)
             ->where('strava_external_id', $this->stravaActivityId)
-            ->with('detail')
+            ->with(['detail', 'runCard'])
             ->first();
         if ($activity === null) {
             return;
@@ -51,6 +52,9 @@ class CleanupDeletedActivityJob implements ShouldQueue
 
         $weekAnchor = $activity->detail?->start_date_local;
         $localId = $activity->id;
+        // The card cascades on delete, but its CardFlavor analysis (keyed by the
+        // card id, no FK) does not — capture the id now to purge it below.
+        $cardId = $activity->runCard?->id;
 
         // Cascades detail / stream / card / post-run storyline via FK.
         $activity->delete();
@@ -75,11 +79,19 @@ class CleanupDeletedActivityJob implements ShouldQueue
         // surviving runs rather than left pointing at a deleted activity.
         $personalRecords->rebuildForUser($user);
 
-        // Polymorphic narration has no FK; purge the deleted run's rows.
+        // Polymorphic narration has no FK; purge the deleted run's rows (the
+        // activity-keyed speech + insights, and the card-keyed flavor).
         Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('subject_id', $localId)
             ->delete();
+
+        if ($cardId !== null) {
+            Analysis::query()
+                ->where('subject_type', RunCard::class)
+                ->where('subject_id', $cardId)
+                ->delete();
+        }
 
         Log::info('strava.webhook cleaned up deleted activity', [
             'user_id' => $user->id,

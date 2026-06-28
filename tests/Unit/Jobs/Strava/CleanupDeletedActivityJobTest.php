@@ -52,6 +52,14 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
         ]);
     }
 
+    // The doomed run's card carries a CardFlavor analysis (keyed by card id).
+    $doomedCard = App\Models\RunCard::factory()->create(['activity_id' => $doomed->id]);
+    Analysis::factory()->create([
+        'subject_type' => App\Models\RunCard::class,
+        'subject_id' => $doomedCard->id,
+        'analysis_type' => AnalysisType::CardFlavor,
+    ]);
+
     (new CleanupDeletedActivityJob($user->id, 7_001))->handle(
         app(WeeklyAggregator::class),
         app(\App\Services\Run\Metrics\PersonalRecords::class),
@@ -66,7 +74,9 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
         ->and(PersonalRecord::query()->where('activity_id', $doomed->id)->exists())->toBeFalse()
         // Orphaned narration purged; the survivor's stays.
         ->and(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $doomed->id)->exists())->toBeFalse()
-        ->and(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $survivor->id)->exists())->toBeTrue();
+        ->and(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $survivor->id)->exists())->toBeTrue()
+        // The deleted card's CardFlavor analysis is purged too.
+        ->and(Analysis::query()->where('subject_type', App\Models\RunCard::class)->where('subject_id', $doomedCard->id)->exists())->toBeFalse();
 });
 
 it('prunes a now-empty weekly snapshot when the deleted run was the last one', function (): void {
