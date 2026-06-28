@@ -16,6 +16,15 @@ it('fails when the webhook secret is not configured', function (): void {
     $this->artisan('telegram:set-webhook')->assertExitCode(1);
 });
 
+it('fails without calling Telegram when the secret has disallowed characters', function (): void {
+    config(['services.telegram.bot_token' => 'token', 'services.telegram.webhook_secret' => 'base64+secret/with=pad']);
+    Http::fake();
+
+    $this->artisan('telegram:set-webhook')->assertExitCode(1);
+
+    Http::assertNothingSent();
+});
+
 it('registers the webhook url and secret with Telegram', function (): void {
     config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.webhook_secret' => 'top-secret']);
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);

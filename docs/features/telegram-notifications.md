@@ -27,7 +27,7 @@ The first outbound channel: Temari pushes the most "alive" narration to the user
 
 A bot is created in Telegram's @BotFather (`/newbot`), which also sets its name, @username, and avatar — the bot's distinct identity. The token lands in `.env` (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET`), wired through [config/services.php](../../config/services.php). A token's webhook and `getUpdates` polling are mutually exclusive, so use **two bots**: a prod bot (webhook) and a separate test bot (polled locally). [TelegramClient](../../app/Services/Telegram/TelegramClient.php) wraps the Bot API over the `Http` facade.
 
-- **Prod** registers the push webhook once via `telegram:set-webhook` ([SetWebhookCommand](../../app/Console/Commands/Telegram/SetWebhookCommand.php)).
+- **Prod** registers the push webhook once via `telegram:set-webhook` ([SetWebhookCommand](../../app/Console/Commands/Telegram/SetWebhookCommand.php)). The `TELEGRAM_WEBHOOK_SECRET` may only contain `A-Z a-z 0-9 _ -` (1-256 chars) per Telegram's API; a base64 value (the `+ / =` from `key:generate`) is rejected with an opaque 400, so the command validates the charset up front and suggests `openssl rand -hex 32`.
 - **Local dev** runs `telegram:listen` ([ListenCommand](../../app/Console/Commands/Telegram/ListenCommand.php)), a manual foreground long-poll (like `queue:listen`, never scheduled) that needs no public URL and feeds the same linking job the webhook does.
 
 ## Linking an account
