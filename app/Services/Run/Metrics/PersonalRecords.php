@@ -8,6 +8,7 @@ use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\User;
 use App\Services\Gamification\UnlockEngine;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\AnalysisService;
@@ -19,6 +20,34 @@ class PersonalRecords
         private readonly AnalysisService $analysisService,
         private readonly UnlockEngine $unlockEngine,
     ) {
+    }
+
+    /**
+     * Rebuild the user's personal records from scratch across their remaining
+     * activities, oldest-first. Used after an activity is deleted: detectAndStore
+     * only ever *lowers* a record, so a deleted run leaves its PR row orphaned
+     * (activity_id nulled) with a now-unbeatable time. Dropping every PR and
+     * re-detecting chronologically restores the true best of the surviving runs.
+     */
+    public function rebuildForUser(User $user): void
+    {
+        PersonalRecord::query()->where('user_id', $user->id)->delete();
+
+        $activities = Activity::query()
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activities.user_id', $user->id)
+            ->whereNotNull('activity_details.start_date_local')
+            ->orderBy('activity_details.start_date_local')
+            ->with('detail')
+            ->select('activities.*')
+            ->get();
+
+        foreach ($activities as $activity) {
+            $detail = $activity->detail;
+            if ($detail !== null) {
+                $this->detectAndStore($activity, $detail);
+            }
+        }
     }
 
     /**

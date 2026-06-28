@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Strava;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\Strava\CleanupDeletedActivityJob;
 use App\Jobs\Strava\ResyncActivityJob;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\Activity;
@@ -168,21 +169,10 @@ class StravaWebhookController extends Controller
 
     private function deleteLocalActivity(StravaConnection $connection, int $stravaActivityId): void
     {
-        // Cascades to detail / stream / card rows via FK on delete. withStubs()
-        // so a delete webhook for a not-yet-ingested activity still removes it
-        // (the AnalyzedScope would otherwise hide the stub from this query).
-        $deleted = Activity::query()
-            ->withStubs()
-            ->where('user_id', $connection->user_id)
-            ->where('strava_external_id', $stravaActivityId)
-            ->delete();
-
-        if ($deleted > 0) {
-            Log::info('strava.webhook removed deleted activity', [
-                'user_id' => $connection->user_id,
-                'strava_external_id' => $stravaActivityId,
-            ]);
-        }
+        // Queue the delete + downstream recompute (weekly snapshots, PRs,
+        // orphaned narration) so the webhook still acks fast. The job resolves
+        // the local row (withStubs, so a not-yet-ingested stub is removed too).
+        CleanupDeletedActivityJob::dispatch($connection->user_id, $stravaActivityId);
     }
 
     private function ack(): JsonResponse

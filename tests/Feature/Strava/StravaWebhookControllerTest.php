@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\Strava\CleanupDeletedActivityJob;
 use App\Jobs\Strava\ResyncActivityJob;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\Activity;
@@ -135,6 +136,24 @@ it('does not dispatch sync for a revoked connection', function (): void {
     ])->assertOk();
 
     Bus::assertNotDispatched(SyncActivitiesJob::class);
+});
+
+it('queues a cleanup job on an activity delete event', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);
+
+    $this->postJson(route('strava.webhook.handle'), [
+        'object_type' => 'activity',
+        'object_id' => 9_005,
+        'aspect_type' => 'delete',
+        'owner_id' => 42,
+    ])->assertOk();
+
+    Bus::assertDispatched(
+        CleanupDeletedActivityJob::class,
+        fn (CleanupDeletedActivityJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === 9_005,
+    );
 });
 
 it('removes the local activity on an activity delete event', function (): void {

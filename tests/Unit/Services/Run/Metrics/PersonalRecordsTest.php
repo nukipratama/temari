@@ -212,3 +212,29 @@ it('requests pr_context with invalidate:false so a backfill does not re-bill eac
 
     expect($records->detectAndStore($activity, $detail))->toContain('5km');
 });
+
+it('rebuildForUser drops orphaned records and re-detects from surviving runs', function (): void {
+    $user = User::factory()->create();
+
+    // A stale, orphaned record (activity_id nulled after a delete) claiming an
+    // unbeatable 1km time that no surviving run can match.
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '1km',
+        'value_sec' => 200.0,
+        'activity_id' => null,
+    ]);
+
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5000,
+        'splits_metric' => evenSplits(5, 300),
+        'start_date_local' => now(),
+    ]);
+
+    $this->records->rebuildForUser($user);
+
+    $km = PersonalRecord::query()->where('user_id', $user->id)->where('category', '1km')->first();
+    expect($km)->not->toBeNull()
+        ->and($km->value_sec)->toEqualWithDelta(300.0, 0.01)
+        ->and($km->activity_id)->toBe($activity->id);
+});
