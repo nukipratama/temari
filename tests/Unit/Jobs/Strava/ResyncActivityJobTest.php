@@ -13,7 +13,7 @@ use Illuminate\Queue\Middleware\ThrottlesExceptions;
 
 uses(RefreshDatabase::class);
 
-it('re-ingests the activity and re-narrates when it is the chain head', function (): void {
+it('re-ingests and re-narrates the chain head when renarrate is requested', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->create([
@@ -31,10 +31,27 @@ it('re-ingests the activity and re-narrates when it is the chain head', function
         ->once()
         ->withArgs(fn (Activity $arg, bool $invalidate): bool => $arg->is($activity) && $invalidate === true);
 
+    (new ResyncActivityJob($activity->id, renarrate: true))->handle($pipeline, $service);
+});
+
+it('refreshes data only (no re-narration) when renarrate is false, even for the head', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->create([
+        'activity_id' => $activity->id,
+        'start_date_local' => now(),
+    ]);
+
+    $pipeline = Mockery::mock(ActivityPipeline::class);
+    $pipeline->shouldReceive('ingest')->once();
+
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldNotReceive('requestActivityGroup');
+
     (new ResyncActivityJob($activity->id))->handle($pipeline, $service);
 });
 
-it('re-ingests but does NOT re-narrate a mid-history activity', function (): void {
+it('never re-narrates a mid-history activity even when renarrate is requested', function (): void {
     $user = User::factory()->create();
 
     $old = Activity::factory()->for($user)->create();
@@ -55,7 +72,7 @@ it('re-ingests but does NOT re-narrate a mid-history activity', function (): voi
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('requestActivityGroup');
 
-    (new ResyncActivityJob($old->id))->handle($pipeline, $service);
+    (new ResyncActivityJob($old->id, renarrate: true))->handle($pipeline, $service);
 });
 
 it('quietly no-ops if the activity was deleted before the job runs', function (): void {

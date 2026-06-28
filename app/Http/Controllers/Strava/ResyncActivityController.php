@@ -21,7 +21,8 @@ class ResyncActivityController extends Controller
     {
         abort_unless($activity->user_id === $request->user()?->id, 404);
 
-        ResyncActivityJob::dispatch($activity->id);
+        // A manual resync re-narrates the latest run; the webhook path does not.
+        ResyncActivityJob::dispatch($activity->id, renarrate: true);
 
         return back()->with('success', 'Lagi narik ulang lari ini dari Strava ya, sebentar.');
     }

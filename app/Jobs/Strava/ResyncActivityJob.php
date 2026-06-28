@@ -17,10 +17,15 @@ use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Facades\Log;
 
 /**
- * User-initiated re-pull of a single activity: re-fetches detail + streams from
- * Strava and recomputes every derived artifact via {@see ActivityPipeline::ingest()}.
+ * Re-pull of a single activity: re-fetches detail + streams from Strava and
+ * recomputes every derived artifact via {@see ActivityPipeline::ingest()}.
  * Shares {@see IngestActivityJob}'s rate-limit / circuit-breaker handling so a
- * manual resync is as resilient as the automatic ingest.
+ * resync is as resilient as the automatic ingest.
+ *
+ * $renarrate forces a fresh chain-head narration (an explicit, billable LLM
+ * call). The manual "Resync" button opts in; the Strava update-webhook path
+ * leaves it false so a trivial edit (title, gear, privacy) only refreshes data
+ * and never re-bills tokens.
  */
 class ResyncActivityJob implements ShouldQueue
 {
@@ -36,8 +41,10 @@ class ResyncActivityJob implements ShouldQueue
 
     private const int RETRY_WINDOW_HOURS = 6;
 
-    public function __construct(public readonly int $activityId)
-    {
+    public function __construct(
+        public readonly int $activityId,
+        public readonly bool $renarrate = false,
+    ) {
     }
 
     /**
@@ -71,11 +78,12 @@ class ResyncActivityJob implements ShouldQueue
 
         $pipeline->ingest($activity);
 
-        // Force a fresh narration only for the chain head (the user's latest run).
-        // Re-narrating a mid-history run would desync the later runs that quoted
-        // its old narrative, so those keep their narration and just get the
-        // recomputed data (same rule the trigger endpoint enforces).
-        if (Activity::latestIdForUser($activity->user_id) === $activity->id) {
+        // Force a fresh narration only when asked, and only for the chain head
+        // (the user's latest run). Re-narrating a mid-history run would desync the
+        // later runs that quoted its old narrative, so those keep their narration
+        // and just get the recomputed data (same rule the trigger endpoint
+        // enforces).
+        if ($this->renarrate && Activity::latestIdForUser($activity->user_id) === $activity->id) {
             $service->requestActivityGroup($activity, invalidate: true);
         }
     }
