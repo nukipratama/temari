@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { router } from '@inertiajs/react';
 import RunsShow from './Show';
 import { setMockPage } from '@/test/setup';
 import type { ActivityDetail, AnalysisPayload, RunCard, StoryLine } from '@/types/inertia';
@@ -263,5 +264,12 @@ describe('Runs/Show', () => {
         renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withStringPace }, detail: withStringPace });
         // The splits table renders with parsed paces; we only assert the structure rendered.
         expect(screen.getAllByText(/5:/).length).toBeGreaterThan(0);
+    });
+
+    it('resyncs the activity from Strava when the Resync button is clicked', () => {
+        vi.mocked(router.post).mockReset();
+        renderShow();
+        fireEvent.click(screen.getByText('Resync dari Strava'));
+        expect(router.post).toHaveBeenCalledWith('/aktivitas/99/resync', {}, { preserveScroll: true });
     });
 });

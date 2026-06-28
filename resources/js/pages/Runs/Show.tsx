@@ -1,6 +1,8 @@
 import { lazy, Suspense, useMemo } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Icon } from '@iconify/react';
 import AppShell from '@/layouts/AppShell';
+import PillButton from '@/components/ui/PillButton';
 import Card from '@/components/ui/Card';
 import FourLensGrid from '@/components/run/FourLensGrid';
 import HeroPanel from '@/components/ui/HeroPanel';
@@ -109,9 +111,20 @@ export default function RunsShow({
         <AppShell>
             <Head title={detail.name ?? 'Run'} />
             <PageContainer>
-                <BackLink href="/aktivitas" className="mb-5">
+                <BackLink href="/aktivitas" className="mb-4">
                     Riwayat · Jejak
                 </BackLink>
+
+                <div className="mb-5 flex flex-wrap gap-2">
+                    <PillButton
+                        tone="outline"
+                        size="sm"
+                        onClick={() => router.post(`/aktivitas/${activity.id}/resync`, {}, { preserveScroll: true })}
+                    >
+                        <Icon icon="mdi:sync" width={15} height={15} aria-hidden />
+                        Resync dari Strava
+                    </PillButton>
+                </div>
 
                 {/* HERO — stats left + route map right */}
                 <section className="grid items-stretch gap-4 lg:grid-cols-[1.4fr_1fr]">
