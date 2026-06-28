@@ -15,7 +15,7 @@ code_refs:
 
 # teman-lari — System Design
 
-The home/hub for the knowledge base. README explains how to *operate* the app; this explains how it's *built and why*. For detail, follow the section maps: [[architecture/index|Architecture]] · [[decisions/index|Decisions (ADRs)]] · [[features/index|Features]].
+The home/hub for the knowledge base. README explains how to *operate* the app; this explains how it's *built and why*. For detail, follow the section maps: [[architecture/index|Architecture]] · [[decisions/index|Decisions (ADRs)]] · [[features/index|Features]] · [[marketing/index|Marketing]].
 
 ## What it is
 

@@ -1,9 +1,9 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { useRef, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import BrandMark from '@/components/BrandMark';
 import PillButton from '@/components/ui/PillButton';
-import TemariProto, { type TemariEquipped } from '@/components/temari/TemariProto';
 import type { SharedProps } from '@/types/inertia';
 
 interface LoginProps {
@@ -24,17 +24,6 @@ const SUN_GLOW =
 
 const FORM_CARD_SHADOW =
     '0 20px 50px rgba(31,39,71,0.06), 0 0 0 1px rgba(31,39,71,0.06)';
-
-// Fixed showcase loadout for the marketing hero mascot: fully kitted out in
-// legendary gear, unrelated to any real user's equipped set.
-const HERO_LOADOUT: TemariEquipped = {
-    headband: 'legendaris',
-    medal: 'platina',
-    kaus: 'legendaris',
-    celana: 'maraton',
-    sepatu: 'legendaris',
-    aura: 'jagoan',
-};
 
 // Strava button keeps #FC4C02 brand orange and the official Strava glyph per their guidelines.
 // Button label is localized ("Sambungkan dengan Strava") per explicit product decision; accept
@@ -78,20 +67,15 @@ function RouteEcho() {
     );
 }
 
-function MascotSparkles() {
-    // Floating accent dots in mood colors around the mascot. Hidden on small phones
-    // so the cropped mascot doesn't compete with them; aria-hidden — decorative.
-    return (
-        <span aria-hidden className="pointer-events-none absolute inset-0 hidden sm:block">
-            <span className="absolute left-[8%] top-[18%] h-2 w-2 animate-pulse rounded-full bg-horizon shadow-[0_0_12px] shadow-horizon/60" />
-            <span className="absolute right-[10%] top-[8%] h-1.5 w-1.5 rounded-full bg-mood-nyala shadow-[0_0_10px] shadow-mood-nyala/50" />
-            <span className="absolute right-[6%] bottom-[28%] h-2.5 w-2.5 animate-pulse rounded-full bg-leaf shadow-[0_0_14px] shadow-leaf/40" style={{ animationDelay: '600ms' }} />
-            <span className="absolute left-[12%] bottom-[22%] h-1.5 w-1.5 rounded-full bg-cream/70" />
-        </span>
-    );
-}
-
 function HeroSide() {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [playing, setPlaying] = useState(false);
+    // Click-to-play with sound: the click is the user gesture browsers require to
+    // allow audio, so the narrated ad plays unmuted. No autoplay (it's a 2.5min story).
+    const playIntro = () => {
+        void videoRef.current?.play();
+        setPlaying(true);
+    };
     return (
         <div
             className="relative flex flex-col items-center justify-center overflow-hidden px-8 py-12 text-cream sm:px-12 lg:px-16 lg:py-[54px]"
@@ -108,15 +92,37 @@ function HeroSide() {
                 <BrandMark tone="cream" />
             </div>
 
-            <div className="relative z-10 text-center">
-                <div className="relative -mb-4 flex origin-bottom scale-75 justify-center sm:-mb-6 sm:scale-100">
-                    <MascotSparkles />
-                    <TemariProto pose="proud" size={220} equipped={HERO_LOADOUT} />
+            <div className="relative z-10 w-full max-w-[440px] text-center">
+                <div className="relative overflow-hidden rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.45)] ring-1 ring-cream/15">
+                    <video
+                        ref={videoRef}
+                        src="/videos/intro.mp4"
+                        poster="/videos/intro-poster.jpg"
+                        controls={playing}
+                        playsInline
+                        preload="metadata"
+                        className="block aspect-video w-full bg-sky-deep"
+                        onEnded={() => setPlaying(false)}
+                    >
+                        <track kind="captions" />
+                    </video>
+                    {!playing && (
+                        <button
+                            type="button"
+                            onClick={playIntro}
+                            aria-label="Putar video intro"
+                            className="focus-ring-on-sky group absolute inset-0 flex items-center justify-center bg-sky-deep/25 transition hover:bg-sky-deep/10"
+                        >
+                            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-cream/95 shadow-lg transition group-hover:scale-105">
+                                <Icon icon="mdi:play" width={32} height={32} className="ml-1 text-sky" aria-hidden />
+                            </span>
+                        </button>
+                    )}
                 </div>
-                <h1 className="font-display italic text-display-2xl text-cream">
+                <h1 className="mt-7 font-display italic text-display-xl text-cream">
                     Lari Kamu,<br /><span className="text-horizon">Gak Sendirian.</span>
                 </h1>
-                <p className="mt-6 font-sans text-base leading-relaxed text-cream sm:text-lg">
+                <p className="mt-4 font-sans text-base leading-relaxed text-cream sm:text-lg">
                     “Halo, aku Temari. Mulai sekarang, lari kamu aku temenin.”
                 </p>
             </div>

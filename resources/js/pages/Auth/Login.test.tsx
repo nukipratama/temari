@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import Login from './Login';
 import { setMockPage } from '@/test/setup';
 
@@ -30,6 +30,25 @@ describe('Login', () => {
         [/Aku baca/, /Aku catat/, /Aku temenin/].forEach((label) => {
             expect(screen.getByText(label)).toBeInTheDocument();
         });
+    });
+
+    it('renders the intro video hero with poster + play overlay', () => {
+        const { container } = render(<Login authStravaUrl="/x" />);
+        const video = container.querySelector('video');
+        expect(video?.getAttribute('src')).toBe('/videos/intro.mp4');
+        expect(video?.getAttribute('poster')).toBe('/videos/intro-poster.jpg');
+        expect(screen.getByLabelText('Putar video intro')).toBeInTheDocument();
+    });
+
+    it('clicking play starts the intro and hides the overlay', async () => {
+        const userEvent = (await import('@testing-library/user-event')).default;
+        // jsdom does not implement media playback — stub play() so the handler runs.
+        const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+        render(<Login authStravaUrl="/x" />);
+        await userEvent.setup().click(screen.getByLabelText('Putar video intro'));
+        expect(playSpy).toHaveBeenCalled();
+        expect(screen.queryByLabelText('Putar video intro')).not.toBeInTheDocument();
+        playSpy.mockRestore();
     });
 
     it('clicking the demo button invokes the submit handler', async () => {
