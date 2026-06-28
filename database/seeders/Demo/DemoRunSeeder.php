@@ -202,11 +202,13 @@ class DemoRunSeeder
             // weekly persona) against today's discriminator — the line that kills
             // "Belum dibaca" once the calendar day moves past the seed day.
             $this->stagePendingAnalyses($user);
-        });
 
-        $user = User::query()->where('email', self::DEMO_USER_EMAIL)->firstOrFail();
-        $filled = $this->backfillWithFiller($user);
-        $log(sprintf('  %d AI analyses refreshed with rule-based content.', $filled));
+            // Backfill inside withoutDispatching so markDone's Telegram fan-out
+            // stays suppressed: the demo never has a real connection, so an
+            // enqueued (no-op) notification job every day would just be waste.
+            $filled = $this->backfillWithFiller($user);
+            $log(sprintf('  %d AI analyses refreshed with rule-based content.', $filled));
+        });
     }
 
     /**
