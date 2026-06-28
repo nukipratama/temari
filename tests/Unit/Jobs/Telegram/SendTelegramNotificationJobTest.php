@@ -171,3 +171,16 @@ it('force still never sends to the demo user or a revoked connection', function 
 
     Http::assertNothingSent();
 });
+
+it('force-send swallows a Telegram failure (one-shot, no retry) and never claims a delivery', function (): void {
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'boom'], 500)]);
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'notify_post_run' => true]);
+    $analysisId = postRunAnalysisFor($user);
+
+    // Unlike the automatic path, a force-send does not re-throw (so Horizon
+    // won't retry and duplicate the manual push).
+    runForceSend($analysisId);
+
+    $this->assertDatabaseMissing('telegram_deliveries', ['analysis_id' => $analysisId]);
+});

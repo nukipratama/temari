@@ -11,6 +11,7 @@ use App\Services\Telegram\TelegramClient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Fanned out from {@see \App\Services\AI\AnalysisService::markDone()} when a
@@ -76,11 +77,20 @@ class SendTelegramNotificationJob implements ShouldQueue
         try {
             $client->sendMessage($connection->chat_id, $registry->format($analysis));
         } catch (Throwable $e) {
-            // Release the claim so the job's retry can resend (the manual path
-            // never claimed one).
-            if (! $this->force) {
-                DB::table('telegram_deliveries')->where('analysis_id', $analysis->id)->delete();
+            // A manual push has no delivery claim to dedupe a retry, so a failure
+            // after the message already reached Telegram would resend on retry.
+            // Treat it as one-shot: log and stop (the user can tap again).
+            if ($this->force) {
+                Log::warning('telegram.force_send.failed', [
+                    'analysis_id' => $analysis->id,
+                    'reason' => $e->getMessage(),
+                ]);
+
+                return;
             }
+
+            // Automatic path: release the claim so the job's retry can resend.
+            DB::table('telegram_deliveries')->where('analysis_id', $analysis->id)->delete();
 
             throw $e;
         }
