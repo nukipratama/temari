@@ -14,6 +14,7 @@ it('keeps every reply free of em-dashes and en-dashes', function (): void {
         TelegramReplies::expired(),
         TelegramReplies::generic(),
         TelegramReplies::disconnected(),
+        TelegramReplies::test(),
     ];
 
     foreach ($replies as $reply) {

@@ -295,6 +295,13 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     }}
                 />
             </div>
+            <button
+                type="button"
+                onClick={() => router.post('/profil/telegram/test', {}, { preserveScroll: true })}
+                className="focus-ring self-start rounded-full border border-cream-deep bg-cream px-4 py-2 font-sans text-[13px] font-semibold text-ink-2 transition hover:text-ink"
+            >
+                Kirim notifikasi tes
+            </button>
         </div>
     );
 }

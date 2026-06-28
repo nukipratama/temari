@@ -135,6 +135,22 @@ describe('Aku', () => {
         expect(router.delete).toHaveBeenCalledWith('/profil/telegram', { preserveScroll: true });
     });
 
+    it('posts a test notification when "Kirim notifikasi tes" is clicked', () => {
+        vi.mocked(router.post).mockReset();
+        const telegram = {
+            connected: true,
+            username: null,
+            connect_url: null,
+            notify_post_run: true,
+            notify_weekly_recap: true,
+        };
+        render(<Aku identity={identity} stats={stats} telegram={telegram} />);
+
+        fireEvent.click(screen.getByText('Kirim notifikasi tes'));
+
+        expect(router.post).toHaveBeenCalledWith('/profil/telegram/test', {}, { preserveScroll: true });
+    });
+
     it('renders the AksesoriStrip when unlock catalog has entries', () => {
         const unlockCatalog = {
             'accessory.ikat_kepala_epik': {

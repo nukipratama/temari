@@ -37,4 +37,11 @@ class TelegramReplies
     {
         return 'Oke, Telegram kamu udah aku lepas dari akun TemanLari. Kapanpun mau nyambung lagi, aku tetap di sini.';
     }
+
+    /** Sent by the "Kirim notifikasi tes" button on the Aku page. */
+    public static function test(): string
+    {
+        return '🔔 Tes notifikasi dari Temari. Kalau kamu lihat ini, sambungan Telegram kamu udah jalan. '
+            . 'Nanti tiap abis lari sama rekap mingguan aku kabarin ke sini ya.';
+    }
 }

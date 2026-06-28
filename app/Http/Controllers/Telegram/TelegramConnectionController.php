@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Telegram;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\Telegram\SendTelegramTestJob;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,5 +38,19 @@ class TelegramConnectionController extends Controller
         $user->telegramConnection?->markRevoked();
 
         return back();
+    }
+
+    public function test(Request $request): RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $connection = $user->telegramConnection;
+        if ($connection === null || $connection->isRevoked()) {
+            return back()->with('info', 'Sambungin Telegram dulu ya.');
+        }
+
+        SendTelegramTestJob::dispatch($user->id);
+
+        return back()->with('success', 'Aku kirim notifikasi tes ke Telegram kamu ya.');
     }
 }

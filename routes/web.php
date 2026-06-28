@@ -88,6 +88,7 @@ Route::middleware('auth')->group(function (): void {
 
     Route::patch('/profil/telegram', [TelegramConnectionController::class, 'update'])->name('telegram.preferences.update');
     Route::delete('/profil/telegram', [TelegramConnectionController::class, 'destroy'])->name('telegram.disconnect');
+    Route::post('/profil/telegram/test', [TelegramConnectionController::class, 'test'])->name('telegram.test');
 
     Route::get('/pengaturan/zona', [RunnerZonesController::class, 'index'])->name('pengaturan.zona');
     Route::patch('/pengaturan/zona', [RunnerZonesController::class, 'update'])->name('pengaturan.zona.update');

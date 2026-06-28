@@ -2,11 +2,45 @@
 
 declare(strict_types=1);
 
+use App\Jobs\Telegram\SendTelegramTestJob;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
+
+it('dispatches a test notification for an active connection', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
+
+    $this->actingAs($user)
+        ->post('/profil/telegram/test')
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    Bus::assertDispatched(
+        SendTelegramTestJob::class,
+        fn (SendTelegramTestJob $job): bool => $job->userId === $user->id,
+    );
+});
+
+it('does not dispatch a test notification without an active connection', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post('/profil/telegram/test')
+        ->assertRedirect()
+        ->assertSessionHas('info');
+
+    Bus::assertNotDispatched(SendTelegramTestJob::class);
+});
+
+it('requires authentication to send a test notification', function (): void {
+    $this->post('/profil/telegram/test')->assertRedirect(route('login'));
+});
 
 it('updates the notification preferences', function (): void {
     $user = User::factory()->create();
