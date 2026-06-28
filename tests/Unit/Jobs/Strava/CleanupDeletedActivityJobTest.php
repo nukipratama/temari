@@ -18,7 +18,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(fn () => Bus::fake());
 
-function makeRun(User $user, int $externalId, float $distance, Carbon\CarbonInterface $startedAt): Activity
+function makeCleanupRun(User $user, int $externalId, float $distance, Carbon\CarbonInterface $startedAt): Activity
 {
     $activity = Activity::factory()->for($user)->create(['strava_external_id' => $externalId]);
     ActivityDetail::factory()->for($activity)->create([
@@ -34,8 +34,8 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
     $user = User::factory()->create();
     $week = now()->startOfWeek();
 
-    $doomed = makeRun($user, 7_001, 5_000, $week->copy()->addDay());
-    $survivor = makeRun($user, 7_002, 8_000, $week->copy()->addDays(2));
+    $doomed = makeCleanupRun($user, 7_001, 5_000, $week->copy()->addDay());
+    $survivor = makeCleanupRun($user, 7_002, 8_000, $week->copy()->addDays(2));
 
     // Snapshots reflect both runs before the delete.
     app(WeeklyAggregator::class)->rebuildFor($user);
@@ -81,7 +81,7 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
 
 it('prunes a now-empty weekly snapshot when the deleted run was the last one', function (): void {
     $user = User::factory()->create();
-    $sole = makeRun($user, 7_003, 5_000, now()->startOfWeek()->addDay());
+    $sole = makeCleanupRun($user, 7_003, 5_000, now()->startOfWeek()->addDay());
 
     app(WeeklyAggregator::class)->rebuildFor($user);
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
