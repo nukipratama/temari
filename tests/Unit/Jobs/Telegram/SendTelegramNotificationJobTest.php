@@ -12,6 +12,7 @@ use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Services\Telegram\NotifiableAnalysis;
 use App\Services\Telegram\TelegramClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -121,6 +122,65 @@ it('releases the delivery claim when the send fails so a retry can resend', func
     $analysisId = postRunAnalysisFor($user);
 
     expect(fn () => runSend($analysisId))->toThrow(TelegramApiException::class);
+
+    $this->assertDatabaseMissing('telegram_deliveries', ['analysis_id' => $analysisId]);
+});
+
+function runForceSend(int $analysisId): void
+{
+    (new SendTelegramNotificationJob($analysisId, force: true))->handle(
+        app(NotifiableAnalysis::class),
+        app(TelegramClient::class),
+    );
+}
+
+it('force-sends even when the user has opted out of post-run notifications', function (): void {
+    fakeTelegramOk();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'notify_post_run' => false]);
+    $analysisId = postRunAnalysisFor($user, 'Manual push.');
+
+    runForceSend($analysisId);
+
+    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Manual push.'));
+    // A manual push never claims the once-only delivery row, so it can re-send.
+    $this->assertDatabaseMissing('telegram_deliveries', ['analysis_id' => $analysisId]);
+});
+
+it('force-sends again even when the activity was already delivered', function (): void {
+    fakeTelegramOk();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'notify_post_run' => true]);
+    $analysisId = postRunAnalysisFor($user);
+    DB::table('telegram_deliveries')->insert(['analysis_id' => $analysisId, 'created_at' => now()]);
+
+    runForceSend($analysisId);
+
+    Http::assertSentCount(1);
+});
+
+it('force still never sends to the demo user or a revoked connection', function (): void {
+    fakeTelegramOk();
+    $demo = User::factory()->create(['is_demo' => true]);
+    TelegramConnection::factory()->for($demo)->create();
+    runForceSend(postRunAnalysisFor($demo));
+
+    $revoked = User::factory()->create();
+    TelegramConnection::factory()->for($revoked)->revoked()->create();
+    runForceSend(postRunAnalysisFor($revoked));
+
+    Http::assertNothingSent();
+});
+
+it('force-send swallows a Telegram failure (one-shot, no retry) and never claims a delivery', function (): void {
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'boom'], 500)]);
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'notify_post_run' => true]);
+    $analysisId = postRunAnalysisFor($user);
+
+    // Unlike the automatic path, a force-send does not re-throw (so Horizon
+    // won't retry and duplicate the manual push).
+    runForceSend($analysisId);
 
     $this->assertDatabaseMissing('telegram_deliveries', ['analysis_id' => $analysisId]);
 });

@@ -313,12 +313,15 @@ class RunController extends Controller
         // later runs that quoted their old narrative.
         $isChainHead = Activity::latestIdForUser($user->id) === $activity->id;
 
+        $telegram = $user->telegramConnection;
+
         return Inertia::render('Runs/Show', [
             'activity' => $activity,
             'detail' => $detail,
             'card' => $activity->runCard,
             'storyLine' => $storyLine,
             'isChainHead' => $isChainHead,
+            'telegramConnected' => $telegram !== null && ! $telegram->isRevoked(),
             'speechAnalysis' => $payloadFor(AnalysisType::PostRunSpeech),
             'insightTechnical' => $payloadFor(AnalysisType::RunInsightTechnical),
             'insightSplits' => $payloadFor(AnalysisType::RunInsightSplits),

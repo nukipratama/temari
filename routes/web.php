@@ -21,6 +21,7 @@ use App\Http\Controllers\RunnerZonesController;
 use App\Http\Controllers\Strava\ResyncActivityController;
 use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Http\Controllers\Strava\SyncController;
+use App\Http\Controllers\Telegram\SendActivityNotificationController;
 use App\Http\Controllers\Telegram\TelegramConnectionController;
 use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\TokenUsageController;
@@ -65,6 +66,8 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/aktivitas/{activity}/resync', ResyncActivityController::class)
         ->middleware('throttle:strava-sync')
         ->name('aktivitas.resync');
+    Route::post('/aktivitas/{activity}/telegram', SendActivityNotificationController::class)
+        ->name('aktivitas.telegram');
 
     Route::get('/kalender', CalendarController::class)->name('kalender');
 

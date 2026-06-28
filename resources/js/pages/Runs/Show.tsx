@@ -78,6 +78,8 @@ interface ShowProps {
     insightZones: AnalysisPayload;
     /** This run is the head of the per-activity narration chain (latest run). */
     isChainHead: boolean;
+    /** The viewer has an active Telegram connection (gates the manual push button). */
+    telegramConnected: boolean;
     pastYou: PastYouMatch | null;
 }
 
@@ -91,6 +93,7 @@ export default function RunsShow({
     insightSplits,
     insightZones,
     isChainHead,
+    telegramConnected,
     pastYou,
 }: Readonly<ShowProps>) {
     const summary = (detail.stream_summary ?? {}) as Record<string, unknown>;
@@ -124,6 +127,16 @@ export default function RunsShow({
                         <Icon icon="mdi:sync" width={15} height={15} aria-hidden />
                         Resync dari Strava
                     </PillButton>
+                    {telegramConnected && (
+                        <PillButton
+                            tone="outline"
+                            size="sm"
+                            onClick={() => router.post(`/aktivitas/${activity.id}/telegram`, {}, { preserveScroll: true })}
+                        >
+                            <Icon icon="mdi:send" width={15} height={15} aria-hidden />
+                            Kirim ke Telegram
+                        </PillButton>
+                    )}
                 </div>
 
                 {/* HERO — stats left + route map right */}

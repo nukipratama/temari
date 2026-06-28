@@ -108,6 +108,7 @@ function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
             speechAnalysis={speechAnalysis()}
             {...insightDefaults}
             isChainHead
+            telegramConnected={false}
             pastYou={null}
             {...overrides}
         />,
@@ -271,5 +272,17 @@ describe('Runs/Show', () => {
         renderShow();
         fireEvent.click(screen.getByText('Resync dari Strava'));
         expect(router.post).toHaveBeenCalledWith('/aktivitas/99/resync', {}, { preserveScroll: true });
+    });
+
+    it('hides the Telegram push button when not connected', () => {
+        renderShow();
+        expect(screen.queryByText('Kirim ke Telegram')).not.toBeInTheDocument();
+    });
+
+    it('pushes the run to Telegram when connected and the button is clicked', () => {
+        vi.mocked(router.post).mockReset();
+        renderShow({ telegramConnected: true });
+        fireEvent.click(screen.getByText('Kirim ke Telegram'));
+        expect(router.post).toHaveBeenCalledWith('/aktivitas/99/telegram', {}, { preserveScroll: true });
     });
 });
