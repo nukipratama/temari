@@ -68,7 +68,7 @@ describe('Koleksi/Kartu', () => {
             },
         };
         render(<KoleksiKartu cards={emptyCards()} selectedRarity={null} featuredCard={featured} rarityCounts={rarityCounts} />);
-        expect(screen.getByText(/Highlight minggu ini/)).toBeInTheDocument();
+        expect(screen.getByText(/Kartu terbaikmu/)).toBeInTheDocument();
         expect(screen.getByText(/Lari yang menyegarkan/)).toBeInTheDocument();
     });
 

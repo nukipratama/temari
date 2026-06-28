@@ -177,7 +177,7 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
 
     return (
         <FeaturedCardHero
-            eyebrow={`★ Highlight minggu ini · ${RARITY_LABELS[featured.rarity]}`}
+            eyebrow={`★ Kartu terbaikmu · ${RARITY_LABELS[featured.rarity]}`}
             name={featured.special_move}
             rarity={featured.rarity}
             km={kartuProps.km}
