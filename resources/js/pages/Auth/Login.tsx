@@ -72,9 +72,10 @@ function HeroSide() {
     const [playing, setPlaying] = useState(false);
     // Click-to-play with sound: the click is the user gesture browsers require to
     // allow audio, so the narrated ad plays unmuted. No autoplay (it's a 2.5min story).
+    // Only hide the overlay after play() resolves — if the browser rejects the call
+    // (e.g. interrupted by a second click) the button stays visible so the user can retry.
     const playIntro = () => {
-        void videoRef.current?.play();
-        setPlaying(true);
+        videoRef.current?.play().then(() => setPlaying(true)).catch(() => {});
     };
     return (
         <div

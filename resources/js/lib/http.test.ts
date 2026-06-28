@@ -47,6 +47,7 @@ describe('postJson', () => {
         expect(init.body).toBe('{}');
         expect(init.credentials).toBe('same-origin');
         expect(init.headers['X-CSRF-TOKEN']).toBe('tok-xyz');
+        expect(init.headers['Accept']).toBe('application/json');
         expect(init.headers['Content-Type']).toBe('application/json');
         expect(init.headers['X-Requested-With']).toBe('XMLHttpRequest');
     });
