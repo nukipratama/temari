@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Strava;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\Strava\ResyncActivityJob;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;
@@ -88,21 +89,43 @@ class StravaWebhookController extends Controller
 
     private function handleActivityEvent(StravaConnection $connection, string $aspectType, int $stravaActivityId): void
     {
-        if (in_array($aspectType, ['create', 'update'], strict: true)) {
-            if ($connection->isRevoked()) {
-                return;
-            }
-
-            // The Strava kill-switch is enforced downstream in SyncOrchestrator;
-            // a disabled sync no-ops the job rather than being gated here.
-            SyncActivitiesJob::dispatch($connection->user_id, $stravaActivityId);
+        if ($aspectType === 'delete') {
+            $this->deleteLocalActivity($connection, $stravaActivityId);
 
             return;
         }
 
-        if ($aspectType === 'delete') {
-            $this->deleteLocalActivity($connection, $stravaActivityId);
+        if (! in_array($aspectType, ['create', 'update'], strict: true)) {
+            return;
         }
+
+        if ($connection->isRevoked()) {
+            return;
+        }
+
+        // An update to an already-ingested run is a no-op on the create path:
+        // SyncOrchestrator skips re-ingesting an analyzed activity. Force a
+        // single-activity re-pull so an edit (name/distance/type) reflects
+        // within seconds instead of waiting for the hourly poll. Fall back to
+        // the full-sync path when there is no local row for it yet (a create, or
+        // an update for a run we never ingested).
+        if ($aspectType === 'update') {
+            $activity = Activity::query()
+                ->withStubs()
+                ->where('user_id', $connection->user_id)
+                ->where('strava_external_id', $stravaActivityId)
+                ->first();
+
+            if ($activity !== null) {
+                ResyncActivityJob::dispatch($activity->id);
+
+                return;
+            }
+        }
+
+        // The Strava kill-switch is enforced downstream in SyncOrchestrator;
+        // a disabled sync no-ops the job rather than being gated here.
+        SyncActivitiesJob::dispatch($connection->user_id, $stravaActivityId);
     }
 
     private function handleAthleteEvent(Request $request, StravaConnection $connection, string $aspectType): void

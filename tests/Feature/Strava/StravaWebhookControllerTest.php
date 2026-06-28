@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\Strava\ResyncActivityJob;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -70,7 +71,7 @@ it('dispatches a scoped SyncActivitiesJob on an activity create event', function
     );
 });
 
-it('dispatches a scoped SyncActivitiesJob on an activity update event', function (): void {
+it('falls back to a full sync on an update for a run we have no local row for', function (): void {
     Bus::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);
@@ -83,6 +84,27 @@ it('dispatches a scoped SyncActivitiesJob on an activity update event', function
     ])->assertOk();
 
     Bus::assertDispatched(SyncActivitiesJob::class);
+    Bus::assertNotDispatched(ResyncActivityJob::class);
+});
+
+it('re-ingests the existing local activity on an update event', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);
+    $activity = Activity::factory()->for($user)->create(['strava_external_id' => 9_002]);
+
+    $this->postJson(route('strava.webhook.handle'), [
+        'object_type' => 'activity',
+        'object_id' => 9_002,
+        'aspect_type' => 'update',
+        'owner_id' => 42,
+    ])->assertOk();
+
+    Bus::assertDispatched(
+        ResyncActivityJob::class,
+        fn (ResyncActivityJob $job): bool => $job->activityId === $activity->id,
+    );
+    Bus::assertNotDispatched(SyncActivitiesJob::class);
 });
 
 it('does not dispatch when the athlete is unknown', function (): void {
