@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Strava;
 use App\Http\Controllers\Controller;
 use App\Jobs\Strava\ResyncActivityJob;
 use App\Models\Activity;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -19,7 +20,9 @@ class ResyncActivityController extends Controller
 {
     public function __invoke(Request $request, Activity $activity): RedirectResponse
     {
-        abort_unless($activity->user_id === $request->user()?->id, 404);
+        /** @var User $user */
+        $user = $request->user();
+        abort_unless($user->can('view', $activity), 404);
 
         // A manual resync re-narrates the latest run; the webhook path does not.
         ResyncActivityJob::dispatch($activity->id, renarrate: true);

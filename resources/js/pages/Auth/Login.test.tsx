@@ -10,6 +10,14 @@ describe('Login', () => {
         expect(strava?.getAttribute('href')).toBe('/auth/strava/redirect');
     });
 
+    it('appends the deep-link ?from to the Strava CTA when present', () => {
+        render(<Login authStravaUrl="/auth/strava/redirect" from="/aktivitas/5?tab=splits" />);
+        const strava = screen.getByText(/Sambungkan dengan Strava/).closest('a');
+        expect(strava?.getAttribute('href')).toBe(
+            '/auth/strava/redirect?from=' + encodeURIComponent('/aktivitas/5?tab=splits'),
+        );
+    });
+
     it('hides demo button when demoLoginEnabled is false', () => {
         render(<Login authStravaUrl="/x" />);
         expect(screen.queryByText('Coba versi demo')).not.toBeInTheDocument();

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { usePendingPost } from '@/hooks/usePendingPost';
 import AppShell from '@/layouts/AppShell';
 import PillButton from '@/components/ui/PillButton';
 import Card from '@/components/ui/Card';
@@ -110,6 +111,9 @@ export default function RunsShow({
 
     const kartuProps = useMemo(() => kartuPropsFromDetail(detail), [detail]);
 
+    const [resyncing, resync] = usePendingPost(`/aktivitas/${activity.id}/resync`, { preserveScroll: true });
+    const [sendingTelegram, sendTelegram] = usePendingPost(`/aktivitas/${activity.id}/telegram`, { preserveScroll: true });
+
     return (
         <AppShell>
             <Head title={detail.name ?? 'Run'} />
@@ -122,19 +126,35 @@ export default function RunsShow({
                     <PillButton
                         tone="outline"
                         size="sm"
-                        onClick={() => router.post(`/aktivitas/${activity.id}/resync`, {}, { preserveScroll: true })}
+                        disabled={resyncing}
+                        className="disabled:opacity-60 disabled:cursor-not-allowed"
+                        onClick={resync}
                     >
-                        <Icon icon="mdi:sync" width={15} height={15} aria-hidden />
-                        Resync dari Strava
+                        <Icon
+                            icon={resyncing ? 'mdi:loading' : 'mdi:sync'}
+                            width={15}
+                            height={15}
+                            className={resyncing ? 'animate-spin' : undefined}
+                            aria-hidden
+                        />
+                        {resyncing ? 'Lagi narik…' : 'Resync dari Strava'}
                     </PillButton>
                     {telegramConnected && (
                         <PillButton
                             tone="outline"
                             size="sm"
-                            onClick={() => router.post(`/aktivitas/${activity.id}/telegram`, {}, { preserveScroll: true })}
+                            disabled={sendingTelegram}
+                            className="disabled:opacity-60 disabled:cursor-not-allowed"
+                            onClick={sendTelegram}
                         >
-                            <Icon icon="mdi:send" width={15} height={15} aria-hidden />
-                            Kirim ke Telegram
+                            <Icon
+                                icon={sendingTelegram ? 'mdi:loading' : 'mdi:send'}
+                                width={15}
+                                height={15}
+                                className={sendingTelegram ? 'animate-spin' : undefined}
+                                aria-hidden
+                            />
+                            {sendingTelegram ? 'Lagi ngirim…' : 'Kirim ke Telegram'}
                         </PillButton>
                     )}
                 </div>

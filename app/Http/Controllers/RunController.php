@@ -278,7 +278,7 @@ class RunController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        abort_unless($activity->user_id === $user->id, 404);
+        abort_unless($user->can('view', $activity), 404);
 
         $activity->loadMissing(['detail', 'runCard']);
         $detail = $activity->detail;

@@ -271,7 +271,23 @@ describe('Runs/Show', () => {
         vi.mocked(router.post).mockReset();
         renderShow();
         fireEvent.click(screen.getByText('Resync dari Strava'));
-        expect(router.post).toHaveBeenCalledWith('/aktivitas/99/resync', {}, { preserveScroll: true });
+        expect(router.post).toHaveBeenCalledWith(
+            '/aktivitas/99/resync',
+            {},
+            expect.objectContaining({ preserveScroll: true, onStart: expect.any(Function), onFinish: expect.any(Function) }),
+        );
+    });
+
+    it('disables the Resync button and shows a pending label while the request is in flight', () => {
+        vi.mocked(router.post).mockReset();
+        vi.mocked(router.post).mockImplementation((_url, _data, options) => {
+            options?.onStart?.({} as never);
+        });
+        renderShow();
+        const button = screen.getByText('Resync dari Strava').closest('button')!;
+        fireEvent.click(button);
+        expect(button).toBeDisabled();
+        expect(button).toHaveTextContent('Lagi narik…');
     });
 
     it('hides the Telegram push button when not connected', () => {
@@ -283,6 +299,22 @@ describe('Runs/Show', () => {
         vi.mocked(router.post).mockReset();
         renderShow({ telegramConnected: true });
         fireEvent.click(screen.getByText('Kirim ke Telegram'));
-        expect(router.post).toHaveBeenCalledWith('/aktivitas/99/telegram', {}, { preserveScroll: true });
+        expect(router.post).toHaveBeenCalledWith(
+            '/aktivitas/99/telegram',
+            {},
+            expect.objectContaining({ preserveScroll: true, onStart: expect.any(Function), onFinish: expect.any(Function) }),
+        );
+    });
+
+    it('disables the Telegram button and shows a pending label while the request is in flight', () => {
+        vi.mocked(router.post).mockReset();
+        vi.mocked(router.post).mockImplementation((_url, _data, options) => {
+            options?.onStart?.({} as never);
+        });
+        renderShow({ telegramConnected: true });
+        const button = screen.getByText('Kirim ke Telegram').closest('button')!;
+        fireEvent.click(button);
+        expect(button).toBeDisabled();
+        expect(button).toHaveTextContent('Lagi ngirim…');
     });
 });

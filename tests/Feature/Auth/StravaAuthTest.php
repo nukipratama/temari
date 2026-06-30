@@ -52,6 +52,69 @@ it('redirects to strava on the redirect endpoint', function (): void {
         ->assertRedirect('https://www.strava.com/oauth/authorize?fake');
 });
 
+it('stashes a safe ?from path as the intended url before redirecting to strava', function (): void {
+    mockStravaDriver(function ($driver): void {
+        $driver->shouldReceive('scopes')->once()->andReturnSelf();
+        $driver->shouldReceive('redirect')->once()->andReturn(redirect('https://www.strava.com/oauth/authorize?fake'));
+    });
+
+    $this->get(route('auth.strava.redirect', ['from' => '/aktivitas/7']))
+        ->assertRedirect('https://www.strava.com/oauth/authorize?fake');
+
+    expect(session('url.intended'))->toBe(url('/aktivitas/7'));
+});
+
+it('ignores a foreign ?from path on the strava redirect endpoint', function (): void {
+    mockStravaDriver(function ($driver): void {
+        $driver->shouldReceive('scopes')->once()->andReturnSelf();
+        $driver->shouldReceive('redirect')->once()->andReturn(redirect('https://www.strava.com/oauth/authorize?fake'));
+    });
+
+    $this->get(route('auth.strava.redirect', ['from' => 'https://evil.test/x']))
+        ->assertRedirect('https://www.strava.com/oauth/authorize?fake');
+
+    expect(session('url.intended'))->toBeNull();
+});
+
+it('exposes the stashed intended deep link as the login `from` prop', function (): void {
+    // A guest bounce stores the full URL as url.intended; the login page surfaces
+    // it to the client as a relative path (array session driver in tests, so the
+    // value is injected directly rather than via a cross-request redirect).
+    $this->withSession(['url.intended' => url('/aktivitas/9')])
+        ->get(route('login'))
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('from', '/aktivitas/9'));
+});
+
+it('drops a foreign intended url from the login `from` prop', function (): void {
+    $this->withSession(['url.intended' => 'https://evil.test/aktivitas/9'])
+        ->get(route('login'))
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('from', null));
+});
+
+it('has no `from` prop when there is no intended deep link', function (): void {
+    $this->get(route('login'))
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('from', null));
+});
+
+it('returns to the intended deep link after a successful strava callback', function (): void {
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'access-token';
+    $stravaUser->refreshToken = 'refresh-token';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('424242');
+    $stravaUser->shouldReceive('getName')->andReturn('Deep Link');
+    $stravaUser->shouldReceive('getEmail')->andReturn('deep@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/d.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->withSession(['url.intended' => url('/aktivitas/42')])
+        ->get(route('auth.strava.callback'))
+        ->assertRedirect(url('/aktivitas/42'));
+
+    $this->assertAuthenticated();
+});
+
 it('creates a new user from the strava callback and logs them in', function (): void {
     $stravaUser = Mockery::mock(SocialiteUser::class);
     $stravaUser->token = 'access-token-xyz';

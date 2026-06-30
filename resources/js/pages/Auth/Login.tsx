@@ -8,6 +8,8 @@ import type { SharedProps } from '@/types/inertia';
 
 interface LoginProps {
     authStravaUrl: string;
+    /** Deep link to return to after login (sanitized same-host path), or null. */
+    from?: string | null;
 }
 
 const PILLARS: ReadonlyArray<{ icon: string; label: string; desc: string }> = [
@@ -28,10 +30,12 @@ const FORM_CARD_SHADOW =
 // Strava button keeps #FC4C02 brand orange and the official Strava glyph per their guidelines.
 // Button label is localized ("Sambungkan dengan Strava") per explicit product decision; accept
 // the small risk that Strava brand review may flag it.
-export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
+export default function Login({ authStravaUrl, from = null }: Readonly<LoginProps>) {
     const { demoLoginEnabled } = usePage<SharedProps>().props;
-    const demoForm = useForm({});
+    const demoForm = useForm({ from });
     const submitDemo = () => demoForm.post('/auth/demo');
+
+    const stravaUrl = from ? `${authStravaUrl}?from=${encodeURIComponent(from)}` : authStravaUrl;
 
     return (
         <AppShell withNav={false}>
@@ -39,7 +43,7 @@ export default function Login({ authStravaUrl }: Readonly<LoginProps>) {
             <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
                 <HeroSide />
                 <FormSide
-                    authStravaUrl={authStravaUrl}
+                    authStravaUrl={stravaUrl}
                     demoLoginEnabled={demoLoginEnabled}
                     onSubmitDemo={submitDemo}
                     demoPending={demoForm.processing}

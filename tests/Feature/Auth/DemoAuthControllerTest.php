@@ -19,6 +19,22 @@ it('logs the demo user in when the flag is on and the user exists', function ():
     expect(auth()->id())->toBe($user->id);
 });
 
+it('returns to a safe `from` deep link after demo login', function (): void {
+    config()->set('demo.login_enabled', true);
+    User::factory()->create(['email' => DemoRunSeeder::DEMO_USER_EMAIL]);
+
+    $this->post(route('auth.demo'), ['from' => '/aktivitas/13'])
+        ->assertRedirect(url('/aktivitas/13'));
+});
+
+it('ignores a foreign `from` on demo login and falls back to the dashboard', function (): void {
+    config()->set('demo.login_enabled', true);
+    User::factory()->create(['email' => DemoRunSeeder::DEMO_USER_EMAIL]);
+
+    $this->post(route('auth.demo'), ['from' => 'https://evil.test/x'])
+        ->assertRedirect(route('dashboard'));
+});
+
 it('aborts with 404 when the flag is off', function (): void {
     config()->set('demo.login_enabled', false);
     User::factory()->create(['email' => DemoRunSeeder::DEMO_USER_EMAIL]);

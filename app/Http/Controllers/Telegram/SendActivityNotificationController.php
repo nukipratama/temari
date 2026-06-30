@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\Telegram\SendTelegramNotificationJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\User;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,9 @@ class SendActivityNotificationController extends Controller
 {
     public function __invoke(Request $request, Activity $activity): RedirectResponse
     {
-        abort_unless($activity->user_id === $request->user()?->id, 404);
+        /** @var User $user */
+        $user = $request->user();
+        abort_unless($user->can('view', $activity), 404);
 
         $analysis = Analysis::query()
             ->forSubject(Activity::class, $activity->id, AnalysisType::PostRunSpeech)

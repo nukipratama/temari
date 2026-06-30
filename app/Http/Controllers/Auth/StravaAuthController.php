@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Support\LocalRedirectPath;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,8 +25,13 @@ class StravaAuthController extends Controller
 {
     private const array SCOPES = ['read', 'activity:read_all'];
 
-    public function redirect(): SymfonyRedirectResponse
+    public function redirect(Request $request): SymfonyRedirectResponse
     {
+        $from = LocalRedirectPath::sanitize($request->query('from'));
+        if ($from !== null) {
+            redirect()->setIntendedUrl(url($from));
+        }
+
         return $this->driver()->scopes(self::SCOPES)->redirect();
     }
 
