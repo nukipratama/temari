@@ -35,6 +35,14 @@ class NotifiableAnalysis
         AnalysisType::WeeklyRecap->value => ['pref' => 'notify_weekly_recap', 'emoji' => '📊', 'cta' => 'Lihat riwayat'],
     ];
 
+    /**
+     * Per-instance memo of activity_id => ActivityDetail, so a single send
+     * (recency gate + metrics line both look up the same row) hits the DB once.
+     *
+     * @var array<int, ActivityDetail|null>
+     */
+    private array $detailCache = [];
+
     public function isNotifiable(Analysis $analysis): bool
     {
         return array_key_exists($analysis->analysis_type->value, self::TYPES);
@@ -54,7 +62,7 @@ class NotifiableAnalysis
             return true;
         }
 
-        $startedAt = ActivityDetail::query()->where('activity_id', $analysis->subject_id)->value('start_date_local');
+        $startedAt = $this->activityDetail($analysis->subject_id)?->start_date_local;
         if ($startedAt === null) {
             return true;
         }
@@ -117,7 +125,7 @@ class NotifiableAnalysis
             return null;
         }
 
-        $detail = ActivityDetail::query()->where('activity_id', $analysis->subject_id)->first();
+        $detail = $this->activityDetail($analysis->subject_id);
         if ($detail === null) {
             return null;
         }
@@ -138,6 +146,15 @@ class NotifiableAnalysis
         }
 
         return $parts === [] ? null : implode(' · ', $parts);
+    }
+
+    private function activityDetail(int $activityId): ?ActivityDetail
+    {
+        if (! array_key_exists($activityId, $this->detailCache)) {
+            $this->detailCache[$activityId] = ActivityDetail::query()->where('activity_id', $activityId)->first();
+        }
+
+        return $this->detailCache[$activityId];
     }
 
     /** Seconds to mm:ss, or h:mm:ss past an hour (no backend duration formatter exists). */

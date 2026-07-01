@@ -17,11 +17,13 @@ use Illuminate\Support\Facades\Log;
 /**
  * Fanned out from {@see \App\Services\AI\AnalysisService::markDone()} when a
  * notifiable analysis completes. Resolves the user, honours the demo exclusion /
- * opt-in / connection guards, and sends the narration to Telegram exactly once
- * (the telegram_deliveries unique claim makes a Horizon retry idempotent).
+ * recency / opt-in / connection guards, and sends the narration to Telegram
+ * exactly once (the telegram_deliveries unique claim makes a Horizon retry
+ * idempotent).
  *
- * A manual push ($force) bypasses the opt-in toggle and the once-only delivery
- * claim, so a user can (re)send a run to Telegram on demand from its detail page.
+ * A manual push ($force) bypasses the recency gate, the opt-in toggle, and the
+ * once-only delivery claim, so a user can (re)send a run to Telegram on demand
+ * from its detail page.
  */
 class SendTelegramNotificationJob implements ShouldQueue
 {
@@ -41,18 +43,18 @@ class SendTelegramNotificationJob implements ShouldQueue
     public function handle(NotifiableAnalysis $registry, TelegramClient $client): void
     {
         $analysis = Analysis::query()->find($this->analysisId);
-        $connection = $analysis === null ? null : $this->resolveConnection($registry, $analysis);
+        if ($analysis === null) {
+            return;
+        }
 
-        if ($analysis === null || $connection === null) {
+        $connection = $this->resolveConnection($registry, $analysis);
+        if ($connection === null) {
             return;
         }
 
         // A manual push overrides the recency gate, the per-type opt-in toggle, and
         // the once-only delivery claim; the automatic path keeps all three.
-        $blocked = ! $this->force
-            && (! $this->passesAutomaticGuards($registry, $analysis, $connection) || ! $this->claimDelivery($analysis));
-
-        if ($blocked) {
+        if (! $this->force && (! $this->passesAutomaticGuards($registry, $analysis, $connection) || ! $this->claimDelivery($analysis))) {
             return;
         }
 
