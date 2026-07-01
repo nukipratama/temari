@@ -6,7 +6,6 @@ import {
     formatWeekdayDayId,
     isoDaysAgoLocal,
     isoStartOfMonthLocal,
-    isoStartOfWeekLocal,
     todayLocalIso,
 } from '@/lib/pace';
 import SectionHeading from '@/components/SectionHeading';
@@ -194,7 +193,6 @@ export default function AiUsage({
 
                         <div className="ml-auto flex flex-wrap gap-2">
                             <PresetButton label="Hari ini" href={`/ai-usage?from=${todayLocalIso()}&to=${todayLocalIso()}`} />
-                            <PresetButton label="Minggu ini" href={`/ai-usage?from=${isoStartOfWeekLocal()}&to=${todayLocalIso()}`} />
                             <PresetButton label="7 hari" href={`/ai-usage?from=${isoDaysAgoLocal(6)}&to=${todayLocalIso()}`} />
                             <PresetButton label="30 hari" href={`/ai-usage?from=${isoDaysAgoLocal(29)}&to=${todayLocalIso()}`} />
                             <PresetButton label="Bulan ini" href={`/ai-usage?from=${isoStartOfMonthLocal()}&to=${todayLocalIso()}`} />
@@ -432,26 +430,34 @@ function DataTable<T>({ icon, title, subtitle, tone, columns, minWidth, rows, ro
             {rows.length === 0 ? (
                 <EmptyState />
             ) : (
-                <Card tone="cream" padding="none" className="mt-4 overflow-x-auto bg-surface-elev">
-                    <table className="w-full text-sm tabular-nums" style={{ minWidth }}>
-                        <thead>
-                            <tr className="border-b border-line text-left text-xs text-ink-3">
-                                {columns.map((label) => (
-                                    <th key={label} className="px-5 py-3 font-semibold">
-                                        {label}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((row) => (
-                                <tr key={rowKey(row)} className="border-b border-line last:border-b-0">
-                                    {renderRow(row)}
+                <div className="relative mt-4">
+                    <Card tone="cream" padding="none" className="overflow-x-auto bg-surface-elev">
+                        <table className="w-full text-sm tabular-nums" style={{ minWidth }}>
+                            <thead>
+                                <tr className="border-b border-line text-left text-xs text-ink-3">
+                                    {columns.map((label) => (
+                                        <th key={label} className="px-5 py-3 font-semibold">
+                                            {label}
+                                        </th>
+                                    ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </Card>
+                            </thead>
+                            <tbody>
+                                {rows.map((row) => (
+                                    <tr key={rowKey(row)} className="border-b border-line last:border-b-0">
+                                        {renderRow(row)}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </Card>
+                    {/* Hints the table scrolls horizontally on narrow viewports. Must be a
+                        sibling of the overflow-x-auto card, not a descendant — a descendant
+                        scrolls away with the table content instead of staying pinned to the
+                        visible edge (verified live: an earlier attempt inside the card moved
+                        with scrollLeft). */}
+                    <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface-elev to-transparent" />
+                </div>
             )}
         </section>
     );
