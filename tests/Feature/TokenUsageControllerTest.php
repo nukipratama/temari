@@ -85,16 +85,16 @@ it('renders the AiUsage page with totals + per-kind breakdown filtered by date',
         );
 });
 
-it('defaults to start of current month when from is omitted', function (): void {
-    Carbon::setTestNow('2026-05-19 12:00:00');
-    seedUsage('inside', 50, 50, Carbon::parse('2026-05-03'));
-    seedUsage('outside', 50, 50, Carbon::parse('2026-04-25'));
+it('defaults to start of current week (Monday) when from is omitted', function (): void {
+    Carbon::setTestNow('2026-05-19 12:00:00'); // Tuesday; Monday of this week is 2026-05-18
+    seedUsage('inside', 50, 50, Carbon::parse('2026-05-18'));
+    seedUsage('outside', 50, 50, Carbon::parse('2026-05-17')); // previous week
 
     $this->get('/ai-usage')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
-                ->where('from', '2026-05-01')
+                ->where('from', '2026-05-18')
                 ->where('totals.calls', 1),
         );
 

@@ -1,7 +1,14 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { Icon } from '@iconify/react';
-import { formatMonthDayId, formatWeekdayDayId, isoDaysAgoLocal, isoStartOfMonthLocal, todayLocalIso } from '@/lib/pace';
+import {
+    formatMonthDayId,
+    formatWeekdayDayId,
+    isoDaysAgoLocal,
+    isoStartOfMonthLocal,
+    isoStartOfWeekLocal,
+    todayLocalIso,
+} from '@/lib/pace';
 import SectionHeading from '@/components/SectionHeading';
 import KpiTile from '@/components/dashboard/KpiTile';
 import PageContainer from '@/components/ui/PageContainer';
@@ -187,9 +194,11 @@ export default function AiUsage({
 
                         <div className="ml-auto flex flex-wrap gap-2">
                             <PresetButton label="Hari ini" href={`/ai-usage?from=${todayLocalIso()}&to=${todayLocalIso()}`} />
+                            <PresetButton label="Minggu ini" href={`/ai-usage?from=${isoStartOfWeekLocal()}&to=${todayLocalIso()}`} />
                             <PresetButton label="7 hari" href={`/ai-usage?from=${isoDaysAgoLocal(6)}&to=${todayLocalIso()}`} />
                             <PresetButton label="30 hari" href={`/ai-usage?from=${isoDaysAgoLocal(29)}&to=${todayLocalIso()}`} />
                             <PresetButton label="Bulan ini" href={`/ai-usage?from=${isoStartOfMonthLocal()}&to=${todayLocalIso()}`} />
+                            <PresetButton label="Semua" href={`/ai-usage?from=1970-01-01&to=${todayLocalIso()}`} />
                         </div>
                     </form>
                 </Card>

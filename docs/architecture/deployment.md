@@ -41,7 +41,7 @@ The runtime stage serves on **`:7001`** plain HTTP — TLS terminates at Cloudfl
 
 [compose.prod.yaml](compose.prod.yaml) (project `teman-lari-prod`) runs six services, all sharing the `*app-image` and the `*app-env` anchor; secrets load from `/opt/teman-lari/.env` on the host via `env_file:` (nothing flows through GitHub Actions secrets):
 
-- **`app`** — the FrankenPHP server. The **only** service with a host port, and it's **loopback-only** `127.0.0.1:7001:7001`; cloudflared on the host reaches it there. HTTP `/up` healthcheck.
+- **`app`** — the FrankenPHP server. The **only** service with a host port, and it's **loopback-only** `127.0.0.1:7001:7001`; cloudflared on the host reaches it there. HTTP `/up` healthcheck: [VerifyDependencies](app/Listeners/VerifyDependencies.php) hooks Laravel's `DiagnosingHealth` event to also ping the default MySQL connection, the `analytics` connection, both `default`/`cache` Redis connections, and Horizon's master-supervisor status, so `/up` reflects the whole stack rather than just "PHP booted."
 - **`horizon`** — `php artisan horizon` queue worker, `stop_grace_period: 60s` for graceful drain.
 - **`scheduler`** — `php artisan schedule:work`.
 - **`pulse`** — combined daemon: `pulse:check` (Servers recorder, host root bind-mounted read-only at `/host`) + `pulse:work` (ingest drain), where either child dying exits the wrapper so Docker restarts it.

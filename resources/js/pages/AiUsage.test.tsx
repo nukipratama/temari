@@ -191,9 +191,11 @@ describe('AiUsage page', () => {
 
     it.each([
         ['hari ini', /hari ini/i],
+        ['minggu ini', /minggu ini/i],
         ['7 hari', /7 hari/i],
         ['30 hari', /30 hari/i],
         ['bulan ini', /bulan ini/i],
+        ['semua', /semua/i],
     ])('preset "%s" is a link to a from/to date pair', (_label, pattern) => {
         render(<AiUsage {...baseProps} />);
 

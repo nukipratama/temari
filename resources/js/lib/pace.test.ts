@@ -20,6 +20,7 @@ import {
     isoDateLocal,
     isoDaysAgoLocal,
     isoStartOfMonthLocal,
+    isoStartOfWeekLocal,
     mondayOf,
     paceSecPerKm,
     parseNaiveLocalDate,
@@ -370,6 +371,10 @@ describe('local-zone ISO date helpers', () => {
     it('isoStartOfMonthLocal returns the first of the current month', () => {
         const now = new Date();
         expect(isoStartOfMonthLocal()).toBe(isoDateLocal(new Date(now.getFullYear(), now.getMonth(), 1)));
+    });
+
+    it('isoStartOfWeekLocal returns the Monday of the current week', () => {
+        expect(isoStartOfWeekLocal()).toBe(isoDateLocal(mondayOf(todayLocalIso())));
     });
 });
 

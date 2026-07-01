@@ -152,10 +152,11 @@ services:
 
   # Combined Pulse daemon: pulse:check (Servers recorder) + pulse:work (ingest drain).
   # Bind-mounts host root read-only so the disk metric reflects the real host disk.
-  # pulse:work is PID 1 (exec'd) and receives SIGTERM for graceful drain on stop.
-  # pulse:check is monitored: if it exits, the wrapper exits too so Docker restarts
-  # the whole container (same restart: unless-stopped that protected the old separate
-  # pulse-check container).
+  # Polls both PIDs rather than `wait -n`: this image's /bin/sh is busybox, and a live
+  # incident showed `wait -n` NOT reliably returning when the first child died, leaving
+  # pulse:work dead and pulse:check running solo for hours with no container restart.
+  # Polling is portable across shells and was verified to detect a child's death and
+  # exit the loop promptly.
   pulse:
     <<: *app-base
     command:
@@ -166,8 +167,10 @@ services:
         PULSE_CHECK_PID=$!
         php artisan pulse:work &
         PULSE_WORK_PID=$!
-        # Exit (triggering Docker restart) if either child dies.
-        wait -n
+        # Exit (triggering Docker restart) as soon as either child dies.
+        while kill -0 "$PULSE_CHECK_PID" 2>/dev/null && kill -0 "$PULSE_WORK_PID" 2>/dev/null; do
+            sleep 1
+        done
         kill $PULSE_CHECK_PID $PULSE_WORK_PID 2>/dev/null
         wait
     stop_grace_period: 30s

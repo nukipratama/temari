@@ -245,6 +245,11 @@ export function isoStartOfMonthLocal(): string {
     return isoDateLocal(new Date(d.getFullYear(), d.getMonth(), 1));
 }
 
+/** Monday of the current week as YYYY-MM-DD in the local zone — see mondayOf for the why. */
+export function isoStartOfWeekLocal(): string {
+    return isoDateLocal(mondayOf(todayLocalIso()));
+}
+
 // Inverse of formatPace: parses "M:SS" (or "MM:SS") back to seconds-per-km.
 // Returns NaN on malformed input so callers can guard with Number.isFinite.
 export function parsePaceSec(s: string): number {

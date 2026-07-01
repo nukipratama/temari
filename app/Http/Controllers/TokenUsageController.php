@@ -26,7 +26,7 @@ class TokenUsageController extends Controller
 
         $from = isset($validated['from'])
             ? Carbon::parse($validated['from'])->startOfDay()
-            : Carbon::today()->startOfMonth();
+            : Carbon::today()->startOfWeek(Carbon::MONDAY);
         $to = isset($validated['to'])
             ? Carbon::parse($validated['to'])->endOfDay()
             : Carbon::now();
