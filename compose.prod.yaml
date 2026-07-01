@@ -152,11 +152,15 @@ services:
 
   # Combined Pulse daemon: pulse:check (Servers recorder) + pulse:work (ingest drain).
   # Bind-mounts host root read-only so the disk metric reflects the real host disk.
-  # Polls both PIDs rather than `wait -n`: this image's /bin/sh is busybox, and a live
-  # incident showed `wait -n` NOT reliably returning when the first child died, leaving
-  # pulse:work dead and pulse:check running solo for hours with no container restart.
-  # Polling is portable across shells and was verified to detect a child's death and
-  # exit the loop promptly.
+  # $$ (not $) on every PULSE_CHECK_PID/PULSE_WORK_PID reference below: Compose
+  # interpolates `$VAR` in `command:` itself before the container ever sees the
+  # script, and PULSE_CHECK_PID/PULSE_WORK_PID aren't real Compose variables — a
+  # live incident found `docker compose config` silently blanking them, which
+  # turned `kill $PULSE_CHECK_PID $PULSE_WORK_PID` into a no-op `kill` and left
+  # pulse:check running solo for hours with no container restart. `$$` escapes
+  # past Compose's interpolation so the container's own shell resolves them.
+  # Polls both PIDs rather than `wait -n` since this image's /bin/sh is busybox,
+  # where `wait -n` isn't guaranteed portable; polling was verified live.
   pulse:
     <<: *app-base
     command:
@@ -168,10 +172,10 @@ services:
         php artisan pulse:work &
         PULSE_WORK_PID=$!
         # Exit (triggering Docker restart) as soon as either child dies.
-        while kill -0 "$PULSE_CHECK_PID" 2>/dev/null && kill -0 "$PULSE_WORK_PID" 2>/dev/null; do
+        while kill -0 "$$PULSE_CHECK_PID" 2>/dev/null && kill -0 "$$PULSE_WORK_PID" 2>/dev/null; do
             sleep 1
         done
-        kill $PULSE_CHECK_PID $PULSE_WORK_PID 2>/dev/null
+        kill $$PULSE_CHECK_PID $$PULSE_WORK_PID 2>/dev/null
         wait
     stop_grace_period: 30s
     volumes:
