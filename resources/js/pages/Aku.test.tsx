@@ -181,7 +181,7 @@ describe('Aku', () => {
     it('renders the AksesoriStrip when unlock catalog has entries', () => {
         const unlockCatalog = {
             'accessory.ikat_kepala_epik': {
-                name: 'Ikat Kepala Luar Biasa',
+                name: 'Ikat Kepala Istimewa',
                 icon: 'mdi:bandana',
                 description: '3 epic cards',
                 criteria: 'Earn 3 epic',
@@ -195,7 +195,7 @@ describe('Aku', () => {
         };
         const unlocks = [{ unlock_key: 'accessory.ikat_kepala_epik', unlocked_at: '2026-05-10' }];
         render(<Aku identity={identity} stats={stats} unlocks={unlocks} unlockCatalog={unlockCatalog} />);
-        expect(screen.getByText(/Ikat Kepala Luar Biasa/)).toBeInTheDocument();
+        expect(screen.getByText(/Ikat Kepala Istimewa/)).toBeInTheDocument();
         expect(screen.getByText(/Medali Emas/)).toBeInTheDocument();
         expect(screen.getByText(/kebuka/)).toBeInTheDocument();
     });

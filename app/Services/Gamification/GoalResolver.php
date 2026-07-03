@@ -119,7 +119,7 @@ readonly class GoalResolver
         $items = [
             ['id' => 'accessory.ikat_kepala_berkesan', 'rarityValue' => Rarity::Uncommon->value, 'target' => 3, 'label' => 'Berkesan'],
             ['id' => 'accessory.ikat_kepala_langka', 'rarityValue' => Rarity::Rare->value, 'target' => 3, 'label' => 'Langka'],
-            ['id' => 'accessory.ikat_kepala_epik', 'rarityValue' => Rarity::Epic->value, 'target' => 3, 'label' => 'Luar Biasa'],
+            ['id' => 'accessory.ikat_kepala_epik', 'rarityValue' => Rarity::Epic->value, 'target' => 3, 'label' => 'Istimewa'],
             ['id' => 'accessory.ikat_kepala_legendaris', 'rarityValue' => Rarity::Legendary->value, 'target' => 1, 'label' => 'Legendaris'],
         ];
 

@@ -6,7 +6,7 @@ export const RARITY_LABELS: Record<Rarity, string> = {
     common: 'Biasa',
     uncommon: 'Berkesan',
     rare: 'Langka',
-    epic: 'Luar Biasa',
+    epic: 'Istimewa',
     legendary: 'Legendaris',
 };
 

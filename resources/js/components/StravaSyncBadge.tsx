@@ -39,8 +39,9 @@ function resolveBadge(
     switch (state) {
         case 'ready': {
             const full = relative ? `Strava synced · ${relative}` : 'Strava synced';
+            const compact = relative ? `Sync · ${relative}` : 'Synced';
             return {
-                label: isCompact ? (relative ?? 'Synced') : full,
+                label: isCompact ? compact : full,
                 ariaLabel: relative ? `Strava synced ${relative}` : 'Strava synced',
                 dotClass: 'bg-leaf',
             };

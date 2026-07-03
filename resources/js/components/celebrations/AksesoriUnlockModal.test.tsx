@@ -4,7 +4,7 @@ import AksesoriUnlockModal from './AksesoriUnlockModal';
 
 const epikUnlock = {
     unlock_key: 'accessory.ikat_kepala_epik',
-    name: 'Ikat Kepala Luar Biasa',
+    name: 'Ikat Kepala Istimewa',
     icon: 'mdi:star',
     is_major: true,
 };
@@ -29,7 +29,7 @@ describe('AksesoriUnlockModal', () => {
 
     it('renders the unlock name for a major unlock', () => {
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={vi.fn()} />);
-        expect(screen.getByText(/Ikat Kepala Luar Biasa/)).toBeInTheDocument();
+        expect(screen.getByText(/Ikat Kepala Istimewa/)).toBeInTheDocument();
     });
 
     it('exposes a labelled modal dialog', () => {

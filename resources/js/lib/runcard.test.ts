@@ -45,7 +45,7 @@ describe('RARITY_LABELS', () => {
             common: 'Biasa',
             uncommon: 'Berkesan',
             rare: 'Langka',
-            epic: 'Luar Biasa',
+            epic: 'Istimewa',
             legendary: 'Legendaris',
         });
     });

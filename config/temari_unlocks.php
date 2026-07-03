@@ -69,12 +69,12 @@ return [
         'criteria' => 'Dapatkan 3 kartu Langka.',
     ],
     'accessory.ikat_kepala_epik' => [
-        'name' => 'Ikat Kepala Luar Biasa',
+        'name' => 'Ikat Kepala Istimewa',
         'slot' => 'ikat_kepala',
         'rarity' => 'epic',
         'icon' => 'mdi:bandage',
-        'description' => 'Ikat kepala ungu buat koleksi 3 kartu Luar Biasa.',
-        'criteria' => 'Dapatkan 3 kartu Luar Biasa.',
+        'description' => 'Ikat kepala ungu buat koleksi 3 kartu Istimewa.',
+        'criteria' => 'Dapatkan 3 kartu Istimewa.',
     ],
     'accessory.ikat_kepala_legendaris' => [
         'name' => 'Ikat Kepala Legendaris',

@@ -88,12 +88,12 @@ describe('AppShell', () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
-                unlock: { unlock_key: 'accessory.ikat_kepala_epik', name: 'Ikat Kepala Luar Biasa', icon: 'mdi:star', is_major: true },
+                unlock: { unlock_key: 'accessory.ikat_kepala_epik', name: 'Ikat Kepala Istimewa', icon: 'mdi:star', is_major: true },
             },
             demoLoginEnabled: false,
         });
         render(<AppShell><p>x</p></AppShell>);
-        expect(screen.getByText(/Ikat Kepala Luar Biasa/)).toBeInTheDocument();
+        expect(screen.getByText(/Ikat Kepala Istimewa/)).toBeInTheDocument();
         // Clicking "Nanti aja" triggers onClose (covers () => setMajorUnlock(null))
         await act(async () => { fireEvent.click(screen.getByText('Nanti aja')); });
     });

@@ -13,7 +13,7 @@ it('exposes the Indonesian rarity ladder labels', function (): void {
     expect(Rarity::Common->label())->toBe('Biasa')
         ->and(Rarity::Uncommon->label())->toBe('Berkesan')
         ->and(Rarity::Rare->label())->toBe('Langka')
-        ->and(Rarity::Epic->label())->toBe('Luar Biasa')
+        ->and(Rarity::Epic->label())->toBe('Istimewa')
         ->and(Rarity::Legendary->label())->toBe('Legendaris');
 });
 

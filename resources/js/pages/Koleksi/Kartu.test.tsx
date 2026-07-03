@@ -52,7 +52,7 @@ describe('Koleksi/Kartu', () => {
     it('renders the rarity filter pills (counts per rarity)', () => {
         render(<KoleksiKartu cards={emptyCards()} selectedRarity="epic" featuredCard={null} rarityCounts={rarityCounts} />);
         expect(screen.getByText(/Biasa · 5/)).toBeInTheDocument();
-        expect(screen.getByText(/Luar Biasa · 2/)).toBeInTheDocument();
+        expect(screen.getByText(/Istimewa · 2/)).toBeInTheDocument();
     });
 
     it('renders the slim banner with the featured flavor quote', () => {

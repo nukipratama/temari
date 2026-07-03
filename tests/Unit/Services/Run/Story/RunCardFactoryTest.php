@@ -816,7 +816,7 @@ it('maps score 4-5 to Langka (Rare)', function (): void {
     expect($factory->rarityFromScore(5))->toBe(Rarity::Rare);
 });
 
-it('maps score 6-7 to Luar Biasa (Epic)', function (): void {
+it('maps score 6-7 to Istimewa (Epic)', function (): void {
     $factory = app(RunCardFactory::class);
     expect($factory->rarityFromScore(6))->toBe(Rarity::Epic);
     expect($factory->rarityFromScore(7))->toBe(Rarity::Epic);

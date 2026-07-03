@@ -22,7 +22,7 @@ enum Rarity: string
             self::Common => 'Biasa',
             self::Uncommon => 'Berkesan',
             self::Rare => 'Langka',
-            self::Epic => 'Luar Biasa',
+            self::Epic => 'Istimewa',
             self::Legendary => 'Legendaris',
         };
     }

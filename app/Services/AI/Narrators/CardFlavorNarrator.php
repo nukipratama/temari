@@ -17,7 +17,7 @@ class CardFlavorNarrator
         Tugas: berikan 1 kalimat flavor maksimal 30 kata untuk kartu aktivitas.
         Setiap kartu punya rarity (common, uncommon, rare, epic, legendary) +
         special move + badges. Saat menyebut rarity dalam kalimat, gunakan
-        label Bahasa Indonesia: Biasa / Berkesan / Langka / Luar Biasa / Legendaris.
+        label Bahasa Indonesia: Biasa / Berkesan / Langka / Istimewa / Legendaris.
 
         Rajut kombinasi badge, pacing, dan cuaca jadi 1 kalimat yang
         nunjukin kenapa kartu ini spesial. Sebut special_move kalau namanya

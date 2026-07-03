@@ -186,12 +186,23 @@ export default function ZonaHR({ profile, hasCustomProfile }: Readonly<ZonaHRPro
                                     value={zones[key].lo}
                                     onChange={(v) => editBoundary(key, 'lo', v)}
                                 />
-                                <BoundaryInput
-                                    label={`${key} batas atas`}
-                                    testId={`zone-${key}-hi`}
-                                    value={zones[key].hi}
-                                    onChange={(v) => editBoundary(key, 'hi', v)}
-                                />
+                                {key === 'Z5' ? (
+                                    <span
+                                        data-testid="zone-Z5-hi"
+                                        aria-label="Z5 batas atas: tanpa batas"
+                                        title="Zona teratas tidak punya batas atas"
+                                        className="flex h-[38px] w-20 items-center justify-center rounded-lg border border-cream-deep bg-surface-sunken font-mono text-sm text-ink-3"
+                                    >
+                                        ∞
+                                    </span>
+                                ) : (
+                                    <BoundaryInput
+                                        label={`${key} batas atas`}
+                                        testId={`zone-${key}-hi`}
+                                        value={zones[key].hi}
+                                        onChange={(v) => editBoundary(key, 'hi', v)}
+                                    />
+                                )}
                             </div>
                         ))}
                     </div>

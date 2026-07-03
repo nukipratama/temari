@@ -163,7 +163,7 @@ class RunCardFactory
     /**
      * Map a point total to a rarity tier.
      *
-     * Tiers: 0-1 Biasa, 2-3 Berkesan, 4-5 Langka, 6-7 Luar Biasa, 8+ Legendaris
+     * Tiers: 0-1 Biasa, 2-3 Berkesan, 4-5 Langka, 6-7 Istimewa, 8+ Legendaris
      */
     public function rarityFromScore(int $score): Rarity
     {

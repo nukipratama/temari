@@ -97,7 +97,7 @@ describe("CardReveal", () => {
     expect(screen.getByText("Sync masuk")).toBeInTheDocument();
     // Tap to tear the foil open — the card behind it is revealed.
     await u.click(screen.getByTestId("pack-wrapper"));
-    expect(screen.getByText(/★ Luar Biasa/)).toBeInTheDocument();
+    expect(screen.getByText(/★ Istimewa/)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Pembalik Keadaan" }),
     ).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe("CardReveal", () => {
     expect(screen.getByTestId("pack-wrapper")).toBeInTheDocument();
     // The sealed eyebrow only flips to the rarity label once torn.
     expect(screen.getByText("Sync masuk")).toBeInTheDocument();
-    expect(screen.queryByText(/★ Luar Biasa/)).toBeNull();
+    expect(screen.queryByText(/★ Istimewa/)).toBeNull();
   });
 
   it("ignites the card with a rarity ring when the pack is torn", async () => {

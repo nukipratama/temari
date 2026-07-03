@@ -73,7 +73,7 @@ describe('KartuDetail', () => {
 
     it('renders badge lore section when badges exist', () => {
         render(<KartuDetail card={epicCard} relatedCards={[]} totalForRarity={3} />);
-        expect(screen.getByText(/Kenapa Luar Biasa/)).toBeInTheDocument();
+        expect(screen.getByText(/Kenapa Istimewa/)).toBeInTheDocument();
         expect(screen.getAllByText(/Negative Split/i).length).toBeGreaterThan(0);
     });
 
