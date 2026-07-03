@@ -40,7 +40,7 @@ class Temari
     public function postRunLine(Activity $activity, ActivityDetail $detail): StoryLine
     {
         $hasPr = PersonalRecord::query()->where('activity_id', $activity->id)->exists();
-        $mood = $this->moodForActivity($detail, $hasPr);
+        $mood = self::moodForActivity($detail, $hasPr);
 
         return StoryLine::query()->updateOrCreate(
             [
@@ -92,8 +92,25 @@ class Temari
         };
     }
 
+    /**
+     * Mood an activity would carry once its post-run StoryLine is persisted, for
+     * surfaces (share card, reveal) that render before narration lands. Returns the
+     * rest-day default only when there's no detail to read.
+     */
+    public static function moodForActivityOrDefault(Activity $activity): string
+    {
+        $detail = $activity->detail;
+        if ($detail === null) {
+            return self::MOOD_ADEM;
+        }
+
+        $hasPr = PersonalRecord::query()->where('activity_id', $activity->id)->exists();
+
+        return self::moodForActivity($detail, $hasPr);
+    }
+
     // Order matters — first matching rule wins, most-prestigious mood first.
-    private function moodForActivity(ActivityDetail $detail, bool $hasPr): string
+    private static function moodForActivity(ActivityDetail $detail, bool $hasPr): string
     {
         $summary = $detail->streamSummary();
         $hardShare = StreamSummary::hardZoneShare($summary);

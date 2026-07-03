@@ -39,7 +39,7 @@ class CardController extends Controller
 
         $page->getCollection()->each(function (RunCard $c) use ($editions, $counts): void {
             $c->setAttribute('edition', $this->edition($c, $editions, $counts));
-            $c->setAttribute('mood', $c->activity->postRunStoryLine->mood ?? Temari::MOOD_ADEM);
+            $c->setAttribute('mood', $c->activity->postRunStoryLine->mood ?? Temari::moodForActivityOrDefault($c->activity));
         });
 
         return Inertia::render('Koleksi/Kartu', [
@@ -103,7 +103,7 @@ class CardController extends Controller
             'activity_id' => $card->activity_id,
             'rarity' => $card->rarity->value,
             'special_move' => $card->special_move,
-            'mood' => $card->activity->postRunStoryLine->mood ?? Temari::MOOD_ADEM,
+            'mood' => $card->activity->postRunStoryLine->mood ?? Temari::moodForActivityOrDefault($card->activity),
             'badges' => $card->badges,
             'detail' => $card->activity->detail,
             'edition' => $this->edition($card, $editions, $counts),

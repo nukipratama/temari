@@ -173,6 +173,31 @@ it('maps each vibe to a mood', function (): void {
         ->and($temari->moodForVibe('unknown'))->toBe(Temari::MOOD_ADEM);
 });
 
+it('moodForActivityOrDefault matches the mood the post-run line would persist', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 80, 'Z3' => 20],
+            'negative_split' => true,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    $activity->setRelation('detail', $detail);
+
+    expect(Temari::moodForActivityOrDefault($activity))
+        ->toBe(Temari::MOOD_ENTENG)
+        ->toBe(app(Temari::class)->postRunLine($activity, $detail)->mood);
+});
+
+it('moodForActivityOrDefault falls back to adem when the activity has no detail', function (): void {
+    $activity = Activity::factory()->create();
+    $activity->setRelation('detail', null);
+
+    expect(Temari::moodForActivityOrDefault($activity))->toBe(Temari::MOOD_ADEM);
+});
+
 it('picks bouncy mood when the run had a negative split', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([

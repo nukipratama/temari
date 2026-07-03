@@ -113,6 +113,10 @@ it('shares pendingReveal payload (incl. km/duration/trimp) when a card is flagge
         'distance' => 10240.5,
         'moving_time' => 3480,
         'trimp_edwards' => 161.4,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 80, 'Z3' => 20],
+            'negative_split' => true,
+        ],
     ]);
     $card = RunCard::factory()->for($activity)->create([
         'rarity' => 'epic',
@@ -130,5 +134,27 @@ it('shares pendingReveal payload (incl. km/duration/trimp) when a card is flagge
             ->where('pendingReveal.detail_name', '10K race-pace')
             ->where('pendingReveal.distance_m', 10240.5)
             ->where('pendingReveal.moving_time_sec', 3480)
-            ->where('pendingReveal.trimp_edwards', 161.4));
+            ->where('pendingReveal.trimp_edwards', 161.4)
+            // No post-run story line yet: mood is computed, not the sleepy default.
+            ->where('pendingReveal.mood', 'enteng'));
+});
+
+it('reads weather_temp_c through the pendingReveal eager load so hot-weather mood computes correctly', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 80, 'Z3' => 20],
+            'negative_split' => false,
+        ],
+        'weather_temp_c' => 32,
+    ]);
+    $card = RunCard::factory()->for($activity)->create();
+
+    $user->forceFill(['pending_reveal_card_id' => $card->id])->save();
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('pendingReveal.mood', 'oleng'));
 });

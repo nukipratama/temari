@@ -29,6 +29,25 @@ it('shows the user\'s cards on the gallery', function (): void {
             ->where('cards.data.0.rarity', 'epic'));
 });
 
+it('falls back to the computed mood (not the sleepy default) when no post-run story line exists', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 80, 'Z3' => 20],
+            'negative_split' => true,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+    RunCard::factory()->for($activity)->create(['rarity' => 'epic']);
+
+    $this->actingAs($user)->get('/kartu')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('cards.data.0.mood', 'enteng'));
+});
+
 it('renders the empty state when no cards match the filter', function (): void {
     $user = User::factory()->create();
 

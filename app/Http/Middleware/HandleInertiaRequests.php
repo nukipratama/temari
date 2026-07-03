@@ -208,7 +208,7 @@ class HandleInertiaRequests extends Middleware
         $card = RunCard::query()
             ->whereKey($user->pending_reveal_card_id)
             ->with([
-                'activity.detail:id,activity_id,name,distance,moving_time,trimp_edwards,average_heartrate,summary_polyline,stream_summary',
+                'activity.detail:id,activity_id,name,distance,moving_time,trimp_edwards,average_heartrate,summary_polyline,stream_summary,weather_temp_c',
                 'activity.postRunStoryLine',
                 'activity:id,user_id',
             ])
@@ -228,7 +228,7 @@ class HandleInertiaRequests extends Middleware
             'activity_id' => $card->activity_id,
             'rarity' => $card->rarity->value,
             'special_move' => $card->special_move,
-            'mood' => $card->activity->postRunStoryLine->mood ?? Temari::MOOD_ADEM,
+            'mood' => $card->activity->postRunStoryLine->mood ?? Temari::moodForActivityOrDefault($card->activity),
             'badges' => $badges,
             'detail_name' => $detail?->name,
             'distance_m' => $detail?->distance,
