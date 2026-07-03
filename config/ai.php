@@ -7,12 +7,6 @@ return [
 
     'queue' => (string) env('AI_QUEUE', 'default'),
 
-    // Minimum seconds between successful re-runs of the same analysis row.
-    // When a Done row is younger than this, the trigger endpoint returns the
-    // existing content + a `retry_after_seconds` countdown instead of
-    // dispatching a fresh LLM call.
-    'cooldown_seconds' => (int) env('AI_COOLDOWN_SECONDS', 300),
-
     // Per-user trigger ceiling (sliding minute). Catches the case where a user
     // clicks Analisis ulang across multiple analyses in rapid succession.
     'rate_limit_per_minute' => (int) env('AI_RATE_LIMIT_PER_MINUTE', 8),

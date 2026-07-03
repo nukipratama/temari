@@ -139,11 +139,11 @@ describe('BriefingCard', () => {
                 retry_after_seconds: 3,
             };
             render(<BriefingCard briefing={makeBriefing({ headline: payload })} />);
-            expect(screen.getByText(/Tunggu 0:03/)).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Tunggu 0:03/ })).toBeInTheDocument();
             act(() => {
                 vi.advanceTimersByTime(1000);
             });
-            expect(screen.getByText(/Tunggu 0:02/)).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Tunggu 0:02/ })).toBeInTheDocument();
             act(() => {
                 vi.advanceTimersByTime(2000);
             });

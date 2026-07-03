@@ -14,6 +14,7 @@ function makeRecap(overrides: Partial<MonthlyRecap> = {}): MonthlyRecap {
         subject_id: 1,
         discriminator: '2026-05',
         is_chain_head: true,
+        telegram_retry_after_seconds: null,
         ...overrides,
     };
 }

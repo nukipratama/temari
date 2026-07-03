@@ -19,10 +19,12 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\ActivityPipeline;
+use App\Support\Cooldown;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
 
@@ -74,12 +76,11 @@ it('triggers a briefing headline analysis for the authenticated user', function 
     Bus::assertDispatched(AnalyzeBriefingJob::class);
 });
 
-it('force re-triggers a briefing when the previous one is older than the cooldown', function (): void {
+it('force re-triggers a briefing when no cooldown window is active', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done('old')->create([
         'subject_id' => $user->id,
         'discriminator' => '2026-05-18',
-        'generated_at' => Carbon::now()->subHour(),
     ]);
 
     $this->actingAs($user)
@@ -92,13 +93,12 @@ it('force re-triggers a briefing when the previous one is older than the cooldow
 });
 
 it('returns the cached payload with retry_after_seconds when within cooldown', function (): void {
-    config()->set('ai.cooldown_seconds', 300);
     $user = User::factory()->create();
     Analysis::factory()->done('fresh content')->create([
         'subject_id' => $user->id,
         'discriminator' => '2026-05-18',
-        'generated_at' => Carbon::now()->subSeconds(30),
     ]);
+    RateLimiter::hit(Analysis::cooldownKey(AnalysisType::BriefingHeadline, $user->id, '2026-05-18'), Cooldown::WINDOW_SECONDS);
 
     $response = $this->actingAs($user)
         ->postJson("/api/analyses/briefing_headline/{$user->id}/trigger?discriminator=2026-05-18")
@@ -106,25 +106,8 @@ it('returns the cached payload with retry_after_seconds when within cooldown', f
         ->assertJsonPath('status', AnalysisStatus::Done->value)
         ->assertJsonPath('content', 'fresh content');
 
-    expect($response->json('retry_after_seconds'))->toBeGreaterThan(0)->toBeLessThanOrEqual(300);
+    expect($response->json('retry_after_seconds'))->toBeGreaterThan(0)->toBeLessThanOrEqual(Cooldown::WINDOW_SECONDS);
     Bus::assertNotDispatched(AnalyzeBriefingJob::class);
-});
-
-it('skips the cooldown gate when cooldown_seconds is 0', function (): void {
-    config()->set('ai.cooldown_seconds', 0);
-    $user = User::factory()->create();
-    Analysis::factory()->done('recent')->create([
-        'subject_id' => $user->id,
-        'discriminator' => '2026-05-18',
-        'generated_at' => Carbon::now()->subSeconds(5),
-    ]);
-
-    $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_headline/{$user->id}/trigger?discriminator=2026-05-18")
-        ->assertSuccessful()
-        ->assertJsonPath('status', AnalysisStatus::Queued->value);
-
-    Bus::assertDispatched(AnalyzeBriefingJob::class);
 });
 
 it('authorizes post-run speech only for the activity owner', function (): void {
@@ -266,7 +249,6 @@ it('throws Unauthenticated when the request has no user (defensive guard)', func
 
 it('chained weekly_recap retry resumes the earliest unfilled link, not the clicked row', function (): void {
     Carbon::setTestNow('2026-05-18 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     // Earliest week is still Pending; a later week was clicked.
@@ -298,7 +280,6 @@ it('chained weekly_recap retry resumes the earliest unfilled link, not the click
 
 it('chained weekly_recap head regenerate (Done clicked row) re-narrates that exact row', function (): void {
     Carbon::setTestNow('2026-05-18 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     // An earlier still-Pending link exists, but a Done head is being regenerated.
@@ -331,7 +312,6 @@ it('chained weekly_recap head regenerate (Done clicked row) re-narrates that exa
 
 it('chained weekly_recap regenerate on a Done NON-head row resumes the chain instead (server guard)', function (): void {
     Carbon::setTestNow('2026-05-18 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     // A mid-history Done row (not the head) plus a still-Pending earlier link.
@@ -366,7 +346,6 @@ it('chained weekly_recap regenerate on a Done NON-head row resumes the chain ins
 
 it('chained monthly_recap retry resumes the earliest unfilled month, not the clicked one', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     // Earliest month is still Pending; a later month was clicked.
@@ -396,7 +375,6 @@ it('chained monthly_recap retry resumes the earliest unfilled month, not the cli
 
 it('chained monthly_recap head regenerate (Done clicked month) re-narrates that exact month', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     // An earlier still-Pending month exists, but a Done head is being regenerated.
@@ -427,7 +405,6 @@ it('chained monthly_recap head regenerate (Done clicked month) re-narrates that 
 
 it('monthly_recap trigger on the still-open current month is an inert no-op (never narrated)', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     // The current month (2026-06) is staged Pending but window-gated until it
@@ -453,7 +430,6 @@ it('monthly_recap trigger on the still-open current month is an inert no-op (nev
 
 it('weekly_recap trigger on the still-open current week is an inert no-op (never narrated)', function (): void {
     Carbon::setTestNow('2026-05-18 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     // A snapshot for the still-running current week (ends after the last closed
@@ -480,7 +456,6 @@ it('weekly_recap trigger on the still-open current week is an inert no-op (never
 
 it('chained monthly_recap head regenerate ignores the still-open current month staged row', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     // The current (still-running) month is staged Pending by the post-run
@@ -514,7 +489,6 @@ it('chained monthly_recap head regenerate ignores the still-open current month s
 
 it('chained monthly_recap regenerate on a Done NON-head month resumes the chain instead (server guard)', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     // A mid-history Done month (not the head) plus a still-Pending earlier link.
@@ -574,7 +548,6 @@ function activityWithSpeech(User $user, string $startDate, AnalysisStatus $statu
 
 it('chained post_run_speech retry resumes the earliest unfilled run, not the clicked one', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
@@ -592,7 +565,6 @@ it('chained post_run_speech retry resumes the earliest unfilled run, not the cli
 
 it('chained post_run_speech head regenerate (Done latest run) re-narrates that exact run', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     // An earlier still-Pending run exists, but the Done latest run (head) is regenerated.
@@ -611,7 +583,6 @@ it('chained post_run_speech head regenerate (Done latest run) re-narrates that e
 
 it('chained post_run_speech regenerate on a Done NON-head run resumes the chain instead (server guard)', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     $user = User::factory()->create();
 
     $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
@@ -631,7 +602,6 @@ it('chained post_run_speech regenerate on a Done NON-head run resumes the chain 
 
 it('chained post_run_speech resume does not re-bill an already-Done sibling row of the resumed group', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
-    config()->set('ai.cooldown_seconds', 0);
     // Enable auto-dispatch so the group invalidation path actually runs; without
     // it dispatchGroup short-circuits and the re-bill bug can't manifest.
     config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');

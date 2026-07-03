@@ -15,6 +15,7 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
+use App\Support\Cooldown;
 use App\Services\Telegram\NotifiableAnalysis;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -145,6 +146,10 @@ class AnalysisService
             'error' => null,
             'generated_at' => $generatedAt ?? Carbon::now(),
         ]);
+
+        // Start the re-trigger cooldown so a "Baca ulang" can't re-fire the LLM
+        // for the same block within the window (covers both auto and manual).
+        (new Cooldown(Analysis::cooldownKey($row->analysis_type, $row->subject_id, $row->discriminator)))->start();
 
         // Fan out a Telegram push for the notifiable types. Suppressed under
         // withoutDispatching (demo seed) and a no-op when Telegram is unconfigured;

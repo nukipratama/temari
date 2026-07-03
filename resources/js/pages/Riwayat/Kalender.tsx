@@ -17,7 +17,11 @@ import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
 
 /** The monthly recap payload plus the chain-head flag the controller adds. */
-export type MonthlyRecap = AnalysisPayload & { is_chain_head: boolean };
+export type MonthlyRecap = AnalysisPayload & {
+    is_chain_head: boolean;
+    /** Remaining Telegram-send cooldown for this month's recap, or null. */
+    telegram_retry_after_seconds: number | null;
+};
 
 export interface CalendarCell {
     date: string;
@@ -267,7 +271,10 @@ function MonthlyRecapCard({
                     />
                     {telegramConnected && recap.status === 'done' && (
                         <div className="mt-3">
-                            <SendToTelegramButton url={`/rekap-bulanan/${month}/telegram`} />
+                            <SendToTelegramButton
+                                url={`/rekap-bulanan/${month}/telegram`}
+                                retryAfterSeconds={recap.telegram_retry_after_seconds}
+                            />
                         </div>
                     )}
                 </div>

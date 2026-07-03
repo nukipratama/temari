@@ -40,6 +40,8 @@ interface WeeklySnapshotRow {
     /** True for the latest completed week, the only chain link that may regenerate. */
     is_chain_head: boolean;
     recap_analysis: AnalysisPayload;
+    /** Remaining Telegram-send cooldown for this week's recap, or null. */
+    telegram_retry_after_seconds: number | null;
 }
 
 interface RunsIndexProps {
@@ -272,7 +274,10 @@ const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, 
                             />
                             {telegramConnected && snapshot.recap_analysis.status === 'done' && (
                                 <div className="mt-3">
-                                    <SendToTelegramButton url={`/rekap-mingguan/${snapshot.id}/telegram`} />
+                                    <SendToTelegramButton
+                                        url={`/rekap-mingguan/${snapshot.id}/telegram`}
+                                        retryAfterSeconds={snapshot.telegram_retry_after_seconds}
+                                    />
                                 </div>
                             )}
                         </div>

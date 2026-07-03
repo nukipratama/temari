@@ -119,6 +119,7 @@ function renderShow(
             {...insightDefaults}
             moodFallback="adem"
             isChainHead
+            telegramRetryAfterSeconds={null}
             pastYou={null}
             {...overrides}
         />,

@@ -82,6 +82,8 @@ interface ShowProps {
     moodFallback: Mood;
     /** This run is the head of the per-activity narration chain (latest run). */
     isChainHead: boolean;
+    /** Remaining Telegram-send cooldown for this run's speech, or null. */
+    telegramRetryAfterSeconds: number | null;
     pastYou: PastYouMatch | null;
 }
 
@@ -96,6 +98,7 @@ export default function RunsShow({
     insightZones,
     moodFallback,
     isChainHead,
+    telegramRetryAfterSeconds,
     pastYou,
 }: Readonly<ShowProps>) {
     const telegramConnected = usePage<SharedProps>().props.telegramConnected ?? false;
@@ -140,7 +143,12 @@ export default function RunsShow({
                         />
                         {resyncing ? 'Lagi narik…' : 'Resync dari Strava'}
                     </PillButton>
-                    {telegramConnected && <SendToTelegramButton url={`/aktivitas/${activity.id}/telegram`} />}
+                    {telegramConnected && (
+                        <SendToTelegramButton
+                            url={`/aktivitas/${activity.id}/telegram`}
+                            retryAfterSeconds={telegramRetryAfterSeconds}
+                        />
+                    )}
                 </div>
 
                 {/* HERO — stats left + route map right */}

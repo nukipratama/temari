@@ -395,7 +395,8 @@ it('markDone records content and generated_at', function (): void {
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('final narrative')
-        ->and($fresh->generated_at)->not->toBeNull();
+        ->and($fresh->generated_at)->not->toBeNull()
+        ->and($fresh->cooldownRemaining())->toBeGreaterThan(0);
 });
 
 it('markDone uses supplied generatedAt when given', function (): void {

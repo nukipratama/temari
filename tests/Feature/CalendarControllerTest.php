@@ -8,8 +8,10 @@ use App\Models\AI\Analysis;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -131,7 +133,24 @@ it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap pr
             ->where('monthlyRecap.status', 'done')
             ->where('monthlyRecap.content', 'Bulan Mei kamu padat, ritmenya kejaga.')
             ->where('monthlyRecap.type', AnalysisType::MonthlyRecap->value)
-            ->where('monthlyRecap.discriminator', '2026-05'));
+            ->where('monthlyRecap.discriminator', '2026-05')
+            ->where('monthlyRecap.telegram_retry_after_seconds', null));
+});
+
+it('surfaces the monthly recap Telegram cooldown when a send is on cooldown', function (): void {
+    $user = User::factory()->create();
+    $recap = Analysis::factory()->done('Bulan Mei kamu padat.')->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-05',
+    ]);
+    RateLimiter::hit(Cooldown::telegramKey($recap->id), Cooldown::WINDOW_SECONDS);
+
+    $this->actingAs($user)->get('/kalender?month=2026-05')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('monthlyRecap.telegram_retry_after_seconds', fn (?int $s): bool => $s !== null && $s > 0)
+            ->etc());
 });
 
 it('only matches the recap row for the viewed month, not another month', function (): void {

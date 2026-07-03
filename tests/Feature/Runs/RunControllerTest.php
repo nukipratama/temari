@@ -5,13 +5,17 @@ declare(strict_types=1);
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisType;
+use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -318,6 +322,43 @@ it('shows a single run detail with Temari speech + run card', function (): void 
             ->where('detail.name', 'Morning Run')
             ->where('storyLine.speech', 'Run yang solid, paru-paru baja keluar.')
             ->where('card.special_move', 'Paru-paru Baja'));
+});
+
+it('surfaces the run speech Telegram cooldown when a send is on cooldown', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    $speech = Analysis::factory()->done('Mantap!')->create([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'discriminator' => null,
+    ]);
+    RateLimiter::hit(Cooldown::telegramKey($speech->id), Cooldown::WINDOW_SECONDS);
+
+    $this->actingAs($user)->get("/aktivitas/{$activity->id}")
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('telegramRetryAfterSeconds', fn (?int $s): bool => $s !== null && $s > 0)
+            ->etc());
+});
+
+it('surfaces the weekly recap Telegram cooldown on the snapshot payload', function (): void {
+    $user = User::factory()->create();
+    $snapshot = WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->toDateString(),
+    ]);
+    $recap = Analysis::factory()->done('Minggu ini 28 km.')->create([
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snapshot->id,
+        'discriminator' => null,
+    ]);
+    RateLimiter::hit(Cooldown::telegramKey($recap->id), Cooldown::WINDOW_SECONDS);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('weeklySnapshots.0.telegram_retry_after_seconds', fn (?int $s): bool => $s !== null && $s > 0)
+            ->etc());
 });
 
 it('404s when trying to view another user\'s run', function (): void {

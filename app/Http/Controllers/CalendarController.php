@@ -56,6 +56,14 @@ class CalendarController extends Controller
             )
             ->first();
 
+        $recapPayload = Analysis::toPayload(
+            $recapRow,
+            AnalysisType::MonthlyRecap,
+            AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+            $user->id,
+            $discriminator,
+        );
+
         return Inertia::render('Riwayat/Kalender', [
             'month' => $discriminator,
             'monthLabel' => $this->formatMonthLabel($monthStart),
@@ -66,14 +74,9 @@ class CalendarController extends Controller
             'lifetime' => $this->lifetimeStats->forUser($user),
             'todayQuote' => $this->noteReader->speechForToday($user->id),
             'monthlyRecap' => [
-                ...Analysis::toPayload(
-                    $recapRow,
-                    AnalysisType::MonthlyRecap,
-                    AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-                    $user->id,
-                    $discriminator,
-                ),
+                ...$recapPayload,
                 'is_chain_head' => $discriminator === $this->latestNarratedMonthFor($user),
+                'telegram_retry_after_seconds' => Analysis::telegramCooldownRemaining($recapPayload),
             ],
         ]);
     }

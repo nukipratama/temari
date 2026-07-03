@@ -119,6 +119,7 @@ class RunController extends Controller
                 'is_current_week' => $row->week_ending->equalTo($currentWeekEnding),
                 'is_chain_head' => $row->id === $chainHeadId,
                 'recap_analysis' => $recapAnalyses[$row->id],
+                'telegram_retry_after_seconds' => Analysis::telegramCooldownRemaining($recapAnalyses[$row->id]),
             ])->values(),
             'journeyMatch' => $this->buildJourneyMatch($user),
         ]);
@@ -313,6 +314,8 @@ class RunController extends Controller
             $activity->id,
         );
 
+        $speechAnalysis = $payloadFor(AnalysisType::PostRunSpeech);
+
         // Per-activity narration is a connected + chained kind: only the chain
         // head (the user's latest run) may regenerate ("Baca ulang"); historical
         // runs are resume-only, so re-narrating mid-history can't desync the
@@ -329,7 +332,8 @@ class RunController extends Controller
             // instead of diverging into a frontend heuristic.
             'moodFallback' => Temari::moodForActivityOrDefault($activity),
             'isChainHead' => $isChainHead,
-            'speechAnalysis' => $payloadFor(AnalysisType::PostRunSpeech),
+            'speechAnalysis' => $speechAnalysis,
+            'telegramRetryAfterSeconds' => Analysis::telegramCooldownRemaining($speechAnalysis),
             'insightTechnical' => $payloadFor(AnalysisType::RunInsightTechnical),
             'insightSplits' => $payloadFor(AnalysisType::RunInsightSplits),
             'insightZones' => $payloadFor(AnalysisType::RunInsightZones),

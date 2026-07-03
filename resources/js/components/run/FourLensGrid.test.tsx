@@ -58,8 +58,8 @@ describe('FourLensGrid', () => {
             cerita: { ...defaultProps.cerita, retry_after_seconds: 120 },
         };
         render(<FourLensGrid {...cooling} isChainHead />);
-        const button = screen.getByText(/Tunggu/i).closest('button') as HTMLButtonElement;
+        const button = screen.getByRole('button', { name: /Tunggu 2:00 sebelum baca ulang semua/i });
         expect(button).toBeDisabled();
-        expect(button.textContent).toContain('Tunggu 2:00 ya');
+        expect(button.textContent).toContain('2:00');
     });
 });

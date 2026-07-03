@@ -147,7 +147,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
                 disabled={pending}
                 className="focus-ring inline-flex items-center gap-1 rounded-full bg-leaf-deep px-3 py-1 text-xs font-semibold text-cream shadow-sm transition hover:opacity-90 disabled:opacity-50"
             >
-                <Icon icon="mdi:reload" aria-hidden />
+                <Icon icon="mdi:auto-awesome" aria-hidden />
                 <span>Coba lagi</span>
             </button>
         );
@@ -161,7 +161,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
                 disabled={pending}
                 className="focus-ring inline-flex items-center gap-1 rounded-full bg-leaf-deep px-3 py-1 text-xs font-semibold text-cream shadow-sm transition hover:opacity-90 disabled:opacity-50"
             >
-                <Icon icon="mdi:auto-fix" aria-hidden />
+                <Icon icon="mdi:auto-awesome" aria-hidden />
                 <span>Minta Temari bacain</span>
             </button>
         );
@@ -172,11 +172,11 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
             type="button"
             onClick={trigger}
             disabled={cooling || pending}
-            aria-label={error ?? undefined}
+            aria-label={cooling ? `Tunggu ${formatDurationHMS(remaining)} sebelum baca ulang` : (error ?? undefined)}
             className="focus-ring inline-flex items-center gap-1 rounded-full bg-surface-sunken/80 px-2.5 py-1 text-xs text-ink-3 backdrop-blur-sm transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
         >
-            <Icon icon="mdi:refresh" aria-hidden />
-            <span>{cooling ? `Tunggu ${formatDurationHMS(remaining)} ya` : 'Baca ulang'}</span>
+            <Icon icon="mdi:auto-awesome" aria-hidden />
+            <span>{cooling ? formatDurationHMS(remaining) : 'Baca ulang'}</span>
         </button>
     );
 }

@@ -31,7 +31,7 @@ Retry from there is **manual only**, per block:
 
 There is **no global "mode darurat" chip** — the row's own status drives the UI.
 
-Two guards cap rapid re-fire. A per-block cooldown: a `done` row younger than `ai.cooldown_seconds` (default 300) reports a `retry_after_seconds` countdown via [Analysis::cooldownRemaining()](app/Models/AI/Analysis.php), which the button honours as a disabled "Tunggu …" state. And a per-user sliding-minute ceiling, `ai.rate_limit_per_minute` (default 8) in [config/ai.php](config/ai.php), catches rapid clicks across many blocks.
+Two guards cap rapid re-fire. A per-block cooldown: once a `done` row is generated it opens a 15-minute Redis-backed window ([Cooldown](app/Support/Cooldown.php), started in `AnalysisService::markDone()`), reported as a `retry_after_seconds` countdown via [Analysis::cooldownRemaining()](app/Models/AI/Analysis.php) that the button honours as a disabled countdown state. And a per-user sliding-minute ceiling, `ai.rate_limit_per_minute` (default 8) in [config/ai.php](config/ai.php), catches rapid clicks across many blocks.
 
 ## Consequences
 

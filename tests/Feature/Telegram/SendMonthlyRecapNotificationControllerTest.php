@@ -6,8 +6,10 @@ use App\Jobs\Telegram\SendTelegramNotificationJob;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
 
@@ -42,6 +44,20 @@ it('force-dispatches the push when the monthly recap is done', function (): void
         SendTelegramNotificationJob::class,
         fn (SendTelegramNotificationJob $job): bool => $job->analysisId === $analysis->id && $job->force === true,
     );
+});
+
+it('does not re-dispatch and flashes info while the send cooldown is active', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $analysis = doneMonthlyRecapFor($user);
+    RateLimiter::hit(Cooldown::telegramKey($analysis->id), Cooldown::WINDOW_SECONDS);
+
+    $this->actingAs($user)
+        ->post(route('rekap.bulanan.telegram', ['month' => '2026-06']))
+        ->assertRedirect()
+        ->assertSessionHas('info');
+
+    Bus::assertNotDispatched(SendTelegramNotificationJob::class);
 });
 
 it('does not dispatch and flashes info when the recap is not ready', function (): void {

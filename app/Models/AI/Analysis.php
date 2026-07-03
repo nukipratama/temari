@@ -7,6 +7,7 @@ namespace App\Models\AI;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Support\Cooldown;
 use Database\Factories\AI\AnalysisFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -82,24 +83,27 @@ class Analysis extends Model
 
     /**
      * Seconds left before this row may be re-triggered, or null if no cooldown
-     * applies. A row is cooling when its status is Done, it has a
-     * `generated_at`, and that timestamp is within `ai.cooldown_seconds`.
+     * applies. Only a Done row can cool; the window is a Redis-backed
+     * {@see Cooldown} started at {@see AnalysisService::markDone()}.
      */
     public function cooldownRemaining(): ?int
     {
-        if ($this->status !== AnalysisStatus::Done || $this->generated_at === null) {
+        if ($this->status !== AnalysisStatus::Done) {
             return null;
         }
 
-        $cooldown = (int) config('ai.cooldown_seconds', 300);
-        if ($cooldown <= 0) {
-            return null;
-        }
+        return (new Cooldown(self::cooldownKey($this->analysis_type, $this->subject_id, $this->discriminator)))
+            ->remaining();
+    }
 
-        $unlocksAt = $this->generated_at->copy()->addSeconds($cooldown);
-        $remaining = (int) Carbon::now()->diffInSeconds($unlocksAt, absolute: false);
-
-        return $remaining > 0 ? $remaining : null;
+    /**
+     * The RateLimiter key for a row's re-trigger cooldown. Keyed by the row's
+     * identity (type + subject + discriminator), which is unique per user's
+     * resource, so cooldowns never collide across users.
+     */
+    public static function cooldownKey(AnalysisType $type, int $subjectId, ?string $discriminator): string
+    {
+        return "ai-cooldown:{$type->value}:{$subjectId}:".($discriminator ?? '');
     }
 
     /**
@@ -167,5 +171,23 @@ class Analysis extends Model
             'generated_at' => $row?->generated_at?->toIso8601String(),
             'retry_after_seconds' => $row?->cooldownRemaining(),
         ];
+    }
+
+    /**
+     * Remaining Telegram-send cooldown for a {@see self::toPayload()} array, or
+     * null when there is no row or it is not Done (only a Done row is ever
+     * pushed, so only it can cool). Surfaced next to the manual "Kirim ke
+     * Telegram" button so it renders a disabled countdown.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public static function telegramCooldownRemaining(array $payload): ?int
+    {
+        $id = $payload['id'] ?? null;
+        if (! is_int($id) || ($payload['status'] ?? null) !== AnalysisStatus::Done->value) {
+            return null;
+        }
+
+        return (new Cooldown(Cooldown::telegramKey($id)))->remaining();
     }
 }

@@ -132,14 +132,11 @@ export default function AnalysisStatus({
                         type="button"
                         onClick={trigger}
                         disabled={cooling || pending}
+                        aria-label={cooling ? `Tunggu ${formatDurationHMS(cooldownRemaining)} sebelum baca ulang` : undefined}
                         className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
                     >
-                        <Icon icon="mdi:refresh" aria-hidden />
-                        <span>
-                            {cooling
-                                ? `Tunggu ${formatDurationHMS(cooldownRemaining)} ya`
-                                : 'Baca ulang'}
-                        </span>
+                        <Icon icon="mdi:auto-awesome" aria-hidden />
+                        <span>{cooling ? formatDurationHMS(cooldownRemaining) : 'Baca ulang'}</span>
                     </button>
                 )}
                 {rateLimited && <RateLimitedNote />}
@@ -175,7 +172,7 @@ export default function AnalysisStatus({
                         disabled={pending}
                         className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-deep hover:text-ink transition-colors disabled:opacity-50"
                     >
-                        <Icon icon="mdi:reload" aria-hidden />
+                        <Icon icon="mdi:auto-awesome" aria-hidden />
                         <span>Coba lagi</span>
                     </button>
                 )}
@@ -196,7 +193,7 @@ export default function AnalysisStatus({
                     disabled={pending}
                     className="focus-ring inline-flex items-center self-start gap-1 rounded-full bg-leaf-deep text-cream text-xs px-3 py-1 font-semibold transition hover:opacity-90 disabled:opacity-50"
                 >
-                    <Icon icon="mdi:auto-fix" aria-hidden />
+                    <Icon icon="mdi:auto-awesome" aria-hidden />
                     <span>Minta Temari bacain</span>
                 </button>
             )}

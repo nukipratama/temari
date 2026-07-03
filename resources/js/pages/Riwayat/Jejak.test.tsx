@@ -167,6 +167,7 @@ describe('Riwayat/Jejak', () => {
                     subject_id: 1,
                     discriminator: null,
                 },
+                telegram_retry_after_seconds: null,
             },
         ];
         render(
@@ -206,6 +207,7 @@ describe('Riwayat/Jejak', () => {
             subject_id: 7,
             discriminator: null,
         },
+        telegram_retry_after_seconds: null,
     };
 
     it('hides the weekly recap Telegram button when not connected', () => {
@@ -268,6 +270,7 @@ describe('Riwayat/Jejak', () => {
                 subject_id: 1,
                 discriminator: null,
             },
+            telegram_retry_after_seconds: null,
         };
         // Four weekly buckets, one run + one matching snapshot per bucket, each
         // snapshot using a different FormStatus value so every branch in
