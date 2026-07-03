@@ -3,6 +3,8 @@ import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
 import { fadeInUp } from '@/lib/motion';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
+import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
+import { formatDurationHMS } from '@/lib/pace';
 import AnalysisStatus from './AnalysisStatus';
 import Temari from './Temari';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
@@ -138,7 +140,9 @@ function GroupedReanalyzeButton({
     entries,
     inertiaReloadProps,
 }: Readonly<{ entries: ReadonlyArray<ThreadEntry>; inertiaReloadProps: string[] }>) {
-    const { trigger, pending } = useAnalysisTrigger(entries[0].analysis, inertiaReloadProps);
+    const { trigger, pending, retryAfterSeconds } = useAnalysisTrigger(entries[0].analysis, inertiaReloadProps);
+    const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
+    const cooling = cooldownRemaining > 0;
     // Hide is driven by *prop* status, not the local `pending` flag, so the
     // button disappears at the same Inertia-reload frame the per-row spinners
     // appear. Tying both transitions to one source kills the "button gone but
@@ -163,11 +167,12 @@ function GroupedReanalyzeButton({
                     <button
                         type="button"
                         onClick={trigger}
-                        disabled={pending}
+                        disabled={pending || cooling}
+                        aria-label={cooldownAriaLabel(cooldownRemaining, 'baca ulang')}
                         className="focus-ring rounded inline-flex items-center gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:opacity-50 disabled:cursor-wait"
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
-                        <span>Baca ulang</span>
+                        <span>{cooling ? formatDurationHMS(cooldownRemaining) : 'Baca ulang'}</span>
                     </button>
                 </motion.div>
             )}

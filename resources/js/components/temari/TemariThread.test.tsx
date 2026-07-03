@@ -37,6 +37,19 @@ describe('TemariThread grouped reanalyze button', () => {
         expect(screen.getByRole('button', { name: /Baca ulang/ })).toBeInTheDocument();
     });
 
+    it('disables the grouped button and shows a countdown while on cooldown', () => {
+        const entries: ThreadEntry[] = [
+            entry('speech', { retry_after_seconds: 900 }),
+            entry('technical', { type: 'run_insight_technical' }),
+            entry('splits', { type: 'run_insight_splits' }),
+            entry('zones', { type: 'run_insight_zones' }),
+        ];
+        render(<TemariThread mood="nyala" entries={entries} />);
+        const button = screen.getByRole('button', { name: 'Tunggu 15:00 sebelum baca ulang' });
+        expect(button).toBeDisabled();
+        expect(button).toHaveTextContent('15:00');
+    });
+
     it('hides the grouped button when any entry is queued', () => {
         const entries: ThreadEntry[] = [
             entry('speech', { status: 'queued', content: null }),
