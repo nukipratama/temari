@@ -116,13 +116,22 @@ class Temari
         $hardShare = StreamSummary::hardZoneShare($summary);
         $decoupling = (float) ($summary['decoupling_pct'] ?? 0);
         $hotWeather = (int) ($detail->weather_temp_c ?? 0) >= 31;
+        $negativeSplit = ($summary['negative_split'] ?? false) === true;
+        $hardSession = $hardShare >= 80.0;
 
         return match (true) {
             $hasPr => self::MOOD_NYALA,
-            $hardShare >= 50.0 => self::MOOD_MUMET,
-            $decoupling > 8.0 => self::MOOD_LEMES,
+            // A hard session finished under control (strong negative split, HR held
+            // together): a genuine win, not a grind.
+            $hardSession && $negativeSplit && $decoupling <= 5.0 => self::MOOD_NYALA,
+            // HR drifted well past pace: the body was working hard.
+            $decoupling > 12.0 => self::MOOD_LEMES,
             $hotWeather => self::MOOD_OLENG,
-            ($summary['negative_split'] ?? false) === true => self::MOOD_ENTENG,
+            // A hard grind that never settled into a controlled finish.
+            $hardSession && ! $negativeSplit => self::MOOD_MUMET,
+            // Finished strong (a hard-but-controlled session lands here too, since
+            // an uncontrolled hard session was already caught as mumet above).
+            $negativeSplit => self::MOOD_ENTENG,
             default => self::MOOD_ADEM,
         };
     }

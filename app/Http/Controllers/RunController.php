@@ -14,6 +14,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\PastYouMatcher;
+use App\Services\Run\Story\Temari;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -320,6 +321,10 @@ class RunController extends Controller
             'detail' => $detail,
             'card' => $activity->runCard,
             'storyLine' => $storyLine,
+            // Backend-computed mood for the (rare) window before the post-run
+            // StoryLine lands, so the detail mascot matches the share card
+            // instead of diverging into a frontend heuristic.
+            'moodFallback' => Temari::moodForActivityOrDefault($activity),
             'isChainHead' => $isChainHead,
             'telegramConnected' => $telegram !== null && ! $telegram->isRevoked(),
             'speechAnalysis' => $payloadFor(AnalysisType::PostRunSpeech),

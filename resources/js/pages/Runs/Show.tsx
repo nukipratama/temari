@@ -18,7 +18,6 @@ import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
 import { aktivitasUrl, kartuUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
-import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatIdDate, formatKm, formatPace, formatShortDateTimeId, paceSecPerKm, parsePaceSec } from '@/lib/pace';
 import { kartuPropsFromDetail } from '@/lib/runcard';
 import { emberGlowStyle } from '@/lib/styles';
@@ -77,6 +76,8 @@ interface ShowProps {
     insightTechnical: AnalysisPayload;
     insightSplits: AnalysisPayload;
     insightZones: AnalysisPayload;
+    /** Backend-computed mood used only until the post-run StoryLine is persisted. */
+    moodFallback: Mood;
     /** This run is the head of the per-activity narration chain (latest run). */
     isChainHead: boolean;
     /** The viewer has an active Telegram connection (gates the manual push button). */
@@ -93,6 +94,7 @@ export default function RunsShow({
     insightTechnical,
     insightSplits,
     insightZones,
+    moodFallback,
     isChainHead,
     telegramConnected,
     pastYou,
@@ -100,7 +102,7 @@ export default function RunsShow({
     const summary = (detail.stream_summary ?? {}) as Record<string, unknown>;
     const perKm = (summary.per_km as PerKmRow[] | undefined) ?? [];
 
-    const mood: Mood = storyLine?.mood ?? moodFromActivity(detail);
+    const mood: Mood = storyLine?.mood ?? moodFallback;
     const pose: TemariPose = MOOD_TO_POSE[mood];
 
     const km = formatKm(detail.distance);

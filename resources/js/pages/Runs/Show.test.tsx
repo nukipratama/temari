@@ -107,6 +107,7 @@ function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
             storyLine={storyLine}
             speechAnalysis={speechAnalysis()}
             {...insightDefaults}
+            moodFallback="adem"
             isChainHead
             telegramConnected={false}
             pastYou={null}
@@ -119,6 +120,11 @@ describe('Runs/Show', () => {
     it('renders run name in the sky hero', () => {
         renderShow();
         expect(screen.getAllByText('Morning Run').length).toBeGreaterThan(0);
+    });
+
+    it('uses the backend moodFallback when there is no post-run story line', () => {
+        renderShow({ storyLine: null, moodFallback: 'oleng' });
+        expect(screen.getAllByText('Oleng').length).toBeGreaterThan(0);
     });
 
     it('renders the DURASI hero tile with the HMS-formatted moving_time', () => {

@@ -71,7 +71,7 @@ it('picks glow mood when this activity broke a PR', function (): void {
         ->toBe(Temari::MOOD_NYALA);
 });
 
-it('picks spinning mood on a hard session with ≥50% Z3+ time', function (): void {
+it('picks mumet mood on a hard grind (≥80% Z3+ time) without a controlled finish', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5_000,
@@ -82,18 +82,64 @@ it('picks spinning mood on a hard session with ≥50% Z3+ time', function (): vo
         ->toBe(Temari::MOOD_MUMET);
 });
 
-it('picks wobble mood when decoupling is high (>8%)', function (): void {
+it('picks lemes mood when decoupling is high (>12%)', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 10_000,
         'stream_summary' => [
             'time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10],
-            'decoupling_pct' => 12.0,
+            'decoupling_pct' => 15.0,
         ],
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
         ->toBe(Temari::MOOD_LEMES);
+});
+
+it('picks nyala for a hard session finished under control (neg split, low decoupling)', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z3' => 50, 'Z4' => 35],
+            'negative_split' => true,
+            'decoupling_pct' => 3.0,
+        ],
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_NYALA);
+});
+
+it('picks enteng for a hard session that was controlled but not clean enough for nyala', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z3' => 50, 'Z4' => 35],
+            'negative_split' => true,
+            'decoupling_pct' => 9.0,
+        ],
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_ENTENG);
+});
+
+it('no longer flags a moderately hard run (50% hard zone) as mumet', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 50, 'Z3' => 30, 'Z4' => 20],
+            'negative_split' => false,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    // hardShare 50 is under the raised 80 threshold, so this reads calm, not overreaching.
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_ADEM);
 });
 
 it('picks squished mood on hot-weather easy runs', function (): void {
