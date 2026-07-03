@@ -44,6 +44,18 @@ it('includes the route polyline + stream summary on recent runs so the cards dra
             ->has('recentRuns.0.stream_summary'));
 });
 
+it('ships the persisted post-run mood per recent run for the featured card + last-run mascot', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'enteng']);
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where("recentMoods.{$activity->id}", 'enteng'));
+});
+
 it('renders KPIs + recent runs when the user has training-load history', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
     $user = User::factory()->create();

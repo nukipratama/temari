@@ -88,6 +88,28 @@ class PostRunNoteReader
     }
 
     /**
+     * Persisted post-run mood per activity, keyed by activity id, independent of
+     * whether the speech is ready. Lets list/dashboard surfaces show the same
+     * mood the backend already computed instead of a frontend heuristic during
+     * the window before the post-run speech lands.
+     *
+     * @param  array<int, int>  $activityIds
+     * @return array<int, string>
+     */
+    public function moodsFor(array $activityIds): array
+    {
+        if ($activityIds === []) {
+            return [];
+        }
+
+        return StoryLine::query()
+            ->where('kind', StoryLine::KIND_POST_RUN)
+            ->whereIn('activity_id', $activityIds)
+            ->pluck('mood', 'activity_id')
+            ->all();
+    }
+
+    /**
      * The post-run one-liner stored on today's {@see StoryLine} for this user,
      * read straight from the StoryLine's own `speech` column (not the Analysis
      * row). Null when the user has no post-run line dated today.

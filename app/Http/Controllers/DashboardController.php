@@ -73,6 +73,9 @@ class DashboardController extends Controller
             'snapshot' => $weeks->last(),
             'recentRuns' => $recentRuns,
             'lastRunNote' => $lastRunNote,
+            // Persisted post-run mood per recent run, so the featured card and
+            // last-run mascot match the backend mood without a frontend heuristic.
+            'recentMoods' => $noteReader->moodsFor($recentRuns->pluck('activity_id')->all()),
             'trendAnalysis' => $this->resolveTrendCaption($user, $today),
             'weeklyRecap' => $weeklyRecapBuilder->forUser($user, $today),
         ]);

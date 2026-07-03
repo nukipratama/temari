@@ -29,7 +29,7 @@ export interface StripItem {
     polyline: string | null;
 }
 
-function toFeaturedCard(r: ActivityDetail, card: RunCard): FeaturedCard {
+function toFeaturedCard(r: ActivityDetail, card: RunCard, mood?: Mood | null): FeaturedCard {
     return {
         cardId: card.id,
         name: card.special_move,
@@ -38,7 +38,7 @@ function toFeaturedCard(r: ActivityDetail, card: RunCard): FeaturedCard {
         durasi: r.moving_time != null ? formatDuration(r.moving_time) : '—',
         trimp: r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',
         rarity: card.rarity,
-        mood: moodFromActivity(r),
+        mood: mood ?? moodFromActivity(r),
         badges: (card.badges ?? []).slice(0, 3),
         stats: buildCardStats(r),
         zonePct: zonePctFromDetail(r),
@@ -54,11 +54,12 @@ function toFeaturedCard(r: ActivityDetail, card: RunCard): FeaturedCard {
 export function featuredCardFor(
     runs: ReadonlyArray<ActivityDetail>,
     cardId: number | null,
+    moods: Record<number, Mood> = {},
 ): FeaturedCard | null {
     if (cardId == null) return null;
     for (const r of runs) {
         const card = r.activity?.run_card;
-        if (card?.id === cardId) return toFeaturedCard(r, card);
+        if (card?.id === cardId) return toFeaturedCard(r, card, moods[r.activity_id] ?? null);
     }
     return null;
 }

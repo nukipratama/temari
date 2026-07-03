@@ -44,6 +44,7 @@ interface WeeklySnapshotRow {
 interface RunsIndexProps {
     runs: ReadonlyArray<Activity & { detail: ActivityDetail }>;
     notes?: Record<number, RunNote>;
+    moods?: Record<number, Mood>;
     rangeFilter: RangeFilterValue;
     rangeStart: string | null;
     /** Server widened the requested range to reach an older run. */
@@ -71,7 +72,7 @@ interface WeekBucket {
 export type RangeFilterValue = '8w' | '12w' | '6m' | '1y' | 'all';
 
 const DEFAULT_RANGE: RangeFilterValue = '12w';
-const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'rangeAutoWidened', 'runsTruncated', 'maxRuns', 'weeklySnapshots', 'notes'];
+const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'rangeAutoWidened', 'runsTruncated', 'maxRuns', 'weeklySnapshots', 'notes', 'moods'];
 
 const RANGE_FILTER_OPTIONS: ReadonlyArray<RangeOption<RangeFilterValue>> = [
     { value: '8w', label: '2 bulan terakhir', hint: '8w' },
@@ -98,6 +99,7 @@ const FORM_CHIP_CLASS: Record<FormStatus, string> = {
 export default function RunsIndex({
     runs,
     notes = {},
+    moods = {},
     rangeFilter,
     rangeAutoWidened = false,
     runsTruncated = false,
@@ -135,12 +137,11 @@ export default function RunsIndex({
         if (moodFilter.size === 0) return null;
         const ids = new Set<number>();
         for (const run of runs) {
-            const noteMood = notes[run.id]?.mood ?? null;
-            const mood = noteMood ?? moodFromActivity(run.detail);
+            const mood = notes[run.id]?.mood ?? moods[run.id] ?? moodFromActivity(run.detail);
             if (moodFilter.has(mood)) ids.add(run.id);
         }
         return ids;
-    }, [runs, notes, moodFilter]);
+    }, [runs, notes, moods, moodFilter]);
 
     // Stable prop objects so toggling a mood doesn't hand RiwayatFilter a fresh
     // `range` literal (which never changes here) on every keystroke/toggle.
@@ -197,6 +198,7 @@ export default function RunsIndex({
                                 bucket={bucket}
                                 snapshot={snapshotsByWeek.get(bucket.weekEnding) ?? null}
                                 notes={notes}
+                                moods={moods}
                                 matchedRunIds={matchedRunIds}
                             />
                         ))}
@@ -213,11 +215,12 @@ interface WeekSectionProps {
     bucket: WeekBucket;
     snapshot: WeeklySnapshotRow | null;
     notes: Record<number, RunNote>;
+    moods: Record<number, Mood>;
     /** When non-null, runs whose id is not in the set are dimmed. Null = no filter. */
     matchedRunIds: ReadonlySet<number> | null;
 }
 
-const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, matchedRunIds }: Readonly<WeekSectionProps>) {
+const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, matchedRunIds }: Readonly<WeekSectionProps>) {
     const trimpLabel = Math.round(bucket.totalTrimp);
     const matchCount = matchedRunIds
         ? bucket.runs.filter((r) => matchedRunIds.has(r.id)).length
@@ -275,7 +278,7 @@ const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, matched
                     const dimmed = matchedRunIds !== null && !matchedRunIds.has(activity.id);
                     return (
                         <div key={activity.id} className={cn('transition', dimmed && 'opacity-30')}>
-                            <RunListRow detail={activity.detail} note={notes[activity.id] ?? null} />
+                            <RunListRow detail={activity.detail} note={notes[activity.id] ?? null} mood={moods[activity.id] ?? null} />
                         </div>
                     );
                 })}

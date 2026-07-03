@@ -22,9 +22,11 @@ export const VIBE_TO_POSE: Record<string, TemariPose> = {
     hibernating: 'reading',
 };
 
-export function poseForRun(run: ActivityDetail): TemariPose {
-    const mood = moodFromActivity(run);
-    return MOOD_TO_POSE[mood] ?? 'observational';
+// Prefer the persisted backend mood when the caller has it; only fall back to
+// the frontend heuristic for runs with no post-run StoryLine yet.
+export function poseForRun(run: ActivityDetail, mood?: Mood | null): TemariPose {
+    const resolved = mood ?? moodFromActivity(run);
+    return MOOD_TO_POSE[resolved] ?? 'observational';
 }
 
 export function poseForFormStatus(status: FormStatus | null): TemariPose {

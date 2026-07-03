@@ -104,6 +104,9 @@ class RunController extends Controller
         return Inertia::render('Riwayat/Jejak', [
             'runs' => $runs->values(),
             'notes' => $noteReader->forActivities($runs->pluck('id')->all()),
+            // Persisted post-run mood per run, so the list mascot matches the
+            // backend mood even before the speech (and its note) is ready.
+            'moods' => $noteReader->moodsFor($runs->pluck('id')->all()),
             'rangeFilter' => $effectiveRange,
             'rangeStart' => $rangeStart?->toDateString(),
             'rangeAutoWidened' => $rangeAutoWidened,

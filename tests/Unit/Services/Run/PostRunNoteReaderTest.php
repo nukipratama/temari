@@ -62,6 +62,31 @@ it('returns an empty array for an empty batch without querying', function (): vo
     expect((new PostRunNoteReader())->forActivities([]))->toBe([]);
 });
 
+it('moodsFor returns the persisted mood even when the speech is not ready yet', function (): void {
+    $withSpeech = Activity::factory()->create();
+    StoryLine::factory()->for($withSpeech)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'nyala']);
+    postRunSpeechFor($withSpeech, AnalysisStatus::Done, 'Mantap.');
+
+    // Mood persisted at ingest, but the speech is still pending — moodsFor still
+    // surfaces the mood (unlike forActivities, which gates on the speech).
+    $pending = Activity::factory()->create();
+    StoryLine::factory()->for($pending)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'lemes']);
+    postRunSpeechFor($pending, AnalysisStatus::Pending, null);
+
+    $noStoryLine = Activity::factory()->create();
+
+    $moods = (new PostRunNoteReader())->moodsFor([$withSpeech->id, $pending->id, $noStoryLine->id]);
+
+    expect($moods)->toBe([
+        $withSpeech->id => 'nyala',
+        $pending->id => 'lemes',
+    ]);
+});
+
+it('moodsFor returns an empty array for an empty batch', function (): void {
+    expect((new PostRunNoteReader())->moodsFor([]))->toBe([]);
+});
+
 it('keys ready notes by activity id and omits unready ones', function (): void {
     $ready = Activity::factory()->create();
     StoryLine::factory()->for($ready)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'nyala']);

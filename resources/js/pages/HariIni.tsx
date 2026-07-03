@@ -17,6 +17,7 @@ import { formatTimeId, formatWeekdayDateId } from '@/lib/pace';
 import type {
     ActivityDetail,
     BriefingResult,
+    Mood,
     SharedProps,
     TrainingLoad,
     WeeklySnapshot,
@@ -28,6 +29,7 @@ interface HariIniProps {
     snapshot: WeeklySnapshot | null;
     recentRuns: ActivityDetail[];
     lastRunNote?: LastRunNote | null;
+    recentMoods?: Record<number, Mood>;
 }
 
 export default function HariIni({
@@ -36,12 +38,13 @@ export default function HariIni({
     snapshot,
     recentRuns,
     lastRunNote = null,
+    recentMoods = {},
 }: Readonly<HariIniProps>) {
     const { props } = usePage<SharedProps & HariIniProps>();
     const firstName = props.auth.user?.first_name ?? '';
     const pose: TemariPose = VIBE_TO_POSE[briefing.vibeState] ?? 'observational';
 
-    const featured = featuredCardFor(recentRuns, briefing.featuredCardId);
+    const featured = featuredCardFor(recentRuns, briefing.featuredCardId, recentMoods);
     const lastRun = recentRuns[0] ?? null;
 
     const now = new Date();
@@ -83,7 +86,7 @@ export default function HariIni({
                         {/* 3-UP */}
                         <section className="mt-8 grid gap-4 lg:grid-cols-3">
                             <SuggestionCard suggestion={briefing.suggestion} lastRun={lastRun} />
-                            {lastRun && <LastLariCard run={lastRun} pose={poseForRun(lastRun)} note={lastRunNote} />}
+                            {lastRun && <LastLariCard run={lastRun} pose={poseForRun(lastRun, recentMoods[lastRun.activity_id] ?? null)} note={lastRunNote} />}
                             <KondisiCard load={load} snapshot={snapshot} />
                         </section>
 

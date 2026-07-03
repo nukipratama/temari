@@ -32,6 +32,18 @@ it('lists the user\'s analyzed runs in reverse chronological order', function ()
             ->where('runs.1.detail.name', 'Older Run'));
 });
 
+it('ships the persisted post-run mood per run so the list mascot matches the backend', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'mumet']);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where("moods.{$activity->id}", 'mumet'));
+});
+
 it('renders the empty state when the user has no analyzed runs yet', function (): void {
     $user = User::factory()->create();
 
