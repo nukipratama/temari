@@ -64,14 +64,6 @@ interface WeekRow {
 
 const WEEKDAY_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'] as const;
 
-const MOOD_GLYPH: Record<Mood, string> = {
-    nyala: 'N',
-    enteng: 'E',
-    oleng: 'O',
-    lemes: 'L',
-    mumet: 'M',
-    adem: 'A',
-};
 
 const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => ({
     mood,
@@ -149,31 +141,20 @@ export default function Kalender({
 
                 <Legend className="mb-4" />
 
-                <div className="relative">
-                    <div className="overflow-x-auto rounded-2xl border border-line/70 bg-surface-warm">
-                        {/* Forces horizontal scroll on phones; from md (incl. 834px tablets) all
-                            7 weekday columns fit, so the Sunday column is no longer clipped. */}
-                        <div className="min-w-[840px] md:min-w-0">
-                            <CalendarHeader />
-                            {weeks.map((week) => (
-                                <WeekRowView
-                                    key={week.weekStart}
-                                    week={week}
-                                    todayQuote={todayQuote}
-                                    moodFilter={moodFilter}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                    {/* Phone-only: the 7-day grid is wider than the viewport, so hint that it scrolls. */}
-                    <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-2xl bg-gradient-to-l from-surface-warm to-transparent md:hidden"
-                    />
+                {/* All 7 weekday columns fit at every width: phones get a calendar-first
+                    view (date + mood dot per cell, run stats deferred to the day drill-in),
+                    lg+ gets the full km/pace/HR cells. No horizontal scroll. */}
+                <div className="overflow-hidden rounded-2xl border border-line/70 bg-surface-warm">
+                    <CalendarHeader />
+                    {weeks.map((week) => (
+                        <WeekRowView
+                            key={week.weekStart}
+                            week={week}
+                            todayQuote={todayQuote}
+                            moodFilter={moodFilter}
+                        />
+                    ))}
                 </div>
-                <p className="mt-2 text-label-micro text-ink-3 md:hidden">
-                    Geser buat lihat seminggu penuh →
-                </p>
             </PageContainer>
         </AppShell>
     );
@@ -328,14 +309,14 @@ function NavButton({ href, icon, label }: Readonly<{ href: string; icon: string;
 
 function CalendarHeader() {
     return (
-        <div className="grid grid-cols-[5.5rem_repeat(7,minmax(0,1fr))] border-b border-line/60 bg-surface-sunken/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
-            <div className="px-3 py-2.5">
+        <div className="grid grid-cols-[2.5rem_repeat(7,minmax(0,1fr))] border-b border-line/60 bg-surface-sunken/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
+            <div className="px-1 py-2.5 lg:px-3">
                 <span className="sr-only">Pekan</span>
             </div>
             {WEEKDAY_LABELS.map((label) => (
                 <div
                     key={label}
-                    className="px-2 py-2.5 text-center font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2 lg:text-xs"
+                    className="px-1 py-2.5 text-center font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink-2 lg:px-2 lg:text-xs lg:tracking-[0.14em]"
                 >
                     {label}
                 </div>
@@ -350,7 +331,7 @@ function WeekRowView({
     moodFilter,
 }: Readonly<{ week: WeekRow; todayQuote: string | null; moodFilter: ReadonlySet<Mood> }>) {
     return (
-        <div className="grid grid-cols-[5.5rem_repeat(7,minmax(0,1fr))] border-b border-line/50 last:border-b-0 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
+        <div className="grid grid-cols-[2.5rem_repeat(7,minmax(0,1fr))] border-b border-line/50 last:border-b-0 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
             <WeekSummary week={week} />
             {week.days.map((day) => (
                 <DayCellView
@@ -374,14 +355,14 @@ function isFilteredOut(cell: CalendarCell, moodFilter: ReadonlySet<Mood>): boole
 
 function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
     return (
-        <div className="flex flex-col items-start justify-center gap-1 border-r border-line/50 p-3">
+        <div className="flex flex-col items-center justify-center gap-0.5 border-r border-line/50 p-1.5 text-center lg:items-start lg:gap-1 lg:p-3 lg:text-left">
             {week.runCount > 0 ? (
                 <>
-                    <span className="text-base font-bold tabular-nums leading-none text-ink lg:text-lg">
-                        {week.totalKm.toFixed(1)}{' '}
-                        <span className="text-xs font-medium text-ink-3 lg:text-sm">km</span>
+                    <span className="text-xs font-bold tabular-nums leading-none text-ink lg:text-lg">
+                        {week.totalKm.toFixed(1)}
+                        <span className="text-[10px] font-medium text-ink-3 lg:ml-0.5 lg:text-sm">km</span>
                     </span>
-                    <span className="font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
+                    <span className="font-mono font-bold text-[9px] uppercase tracking-[0.06em] text-ink-2 lg:text-[11px] lg:tracking-[0.14em]">
                         WK {week.weekNumber}
                     </span>
                 </>
@@ -405,7 +386,7 @@ const DayCellView = memo(function DayCellView({
     const muted = !cell.is_current_month;
 
     const cellChrome = cn(
-        'group relative flex min-h-[120px] flex-col gap-1.5 border-l border-line/50 p-2.5 transition lg:min-h-[140px] lg:p-3',
+        'group relative flex min-h-[52px] flex-col gap-1 border-l border-line/50 p-1.5 transition lg:min-h-[140px] lg:gap-1.5 lg:p-3',
         muted && 'opacity-60',
         filteredOut && 'opacity-30',
         hasRun && cell.mood && !filteredOut ? MOOD_SOFT_FILL[cell.mood] : 'bg-surface-elev',
@@ -413,22 +394,22 @@ const DayCellView = memo(function DayCellView({
 
     const inner = (
         <>
-            <div className="flex items-start justify-between">
-                <span className={cn('text-base font-bold tabular-nums lg:text-lg', hasRun ? 'text-ink' : 'text-ink-2')}>
+            <div className="flex items-center justify-between gap-1 lg:items-start">
+                <span className={cn('text-xs font-bold tabular-nums lg:text-lg', hasRun ? 'text-ink' : 'text-ink-2')}>
                     {cell.day}
                 </span>
+                {/* Solid mood dot (distinct across all six moods, unlike the pale cell tint);
+                    replaces the faint single-letter glyph that was doing all the signalling. */}
                 {hasRun && cell.mood && (
                     <span
                         aria-hidden
-                        className="font-mono text-[11px] font-semibold uppercase tracking-wider text-ink/60"
+                        className={cn('h-1.5 w-1.5 shrink-0 rounded-full lg:h-2 lg:w-2', MOOD_FILL[cell.mood])}
                         title={MOOD_LABEL[cell.mood]}
-                    >
-                        {MOOD_GLYPH[cell.mood]}
-                    </span>
+                    />
                 )}
             </div>
             {hasRun && (
-                <div className="mt-auto">
+                <div className="mt-auto hidden lg:block">
                     <div className="text-headline-xs font-black leading-none tabular-nums text-ink">
                         {cell.distance_km?.toFixed(2)}
                         <span className="ml-0.5 text-[11px] font-bold text-ink-2 lg:text-xs">km</span>
@@ -472,17 +453,17 @@ const DayCellView = memo(function DayCellView({
 
 function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string | null }>) {
     const chrome =
-        'group relative flex min-h-[120px] flex-col gap-2 border-l border-line/50 bg-sky p-2.5 text-cream transition lg:min-h-[140px] lg:p-3';
+        'group relative flex min-h-[52px] flex-col gap-1 border-l border-line/50 bg-sky p-1.5 text-cream transition lg:min-h-[140px] lg:gap-2 lg:p-3';
     const hasRun = cell.distance_km !== null && cell.distance_km > 0;
 
     let body: ReactNode = null;
     if (quote) {
         body = (
-            <p className="mt-auto font-display text-xs italic leading-snug text-cream/90 lg:text-sm">“{quote}”</p>
+            <p className="mt-auto hidden font-display text-xs italic leading-snug text-cream/90 lg:block lg:text-sm">“{quote}”</p>
         );
     } else if (hasRun) {
         body = (
-            <div className="mt-auto">
+            <div className="mt-auto hidden lg:block">
                 <div className="text-headline-xs font-black leading-none tabular-nums text-cream">
                     {cell.distance_km?.toFixed(2)}
                     <span className="ml-0.5 text-[11px] font-bold text-cream/70 lg:text-xs">km</span>
@@ -493,9 +474,12 @@ function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string
 
     const inner = (
         <>
-            <div className="flex items-start justify-between gap-2">
-                <span className="text-base font-bold tabular-nums text-cream lg:text-lg">{cell.day}</span>
-                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-horizon">
+            <div className="flex items-center justify-between gap-1 lg:items-start lg:gap-2">
+                <span className="text-xs font-bold tabular-nums text-cream lg:text-lg">{cell.day}</span>
+                {hasRun && cell.mood && (
+                    <span aria-hidden className={cn('h-1.5 w-1.5 shrink-0 rounded-full lg:hidden', MOOD_FILL[cell.mood])} title={MOOD_LABEL[cell.mood]} />
+                )}
+                <span className="hidden font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-horizon lg:inline">
                     Hari ini
                 </span>
             </div>

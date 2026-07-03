@@ -76,11 +76,13 @@ describe('Kalender', () => {
         expect(screen.getByText('Min')).toBeInTheDocument();
     });
 
-    it('shows the phone-only horizontal-scroll hint, hidden from md up where all 7 columns fit', () => {
+    it('renders all 7 weekday columns without a horizontal-scroll hint', () => {
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        const hint = screen.getByText(/Geser buat lihat seminggu penuh/);
-        expect(hint).toBeInTheDocument();
-        expect(hint.className).toContain('md:hidden');
+        // The compact 7-col grid fits every viewport, so the old "geser" scroll hint is gone.
+        expect(screen.queryByText(/Geser buat lihat seminggu penuh/)).not.toBeInTheDocument();
+        for (const day of ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']) {
+            expect(screen.getByText(day)).toBeInTheDocument();
+        }
     });
 
     it('renders the lifetime stats eyebrow when lifetime data is provided', () => {

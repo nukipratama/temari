@@ -136,13 +136,13 @@
        dot tone (`mood-{name}`) with a pastel bg tone (`mood-{name}-bg`)
        for calendar cells + badge fills. */
     --color-mood-nyala: #d9b23a;
-    --color-mood-nyala-bg: #ffe6bb;
+    --color-mood-nyala-bg: #f7f0d8;
     --color-mood-enteng: #e8a076;
-    --color-mood-enteng-bg: #ffdcd3;
+    --color-mood-enteng-bg: #f9e4d9;
     --color-mood-oleng: #c4623f;
-    --color-mood-oleng-bg: #ffe0b4;
+    --color-mood-oleng-bg: #e9c3b6;
     --color-mood-lemes: #a65238;
-    --color-mood-lemes-bg: #f3d6cb;
+    --color-mood-lemes-bg: #d7b1a5;
     --color-mood-mumet: #7b5bb6;
     --color-mood-mumet-bg: #dcd6f0;
     --color-mood-adem: #8e8579;
