@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { router } from '@inertiajs/react';
 import Kalender, { dominantMoodOf, type CalendarCell, type MonthlyRecap } from './Kalender';
 import { makeUser, setMockPage } from '@/test/setup';
 
@@ -280,6 +281,29 @@ describe('Kalender', () => {
         it('hides the regenerate action on a historical (non-head) month', () => {
             render(<Kalender {...BASE_PROPS} month="2026-04" cells={TWO_WEEK_CELLS} monthlyRecap={makeRecap({ is_chain_head: false })} />);
             expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
+        });
+
+        it('hides the Telegram button when not connected', () => {
+            // telegramConnected defaults to falsy in beforeEach.
+            render(<Kalender {...BASE_PROPS} month="2026-04" cells={TWO_WEEK_CELLS} monthlyRecap={makeRecap()} />);
+            expect(screen.queryByText('Kirim ke Telegram')).not.toBeInTheDocument();
+        });
+
+        it('force-sends the monthly recap to Telegram when connected and the button is clicked', () => {
+            vi.mocked(router.post).mockReset();
+            setMockPage({
+                auth: { user: makeUser({ name: 'Andi', first_name: 'Andi' }) },
+                flash: {},
+                demoLoginEnabled: false,
+                telegramConnected: true,
+            });
+            render(<Kalender {...BASE_PROPS} month="2026-04" cells={TWO_WEEK_CELLS} monthlyRecap={makeRecap()} />);
+            fireEvent.click(screen.getByText('Kirim ke Telegram'));
+            expect(router.post).toHaveBeenCalledWith(
+                '/rekap-bulanan/2026-04/telegram',
+                {},
+                expect.objectContaining({ preserveScroll: true }),
+            );
         });
     });
 });

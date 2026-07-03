@@ -33,6 +33,7 @@ class NotifiableAnalysis
     private const array TYPES = [
         AnalysisType::PostRunSpeech->value => ['pref' => 'notify_post_run', 'emoji' => '🏃', 'cta' => 'Lihat detail lari'],
         AnalysisType::WeeklyRecap->value => ['pref' => 'notify_weekly_recap', 'emoji' => '📊', 'cta' => 'Lihat riwayat'],
+        AnalysisType::MonthlyRecap->value => ['pref' => 'notify_monthly_recap', 'emoji' => '🗓️', 'cta' => 'Lihat kalender'],
     ];
 
     /**
@@ -86,6 +87,8 @@ class NotifiableAnalysis
         return match ($analysis->analysis_type) {
             AnalysisType::PostRunSpeech => Activity::query()->find($analysis->subject_id)?->user,
             AnalysisType::WeeklyRecap => WeeklySnapshot::query()->find($analysis->subject_id)?->user,
+            // The monthly recap's subject_id IS the user id (no intermediate model).
+            AnalysisType::MonthlyRecap => User::query()->find($analysis->subject_id),
             default => null,
         };
     }
@@ -175,6 +178,7 @@ class NotifiableAnalysis
         return match ($analysis->analysis_type) {
             AnalysisType::PostRunSpeech => route('aktivitas.show', $analysis->subject_id),
             AnalysisType::WeeklyRecap => route('aktivitas.index'),
+            AnalysisType::MonthlyRecap => route('kalender', ['month' => $analysis->discriminator]),
             default => null,
         };
     }

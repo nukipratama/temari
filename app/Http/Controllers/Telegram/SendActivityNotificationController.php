@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Telegram;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\Telegram\SendTelegramNotificationJob;
+use App\Http\Controllers\Telegram\Concerns\PushesAnalysisToTelegram;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
-use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +22,8 @@ use Illuminate\Http\Request;
  */
 class SendActivityNotificationController extends Controller
 {
+    use PushesAnalysisToTelegram;
+
     public function __invoke(Request $request, Activity $activity): RedirectResponse
     {
         /** @var User $user */
@@ -33,12 +34,10 @@ class SendActivityNotificationController extends Controller
             ->forSubject(Activity::class, $activity->id, AnalysisType::PostRunSpeech)
             ->first();
 
-        if ($analysis === null || $analysis->status !== AnalysisStatus::Done) {
-            return back()->with('info', 'Ceritanya belum siap, coba lagi sebentar ya.');
-        }
-
-        SendTelegramNotificationJob::dispatch($analysis->id, force: true);
-
-        return back()->with('success', 'Aku kirim cerita lari ini ke Telegram kamu ya.');
+        return $this->pushOrDeferred(
+            $analysis,
+            'Ceritanya belum siap, coba lagi sebentar ya.',
+            'Aku kirim cerita lari ini ke Telegram kamu ya.',
+        );
     }
 }

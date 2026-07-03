@@ -47,14 +47,20 @@ it('updates the notification preferences', function (): void {
     $connection = TelegramConnection::factory()->for($user)->create([
         'notify_post_run' => true,
         'notify_weekly_recap' => true,
+        'notify_monthly_recap' => true,
     ]);
 
     $this->actingAs($user)
-        ->patch('/profil/telegram', ['notify_post_run' => false, 'notify_weekly_recap' => true])
+        ->patch('/profil/telegram', [
+            'notify_post_run' => false,
+            'notify_weekly_recap' => true,
+            'notify_monthly_recap' => false,
+        ])
         ->assertRedirect();
 
     expect($connection->fresh()->notify_post_run)->toBeFalse()
-        ->and($connection->fresh()->notify_weekly_recap)->toBeTrue();
+        ->and($connection->fresh()->notify_weekly_recap)->toBeTrue()
+        ->and($connection->fresh()->notify_monthly_recap)->toBeFalse();
 });
 
 it('validates that both preference flags are present and boolean', function (): void {

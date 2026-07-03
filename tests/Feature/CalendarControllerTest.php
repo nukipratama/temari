@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,6 +24,22 @@ it('renders the Kalender page for the current month by default', function (): vo
             ->where('month', Carbon::today()->format('Y-m'))
             ->has('monthLabel')
             ->has('cells'));
+});
+
+it('shares telegramConnected reflecting a live connection', function (): void {
+    $connected = User::factory()->create();
+    TelegramConnection::factory()->for($connected)->create();
+    $this->actingAs($connected)->get('/kalender')
+        ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', true));
+
+    $revoked = User::factory()->create();
+    TelegramConnection::factory()->for($revoked)->revoked()->create();
+    $this->actingAs($revoked)->get('/kalender')
+        ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
+
+    $none = User::factory()->create();
+    $this->actingAs($none)->get('/kalender')
+        ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
 });
 
 it('honors ?month=YYYY-MM when valid', function (): void {

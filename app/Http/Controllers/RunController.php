@@ -319,8 +319,6 @@ class RunController extends Controller
         // later runs that quoted their old narrative.
         $isChainHead = Activity::latestIdForUser($user->id) === $activity->id;
 
-        $telegram = $user->telegramConnection;
-
         return Inertia::render('Runs/Show', [
             'activity' => $activity,
             'detail' => $detail,
@@ -331,7 +329,6 @@ class RunController extends Controller
             // instead of diverging into a frontend heuristic.
             'moodFallback' => Temari::moodForActivityOrDefault($activity),
             'isChainHead' => $isChainHead,
-            'telegramConnected' => $telegram !== null && ! $telegram->isRevoked(),
             'speechAnalysis' => $payloadFor(AnalysisType::PostRunSpeech),
             'insightTechnical' => $payloadFor(AnalysisType::RunInsightTechnical),
             'insightSplits' => $payloadFor(AnalysisType::RunInsightSplits),

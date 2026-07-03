@@ -73,7 +73,20 @@ class HandleInertiaRequests extends Middleware
             'stravaSync' => fn () => $this->stravaSyncFor($user),
             'goalsSummary' => fn () => $this->goalsSummaryFor($user),
             'hrZonesChangedAt' => fn () => $this->hrZonesChangedAtFor($user),
+            'telegramConnected' => fn (): bool => $this->telegramConnectedFor($user),
         ];
+    }
+
+    /**
+     * Whether the auth user has a live (non-revoked) Telegram connection, so any
+     * page can gate a "Kirim ke Telegram" affordance without each controller
+     * re-deriving it.
+     */
+    private function telegramConnectedFor(?User $user): bool
+    {
+        $connection = $user?->telegramConnection;
+
+        return $connection !== null && ! $connection->isRevoked();
     }
 
     /**

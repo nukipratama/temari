@@ -76,6 +76,8 @@ export interface SharedProps {
     goalsSummary?: GoalsSummary | null;
     /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */
     hrZonesChangedAt?: string | null;
+    /** Whether the auth user has a live (non-revoked) Telegram connection. */
+    telegramConnected?: boolean;
     [key: string]: unknown;
 }
 

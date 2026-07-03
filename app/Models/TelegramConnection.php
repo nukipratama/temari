@@ -21,6 +21,7 @@ use Override;
  * @property string|null $username
  * @property bool $notify_post_run
  * @property bool $notify_weekly_recap
+ * @property bool $notify_monthly_recap
  * @property Carbon|null $revoked_at
  * @property-read User $user
  */
@@ -30,6 +31,7 @@ use Override;
     'username',
     'notify_post_run',
     'notify_weekly_recap',
+    'notify_monthly_recap',
     'revoked_at',
 ])]
 class TelegramConnection extends Model
@@ -79,6 +81,7 @@ class TelegramConnection extends Model
             'chat_id' => 'integer',
             'notify_post_run' => 'boolean',
             'notify_weekly_recap' => 'boolean',
+            'notify_monthly_recap' => 'boolean',
             'revoked_at' => 'datetime',
         ];
     }

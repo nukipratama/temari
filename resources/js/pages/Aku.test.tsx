@@ -79,6 +79,7 @@ describe('Aku', () => {
             connect_url: 'https://t.me/temari_bot?start=tok',
             notify_post_run: true,
             notify_weekly_recap: true,
+            notify_monthly_recap: true,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
         const link = screen.getByText('Hubungkan Telegram').closest('a');
@@ -92,14 +93,16 @@ describe('Aku', () => {
             connect_url: null,
             notify_post_run: true,
             notify_weekly_recap: false,
+            notify_monthly_recap: true,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
         expect(screen.getByText(/Telegram aktif/)).toBeInTheDocument();
         expect(screen.getByRole('switch', { name: 'Cerita abis lari' })).toHaveAttribute('aria-checked', 'true');
         expect(screen.getByRole('switch', { name: 'Rekap mingguan' })).toHaveAttribute('aria-checked', 'false');
+        expect(screen.getByRole('switch', { name: 'Rekap bulanan' })).toHaveAttribute('aria-checked', 'true');
     });
 
-    it('patches preferences when a toggle is flipped, carrying both current values', () => {
+    it('patches preferences when a toggle is flipped, carrying all current values', () => {
         vi.mocked(router.patch).mockReset();
         const telegram = {
             connected: true,
@@ -107,6 +110,7 @@ describe('Aku', () => {
             connect_url: null,
             notify_post_run: true,
             notify_weekly_recap: false,
+            notify_monthly_recap: true,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
 
@@ -114,7 +118,28 @@ describe('Aku', () => {
 
         expect(router.patch).toHaveBeenCalledWith(
             '/profil/telegram',
-            { notify_post_run: true, notify_weekly_recap: true },
+            { notify_post_run: true, notify_weekly_recap: true, notify_monthly_recap: true },
+            { preserveScroll: true },
+        );
+    });
+
+    it('patches the monthly recap flag when its toggle is flipped', () => {
+        vi.mocked(router.patch).mockReset();
+        const telegram = {
+            connected: true,
+            username: null,
+            connect_url: null,
+            notify_post_run: true,
+            notify_weekly_recap: true,
+            notify_monthly_recap: true,
+        };
+        render(<Aku identity={identity} stats={stats} telegram={telegram} />);
+
+        fireEvent.click(screen.getByRole('switch', { name: 'Rekap bulanan' }));
+
+        expect(router.patch).toHaveBeenCalledWith(
+            '/profil/telegram',
+            { notify_post_run: true, notify_weekly_recap: true, notify_monthly_recap: false },
             { preserveScroll: true },
         );
     });
@@ -127,6 +152,7 @@ describe('Aku', () => {
             connect_url: null,
             notify_post_run: true,
             notify_weekly_recap: true,
+            notify_monthly_recap: true,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
 
@@ -143,6 +169,7 @@ describe('Aku', () => {
             connect_url: null,
             notify_post_run: true,
             notify_weekly_recap: true,
+            notify_monthly_recap: true,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
 

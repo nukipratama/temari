@@ -19,11 +19,13 @@ it('casts chat id and notify flags', function (): void {
         'chat_id' => 12345,
         'notify_post_run' => true,
         'notify_weekly_recap' => false,
+        'notify_monthly_recap' => true,
     ]);
 
     expect($connection->chat_id)->toBeInt()
         ->and($connection->notify_post_run)->toBeTrue()
-        ->and($connection->notify_weekly_recap)->toBeFalse();
+        ->and($connection->notify_weekly_recap)->toBeFalse()
+        ->and($connection->notify_monthly_recap)->toBeTrue();
 });
 
 it('reports revoked state and marks revoked once', function (): void {

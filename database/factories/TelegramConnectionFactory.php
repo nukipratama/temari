@@ -24,6 +24,7 @@ class TelegramConnectionFactory extends Factory
             'username' => fake()->optional()->userName(),
             'notify_post_run' => true,
             'notify_weekly_recap' => true,
+            'notify_monthly_recap' => true,
         ];
     }
 

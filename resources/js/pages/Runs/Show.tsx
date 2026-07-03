@@ -1,9 +1,10 @@
 import { lazy, Suspense, useMemo } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import AppShell from '@/layouts/AppShell';
 import PillButton from '@/components/ui/PillButton';
+import SendToTelegramButton from '@/components/SendToTelegramButton';
 import Card from '@/components/ui/Card';
 import FourLensGrid from '@/components/run/FourLensGrid';
 import HeroPanel from '@/components/ui/HeroPanel';
@@ -28,6 +29,7 @@ import type {
     AnalysisPayload,
     Mood,
     RunCard as RunCardModel,
+    SharedProps,
     StoryLine,
 } from '@/types/inertia';
 
@@ -80,8 +82,6 @@ interface ShowProps {
     moodFallback: Mood;
     /** This run is the head of the per-activity narration chain (latest run). */
     isChainHead: boolean;
-    /** The viewer has an active Telegram connection (gates the manual push button). */
-    telegramConnected: boolean;
     pastYou: PastYouMatch | null;
 }
 
@@ -96,9 +96,9 @@ export default function RunsShow({
     insightZones,
     moodFallback,
     isChainHead,
-    telegramConnected,
     pastYou,
 }: Readonly<ShowProps>) {
+    const telegramConnected = usePage<SharedProps>().props.telegramConnected ?? false;
     const summary = (detail.stream_summary ?? {}) as Record<string, unknown>;
     const perKm = (summary.per_km as PerKmRow[] | undefined) ?? [];
 
@@ -114,7 +114,6 @@ export default function RunsShow({
     const kartuProps = useMemo(() => kartuPropsFromDetail(detail), [detail]);
 
     const [resyncing, resync] = usePendingPost(`/aktivitas/${activity.id}/resync`, { preserveScroll: true });
-    const [sendingTelegram, sendTelegram] = usePendingPost(`/aktivitas/${activity.id}/telegram`, { preserveScroll: true });
 
     return (
         <AppShell>
@@ -141,24 +140,7 @@ export default function RunsShow({
                         />
                         {resyncing ? 'Lagi narik…' : 'Resync dari Strava'}
                     </PillButton>
-                    {telegramConnected && (
-                        <PillButton
-                            tone="outline"
-                            size="sm"
-                            disabled={sendingTelegram}
-                            className="disabled:opacity-60 disabled:cursor-not-allowed"
-                            onClick={sendTelegram}
-                        >
-                            <Icon
-                                icon={sendingTelegram ? 'mdi:loading' : 'mdi:send'}
-                                width={15}
-                                height={15}
-                                className={sendingTelegram ? 'animate-spin' : undefined}
-                                aria-hidden
-                            />
-                            {sendingTelegram ? 'Lagi ngirim…' : 'Kirim ke Telegram'}
-                        </PillButton>
-                    )}
+                    {telegramConnected && <SendToTelegramButton url={`/aktivitas/${activity.id}/telegram`} />}
                 </div>
 
                 {/* HERO — stats left + route map right */}

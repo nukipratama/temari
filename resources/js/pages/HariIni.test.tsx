@@ -170,7 +170,7 @@ describe('HariIni', () => {
 
     it('omits the hero panel when no recent run has a card', () => {
         render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[]} />);
-        expect(screen.queryByText(/Kartu dari Temari minggu ini/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Kartu andalan dari Temari/)).not.toBeInTheDocument();
     });
 
     it('shows the suggestion text', () => {
@@ -190,9 +190,9 @@ describe('HariIni', () => {
             <HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />,
         );
         // The kartu strip was removed from the dashboard. Cards now surface only
-        // through the featured hero panel (eyebrow "Kartu dari Temari minggu ini").
+        // through the featured hero panel (eyebrow "Kartu andalan dari Temari").
         expect(screen.queryByText(/Kartu terakhir/i)).not.toBeInTheDocument();
-        expect(screen.getByText(/Kartu dari Temari minggu ini/)).toBeInTheDocument();
+        expect(screen.getByText(/Kartu andalan dari Temari/)).toBeInTheDocument();
     });
 
     it('renders the featuredKartuVoice quote inside the hero panel', () => {

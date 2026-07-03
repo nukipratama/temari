@@ -58,6 +58,7 @@ interface TelegramPayload {
     connect_url: string | null;
     notify_post_run: boolean;
     notify_weekly_recap: boolean;
+    notify_monthly_recap: boolean;
 }
 
 interface AkuProps {
@@ -78,6 +79,7 @@ const TELEGRAM_DEFAULT: TelegramPayload = {
     connect_url: null,
     notify_post_run: true,
     notify_weekly_recap: true,
+    notify_monthly_recap: true,
 };
 
 export default function Aku({
@@ -233,11 +235,16 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
     // toggle's value and silently revert it. Local state sees the latest flipped value.
     const [postRun, setPostRun] = useState(telegram.notify_post_run);
     const [weeklyRecap, setWeeklyRecap] = useState(telegram.notify_weekly_recap);
+    const [monthlyRecap, setMonthlyRecap] = useState(telegram.notify_monthly_recap);
 
-    const savePrefs = (notifyPostRun: boolean, notifyWeeklyRecap: boolean) => {
+    const savePrefs = (notifyPostRun: boolean, notifyWeeklyRecap: boolean, notifyMonthlyRecap: boolean) => {
         router.patch(
             '/profil/telegram',
-            { notify_post_run: notifyPostRun, notify_weekly_recap: notifyWeeklyRecap },
+            {
+                notify_post_run: notifyPostRun,
+                notify_weekly_recap: notifyWeeklyRecap,
+                notify_monthly_recap: notifyMonthlyRecap,
+            },
             { preserveScroll: true },
         );
     };
@@ -283,7 +290,7 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     checked={postRun}
                     onChange={(value) => {
                         setPostRun(value);
-                        savePrefs(value, weeklyRecap);
+                        savePrefs(value, weeklyRecap, monthlyRecap);
                     }}
                 />
                 <NotifyToggle
@@ -291,7 +298,15 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     checked={weeklyRecap}
                     onChange={(value) => {
                         setWeeklyRecap(value);
-                        savePrefs(postRun, value);
+                        savePrefs(postRun, value, monthlyRecap);
+                    }}
+                />
+                <NotifyToggle
+                    label="Rekap bulanan"
+                    checked={monthlyRecap}
+                    onChange={(value) => {
+                        setMonthlyRecap(value);
+                        savePrefs(postRun, weeklyRecap, value);
                     }}
                 />
             </div>

@@ -34,7 +34,7 @@ const voice: AnalysisPayload = {
 describe('FeaturedKartuPanel', () => {
     it('renders the eyebrow, card name, and a CTA to the kartu detail', () => {
         render(<FeaturedKartuPanel featured={featured} featuredKartuVoice={voice} />);
-        expect(screen.getByText(/Kartu dari Temari minggu ini/)).toBeInTheDocument();
+        expect(screen.getByText(/Kartu andalan dari Temari/)).toBeInTheDocument();
         expect(screen.getAllByText('Pembalik Keadaan').length).toBeGreaterThan(0);
         const cta = screen.getByRole('link', { name: /lihat kartu/i });
         expect(cta).toHaveAttribute('href', '/kartu/7');

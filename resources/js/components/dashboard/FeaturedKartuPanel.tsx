@@ -12,7 +12,7 @@ export default function FeaturedKartuPanel({
 }: Readonly<{ featured: FeaturedCard; featuredKartuVoice: AnalysisPayload }>) {
     return (
         <FeaturedCardHero
-            eyebrow="★ Kartu dari Temari minggu ini"
+            eyebrow="★ Kartu andalan dari Temari"
             name={featured.name}
             rarity={featured.rarity}
             km={featured.km}

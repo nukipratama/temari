@@ -7,7 +7,7 @@ import { emberGlowStyle } from '@/lib/styles';
 import type { Rarity } from '@/types/inertia';
 
 interface FeaturedCardHeroProps {
-    /** Mono eyebrow above the name, e.g. "★ Kartu dari Temari minggu ini". */
+    /** Mono eyebrow above the name, e.g. "★ Kartu andalan dari Temari". */
     eyebrow: string;
     name: string;
     rarity: Rarity;

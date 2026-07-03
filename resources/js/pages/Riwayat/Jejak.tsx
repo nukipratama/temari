@@ -6,6 +6,7 @@ import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/Jour
 import RingkasanCard from '@/components/aktivitas/RingkasanCard';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import Card from '@/components/ui/Card';
+import SendToTelegramButton from '@/components/SendToTelegramButton';
 import PageHero from '@/components/ui/PageHero';
 import RiwayatFilter, { type MoodOption, type RangeOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
@@ -221,6 +222,7 @@ interface WeekSectionProps {
 }
 
 const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, matchedRunIds }: Readonly<WeekSectionProps>) {
+    const telegramConnected = usePage<SharedProps>().props.telegramConnected ?? false;
     const trimpLabel = Math.round(bucket.totalTrimp);
     const matchCount = matchedRunIds
         ? bucket.runs.filter((r) => matchedRunIds.has(r.id)).length
@@ -268,6 +270,11 @@ const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, 
                                 awaitingSchedule={snapshot.is_current_week}
                                 isChainHead={snapshot.is_chain_head}
                             />
+                            {telegramConnected && snapshot.recap_analysis.status === 'done' && (
+                                <div className="mt-3">
+                                    <SendToTelegramButton url={`/rekap-mingguan/${snapshot.id}/telegram`} />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

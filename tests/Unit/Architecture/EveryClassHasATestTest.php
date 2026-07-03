@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CardSeenController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\GoalController;
 use App\Http\Controllers\Auth\StravaAuthController;
+use App\Http\Controllers\Telegram\Concerns\PushesAnalysisToTelegram;
 use App\Events\ActivityIngested;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\AI\TokenUsage;
@@ -73,6 +74,7 @@ it('has a test class for every concrete app class', function (): void {
         SumsPulseTotals::class,         // trait, exercised via AiPipelineHealthTest + StravaHealthTest
         ReadsPreviousActivityNarrative::class, // trait, exercised via PostRunSpeechNarratorTest + RunInsightNarratorTest
         ReadsPreviousDailyNarrative::class, // trait, exercised via DailyGreeting + BriefingMascotVoice cases in NarratorsCoverageTest
+        PushesAnalysisToTelegram::class, // trait, exercised via the three Send*NotificationControllerTest suites
     ];
 
     $testedBasenames = collect(File::allFiles(base_path('tests')))

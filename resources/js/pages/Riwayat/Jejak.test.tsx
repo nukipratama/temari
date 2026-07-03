@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { router } from '@inertiajs/react';
 import RunsIndex from './Jejak';
 import { makeUser, setMockPage } from '@/test/setup';
 import type { Activity, ActivityDetail } from '@/types/inertia';
@@ -179,6 +180,70 @@ describe('Riwayat/Jejak', () => {
         expect(screen.getAllByTestId('run-row').length).toBe(2);
         expect(screen.getByText(/Minggu konsisten/)).toBeInTheDocument();
         expect(screen.getByText(/Pas/)).toBeInTheDocument();
+    });
+
+    const doneWeekSnapshot = {
+        id: 7,
+        week_ending: '2026-05-24',
+        distance_km: 35.5,
+        runs: 4,
+        weekly_trimp: 320,
+        atl_7d: 44.5,
+        ctl_42d: 42,
+        form: -2.5,
+        form_status: 'optimal' as const,
+        avg_decoupling: 3.2,
+        monotony: 1.2,
+        strain: 384,
+        is_current_week: false,
+        is_chain_head: true,
+        recap_analysis: {
+            id: 1,
+            status: 'done' as const,
+            content: 'Minggu konsisten.',
+            type: 'weekly_recap' as const,
+            subject_type: 'weekly_snapshot',
+            subject_id: 7,
+            discriminator: null,
+        },
+    };
+
+    it('hides the weekly recap Telegram button when not connected', () => {
+        // telegramConnected defaults to undefined (falsy) in beforeEach.
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi', '2026-05-19T06:00:00')]}
+                rangeFilter="1y"
+                rangeStart="2025-05-19"
+                weeklySnapshots={[doneWeekSnapshot]}
+            />,
+        );
+        expect(screen.queryByText('Kirim ke Telegram')).not.toBeInTheDocument();
+    });
+
+    it('force-sends the weekly recap to Telegram when connected and the button is clicked', () => {
+        vi.mocked(router.post).mockReset();
+        setMockPage({
+            auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
+            flash: {},
+            demoLoginEnabled: false,
+            stravaSync: { state: 'ready', last_synced_at: '2026-01-01' },
+            telegramConnected: true,
+        });
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi', '2026-05-19T06:00:00')]}
+                rangeFilter="1y"
+                rangeStart="2025-05-19"
+                weeklySnapshots={[doneWeekSnapshot]}
+            />,
+        );
+        fireEvent.click(screen.getByText('Kirim ke Telegram'));
+        expect(router.post).toHaveBeenCalledWith(
+            '/rekap-mingguan/7/telegram',
+            {},
+            expect.objectContaining({ preserveScroll: true }),
+        );
     });
 
     it('maps every FormStatus value to a Temari pose (fresh / fatigued / overreaching / null)', () => {

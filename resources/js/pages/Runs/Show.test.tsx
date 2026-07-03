@@ -98,7 +98,17 @@ const insightDefaults = {
     insightZones: insight('run_insight_zones'),
 } as const;
 
-function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
+function renderShow(
+    overrides: Partial<Parameters<typeof RunsShow>[0]> = {},
+    { telegramConnected = false }: { telegramConnected?: boolean } = {},
+) {
+    // telegramConnected is now a shared Inertia prop, read via usePage.
+    setMockPage({
+        auth: { user: { id: 1, name: 'A', first_name: 'A', avatar_url: null } },
+        flash: {},
+        demoLoginEnabled: false,
+        telegramConnected,
+    });
     return render(
         <RunsShow
             activity={{ id: 99, user_id: 1, analyzed_at: '2026-05-10', detail }}
@@ -109,7 +119,6 @@ function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
             {...insightDefaults}
             moodFallback="adem"
             isChainHead
-            telegramConnected={false}
             pastYou={null}
             {...overrides}
         />,
@@ -303,7 +312,7 @@ describe('Runs/Show', () => {
 
     it('pushes the run to Telegram when connected and the button is clicked', () => {
         vi.mocked(router.post).mockReset();
-        renderShow({ telegramConnected: true });
+        renderShow({}, { telegramConnected: true });
         fireEvent.click(screen.getByText('Kirim ke Telegram'));
         expect(router.post).toHaveBeenCalledWith(
             '/aktivitas/99/telegram',
@@ -317,7 +326,7 @@ describe('Runs/Show', () => {
         vi.mocked(router.post).mockImplementation((_url, _data, options) => {
             options?.onStart?.({} as never);
         });
-        renderShow({ telegramConnected: true });
+        renderShow({}, { telegramConnected: true });
         const button = screen.getByText('Kirim ke Telegram').closest('button')!;
         fireEvent.click(button);
         expect(button).toBeDisabled();

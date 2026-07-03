@@ -19,10 +19,12 @@ it('recognises the notifiable types and ignores the rest', function (): void {
 
     $postRun = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
     $weekly = Analysis::factory()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
+    $monthly = Analysis::factory()->make(['analysis_type' => AnalysisType::MonthlyRecap]);
     $greeting = Analysis::factory()->make(['analysis_type' => AnalysisType::DailyGreeting]);
 
     expect($registry->isNotifiable($postRun))->toBeTrue()
         ->and($registry->isNotifiable($weekly))->toBeTrue()
+        ->and($registry->isNotifiable($monthly))->toBeTrue()
         ->and($registry->isNotifiable($greeting))->toBeFalse();
 });
 
@@ -45,6 +47,18 @@ it('resolves the user behind a weekly recap via its snapshot', function (): void
         'analysis_type' => AnalysisType::WeeklyRecap,
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $snapshot->id,
+    ]);
+
+    expect((new NotifiableAnalysis())->resolveUser($analysis)?->id)->toBe($user->id);
+});
+
+it('resolves the user behind a monthly recap directly via its subject_id', function (): void {
+    $user = User::factory()->create();
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'discriminator' => '2026-06',
     ]);
 
     expect((new NotifiableAnalysis())->resolveUser($analysis)?->id)->toBe($user->id);
@@ -169,4 +183,17 @@ it('links a weekly recap to the run history page', function (): void {
 
     expect($message)->toStartWith('📊 Minggu ini 28 km.')
         ->and($message)->toContain('Lihat riwayat: ' . route('aktivitas.index'));
+});
+
+it('links a monthly recap to its month on the calendar', function (): void {
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-06',
+        'content' => 'Bulan ini 120 km.',
+    ]);
+
+    $message = (new NotifiableAnalysis())->format($analysis);
+
+    expect($message)->toStartWith('🗓️ Bulan ini 120 km.')
+        ->and($message)->toContain('Lihat kalender: ' . route('kalender', ['month' => '2026-06']));
 });

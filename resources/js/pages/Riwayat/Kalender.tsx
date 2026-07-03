@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
 import AppShell from '@/layouts/AppShell';
@@ -6,6 +6,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
 import RiwayatFilter, { type MoodOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
+import SendToTelegramButton from '@/components/SendToTelegramButton';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import { MOOD_FILL, MOOD_HINT, MOOD_LABEL, MOOD_ORDER, MOOD_SOFT_FILL, moodSigilColor } from '@/lib/mood';
@@ -13,7 +14,7 @@ import { formatPace, formatShortDateId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { aktivitasUrl } from '@/lib/routes';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
-import type { AnalysisPayload, Mood } from '@/types/inertia';
+import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
 
 /** The monthly recap payload plus the chain-head flag the controller adds. */
 export type MonthlyRecap = AnalysisPayload & { is_chain_head: boolean };
@@ -135,6 +136,7 @@ export default function Kalender({
                 {monthlyRecap && (
                     <MonthlyRecapCard
                         recap={monthlyRecap}
+                        month={month}
                         monthLabel={monthLabel}
                         mood={dominantMood}
                         awaitingSchedule={isCurrentMonth}
@@ -229,10 +231,12 @@ export function dominantMoodOf(cells: ReadonlyArray<CalendarCell>): Mood | null 
  */
 function MonthlyRecapCard({
     recap,
+    month,
     monthLabel,
     mood,
     awaitingSchedule,
-}: Readonly<{ recap: MonthlyRecap; monthLabel: string; mood: Mood | null; awaitingSchedule: boolean }>) {
+}: Readonly<{ recap: MonthlyRecap; month: string; monthLabel: string; mood: Mood | null; awaitingSchedule: boolean }>) {
+    const telegramConnected = usePage<SharedProps>().props.telegramConnected ?? false;
     return (
         <section
             className="mb-4 rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5"
@@ -261,6 +265,11 @@ function MonthlyRecapCard({
                             <p className="text-sm leading-relaxed text-ink">{renderBold(content)}</p>
                         )}
                     />
+                    {telegramConnected && recap.status === 'done' && (
+                        <div className="mt-3">
+                            <SendToTelegramButton url={`/rekap-bulanan/${month}/telegram`} />
+                        </div>
+                    )}
                 </div>
             </div>
         </section>
