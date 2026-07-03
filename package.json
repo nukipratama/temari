@@ -8,6 +8,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
+        "purge": "rm -rf public/build public/hot node_modules/.vite node_modules/.cache coverage",
         "lint": "eslint resources/js --max-warnings 0",
         "test": "vitest run",
         "test:watch": "vitest",
