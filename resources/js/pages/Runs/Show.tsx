@@ -15,7 +15,6 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
 import MetricExplainer from '@/components/MetricExplainer';
 import type { MetricKey } from '@/lib/metricGlossary';
-import ProgressBar from '@/components/ui/ProgressBar';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
@@ -411,7 +410,7 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
 
     return (
         <Card as="section" padding="lg" className={className}>
-            <header className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+            <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
                 <SectionLabel>Splits per km</SectionLabel>
                 {fastest != null && fastestKm != null && (
                     <p className="font-display text-sm italic text-ink-2">
@@ -420,9 +419,11 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
                     </p>
                 )}
             </header>
+            {/* One dense chart at every width (HR + cadence columns fold away on phones);
+                the binary bar color needs a one-line key once the card affordance is gone. */}
+            <p className="mb-3 text-label-micro text-ink-3">Batang oranye = km tercepat, gelap = lainnya.</p>
 
-            {/* Mobile: per-km card stack. Pace is the visual lead. */}
-            <div className="flex flex-col gap-2 lg:hidden">
+            <div className="flex flex-col">
                 {rows.map((row, idx) => {
                     const sec = paceSecOf(row);
                     const isFast = sec != null && sec === fastest;
@@ -431,59 +432,19 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
                         <div
                             key={row.km ?? `row-${idx}`}
                             className={cn(
-                                'rounded-xl border px-3.5 py-3',
-                                isFast
-                                    ? 'border-horizon/40 bg-horizon/[0.08]'
-                                    : 'border-cream-deep bg-cream',
-                            )}
-                        >
-                            <div className="flex items-baseline justify-between gap-3">
-                                <div className="font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-2">
-                                    KM {row.km ?? '?'}
-                                </div>
-                                <div className="font-mono text-2xl font-bold tabular-nums leading-none text-ink">
-                                    {row.pace ?? '—'}
-                                    <span className="ml-1 font-mono text-[11px] font-medium text-ink-3">/km</span>
-                                </div>
-                            </div>
-                            <ProgressBar
-                                value={pctWidth / 100}
-                                tone={isFast ? 'horizon' : 'sky'}
-                                size="sm"
-                                className="mt-2"
-                            />
-                            <div className="mt-2 flex items-center gap-4 font-sans text-xs tabular-nums text-ink-2">
-                                <span>♡ {row.avg_hr ?? '—'}</span>
-                                <span>↻ {row.avg_cadence_spm ?? '—'}</span>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* Desktop: dense grid table. */}
-            <div className="hidden flex-col lg:flex">
-                {rows.map((row, idx) => {
-                    const sec = paceSecOf(row);
-                    const isFast = sec != null && sec === fastest;
-                    const pctWidth = computeBarWidth(sec, fastest, slowestSec);
-                    return (
-                        <div
-                            key={row.km ?? `row-${idx}`}
-                            className={cn(
-                                'grid grid-cols-[40px_1fr_70px_70px_70px] items-center gap-3',
+                                'grid grid-cols-[34px_1fr_56px] items-center gap-2.5 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3',
                                 idx > 0 && !isFast && 'border-t border-cream-deep',
                                 // Alternating row background for readability
                                 idx % 2 === 1 && !isFast && 'bg-cream-deep/30',
                                 // Fast row: tint bleeds out via -mx-3 while px-3 keeps content
                                 // aligned with the other rows, so its bar isn't narrowed.
-                                isFast ? '-mx-3 rounded-lg bg-horizon/[0.08] px-3 py-2.5' : 'px-3 py-2.5',
+                                isFast ? '-mx-3 rounded-lg bg-horizon/[0.08] px-3 py-2 lg:py-2.5' : 'px-3 py-2 lg:py-2.5',
                             )}
                         >
-                            <div className="font-mono text-[12px] uppercase tracking-[0.1em] text-ink-2">
+                            <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-2 lg:text-[12px]">
                                 KM {row.km ?? '?'}
                             </div>
-                            <div className="h-3 overflow-hidden rounded bg-sky/[0.06]">
+                            <div className="h-2.5 overflow-hidden rounded bg-sky/[0.06] lg:h-3">
                                 <div
                                     className={cn('h-full rounded', isFast ? 'bg-horizon' : 'bg-sky')}
                                     style={{ width: `${pctWidth}%` }}
@@ -492,10 +453,10 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
                             <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink">
                                 {row.pace ?? '—'}
                             </div>
-                            <div className="text-right font-sans text-xs tabular-nums text-ink-2">
+                            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
                                 ♡ {row.avg_hr ?? '—'}
                             </div>
-                            <div className="text-right font-sans text-xs tabular-nums text-ink-2">
+                            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
                                 ↻ {row.avg_cadence_spm ?? '—'}
                             </div>
                         </div>
