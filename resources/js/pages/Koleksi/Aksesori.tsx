@@ -165,7 +165,7 @@ function SlotSection({
     return (
         <section className="mt-8">
             <SectionLabel>{SLOT_LABEL[slot]}</SectionLabel>
-            <div className="grid gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
                 {unlocked.map((item) => (
                     <AksesoriCard key={item.unlock_key} item={item} onEquip={onEquip} />
                 ))}
@@ -249,8 +249,9 @@ function AksesoriCard({
                 <p className="mt-auto font-display text-xs italic text-ink-3">{item.criteria}</p>
             )}
             {!locked && item.equipped && (
-                <PillButton tone="ghost" size="sm" disabled className="mt-auto opacity-60">
-                    Lagi dipake
+                <PillButton tone="horizon" size="sm" disabled className="mt-auto gap-1.5">
+                    <Icon icon="mdi:check-circle" width={15} height={15} aria-hidden />
+                    Terpasang
                 </PillButton>
             )}
             {!locked && !item.equipped && (

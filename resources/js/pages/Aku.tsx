@@ -410,6 +410,9 @@ function RekorMini({ pr }: Readonly<{ pr: TopPrEntry }>) {
     );
 }
 
+/** How many accessory tiles to preview on the profile before deferring to the full /aksesori page. */
+const ACCESSORY_PREVIEW = 5;
+
 function AksesoriStrip({
     unlocks,
     catalog,
@@ -441,7 +444,7 @@ function AksesoriStrip({
                 </Link>
             </div>
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-                {entries.map(([key, meta]) => {
+                {entries.slice(0, ACCESSORY_PREVIEW).map(([key, meta]) => {
                     const unlocked = unlockedKeys.has(key);
                     return (
                         <article
@@ -476,6 +479,14 @@ function AksesoriStrip({
                     );
                 })}
             </div>
+            {entries.length > ACCESSORY_PREVIEW && (
+                <Link
+                    href="/aksesori"
+                    className="focus-ring mt-3 block rounded text-center font-display text-sm italic text-ink-3 transition hover:text-horizon-deep"
+                >
+                    +{entries.length - ACCESSORY_PREVIEW} aksesori lagi di koleksi →
+                </Link>
+            )}
         </Card>
     );
 }

@@ -26,7 +26,7 @@ const TABS: ReadonlyArray<TabItem> = [
 
 export default function KoleksiTabs({ active, activeCount, className }: Readonly<KoleksiTabsProps>) {
     return (
-        <nav aria-label="Sub-tab" className={cn('flex flex-wrap gap-1.5', className)}>
+        <nav aria-label="Sub-tab" className={cn('scrollbar-hide flex gap-1.5 overflow-x-auto', className)}>
             {TABS.map((tab) => {
                 const isActive = active === tab.id;
                 return (
@@ -35,10 +35,10 @@ export default function KoleksiTabs({ active, activeCount, className }: Readonly
                         href={tab.href}
                         aria-current={isActive ? 'page' : undefined}
                         className={cn(
-                            'focus-ring inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-medium transition',
+                            'focus-ring inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] font-medium transition',
                             isActive
-                                ? 'bg-sky text-cream font-semibold'
-                                : 'bg-transparent text-ink-2 hover:bg-sky/[0.06]',
+                                ? 'border border-transparent bg-sky text-cream font-semibold'
+                                : 'border border-line bg-sky/[0.04] text-ink-2 hover:bg-sky/[0.1]',
                         )}
                     >
                         {tab.label}

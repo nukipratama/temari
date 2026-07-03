@@ -118,7 +118,7 @@ export default function KoleksiKartu({
                 <EmptyState />
             </div>
         ) : (
-            <div className="mt-6 grid gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-6 grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4">
                 {grid.map((card) => (
                     <CardCell key={card.id} card={card} onTap={triggerBurstFor} />
                 ))}
