@@ -101,12 +101,14 @@ class RunController extends Controller
             ->first(fn (WeeklySnapshot $row): bool => (int) $row->runs > 0
                 && ! $row->week_ending->equalTo($currentWeekEnding))?->id;
 
+        $runIds = $runs->pluck('id')->all();
+
         return Inertia::render('Riwayat/Jejak', [
             'runs' => $runs->values(),
-            'notes' => $noteReader->forActivities($runs->pluck('id')->all()),
+            'notes' => $noteReader->forActivities($runIds),
             // Persisted post-run mood per run, so the list mascot matches the
             // backend mood even before the speech (and its note) is ready.
-            'moods' => $noteReader->moodsFor($runs->pluck('id')->all()),
+            'moods' => $noteReader->moodsFor($runIds),
             'rangeFilter' => $effectiveRange,
             'rangeStart' => $rangeStart?->toDateString(),
             'rangeAutoWidened' => $rangeAutoWidened,
