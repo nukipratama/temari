@@ -63,6 +63,18 @@ describe('SuggestionCard', () => {
         expect(screen.getByRole('button', { name: 'Lagi mikir…' })).toBeInTheDocument();
     });
 
+    it('disables "Saran lain" and shows a countdown while on cooldown', () => {
+        render(
+            <SuggestionCard
+                suggestion={{ ...suggestion('Tempo ringan.'), retry_after_seconds: 900 }}
+                lastRun={null}
+            />,
+        );
+        const button = screen.getByRole('button', { name: 'Tunggu 15:00 sebelum minta saran lain' });
+        expect(button).toBeDisabled();
+        expect(button).toHaveTextContent('15:00');
+    });
+
     it('toggles a long body with "Baca selengkapnya"', () => {
         const longBody = 'Jaga pace di zona 2 selama empat puluh menit penuh, '.repeat(4);
         render(<SuggestionCard suggestion={suggestion(`Tempo ringan hari ini.\n\n${longBody}`)} lastRun={null} />);

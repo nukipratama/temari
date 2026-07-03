@@ -6,7 +6,9 @@ import ReadMoreToggle from '@/components/ui/ReadMoreToggle';
 import SectionLabel from '@/components/ui/SectionLabel';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
+import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { cn } from '@/lib/cn';
+import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { formatWeather } from '@/pages/HariIni/helpers';
 import type { ActivityDetail, AnalysisPayload } from '@/types/inertia';
@@ -46,7 +48,17 @@ function SuggestionContent({ text }: Readonly<{ text: string }>) {
 }
 
 export default function SuggestionCard({ suggestion, lastRun }: Readonly<{ suggestion: AnalysisPayload; lastRun: ActivityDetail | null }>) {
-    const { trigger, pending } = useAnalysisTrigger(suggestion, ['briefing']);
+    const { trigger, pending, retryAfterSeconds } = useAnalysisTrigger(suggestion, ['briefing']);
+    const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
+    const cooling = cooldownRemaining > 0;
+
+    let label = 'Saran lain';
+    if (cooling) {
+        label = formatDurationHMS(cooldownRemaining);
+    } else if (pending) {
+        label = 'Lagi mikir…';
+    }
+
     const weatherChipLabel = lastRun
         ? formatWeather(
             lastRun.weather_temp_c ?? null,
@@ -73,11 +85,12 @@ export default function SuggestionCard({ suggestion, lastRun }: Readonly<{ sugge
                 <button
                     type="button"
                     onClick={trigger}
-                    disabled={pending}
+                    disabled={pending || cooling}
+                    aria-label={cooldownAriaLabel(cooldownRemaining, 'minta saran lain')}
                     className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
                 >
-                    <Icon icon="mdi:refresh" aria-hidden />
-                    <span>{pending ? 'Lagi mikir…' : 'Saran lain'}</span>
+                    <Icon icon="mdi:auto-awesome" aria-hidden />
+                    <span>{label}</span>
                 </button>
             </div>
         </Card>
