@@ -99,11 +99,15 @@ it('varies the ecosystem briefing voices by seed deterministically', function ()
 it('varies discriminator-keyed copy across discriminators for the same subject', function (): void {
     $filler = app(RuleBasedNarrationFiller::class);
 
-    // Same subject, different month discriminators must not read byte-identical.
-    $january = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 1, '2026-02'));
-    $may = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 1, '2026-05'));
+    // The discriminator folds into the seed, so the same subject reads
+    // differently across months. Assert variety across a spread of discriminators
+    // (robust to pool size) rather than two specific months, which can collide
+    // on the modulo for any given pool count.
+    $copies = collect(['2026-02', '2026-03', '2026-05', '2026-08', '2026-11'])
+        ->map(fn (string $month): string => $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 1, $month)))
+        ->unique();
 
-    expect($january)->not->toBe($may);
+    expect($copies->count())->toBeGreaterThan(1);
 });
 
 it('is deterministic for the same subject and discriminator', function (): void {

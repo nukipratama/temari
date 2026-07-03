@@ -77,6 +77,9 @@ final readonly class RuleBasedNarrationFiller
             'Form lagi oke, recovery cukup. Bisa lari tapi gak usah ngoyo.',
             'Kesiapan positif, badan udah recharge. Kalau mau lari, ada tenaga.',
             'Bebas aja hari ini, kapasitas masih aman buat apa pun yang kamu mau.',
+            'Recovery keurus, form gak jelek. Sesi ringan sampai sedang aman.',
+            'Badan lagi netral, gak lagi tinggi gak juga drop. Lari santai paling pas.',
+            'Kapasitas hari ini cukup buat gerak. Mau easy atau tempo ringan, kamu yang pilih.',
         ], $seed);
     }
 
@@ -95,6 +98,9 @@ final readonly class RuleBasedNarrationFiller
             'Aku liat ritme kamu masih oke beberapa hari terakhir. Pertahanin pelan-pelan, gak usah dipaksa kalau lagi gak mood.',
             'Beberapa hari ini kamu cukup konsisten. Lanjut santai aja, aku nemenin.',
             'Ritme kamu kebaca stabil. Gak perlu ngoyo, yang penting jalan terus.',
+            'Aku perhatiin kamu jalan terus belakangan. Gak usah ngebut, rutin aja udah bagus.',
+            'Beberapa sesi terakhir kebaca rapi. Kalau hari ini mau rehat, aku ngerti kok.',
+            'Kamu lagi di jalur yang enak. Jaga ritmenya, sisanya ngalir sendiri.',
         ], $seed);
     }
 
@@ -104,6 +110,9 @@ final readonly class RuleBasedNarrationFiller
             'Kartu ini nyimpen cerita lari yang berkesan. Buka lagi pas kamu butuh dorongan.',
             'Ada satu kartu yang menonjol minggu ini. Simpan sebagai pengingat kamu bisa.',
             'Kartu ini bukti sesi yang pantas dikenang. Pajang aja, gak rugi.',
+            'Satu kartu ini pantas dilihat lagi. Kadang kita lupa seberapa jauh udah melangkah.',
+            'Kartu ini rekaman sesi yang gak biasa. Simpan buat hari yang butuh pengingat.',
+            'Ada kartu yang menonjol dari sisa minggu ini. Pajang, biar keinget kamu bisa.',
         ], $seed);
     }
 
@@ -124,6 +133,9 @@ final readonly class RuleBasedNarrationFiller
             "Lari {$km} km kelar. Pace-nya keangkut sampai akhir, bagus.",
             "Selesai {$km} km. Ritme kamu rapi, aku suka.",
             "{$km} km masuk. Konsisten kayak gini yang bikin progres.",
+            "Kelar {$km} km. Napasnya keatur, larinya kebaca enak.",
+            "Dapat {$km} km hari ini. Gak buru-buru tapi tetap kelar, itu yang penting.",
+            "{$km} km lagi masuk catatan. Pelan tapi rutin, ini yang bikin beda.",
         ], $activityId);
 
         return $base . $this->postRunCoda($detail, $activityId);
@@ -158,6 +170,9 @@ final readonly class RuleBasedNarrationFiller
             'Pagi. Udara masih seger, tapi kalau belum mood, aku tetap di sini.',
             'Halo. Hari baru, peluang baru buat lari. Atau istirahat, kamu yang tentuin.',
             'Pagi. Aku cek data kamu, mungkin ada yang menarik hari ini. Yuk liat.',
+            'Halo. Belum lari juga gak apa-apa, aku tetap nungguin di sini.',
+            'Pagi. Kalau badan lagi enak, sayang kalau gak dipake gerak dikit.',
+            'Halo. Mau lari atau istirahat, dua-duanya sah. Kamu yang paling tahu.',
         ], $seed);
     }
 
@@ -202,6 +217,9 @@ final readonly class RuleBasedNarrationFiller
                 'Volume minggu ini oke, gak kebanyakan tapi gak juga kosong. Balance yang sehat.',
                 'Satu minggu lagi kelar. Jarak dan frekuensi lari kamu masuk akal, terus pelan-pelan aja.',
                 'Minggu yang konsisten tanpa drama. Kadang kayak gini yang dibutuhin, stabil naik.',
+                'Minggu ini agak sepi lari, gak apa-apa. Kadang tubuh minta jeda dulu.',
+                'Belum banyak gerak minggu ini. Pelan-pelan balik lagi, gak usah langsung banyak.',
+                'Minggu yang lebih banyak istirahat. Recovery juga bagian dari latihan kok.',
             ], $snapshotId);
         }
 
@@ -219,6 +237,9 @@ final readonly class RuleBasedNarrationFiller
             "{$km} km dalam {$runs} lari minggu ini. {$closer}",
             "Minggu ini kekumpul {$km} km dari {$runs} sesi. {$closer}",
             "{$runs} lari, total {$km} km. {$closer}",
+            "Minggu ini {$km} km dari {$runs} kali lari. {$closer}",
+            "Kekumpul {$km} km, {$runs} sesi. {$closer}",
+            "{$runs} sesi minggu ini, total {$km} km. {$closer}",
         ], $snapshotId);
     }
 
@@ -229,6 +250,9 @@ final readonly class RuleBasedNarrationFiller
             'Ini bukan keberuntungan, ini hasil kerja keras yang kekumpul pelan-pelan.',
             'PR baru! Setiap detik yang dipotong itu bukti latihan yang gak putus.',
             'Rekor baru kebuka. Kamu udah bayar mahal pelan-pelan, ini hasilnya.',
+            'Rekornya kebuka bukan tiba-tiba. Ini akumulasi sesi yang kamu jalanin diam-diam.',
+            'PR baru masuk. Angkanya cuma penanda, kerjanya udah kamu lakuin dari kemarin.',
+            'Waktu yang dipotong ini kecil di layar, tapi gede di usaha. Selamat.',
         ], $seed);
     }
 
@@ -239,6 +263,9 @@ final readonly class RuleBasedNarrationFiller
             'Garis volume relatif stabil, gak naik drastis tapi gak turun juga. Fondasi yang aman.',
             'Belum ada pergerakan besar di tren, tapi stabil bukan berarti diam. Base lagi dibangun.',
             'Volume konsisten beberapa minggu terakhir. Makin lama makin solid.',
+            'Beberapa minggu terakhir jalannya rapi. Gak meledak, tapi arahnya sehat.',
+            'Grafiknya adem, naik tipis-tipis. Base yang dibangun sabar biasanya awet.',
+            'Tren kamu stabil. Bukan diam, tapi lagi numpuk fondasi pelan-pelan.',
         ], $seed);
     }
 
@@ -284,26 +311,36 @@ final readonly class RuleBasedNarrationFiller
             '"{move}" mungkin biasa, tapi tetap kamu jalanin sampai habis.',
             'Lari {km} km yang kalem, dicatat karena konsisten itu mahal.',
             'Gak ada drama di "{move}", cuma ritme yang rapi.',
+            'Sesi "{move}" yang kalem, tapi kamu selesaiin utuh.',
+            'Lari {km} km biasa tapi rapi, itu udah cukup.',
         ],
         'uncommon' => [
             '"{move}" terasa pas, ada rasa yang nyangkut di sesi ini.',
             'Lari {km} km yang berkesan, bukan sekadar angka.',
             'Ada momen di "{move}" yang bikin kamu mau inget lagi.',
+            '"{move}" nyimpen satu momen yang bikin nyangkut.',
+            'Lari {km} km yang lebih dari sekadar catatan.',
         ],
         'rare' => [
             '"{move}" jarang ketemu, simpan baik-baik.',
             'Lari {km} km langka yang gak datang tiap minggu.',
             'Sesuatu di "{move}" bikin sesi ini beda dari biasanya.',
+            '"{move}" gak muncul tiap minggu, catat baik-baik.',
+            'Lari {km} km yang lumayan langka buat kamu.',
         ],
         'epic' => [
             '"{move}" luar biasa, kerja kerasnya kebaca jelas.',
             'Lari {km} km yang patut dipajang, ini bukan sesi sembarangan.',
             '"{move}" level beda, kamu lagi naik kelas.',
+            '"{move}" nunjukin kamu lagi naik level.',
+            'Lari {km} km yang gak main-main, pantas dipajang.',
         ],
         'legendary' => [
             '"{move}" legendaris, sesi yang bakal kamu ceritain lama.',
             'Lari {km} km yang masuk buku sejarah lari kamu.',
             '"{move}" sekali seumur progres, rayain.',
+            '"{move}" bakal jadi cerita yang kamu ulang-ulang.',
+            'Lari {km} km yang masuk sejarah lari kamu.',
         ],
     ];
 
@@ -365,6 +402,9 @@ final readonly class RuleBasedNarrationFiller
             'Seluruh cerita lari kamu ada di sini. Dari kartu pertama sampai rekor terbaru, aku simpan semua.',
             'Ini ruang kamu. **Kartu**, **rekor**, **aksesori** yang udah kamu kumpulin, aku jaga baik-baik.',
             'Semua yang kamu dapetin dari lari ada di sini. Aku terus catat, kamu terus jalan.',
+            'Di sini aku rekam jejak lari kamu, dari **kartu** sampai **rekor**. Terus isi, aku catat.',
+            'Semua yang kamu kumpulin dari lari kesimpen di sini. Aku jagain, kamu tinggal jalan.',
+            'Ini arsip perjalanan kamu. **Kartu**, **rekor**, **aksesori**, semua ada. Ayo tambah terus.',
         ], $seed);
     }
 
@@ -375,6 +415,9 @@ final readonly class RuleBasedNarrationFiller
             'Lari kamu lebih sering santai daripada push. Sabar ngebangun base, gak buru-buru. Respek.',
             'Gaya lari kamu steady, gak banyak drama. Consistency over intensity, dan itu strategi yang bagus.',
             'Kamu tipe yang sabar ngebangun fondasi. Easy dominan, sesekali quality. Pelan tapi pasti.',
+            'Kamu runner yang milih rutin daripada heboh. Base dulu, kecepatan nyusul. Sabar yang bener.',
+            'Pola kamu kebaca disiplin: lebih sering easy, sesekali digas. Cara ngebangun yang sehat.',
+            'Gaya lari kamu tenang tapi gak berhenti. Konsistensi model gini yang bikin progres awet.',
         ], $seed);
     }
 
@@ -385,6 +428,9 @@ final readonly class RuleBasedNarrationFiller
             'Sebulan penuh lari yang teratur. Volume masuk akal, effort juga dijaga. Bulan yang solid.',
             'Bulan yang tanpa skip berarti. Kamu datang, lari, pulang. Pola yang sehat.',
             'Bulan ini kamu pilih konsistensi daripada intensitas. Dan itu pilihan yang bagus.',
+            'Sebulan ini kamu datang terus meski gak selalu ngebut. Kehadiran yang konsisten itu mahal.',
+            'Bulan yang rapi tanpa banyak drama. Volume kejaga, effort gak dipaksa. Solid.',
+            'Bulan ini lebih banyak sabar daripada ngoyo. Strategi yang bener buat jangka panjang.',
         ], $seed);
     }
 }
