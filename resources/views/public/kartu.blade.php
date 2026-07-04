@@ -12,6 +12,13 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
+    {{-- Brand faces this page actually uses: Fraunces (card name) + Oswald (stat number).
+         Without these the standalone share page falls back to Georgia/system-ui. --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,400&family=Oswald:wght@500;600;700&display=swap">
+
     <meta name="description" content="{{ $ogDescription }}">
     <meta property="og:type" content="website">
     <meta property="og:title" content="{{ $name }}">

@@ -327,7 +327,7 @@ function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow 
             )}
             {snapshot.ctl_42d !== null && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-leaf/15 px-2.5 py-0.5 text-xs font-semibold text-leaf-deep">
-                    Fit {snapshot.ctl_42d.toFixed(1)}
+                    Fondasi {snapshot.ctl_42d.toFixed(1)}
                 </span>
             )}
             {snapshot.form !== null && (

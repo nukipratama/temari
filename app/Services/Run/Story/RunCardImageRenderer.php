@@ -147,14 +147,19 @@ SVG;
     private function rasterise(string $svg): string
     {
         $imagick = new Imagick();
-        $imagick->setBackgroundColor(new ImagickPixel('transparent'));
-        $imagick->setResolution(144, 144);
-        $imagick->readImageBlob($svg);
-        $imagick->setImageFormat('png');
-        $png = $imagick->getImageBlob();
-        $imagick->clear();
 
-        return $png;
+        try {
+            $imagick->setBackgroundColor(new ImagickPixel('transparent'));
+            $imagick->setResolution(144, 144);
+            $imagick->readImageBlob($svg);
+            $imagick->setImageFormat('png');
+
+            return $imagick->getImageBlob();
+        } finally {
+            // Free the MagickWand C resources even if a read/encode throws, so a
+            // bad SVG can't leak memory across the long-lived Octane worker.
+            $imagick->clear();
+        }
     }
 
     /**

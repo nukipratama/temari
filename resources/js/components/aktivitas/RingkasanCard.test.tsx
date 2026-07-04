@@ -38,7 +38,7 @@ describe('RingkasanCard', () => {
 
     it('suppresses the trigger and shows "belum tersedia" for the current week', () => {
         render(<RingkasanCard analysis={baseAnalysis()} fallback="fallback" awaitingSchedule />);
-        expect(screen.getByText(/Recap minggu ini belum tersedia/)).toBeInTheDocument();
+        expect(screen.getByText(/Rekap minggu ini belum tersedia/)).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
         // Fallback prose still renders alongside the pending note.
         expect(screen.getByText('fallback')).toBeInTheDocument();

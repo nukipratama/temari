@@ -259,7 +259,7 @@ describe('Kalender', () => {
                     monthlyRecap={makeRecap({ status: 'pending', content: null, id: null, is_chain_head: false })}
                 />,
             );
-            expect(screen.getByText('Recap bulan ini belum tersedia.')).toBeInTheDocument();
+            expect(screen.getByText('Rekap bulan ini belum tersedia.')).toBeInTheDocument();
             expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
         });
 

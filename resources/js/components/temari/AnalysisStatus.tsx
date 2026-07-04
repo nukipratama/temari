@@ -94,7 +94,7 @@ export default function AnalysisStatus({
     renderContent,
     allowReanalyze = true,
     awaitingSchedule = false,
-    awaitingScheduleLabel = 'Recap minggu ini belum tersedia.',
+    awaitingScheduleLabel = 'Rekap minggu ini belum tersedia.',
     showTimestamp = true,
     onSky = false,
     chained = false,

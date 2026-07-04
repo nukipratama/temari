@@ -56,10 +56,12 @@ export default function TemariNudgeModal({
     useDismissable(open, panelRef, onClose);
     useFocusTrap(open, panelRef);
 
-    if (!open) return null;
-
+    // Keep AnimatePresence mounted and toggle its child, so the coded exit
+    // fade/scale actually runs on close (an early `return null` unmounts the
+    // whole tree in the same pass and skips the exit).
     return (
         <AnimatePresence>
+            {open && (
             <motion.div
                 key="temari-nudge-backdrop"
                 initial={{ opacity: 0 }}
@@ -113,6 +115,7 @@ export default function TemariNudgeModal({
                     </div>
                 </motion.div>
             </motion.div>
+            )}
         </AnimatePresence>
     );
 }

@@ -313,7 +313,7 @@ describe('Aku', () => {
             stravaSync: { state: 'ready', last_synced_at: '2026-07-04T00:00:00Z' },
         });
         render(<Aku identity={identity} stats={stats} />);
-        expect(screen.queryByText(/Sambungkan ulang Strava/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Sambungin lagi/)).not.toBeInTheDocument();
     });
 
     it('shows a persistent reconnect CTA when the Strava connection is revoked', () => {
@@ -324,7 +324,7 @@ describe('Aku', () => {
             stravaSync: { state: 'revoked', last_synced_at: null },
         });
         render(<Aku identity={identity} stats={stats} />);
-        const link = screen.getByText('Sambungkan ulang Strava').closest('a');
+        const link = screen.getByText('Sambungin lagi').closest('a');
         expect(link).toHaveAttribute('href', '/auth/strava/redirect');
     });
 

@@ -59,13 +59,15 @@ Route::post('/client-errors', ClientErrorController::class)
 // middleware, so only a server-minted signed URL (URL::signedRoute) is honored
 // and possession of the link is the grant (no per-card token column needed).
 Route::get('/k/{card}', [PublicCardController::class, 'show'])
-    ->middleware('signed')
+    ->middleware(['signed', 'throttle:public-card'])
     ->name('kartu.publik');
 
 // Server-rendered share/OG card image. Deliberately NOT signed: OG crawlers and
 // Telegram fetch it without a signature, so card-id enumeration is an accepted
 // trade for a public share asset (no private data beyond what the card shows).
+// Per-IP throttled so that enumeration can't flood the synchronous renders.
 Route::get('/k/{card}/image.png', [PublicCardController::class, 'image'])
+    ->middleware('throttle:public-card')
     ->name('kartu.image');
 
 Route::middleware('guest')->group(function (): void {

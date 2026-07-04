@@ -119,7 +119,7 @@ class PrScoreboardBuilder
     {
         if ($current > 3600) {
             // Hour-scale: drop to next-lower 5-min increment (e.g., 1:02 → 1:00).
-            return (intdiv($current - 60, 300)) * 300;
+            return (intdiv($current - 1, 300)) * 300;
         }
         if ($current > 600) {
             // 10+ min: round down to next minute.

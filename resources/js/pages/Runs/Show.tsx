@@ -306,7 +306,7 @@ function MapWeatherPanel({ detail }: Readonly<{ detail: DetailedActivityDetail }
                                 <div className="mt-0.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-on-sky">
                                     <Icon icon="mdi:weather-windy" width={11} height={11} aria-hidden />
                                     {Math.round(windSpeed)} km/j
-                                    {showGust && <span className="text-cream/40">· gust {Math.round(gust)}</span>}
+                                    {showGust && <span>· gust {Math.round(gust)}</span>}
                                     {direction != null && (
                                         <Icon
                                             icon="mdi:navigation"

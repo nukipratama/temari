@@ -155,7 +155,7 @@ export default function Aku({
                                         href="/auth/strava/redirect"
                                         className="focus-ring rounded-full border border-cream-deep/40 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream transition hover:bg-cream/10"
                                     >
-                                        Sambungkan ulang Strava
+                                        Sambungin lagi
                                     </a>
                                 )}
                             </div>

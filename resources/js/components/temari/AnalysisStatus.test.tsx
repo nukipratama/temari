@@ -71,7 +71,7 @@ describe('AnalysisStatus', () => {
 
     it('shows the "belum tersedia" note and no trigger when awaitingSchedule (current week)', () => {
         render(<AnalysisStatus analysis={payload({ status: 'pending' })} awaitingSchedule />);
-        expect(screen.getByText(/Recap minggu ini belum tersedia/)).toBeInTheDocument();
+        expect(screen.getByText(/Rekap minggu ini belum tersedia/)).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
     });
 
@@ -80,10 +80,10 @@ describe('AnalysisStatus', () => {
             <AnalysisStatus
                 analysis={payload({ status: 'pending' })}
                 awaitingSchedule
-                awaitingScheduleLabel="Recap bulan ini belum tersedia."
+                awaitingScheduleLabel="Rekap bulan ini belum tersedia."
             />,
         );
-        expect(screen.getByText(/Recap bulan ini belum tersedia/)).toBeInTheDocument();
+        expect(screen.getByText(/Rekap bulan ini belum tersedia/)).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
     });
 

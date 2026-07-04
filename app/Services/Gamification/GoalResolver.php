@@ -288,8 +288,8 @@ readonly class GoalResolver
             ],
             [
                 'id' => 'accessory.sepatu_legendaris',
-                'title' => 'Akumulasi jarak 1000 km',
-                'description' => 'Akumulasi jarak 1000 km.',
+                'title' => 'Total jarak 1000 km',
+                'description' => 'Kumpulin jarak sampai 1000 km.',
                 'slot' => 'sepatu',
                 'rarity' => $this->rarityForKey('accessory.sepatu_legendaris', $catalog),
                 'current' => min($ctx->totalDistanceKm(), 1000),

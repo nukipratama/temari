@@ -58,11 +58,19 @@ class PublicCardController extends Controller
      */
     public function image(RunCard $card): Response
     {
-        $png = Cache::remember(
-            "kartu-image:{$card->id}:{$card->updated_at?->timestamp}",
-            now()->addDay(),
-            fn (): string => $this->imageRenderer->render($card),
-        );
+        try {
+            $png = Cache::remember(
+                "kartu-image:{$card->id}:{$card->updated_at?->timestamp}",
+                now()->addDay(),
+                fn (): string => $this->imageRenderer->render($card),
+            );
+        } catch (\Throwable $e) {
+            // A malformed SVG / Imagick hiccup must not surface a raw 500 to an
+            // OG crawler or Telegram preview: log and 404 so the share degrades
+            // to no-image rather than a broken page.
+            report($e);
+            abort(404);
+        }
 
         return response($png, 200, [
             'Content-Type' => 'image/png',
