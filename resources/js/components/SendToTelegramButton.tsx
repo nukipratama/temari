@@ -16,10 +16,10 @@ import { formatDurationHMS } from '@/lib/pace';
  * re-send can't spam Telegram.
  *
  * A user who hasn't linked Telegram (`connected={false}`) still sees the pill,
- * muted — so the feature is discoverable instead of hidden. A tap opens a soft
- * nudge: the {@see ConnectTelegramModal} for a real user (points them at Profil
- * to connect), or the {@see DemoBlockedModal} for the shared demo account,
- * which can't link a personal chat.
+ * muted — so the feature is discoverable instead of hidden. A tap opens the
+ * {@see ConnectTelegramModal} nudge pointing at Profil, the same for a real
+ * user and the shared demo account (the demo-write modal only guards the actual
+ * connect/disconnect writes in Profil, not this discovery surface).
  */
 export default function SendToTelegramButton({
     url,
@@ -27,7 +27,7 @@ export default function SendToTelegramButton({
     connected = true,
 }: Readonly<{ url: string; retryAfterSeconds?: number | null; connected?: boolean }>) {
     const [sending, send] = usePendingPost(url, { preserveScroll: true });
-    const { isDemo, open, setOpen, guard } = useDemoGuard();
+    const { open, setOpen, guard } = useDemoGuard();
     const [connectOpen, setConnectOpen] = useState(false);
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const cooling = cooldownRemaining > 0;
@@ -39,13 +39,12 @@ export default function SendToTelegramButton({
                     tone="outline"
                     size="sm"
                     className="opacity-60"
-                    onClick={() => (isDemo ? setOpen(true) : setConnectOpen(true))}
+                    onClick={() => setConnectOpen(true)}
                     aria-label="Sambungin Telegram dulu buat kirim ke Telegram"
                 >
                     <Icon icon="mdi:send" width={15} height={15} aria-hidden />
                     Kirim ke Telegram
                 </PillButton>
-                <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
                 <ConnectTelegramModal open={connectOpen} onClose={() => setConnectOpen(false)} />
             </>
         );
