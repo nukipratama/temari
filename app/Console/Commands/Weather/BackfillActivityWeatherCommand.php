@@ -59,15 +59,7 @@ class BackfillActivityWeatherCommand extends Command
             return false;
         }
 
-        $detail->update([
-            'weather_temp_c' => $snapshot->tempC,
-            'weather_humidity_pct' => $snapshot->humidityPct,
-            'weather_rain_detected' => $snapshot->rainDetected,
-            'weather_wind_speed_kmh' => $snapshot->windSpeedKmh,
-            'weather_wind_gust_kmh' => $snapshot->windGustKmh,
-            'weather_wind_direction_deg' => $snapshot->windDirectionDeg,
-            'weather_rain_is_forecast' => $snapshot->rainIsForecast,
-        ]);
+        $detail->update($snapshot->toActivityDetailAttributes());
 
         return true;
     }

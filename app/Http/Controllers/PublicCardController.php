@@ -40,7 +40,7 @@ class PublicCardController extends Controller
         return view('public.kartu', [
             'name' => $card->special_move,
             'rarityLabel' => $card->rarity->label(),
-            'rarity' => $card->rarity->value,
+            'rarityColor' => $card->rarity->hexColor(),
             'distanceKm' => $distanceKm,
             'date' => $detail?->start_date_local,
             'location' => $detail?->location_name,

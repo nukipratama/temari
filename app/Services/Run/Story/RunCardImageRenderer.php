@@ -46,17 +46,6 @@ class RunCardImageRenderer
 
     private const string LINE = '#d8ddd2';
 
-    /**
-     * @var array<string, string>
-     */
-    private const array RARITY_COLORS = [
-        'common' => '#7d8694',
-        'uncommon' => '#2fb350',
-        'rare' => '#2f81f7',
-        'epic' => '#a855f7',
-        'legendary' => '#f5a623',
-    ];
-
     public function __construct(private readonly PolylineProjector $projector) {}
 
     /**
@@ -73,7 +62,7 @@ class RunCardImageRenderer
     private function buildSvg(RunCard $card): string
     {
         $detail = $card->activity->detail ?? null;
-        $rarity = self::RARITY_COLORS[$card->rarity->value] ?? self::RARITY_COLORS['common'];
+        $rarity = $card->rarity->hexColor();
 
         $name = $this->escape($card->special_move);
         $rarityLabel = $this->escape(mb_strtoupper($card->rarity->label()));

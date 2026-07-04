@@ -2,14 +2,6 @@
     $km = $distanceKm !== null ? rtrim(rtrim(number_format($distanceKm, 2, '.', ''), '0'), '.') : null;
     $dateLabel = $date?->translatedFormat('j M Y');
     $ogDescription = 'Kartu lari' . ($km !== null ? " {$km} km" : '') . ', rarity ' . $rarityLabel . ', dari teman-lari.';
-    $rarityColors = [
-        'common' => '#7d8694',
-        'uncommon' => '#2fb350',
-        'rare' => '#2f81f7',
-        'epic' => '#a855f7',
-        'legendary' => '#f5a623',
-    ];
-    $rarityColor = $rarityColors[$rarity] ?? '#7d8694';
 @endphp
 <!DOCTYPE html>
 <html lang="id">

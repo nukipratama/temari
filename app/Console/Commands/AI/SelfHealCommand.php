@@ -48,7 +48,7 @@ class SelfHealCommand extends Command
             + $this->resumePerActivity($service)
             + $this->resumeCardFlavor($service)
             + $this->resumePrContext($service)
-            + $this->resumeBriefingHeadlineSuggestion($service)
+            + $this->resumeSingleRowType($service, AnalysisType::BriefingHeadline)
             + $this->resumeSingleRowType($service, AnalysisType::BriefingMascotVoice)
             + $this->resumeSingleRowType($service, AnalysisType::BriefingFeaturedKartuVoice)
             + $this->resumeSingleRowType($service, AnalysisType::DailyGreeting)
@@ -225,47 +225,29 @@ class SelfHealCommand extends Command
     }
 
     /**
-     * Briefing headline + suggestion: grouped through AnalyzeBriefingJob, so
-     * only the headline row is checked as the group's representative (mirrors
-     * {@see self::resumePerActivity()} checking only PostRunSpeech for its
-     * group) - {@see AnalysisService::request()} resolves the group job from
-     * the type and re-dispatches both rows together. Demo excluded.
-     */
-    private function resumeBriefingHeadlineSuggestion(AnalysisService $service): int
-    {
-        $earliestPerUser = Analysis::query()
-            ->stalled()
-            ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
-            ->where('analysis_type', AnalysisType::BriefingHeadline)
-            ->whereIn('subject_id', User::query()->notDemo()->select('id'))
-            ->orderBy('discriminator')
-            ->get(['subject_id', 'discriminator'])
-            ->unique('subject_id');
-
-        foreach ($earliestPerUser as $row) {
-            $service->request(
-                subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
-                subjectId: (int) $row->subject_id,
-                type: AnalysisType::BriefingHeadline,
-                discriminator: $row->discriminator,
-                invalidate: false,
-            );
-        }
-
-        return $earliestPerUser->count();
-    }
-
-    /**
      * Single-row-per-user narration types with no chain/group of their own:
-     * BriefingMascotVoice, BriefingFeaturedKartuVoice, DailyGreeting,
-     * TrendCaption, PersonaSummary, AkuProfileVoice. Each is dispatched only
-     * at its own kickoff (daily briefing / weekly profile) with no other
-     * scheduled recovery, so a capped-Pending or transiently-Failed row would
-     * sit stuck without this sweep. subject_id is the user id directly for
-     * all of these types, so no join is needed to scope by user. Stalled +
-     * budget-bounded; demo excluded; re-dispatched against the stalled row's
-     * own discriminator (not recomputed) so a resumed BriefingFeaturedKartuVoice
-     * still targets the card it originally narrated.
+     * BriefingHeadline, BriefingMascotVoice, BriefingFeaturedKartuVoice,
+     * DailyGreeting, TrendCaption, PersonaSummary, AkuProfileVoice. Each is
+     * dispatched only at its own kickoff (daily briefing / weekly profile)
+     * with no other scheduled recovery, so a capped-Pending or
+     * transiently-Failed row would sit stuck without this sweep. subject_id
+     * is the user id directly for all of these types, so no join is needed to
+     * scope by user. Stalled + budget-bounded; demo excluded; re-dispatched
+     * against the stalled row's own discriminator (not recomputed) so a
+     * resumed BriefingFeaturedKartuVoice still targets the card it originally
+     * narrated.
+     *
+     * BriefingHeadline doubles as the briefing group's representative: it and
+     * BriefingSuggestion are grouped through AnalyzeBriefingJob (mirrors
+     * {@see self::resumePerActivity()} checking only PostRunSpeech for its
+     * group), and {@see AnalysisService::request()} resolves the group job
+     * from the type and re-dispatches both rows together.
+     *
+     * Every other type's discriminator is a zero-padded date/week string, so a
+     * plain string ORDER BY is chronological. BriefingFeaturedKartuVoice's
+     * discriminator is a bare card id instead, which a string sort gets wrong
+     * across a digit-count boundary ('10' sorts before '9'), so it orders by
+     * the numeric value instead to still land on the truly-earliest stalled row.
      */
     private function resumeSingleRowType(AnalysisService $service, AnalysisType $type): int
     {
@@ -274,7 +256,11 @@ class SelfHealCommand extends Command
             ->where('subject_type', $type->subjectType())
             ->where('analysis_type', $type)
             ->whereIn('subject_id', User::query()->notDemo()->select('id'))
-            ->orderBy('discriminator')
+            ->when(
+                $type === AnalysisType::BriefingFeaturedKartuVoice,
+                fn ($query) => $query->orderByRaw('CAST(discriminator AS UNSIGNED)'),
+                fn ($query) => $query->orderBy('discriminator'),
+            )
             ->get(['subject_id', 'discriminator'])
             ->unique('subject_id');
 

@@ -37,4 +37,21 @@ enum Rarity: string
         // value comes from the enum itself, so the false branch is unreachable.
         return (int) array_search($this, self::cases(), strict: true);
     }
+
+    /**
+     * Daybreak rarity tint, mirrored from the client's `RARITY_HEX`
+     * ({@see resources/js/lib/runcard.ts}). Single source of truth for the
+     * server-rendered card surfaces ({@see \App\Services\Run\Story\RunCardImageRenderer},
+     * resources/views/public/kartu.blade.php).
+     */
+    public function hexColor(): string
+    {
+        return match ($this) {
+            self::Common => '#7d8694',
+            self::Uncommon => '#2fb350',
+            self::Rare => '#2f81f7',
+            self::Epic => '#a855f7',
+            self::Legendary => '#f5a623',
+        };
+    }
 }
