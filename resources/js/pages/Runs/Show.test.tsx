@@ -334,12 +334,10 @@ describe('Runs/Show', () => {
         expect(button).toHaveTextContent('Lagi narik…');
     });
 
-    it('shows a disabled Telegram button when not connected', () => {
+    it('shows a muted Telegram button that nudges (no send) when not connected', () => {
         vi.mocked(router.post).mockReset();
         renderShow();
-        const button = screen.getByText('Kirim ke Telegram').closest('button')!;
-        expect(button).toBeDisabled();
-        fireEvent.click(button);
+        fireEvent.click(screen.getByText('Kirim ke Telegram'));
         expect(router.post).not.toHaveBeenCalled();
     });
 

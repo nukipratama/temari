@@ -210,7 +210,7 @@ describe('Riwayat/Jejak', () => {
         telegram_retry_after_seconds: null,
     };
 
-    it('shows a disabled weekly recap Telegram button when not connected', () => {
+    it('shows a muted weekly recap Telegram button that nudges (no send) when not connected', () => {
         // telegramConnected defaults to undefined (falsy) in beforeEach.
         vi.mocked(router.post).mockReset();
         render(
@@ -221,9 +221,7 @@ describe('Riwayat/Jejak', () => {
                 weeklySnapshots={[doneWeekSnapshot]}
             />,
         );
-        const button = screen.getByText('Kirim ke Telegram').closest('button')!;
-        expect(button).toBeDisabled();
-        fireEvent.click(button);
+        fireEvent.click(screen.getByText('Kirim ke Telegram'));
         expect(router.post).not.toHaveBeenCalled();
     });
 

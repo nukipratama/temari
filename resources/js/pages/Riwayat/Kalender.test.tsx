@@ -285,13 +285,11 @@ describe('Kalender', () => {
             expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
         });
 
-        it('shows a disabled Telegram button when not connected', () => {
+        it('shows a muted Telegram button that nudges (no send) when not connected', () => {
             // telegramConnected defaults to falsy in beforeEach.
             vi.mocked(router.post).mockReset();
             render(<Kalender {...BASE_PROPS} month="2026-04" cells={TWO_WEEK_CELLS} monthlyRecap={makeRecap()} />);
-            const button = screen.getByText('Kirim ke Telegram').closest('button')!;
-            expect(button).toBeDisabled();
-            fireEvent.click(button);
+            fireEvent.click(screen.getByText('Kirim ke Telegram'));
             expect(router.post).not.toHaveBeenCalled();
         });
 

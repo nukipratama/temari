@@ -21,8 +21,8 @@ describe('DemoBlockedModal', () => {
         render(<DemoBlockedModal open onClose={vi.fn()} />);
         const dialog = screen.getByRole('dialog');
         expect(dialog).toHaveAttribute('aria-modal', 'true');
-        expect(dialog).toHaveAttribute('aria-labelledby', 'demo-blocked-title');
-        expect(document.getElementById('demo-blocked-title')).toHaveTextContent('Telegram-nya lagi istirahat dulu');
+        expect(dialog).toHaveAttribute('aria-labelledby', 'temari-nudge-title');
+        expect(document.getElementById('temari-nudge-title')).toHaveTextContent('Telegram-nya lagi istirahat dulu');
     });
 
     it('posts to /logout when the primary CTA is clicked', () => {

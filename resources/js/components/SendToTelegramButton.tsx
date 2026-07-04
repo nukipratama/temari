@@ -1,6 +1,8 @@
 import { Icon } from '@iconify/react';
+import { useState } from 'react';
 import PillButton from '@/components/ui/PillButton';
 import DemoBlockedModal from '@/components/DemoBlockedModal';
+import ConnectTelegramModal from '@/components/ConnectTelegramModal';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
@@ -14,9 +16,10 @@ import { formatDurationHMS } from '@/lib/pace';
  * re-send can't spam Telegram.
  *
  * A user who hasn't linked Telegram (`connected={false}`) still sees the pill,
- * muted and disabled — so the feature is discoverable instead of hidden, but a
- * tap does nothing (they connect from Profil). Demo shares the bot, so when it
- * is connected the tap is intercepted by the friendly demo modal via `guard()`.
+ * muted — so the feature is discoverable instead of hidden. A tap opens a soft
+ * nudge: the {@see ConnectTelegramModal} for a real user (points them at Profil
+ * to connect), or the {@see DemoBlockedModal} for the shared demo account,
+ * which can't link a personal chat.
  */
 export default function SendToTelegramButton({
     url,
@@ -24,22 +27,27 @@ export default function SendToTelegramButton({
     connected = true,
 }: Readonly<{ url: string; retryAfterSeconds?: number | null; connected?: boolean }>) {
     const [sending, send] = usePendingPost(url, { preserveScroll: true });
-    const { open, setOpen, guard } = useDemoGuard();
+    const { isDemo, open, setOpen, guard } = useDemoGuard();
+    const [connectOpen, setConnectOpen] = useState(false);
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const cooling = cooldownRemaining > 0;
 
     if (!connected) {
         return (
-            <PillButton
-                tone="outline"
-                size="sm"
-                disabled
-                className="disabled:opacity-60 disabled:cursor-not-allowed"
-                aria-label="Sambungin Telegram dulu buat kirim ke Telegram"
-            >
-                <Icon icon="mdi:send" width={15} height={15} aria-hidden />
-                Kirim ke Telegram
-            </PillButton>
+            <>
+                <PillButton
+                    tone="outline"
+                    size="sm"
+                    className="opacity-60"
+                    onClick={() => (isDemo ? setOpen(true) : setConnectOpen(true))}
+                    aria-label="Sambungin Telegram dulu buat kirim ke Telegram"
+                >
+                    <Icon icon="mdi:send" width={15} height={15} aria-hidden />
+                    Kirim ke Telegram
+                </PillButton>
+                <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
+                <ConnectTelegramModal open={connectOpen} onClose={() => setConnectOpen(false)} />
+            </>
         );
     }
 

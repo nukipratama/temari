@@ -21,13 +21,21 @@ describe('SendToTelegramButton', () => {
         expect(screen.getByText('Telegram-nya lagi istirahat dulu')).toBeInTheDocument();
     });
 
-    it('renders a disabled button that does nothing on click when not connected', () => {
+    it('opens the connect-Telegram nudge (no post) when a real user taps the muted button', () => {
+        setMockPage({ auth: { user: makeUser({ is_demo: false }) } });
         vi.mocked(router.post).mockReset();
         render(<SendToTelegramButton url="/aktivitas/99/telegram" connected={false} />);
-        const button = screen.getByText('Kirim ke Telegram').closest('button')!;
-        expect(button).toBeDisabled();
-        fireEvent.click(button);
+        fireEvent.click(screen.getByText('Kirim ke Telegram'));
         expect(router.post).not.toHaveBeenCalled();
+        expect(screen.getByText('Sambungin Telegram dulu yuk')).toBeInTheDocument();
+    });
+
+    it('opens the demo modal (not the connect nudge) when a demo user taps the muted button', () => {
+        setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
+        render(<SendToTelegramButton url="/aktivitas/99/telegram" connected={false} />);
+        fireEvent.click(screen.getByText('Kirim ke Telegram'));
+        expect(screen.getByText('Telegram-nya lagi istirahat dulu')).toBeInTheDocument();
+        expect(screen.queryByText('Sambungin Telegram dulu yuk')).not.toBeInTheDocument();
     });
 
     it('disables the button and shows a spinner label while sending', () => {
