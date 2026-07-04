@@ -60,7 +60,7 @@ Schedule::command('strava:ingest')->everyFiveMinutes()->withoutOverlapping(10);
 Schedule::command('geo:backfill-locations')->hourly()->withoutOverlapping(55);
 
 // 03:15 daily: correct forecast-sourced weather (rainIsForecast=true) once the
-// archive/reanalysis endpoint is reliable for it (6+ days old). Free HTTP, no
+// archive/reanalysis endpoint is reliable for it (a week+ old). Free HTTP, no
 // LLM; a miss just leaves the row for the next run to retry. Never touches
 // RunCard badges, only the weather_* columns.
 Schedule::command('weather:correct-forecast')->dailyAt('03:15')->withoutOverlapping(55);

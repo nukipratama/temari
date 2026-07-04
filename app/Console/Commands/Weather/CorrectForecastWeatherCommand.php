@@ -12,11 +12,17 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('weather:correct-forecast {--limit=200 : Cap on rows handled per run}')]
-#[Description('Re-fetch weather from the archive endpoint for rows still sourced from a forecast, once the archive is reliable (6+ days old).')]
+#[Description('Re-fetch weather from the archive endpoint for rows still sourced from a forecast, once the archive is reliable (a week+ old).')]
 class CorrectForecastWeatherCommand extends Command
 {
-    /** Archive/reanalysis data lags behind real-time; before this, a re-fetch would just hit the same forecast-derived gap. */
-    private const int MIN_AGE_DAYS = 6;
+    /**
+     * The ERA5T archive lags real-time by ~5 days, and the forecast endpoint
+     * reliably covers ~7 days of past, so a week is the clean handover point: a
+     * run is corrected exactly when it leaves the forecast window and the
+     * observed archive has caught up. Before that, a re-fetch would just hit the
+     * same forecast-derived value.
+     */
+    private const int MIN_AGE_DAYS = 7;
 
     public function handle(OpenMeteoClient $weather): int
     {
