@@ -20,11 +20,13 @@ it('recognises the notifiable types and ignores the rest', function (): void {
     $postRun = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
     $weekly = Analysis::factory()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
     $monthly = Analysis::factory()->make(['analysis_type' => AnalysisType::MonthlyRecap]);
+    $briefing = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingHeadline]);
     $greeting = Analysis::factory()->make(['analysis_type' => AnalysisType::DailyGreeting]);
 
     expect($registry->isNotifiable($postRun))->toBeTrue()
         ->and($registry->isNotifiable($weekly))->toBeTrue()
         ->and($registry->isNotifiable($monthly))->toBeTrue()
+        ->and($registry->isNotifiable($briefing))->toBeTrue()
         ->and($registry->isNotifiable($greeting))->toBeFalse();
 });
 
@@ -64,6 +66,18 @@ it('resolves the user behind a monthly recap directly via its subject_id', funct
     expect((new NotifiableAnalysis())->resolveUser($analysis)?->id)->toBe($user->id);
 });
 
+it('resolves the user behind a daily briefing directly via its subject_id', function (): void {
+    $user = User::factory()->create();
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'discriminator' => '2026-07-04',
+    ]);
+
+    expect((new NotifiableAnalysis())->resolveUser($analysis)?->id)->toBe($user->id);
+});
+
 it('isOptedIn returns true when the connection preference flag is on', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
     $connection = TelegramConnection::factory()->make(['notify_post_run' => true]);
@@ -74,6 +88,20 @@ it('isOptedIn returns true when the connection preference flag is on', function 
 it('isOptedIn returns false when the connection preference flag is off', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
     $connection = TelegramConnection::factory()->make(['notify_post_run' => false]);
+
+    expect((new NotifiableAnalysis())->isOptedIn($analysis, $connection))->toBeFalse();
+});
+
+it('isOptedIn returns true for a daily briefing when the connection has opted in', function (): void {
+    $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingHeadline]);
+    $connection = TelegramConnection::factory()->make(['notify_daily_briefing' => true]);
+
+    expect((new NotifiableAnalysis())->isOptedIn($analysis, $connection))->toBeTrue();
+});
+
+it('isOptedIn returns false for a daily briefing by default (opt-in only)', function (): void {
+    $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingHeadline]);
+    $connection = TelegramConnection::factory()->make(['notify_daily_briefing' => false]);
 
     expect((new NotifiableAnalysis())->isOptedIn($analysis, $connection))->toBeFalse();
 });
@@ -196,4 +224,16 @@ it('links a monthly recap to its month on the calendar', function (): void {
 
     expect($message)->toStartWith('🗓️ Bulan ini 120 km.')
         ->and($message)->toContain('Lihat kalender: ' . route('kalender', ['month' => '2026-06']));
+});
+
+it('links a daily briefing to the dashboard', function (): void {
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'content' => 'Pagi ini enak buat lari santai.',
+    ]);
+
+    $message = (new NotifiableAnalysis())->format($analysis);
+
+    expect($message)->toStartWith('☀️ Pagi ini enak buat lari santai.')
+        ->and($message)->toContain('Lihat ringkasan hari ini: ' . route('dashboard'));
 });

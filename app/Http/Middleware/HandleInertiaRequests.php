@@ -12,6 +12,7 @@ use App\Services\Gamification\GoalResolver;
 use App\Services\Run\Story\Temari;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\URL;
 use Inertia\Middleware;
 use Override;
 
@@ -210,7 +211,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, mood: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null, summary_polyline: string|null, edition: array{index: int, total: int}}|null
+     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, mood: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null, summary_polyline: string|null, public_share_url: string, edition: array{index: int, total: int}}|null
      */
     private function pendingRevealFor(?User $user): ?array
     {
@@ -250,6 +251,7 @@ class HandleInertiaRequests extends Middleware
             'average_heartrate' => $detail?->average_heartrate,
             'stream_summary' => $detail?->stream_summary,
             'summary_polyline' => $detail?->summary_polyline,
+            'public_share_url' => URL::signedRoute('kartu.publik', ['card' => $card->id]),
             'edition' => $this->editionFor($user, $card),
         ];
     }

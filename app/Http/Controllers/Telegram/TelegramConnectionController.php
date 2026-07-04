@@ -23,6 +23,7 @@ class TelegramConnectionController extends Controller
             'notify_post_run' => ['required', 'boolean'],
             'notify_weekly_recap' => ['required', 'boolean'],
             'notify_monthly_recap' => ['required', 'boolean'],
+            'notify_daily_briefing' => ['required', 'boolean'],
         ]);
 
         /** @var User $user */

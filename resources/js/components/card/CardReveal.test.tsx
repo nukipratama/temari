@@ -33,6 +33,7 @@ const epicReveal: PendingReveal = {
   distance_m: 10000,
   moving_time_sec: 3480,
   trimp_edwards: 161,
+  public_share_url: "https://teman-lari.test/k/42?signature=abc",
   edition: { index: 3, total: 7 },
 };
 
@@ -47,6 +48,7 @@ const commonReveal: PendingReveal = {
   distance_m: 5000,
   moving_time_sec: 1800,
   trimp_edwards: 42,
+  public_share_url: "https://teman-lari.test/k/7?signature=abc",
   edition: { index: 1, total: 1 },
 };
 

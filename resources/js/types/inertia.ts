@@ -31,6 +31,7 @@ export interface PendingReveal {
     average_heartrate?: number | null;
     stream_summary?: StreamSummary | null;
     summary_polyline?: string | null;
+    public_share_url: string;
     edition: CardEdition;
 }
 

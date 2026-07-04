@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Pulse;
 
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
+use App\Models\AI\Analysis;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +43,9 @@ class AiPipelineHealth extends Card
         ]);
 
         $failed = (int) ($statusCounts[AnalysisStatus::Failed->value] ?? 0);
+        $deadLettered = Analysis::query()->deadLettered()->count();
+        $failedJobs = DB::table('failed_jobs')->count();
+        $pauseReason = app(AnalysisService::class)->pauseReason();
 
         $statusBoxes = [
             ['label' => 'pending',     'count' => (int) ($statusCounts[AnalysisStatus::Pending->value] ?? 0),    'alert' => false],
@@ -58,7 +63,14 @@ class AiPipelineHealth extends Card
             'statusBoxes' => $statusBoxes,
             'recentFailures' => $recentFailures,
             'trend' => $trend,
-            'severity' => $failed > 0 ? 'alert' : 'ok',
+            'deadLettered' => $deadLettered,
+            'failedJobs' => $failedJobs,
+            'pauseReason' => $pauseReason,
+            'severity' => match (true) {
+                $failed > 0 => 'alert',
+                $pauseReason !== null => 'warn',
+                default => 'ok',
+            },
         ]);
     }
 }

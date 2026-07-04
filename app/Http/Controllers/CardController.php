@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\Temari;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -82,6 +83,9 @@ class CardController extends Controller
             'card' => [
                 ...$this->cardPayload($card, $editions, $counts),
                 'flavor_analysis' => Analysis::toPayload($flavorAnalysis, AnalysisType::CardFlavor, RunCard::class, $card->id),
+                // Signed public URL for the share modal — minted server-side since
+                // signing needs the app key. Recipients open it without a session.
+                'public_share_url' => URL::signedRoute('kartu.publik', ['card' => $card->id]),
             ],
             'relatedCards' => $relatedCards,
             'totalForRarity' => $counts[$card->rarity->value] ?? 0,

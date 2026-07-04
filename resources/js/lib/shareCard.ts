@@ -23,6 +23,8 @@ const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 export interface ShareKartuData {
     id: number;
     name: string;
+    /** Signed public share URL (server-minted). The share fallback copies/shares this. */
+    shareUrl: string;
     rarity: Rarity;
     /** The run's Temari mood, used as the card's "element/type". */
     mood: Mood;

@@ -158,6 +158,7 @@ export default function CardReveal({
   const shareData: ShareKartuData = {
     id: pending.card_id,
     name: pending.special_move,
+    shareUrl: pending.public_share_url,
     rarity: pending.rarity,
     mood: pending.mood,
     subtitle,

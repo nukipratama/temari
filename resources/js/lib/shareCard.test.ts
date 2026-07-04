@@ -12,6 +12,7 @@ const loopPolyline = polylineCodec.encode([[0, 0], [0, 0.01], [0.01, 0.01], [0, 
 const kartu: ShareKartuData = {
     id: 1,
     name: 'Pemburu Sabar',
+    shareUrl: 'https://teman-lari.test/k/1?signature=abc',
     rarity: 'legendary',
     mood: 'nyala',
     subtitle: null,

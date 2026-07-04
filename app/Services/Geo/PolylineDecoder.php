@@ -7,6 +7,42 @@ namespace App\Services\Geo;
 // https://developers.google.com/maps/documentation/utilities/polylinealgorithm
 class PolylineDecoder
 {
+    /**
+     * Decode a full Google-encoded polyline into its ordered [lat, lng] points.
+     *
+     * @return list<array{0: float, 1: float}>
+     */
+    public function decode(string $polyline): array
+    {
+        if ($polyline === '') {
+            return [];
+        }
+
+        $index = 0;
+        $length = strlen($polyline);
+        $lat = 0;
+        $lng = 0;
+        $points = [];
+
+        while ($index < $length) {
+            $latDelta = $this->decodeNext($polyline, $index, $length);
+            if ($latDelta === null) {
+                break;
+            }
+            $lat += $latDelta;
+
+            $lngDelta = $this->decodeNext($polyline, $index, $length);
+            if ($lngDelta === null) {
+                break;
+            }
+            $lng += $lngDelta;
+
+            $points[] = [$lat / 1e5, $lng / 1e5];
+        }
+
+        return $points;
+    }
+
     /** @return array{0: float, 1: float}|null */
     public function firstPoint(string $polyline): ?array
     {

@@ -15,6 +15,7 @@ use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GoalController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicCardController;
 use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
@@ -53,6 +54,14 @@ Route::post('/client-errors', ClientErrorController::class)
     ->middleware('throttle:client-errors')
     ->name('client-errors');
 
+// Public shareable card view. Unauthenticated on purpose so a link recipient
+// without a Strava session still sees the card; gated by Laravel's `signed`
+// middleware, so only a server-minted signed URL (URL::signedRoute) is honored
+// and possession of the link is the grant (no per-card token column needed).
+Route::get('/k/{card}', [PublicCardController::class, 'show'])
+    ->middleware('signed')
+    ->name('kartu.publik');
+
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->name('auth.strava.redirect');
@@ -60,7 +69,7 @@ Route::middleware('guest')->group(function (): void {
     Route::post('/auth/demo', [DemoAuthController::class, 'login'])->name('auth.demo');
 });
 
-Route::middleware('auth')->group(function (): void {
+Route::middleware(['auth', 'block-demo-writes'])->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
 
     Route::get('/aktivitas', [RunController::class, 'index'])->name('aktivitas.index');
@@ -104,7 +113,9 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('throttle:strava-sync')
         ->name('strava.sync');
 
-    Route::post('/logout', [StravaAuthController::class, 'logout'])->name('auth.logout');
+    Route::post('/logout', [StravaAuthController::class, 'logout'])
+        ->withoutMiddleware('block-demo-writes')
+        ->name('auth.logout');
 
     // Legacy 301 redirects — keep deep links working from external bookmarks.
     Route::permanentRedirect('/runs', '/aktivitas');
@@ -123,9 +134,14 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
         ->whereNumber('subjectId')
         ->name('api.analyses.show');
+    // "Baca ulang" stays live for the demo account by design: it's the one
+    // place a reviewer can trigger a real per-block LLM call on demand (see
+    // docs/decisions/demo-user-billing-exclusion.md), so it's excluded from
+    // the otherwise-blanket demo write guard.
     Route::post('/api/analyses/{type}/{subjectId}/trigger', [AnalysisController::class, 'trigger'])
         ->whereNumber('subjectId')
         ->middleware('throttle:analysis-trigger')
+        ->withoutMiddleware('block-demo-writes')
         ->name('api.analyses.trigger');
 
 });

@@ -59,6 +59,7 @@ interface TelegramPayload {
     notify_post_run: boolean;
     notify_weekly_recap: boolean;
     notify_monthly_recap: boolean;
+    notify_daily_briefing: boolean;
 }
 
 interface AkuProps {
@@ -80,6 +81,7 @@ const TELEGRAM_DEFAULT: TelegramPayload = {
     notify_post_run: true,
     notify_weekly_recap: true,
     notify_monthly_recap: true,
+    notify_daily_briefing: false,
 };
 
 export default function Aku({
@@ -246,14 +248,21 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
     const [postRun, setPostRun] = useState(telegram.notify_post_run);
     const [weeklyRecap, setWeeklyRecap] = useState(telegram.notify_weekly_recap);
     const [monthlyRecap, setMonthlyRecap] = useState(telegram.notify_monthly_recap);
+    const [dailyBriefing, setDailyBriefing] = useState(telegram.notify_daily_briefing);
 
-    const savePrefs = (notifyPostRun: boolean, notifyWeeklyRecap: boolean, notifyMonthlyRecap: boolean) => {
+    const savePrefs = (
+        notifyPostRun: boolean,
+        notifyWeeklyRecap: boolean,
+        notifyMonthlyRecap: boolean,
+        notifyDailyBriefing: boolean,
+    ) => {
         router.patch(
             '/profil/telegram',
             {
                 notify_post_run: notifyPostRun,
                 notify_weekly_recap: notifyWeeklyRecap,
                 notify_monthly_recap: notifyMonthlyRecap,
+                notify_daily_briefing: notifyDailyBriefing,
             },
             { preserveScroll: true },
         );
@@ -300,7 +309,7 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     checked={postRun}
                     onChange={(value) => {
                         setPostRun(value);
-                        savePrefs(value, weeklyRecap, monthlyRecap);
+                        savePrefs(value, weeklyRecap, monthlyRecap, dailyBriefing);
                     }}
                 />
                 <NotifyToggle
@@ -308,7 +317,7 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     checked={weeklyRecap}
                     onChange={(value) => {
                         setWeeklyRecap(value);
-                        savePrefs(postRun, value, monthlyRecap);
+                        savePrefs(postRun, value, monthlyRecap, dailyBriefing);
                     }}
                 />
                 <NotifyToggle
@@ -316,7 +325,15 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     checked={monthlyRecap}
                     onChange={(value) => {
                         setMonthlyRecap(value);
-                        savePrefs(postRun, weeklyRecap, value);
+                        savePrefs(postRun, weeklyRecap, value, dailyBriefing);
+                    }}
+                />
+                <NotifyToggle
+                    label="Ringkasan harian"
+                    checked={dailyBriefing}
+                    onChange={(value) => {
+                        setDailyBriefing(value);
+                        savePrefs(postRun, weeklyRecap, monthlyRecap, value);
                     }}
                 />
             </div>

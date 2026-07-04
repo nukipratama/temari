@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react';
 import { useRef, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import BrandMark from '@/components/BrandMark';
+import KartuMini from '@/components/card/KartuMini';
 import PillButton from '@/components/ui/PillButton';
 import type { SharedProps } from '@/types/inertia';
 
@@ -167,6 +168,23 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending }
                     </li>
                 ))}
             </ul>
+
+            <div className="flex w-full max-w-[480px] items-center gap-4 rounded-2xl border border-cream-deep bg-cream px-4 py-4 2xl:max-w-[560px]">
+                <KartuMini
+                    name="10K Subuh"
+                    rarity="legendary"
+                    mood="nyala"
+                    date="12 Jun"
+                    edition={{ index: 3, total: 12 }}
+                    className="shadow-md"
+                />
+                <div>
+                    <p className="font-sans text-sm font-semibold text-ink">Ini kartu beneran, bukan mockup</p>
+                    <p className="mt-1 font-sans text-xs leading-relaxed text-ink-3">
+                        Tiap lari yang nyambung dari Strava-mu, Temari bikinin kartu koleksi kayak gini, lengkap sama rute dan mood hari itu.
+                    </p>
+                </div>
+            </div>
 
             <div
                 className="w-full max-w-[480px] rounded-2xl bg-cream px-9 py-10 2xl:max-w-[560px]"

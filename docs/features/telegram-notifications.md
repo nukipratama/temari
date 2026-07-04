@@ -3,7 +3,7 @@ title: Telegram notifications
 description: Linking a Telegram account, the per-type notification toggles, and how post-run / weekly-recap / monthly-recap narration is pushed to the bot.
 tags: [feature, telegram]
 status: living
-reviewed: 2026-07-03
+reviewed: 2026-07-04
 code_refs:
   - app/Services/Telegram/TelegramClient.php
   - app/Services/Telegram/TelegramLinkToken.php
@@ -14,6 +14,7 @@ code_refs:
   - app/Http/Controllers/Telegram/SendActivityNotificationController.php
   - app/Http/Controllers/Telegram/SendWeeklyRecapNotificationController.php
   - app/Http/Controllers/Telegram/SendMonthlyRecapNotificationController.php
+  - app/Console/Commands/AI/DailyBriefingCommand.php
   - app/Http/Controllers/Telegram/TelegramWebhookController.php
   - app/Http/Controllers/Telegram/TelegramConnectionController.php
   - app/Http/Middleware/HandleInertiaRequests.php
@@ -27,9 +28,9 @@ code_refs:
 
 # Telegram notifications
 
-The first outbound channel: Temari pushes the most "alive" narration to the user's Telegram so the companion feels present without them opening the app. Three events notify, all keyed off the same chokepoint that finalizes any narration ([[ai-pipeline]]): the **post-run speech** (minutes after a Strava activity syncs), the **weekly recap** (Monday morning), and the **monthly recap** (start of the next month). Each is an independent opt-in toggle; adding a fourth event is one entry in [NotifiableAnalysis](../../app/Services/Telegram/NotifiableAnalysis.php).
+The first outbound channel: Temari pushes the most "alive" narration to the user's Telegram so the companion feels present without them opening the app. Four events notify, all keyed off the same chokepoint that finalizes any narration ([[ai-pipeline]]): the **post-run speech** (minutes after a Strava activity syncs), the **weekly recap** (Monday morning), the **monthly recap** (start of the next month), and the **daily briefing** headline (the `ai:daily-briefing` kickoff). Each is an independent opt-in toggle; adding another event is one entry in [NotifiableAnalysis](../../app/Services/Telegram/NotifiableAnalysis.php). Unlike the other three, `notify_daily_briefing` defaults to **false**: it's the highest-frequency push, so existing users aren't auto-enrolled into a new daily message.
 
-Each of the three also has a manual "Kirim ke Telegram" push: a per-page button ([SendToTelegramButton](../../resources/js/components/SendToTelegramButton.tsx)) on the run detail, weekly recap (Jejak), and monthly recap (Kalender) pages, gated on the `telegramConnected` shared Inertia prop ([HandleInertiaRequests](../../app/Http/Middleware/HandleInertiaRequests.php)) and on the narration being Done. Each controller (`SendActivityNotificationController`, `SendWeeklyRecapNotificationController`, `SendMonthlyRecapNotificationController`) shares its force-dispatch body via the [PushesAnalysisToTelegram](../../app/Http/Controllers/Telegram/Concerns/PushesAnalysisToTelegram.php) trait: `force: true`, so it bypasses the per-type opt-in toggle and the once-only delivery guard and can be re-sent.
+Each of the post-run / weekly / monthly types also has a manual "Kirim ke Telegram" push: a per-page button ([SendToTelegramButton](../../resources/js/components/SendToTelegramButton.tsx)) on the run detail, weekly recap (Jejak), and monthly recap (Kalender) pages, gated on the `telegramConnected` shared Inertia prop ([HandleInertiaRequests](../../app/Http/Middleware/HandleInertiaRequests.php)) and on the narration being Done. Each controller (`SendActivityNotificationController`, `SendWeeklyRecapNotificationController`, `SendMonthlyRecapNotificationController`) shares its force-dispatch body via the [PushesAnalysisToTelegram](../../app/Http/Controllers/Telegram/Concerns/PushesAnalysisToTelegram.php) trait: `force: true`, so it bypasses the per-type opt-in toggle and the once-only delivery guard and can be re-sent. The daily briefing has no manual push button; it only fires automatically, once per day per user (the `Analysis` row is upserted per date-keyed discriminator, so `markDone()` fires at most once for that day's row).
 
 ## Setup (one-time, out of band)
 
@@ -46,13 +47,13 @@ When the user taps Start, the update reaches [HandleTelegramUpdateJob](../../app
 
 ## Preferences + disconnect
 
-The Aku page ([Aku.tsx](../../resources/js/pages/Aku.tsx)) shows three switches (`notify_post_run`, `notify_weekly_recap`, `notify_monthly_recap`) and a "Putuskan" button once connected; [TelegramConnectionController](../../app/Http/Controllers/Telegram/TelegramConnectionController.php) persists the toggles and revokes on disconnect. The Telegram connect button keeps Telegram's brand mark and blue (not recolored), the way the Strava button is left as-shipped (see [[strava-connect]]).
+The Aku page ([Aku.tsx](../../resources/js/pages/Aku.tsx)) shows four switches (`notify_post_run`, `notify_weekly_recap`, `notify_monthly_recap`, `notify_daily_briefing`) and a "Putuskan" button once connected; [TelegramConnectionController](../../app/Http/Controllers/Telegram/TelegramConnectionController.php) persists the toggles and revokes on disconnect. The Telegram connect button keeps Telegram's brand mark and blue (not recolored), the way the Strava button is left as-shipped (see [[strava-connect]]).
 
 ## Sending
 
 `AnalysisService::markDone()` fans out [SendTelegramNotificationJob](../../app/Jobs/Telegram/SendTelegramNotificationJob.php) for the notifiable types. The job resolves the user behind the analysis ([NotifiableAnalysis](../../app/Services/Telegram/NotifiableAnalysis.php)), then enforces: not the demo user, a non-revoked connection, the per-type opt-in on, and a `telegram_deliveries` unique-`analysis_id` claim so a Horizon retry never double-sends. The completion-hook side and its guards live in [[ai-pipeline]]. A manual push (see above) bypasses the opt-in and delivery-claim guards but still requires a non-revoked connection.
 
-The message itself ([NotifiableAnalysis::format](../../app/Services/Telegram/NotifiableAnalysis.php)) is an emoji label (🏃 post-run / 📊 weekly / 🗓️ monthly), the LLM narration verbatim, a one-line metrics summary (distance · duration · pace · HR, each dropped when null) for post-run, and a tap-through deep link to the activity, run-history, or calendar page.
+The message itself ([NotifiableAnalysis::format](../../app/Services/Telegram/NotifiableAnalysis.php)) is an emoji label (🏃 post-run / 📊 weekly / 🗓️ monthly / ☀️ daily briefing), the LLM narration verbatim, a one-line metrics summary (distance · duration · pace · HR, each dropped when null) for post-run, and a tap-through deep link to the activity, run-history, calendar, or dashboard page.
 
 ## See also
 

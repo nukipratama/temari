@@ -65,4 +65,10 @@ describe('Login', () => {
         render(<Login authStravaUrl="/x" />);
         await userEvent.setup().click(screen.getByText('Coba versi demo'));
     });
+
+    it('shows a real sample Kartu as concrete proof of the product', () => {
+        render(<Login authStravaUrl="/x" />);
+        expect(screen.getByText('Ini kartu beneran, bukan mockup')).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: '10K Subuh' })).toBeInTheDocument();
+    });
 });

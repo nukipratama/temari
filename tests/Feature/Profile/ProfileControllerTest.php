@@ -117,6 +117,7 @@ it('exposes the telegram connect url when the bot username is configured', funct
             ->where('telegram.notify_post_run', true)
             ->where('telegram.notify_weekly_recap', true)
             ->where('telegram.notify_monthly_recap', true)
+            ->where('telegram.notify_daily_briefing', false)
             ->where('telegram.connect_url', fn (?string $url): bool => is_string($url)
                 && str_starts_with($url, 'https://t.me/temari_bot?start=')));
 });
@@ -128,6 +129,7 @@ it('reports the telegram connection state and preferences when connected', funct
         'notify_post_run' => false,
         'notify_weekly_recap' => true,
         'notify_monthly_recap' => false,
+        'notify_daily_briefing' => true,
     ]);
 
     $this->actingAs($user)->get('/profil')
@@ -137,5 +139,6 @@ it('reports the telegram connection state and preferences when connected', funct
             ->where('telegram.username', 'ada_runs')
             ->where('telegram.notify_post_run', false)
             ->where('telegram.notify_weekly_recap', true)
-            ->where('telegram.notify_monthly_recap', false));
+            ->where('telegram.notify_monthly_recap', false)
+            ->where('telegram.notify_daily_briefing', true));
 });

@@ -80,6 +80,7 @@ describe('Aku', () => {
             notify_post_run: true,
             notify_weekly_recap: true,
             notify_monthly_recap: true,
+            notify_daily_briefing: false,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
         const link = screen.getByText('Hubungkan Telegram').closest('a');
@@ -94,12 +95,14 @@ describe('Aku', () => {
             notify_post_run: true,
             notify_weekly_recap: false,
             notify_monthly_recap: true,
+            notify_daily_briefing: false,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
         expect(screen.getByText(/Telegram aktif/)).toBeInTheDocument();
         expect(screen.getByRole('switch', { name: 'Cerita abis lari' })).toHaveAttribute('aria-checked', 'true');
         expect(screen.getByRole('switch', { name: 'Rekap mingguan' })).toHaveAttribute('aria-checked', 'false');
         expect(screen.getByRole('switch', { name: 'Rekap bulanan' })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('switch', { name: 'Ringkasan harian' })).toHaveAttribute('aria-checked', 'false');
     });
 
     it('patches preferences when a toggle is flipped, carrying all current values', () => {
@@ -111,6 +114,7 @@ describe('Aku', () => {
             notify_post_run: true,
             notify_weekly_recap: false,
             notify_monthly_recap: true,
+            notify_daily_briefing: false,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
 
@@ -118,7 +122,7 @@ describe('Aku', () => {
 
         expect(router.patch).toHaveBeenCalledWith(
             '/profil/telegram',
-            { notify_post_run: true, notify_weekly_recap: true, notify_monthly_recap: true },
+            { notify_post_run: true, notify_weekly_recap: true, notify_monthly_recap: true, notify_daily_briefing: false },
             { preserveScroll: true },
         );
     });
@@ -132,6 +136,7 @@ describe('Aku', () => {
             notify_post_run: true,
             notify_weekly_recap: true,
             notify_monthly_recap: true,
+            notify_daily_briefing: false,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
 
@@ -139,7 +144,29 @@ describe('Aku', () => {
 
         expect(router.patch).toHaveBeenCalledWith(
             '/profil/telegram',
-            { notify_post_run: true, notify_weekly_recap: true, notify_monthly_recap: false },
+            { notify_post_run: true, notify_weekly_recap: true, notify_monthly_recap: false, notify_daily_briefing: false },
+            { preserveScroll: true },
+        );
+    });
+
+    it('patches the daily briefing flag when its toggle is flipped', () => {
+        vi.mocked(router.patch).mockReset();
+        const telegram = {
+            connected: true,
+            username: null,
+            connect_url: null,
+            notify_post_run: true,
+            notify_weekly_recap: true,
+            notify_monthly_recap: true,
+            notify_daily_briefing: false,
+        };
+        render(<Aku identity={identity} stats={stats} telegram={telegram} />);
+
+        fireEvent.click(screen.getByRole('switch', { name: 'Ringkasan harian' }));
+
+        expect(router.patch).toHaveBeenCalledWith(
+            '/profil/telegram',
+            { notify_post_run: true, notify_weekly_recap: true, notify_monthly_recap: true, notify_daily_briefing: true },
             { preserveScroll: true },
         );
     });
@@ -153,6 +180,7 @@ describe('Aku', () => {
             notify_post_run: true,
             notify_weekly_recap: true,
             notify_monthly_recap: true,
+            notify_daily_briefing: false,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
 
@@ -170,6 +198,7 @@ describe('Aku', () => {
             notify_post_run: true,
             notify_weekly_recap: true,
             notify_monthly_recap: true,
+            notify_daily_briefing: false,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
 

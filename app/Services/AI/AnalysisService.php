@@ -425,6 +425,30 @@ class AnalysisService
         return ! $this->autoDispatchEnabled();
     }
 
+    /**
+     * Why generation is paused right now, for the /pulse dashboard's status
+     * line — null when healthy. Checked in the same precedence as
+     * {@see self::autoDispatchEnabled()}, but reported as a reason instead of
+     * a single boolean so "kill switch off" reads differently from "cost
+     * ceiling hit today".
+     */
+    public function pauseReason(): ?string
+    {
+        if (! $this->config->boolean(AppConfigKey::AiEnabled)) {
+            return 'kill_switch';
+        }
+
+        if (blank(config('azure_openai.uri')) || blank(config('azure_openai.api_key'))) {
+            return 'unconfigured';
+        }
+
+        if ($this->dailyCostCeilingExceeded()) {
+            return 'cost_ceiling';
+        }
+
+        return null;
+    }
+
     private function autoDispatchEnabled(): bool
     {
         return ! $this->dispatchSuppressed

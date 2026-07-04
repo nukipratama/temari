@@ -42,6 +42,7 @@ interface CardPayload {
     detail: ActivityDetail | null;
     edition?: CardEdition | null;
     flavor_analysis: AnalysisPayload;
+    public_share_url: string;
 }
 
 interface RelatedCard {
@@ -110,6 +111,7 @@ export default function KartuDetail({
     const shareData: ShareKartuData = {
         id: card.id,
         name: card.special_move,
+        shareUrl: card.public_share_url,
         rarity: card.rarity,
         mood: card.mood,
         subtitle,

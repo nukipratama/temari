@@ -26,6 +26,57 @@
             @endforeach
         </div>
 
+        <div class="grid grid-cols-2 gap-2 mb-4">
+            <div>
+                <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Dead-letter</div>
+                <div @class([
+                    'flex items-center justify-between rounded-lg p-2 ring-1',
+                    'ring-rose-500/30 bg-rose-500/5' => $deadLettered > 0,
+                    'ring-gray-900/5 dark:ring-gray-100/10' => $deadLettered === 0,
+                ])>
+                    <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($deadLettered) }}</div>
+                    @if ($deadLettered > 0)
+                        <a href="{{ url('/ai-usage') }}" class="text-[10px] font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-400 underline">
+                            /ai-usage
+                        </a>
+                    @endif
+                </div>
+            </div>
+            <div>
+                <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Failed jobs</div>
+                <div @class([
+                    'rounded-lg p-2 ring-1',
+                    'ring-rose-500/30 bg-rose-500/5' => $failedJobs > 0,
+                    'ring-gray-900/5 dark:ring-gray-100/10' => $failedJobs === 0,
+                ])>
+                    <div class="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100">{{ number_format($failedJobs) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <div class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">AI generation</div>
+            <div @class([
+                'rounded-lg p-2 ring-1 text-xs font-semibold',
+                'ring-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400' => $pauseReason === null,
+                'ring-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400' => $pauseReason !== null,
+            ])>
+                @switch($pauseReason)
+                    @case('kill_switch')
+                        paused: kill switch off
+                        @break
+                    @case('unconfigured')
+                        paused: Azure unconfigured
+                        @break
+                    @case('cost_ceiling')
+                        paused: cost ceiling hit today
+                        @break
+                    @default
+                        healthy
+                @endswitch
+            </div>
+        </div>
+
         @if ($recentFailures->isEmpty())
             <x-pulse::no-results />
         @else
