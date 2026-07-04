@@ -132,10 +132,16 @@ Route::middleware(['auth', 'block-demo-writes'])->group(function (): void {
     Route::permanentRedirect('/pengaturan', '/profil');
     Route::permanentRedirect('/profile', '/profil');
 
+    // Card seen/replay are passive UX-tracking writes fired automatically on a
+    // reveal dismiss, not user-data mutations. They stay live for the demo account
+    // (excluded from the write guard) so a demo visitor's card reveal dismisses
+    // cleanly without a 403 in the console; nothing sensitive leaks.
     Route::post('/api/kartu/{card}/seen', CardSeenController::class)
-        ->name('api.kartu.seen');
+        ->name('api.kartu.seen')
+        ->withoutMiddleware('block-demo-writes');
     Route::post('/api/kartu/{card}/replay', CardReplayController::class)
-        ->name('api.kartu.replay');
+        ->name('api.kartu.replay')
+        ->withoutMiddleware('block-demo-writes');
 
     Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
         ->whereNumber('subjectId')

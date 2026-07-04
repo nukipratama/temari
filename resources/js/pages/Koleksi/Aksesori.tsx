@@ -218,7 +218,7 @@ function AksesoriCard({
             )}
         >
             {item.equipped && (
-                <Chip tone="horizon" className="absolute right-4 top-4">
+                <Chip tone="horizon" className="absolute right-4 top-4 z-10">
                     Lagi dipake
                 </Chip>
             )}

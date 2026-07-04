@@ -240,9 +240,9 @@ export default function Kartu({
                         <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-on-sky">km</span>
                     </div>
                     {!isFull && statParts.length > 0 && (
-                        <div className="text-right font-mono text-[10px] leading-tight text-cream/85">
+                        <div className="min-w-0 text-right font-mono text-[10px] leading-tight text-cream/85">
                             {statParts.map((p, i) => (
-                                <span key={p}>
+                                <span key={p} className="whitespace-nowrap">
                                     {i > 0 && <span className="mx-1 text-ink-on-sky/50">·</span>}
                                     {p}
                                 </span>

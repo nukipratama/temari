@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\Activity;
+use App\Models\RunCard;
 use App\Models\User;
 use App\Models\UserUnlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -73,4 +75,13 @@ it('still lets the demo user trigger "Baca ulang" (a real on-demand LLM call)', 
     $this->actingAs($user)
         ->postJson("/api/analyses/briefing_headline/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful();
+});
+
+it('still lets the demo user mark a card seen (passive UX write, not blocked)', function (): void {
+    $user = User::factory()->create(['is_demo' => true]);
+    $card = RunCard::factory()->for(Activity::factory()->for($user))->create();
+
+    // Reaches the controller instead of the demo write guard (no 403).
+    expect($this->actingAs($user)->postJson("/api/kartu/{$card->id}/seen")->status())
+        ->not->toBe(403);
 });
