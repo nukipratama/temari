@@ -119,7 +119,12 @@ class StravaHealth extends Card
                 'user_name' => (string) ($userNames[$userId] ?? "User {$userId}"),
                 'last_sync' => $sync->synced_at ?? null,
                 'status' => $sync->status ?? 'pending',
-                'is_failed' => $sync !== null && \in_array($sync->status, ['error', 'rate_limited', 'token_expired', 'revoked'], true),
+                // strava_sync_logs.status only ever gets 'success', 'error',
+                // 'revoked', or 'deleted' written (SyncOrchestrator, User model);
+                // 'rate_limited' / 'token_expired' are never logged per-row, they
+                // are surfaced at the aggregate level instead (globalRateLimit(),
+                // strava_connections.token_expires_at above).
+                'is_failed' => $sync !== null && \in_array($sync->status, ['error', 'revoked'], true),
             ];
         }
 

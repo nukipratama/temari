@@ -135,5 +135,6 @@ Route::middleware('auth')->group(function (): void {
 // here (session-less -> a configured ops-email allow-list would deny the null
 // user), so edge basicauth is the sole gate for the mutating retry too.
 Route::get('/ai-usage', [TokenUsageController::class, 'show'])->name('ai-usage');
-Route::post('/ai-usage/users/{user}/retry-failed', [TokenUsageController::class, 'retryFailed'])
+Route::post('/ai-usage/users/{userId}/retry-failed', [TokenUsageController::class, 'retryFailed'])
+    ->whereNumber('userId')
     ->name('ai-usage.retry-failed');

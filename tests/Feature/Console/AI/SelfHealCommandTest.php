@@ -381,6 +381,105 @@ it('skips the still-open current month', function (): void {
         ->assertSuccessful();
 });
 
+it('re-kicks the earliest stalled BriefingHeadline group per user with invalidate:false', function (): void {
+    $user = User::factory()->create();
+    $earliest = Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'discriminator' => '2026-05-18',
+        'status' => AnalysisStatus::Pending,
+    ]);
+    // A later Pending briefing day must NOT be the one resumed (earliest wins).
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'discriminator' => '2026-06-01',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureResumeRequests($captured));
+
+    $this->artisan('ai:self-heal')
+        ->expectsOutputToContain('Resumed 1 blocks.')
+        ->assertSuccessful();
+
+    expect($captured)->toHaveCount(1)
+        ->and($captured[0]['subjectOrType'])->toBe(AnalysisType::BRIEFING_SUBJECT_TYPE)
+        ->and($captured[0]['subjectId'])->toBe($user->id)
+        ->and($captured[0]['type'])->toBe(AnalysisType::BriefingHeadline)
+        ->and($captured[0]['discriminator'])->toBe($earliest->discriminator)
+        ->and($captured[0]['invalidate'])->toBeFalse();
+});
+
+it('skips a demo user for the BriefingHeadline group so the resume net never auto-bills it', function (): void {
+    $demo = User::factory()->demo()->create();
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $demo->id,
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'discriminator' => '2026-05-18',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $this->app->instance(AnalysisService::class, nonDispatchingResumeService());
+
+    $this->artisan('ai:self-heal')
+        ->expectsOutputToContain('Resumed 0 blocks.')
+        ->assertSuccessful();
+});
+
+it('re-kicks the earliest stalled single-row block per user with invalidate:false', function (AnalysisType $type, string $subjectType, ?string $discriminator): void {
+    $user = User::factory()->create();
+    Analysis::factory()->create([
+        'subject_type' => $subjectType,
+        'subject_id' => $user->id,
+        'analysis_type' => $type,
+        'discriminator' => $discriminator,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureResumeRequests($captured));
+
+    $this->artisan('ai:self-heal')
+        ->expectsOutputToContain('Resumed 1 blocks.')
+        ->assertSuccessful();
+
+    expect($captured)->toHaveCount(1)
+        ->and($captured[0]['subjectOrType'])->toBe($subjectType)
+        ->and($captured[0]['subjectId'])->toBe($user->id)
+        ->and($captured[0]['type'])->toBe($type)
+        ->and($captured[0]['discriminator'])->toBe($discriminator)
+        ->and($captured[0]['invalidate'])->toBeFalse();
+})->with([
+    'BriefingMascotVoice' => [AnalysisType::BriefingMascotVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '2026-05-18'],
+    'BriefingFeaturedKartuVoice' => [AnalysisType::BriefingFeaturedKartuVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '42'],
+    'DailyGreeting' => [AnalysisType::DailyGreeting, AnalysisType::DAILY_GREETING_SUBJECT_TYPE, '2026-05-18'],
+    'TrendCaption' => [AnalysisType::TrendCaption, AnalysisType::TREND_CAPTION_SUBJECT_TYPE, '2026-05-18'],
+    'PersonaSummary' => [AnalysisType::PersonaSummary, AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, '2026-W21'],
+    'AkuProfileVoice' => [AnalysisType::AkuProfileVoice, AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, null],
+]);
+
+it('skips a demo user for a single-row type so the resume net never auto-bills it', function (): void {
+    $demo = User::factory()->demo()->create();
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_id' => $demo->id,
+        'analysis_type' => AnalysisType::DailyGreeting,
+        'discriminator' => '2026-05-18',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $this->app->instance(AnalysisService::class, nonDispatchingResumeService());
+
+    $this->artisan('ai:self-heal')
+        ->expectsOutputToContain('Resumed 0 blocks.')
+        ->assertSuccessful();
+});
+
 it('early-exits without sweeping when AI generation is paused', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\AI\AnalyzeDailyGreetingJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
@@ -302,6 +303,29 @@ it('re-arms and re-dispatches a user\'s dead-lettered blocks on retry', function
     expect($fresh->attempts)->toBe(0)                          // budget re-armed
         ->and($fresh->status)->toBe(AnalysisStatus::Queued);   // re-dispatched
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('retries a dead-lettered group for a hard-deleted user instead of 404ing', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $userId = $user->id;
+    // A user-keyed analysis (subject_id = user id, no FK) survives a hard delete,
+    // unlike WeeklyRecap whose WeeklySnapshot subject cascades away.
+    $row = Analysis::factory()->failed()->create([
+        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_id' => $userId,
+        'analysis_type' => AnalysisType::DailyGreeting,
+        'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
+    ]);
+    $user->delete();
+
+    $this->post("/ai-usage/users/{$userId}/retry-failed")
+        ->assertRedirect();
+
+    $fresh = $row->fresh();
+    expect($fresh->attempts)->toBe(0)                          // budget re-armed
+        ->and($fresh->status)->toBe(AnalysisStatus::Queued);   // re-dispatched
+    Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
 });
 
 it('retry is reachable without a Laravel session (edge auth handles access in prod)', function (): void {

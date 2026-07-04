@@ -69,23 +69,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Ops dashboard allow-list
-    |--------------------------------------------------------------------------
-    |
-    | Comma-separated emails permitted through the app-layer Horizon / Pulse /
-    | ai-usage gates in non-local environments. Leave empty to keep those gates
-    | open (protected only by the edge basicauth); set it to engage the
-    | defense-in-depth app gate. Demo accounts never pass once this is set.
-    |
-    */
-
-    'ops_emails' => array_values(array_filter(array_map(
-        'trim',
-        explode(',', (string) env('OPS_EMAILS', '')),
-    ))),
-
-    /*
-    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

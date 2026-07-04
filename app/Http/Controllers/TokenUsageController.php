@@ -58,13 +58,19 @@ class TokenUsageController extends Controller
      * ai:self-heal gave up on). Resetting attempts to 0 restores the self-heal
      * budget, and invalidate:false re-dispatches without re-billing any Done
      * siblings. Cost-safe even mid-cap: the job-level guard reverts to Pending.
+     *
+     * Binds by raw id rather than implicit `User` model binding: a hard-deleted
+     * user's user-keyed `ai_analyses` rows survive (no FK), so their dead-letter
+     * group must stay retryable even when the `users` row is gone. The user
+     * model is only needed for the flash message's display name.
      */
-    public function retryFailed(User $user): RedirectResponse
+    public function retryFailed(int $userId): RedirectResponse
     {
-        $rows = Analysis::query()->deadLettered()->get()
-            ->filter(fn (Analysis $row): bool => $row->ownerId() === $user->id);
+        $rows = Analysis::query()->deadLettered()->get();
+        $ownerIds = Analysis::ownerIdsForRows($rows);
+        $matching = $rows->filter(fn (Analysis $row): bool => ($ownerIds[$row->id] ?? null) === $userId);
 
-        foreach ($rows as $row) {
+        foreach ($matching as $row) {
             $row->update(['attempts' => 0]);
             $this->analysisService->request(
                 subjectOrType: $row->subject_type,
@@ -75,7 +81,9 @@ class TokenUsageController extends Controller
             );
         }
 
-        return back()->with('info', "Mencoba ulang {$rows->count()} blok untuk {$user->name}.");
+        $userName = User::query()->find($userId)?->name ?? "User #{$userId}";
+
+        return back()->with('info', "Mencoba ulang {$matching->count()} blok untuk {$userName}.");
     }
 
     /**
@@ -87,11 +95,12 @@ class TokenUsageController extends Controller
     private function deadLetteredByUser(): array
     {
         $rows = Analysis::query()->deadLettered()->orderByDesc('updated_at')->get();
+        $ownerIds = Analysis::ownerIdsForRows($rows);
 
         /** @var array<int, list<Analysis>> $byUser */
         $byUser = [];
         foreach ($rows as $row) {
-            $userId = $row->ownerId();
+            $userId = $ownerIds[$row->id] ?? null;
             if ($userId !== null) {
                 $byUser[$userId][] = $row;
             }

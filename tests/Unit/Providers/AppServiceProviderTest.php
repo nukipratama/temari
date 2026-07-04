@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use App\Providers\AppServiceProvider;
 use App\Services\AI\AnalysisService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -51,49 +50,16 @@ it('shares one AnalysisService instance within a single request/CLI scope', func
     expect(app(AnalysisService::class))->toBe(app(AnalysisService::class));
 });
 
-it('isOpsUser allows any user in the local environment', function (): void {
-    app()->detectEnvironment(fn (): string => 'local');
-
-    expect(AppServiceProvider::isOpsUser(null))->toBeTrue()
-        ->and(AppServiceProvider::isOpsUser(User::factory()->make()))->toBeTrue();
-});
-
-it('isOpsUser leaves the gate open when no ops allow-list is configured', function (): void {
+it('leaves the viewPulse and viewAiUsage gates open (edge basicauth is the sole gate)', function (): void {
     app()->detectEnvironment(fn (): string => 'production');
-    config()->set('app.ops_emails', []);
 
-    expect(AppServiceProvider::isOpsUser(null))->toBeTrue()
-        ->and(AppServiceProvider::isOpsUser(User::factory()->make()))->toBeTrue()
-        ->and(AppServiceProvider::isOpsUser(User::factory()->demo()->make()))->toBeTrue();
-});
+    $user = User::factory()->make(['email' => 'random@example.com']);
+    $demo = User::factory()->demo()->make();
 
-it('isOpsUser excludes guests and demo once an ops allow-list is configured', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    config()->set('app.ops_emails', ['ops@teman-lari.local']);
-
-    expect(AppServiceProvider::isOpsUser(null))->toBeFalse()
-        ->and(AppServiceProvider::isOpsUser(User::factory()->demo()->make(['email' => 'ops@teman-lari.local'])))->toBeFalse();
-});
-
-it('isOpsUser allows a configured ops email and denies others outside local', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    config()->set('app.ops_emails', ['ops@teman-lari.local']);
-
-    expect(AppServiceProvider::isOpsUser(User::factory()->make(['email' => 'ops@teman-lari.local'])))->toBeTrue()
-        ->and(AppServiceProvider::isOpsUser(User::factory()->make(['email' => 'random@example.com'])))->toBeFalse();
-});
-
-it('viewPulse and viewAiUsage gates honor the ops allow-list outside local', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    config()->set('app.ops_emails', ['ops@teman-lari.local']);
-
-    $ops = User::factory()->make(['email' => 'ops@teman-lari.local']);
-    $stranger = User::factory()->make(['email' => 'random@example.com']);
-
-    expect(Gate::forUser($ops)->allows('viewPulse'))->toBeTrue()
-        ->and(Gate::forUser($ops)->allows('viewAiUsage'))->toBeTrue()
-        ->and(Gate::forUser($stranger)->allows('viewPulse'))->toBeFalse()
-        ->and(Gate::forUser($stranger)->allows('viewAiUsage'))->toBeFalse();
+    expect(Gate::forUser($user)->allows('viewPulse'))->toBeTrue()
+        ->and(Gate::forUser($user)->allows('viewAiUsage'))->toBeTrue()
+        ->and(Gate::forUser($demo)->allows('viewPulse'))->toBeTrue()
+        ->and(Gate::forUser($demo)->allows('viewAiUsage'))->toBeTrue();
 });
 
 it('binds AnalysisService as scoped, not a cross-request singleton', function (): void {

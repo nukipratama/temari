@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { Icon } from '@iconify/react';
 import { formatMonthDayId, formatWeekdayDayId } from '@/lib/pace';
@@ -10,6 +10,7 @@ import PillButton from '@/components/ui/PillButton';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { cn } from '@/lib/cn';
 import { toggleButtonVariants } from '@/lib/variants';
+import type { SharedProps } from '@/types/inertia';
 
 interface UsageRow {
     kind: string;
@@ -185,6 +186,7 @@ export default function AiUsage({
     const [fromInput, setFromInput] = useState<string>(from);
     const [toInput, setToInput] = useState<string>(to);
     const [kindInput, setKindInput] = useState<string>(kind ?? '');
+    const flashInfo = usePage<SharedProps>().props.flash?.info;
 
     const promptShare = totals.total > 0 ? Math.round((totals.prompt / totals.total) * 100) : 0;
     const avgPerCall = totals.calls > 0 ? Math.round(totals.total / totals.calls) : 0;
@@ -225,6 +227,8 @@ export default function AiUsage({
             </header>
 
             <PageContainer>
+                {flashInfo && <FlashBanner message={flashInfo} />}
+
                 <Card
                     as="section"
                     tone="cream"
@@ -366,6 +370,33 @@ export default function AiUsage({
                     renderRow={(row) => <UserCells row={row} grandTotal={totals.total} />}
                 />
             </PageContainer>
+        </div>
+    );
+}
+
+/* ─── Flash banner ────────────────────────────────────────────────── */
+
+/** Inline confirmation for a `back()->with('info', …)` flash (e.g. a retry
+ * confirmation). This page renders standalone, not under AppShell, so it
+ * reads `usePage().props.flash` itself rather than relying on a shared toast. */
+function FlashBanner({ message }: Readonly<{ message: string }>) {
+    const [dismissed, setDismissed] = useState(false);
+
+    if (dismissed) {
+        return null;
+    }
+
+    return (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev px-4 py-3 text-sm text-ink">
+            <span>{message}</span>
+            <button
+                type="button"
+                onClick={() => setDismissed(true)}
+                aria-label="Tutup"
+                className="focus-ring shrink-0 rounded-full p-1 text-ink-3 hover:text-ink"
+            >
+                <Icon icon="mdi:close" width={16} aria-hidden />
+            </button>
         </div>
     );
 }

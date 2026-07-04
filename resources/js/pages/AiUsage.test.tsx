@@ -4,6 +4,7 @@ import AiUsage from './AiUsage';
 
 const routerGet = vi.fn();
 const formPost = vi.fn();
+let mockFlashInfo: string | null = null;
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
@@ -14,6 +15,7 @@ vi.mock('@inertiajs/react', () => ({
         get: (...args: unknown[]) => routerGet(...args),
     },
     useForm: () => ({ post: (...args: unknown[]) => formPost(...args), processing: false }),
+    usePage: () => ({ props: { flash: { info: mockFlashInfo } } }),
 }));
 
 const baseProps = {
@@ -66,6 +68,18 @@ describe('AiUsage page', () => {
     beforeEach(() => {
         routerGet.mockClear();
         formPost.mockClear();
+        mockFlashInfo = null;
+    });
+
+    it('renders the flash info banner when present', () => {
+        mockFlashInfo = 'Mencoba ulang 2 blok untuk Charlie.';
+        render(<AiUsage {...baseProps} />);
+        expect(screen.getByText('Mencoba ulang 2 blok untuk Charlie.')).toBeInTheDocument();
+    });
+
+    it('renders no flash banner when there is nothing to confirm', () => {
+        render(<AiUsage {...baseProps} />);
+        expect(screen.queryByLabelText('Tutup')).not.toBeInTheDocument();
     });
 
     it('hides the dead-letter panel when nothing is stuck', () => {

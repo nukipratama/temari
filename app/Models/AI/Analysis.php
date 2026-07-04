@@ -15,6 +15,7 @@ use App\Support\Cooldown;
 use Database\Factories\AI\AnalysisFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -177,6 +178,40 @@ class Analysis extends Model
             PersonalRecord::class => PersonalRecord::query()->find($this->subject_id)?->user_id,
             default => $this->subject_id,
         };
+    }
+
+    /**
+     * Batch-resolve owner user ids for many rows, one query per subject_type
+     * instead of {@see self::ownerId()}'s per-row find(). Same subject-type to
+     * owner mapping, just grouped and batched for the /ai-usage dead-letter panel.
+     *
+     * @param  Collection<int, Analysis>  $rows
+     * @return array<int, int|null>  Keyed by row id.
+     */
+    public static function ownerIdsForRows(Collection $rows): array
+    {
+        $ownerIds = [];
+
+        foreach ($rows->groupBy('subject_type') as $subjectType => $group) {
+            $subjectIds = $group->pluck('subject_id')->unique()->all();
+
+            $userIdsBySubjectId = match ($subjectType) {
+                Activity::class => Activity::query()->whereIn('id', $subjectIds)->pluck('user_id', 'id'),
+                WeeklySnapshot::class => WeeklySnapshot::query()->whereIn('id', $subjectIds)->pluck('user_id', 'id'),
+                RunCard::class => RunCard::query()->whereIn('id', $subjectIds)->with('activity')->get()
+                    ->mapWithKeys(fn (RunCard $card): array => [$card->id => $card->activity?->user_id]),
+                PersonalRecord::class => PersonalRecord::query()->whereIn('id', $subjectIds)->pluck('user_id', 'id'),
+                default => null,
+            };
+
+            foreach ($group as $row) {
+                $ownerIds[$row->id] = $userIdsBySubjectId === null
+                    ? $row->subject_id
+                    : ($userIdsBySubjectId[$row->subject_id] ?? null);
+            }
+        }
+
+        return $ownerIds;
     }
 
     /**

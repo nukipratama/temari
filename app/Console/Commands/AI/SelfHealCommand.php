@@ -20,7 +20,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('ai:self-heal')]
-#[Description('Hourly safety net: re-kick the earliest stalled AI block per user (chains + card/PR narration), under a retry budget')]
+#[Description('Hourly safety net: re-kick the earliest stalled AI block per user (chains + card/PR/briefing/profile narration), under a retry budget')]
 class SelfHealCommand extends Command
 {
     /**
@@ -47,7 +47,14 @@ class SelfHealCommand extends Command
             + $this->resumeMonthly($service)
             + $this->resumePerActivity($service)
             + $this->resumeCardFlavor($service)
-            + $this->resumePrContext($service);
+            + $this->resumePrContext($service)
+            + $this->resumeBriefingHeadlineSuggestion($service)
+            + $this->resumeSingleRowType($service, AnalysisType::BriefingMascotVoice)
+            + $this->resumeSingleRowType($service, AnalysisType::BriefingFeaturedKartuVoice)
+            + $this->resumeSingleRowType($service, AnalysisType::DailyGreeting)
+            + $this->resumeSingleRowType($service, AnalysisType::TrendCaption)
+            + $this->resumeSingleRowType($service, AnalysisType::PersonaSummary)
+            + $this->resumeSingleRowType($service, AnalysisType::AkuProfileVoice);
 
         $this->info("Resumed {$resumed} blocks.");
 
@@ -210,6 +217,73 @@ class SelfHealCommand extends Command
                 subjectOrType: PersonalRecord::class,
                 subjectId: (int) $row->subject_id,
                 type: AnalysisType::PrContext,
+                invalidate: false,
+            );
+        }
+
+        return $earliestPerUser->count();
+    }
+
+    /**
+     * Briefing headline + suggestion: grouped through AnalyzeBriefingJob, so
+     * only the headline row is checked as the group's representative (mirrors
+     * {@see self::resumePerActivity()} checking only PostRunSpeech for its
+     * group) - {@see AnalysisService::request()} resolves the group job from
+     * the type and re-dispatches both rows together. Demo excluded.
+     */
+    private function resumeBriefingHeadlineSuggestion(AnalysisService $service): int
+    {
+        $earliestPerUser = Analysis::query()
+            ->stalled()
+            ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
+            ->where('analysis_type', AnalysisType::BriefingHeadline)
+            ->whereIn('subject_id', User::query()->notDemo()->select('id'))
+            ->orderBy('discriminator')
+            ->get(['subject_id', 'discriminator'])
+            ->unique('subject_id');
+
+        foreach ($earliestPerUser as $row) {
+            $service->request(
+                subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
+                subjectId: (int) $row->subject_id,
+                type: AnalysisType::BriefingHeadline,
+                discriminator: $row->discriminator,
+                invalidate: false,
+            );
+        }
+
+        return $earliestPerUser->count();
+    }
+
+    /**
+     * Single-row-per-user narration types with no chain/group of their own:
+     * BriefingMascotVoice, BriefingFeaturedKartuVoice, DailyGreeting,
+     * TrendCaption, PersonaSummary, AkuProfileVoice. Each is dispatched only
+     * at its own kickoff (daily briefing / weekly profile) with no other
+     * scheduled recovery, so a capped-Pending or transiently-Failed row would
+     * sit stuck without this sweep. subject_id is the user id directly for
+     * all of these types, so no join is needed to scope by user. Stalled +
+     * budget-bounded; demo excluded; re-dispatched against the stalled row's
+     * own discriminator (not recomputed) so a resumed BriefingFeaturedKartuVoice
+     * still targets the card it originally narrated.
+     */
+    private function resumeSingleRowType(AnalysisService $service, AnalysisType $type): int
+    {
+        $earliestPerUser = Analysis::query()
+            ->stalled()
+            ->where('subject_type', $type->subjectType())
+            ->where('analysis_type', $type)
+            ->whereIn('subject_id', User::query()->notDemo()->select('id'))
+            ->orderBy('discriminator')
+            ->get(['subject_id', 'discriminator'])
+            ->unique('subject_id');
+
+        foreach ($earliestPerUser as $row) {
+            $service->request(
+                subjectOrType: $type->subjectType(),
+                subjectId: (int) $row->subject_id,
+                type: $type,
+                discriminator: $row->discriminator,
                 invalidate: false,
             );
         }

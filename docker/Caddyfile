@@ -45,7 +45,7 @@
 	# User + bcrypt hash come from /opt/teman-lari/.env on the host
 	# (DEVTOOLS_BASIC_AUTH_USER / DEVTOOLS_BASIC_AUTH_PASS_HASH).
 	# Generate the hash with `caddy hash-password`.
-	@devtools path /horizon* /pulse* /ai-usage*
+	@devtools path /horizon* /pulse* /ai-usage* /livewire*
 	handle @devtools {
 		basicauth {
 			{$DEVTOOLS_BASIC_AUTH_USER} {$DEVTOOLS_BASIC_AUTH_PASS_HASH}
