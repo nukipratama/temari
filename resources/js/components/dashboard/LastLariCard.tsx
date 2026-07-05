@@ -44,8 +44,8 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
                     {(locationShort || weatherLabel) && (
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2">
                             {locationShort && (
-                                <span className="inline-flex items-center gap-1">
-                                    <Icon icon="mdi:map-marker-outline" width={11} height={11} aria-hidden />
+                                <span className="inline-flex items-center gap-1 text-[13px]">
+                                    <Icon icon="mdi:map-marker-outline" width={13} height={13} aria-hidden />
                                     {locationShort}
                                 </span>
                             )}

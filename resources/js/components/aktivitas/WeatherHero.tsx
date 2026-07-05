@@ -73,8 +73,8 @@ export default function WeatherHero({ detail }: Readonly<WeatherHeroProps>) {
                 </span>
             </div>
             {location != null && (
-                <p className="mt-3 flex items-center gap-1 text-sm text-ink">
-                    <Icon icon="mdi:map-marker" width={14} height={14} aria-hidden className="text-horizon-deep" />
+                <p className="mt-3 flex items-center gap-1 text-base text-ink">
+                    <Icon icon="mdi:map-marker" width={16} height={16} aria-hidden className="text-horizon-deep" />
                     {location}
                 </p>
             )}

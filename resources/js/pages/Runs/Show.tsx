@@ -322,7 +322,7 @@ function MapWeatherPanel({ detail }: Readonly<{ detail: DetailedActivityDetail }
                     )}
                     {location != null && (
                         <div className="min-w-0 flex-1 border-l border-cream/15 pl-3">
-                            <div className="truncate font-display text-sm leading-tight tracking-[-0.005em]">{location}</div>
+                            <div className="truncate font-display text-base leading-tight tracking-[-0.005em]">{location}</div>
                         </div>
                     )}
                 </div>
