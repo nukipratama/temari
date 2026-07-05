@@ -426,26 +426,24 @@ describe('drawShareCard — edge / branch cases', () => {
     });
 
     it.each(['kartu', 'rute'] as Layout[])(
-        'draws a start dot and a hollow finish ring for a point-to-point route on %s, but only the dot for a loop',
+        'always marks both start and finish on %s, whether loop or point-to-point',
         async (layout) => {
             const p2pCtx = makeCtx();
             await drawShareCard(
                 { width: 0, height: 0, getContext: () => p2pCtx } as unknown as HTMLCanvasElement,
                 { kartu: { ...kartu, polyline: pointToPointPolyline }, layout, format: 'story' },
             );
-            const p2pArcCalls = p2pCtx.arc.mock.calls.length;
 
             const loopCtx = makeCtx();
             await drawShareCard(
                 { width: 0, height: 0, getContext: () => loopCtx } as unknown as HTMLCanvasElement,
                 { kartu: { ...kartu, polyline: loopPolyline }, layout, format: 'story' },
             );
-            const loopArcCalls = loopCtx.arc.mock.calls.length;
 
-            // Both routes draw the start dot; only the point-to-point route also
-            // draws the hollow finish ring (mirrors RouteGlyph's `isPointToPoint`
-            // gate) — so it issues exactly one more `arc` call than the loop.
-            expect(p2pArcCalls).toBe(loopArcCalls + 1);
+            // Both ends are always marked (green start + red finish), so a loop and
+            // a point-to-point route issue the same number of marker arcs.
+            expect(p2pCtx.arc).toHaveBeenCalled();
+            expect(p2pCtx.arc.mock.calls.length).toBe(loopCtx.arc.mock.calls.length);
         },
     );
 

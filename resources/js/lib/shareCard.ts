@@ -157,7 +157,6 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
 // r=3.2/strokeWidth=1.4 against its base stroke of 3.8), so the canvas markers
 // stay proportional to whatever stroke width is actually drawn here.
 const START_DOT_RATIO = 3 / 3.8;
-const FINISH_RING_RATIO = 3.2 / 3.8;
 const FINISH_RING_STROKE_RATIO = 1.4 / 3.8;
 
 /**
@@ -217,23 +216,29 @@ function drawRoute(
 
     const [startX, startY] = projected.points[0];
     const [endX, endY] = projected.points.at(-1) ?? [startX, startY];
-    // Same hypot test as RouteGlyph's `isPointToPoint`, scaled from its 100×64
-    // viewBox threshold (2) to this box's own diagonal.
-    const boxDiagonal = Math.hypot(box.w, box.h);
-    const isPointToPoint = Math.hypot(endX - startX, endY - startY) >= boxDiagonal * (2 / Math.hypot(100, 64));
-
+    // Always mark both ends — green "go" start, red "stop" finish — so the run's
+    // direction reads even on a loop (the markers sit close but stay distinct).
+    const markR = strokeWidth * START_DOT_RATIO * 1.6;
+    // Start: filled green dot with a white rim for contrast on the route hue.
     ctx.beginPath();
-    ctx.fillStyle = stroke;
-    ctx.arc(box.x + startX, box.y + startY, strokeWidth * START_DOT_RATIO, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.arc(box.x + startX, box.y + startY, markR + strokeWidth * 0.35, 0, Math.PI * 2);
     ctx.fill();
-
-    if (isPointToPoint) {
-        ctx.beginPath();
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = strokeWidth * FINISH_RING_STROKE_RATIO;
-        ctx.arc(box.x + endX, box.y + endY, strokeWidth * FINISH_RING_RATIO, 0, Math.PI * 2);
-        ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.fillStyle = '#22b455';
+    ctx.arc(box.x + startX, box.y + startY, markR, 0, Math.PI * 2);
+    ctx.fill();
+    // Finish: red hollow ring (white backing so it reads over the route).
+    ctx.beginPath();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = strokeWidth * FINISH_RING_STROKE_RATIO * 2.4;
+    ctx.arc(box.x + endX, box.y + endY, markR, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.strokeStyle = '#ef4a34';
+    ctx.lineWidth = strokeWidth * FINISH_RING_STROKE_RATIO * 1.6;
+    ctx.arc(box.x + endX, box.y + endY, markR, 0, Math.PI * 2);
+    ctx.stroke();
 
     ctx.restore();
     return true;
@@ -483,46 +488,67 @@ function drawHeroShimmer(
     ctx.globalCompositeOperation = 'source-over';
 }
 
-/** Floating edition (L) + TRIMP-power (R) pills over the bright art window. */
+/**
+ * Floating pills over the bright art window, one per corner: rarity chip (top-L,
+ * "★ ISTIMEWA" in the rarity hue) so the tier reads over the map, TRIMP power
+ * (top-R), and the edition number (bottom-L). The mascot owns the bottom-R.
+ */
 function drawHeroArtBadges(
     ctx: CanvasRenderingContext2D,
     k: ShareKartuData,
-    box: { x: number; y: number; w: number },
+    box: { x: number; y: number; w: number; h: number },
     moodCol: string,
+    rarityCol: string,
 ): void {
     const badgePad = 18;
     const badgeH = 48;
     const top = box.y + 18;
     const mid = top + badgeH / 2;
+    const bottom = box.y + box.h - 18 - badgeH;
+    const dark = 'rgba(22,27,51,0.82)';
+    ctx.textBaseline = 'middle';
 
-    if (k.edition) {
-        ctx.font = '600 28px "JetBrains Mono"';
-        const edText = '#' + String(k.edition.index) + '/' + String(k.edition.total);
-        const edW = ctx.measureText(edText).width + badgePad * 2;
-        roundRectPath(ctx, box.x + 18, top, edW, badgeH, badgeH / 2);
-        ctx.fillStyle = 'rgba(22,27,51,0.82)';
-        ctx.fill();
-        ctx.fillStyle = C.cream;
-        ctx.textBaseline = 'middle';
-        ctx.textAlign = 'left';
-        ctx.fillText(edText, box.x + 18 + badgePad, mid + 1);
-    }
+    // Top-left: rarity chip.
+    ctx.font = '700 26px "JetBrains Mono"';
+    ctx.letterSpacing = '2px';
+    const rarText = RARITY_SYMBOL[k.rarity] + ' ' + RARITY_LABELS[k.rarity].toUpperCase();
+    const rarW = ctx.measureText(rarText).width + badgePad * 2;
+    roundRectPath(ctx, box.x + 18, top, rarW, badgeH, badgeH / 2);
+    ctx.fillStyle = dark;
+    ctx.fill();
+    ctx.fillStyle = rarityCol;
+    ctx.textAlign = 'left';
+    ctx.fillText(rarText, box.x + 18 + badgePad, mid + 1);
+    ctx.letterSpacing = '0px';
 
+    // Top-right: TRIMP power (mood dot + number).
     ctx.font = '700 28px "JetBrains Mono"';
     const trimpText = String(k.trimp);
     const trimpW = ctx.measureText(trimpText).width + badgePad * 2 + 30;
     const bx = box.x + box.w - 18 - trimpW;
     roundRectPath(ctx, bx, top, trimpW, badgeH, badgeH / 2);
-    ctx.fillStyle = 'rgba(22,27,51,0.82)';
+    ctx.fillStyle = dark;
     ctx.fill();
     ctx.beginPath();
     ctx.arc(bx + badgePad + 9, mid, 9, 0, Math.PI * 2);
     ctx.fillStyle = moodCol;
     ctx.fill();
     ctx.fillStyle = C.cream;
-    ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
     ctx.fillText(trimpText, bx + badgePad + 26, mid + 1);
+
+    // Bottom-left: edition number.
+    if (k.edition) {
+        ctx.font = '600 26px "JetBrains Mono"';
+        const edText = '#' + String(k.edition.index) + '/' + String(k.edition.total);
+        const edW = ctx.measureText(edText).width + badgePad * 2;
+        roundRectPath(ctx, box.x + 18, bottom, edW, badgeH, badgeH / 2);
+        ctx.fillStyle = dark;
+        ctx.fill();
+        ctx.fillStyle = C.cream;
+        ctx.fillText(edText, box.x + 18 + badgePad, bottom + badgeH / 2 + 1);
+    }
+    ctx.textBaseline = 'alphabetic';
 }
 
 /** The bright art window: cream wash, route hero, corner bunny, floating badges. */
@@ -600,7 +626,7 @@ function drawHeroArtWindow(
     }
     ctx.restore();
 
-    drawHeroArtBadges(ctx, k, box, moodCol);
+    drawHeroArtBadges(ctx, k, box, moodCol, rarityCol);
 }
 
 /**
@@ -628,10 +654,12 @@ interface HeroBlock {
 }
 
 function drawHeroBlock(s: HeroBlock): number {
-    let y = s.box.y;
-    y = heroRibbonRow(s, y);
+    // The rarity ribbon now floats on the art window, so the block leads with the
+    // centred name; everything below is centre-aligned for a symmetric poster.
+    let y = s.box.y + (s.story ? 22 : 18);
     y = heroNameRow(s, y);
-    y = heroKmRow(s, y); // badges stack vertically in the empty space right of KM
+    y = heroKmRow(s, y);
+    y = heroBadgeClusterRow(s, y); // centred badge row below the KM hero
     y = heroStatGridRow(s, y);
     y = heroZoneBarRow(s, y);
     y = heroContextRow(s, y); // 📍 location · 💨 wind · 📅 date at the bottom
@@ -639,78 +667,102 @@ function drawHeroBlock(s: HeroBlock): number {
 }
 
 /**
- * Rarity ribbon (left, rarity-tinted). The mood now lives on the type line, so
- * the right side carries the edition number on feed (where the art-window pills
- * are gone) and stays clear on story (the art window shows the edition pill).
- */
-function heroRibbonRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, rarityCol, story, draw } = s;
-    y += story ? 28 : 24;
-    if (draw) {
-        ctx.font = `700 ${story ? 26 : 22}px "JetBrains Mono"`;
-        ctx.letterSpacing = '3px';
-        ctx.fillStyle = rarityCol;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
-        ctx.fillText(RARITY_SYMBOL[k.rarity] + '  ' + RARITY_LABELS[k.rarity].toUpperCase(), box.x, y);
-        if (!story && k.edition) {
-            ctx.textAlign = 'right';
-            ctx.fillStyle = C.inkOnSky;
-            ctx.fillText(`#${k.edition.index}/${k.edition.total}`, box.x + box.w, y);
-        }
-        ctx.letterSpacing = '0px';
-    }
-    return y;
-}
-
-/**
- * Special-move name in condensed Oswald, drawn as plain text over the dark
- * block (no plate) to mirror the live Kartu. The wrap count is identical in the
- * measure + draw passes so sizing is stable.
+ * Special-move name in condensed Oswald, centred over the dark block. The wrap
+ * count is identical in the measure + draw passes so sizing is stable.
  */
 function heroNameRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw } = s;
     const nameSize = story ? box.w * 0.099 : box.w * 0.084;
     ctx.font = `700 ${nameSize}px "Oswald"`;
     ctx.letterSpacing = '-1px'; // condensed + tight = athletic
-    ctx.textAlign = 'left';
+    ctx.textAlign = 'center';
     const lines = wrapText(ctx, k.name.toUpperCase(), box.w - 28).slice(0, 2);
     const lineH = nameSize * 1.04;
-    y += story ? 14 : 12; // breathing room below the rarity ribbon
+    y += story ? 8 : 6;
     const firstBaseline = y + lineH;
     const lastBaseline = y + lineH * lines.length;
     if (draw) {
         ctx.fillStyle = C.cream;
-        lines.forEach((ln, i) => ctx.fillText(ln, box.x, firstBaseline + i * lineH));
+        lines.forEach((ln, i) => ctx.fillText(ln, box.x + box.w / 2, firstBaseline + i * lineH));
     }
     ctx.letterSpacing = '0px';
     return lastBaseline + nameSize * 0.32;
 }
 
-/** KM hero number + "KM" suffix — the number floods in the rarity hue. */
+/** KM hero number + "KM" suffix, centred as a group (number floods horizon). */
 function heroKmRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw } = s;
     const kmSize = story ? box.w * 0.165 : box.w * 0.14;
+    const suffixSize = story ? 28 : 24;
+    const gap = 16;
     y += kmSize * 0.92;
     if (draw) {
         ctx.font = `700 ${kmSize}px "Oswald"`;
         ctx.letterSpacing = '-1px';
-        // KM always floods in horizon (matches the live Kartu's `text-horizon`),
-        // not the rarity hue — the rarity colour lives on the ribbon + route.
-        ctx.fillStyle = C.horizon;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
-        ctx.fillText(k.km, box.x, y);
         const kmW = ctx.measureText(k.km).width;
         ctx.letterSpacing = '0px';
-        ctx.font = `700 ${story ? 28 : 24}px "JetBrains Mono"`;
+        ctx.font = `700 ${suffixSize}px "JetBrains Mono"`;
+        const sufW = ctx.measureText('KM').width;
+        const startX = box.x + box.w / 2 - (kmW + gap + sufW) / 2;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = `700 ${kmSize}px "Oswald"`;
+        ctx.letterSpacing = '-1px';
+        ctx.fillStyle = C.horizon;
+        ctx.fillText(k.km, startX, y);
+        ctx.letterSpacing = '0px';
+        ctx.font = `700 ${suffixSize}px "JetBrains Mono"`;
         ctx.fillStyle = C.inkOnSky;
-        ctx.fillText('KM', box.x + kmW + 16, y);
-        // Badges stack vertically in the empty space to the right of the KM hero,
-        // centred on the number's height.
-        drawBadgesVertical(ctx, k, box.x + box.w, y - kmSize * 0.36, story);
+        ctx.fillText('KM', startX + kmW + gap, y);
     }
     return y;
+}
+
+/** A centred row (wraps if needed) of up to 4 badge pills below the KM hero. */
+function heroBadgeClusterRow(s: HeroBlock, y: number): number {
+    const { ctx, k, box, story, draw } = s;
+    const tags = k.tags.slice(0, 4);
+    if (tags.length === 0) {
+        return y;
+    }
+    ctx.font = `500 ${story ? 28 : 24}px "JetBrains Mono"`;
+    const pillH = story ? 52 : 44;
+    const gap = story ? 12 : 10;
+    const padX = 20;
+    const pills = tags.map((tag, i) => ({
+        label: (k.tagEmojis[i] ?? '✦') + ' ' + tag,
+        w: ctx.measureText((k.tagEmojis[i] ?? '✦') + ' ' + tag).width + padX * 2,
+    }));
+    // Pack into centred rows within the block width.
+    const rows: Array<typeof pills> = [];
+    let cur: typeof pills = [];
+    let curW = 0;
+    for (const p of pills) {
+        if (cur.length > 0 && curW + gap + p.w > box.w) {
+            rows.push(cur);
+            cur = [];
+            curW = 0;
+        }
+        curW += (cur.length > 0 ? gap : 0) + p.w;
+        cur.push(p);
+    }
+    if (cur.length > 0) {
+        rows.push(cur);
+    }
+    y += story ? 30 : 24;
+    if (draw) {
+        let by = y;
+        rows.forEach((row) => {
+            const rowW = row.reduce((sum, p) => sum + p.w, 0) + gap * (row.length - 1);
+            let bx = box.x + (box.w - rowW) / 2;
+            row.forEach((p) => {
+                drawBadgePill(ctx, p.label, bx, by, p.w, pillH, padX);
+                bx += p.w + gap;
+            });
+            by += pillH + gap;
+        });
+    }
+    return y + rows.length * pillH + (rows.length - 1) * gap;
 }
 
 function heroStatGridRow(s: HeroBlock, y: number): number {
@@ -739,51 +791,6 @@ function heroZoneBarRow(s: HeroBlock, y: number): number {
         drawZoneBar(ctx, k.zonePct, box.x, y, box.w, barH);
     }
     return y + barH + (story ? 8 : 6);
-}
-
-/**
- * Badge pills in a right-aligned 2-column grid (max 4) beside the KM hero,
- * vertically centred on `centerY` — they live in the empty gutter to the right
- * of the KM number, so the tall share doesn't waste that space. Bigger + paired
- * so 3-4 badges read as a cluster instead of a thin tower.
- */
-function drawBadgesVertical(
-    ctx: CanvasRenderingContext2D,
-    k: ShareKartuData,
-    rightX: number,
-    centerY: number,
-    story: boolean,
-): void {
-    const tags = k.tags.slice(0, 4);
-    if (tags.length === 0) {
-        return;
-    }
-    ctx.font = `500 ${story ? 30 : 25}px "JetBrains Mono"`;
-    const pillH = story ? 56 : 46;
-    const rowGap = story ? 14 : 11;
-    const colGap = story ? 12 : 10;
-    const padX = 20;
-    const pills = tags.map((tag, i) => {
-        const label = (k.tagEmojis[i] ?? '✦') + ' ' + tag;
-        return { label, w: ctx.measureText(label).width + padX * 2 };
-    });
-    // Rows of up to 2, each row right-aligned to `rightX` (packed from the right).
-    const rows: Array<typeof pills> = [];
-    for (let i = 0; i < pills.length; i += 2) {
-        rows.push(pills.slice(i, i + 2));
-    }
-    const totalH = rows.length * pillH + (rows.length - 1) * rowGap;
-    let by = centerY - totalH / 2;
-    rows.forEach((row) => {
-        const rowW = row.reduce((sum, p) => sum + p.w, 0) + (row.length - 1) * colGap;
-        let bx = rightX - rowW;
-        row.forEach((p) => {
-            drawBadgePill(ctx, p.label, bx, by, p.w, pillH, padX);
-            bx += p.w + colGap;
-        });
-        by += pillH + rowGap;
-    });
-    ctx.textBaseline = 'alphabetic';
 }
 
 /** A single translucent badge pill with left-aligned label. */
@@ -849,21 +856,21 @@ function heroContextRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw } = s;
     // Keep the clock time alongside the day (date is "5 Jul 2026\n06.30").
     const dateStr = k.date ? k.date.replace('\n', ' · ') : null;
-    const tail = [k.wind ? '💨 ' + k.wind : null, dateStr ? '📅 ' + dateStr : null].filter(Boolean).join('   ');
-    const hasLocation = k.location != null && k.location !== '';
-    if (!hasLocation && tail === '') {
+    const parts = [
+        k.location != null && k.location !== '' ? '📍 ' + k.location : null,
+        k.wind ? '💨 ' + k.wind : null,
+        dateStr ? '📅 ' + dateStr : null,
+    ].filter((p): p is string => p != null);
+    if (parts.length === 0) {
         return y;
     }
     y += story ? 40 : 30;
     if (draw) {
-        const sep = '   ';
         ctx.font = `500 ${story ? 26 : 22}px "JetBrains Mono"`;
         ctx.fillStyle = C.cream;
-        ctx.textAlign = 'left';
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
-        const tailW = tail ? ctx.measureText(sep + tail).width : 0;
-        const loc = hasLocation ? truncateToWidth(ctx, '📍 ' + k.location, box.w - tailW) : '';
-        ctx.fillText([loc, tail].filter(Boolean).join(sep), box.x, y);
+        ctx.fillText(truncateToWidth(ctx, parts.join('   '), box.w), box.x + box.w / 2, y);
     }
     return y + (story ? 26 : 22);
 }
@@ -1035,15 +1042,15 @@ function drawHero(d: DrawCtx): void {
     // dead navy void. The square keeps a lower art floor so its dense stat block
     // (taller relative to the shorter canvas) always fits.
     const measuredBlockH = drawHeroBlock(makeBlock(innerTop, false)) + 20;
-    // The block now carries badges + a splits strip (story), so it's tall enough
-    // to hold the route in check: hand the art window the remaining space (no cap
-    // needed) and the card fills top-to-bottom with no dead navy.
-    const minArtFrac = story ? 0.38 : 0.22;
-    const maxBlockH = innerH - Math.round(innerH * minArtFrac) - blockGap;
-    const blockH = Math.min(measuredBlockH, maxBlockH);
-    const artH = innerH - blockH - blockGap;
+    // Cap the map height (maxArtFrac) so it doesn't dominate — the block gets the
+    // rest, and any slack is injected before the zone bar so the effort bar +
+    // context strip sink to the bottom instead of leaving dead navy under a huge
+    // map. When the block is tall enough the art shrinks to fit it exactly.
+    const maxArtFrac = story ? 0.52 : 0.5;
+    const artH = Math.min(Math.round(innerH * maxArtFrac), innerH - measuredBlockH - blockGap);
+    const slack = Math.max(0, innerH - artH - blockGap - measuredBlockH);
     drawHeroArtWindow(ctx, k, cfg.temariImg ?? moodBunny, { x: innerX, y: innerTop, w: innerW, h: artH }, rarityCol, moodCol, story);
-    drawHeroBlock(makeBlock(innerTop + artH + blockGap, true));
+    drawHeroBlock(makeBlock(innerTop + artH + blockGap, true, slack));
 }
 
 const TEMPLATES: Record<Layout, (d: DrawCtx) => void> = {
