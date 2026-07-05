@@ -137,4 +137,18 @@ describe('Koleksi/Rekor', () => {
         render(<KoleksiRekor personalRecords={[featuredPr]} featuredExtras={featuredExtras} />);
         expect(screen.getByText(/Tempo terbaru kamu konsisten/)).toBeInTheDocument();
     });
+
+    it('renders the fitness panel with VDOT and threshold pace', () => {
+        render(
+            <KoleksiRekor
+                personalRecords={[pr('5km', 1751)]}
+                featuredExtras={featuredExtras}
+                fitness={{ vdot: 42.1, threshold_pace_sec: 300, threshold_confidence: 'high' }}
+            />,
+        );
+        expect(screen.getByText('Estimasi kebugaran')).toBeInTheDocument();
+        expect(screen.getByText('VDOT')).toBeInTheDocument();
+        expect(screen.getByText('42.1')).toBeInTheDocument();
+        expect(screen.getByText('Pace ambang')).toBeInTheDocument();
+    });
 });

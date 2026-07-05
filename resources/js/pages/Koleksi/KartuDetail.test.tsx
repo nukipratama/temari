@@ -1,5 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { router } from '@inertiajs/react';
 import KartuDetail from './KartuDetail';
 import { setMockPage } from '@/test/setup';
 import type { ActivityDetail, AnalysisPayload } from '@/types/inertia';
@@ -118,5 +119,21 @@ describe('KartuDetail', () => {
         expect(screen.getByText(/Bagikan kartu/)).toBeInTheDocument();
         // Closing the modal covers () => setShareOpen(false)
         fireEvent.click(screen.getByLabelText('Tutup'));
+    });
+
+    it('replays the card reveal and reloads the pendingReveal prop', async () => {
+        vi.mocked(router.reload).mockReset();
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 200 }))));
+
+        render(<KartuDetail card={epicCard} relatedCards={[]} totalForRarity={3} />);
+        fireEvent.click(screen.getByRole('button', { name: /Buka ulang kartu/i }));
+
+        expect(await screen.findByText('Menyiapkan…')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(router.reload).toHaveBeenCalledWith({ only: ['pendingReveal'] });
+        });
+        await waitFor(() => {
+            expect(screen.getByText('Buka ulang kartu')).toBeInTheDocument();
+        });
     });
 });

@@ -1,5 +1,6 @@
+import { router } from '@inertiajs/react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ZonaHR, { deriveZones } from './ZonaHR';
 import { makeUser, setMockPage } from '@/test/setup';
 
@@ -77,5 +78,62 @@ describe('ZonaHR', () => {
         render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
         const maxHrField = screen.getByLabelText('Max HR').closest('label');
         expect(within(maxHrField as HTMLElement).getByText(/di antara 120 dan 220/i)).toBeInTheDocument();
+    });
+
+    it('lets the user override a manual hi boundary', () => {
+        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
+
+        const z2Hi = screen.getByTestId('zone-Z2-hi') as HTMLInputElement;
+        expect(z2Hi.value).toBe('154');
+
+        fireEvent.change(z2Hi, { target: { value: '150' } });
+
+        expect((screen.getByTestId('zone-Z2-hi') as HTMLInputElement).value).toBe('150');
+    });
+
+    it('recomputes manual zones from Max & Resting on demand', () => {
+        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
+
+        fireEvent.change(screen.getByTestId('zone-Z2-lo'), { target: { value: '999' } });
+        expect((screen.getByTestId('zone-Z2-lo') as HTMLInputElement).value).toBe('999');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Hitung otomatis dari Max & Resting' }));
+
+        expect((screen.getByTestId('zone-Z2-lo') as HTMLInputElement).value).toBe(
+            String(deriveZones(180, 55).Z2.lo),
+        );
+    });
+
+    it('submits the current zones and toggles processing around the request', () => {
+        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Simpan zona' }));
+
+        expect(router.patch).toHaveBeenCalledWith(
+            '/pengaturan/zona',
+            {
+                max_hr: 180,
+                resting_hr: 55,
+                zones: [
+                    { lo: 116, hi: 138 },
+                    { lo: 138, hi: 154 },
+                    { lo: 154, hi: 168 },
+                    { lo: 168, hi: 176 },
+                    { lo: 176, hi: 999 },
+                ],
+            },
+            expect.objectContaining({
+                preserveScroll: true,
+                onStart: expect.any(Function),
+                onFinish: expect.any(Function),
+            }),
+        );
+
+        const options = vi.mocked(router.patch).mock.calls.at(-1)?.[2] as {
+            onStart: () => void;
+            onFinish: () => void;
+        };
+        options.onStart();
+        options.onFinish();
     });
 });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import KoleksiKartu from './Kartu';
 import { setMockPage } from '@/test/setup';
@@ -112,5 +112,37 @@ describe('Koleksi/Kartu', () => {
         const cards = { ...emptyCards(), data: [cardWithoutDetail] };
         render(<KoleksiKartu cards={cards} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
         expect(screen.queryByText('Tanpa Detail')).not.toBeInTheDocument();
+    });
+
+    it('filters the grid by the search query', async () => {
+        const cards = { ...emptyCards(), data: [cardWithRel(1, 'epic', 'Tendangan Epic'), cardWithRel(2, 'common', 'Langkah Mantap')] };
+        render(<KoleksiKartu cards={cards} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
+
+        fireEvent.change(screen.getByLabelText('Cari kartu'), { target: { value: 'Tendangan' } });
+
+        await waitFor(() => {
+            expect(screen.getByText('Tendangan Epic')).toBeInTheDocument();
+            expect(screen.queryByText('Langkah Mantap')).not.toBeInTheDocument();
+        });
+    });
+
+    it('sorts the grid by rarity and by name', async () => {
+        const cards = {
+            ...emptyCards(),
+            data: [cardWithRel(1, 'common', 'Aduh Capek'), cardWithRel(2, 'legendary', 'Zona Ambang')],
+        };
+        render(<KoleksiKartu cards={cards} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
+
+        fireEvent.change(screen.getByLabelText('Urutkan'), { target: { value: 'rarity' } });
+        await waitFor(() => {
+            const names = screen.getAllByText(/Aduh Capek|Zona Ambang/).map((el) => el.textContent);
+            expect(names.indexOf('Zona Ambang')).toBeLessThan(names.indexOf('Aduh Capek'));
+        });
+
+        fireEvent.change(screen.getByLabelText('Urutkan'), { target: { value: 'name' } });
+        await waitFor(() => {
+            const names = screen.getAllByText(/Aduh Capek|Zona Ambang/).map((el) => el.textContent);
+            expect(names.indexOf('Aduh Capek')).toBeLessThan(names.indexOf('Zona Ambang'));
+        });
     });
 });
