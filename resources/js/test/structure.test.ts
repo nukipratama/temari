@@ -10,21 +10,11 @@ const allLibTs = import.meta.glob('../lib/**/*.ts');
 /**
  * Components / pages intentionally without a co-located `{name}.test.tsx`.
  * This is the documented exception list to the 1:1 convention, not a backlog:
- * the Inertia entry point plus small presentational components with no logic.
+ * only the Inertia entry point, which isn't unit-testable in isolation.
  * A NEW `.tsx` not listed here must ship with a sibling test, or this fails.
  */
 const EXEMPT = new Set<string>([
     'app.tsx', // Inertia entry point, not unit-testable in isolation
-    'components/DecorativeBlur.tsx',
-    'components/MobileBottomNav.tsx',
-    'components/MobileTopBar.tsx',
-    'components/PersonaBar.tsx',
-    'components/UserAvatar.tsx',
-    'components/card/PrCard.tsx',
-    'components/koleksi/CollectionHeader.tsx',
-    'components/koleksi/KoleksiTabs.tsx',
-    'components/riwayat/RiwayatTabs.tsx',
-    'components/temari/UnavailableNote.tsx',
 ]);
 
 /**

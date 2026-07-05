@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
 import Aku from './Aku';
@@ -348,5 +348,71 @@ describe('Aku', () => {
         expect(screen.getByText(/Ikat Kepala Istimewa/)).toBeInTheDocument();
         expect(screen.getByText(/Medali Emas/)).toBeInTheDocument();
         expect(screen.getByText(/kebuka/)).toBeInTheDocument();
+    });
+
+    it('renders the profile voice quote when profileVoice is provided', () => {
+        const profileVoice = {
+            id: 3,
+            status: 'done' as const,
+            content: 'Kamu makin konsisten tiap minggu.',
+            type: 'aku_profile_voice' as const,
+            subject_type: 'user',
+            subject_id: 1,
+            discriminator: null,
+        };
+        render(<Aku identity={identity} stats={stats} profileVoice={profileVoice} />);
+        expect(screen.getByText(/Kamu makin konsisten tiap minggu/)).toBeInTheDocument();
+    });
+
+    it('closes the demo-blocked modal from the disconnected-Telegram state', async () => {
+        setMockPage({
+            auth: { user: makeUser({ is_demo: true }) },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        const telegram = {
+            connected: false,
+            username: null,
+            connect_url: 'https://t.me/temari_bot?start=tok',
+            notify_post_run: true,
+            notify_weekly_recap: true,
+            notify_monthly_recap: true,
+            notify_daily_briefing: false,
+        };
+        render(<Aku identity={identity} stats={stats} telegram={telegram} />);
+
+        fireEvent.click(screen.getByText('Hubungkan Telegram'));
+        expect(screen.getByText('Telegram-nya lagi istirahat dulu')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Nanti aja' }));
+        await waitFor(() => {
+            expect(screen.queryByText('Telegram-nya lagi istirahat dulu')).not.toBeInTheDocument();
+        });
+    });
+
+    it('closes the demo-blocked modal from the connected-Telegram state', async () => {
+        setMockPage({
+            auth: { user: makeUser({ is_demo: true }) },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        const telegram = {
+            connected: true,
+            username: null,
+            connect_url: null,
+            notify_post_run: true,
+            notify_weekly_recap: true,
+            notify_monthly_recap: true,
+            notify_daily_briefing: false,
+        };
+        render(<Aku identity={identity} stats={stats} telegram={telegram} />);
+
+        fireEvent.click(screen.getByText('Putuskan'));
+        expect(screen.getByText('Telegram-nya lagi istirahat dulu')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Nanti aja' }));
+        await waitFor(() => {
+            expect(screen.queryByText('Telegram-nya lagi istirahat dulu')).not.toBeInTheDocument();
+        });
     });
 });

@@ -331,4 +331,44 @@ describe('Riwayat/Jejak', () => {
         );
         expect(screen.getByTestId('journey-strip')).toBeInTheDocument();
     });
+
+    it('toggles a mood filter and dims runs that do not match it', () => {
+        const runs = [run(101, 'Pagi santai', '2026-05-19T06:00:00')];
+        render(
+            <RunsIndex
+                runs={runs}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByRole('button', { name: /Enteng/i }));
+
+        expect(screen.getByRole('button', { name: /Enteng/i })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('resets range + mood filters and re-fetches the default range', () => {
+        vi.mocked(router.get).mockReset();
+        const runs = [run(101, 'Pagi santai', '2026-05-19T06:00:00')];
+        render(
+            <RunsIndex
+                runs={runs}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByRole('button', { name: /Enteng/i }));
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+        expect(router.get).toHaveBeenCalledWith(
+            '/aktivitas',
+            { range: '12w' },
+            expect.objectContaining({ preserveScroll: true, preserveState: true }),
+        );
+    });
 });

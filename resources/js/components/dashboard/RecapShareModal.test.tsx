@@ -117,4 +117,35 @@ describe('RecapShareModal', () => {
         expect(click).toHaveBeenCalled();
         vi.restoreAllMocks();
     });
+
+    it('shares via the Web Share API when available, falling back to download otherwise', async () => {
+        const share = vi.fn(() => Promise.resolve());
+        const canShare = vi.fn(() => true);
+        Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+        Object.defineProperty(navigator, 'canShare', { value: canShare, configurable: true });
+        render(<RecapShareModal recap={recap} onClose={vi.fn()} />);
+        await act(async () => {
+            fireEvent.click(screen.getByText('Bagikan'));
+        });
+        expect(share).toHaveBeenCalledWith({ files: [expect.any(File)], title: 'Minggu Kamu · TemanLari' });
+        Reflect.deleteProperty(navigator, 'share');
+        Reflect.deleteProperty(navigator, 'canShare');
+    });
+
+    it('auto-clears the status toast after its timeout', async () => {
+        vi.useFakeTimers();
+        const write = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, 'clipboard', { value: { write }, configurable: true });
+        render(<RecapShareModal recap={recap} onClose={vi.fn()} />);
+        await act(async () => {
+            fireEvent.click(screen.getByText('Salin gambar'));
+        });
+        expect(screen.getByRole('status')).toHaveTextContent(/kesalin/);
+
+        await act(async () => {
+            vi.advanceTimersByTime(2600);
+        });
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        vi.useRealTimers();
+    });
 });

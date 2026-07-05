@@ -2,10 +2,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 // Stub the share modal — its canvas/share behaviour is covered by its own test.
-// Here we only assert the trigger opens it.
+// Here we only assert the trigger opens it and its onClose closes it.
 vi.mock('@/components/dashboard/RecapShareModal', () => ({
-    default: ({ recap }: { recap: unknown }) =>
-        recap ? <div data-testid="recap-share-modal" /> : null,
+    default: ({ recap, onClose }: { recap: unknown; onClose: () => void }) =>
+        recap ? <button type="button" data-testid="recap-share-modal" onClick={onClose} /> : null,
 }));
 
 import RecapCard from './RecapCard';
@@ -116,6 +116,13 @@ describe('RecapCard', () => {
         expect(screen.queryByTestId('recap-share-modal')).toBeNull();
         fireEvent.click(screen.getByText(/Bagikan minggu ini/));
         expect(screen.getByTestId('recap-share-modal')).toBeInTheDocument();
+    });
+
+    it('closes the share modal when its onClose fires', () => {
+        render(<RecapCard recap={makeRecap()} />);
+        fireEvent.click(screen.getByText(/Bagikan minggu ini/));
+        fireEvent.click(screen.getByTestId('recap-share-modal'));
+        expect(screen.queryByTestId('recap-share-modal')).toBeNull();
     });
 
     it('shows an encouraging empty state when there were no runs this week', () => {

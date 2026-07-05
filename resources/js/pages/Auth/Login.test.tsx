@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import Login from './Login';
 import { setMockPage } from '@/test/setup';
@@ -70,5 +70,27 @@ describe('Login', () => {
         render(<Login authStravaUrl="/x" />);
         expect(screen.getByText('Ini kartu beneran, bukan mockup')).toBeInTheDocument();
         expect(screen.getByRole('img', { name: '10K Subuh' })).toBeInTheDocument();
+    });
+
+    it('keeps the play overlay visible when play() is rejected', async () => {
+        const userEvent = (await import('@testing-library/user-event')).default;
+        const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(new Error('blocked'));
+        render(<Login authStravaUrl="/x" />);
+        await userEvent.setup().click(screen.getByLabelText('Putar video intro'));
+        expect(playSpy).toHaveBeenCalled();
+        expect(screen.getByLabelText('Putar video intro')).toBeInTheDocument();
+        playSpy.mockRestore();
+    });
+
+    it('shows the play overlay again once the video ends', async () => {
+        const userEvent = (await import('@testing-library/user-event')).default;
+        const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+        const { container } = render(<Login authStravaUrl="/x" />);
+        await userEvent.setup().click(screen.getByLabelText('Putar video intro'));
+        expect(screen.queryByLabelText('Putar video intro')).not.toBeInTheDocument();
+
+        fireEvent.ended(container.querySelector('video')!);
+        expect(screen.getByLabelText('Putar video intro')).toBeInTheDocument();
+        playSpy.mockRestore();
     });
 });
