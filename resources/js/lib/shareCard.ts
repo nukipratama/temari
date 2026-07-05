@@ -216,28 +216,17 @@ function drawRoute(
 
     const [startX, startY] = projected.points[0];
     const [endX, endY] = projected.points.at(-1) ?? [startX, startY];
-    // Always mark both ends — green "go" start, red "stop" finish — so the run's
-    // direction reads even on a loop (the markers sit close but stay distinct).
-    const markR = strokeWidth * START_DOT_RATIO * 1.6;
-    // Start: filled green dot with a white rim for contrast on the route hue.
+    // Simple markers in the route's own neon hue: a filled start dot and a hollow
+    // finish ring (they stack into a target on a loop — itself the start/finish cue).
+    const markR = strokeWidth * START_DOT_RATIO * 1.5;
     ctx.beginPath();
-    ctx.fillStyle = '#ffffff';
-    ctx.arc(box.x + startX, box.y + startY, markR + strokeWidth * 0.35, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.fillStyle = '#22b455';
+    ctx.fillStyle = stroke;
     ctx.arc(box.x + startX, box.y + startY, markR, 0, Math.PI * 2);
     ctx.fill();
-    // Finish: red hollow ring (white backing so it reads over the route).
     ctx.beginPath();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = strokeWidth * FINISH_RING_STROKE_RATIO * 2.4;
-    ctx.arc(box.x + endX, box.y + endY, markR, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.strokeStyle = '#ef4a34';
-    ctx.lineWidth = strokeWidth * FINISH_RING_STROKE_RATIO * 1.6;
-    ctx.arc(box.x + endX, box.y + endY, markR, 0, Math.PI * 2);
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = strokeWidth * FINISH_RING_STROKE_RATIO * 1.4;
+    ctx.arc(box.x + endX, box.y + endY, markR * 1.5, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.restore();
@@ -647,11 +636,16 @@ interface HeroBlock {
     /** false = measure only (advance the cursor without painting). */
     draw: boolean;
     /**
-     * Extra vertical space injected just before the zone bar, used by the feed
-     * layout to push the zone bar + quote group to the bottom of the square.
+     * Even breathing room added before every section, so the block fills the space
+     * under a shorter map with a consistent rhythm instead of one big gap. Zero in
+     * the measure pass (natural height); `drawHero` sets it to slack / sectionCount
+     * for the draw pass.
      */
-    padBeforeZone?: number;
+    gapBonus?: number;
 }
+
+/** Sections in the block that share the even `gapBonus` distribution. */
+const HERO_BLOCK_SECTIONS = 6;
 
 function drawHeroBlock(s: HeroBlock): number {
     // The rarity ribbon now floats on the art window, so the block leads with the
@@ -678,7 +672,7 @@ function heroNameRow(s: HeroBlock, y: number): number {
     ctx.textAlign = 'center';
     const lines = wrapText(ctx, k.name.toUpperCase(), box.w - 28).slice(0, 2);
     const lineH = nameSize * 1.04;
-    y += story ? 8 : 6;
+    y += (story ? 10 : 6) + (s.gapBonus ?? 0);
     const firstBaseline = y + lineH;
     const lastBaseline = y + lineH * lines.length;
     if (draw) {
@@ -695,7 +689,7 @@ function heroKmRow(s: HeroBlock, y: number): number {
     const kmSize = story ? box.w * 0.165 : box.w * 0.14;
     const suffixSize = story ? 28 : 24;
     const gap = 16;
-    y += kmSize * 0.92;
+    y += kmSize * 0.92 + (s.gapBonus ?? 0);
     if (draw) {
         ctx.font = `700 ${kmSize}px "Oswald"`;
         ctx.letterSpacing = '-1px';
@@ -725,10 +719,10 @@ function heroBadgeClusterRow(s: HeroBlock, y: number): number {
     if (tags.length === 0) {
         return y;
     }
-    ctx.font = `500 ${story ? 28 : 24}px "JetBrains Mono"`;
-    const pillH = story ? 52 : 44;
+    ctx.font = `500 ${story ? 30 : 25}px "JetBrains Mono"`;
+    const pillH = story ? 56 : 46;
     const gap = story ? 12 : 10;
-    const padX = 20;
+    const padX = 22;
     const pills = tags.map((tag, i) => ({
         label: (k.tagEmojis[i] ?? '✦') + ' ' + tag,
         w: ctx.measureText((k.tagEmojis[i] ?? '✦') + ' ' + tag).width + padX * 2,
@@ -749,7 +743,7 @@ function heroBadgeClusterRow(s: HeroBlock, y: number): number {
     if (cur.length > 0) {
         rows.push(cur);
     }
-    y += story ? 30 : 24;
+    y += (story ? 32 : 24) + (s.gapBonus ?? 0);
     if (draw) {
         let by = y;
         rows.forEach((row) => {
@@ -771,22 +765,20 @@ function heroStatGridRow(s: HeroBlock, y: number): number {
     if (cells.length === 0) {
         return y;
     }
-    y += story ? 26 : 20;
+    y += (story ? 30 : 22) + (s.gapBonus ?? 0);
     if (draw) {
         drawHeroStatGrid(ctx, cells, box.x, y, box.w, story);
     }
-    return y + Math.ceil(cells.length / 3) * (story ? 70 : 58);
+    return y + Math.ceil(cells.length / 3) * (story ? 74 : 60);
 }
 
 function heroZoneBarRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw } = s;
-    // Feed pushes the bottom group (zone bar + quote) down to fill the square.
-    y += s.padBeforeZone ?? 0;
     if (!k.zonePct) {
         return y;
     }
-    const barH = story ? 30 : 22;
-    y += story ? 26 : 20;
+    const barH = story ? 34 : 24;
+    y += (story ? 30 : 22) + (s.gapBonus ?? 0);
     if (draw) {
         drawZoneBar(ctx, k.zonePct, box.x, y, box.w, barH);
     }
@@ -864,9 +856,9 @@ function heroContextRow(s: HeroBlock, y: number): number {
     if (parts.length === 0) {
         return y;
     }
-    y += story ? 40 : 30;
+    y += (story ? 40 : 30) + (s.gapBonus ?? 0);
     if (draw) {
-        ctx.font = `500 ${story ? 26 : 22}px "JetBrains Mono"`;
+        ctx.font = `500 ${story ? 29 : 23}px "JetBrains Mono"`;
         ctx.fillStyle = C.cream;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
@@ -916,9 +908,9 @@ function drawHeroStatGrid(
     story: boolean,
 ): void {
     const colW = w / 3;
-    const rowH = story ? 70 : 58;
-    const labelSize = story ? 22 : 18;
-    const valueSize = story ? 36 : 30;
+    const rowH = story ? 74 : 60;
+    const labelSize = story ? 23 : 18;
+    const valueSize = story ? 39 : 31;
     const maxValueW = colW - 16; // gutter so a wide value never bleeds into the next column
     cells.forEach((cell, i) => {
         // Centre each label + value within its column.
@@ -1024,33 +1016,28 @@ function drawHero(d: DrawCtx): void {
     const innerH = ch - framePad * 2;
     const blockGap = 22;
 
-    const makeBlock = (y: number, draw: boolean, padBeforeZone = 0): HeroBlock => ({
+    const makeBlock = (y: number, draw: boolean, gapBonus = 0): HeroBlock => ({
         ctx,
         k,
         box: { x: innerX, y, w: innerW, h: 0 },
         rarityCol,
         story,
         draw,
-        padBeforeZone,
+        gapBonus,
     });
 
     // Both formats: art window on top (route hero + mascot), stat block below.
-    // Measure the block, then size the art window to the remaining space but
-    // CAP it (maxArtFrac) so a short stat block (e.g. after dropping the subtitle
-    // + quote) can't balloon the route to fill the whole card. The stat block
-    // bottom-anchors, so the capped slack becomes breathing room above it, not a
-    // dead navy void. The square keeps a lower art floor so its dense stat block
-    // (taller relative to the shorter canvas) always fits.
+    // Measure the block's natural height, cap the map height (maxArtFrac) so it
+    // doesn't dominate, then spread any leftover space EVENLY across every section
+    // (gapBonus) so the block fills the card with a consistent rhythm instead of
+    // one big gap under a shorter map.
     const measuredBlockH = drawHeroBlock(makeBlock(innerTop, false)) + 20;
-    // Cap the map height (maxArtFrac) so it doesn't dominate — the block gets the
-    // rest, and any slack is injected before the zone bar so the effort bar +
-    // context strip sink to the bottom instead of leaving dead navy under a huge
-    // map. When the block is tall enough the art shrinks to fit it exactly.
     const maxArtFrac = story ? 0.52 : 0.5;
     const artH = Math.min(Math.round(innerH * maxArtFrac), innerH - measuredBlockH - blockGap);
     const slack = Math.max(0, innerH - artH - blockGap - measuredBlockH);
+    const gapBonus = slack / HERO_BLOCK_SECTIONS;
     drawHeroArtWindow(ctx, k, cfg.temariImg ?? moodBunny, { x: innerX, y: innerTop, w: innerW, h: artH }, rarityCol, moodCol, story);
-    drawHeroBlock(makeBlock(innerTop + artH + blockGap, true, slack));
+    drawHeroBlock(makeBlock(innerTop + artH + blockGap, true, gapBonus));
 }
 
 const TEMPLATES: Record<Layout, (d: DrawCtx) => void> = {

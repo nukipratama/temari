@@ -60,12 +60,10 @@ export default function RouteGlyph({ polyline, paceShape, rarity, color, distanc
                     opacity={0.95}
                     style={{ filter: `drop-shadow(0 0 1.5px ${stroke})` }}
                 />
-                {/* Always mark both ends — green start, red finish — matching the
-                    share card, so direction reads even on a loop. */}
-                <circle cx={route.start[0]} cy={route.start[1]} r={3.9} fill="#ffffff" />
-                <circle cx={route.start[0]} cy={route.start[1]} r={3} fill="#22b455" />
-                <circle cx={finish[0]} cy={finish[1]} r={3.2} fill="none" stroke="#ffffff" strokeWidth={2.6} />
-                <circle cx={finish[0]} cy={finish[1]} r={3.2} fill="none" stroke="#ef4a34" strokeWidth={1.4} />
+                {/* Simple neon markers in the route's own hue: filled start dot +
+                    hollow finish ring (a target on a loop), matching the share card. */}
+                <circle cx={route.start[0]} cy={route.start[1]} r={3} fill={stroke} />
+                <circle cx={finish[0]} cy={finish[1]} r={4.5} fill="none" stroke={stroke} strokeWidth={1.4} />
             </svg>
         );
     }

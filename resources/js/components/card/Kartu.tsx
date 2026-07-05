@@ -176,9 +176,9 @@ export default function Kartu({
                 )}
             </div>
 
-            {/* ── STAT BLOCK ── dark, high-contrast text. Full tier centres its
-                content to mirror the share card; the md thumbnail stays compact. */}
-            <div className={cn('px-2 text-cream', isFull ? 'pt-2 pb-1.5 text-center' : 'pt-1.5 pb-1')}>
+            {/* ── STAT BLOCK ── dark, high-contrast text. Centred at every tier to
+                mirror the share card; the md thumbnail just carries less detail. */}
+            <div className={cn('px-2 text-center text-cream', isFull ? 'pt-2 pb-1.5' : 'pt-1.5 pb-1')}>
                 {/* Special-move name (rarity now floats on the art window) */}
                 <div
                     className={cn('font-collectible font-semibold uppercase leading-[1.02] tracking-[0.01em] text-cream', SIZE_NAME[size])}
@@ -187,33 +187,23 @@ export default function Kartu({
                     {name}
                 </div>
 
-                {isFull ? (
-                    /* KM hero, centred */
-                    <div className="mt-1 flex items-baseline justify-center gap-1">
-                        <span className={cn('font-collectible font-bold tabular-nums leading-none text-horizon', SIZE_KM[size])}>
-                            {km}
-                        </span>
-                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-on-sky">km</span>
-                    </div>
-                ) : (
-                    /* md thumbnail: KM left + inline pace · HR right */
-                    <div className="mt-1.5 flex items-end justify-between gap-2">
-                        <div className="flex items-baseline gap-1">
-                            <span className={cn('font-collectible font-bold tabular-nums leading-none text-horizon', SIZE_KM[size])}>
-                                {km}
+                {/* KM hero, centred */}
+                <div className={cn('flex items-baseline justify-center gap-1', isFull ? 'mt-1' : 'mt-0.5')}>
+                    <span className={cn('font-collectible font-bold tabular-nums leading-none text-horizon', SIZE_KM[size])}>
+                        {km}
+                    </span>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-on-sky">km</span>
+                </div>
+
+                {/* md thumbnail: a compact centred pace · HR line under the KM */}
+                {!isFull && statParts.length > 0 && (
+                    <div className="mt-0.5 font-mono text-[10px] leading-tight text-cream/85">
+                        {statParts.map((p, i) => (
+                            <span key={p} className="whitespace-nowrap">
+                                {i > 0 && <span className="mx-1 text-ink-on-sky/50">·</span>}
+                                {p}
                             </span>
-                            <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-on-sky">km</span>
-                        </div>
-                        {statParts.length > 0 && (
-                            <div className="min-w-0 text-right font-mono text-[10px] leading-tight text-cream/85">
-                                {statParts.map((p, i) => (
-                                    <span key={p} className="whitespace-nowrap">
-                                        {i > 0 && <span className="mx-1 text-ink-on-sky/50">·</span>}
-                                        {p}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        ))}
                     </div>
                 )}
 
