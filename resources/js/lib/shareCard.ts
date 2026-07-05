@@ -841,13 +841,14 @@ function drawBadgesRow(
 }
 
 /**
- * Bottom context strip — 📍 location · 💨 wind · 📅 date, one muted mono line
- * that grounds the run in where/when/conditions. Location can be long, so it's
- * truncated to whatever width the short wind + date tail leaves.
+ * Bottom context strip — 📍 location · 💨 wind · 📅 date + time, one white mono
+ * line that grounds the run in where/when/conditions. Location can be long, so
+ * it's truncated to whatever width the short wind + date tail leaves.
  */
 function heroContextRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw } = s;
-    const dateStr = k.date?.split('\n')[0] ?? null;
+    // Keep the clock time alongside the day (date is "5 Jul 2026\n06.30").
+    const dateStr = k.date ? k.date.replace('\n', ' · ') : null;
     const tail = [k.wind ? '💨 ' + k.wind : null, dateStr ? '📅 ' + dateStr : null].filter(Boolean).join('   ');
     const hasLocation = k.location != null && k.location !== '';
     if (!hasLocation && tail === '') {
@@ -857,7 +858,7 @@ function heroContextRow(s: HeroBlock, y: number): number {
     if (draw) {
         const sep = '   ';
         ctx.font = `500 ${story ? 26 : 22}px "JetBrains Mono"`;
-        ctx.fillStyle = C.inkOnSky;
+        ctx.fillStyle = C.cream;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
         const tailW = tail ? ctx.measureText(sep + tail).width : 0;
