@@ -235,28 +235,43 @@ export default function RunsShow({
                         />
                     </div>
 
-                    {/* Kartu sidebar */}
+                    {/* Kartu sidebar — on a sky hero panel so the card pops, mirroring
+                        the Koleksi detail page. The glow is a blurred backdrop blob,
+                        not a filter on the card, so the card itself stays crisp. */}
                     <div className="flex items-center justify-center">
                         {card && (
-                            <Link
-                                href={kartuUrl(card)}
-                                className="focus-ring block w-full max-w-[320px] rounded-2xl"
+                            <div
+                                className="relative flex w-full items-center justify-center overflow-hidden rounded-3xl px-6 py-10"
+                                style={{ background: 'linear-gradient(165deg, var(--color-sky-deep), var(--color-sky-2))' }}
                             >
-                                <Kartu
-                                    name={card.special_move}
-                                    km={kartuProps.km}
-                                    durasi={kartuProps.durasi}
-                                    trimp={kartuProps.trimp}
-                                    rarity={card.rarity}
-                                    mood={mood}
-                                    badges={(card.badges ?? []).slice(0, 3)}
-                                    stats={kartuProps.stats}
-                                    zonePct={kartuProps.zonePct}
-                                    polyline={detail.summary_polyline}
-                                    paceShape={kartuProps.paceShape}
-                                    size="md"
+                                <span
+                                    aria-hidden
+                                    className="pointer-events-none absolute inset-x-0 bottom-1/4 mx-auto h-56 w-56 rounded-full"
+                                    style={{
+                                        background: 'radial-gradient(circle, oklch(82% 0.14 55 / 0.4), transparent 60%)',
+                                        filter: 'blur(12px)',
+                                    }}
                                 />
-                            </Link>
+                                <Link
+                                    href={kartuUrl(card)}
+                                    className="focus-ring relative block w-full max-w-[280px] rounded-2xl"
+                                >
+                                    <Kartu
+                                        name={card.special_move}
+                                        km={kartuProps.km}
+                                        durasi={kartuProps.durasi}
+                                        trimp={kartuProps.trimp}
+                                        rarity={card.rarity}
+                                        mood={mood}
+                                        badges={(card.badges ?? []).slice(0, 3)}
+                                        stats={kartuProps.stats}
+                                        zonePct={kartuProps.zonePct}
+                                        polyline={detail.summary_polyline}
+                                        paceShape={kartuProps.paceShape}
+                                        size="md"
+                                    />
+                                </Link>
+                            </div>
                         )}
                     </div>
                 </section>
