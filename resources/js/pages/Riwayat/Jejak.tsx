@@ -13,6 +13,8 @@ import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import BackLink from '@/components/ui/BackLink';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import Temari from '@/components/temari/Temari';
+import MetricExplainer from '@/components/MetricExplainer';
+import { type MetricKey } from '@/lib/metricGlossary';
 import { cn } from '@/lib/cn';
 import { poseForFormStatus } from '@/lib/temariPose';
 import { formStatusLabel } from '@/lib/formStatus';
@@ -316,6 +318,7 @@ function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow 
                     label="Variasi"
                     value={snapshot.monotony.toFixed(2)}
                     alert={monotonyAlert}
+                    explainerKey="monotony"
                 />
             )}
             {snapshot.avg_decoupling !== null && (
@@ -323,6 +326,7 @@ function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow 
                     label="Drift"
                     value={`${snapshot.avg_decoupling.toFixed(1)}%`}
                     alert={decouplingAlert}
+                    explainerKey="decoupling"
                 />
             )}
             {snapshot.ctl_42d !== null && (
@@ -354,7 +358,8 @@ function MetricChip({
     label,
     value,
     alert = false,
-}: Readonly<{ label: string; value: string; alert?: boolean }>) {
+    explainerKey,
+}: Readonly<{ label: string; value: string; alert?: boolean; explainerKey?: MetricKey }>) {
     return (
         <span
             className={cn(
@@ -366,6 +371,7 @@ function MetricChip({
         >
             <span className="font-mono font-bold text-[11px] uppercase tracking-wider text-ink-2">{label}</span>
             <span className="tabular-nums">{value}</span>
+            {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
         </span>
     );
 }

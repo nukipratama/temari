@@ -238,6 +238,27 @@ export default function Aku({
                         catalog={unlockCatalog}
                     />
                 </section>
+
+                <section className="mt-10">
+                    <SectionLabel>Pengaturan</SectionLabel>
+                    <Card padding="lg">
+                        <Link
+                            href="/pengaturan/zona"
+                            className="focus-ring -m-2 flex items-center justify-between gap-3 rounded-xl p-2 transition hover:bg-cream-deep/40"
+                        >
+                            <span className="flex items-center gap-3">
+                                <Icon icon="mdi:heart-pulse" width={20} height={20} className="text-ink-3" aria-hidden />
+                                <span className="flex flex-col">
+                                    <span className="font-sans text-sm font-semibold text-ink">Zona HR</span>
+                                    <span className="font-sans text-[12px] text-ink-3">
+                                        Atur sendiri batas Z1-Z5 biar Temari baca larimu lebih pas.
+                                    </span>
+                                </span>
+                            </span>
+                            <Icon icon="mdi:chevron-right" width={18} height={18} className="text-ink-3" aria-hidden />
+                        </Link>
+                    </Card>
+                </section>
             </PageContainer>
         </AppShell>
     );

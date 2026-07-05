@@ -9,7 +9,6 @@ import HeroPanel from '@/components/ui/HeroPanel';
 import BackLink from '@/components/ui/BackLink';
 import KartuComponent from '@/components/card/Kartu';
 import PillButton from '@/components/ui/PillButton';
-import PillLink from '@/components/ui/PillLink';
 import SectionLabel from '@/components/ui/SectionLabel';
 import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -18,20 +17,11 @@ import type { ShareKartuData } from '@/lib/shareCard';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import { formatNaiveIdDate, formatNaiveTimeId, formatPace, formatShortDateId, paceSecPerKm } from '@/lib/pace';
-import { RARITY_BORDER, RARITY_LABELS, RARITY_POSE, avgCadenceFromDetail, badgeEmblem, badgeName, fastestKmFromDetail, kartuPropsFromDetail } from '@/lib/runcard';
+import { BADGE_ABILITY, RARITY_BORDER, RARITY_LABELS, RARITY_POSE, avgCadenceFromDetail, badgeEmblem, badgeName, fastestKmFromDetail, kartuPropsFromDetail } from '@/lib/runcard';
 import { renderBold } from '@/lib/richText';
 import type { ActivityDetail, AnalysisPayload, CardEdition, Mood, Rarity } from '@/types/inertia';
 
 // Short Indonesian descriptions for each badge key
-const BADGE_DESCS: Record<string, string> = {
-    negative_split: 'Paruh kedua lebih kenceng dari paruh pertama.',
-    hari_panas: 'Tetap lari dan kontrol HR walau suhu tinggi.',
-    pejuang_hujan: 'Nggak berhenti meski hujan, komitmen penuh.',
-    anak_pagi: 'Mulai sebelum matahari tinggi, sebelum orang lain bangun.',
-    long_slow_distance: 'Jarak panjang di pace santai, fondasi aerobik yang rapi.',
-    tahan_diri: 'Pace terkontrol, HR rapi dari awal sampai akhir.',
-};
-
 interface CardPayload {
     id: number;
     activity_id: number;
@@ -211,9 +201,12 @@ export default function KartuDetail({
                                 >
                                     {replaying ? 'Menyiapkan…' : 'Buka ulang kartu'}
                                 </PillButton>
-                                <PillLink href={aktivitasUrl(card)} tone="ghost" onSky size="sm">
-                                    Lihat detail lari
-                                </PillLink>
+                                <Link
+                                    href={aktivitasUrl(card)}
+                                    className="focus-ring inline-flex items-center gap-1 self-center rounded font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-horizon transition hover:text-cream"
+                                >
+                                    Lihat detail lari →
+                                </Link>
                             </div>
                         </div>
                     </HeroPanel>
@@ -260,7 +253,7 @@ export default function KartuDetail({
                                         >
                                             <Chip tone="horizon">{badgeName(b)}</Chip>
                                             <p className="flex-1 text-sm text-ink-2">
-                                                {BADGE_DESCS[b] ??
+                                                {BADGE_ABILITY[b] ??
                                                     'Kondisi spesial yang bikin lari ini istimewa.'}
                                             </p>
                                         </div>

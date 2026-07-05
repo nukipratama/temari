@@ -58,7 +58,7 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
             <div className="grid grid-cols-3 gap-3">
                 <StatTile tone="plain" size="lg" align="center" label="KM" value={km} valueClassName="font-black tracking-tight text-ink" />
                 <StatTile tone="plain" size="lg" align="center" label="PACE" value={paceSec != null ? `${formatPace(paceSec)}/km` : '—'} valueClassName="font-black tracking-tight text-ink" />
-                <StatTile tone="plain" size="lg" align="center" label="TRIMP" value={trimp != null ? String(trimp) : '—'} valueClassName="font-black tracking-tight text-ink" />
+                <StatTile tone="plain" size="lg" align="center" label="TRIMP" value={trimp != null ? String(trimp) : '—'} explainerKey="trimp" valueClassName="font-black tracking-tight text-ink" />
             </div>
             {note && (
                 <div className="flex items-start gap-2 px-3 text-sm leading-relaxed text-ink-2">
