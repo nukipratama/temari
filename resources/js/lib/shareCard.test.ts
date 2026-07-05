@@ -476,12 +476,27 @@ describe('drawShareCard — edge / branch cases', () => {
         expect(Math.max(...longRun.widths)).toBeLessThan(Math.max(...shortRun.widths));
     });
 
-    it('places the run date as a stat cell (under cadence) instead of a subtitle line', async () => {
+    it('puts TRIMP in the stat grid and the date in the bottom context strip', async () => {
         const ctx = makeCtx();
         const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, { kartu, layout: 'kartu', format: 'story' });
-        // The date rides in the stat grid now; the "temanlari.app" wordmark is gone.
-        expect(ctx.fillText).toHaveBeenCalledWith('TANGGAL', expect.any(Number), expect.any(Number));
+        // TRIMP earns a labeled grid cell (was TANGGAL); the date + location ride
+        // in the muted context strip at the very bottom; no "temanlari.app" wordmark.
+        expect(ctx.fillText).toHaveBeenCalledWith('TRIMP', expect.any(Number), expect.any(Number));
+        expect(ctx.fillText).not.toHaveBeenCalledWith('TANGGAL', expect.any(Number), expect.any(Number));
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            expect.stringContaining('Gelora Bung Karno'),
+            expect.any(Number),
+            expect.any(Number),
+        );
+        expect(ctx.fillText).toHaveBeenCalledWith(expect.stringContaining('30 Mei 2026'), expect.any(Number), expect.any(Number));
         expect(ctx.fillText).not.toHaveBeenCalledWith('temanlari.app', expect.any(Number), expect.any(Number));
+    });
+
+    it('shows wind in the context strip when present', async () => {
+        const ctx = makeCtx();
+        const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
+        await drawShareCard(canvas, { kartu: { ...kartu, wind: '14 km/j' }, layout: 'kartu', format: 'story' });
+        expect(ctx.fillText).toHaveBeenCalledWith(expect.stringContaining('14 km/j'), expect.any(Number), expect.any(Number));
     });
 });

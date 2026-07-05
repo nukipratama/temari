@@ -43,12 +43,12 @@ export interface ShareKartuData {
     zonePct: ZonePct | null;
     location: string | null;
     weather: string | null;
+    /** Wind label, e.g. "12 km/j", for the context strip. */
+    wind?: string | null;
     tags: string[];
     /** Badge emoji emblems, parallel to tags, for the hero ability pips. */
     tagEmojis: string[];
     quote: string | null;
-    /** Per-km pace (seconds/km), earliest→latest, for the splits strip. */
-    paceShape?: number[];
     /** Encoded route polyline for the card / route templates (optional). */
     polyline?: string | null;
     /** Run distance (km). Thins the route stroke on longer routes, mirroring RouteGlyph. */
@@ -632,7 +632,7 @@ function drawHeroBlock(s: HeroBlock): number {
     y = heroKmRow(s, y); // badges stack vertically in the empty space right of KM
     y = heroStatGridRow(s, y);
     y = heroZoneBarRow(s, y);
-    y = heroSplitsRow(s, y); // per-km pace strip fills the bottom (story only)
+    y = heroContextRow(s, y); // 📍 location · 💨 wind · 📅 date at the bottom
     return y - s.box.y;
 }
 
@@ -839,79 +839,49 @@ function drawBadgesRow(
 }
 
 /**
- * Per-km pace strip (story only) — one bar per km, taller = faster, so the
- * bottom of the tall 9:16 carries a real "how the run was paced" read instead of
- * dead navy. Feed (1:1) stays lean and skips it. The fastest km flags horizon.
+ * Bottom context strip — 📍 location · 💨 wind · 📅 date, one muted mono line
+ * that grounds the run in where/when/conditions. Location can be long, so it's
+ * truncated to whatever width the short wind + date tail leaves.
  */
-function heroSplitsRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, rarityCol, story, draw } = s;
-    const splits = k.paceShape ?? [];
-    if (!story || splits.length < 2) {
+function heroContextRow(s: HeroBlock, y: number): number {
+    const { ctx, k, box, story, draw } = s;
+    const dateStr = k.date?.split('\n')[0] ?? null;
+    const tail = [k.wind ? '💨 ' + k.wind : null, dateStr ? '📅 ' + dateStr : null].filter(Boolean).join('   ');
+    const hasLocation = k.location != null && k.location !== '';
+    if (!hasLocation && tail === '') {
         return y;
     }
-    const labelGap = 22;
-    const barsH = 96;
-    y += 44;
+    y += story ? 40 : 30;
     if (draw) {
-        ctx.font = '700 20px "JetBrains Mono"';
-        ctx.letterSpacing = '2px';
+        const sep = '   ';
+        ctx.font = `500 ${story ? 26 : 22}px "JetBrains Mono"`;
         ctx.fillStyle = C.inkOnSky;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
-        ctx.fillText('PACE / KM', box.x, y);
-        ctx.letterSpacing = '0px';
-        drawSplitsStrip(ctx, splits, box.x, y + labelGap, box.w, barsH, rarityCol);
+        const tailW = tail ? ctx.measureText(sep + tail).width : 0;
+        const loc = hasLocation ? truncateToWidth(ctx, '📍 ' + k.location, box.w - tailW) : '';
+        ctx.fillText([loc, tail].filter(Boolean).join(sep), box.x, y);
     }
-    return y + labelGap + barsH;
+    return y + (story ? 26 : 22);
 }
 
-/** Downsample a long per-km series into at most `maxBars` averaged buckets, so a
- * marathon doesn't render as 42 hairline slivers. */
-function bucketSplits(splits: number[], maxBars: number): number[] {
-    if (splits.length <= maxBars) {
-        return splits;
+/** Trim `text` (appending "…") until it fits `maxWidth` at the current font. */
+function truncateToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+    if (ctx.measureText(text).width <= maxWidth) {
+        return text;
     }
-    const size = splits.length / maxBars;
-    return Array.from({ length: maxBars }, (_, b) => {
-        const slice = splits.slice(Math.floor(b * size), Math.floor((b + 1) * size));
-        return slice.reduce((sum, p) => sum + p, 0) / slice.length;
-    });
-}
-
-/** Vertical per-km pace bars in (left, y, w, h). Faster km = taller; min flags horizon. */
-function drawSplitsStrip(
-    ctx: CanvasRenderingContext2D,
-    splits: number[],
-    left: number,
-    y: number,
-    w: number,
-    h: number,
-    rarityCol: string,
-): void {
-    const bars = bucketSplits(splits, 22);
-    const n = bars.length;
-    const gap = n > 14 ? 5 : 8;
-    const barW = (w - gap * (n - 1)) / n;
-    const min = Math.min(...bars);
-    const max = Math.max(...bars);
-    const range = max - min || 1;
-    bars.forEach((pace, i) => {
-        const fast = 1 - (pace - min) / range; // 0..1, 1 = fastest bucket
-        const barH = h * (0.32 + 0.68 * fast);
-        const bx = left + i * (barW + gap);
-        roundRectPath(ctx, bx, y + (h - barH), barW, barH, Math.min(barW / 2, 6));
-        ctx.fillStyle = pace === min ? C.horizon : rarityCol;
-        ctx.globalAlpha = pace === min ? 1 : 0.6;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-    });
+    let trimmed = text;
+    while (trimmed.length > 3 && ctx.measureText(trimmed + '…').width > maxWidth) {
+        trimmed = trimmed.slice(0, -1);
+    }
+    return trimmed + '…';
 }
 
 
 /**
- * PACE · HR · CADENCE · DURASI · BEST · TANGGAL cells, present-only. The date is
- * the 6th cell so it lands under CADENCE (col 3, row 2), replacing the removed
- * subtitle line. Only the first line of `date` (the day, not the clock time).
+ * PACE · HR · CADENCE · DURASI · BEST · TRIMP cells, present-only. TRIMP is the
+ * 6th cell (under CADENCE, col 3 row 2) — the run's effort number gets a labeled
+ * home in the grid. Date moves to the bottom context strip.
  */
 function heroStatCells(k: ShareKartuData): Array<{ label: string; value: string }> {
     const raw: Array<{ label: string; value: string | null }> = [
@@ -920,7 +890,7 @@ function heroStatCells(k: ShareKartuData): Array<{ label: string; value: string 
         { label: 'CADENCE', value: k.cadence },
         { label: 'DURASI', value: k.durasi },
         { label: 'BEST', value: k.fastestKm },
-        { label: 'TANGGAL', value: k.date?.split('\n')[0] ?? null },
+        { label: 'TRIMP', value: k.trimp },
     ];
     return raw.filter((c): c is { label: string; value: string } => c.value != null && c.value !== '' && c.value !== '—');
 }
