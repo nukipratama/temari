@@ -341,8 +341,9 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                 <button
                     type="button"
                     onClick={() => guard(() => router.delete('/profil/telegram', { preserveScroll: true }))}
-                    className="focus-ring rounded font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3 transition hover:text-ember-deep"
+                    className="focus-ring inline-flex items-center gap-1 rounded font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3 transition hover:text-ember-deep"
                 >
+                    <Icon icon="mdi:link-off" width={13} height={13} aria-hidden />
                     Putuskan
                 </button>
             </div>
@@ -391,8 +392,9 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
             <button
                 type="button"
                 onClick={() => guard(() => router.post('/profil/telegram/test', {}, { preserveScroll: true }))}
-                className="focus-ring self-start rounded-full border border-cream-deep bg-cream px-4 py-2 font-sans text-[13px] font-semibold text-ink-2 transition hover:text-ink"
+                className="focus-ring inline-flex items-center gap-1.5 self-start rounded-full border border-cream-deep bg-cream px-4 py-2 font-sans text-[13px] font-semibold text-ink-2 transition hover:text-ink"
             >
+                <Icon icon="mdi:send-outline" width={14} height={14} aria-hidden />
                 Kirim notifikasi tes
             </button>
             <DemoBlockedModal open={open} onClose={() => setOpen(false)} />

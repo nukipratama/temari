@@ -255,7 +255,8 @@ function AksesoriCard({
                 </PillButton>
             )}
             {!locked && !item.equipped && (
-                <PillButton tone="sky" size="sm" onClick={() => onEquip(item.unlock_key)} className="mt-auto">
+                <PillButton tone="sky" size="sm" onClick={() => onEquip(item.unlock_key)} className="mt-auto gap-1.5">
+                    <Icon icon="mdi:hanger" width={15} height={15} aria-hidden />
                     Pasang
                 </PillButton>
             )}
