@@ -39,7 +39,7 @@ class StravaAuthController extends Controller
     {
         if ($request->filled('error')) {
             return redirect()->route('login')->withErrors([
-                'strava' => 'Strava authorization was cancelled or denied.',
+                'strava' => 'Sambungan ke Strava dibatalin. Coba lagi ya kalau mau lanjut.',
             ]);
         }
 
@@ -48,7 +48,7 @@ class StravaAuthController extends Controller
             $stravaUser = $this->driver()->user();
         } catch (InvalidStateException|RequestException) {
             return redirect()->route('login')->withErrors([
-                'strava' => 'We could not complete the Strava sign-in. Please try again.',
+                'strava' => 'Gagal nyambungin Strava. Coba lagi sebentar ya.',
             ]);
         }
 

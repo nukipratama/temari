@@ -7,6 +7,7 @@ import AksesoriUnlockModal from '@/components/celebrations/AksesoriUnlockModal';
 import TopNav from '@/components/TopNav';
 import MobileTopBar from '@/components/MobileTopBar';
 import MobileBottomNav from '@/components/MobileBottomNav';
+import ErrorBanner from '@/components/ErrorBanner';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import type { SharedProps, UnlockFlash } from '@/types/inertia';
 
@@ -33,6 +34,7 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
         return (
             <MotionConfig reducedMotion="user">
                 <div className="min-h-screen bg-cream-deep text-ink">
+                    <ErrorBanner />
                     {children}
                 </div>
             </MotionConfig>
@@ -51,6 +53,8 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
 
             <TopNav />
             <MobileTopBar />
+
+            <ErrorBanner />
 
             <main id="main-content" className="pb-28 lg:pb-0">
                 {children}

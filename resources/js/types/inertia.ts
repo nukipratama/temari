@@ -81,6 +81,8 @@ export interface SharedProps {
     hrZonesChangedAt?: string | null;
     /** Whether the auth user has a live (non-revoked) Telegram connection. */
     telegramConnected?: boolean;
+    /** Inertia's shared validation/error bag, keyed by field (e.g. `strava`). */
+    errors?: Record<string, string>;
     [key: string]: unknown;
 }
 
