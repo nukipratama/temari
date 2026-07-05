@@ -686,7 +686,7 @@ function heroNameRow(s: HeroBlock, y: number): number {
 /** KM hero number + "KM" suffix, centred as a group (number floods horizon). */
 function heroKmRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw } = s;
-    const kmSize = story ? box.w * 0.165 : box.w * 0.14;
+    const kmSize = story ? box.w * 0.135 : box.w * 0.12;
     const suffixSize = story ? 28 : 24;
     const gap = 16;
     y += kmSize * 0.92 + (s.gapBonus ?? 0);
