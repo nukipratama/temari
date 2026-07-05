@@ -33,21 +33,18 @@
     <style>
         :root {
             --sky: #1f2747;
+            --sky-deep: #161b33;
+            --sky-2: #2c355c;
             --cream: #f6f1e8;
-            --cream-deep: #eee7d6;
-            --surface-elev: #fbf7ee;
-            --ink: #1a1812;
-            --ink-2: #3d362a;
-            --ink-3: #6e6452;
-            --line: #d8ddd2;
+            --ink-on-sky: #b8ad97;
             --horizon: #e8a076;
             --rarity: {{ $rarityColor }};
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-            background: var(--cream-deep);
-            color: var(--ink);
+            background: var(--sky-deep);
+            color: var(--cream);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -55,25 +52,22 @@
             padding: 24px;
             -webkit-font-smoothing: antialiased;
         }
+        /* Mirror the in-app collectible: dark card, rarity-colored border. */
         .card {
             width: 100%;
             max-width: 420px;
-            background: var(--surface-elev);
-            border: 1px solid var(--line);
+            background: var(--sky);
+            border: 2px solid var(--rarity);
             border-radius: 28px;
-            box-shadow: 0 24px 60px rgba(31, 39, 71, 0.18);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
             overflow: hidden;
         }
-        .card__banner {
-            background: var(--sky);
-            color: var(--cream);
-            padding: 22px 26px 18px;
-        }
+        .card__head { padding: 24px 26px 6px; }
         .card__rarity {
             display: inline-block;
             font-size: 11px;
             font-weight: 700;
-            letter-spacing: 0.14em;
+            letter-spacing: 0.16em;
             text-transform: uppercase;
             color: var(--rarity);
         }
@@ -83,42 +77,45 @@
             line-height: 1.12;
             font-weight: 600;
             margin-top: 6px;
+            color: var(--cream);
         }
         .card__route {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-            background: var(--cream);
-            border-bottom: 1px solid var(--line);
+            margin: 16px 22px;
+            padding: 18px;
+            background: var(--sky-2);
+            border-radius: 20px;
         }
         .card__route svg { display: block; width: 100%; height: auto; max-width: 320px; }
         .card__route--empty {
             font-size: 13px;
-            color: var(--ink-3);
+            color: var(--ink-on-sky);
             padding: 40px 20px;
         }
         .card__stats {
             display: flex;
-            gap: 8px;
-            padding: 20px 26px;
+            align-items: flex-end;
+            gap: 16px;
+            padding: 6px 26px 4px;
         }
-        .stat { flex: 1; }
-        .stat__value {
+        .stat__km {
             font-family: 'Oswald', sans-serif;
-            font-size: 26px;
+            font-size: 48px;
             font-weight: 600;
-            line-height: 1;
+            line-height: 0.9;
+            color: var(--cream);
         }
-        .stat__label {
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: var(--ink-3);
-            margin-top: 5px;
+        .stat__km span { font-size: 18px; color: var(--ink-on-sky); margin-left: 3px; }
+        .stat__meta {
+            flex: 1;
+            font-size: 13px;
+            line-height: 1.4;
+            color: var(--ink-on-sky);
+            padding-bottom: 4px;
         }
-        .card__cta { padding: 0 26px 26px; }
+        .card__cta { padding: 20px 26px 26px; }
         .cta {
             display: block;
             text-align: center;
@@ -134,15 +131,16 @@
         .foot {
             text-align: center;
             font-size: 12px;
-            color: var(--ink-3);
+            color: var(--ink-on-sky);
             margin-top: 16px;
+            opacity: 0.8;
         }
     </style>
 </head>
 <body>
     <div>
         <div class="card">
-            <div class="card__banner">
+            <div class="card__head">
                 <span class="card__rarity">{{ $rarityLabel }}</span>
                 <h1 class="card__name">{{ $name }}</h1>
             </div>
@@ -159,16 +157,10 @@
             </div>
 
             <div class="card__stats">
-                <div class="stat">
-                    <div class="stat__value">{{ $km ?? '—' }}</div>
-                    <div class="stat__label">Kilometer</div>
+                <div class="stat__km">{{ $km ?? '—' }}<span>KM</span></div>
+                <div class="stat__meta">
+                    {{ $dateLabel ?? '' }}@if ($location)<br>{{ $location }}@endif
                 </div>
-                @if ($dateLabel !== null)
-                    <div class="stat">
-                        <div class="stat__value" style="font-size:18px;padding-top:4px">{{ $dateLabel }}</div>
-                        <div class="stat__label">{{ $location ?? 'Tanggal lari' }}</div>
-                    </div>
-                @endif
             </div>
 
             <div class="card__cta">
