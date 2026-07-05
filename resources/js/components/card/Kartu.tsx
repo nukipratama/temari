@@ -162,52 +162,69 @@ export default function Kartu({
                     />
                 </span>
 
-                {/* Floating header — edition (left) + TRIMP "power" badge (right) */}
+                {/* Floating corners (mirrors the share card): rarity chip top-left,
+                    TRIMP "power" top-right, edition bottom-left; the mascot owns
+                    bottom-right. */}
                 <div className="absolute inset-x-1.5 top-1.5 flex items-start justify-between gap-1">
-                    {edition ? <EditionMark edition={edition} /> : <span />}
+                    <RarityChip rarity={rarity} />
                     <TRIMPBadge trimp={trimp} mood={mood} />
                 </div>
+                {edition && (
+                    <div className="absolute bottom-1.5 left-1.5">
+                        <EditionMark edition={edition} />
+                    </div>
+                )}
             </div>
 
-            {/* ── STAT BLOCK ── dark, high-contrast text */}
-            <div className={cn('px-2 text-cream', isFull ? 'pt-2 pb-1.5' : 'pt-1.5 pb-1')}>
-                {/* Rarity ribbon */}
-                <div className="flex min-w-0 items-center gap-1">
-                    <span aria-hidden className={cn('shrink-0 text-[10px] leading-none', RARITY_TEXT[rarity])}>
-                        {RARITY_SYMBOL[rarity]}
-                    </span>
-                    <span className={cn('min-w-0 shrink-0 whitespace-nowrap font-mono text-[9px] font-bold uppercase tracking-[0.14em]', RARITY_TEXT[rarity])}>
-                        {RARITY_LABELS[rarity]}
-                    </span>
-                </div>
-
-                {/* Special-move name */}
+            {/* ── STAT BLOCK ── dark, high-contrast text. Full tier centres its
+                content to mirror the share card; the md thumbnail stays compact. */}
+            <div className={cn('px-2 text-cream', isFull ? 'pt-2 pb-1.5 text-center' : 'pt-1.5 pb-1')}>
+                {/* Special-move name (rarity now floats on the art window) */}
                 <div
-                    className={cn('mt-0.5 font-collectible font-semibold uppercase leading-[1.02] tracking-[0.01em] text-cream', SIZE_NAME[size])}
+                    className={cn('font-collectible font-semibold uppercase leading-[1.02] tracking-[0.01em] text-cream', SIZE_NAME[size])}
                     style={nameGlow}
                 >
                     {name}
                 </div>
 
-                {/* KM hero + (md only) inline pace · HR */}
-                <div className="mt-1.5 flex items-end justify-between gap-2">
-                    <div className="flex items-baseline gap-1">
+                {isFull ? (
+                    /* KM hero, centred */
+                    <div className="mt-1 flex items-baseline justify-center gap-1">
                         <span className={cn('font-collectible font-bold tabular-nums leading-none text-horizon', SIZE_KM[size])}>
                             {km}
                         </span>
                         <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-on-sky">km</span>
                     </div>
-                    {!isFull && statParts.length > 0 && (
-                        <div className="min-w-0 text-right font-mono text-[10px] leading-tight text-cream/85">
-                            {statParts.map((p, i) => (
-                                <span key={p} className="whitespace-nowrap">
-                                    {i > 0 && <span className="mx-1 text-ink-on-sky/50">·</span>}
-                                    {p}
-                                </span>
-                            ))}
+                ) : (
+                    /* md thumbnail: KM left + inline pace · HR right */
+                    <div className="mt-1.5 flex items-end justify-between gap-2">
+                        <div className="flex items-baseline gap-1">
+                            <span className={cn('font-collectible font-bold tabular-nums leading-none text-horizon', SIZE_KM[size])}>
+                                {km}
+                            </span>
+                            <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-on-sky">km</span>
                         </div>
-                    )}
-                </div>
+                        {statParts.length > 0 && (
+                            <div className="min-w-0 text-right font-mono text-[10px] leading-tight text-cream/85">
+                                {statParts.map((p, i) => (
+                                    <span key={p} className="whitespace-nowrap">
+                                        {i > 0 && <span className="mx-1 text-ink-on-sky/50">·</span>}
+                                        {p}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Badges — centred row below the KM hero (full tier only) */}
+                {isFull && slugs.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap justify-center gap-1">
+                        {slugs.map((slug) => (
+                            <BadgePip key={slug} slug={slug} />
+                        ))}
+                    </div>
+                )}
 
                 {/* Full-tier labeled stat grid — a dense TCG stat block */}
                 {isFull && <StatGrid stats={stats} durasi={durasi} />}
@@ -217,17 +234,19 @@ export default function Kartu({
                 {zonePct != null && (
                     <ZoneBar zonePct={zonePct} showLegend={false} className="mt-1.5" />
                 )}
-
-                {/* Badges (full tier only) */}
-                {isFull && slugs.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                        {slugs.map((slug) => (
-                            <BadgePip key={slug} slug={slug} />
-                        ))}
-                    </div>
-                )}
             </div>
         </div>
+    );
+}
+
+function RarityChip({ rarity }: Readonly<{ rarity: Rarity }>) {
+    return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-sky-deep/90 px-2 py-0.5 leading-none">
+            <span aria-hidden className={cn('text-[10px] leading-none', RARITY_TEXT[rarity])}>{RARITY_SYMBOL[rarity]}</span>
+            <span className={cn('font-mono text-[9px] font-bold uppercase tracking-[0.14em]', RARITY_TEXT[rarity])}>
+                {RARITY_LABELS[rarity]}
+            </span>
+        </span>
     );
 }
 
