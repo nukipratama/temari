@@ -61,10 +61,9 @@ describe('Kartu', () => {
         expect(container.querySelector('[data-variant="glyph"]')).not.toBeNull();
     });
 
-    it('does not render badge pips at the compact (md) size', () => {
+    it('renders badge pips at the compact (md) size too (same full block as the share card)', () => {
         render(<Kartu name="x" km="1" durasi="1:00" trimp={1} badges={['negative_split']} size="md" />);
-        // No overlay at compact size — badges are not shown.
-        expect(screen.queryByText('Negative Split')).toBeNull();
+        expect(screen.getByText('Negative Split')).toBeInTheDocument();
     });
 
     it('shows badge pips (name only, no description) in the art overlay at the full (lg) size', () => {
@@ -141,12 +140,12 @@ describe('Kartu', () => {
         expect(container.querySelector('[title^="Z"]')).toBeNull();
     });
 
-    it('shows pace/HR but omits duration on the compact tier', () => {
+    it('shows the full stat grid (pace, HR, duration) at the compact tier too', () => {
         render(<Kartu name="x" km="1" durasi="1:00" trimp={1} size="md" stats={{ pace: '5:30/km', hr: '150 bpm' }} />);
-        // Compact tiles carry the core run identity (pace + HR) but not duration.
+        // md now renders the same full stat block as the share card, duration included.
         expect(screen.getByText(/5:30\/km/)).toBeInTheDocument();
         expect(screen.getByText(/150 bpm/)).toBeInTheDocument();
-        expect(screen.queryByText(/1:00/)).toBeNull();
+        expect(screen.getByText(/1:00/)).toBeInTheDocument();
     });
 
     it('renders the badge emoji pip in the art overlay at the full (lg) size', () => {

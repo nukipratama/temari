@@ -128,8 +128,6 @@ export default function Kartu({
         ].join(', '),
     };
 
-    const statParts = buildStatParts(stats);
-
     return (
         <div
             role="img"
@@ -179,9 +177,11 @@ export default function Kartu({
                 )}
             </div>
 
-            {/* ── STAT BLOCK ── dark, high-contrast text. Centred at every tier to
-                mirror the share card; the md thumbnail just carries less detail. */}
-            <div className={cn('px-2 text-center text-cream', isFull ? 'pt-2 pb-1.5' : 'pt-1.5 pb-1')}>
+            {/* ── STAT BLOCK ── dark, high-contrast text. The SAME full layout at
+                every tier (name, KM, badges, stat grid, zone bar) so the grid /
+                featured / detail cards all mirror the share card; only the scale
+                differs by size. */}
+            <div className={cn('px-2 pb-1.5 text-center text-cream', isFull ? 'pt-2' : 'pt-1.5')}>
                 {/* Special-move name (rarity now floats on the art window) */}
                 <div
                     className={cn('font-collectible font-semibold uppercase leading-[1.02] tracking-[0.01em] text-cream', SIZE_NAME[size])}
@@ -191,27 +191,15 @@ export default function Kartu({
                 </div>
 
                 {/* KM hero, centred */}
-                <div className={cn('flex items-baseline justify-center gap-1', isFull ? 'mt-1' : 'mt-0.5')}>
+                <div className="mt-1 flex items-baseline justify-center gap-1">
                     <span className={cn('font-collectible font-bold tabular-nums leading-none text-horizon', SIZE_KM[size])}>
                         {km}
                     </span>
                     <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-on-sky">km</span>
                 </div>
 
-                {/* md thumbnail: a compact centred pace · HR line under the KM */}
-                {!isFull && statParts.length > 0 && (
-                    <div className="mt-0.5 font-mono text-[10px] leading-tight text-cream/85">
-                        {statParts.map((p, i) => (
-                            <span key={p} className="whitespace-nowrap">
-                                {i > 0 && <span className="mx-1 text-ink-on-sky/50">·</span>}
-                                {p}
-                            </span>
-                        ))}
-                    </div>
-                )}
-
-                {/* Badges — centred row below the KM hero (full tier only) */}
-                {isFull && slugs.length > 0 && (
+                {/* Badges — centred row below the KM hero */}
+                {slugs.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap justify-center gap-1">
                         {slugs.map((slug) => (
                             <BadgePip key={slug} slug={slug} />
@@ -219,8 +207,8 @@ export default function Kartu({
                     </div>
                 )}
 
-                {/* Full-tier labeled stat grid — a dense TCG stat block */}
-                {isFull && <StatGrid stats={stats} durasi={durasi} />}
+                {/* Labeled stat grid — the dense TCG stat block */}
+                <StatGrid stats={stats} durasi={durasi} />
 
                 {/* HR-zone effort bar — bare (no Z1..Z5 legend), matching the share
                     card's rounded legendless bar. */}
@@ -287,18 +275,6 @@ function nameGlowFor(rarity: Rarity): CSSProperties {
         return { textShadow: '0 0 10px color-mix(in oklab, var(--rarity) 60%, transparent)' };
     }
     return {};
-}
-
-/** pace · HR — the compact inline stat row on the md (grid) tile. */
-function buildStatParts(stats: KartuStats | undefined): string[] {
-    const parts: string[] = [];
-    if (stats?.pace != null && stats.pace !== '') {
-        parts.push(stats.pace);
-    }
-    if (stats?.hr != null && stats.hr !== '') {
-        parts.push(stats.hr);
-    }
-    return parts;
 }
 
 /**
