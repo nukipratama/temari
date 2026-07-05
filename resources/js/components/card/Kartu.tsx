@@ -228,7 +228,7 @@ function RarityChip({ rarity }: Readonly<{ rarity: Rarity }>) {
     return (
         <span className="inline-flex items-center gap-1 rounded-br-[11px] bg-sky-deep px-2.5 py-1.5 leading-none">
             <span aria-hidden className={cn('text-[12px] leading-none', RARITY_TEXT[rarity])}>{RARITY_SYMBOL[rarity]}</span>
-            <span className={cn('font-mono text-[11px] font-bold uppercase tracking-[0.08em]', RARITY_TEXT[rarity])}>
+            <span className={cn('font-sans text-[11px] font-bold uppercase tracking-[0.04em]', RARITY_TEXT[rarity])}>
                 {RARITY_LABELS[rarity]}
             </span>
         </span>
@@ -237,7 +237,7 @@ function RarityChip({ rarity }: Readonly<{ rarity: Rarity }>) {
 
 function EditionMark({ edition }: Readonly<{ edition: CardEdition }>) {
     return (
-        <span className="inline-flex rounded-tr-[11px] bg-sky-deep px-2.5 py-1.5 font-collectible text-[12px] font-semibold tabular-nums text-cream leading-none">
+        <span className="inline-flex rounded-tr-[11px] bg-sky-deep px-2.5 py-1.5 font-sans text-[12px] font-bold tabular-nums text-cream leading-none">
             #{edition.index}
             <span className="opacity-60">/{edition.total}</span>
         </span>
@@ -251,7 +251,7 @@ function TRIMPBadge({ trimp, mood }: Readonly<{ trimp: string | number; mood: Mo
                 aria-label={`Vibe ${MOOD_LABEL[mood]}`}
                 className={cn('h-3 w-3 shrink-0 rounded-full', MOOD_FILL[mood])}
             />
-            <span aria-hidden className="font-mono text-[13px] font-bold tabular-nums text-cream">
+            <span aria-hidden className="font-sans text-[13px] font-extrabold tabular-nums text-cream">
                 {trimp}
             </span>
         </span>

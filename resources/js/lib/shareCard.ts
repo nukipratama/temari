@@ -490,18 +490,17 @@ function drawHeroArtBadges(
 ): void {
     const pad = 26;
     const h = 60;
-    const outerR = 24; // matches the art window corner radius
-    const innerR = 20; // the free (inner) corner rounds off
-    const dark = 'rgba(22,27,51,0.86)';
+    const innerR = 20; // the free (inner) corner rounds off; outer stays square + clipped
+    const dark = C.skyDeep;
     const midTop = box.y + h / 2;
     ctx.textBaseline = 'middle';
 
-    // Top-left: rarity chip, stuck flush into the corner.
-    ctx.font = '700 28px "JetBrains Mono"';
-    ctx.letterSpacing = '2px';
+    // Top-left: rarity chip, square outer corner clipped flush into the window.
+    ctx.font = '700 29px "Plus Jakarta Sans"';
+    ctx.letterSpacing = '1px';
     const rarText = RARITY_SYMBOL[k.rarity] + ' ' + RARITY_LABELS[k.rarity].toUpperCase();
     const rarW = ctx.measureText(rarText).width + pad * 2;
-    roundRectPathCorners(ctx, box.x, box.y, rarW, h, { tl: outerR, tr: 0, br: innerR, bl: 0 });
+    roundRectPathCorners(ctx, box.x, box.y, rarW, h, { tl: 0, tr: 0, br: innerR, bl: 0 });
     ctx.fillStyle = dark;
     ctx.fill();
     ctx.fillStyle = rarityCol;
@@ -509,12 +508,12 @@ function drawHeroArtBadges(
     ctx.fillText(rarText, box.x + pad, midTop + 1);
     ctx.letterSpacing = '0px';
 
-    // Top-right: TRIMP power (mood dot + number), stuck flush into the corner.
-    ctx.font = '700 30px "JetBrains Mono"';
+    // Top-right: TRIMP power (mood dot + number).
+    ctx.font = '700 32px "Plus Jakarta Sans"';
     const trimpText = String(k.trimp);
     const trimpW = ctx.measureText(trimpText).width + pad * 2 + 34;
     const tx = box.x + box.w - trimpW;
-    roundRectPathCorners(ctx, tx, box.y, trimpW, h, { tl: 0, tr: outerR, br: 0, bl: innerR });
+    roundRectPathCorners(ctx, tx, box.y, trimpW, h, { tl: 0, tr: 0, br: 0, bl: innerR });
     ctx.fillStyle = dark;
     ctx.fill();
     ctx.beginPath();
@@ -525,13 +524,13 @@ function drawHeroArtBadges(
     ctx.textAlign = 'left';
     ctx.fillText(trimpText, tx + pad + 30, midTop + 1);
 
-    // Bottom-left: edition number, stuck into the bottom corner.
+    // Bottom-left: edition number.
     if (k.edition) {
-        ctx.font = '600 27px "JetBrains Mono"';
+        ctx.font = '700 28px "Plus Jakarta Sans"';
         const edText = '#' + String(k.edition.index) + '/' + String(k.edition.total);
         const edW = ctx.measureText(edText).width + pad * 2;
         const ey = box.y + box.h - h;
-        roundRectPathCorners(ctx, box.x, ey, edW, h, { tl: 0, tr: innerR, br: 0, bl: outerR });
+        roundRectPathCorners(ctx, box.x, ey, edW, h, { tl: 0, tr: innerR, br: 0, bl: 0 });
         ctx.fillStyle = dark;
         ctx.fill();
         ctx.fillStyle = C.cream;
@@ -613,9 +612,10 @@ function drawHeroArtWindow(
         }
         ctx.globalAlpha = 1;
     }
-    ctx.restore();
-
+    // Draw the corner chips INSIDE the clip so their square outer corners are
+    // clipped to the window radius (fills the corner, no pearl sliver).
     drawHeroArtBadges(ctx, k, box, moodCol, rarityCol);
+    ctx.restore();
 }
 
 /**
