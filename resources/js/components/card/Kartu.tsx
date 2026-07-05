@@ -220,11 +220,15 @@ export default function Kartu({
     );
 }
 
+// The chips have SQUARE outer corners and only the inner corner rounds; the art
+// window's `overflow-hidden` clips them to its radius, so they fill the corner
+// completely (no pearl sliver) and read as truly stuck to the corner. Opaque
+// background + bumped sizes for legibility.
 function RarityChip({ rarity }: Readonly<{ rarity: Rarity }>) {
     return (
-        <span className="inline-flex items-center gap-1 rounded-br-[10px] bg-sky-deep/90 px-2.5 py-1 leading-none">
-            <span aria-hidden className={cn('text-[10px] leading-none', RARITY_TEXT[rarity])}>{RARITY_SYMBOL[rarity]}</span>
-            <span className={cn('font-mono text-[9px] font-bold uppercase tracking-[0.14em]', RARITY_TEXT[rarity])}>
+        <span className="inline-flex items-center gap-1 rounded-br-[11px] bg-sky-deep px-2.5 py-1.5 leading-none">
+            <span aria-hidden className={cn('text-[12px] leading-none', RARITY_TEXT[rarity])}>{RARITY_SYMBOL[rarity]}</span>
+            <span className={cn('font-mono text-[11px] font-bold uppercase tracking-[0.08em]', RARITY_TEXT[rarity])}>
                 {RARITY_LABELS[rarity]}
             </span>
         </span>
@@ -233,7 +237,7 @@ function RarityChip({ rarity }: Readonly<{ rarity: Rarity }>) {
 
 function EditionMark({ edition }: Readonly<{ edition: CardEdition }>) {
     return (
-        <span className="inline-flex rounded-tr-[10px] bg-sky-deep/90 px-2.5 py-1 font-collectible text-[10px] font-semibold tabular-nums text-cream leading-none">
+        <span className="inline-flex rounded-tr-[11px] bg-sky-deep px-2.5 py-1.5 font-collectible text-[12px] font-semibold tabular-nums text-cream leading-none">
             #{edition.index}
             <span className="opacity-60">/{edition.total}</span>
         </span>
@@ -242,12 +246,12 @@ function EditionMark({ edition }: Readonly<{ edition: CardEdition }>) {
 
 function TRIMPBadge({ trimp, mood }: Readonly<{ trimp: string | number; mood: Mood }>) {
     return (
-        <span className="inline-flex items-center gap-1 rounded-bl-[10px] bg-sky-deep/90 px-2.5 py-1 leading-none">
+        <span className="inline-flex items-center gap-1.5 rounded-bl-[11px] bg-sky-deep px-2.5 py-1.5 leading-none">
             <span
                 aria-label={`Vibe ${MOOD_LABEL[mood]}`}
                 className={cn('h-3 w-3 shrink-0 rounded-full', MOOD_FILL[mood])}
             />
-            <span aria-hidden className="font-mono text-[11px] font-bold tabular-nums text-cream">
+            <span aria-hidden className="font-mono text-[13px] font-bold tabular-nums text-cream">
                 {trimp}
             </span>
         </span>
