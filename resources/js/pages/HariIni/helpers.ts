@@ -1,5 +1,5 @@
 import { moodFromActivity } from '@/lib/moodFromActivity';
-import { formatDuration, formatKm, formatNaiveRelativeId, formatShortWeekdayDateId, parseNaiveLocalDate } from '@/lib/pace';
+import { formatDurationHMS, formatKm, formatNaiveRelativeId, formatShortWeekdayDateId, parseNaiveLocalDate } from '@/lib/pace';
 import { RARITY_LABELS, buildCardStats, paceShapeFromDetail, zonePctFromDetail, type CardStatStrings } from '@/lib/runcard';
 import type { ActivityDetail, Mood, Rarity, RunCard, ZonePct } from '@/types/inertia';
 
@@ -35,7 +35,7 @@ function toFeaturedCard(r: ActivityDetail, card: RunCard, mood?: Mood | null): F
         name: card.special_move,
         subtitle: `${RARITY_LABELS[card.rarity]} · ${formatNaiveRelativeId(r.start_date_local)}`,
         km: formatKm(r.distance),
-        durasi: r.moving_time != null ? formatDuration(r.moving_time) : '—',
+        durasi: r.moving_time != null ? formatDurationHMS(r.moving_time) : '—',
         trimp: r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',
         rarity: card.rarity,
         mood: mood ?? moodFromActivity(r),
