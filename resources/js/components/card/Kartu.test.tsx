@@ -148,6 +148,23 @@ describe('Kartu', () => {
         expect(screen.getByText(/1:00/)).toBeInTheDocument();
     });
 
+    it('shows the flavor narration in place of the stat grid when provided', () => {
+        render(
+            <Kartu
+                name="x"
+                km="1"
+                durasi="1:00"
+                trimp={1}
+                size="lg"
+                stats={{ pace: '5:30/km', hr: '150 bpm' }}
+                narration="Sesi tenang tapi solid."
+            />,
+        );
+        // Narration replaces the metrics grid: the quote shows, the stat values don't.
+        expect(screen.getByText(/Sesi tenang tapi solid\./)).toBeInTheDocument();
+        expect(screen.queryByText(/5:30\/km/)).toBeNull();
+    });
+
     it('renders the badge emoji pip in the art overlay at the full (lg) size', () => {
         render(
             <Kartu

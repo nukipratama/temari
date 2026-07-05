@@ -8,6 +8,7 @@ use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -322,10 +323,19 @@ class RunController extends Controller
         // later runs that quoted their old narrative.
         $isChainHead = Activity::latestIdForUser($user->id) === $activity->id;
 
+        // The card carries Temari's flavor line (shown in place of its metrics grid).
+        $card = $activity->runCard;
+        $card?->setAttribute('narration', Analysis::query()
+            ->where('subject_type', RunCard::class)
+            ->where('subject_id', $card->id)
+            ->where('analysis_type', AnalysisType::CardFlavor)
+            ->whereNotNull('content')
+            ->value('content'));
+
         return Inertia::render('Runs/Show', [
             'activity' => $activity,
             'detail' => $detail,
-            'card' => $activity->runCard,
+            'card' => $card,
             'storyLine' => $storyLine,
             // Backend-computed mood for the (rare) window before the post-run
             // StoryLine lands, so the detail mascot matches the share card

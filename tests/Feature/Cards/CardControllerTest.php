@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\User;
+use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -27,6 +29,24 @@ it('shows the user\'s cards on the gallery', function (): void {
             ->has('cards.data', 1)
             ->where('cards.data.0.special_move', 'Paru-paru Baja')
             ->where('cards.data.0.rarity', 'epic'));
+});
+
+it('exposes each grid card\'s flavor narration (shown in place of its metrics)', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    $card = RunCard::factory()->for($activity)->create(['rarity' => 'epic']);
+    Analysis::factory()->done('Sesi tenang tapi solid.')->create([
+        'subject_type' => RunCard::class,
+        'subject_id' => $card->id,
+        'analysis_type' => AnalysisType::CardFlavor,
+        'discriminator' => null,
+    ]);
+
+    $this->actingAs($user)->get('/kartu')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('cards.data.0.narration', 'Sesi tenang tapi solid.'));
 });
 
 it('falls back to the computed mood (not the sleepy default) when no post-run story line exists', function (): void {

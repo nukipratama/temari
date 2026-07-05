@@ -37,10 +37,12 @@ class CardController extends Controller
 
         $counts = $this->rarityCounts($user);
         $editions = $this->editionIndexMap($user);
+        $narrations = $this->narrationMap($page->getCollection()->pluck('id')->all());
 
-        $page->getCollection()->each(function (RunCard $c) use ($editions, $counts): void {
+        $page->getCollection()->each(function (RunCard $c) use ($editions, $counts, $narrations): void {
             $c->setAttribute('edition', $this->edition($c, $editions, $counts));
             $c->setAttribute('mood', $c->activity->postRunStoryLine->mood ?? Temari::moodForActivityOrDefault($c->activity));
+            $c->setAttribute('narration', $narrations[$c->id] ?? null);
         });
 
         return Inertia::render('Koleksi/Kartu', [
@@ -160,6 +162,28 @@ class CardController extends Controller
             ->selectRaw('id, ROW_NUMBER() OVER (PARTITION BY rarity ORDER BY id) AS edition_index')
             ->pluck('edition_index', 'id')
             ->map(fn ($index): int => (int) $index)
+            ->all();
+    }
+
+    /**
+     * Batch-load the CardFlavor narration text for a set of cards, so the grid can
+     * show each card's flavor line (in place of the metrics grid) in one query.
+     *
+     * @param  array<int, int>  $cardIds
+     * @return array<int, string>
+     */
+    private function narrationMap(array $cardIds): array
+    {
+        if ($cardIds === []) {
+            return [];
+        }
+
+        return Analysis::query()
+            ->where('subject_type', RunCard::class)
+            ->whereIn('subject_id', $cardIds)
+            ->where('analysis_type', AnalysisType::CardFlavor)
+            ->whereNotNull('content')
+            ->pluck('content', 'subject_id')
             ->all();
     }
 

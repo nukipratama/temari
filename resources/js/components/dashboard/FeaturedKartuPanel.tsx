@@ -43,6 +43,7 @@ export default function FeaturedKartuPanel({
                     zonePct={featured.zonePct}
                     polyline={featured.polyline}
                     paceShape={featured.paceShape}
+                    narration={featuredKartuVoice.content}
                     size="md"
                     className="w-full"
                 />

@@ -180,6 +180,7 @@ export default function KartuDetail({
                                     zonePct={zonePct}
                                     polyline={detail?.summary_polyline}
                                     paceShape={paceShape}
+                                    narration={card.flavor_analysis.content}
                                     edition={card.edition}
                                     size="lg"
                                     className="w-full"

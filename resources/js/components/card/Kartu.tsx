@@ -46,6 +46,12 @@ interface KartuProps {
     /** Run route polyline + per-km pace seconds, for the art-window glyph. */
     polyline?: string | null;
     paceShape?: ReadonlyArray<number> | null;
+    /**
+     * Temari's flavor line for this card. When present it takes the metrics
+     * section's place (the collectible carries its narration; the share card
+     * keeps the stat grid). Falls back to the stat grid when absent.
+     */
+    narration?: string | null;
     /** Collector number within the rarity ("#3/12"). */
     edition?: CardEdition | null;
     size?: 'md' | 'lg' | 'xl';
@@ -81,6 +87,13 @@ const SIZE_KM: Record<NonNullable<KartuProps['size']>, string> = {
     xl: 'text-[42px]',
 };
 
+// Flavor-narration size per tier + how many lines it may take before clamping.
+const SIZE_NARRATION: Record<NonNullable<KartuProps['size']>, string> = {
+    md: 'text-[11px] leading-snug line-clamp-3',
+    lg: 'text-[15px] leading-snug line-clamp-4',
+    xl: 'text-[17px] leading-relaxed line-clamp-4',
+};
+
 /**
  * The collectible run card — a dark-frame, One-Piece-dense TCG card.
  *
@@ -104,6 +117,7 @@ export default function Kartu({
     zonePct,
     polyline,
     paceShape,
+    narration,
     edition,
     size = 'md',
     className,
@@ -195,7 +209,7 @@ export default function Kartu({
                     <span className={cn('font-collectible font-bold tabular-nums leading-none text-horizon', SIZE_KM[size])}>
                         {km}
                     </span>
-                    <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-on-sky">km</span>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-cream">km</span>
                 </div>
 
                 {/* Badges — centred row below the KM hero */}
@@ -207,8 +221,16 @@ export default function Kartu({
                     </div>
                 )}
 
-                {/* Labeled stat grid — the dense TCG stat block */}
-                <StatGrid stats={stats} durasi={durasi} />
+                {/* Temari's flavor line takes the metrics section's place (the
+                    collectible carries its narration); falls back to the stat grid
+                    when there's no narration to show. */}
+                {narration != null && narration !== '' ? (
+                    <p className={cn('mt-2.5 text-balance font-display italic text-cream', SIZE_NARRATION[size])}>
+                        &ldquo;{narration}&rdquo;
+                    </p>
+                ) : (
+                    <StatGrid stats={stats} durasi={durasi} />
+                )}
 
                 {/* HR-zone effort bar — bare (no Z1..Z5 legend), matching the share
                     card's rounded legendless bar. */}
@@ -262,7 +284,7 @@ function BadgePip({ slug }: Readonly<{ slug: string }>) {
     return (
         <span
             title={BADGE_ABILITY[slug] ? badgeName(slug) + ' · ' + BADGE_ABILITY[slug] : badgeName(slug)}
-            className="inline-flex items-center gap-0.5 rounded-full bg-cream/10 px-1.5 py-0.5 font-mono text-[10px] text-cream/85"
+            className="inline-flex items-center gap-0.5 rounded-full bg-cream/10 px-1.5 py-0.5 font-mono text-[10px] text-cream"
         >
             <span aria-hidden>{badgeEmblem(slug)}</span>
             <span>{badgeName(slug)}</span>
@@ -308,7 +330,7 @@ function StatGrid({ stats, durasi }: Readonly<{ stats: KartuStats | undefined; d
         <dl className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5 text-center">
             {cells.map((cell) => (
                 <div key={cell.label} className="min-w-0">
-                    <dt className="font-mono text-[8px] uppercase tracking-[0.1em] text-ink-on-sky">{cell.label}</dt>
+                    <dt className="font-mono text-[8px] uppercase tracking-[0.1em] text-cream">{cell.label}</dt>
                     <dd className="truncate font-mono text-[12px] font-semibold tabular-nums text-cream">{cell.value}</dd>
                 </div>
             ))}
