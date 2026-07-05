@@ -51,10 +51,12 @@ describe('VitalChips', () => {
         expect(screen.getByText('Recovery')).toBeInTheDocument();
     });
 
-    it('leads the Vibe tile with the qualitative emoji (not a form-derived number) and signed form for Kesiapan', () => {
+    it('leads the Vibe tile with the emoji + label and a gloss sub, and signed form for Kesiapan', () => {
         render(<VitalChips briefing={briefing} load={load} />);
-        // Vibe shows the emoji, not the |form| number that duplicated Kesiapan.
-        expect(screen.getByText('💥')).toBeInTheDocument();
+        // Vibe shows the emoji + label inline (not the |form| number that
+        // duplicated Kesiapan), with a one-line gloss on the sub-line.
+        expect(screen.getByText('💥 Membara')).toBeInTheDocument();
+        expect(screen.getByText('lagi on fire')).toBeInTheDocument();
         expect(screen.queryByText('2.5')).not.toBeInTheDocument();
         // signed form → "-2.5"
         expect(screen.getByText('-2.5')).toBeInTheDocument();
@@ -68,10 +70,19 @@ describe('VitalChips', () => {
         expect(screen.getByText('-2.5').className).toContain('text-stat-fluid');
     });
 
-    it('still shows the vibe emoji and an em-dash Kesiapan when load is null', () => {
+    it('still shows the vibe emoji + label and an em-dash Kesiapan when load is null', () => {
         render(<VitalChips briefing={briefing} load={null} />);
-        expect(screen.getByText('💥')).toBeInTheDocument();
+        expect(screen.getByText('💥 Membara')).toBeInTheDocument();
         expect(screen.getByText('—')).toBeInTheDocument();
+    });
+
+    it('renders the vibe value with a word-friendly size (not the numeric stat size)', () => {
+        render(<VitalChips briefing={briefing} load={load} />);
+        // A vibe is a word, so it drops the big tabular numeric size for a fluid
+        // word size that fits the narrow 3-up mobile tile.
+        const vibe = screen.getByText('💥 Membara');
+        expect(vibe.className).not.toContain('text-stat-fluid');
+        expect(vibe.className).not.toContain('tabular-nums');
     });
 
     it('gives each gauge an accessible name and value via a visually-hidden <meter>', () => {
