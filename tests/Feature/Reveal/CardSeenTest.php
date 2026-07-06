@@ -11,6 +11,22 @@ use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
+it('requires authentication for seen', function (): void {
+    $activity = Activity::factory()->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    $card = RunCard::factory()->for($activity)->create();
+
+    $this->post("/api/kartu/{$card->id}/seen")->assertRedirect('/login');
+});
+
+it('requires authentication for replay', function (): void {
+    $activity = Activity::factory()->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    $card = RunCard::factory()->for($activity)->create();
+
+    $this->post("/api/kartu/{$card->id}/replay")->assertRedirect('/login');
+});
+
 it('clears pending_reveal_card_id when the user posts seen for the flagged card', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
