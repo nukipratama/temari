@@ -73,3 +73,30 @@ it('allows the same strava_external_id under different users', function (): void
 
     expect($second->strava_external_id)->toBe(12345);
 });
+
+it('latestIdForUser returns the id of the most recent run by start_date_local, not insertion order', function (): void {
+    $user = User::factory()->create();
+    $older = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::parse('2026-05-01')]);
+    $newer = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($newer)->create(['start_date_local' => Carbon::parse('2026-05-10')]);
+
+    expect(Activity::latestIdForUser($user->id))->toBe($newer->id);
+});
+
+it('latestIdForUser returns null when the user has no run with a start_date_local', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => null]);
+
+    expect(Activity::latestIdForUser($user->id))->toBeNull();
+});
+
+it('latestIdForUser scopes to the given user', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $otherActivity = Activity::factory()->for($other)->create();
+    ActivityDetail::factory()->for($otherActivity)->create(['start_date_local' => Carbon::parse('2026-05-10')]);
+
+    expect(Activity::latestIdForUser($user->id))->toBeNull();
+});

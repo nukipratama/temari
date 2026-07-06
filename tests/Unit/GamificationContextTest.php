@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\PersonalRecord;
+use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\GamificationContext;
@@ -85,6 +86,35 @@ it('counts only ingested runs, ignoring un-analyzed stubs', function (): void {
     expect(GamificationContext::forUser($user)->activityCount)->toBe(3);
 });
 
+it('counts run cards by rarity across the user\'s activities', function (): void {
+    $user = User::factory()->create();
+    $a = Activity::factory()->for($user)->analyzed()->create();
+    $b = Activity::factory()->for($user)->analyzed()->create();
+    $c = Activity::factory()->for($user)->analyzed()->create();
+    RunCard::factory()->for($a)->create(['rarity' => 'rare']);
+    RunCard::factory()->for($b)->create(['rarity' => 'rare']);
+    RunCard::factory()->for($c)->create(['rarity' => 'legendary']);
+
+    $ctx = GamificationContext::forUser($user);
+
+    expect($ctx->rarityCounts)->toBe(['rare' => 2, 'legendary' => 1]);
+});
+
+it('counts runs at exactly the 10km and 5km thresholds as qualifying', function (): void {
+    $user = User::factory()->create();
+    activityWithDetail($user, ['distance' => 10000.0]);
+    activityWithDetail($user, ['distance' => 9999.0]);
+    activityWithDetail($user, ['distance' => 5000.0]);
+    activityWithDetail($user, ['distance' => 4999.0]);
+
+    $ctx = GamificationContext::forUser($user);
+
+    // 10000 clears both thresholds (>=10000 and >=5000); 9999 and 5000 each
+    // clear only the 5km one; 4999 clears neither.
+    expect($ctx->tenKPlus)->toBe(1)
+        ->and($ctx->fiveKPlus)->toBe(3);
+});
+
 it('converts totalDistanceM to km', function (): void {
     $user = User::factory()->create();
 
@@ -101,27 +131,12 @@ it('converts totalDistanceM to km', function (): void {
         ->and($ctx->totalDistanceKm())->toBe(15.0);
 });
 
-it('counts only consecutive weeks for the streak, breaking at the first gap', function (): void {
-    // Freeze "now" so the newest week (2026-03-29) is still the current week.
-    Carbon::setTestNow('2026-03-30');
-    $user = User::factory()->create();
-    // 4 weeks logged but week_ending dates are NOT adjacent: 1, 5, 9, 13.
-    // Before the fix this returned 4; the streak must be 1 (only the most
-    // recent week has no adjacent predecessor).
-    weekSnapshot($user, '2026-01-04', 2);
-    weekSnapshot($user, '2026-02-01', 2);
-    weekSnapshot($user, '2026-03-01', 2);
-    weekSnapshot($user, '2026-03-29', 2);
-
-    $ctx = GamificationContext::forUser($user);
-
-    expect($ctx->streakWeeks)->toBe(1)
-        ->and($ctx->twoWeekStreak)->toBe(1);
-
-    Carbon::setTestNow();
-});
-
-it('counts a run of adjacent weeks as a full streak', function (): void {
+it('passes the streak from WeeklySnapshot::consecutiveWeekStreak through, capping twoWeekStreak at 2', function (): void {
+    // The streak *computation* itself (gap-breaking, zero-run weeks, staleness)
+    // is WeeklySnapshot::consecutiveWeekStreak()'s own responsibility and is
+    // fully covered by WeeklySnapshotTest; GamificationContext only forwards
+    // streakWeeks and derives twoWeekStreak = min(streakWeeks, 2) from it, so
+    // this just proves that wiring with a simple adjacent-weeks case.
     Carbon::setTestNow('2026-06-02');
     $user = User::factory()->create();
     // 4 consecutive Sundays, exactly 7 days apart.
@@ -136,51 +151,6 @@ it('counts a run of adjacent weeks as a full streak', function (): void {
         ->and($ctx->twoWeekStreak)->toBe(2);
 
     Carbon::setTestNow();
-});
-
-it('breaks the streak at the first gap even when later weeks are adjacent', function (): void {
-    Carbon::setTestNow('2026-06-02');
-    $user = User::factory()->create();
-    // Most recent two weeks adjacent, then a one-week gap, then two more.
-    weekSnapshot($user, '2026-05-31', 2);
-    weekSnapshot($user, '2026-05-24', 2);
-    // gap: 2026-05-17 missing
-    weekSnapshot($user, '2026-05-10', 2);
-    weekSnapshot($user, '2026-05-03', 2);
-
-    $ctx = GamificationContext::forUser($user);
-
-    expect($ctx->streakWeeks)->toBe(2);
-
-    Carbon::setTestNow();
-});
-
-it('ignores weeks with zero runs when computing the streak', function (): void {
-    // Newest *running* week is 2026-05-24 (05-31 has runs=0), so freeze inside
-    // the week ending 05-31 to keep that streak live.
-    Carbon::setTestNow('2026-05-26');
-    $user = User::factory()->create();
-    // The most recent adjacent week has runs=0, so it is filtered out and the
-    // streak walks the remaining run-bearing weeks (which now have a gap).
-    weekSnapshot($user, '2026-05-31', 0);
-    weekSnapshot($user, '2026-05-24', 2);
-    weekSnapshot($user, '2026-05-17', 2);
-
-    $ctx = GamificationContext::forUser($user);
-
-    expect($ctx->streakWeeks)->toBe(2);
-
-    Carbon::setTestNow();
-});
-
-it('returns zero streak when no week has runs', function (): void {
-    $user = User::factory()->create();
-    weekSnapshot($user, '2026-05-31', 0);
-
-    $ctx = GamificationContext::forUser($user);
-
-    expect($ctx->streakWeeks)->toBe(0)
-        ->and($ctx->twoWeekStreak)->toBe(0);
 });
 
 it('counts a half-marathon run using the 21,097.5 m constant, not 21,000', function (): void {
