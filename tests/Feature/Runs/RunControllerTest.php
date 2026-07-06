@@ -21,6 +21,20 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
+it('requires authentication for the index', function (): void {
+    $this->get('/aktivitas')->assertRedirect('/login');
+});
+
+it('requires authentication for the show page', function (): void {
+    $activity = Activity::factory()->create();
+
+    $this->get("/aktivitas/{$activity->id}")->assertRedirect('/login');
+});
+
+it('requires authentication for the /catatan redirect', function (): void {
+    $this->get('/catatan')->assertRedirect('/login');
+});
+
 it('lists the user\'s analyzed runs in reverse chronological order', function (): void {
     $user = User::factory()->create();
     $older = Activity::factory()->for($user)->analyzed()->create();

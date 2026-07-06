@@ -11,6 +11,10 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
+it('requires authentication', function (): void {
+    $this->get('/kartu')->assertRedirect('/login');
+});
+
 it('shows the user\'s cards on the gallery', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

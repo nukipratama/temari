@@ -12,6 +12,10 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
+it('requires authentication', function (): void {
+    $this->get('/rekor')->assertRedirect('/login');
+});
+
 it('renders the PR ledger', function (): void {
     $user = User::factory()->create();
 

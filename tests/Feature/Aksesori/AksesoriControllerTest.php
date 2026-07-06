@@ -9,6 +9,14 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
+it('requires authentication for the index', function (): void {
+    $this->get('/aksesori')->assertRedirect('/login');
+});
+
+it('requires authentication for the equip endpoint', function (): void {
+    $this->post('/api/aksesori/equip', ['unlock_key' => 'accessory.medal_pertama'])->assertRedirect('/login');
+});
+
 it('renders the catalog + equipped slots', function (): void {
     $user = User::factory()->create();
 
