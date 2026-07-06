@@ -8,6 +8,7 @@ use App\Models\StravaConnection;
 use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 
@@ -18,6 +19,10 @@ beforeEach(function (): void {
     // not run here — the fan-out is covered by DispatchPostRunAnalysisTest. The
     // pipeline's job is simply to emit the event once the run is persisted.
     Event::fake([ActivityIngested::class]);
+    // ingest() also calls RunCardFactory directly (independent of the faked
+    // event above), which queues a real AnalyzeCardFlavorJob under the sync test
+    // queue connection. That job has its own dedicated test.
+    Bus::fake();
     $this->pipeline = app(ActivityPipeline::class);
 });
 

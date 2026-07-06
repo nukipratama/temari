@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
+use App\Models\Analytics\StravaSyncLog;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\Run\Ingest\SyncOrchestrator;
@@ -63,6 +64,20 @@ it('returns 0 and does not query Strava when user has no connection', function (
 
     expect($inserted)->toBe(0);
     Queue::assertNothingPushed();
+});
+
+it('logs an error and rethrows on an unexpected exception during syncUser', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldReceive('fetchNewExternalIds')->andThrow(new RuntimeException('boom'));
+
+    expect(fn () => (new SyncOrchestrator($fetcher, $this->client))->syncUser($user))
+        ->toThrow(RuntimeException::class, 'boom');
+
+    expect(StravaSyncLog::query()->where('user_id', $user->id)->where('status', 'error')->value('error_message'))
+        ->toBe('boom');
 });
 
 it('returns 0 when another sync holds the lock', function (): void {

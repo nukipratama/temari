@@ -142,6 +142,109 @@ it('excludes runs outside the 26-week lookback window', function (): void {
     expect((new ProgressionSeriesBuilder())->build($user, $featured, 1_485))->toBeNull();
 });
 
+it('buildMany batches multiple distance bands from a single query without cross-contamination', function (): void {
+    $user = User::factory()->create();
+    $act5k = Activity::factory()->for($user)->analyzed()->create();
+    $pr5k = PersonalRecord::factory()->for($user)->create([
+        'category' => '5km', 'value_sec' => 1_500, 'activity_id' => $act5k->id, 'set_at' => '2020-01-01',
+    ]);
+    $act10k = Activity::factory()->for($user)->analyzed()->create();
+    $pr10k = PersonalRecord::factory()->for($user)->create([
+        'category' => '10km', 'value_sec' => 2_400, 'activity_id' => $act10k->id, 'set_at' => '2020-01-01',
+    ]);
+
+    $a5 = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($a5)->create([
+        'distance' => 5_000, 'moving_time' => 1_500, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+    ]);
+    $a10 = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($a10)->create([
+        'distance' => 10_000, 'moving_time' => 2_400, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+    ]);
+
+    $out = (new ProgressionSeriesBuilder())->buildMany($user, [$pr5k, $pr10k], fn (): ?int => null);
+
+    expect($out)->toHaveKeys(['5km', '10km'])
+        ->and($out['5km']['times_sec'])->toBe([1_500])
+        ->and($out['10km']['times_sec'])->toBe([2_400]);
+});
+
+it('buildMany preserves the given records order in the output keys', function (): void {
+    $user = User::factory()->create();
+    $act1 = Activity::factory()->for($user)->analyzed()->create();
+    $pr10k = PersonalRecord::factory()->for($user)->create([
+        'category' => '10km', 'value_sec' => 2_400, 'activity_id' => $act1->id, 'set_at' => '2020-01-01',
+    ]);
+    $act2 = Activity::factory()->for($user)->analyzed()->create();
+    $pr5k = PersonalRecord::factory()->for($user)->create([
+        'category' => '5km', 'value_sec' => 1_500, 'activity_id' => $act2->id, 'set_at' => '2020-01-01',
+    ]);
+
+    foreach ([[10_000, 2_400], [5_000, 1_500]] as [$dist, $mt]) {
+        $a = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($a)->create([
+            'distance' => $dist, 'moving_time' => $mt, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+        ]);
+    }
+
+    // Deliberately pass 10km before 5km — the output key order must follow this,
+    // not e.g. alphabetical or query order.
+    $out = (new ProgressionSeriesBuilder())->buildMany($user, [$pr10k, $pr5k], fn (): ?int => null);
+
+    expect(array_keys($out))->toBe(['10km', '5km']);
+});
+
+it('buildMany omits a band with no in-window runs while keeping others', function (): void {
+    $user = User::factory()->create();
+    $act1 = Activity::factory()->for($user)->analyzed()->create();
+    $pr5k = PersonalRecord::factory()->for($user)->create([
+        'category' => '5km', 'value_sec' => 1_500, 'activity_id' => $act1->id, 'set_at' => '2020-01-01',
+    ]);
+    $act2 = Activity::factory()->for($user)->analyzed()->create();
+    $pr10k = PersonalRecord::factory()->for($user)->create([
+        'category' => '10km', 'value_sec' => 2_400, 'activity_id' => $act2->id, 'set_at' => '2020-01-01',
+    ]);
+
+    // Only the 5km band gets an in-window run; 10km has none.
+    $a = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($a)->create([
+        'distance' => 5_000, 'moving_time' => 1_500, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+    ]);
+
+    $out = (new ProgressionSeriesBuilder())->buildMany($user, [$pr5k, $pr10k], fn (): ?int => null);
+
+    expect($out)->toHaveKey('5km')
+        ->and($out)->not->toHaveKey('10km');
+});
+
+it('buildMany resolves each band\'s goal independently via the resolver callback', function (): void {
+    $user = User::factory()->create();
+    $act1 = Activity::factory()->for($user)->analyzed()->create();
+    $pr5k = PersonalRecord::factory()->for($user)->create([
+        'category' => '5km', 'value_sec' => 1_500, 'activity_id' => $act1->id, 'set_at' => '2020-01-01',
+    ]);
+    $act2 = Activity::factory()->for($user)->analyzed()->create();
+    $pr10k = PersonalRecord::factory()->for($user)->create([
+        'category' => '10km', 'value_sec' => 2_400, 'activity_id' => $act2->id, 'set_at' => '2020-01-01',
+    ]);
+
+    foreach ([[5_000, 1_500], [10_000, 2_400]] as [$dist, $mt]) {
+        $a = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($a)->create([
+            'distance' => $dist, 'moving_time' => $mt, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+        ]);
+    }
+
+    $out = (new ProgressionSeriesBuilder())->buildMany(
+        $user,
+        [$pr5k, $pr10k],
+        fn (PersonalRecord $r): int => $r->category->value === '5km' ? 1_485 : 2_350,
+    );
+
+    expect($out['5km']['goal_sec'])->toBe(1_485)
+        ->and($out['10km']['goal_sec'])->toBe(2_350);
+});
+
 it('ignores another user\'s runs and un-analyzed activities', function (): void {
     ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1500);
 

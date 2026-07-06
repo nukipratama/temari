@@ -30,6 +30,11 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->pipeline = app(ActivityPipeline::class);
+    // ingest() fans out to RunCardFactory -> AnalysisService, which queues a real
+    // AnalyzeCardFlavorJob under the sync test queue connection. That job has its
+    // own dedicated test; faking Bus here keeps this file scoped to the pipeline
+    // itself instead of also exercising (and depending on) that job's behavior.
+    Bus::fake();
 });
 
 function makeActivityWithConnection(): Activity
@@ -165,6 +170,26 @@ it('propagates a rate-limit exception so the job can re-queue with backoff', fun
         ->and($activity->fresh()->analyzed_at)->toBeNull();
 });
 
+it('propagates a rate-limit exception from the streams fetch, with the detail already stored', function (): void {
+    $activity = makeActivityWithConnection();
+
+    // Leave exactly one call's worth of headroom in the shared bucket: the
+    // detail fetch consumes it, so the streams fetch is the one that trips
+    // the limit — the two calls share one client-wide counter.
+    for ($i = 0; $i < 199; $i++) {
+        RateLimiter::hit('strava-api:15min', 15 * 60);
+    }
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response(['name' => 'R', 'distance' => 5000]),
+    ]);
+
+    expect(fn () => $this->pipeline->ingest($activity))
+        ->toThrow(StravaRateLimitedException::class);
+
+    expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
+        ->and($activity->fresh()->analyzed_at)->toBeNull();
+});
+
 it('still stores detail when streams 404 (best-effort)', function (): void {
     $activity = makeActivityWithConnection();
 
@@ -177,6 +202,27 @@ it('still stores detail when streams 404 (best-effort)', function (): void {
 
     expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
         ->and(ActivityStream::query()->where('activity_id', $activity->id)->exists())->toBeFalse()
+        ->and($activity->fresh()->analyzed_at)->not->toBeNull();
+});
+
+it('completes ingest for a zero-distance, zero-duration activity without fataling downstream', function (): void {
+    $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Stationary blip',
+            'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 0,
+            'moving_time' => 0,
+            'elapsed_time' => 0,
+            'splits_metric' => [],
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect(ActivityDetail::query()->where('activity_id', $activity->id)->value('distance'))->toBe(0.0)
         ->and($activity->fresh()->analyzed_at)->not->toBeNull();
 });
 
@@ -597,7 +643,6 @@ it('rolls back analyzed_at and skips the cascade when the story layer throws', f
 
 it('dispatches ResolveActivityLocationJob when the activity has start coords', function (): void {
     $activity = makeActivityWithConnection();
-    Bus::fake([ResolveActivityLocationJob::class]);
 
     Http::fake([
         'strava.com/api/v3/activities/999' => Http::response([
@@ -623,7 +668,6 @@ it('dispatches ResolveActivityLocationJob when the activity has start coords', f
 
 it('does NOT dispatch ResolveActivityLocationJob when the activity has no coords', function (): void {
     $activity = makeActivityWithConnection();
-    Bus::fake([ResolveActivityLocationJob::class]);
 
     Http::fake([
         'strava.com/api/v3/activities/999' => Http::response([
