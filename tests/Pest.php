@@ -1,6 +1,8 @@
 <?php
 
 use App\Services\AI\AzureOpenAIClient;
+use App\Services\AI\StructuredChatCaller;
+use App\Services\AI\TokenUsageRecorder;
 use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
@@ -71,6 +73,19 @@ function fakeAzureResponse(
         ],
         'user' => null, 'metadata' => [],
     ], OpenAI\Responses\Meta\MetaInformation::from([]));
+}
+
+/**
+ * Wrap a scripted ClientFake in a mocked AzureOpenAIClient + StructuredChatCaller —
+ * the shared LLM-boundary fake reused across narrator/caller unit tests.
+ */
+function fakeStructuredCaller(ClientFake $client, string $deployment = 'gpt-test'): StructuredChatCaller
+{
+    $azure = Mockery::mock(AzureOpenAIClient::class);
+    $azure->shouldReceive('client')->andReturn($client);
+    $azure->shouldReceive('deploymentFor')->andReturn($deployment);
+
+    return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
 }
 
 /*

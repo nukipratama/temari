@@ -8,10 +8,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Models\User;
-use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\Narrators\BriefingFeaturedKartuVoiceNarrator;
-use App\Services\AI\StructuredChatCaller;
-use App\Services\AI\TokenUsageRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use OpenAI\Testing\ClientFake;
 
@@ -29,13 +26,7 @@ beforeEach(function (): void {
 function bootFeaturedKartuNarrator(string $jsonContent): array
 {
     $client = new ClientFake([fakeAzureResponse($jsonContent)]);
-    $azure = Mockery::mock(AzureOpenAIClient::class);
-    $azure->shouldReceive('client')->andReturn($client);
-    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
-
-    $narrator = new BriefingFeaturedKartuVoiceNarrator(
-        new StructuredChatCaller($azure, app(TokenUsageRecorder::class)),
-    );
+    $narrator = new BriefingFeaturedKartuVoiceNarrator(fakeStructuredCaller($client));
 
     return ['narrator' => $narrator, 'client' => $client];
 }

@@ -36,7 +36,7 @@ function structuredCaller(string $content, ?array $usage = null, string $finishR
     [$status, $reason] = $finishReason === 'length' ? ['incomplete', 'max_output_tokens'] : ['completed', null];
     $response = fakeAzureResponse($content, $status, $reason, $usage['prompt_tokens'] ?? 10, $usage['completion_tokens'] ?? 5);
 
-    return callerForClient(new ClientFake([$response]));
+    return fakeStructuredCaller(new ClientFake([$response]));
 }
 
 /**
@@ -44,16 +44,7 @@ function structuredCaller(string $content, ?array $usage = null, string $finishR
  */
 function callerWithResponses(array $responses): StructuredChatCaller
 {
-    return callerForClient(new ClientFake($responses));
-}
-
-function callerForClient(ClientFake $client): StructuredChatCaller
-{
-    $azure = Mockery::mock(AzureOpenAIClient::class);
-    $azure->shouldReceive('client')->andReturn($client);
-    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
-
-    return new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
+    return fakeStructuredCaller(new ClientFake($responses));
 }
 
 it('throws UnavailableException when structured output decodes to a non-object value', function (): void {
@@ -86,7 +77,7 @@ it('returns the decoded payload when all required keys are present', function ()
 it('sends the narrator-tuned temperature in every request', function (): void {
     $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
 
-    callerForClient($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(temperature: 0.42));
+    fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(temperature: 0.42));
 
     $client->assertSent(
         OpenAI\Resources\Responses::class,
@@ -171,12 +162,7 @@ it('routes the per-kind client and records the resolved deployment', function ()
 it('records null deployment when the resolved deployment is empty', function (): void {
     $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'completed', null, 1, 1)]);
 
-    $azure = Mockery::mock(AzureOpenAIClient::class);
-    $azure->shouldReceive('deploymentFor')->andReturn('');
-    $azure->shouldReceive('client')->andReturn($client);
-
-    (new StructuredChatCaller($azure, app(TokenUsageRecorder::class)))
-        ->call('briefing', 'sys', [], 'schema', ['headline']);
+    fakeStructuredCaller($client, deployment: '')->call('briefing', 'sys', [], 'schema', ['headline']);
 
     expect(TokenUsage::query()->first()->model)->toBeNull();
 });
