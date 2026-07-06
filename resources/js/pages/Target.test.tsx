@@ -75,6 +75,28 @@ describe('Target', () => {
         expect(bar).toBeInTheDocument();
     });
 
+    it('shows the "Hampir!" nudge once progress reaches 75% but isn\'t completed yet', () => {
+        render(
+            <Target
+                goals={[makeGoal({ current: 80, target: 100, is_completed: false })]}
+                completedCount={0}
+                totalCount={1}
+            />,
+        );
+        expect(screen.getByText('Hampir!')).toBeInTheDocument();
+    });
+
+    it('hides the "Hampir!" nudge below the 75% threshold', () => {
+        render(
+            <Target
+                goals={[makeGoal({ current: 50, target: 100, is_completed: false })]}
+                completedCount={0}
+                totalCount={1}
+            />,
+        );
+        expect(screen.queryByText('Hampir!')).not.toBeInTheDocument();
+    });
+
     it('gives each progress bar a meaningful accessible name', () => {
         render(
             <Target

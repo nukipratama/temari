@@ -14,6 +14,7 @@ vi.mock('@/lib/recapShare', () => ({
 };
 
 import RecapShareModal from './RecapShareModal';
+import { recapShareBlob } from '@/lib/recapShare';
 import type { RecapShareData } from '@/lib/recapShare';
 
 const recap: RecapShareData = {
@@ -130,6 +131,56 @@ describe('RecapShareModal', () => {
         expect(share).toHaveBeenCalledWith({ files: [expect.any(File)], title: 'Minggu Kamu · TemanLari' });
         Reflect.deleteProperty(navigator, 'share');
         Reflect.deleteProperty(navigator, 'canShare');
+    });
+
+    it('shows a fallback message when the browser has no ClipboardItem support', async () => {
+        const original = (globalThis as unknown as { ClipboardItem: unknown }).ClipboardItem;
+        Reflect.deleteProperty(globalThis, 'ClipboardItem');
+        render(<RecapShareModal recap={recap} onClose={vi.fn()} />);
+        await act(async () => {
+            fireEvent.click(screen.getByText('Salin gambar'));
+        });
+        expect(screen.getByRole('status')).toHaveTextContent(/belum dukung salin gambar/);
+        (globalThis as unknown as { ClipboardItem: unknown }).ClipboardItem = original;
+    });
+
+    it('shows an error status when copying the image fails', async () => {
+        const write = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, 'clipboard', { value: { write }, configurable: true });
+        vi.mocked(recapShareBlob).mockRejectedValueOnce(new Error('boom'));
+        render(<RecapShareModal recap={recap} onClose={vi.fn()} />);
+        await act(async () => {
+            fireEvent.click(screen.getByText('Salin gambar'));
+        });
+        expect(screen.getByRole('status')).toHaveTextContent(/Gagal nyalin gambar/);
+    });
+
+    it('falls back to download when navigator.share rejects', async () => {
+        const share = vi.fn(() => Promise.reject(new Error('cancelled')));
+        const canShare = vi.fn(() => true);
+        Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+        Object.defineProperty(navigator, 'canShare', { value: canShare, configurable: true });
+        const click = vi.fn();
+        const origCreate = document.createElement.bind(document);
+        vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+            const el = origCreate(tag) as HTMLElement;
+            if (tag === 'a') {
+                (el as HTMLAnchorElement).click = click;
+            }
+            return el;
+        });
+        globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+        globalThis.URL.revokeObjectURL = vi.fn();
+        render(<RecapShareModal recap={recap} onClose={vi.fn()} />);
+        await act(async () => {
+            fireEvent.click(screen.getByText('Bagikan'));
+        });
+        expect(share).toHaveBeenCalled();
+        expect(click).toHaveBeenCalled();
+        expect(screen.getByRole('status')).toHaveTextContent(/kesimpen/);
+        Reflect.deleteProperty(navigator, 'share');
+        Reflect.deleteProperty(navigator, 'canShare');
+        vi.restoreAllMocks();
     });
 
     it('auto-clears the status toast after its timeout', async () => {

@@ -1,22 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { router } from '@inertiajs/react';
 import AiUsage from './AiUsage';
-
-const routerGet = vi.fn();
-const formPost = vi.fn();
-let mockFlashInfo: string | null = null;
-
-vi.mock('@inertiajs/react', () => ({
-    Head: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-    Link: ({ href, children, className }: { href: string; children?: React.ReactNode; className?: string }) => (
-        <a href={href} className={className}>{children}</a>
-    ),
-    router: {
-        get: (...args: unknown[]) => routerGet(...args),
-    },
-    useForm: () => ({ post: (...args: unknown[]) => formPost(...args), processing: false }),
-    usePage: () => ({ props: { flash: { info: mockFlashInfo } } }),
-}));
+import { formMock, setMockPage } from '@/test/setup';
 
 const baseProps = {
     range: 'custom' as 'today' | '7d' | '30d' | 'month' | 'all' | 'custom',
@@ -65,14 +51,8 @@ const deadLetteredGroup = {
 };
 
 describe('AiUsage page', () => {
-    beforeEach(() => {
-        routerGet.mockClear();
-        formPost.mockClear();
-        mockFlashInfo = null;
-    });
-
     it('renders the flash info banner when present', () => {
-        mockFlashInfo = 'Mencoba ulang 2 blok untuk Charlie.';
+        setMockPage({ flash: { info: 'Mencoba ulang 2 blok untuk Charlie.' } });
         render(<AiUsage {...baseProps} />);
         expect(screen.getByText('Mencoba ulang 2 blok untuk Charlie.')).toBeInTheDocument();
     });
@@ -98,7 +78,16 @@ describe('AiUsage page', () => {
     it('posts to the per-user retry route on "Coba lagi semua"', () => {
         render(<AiUsage {...baseProps} deadLettered={[deadLetteredGroup]} />);
         fireEvent.click(screen.getByRole('button', { name: /Coba lagi semua/ }));
-        expect(formPost).toHaveBeenCalledWith('/ai-usage/users/7/retry-failed', expect.anything());
+        expect(formMock.post).toHaveBeenCalledWith('/ai-usage/users/7/retry-failed', expect.anything());
+    });
+
+    it('disables the retry button and shows "Mengirim…" while the retry is processing', () => {
+        formMock.processing = true;
+        render(<AiUsage {...baseProps} deadLettered={[deadLetteredGroup]} />);
+
+        const button = screen.getByRole('button', { name: /Mengirim/ });
+        expect(button).toBeDisabled();
+        expect(screen.queryByRole('button', { name: /Coba lagi semua/ })).not.toBeInTheDocument();
     });
 
     it('shows totals + active date range + breakdown rows', () => {
@@ -225,7 +214,7 @@ describe('AiUsage page', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /terapkan/i }));
 
-        expect(routerGet).toHaveBeenCalledWith(
+        expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
             { from: '2026-05-01', to: '2026-05-19' },
             { preserveState: true, preserveScroll: true },
@@ -237,7 +226,7 @@ describe('AiUsage page', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /terapkan/i }));
 
-        expect(routerGet).toHaveBeenCalledWith(
+        expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
             { from: '2026-05-01', to: '2026-05-19', kind: 'briefing' },
             { preserveState: true, preserveScroll: true },
@@ -279,7 +268,7 @@ describe('AiUsage page', () => {
 
         fireEvent.change(screen.getByLabelText(/jenis/i), { target: { value: 'briefing' } });
 
-        expect(routerGet).toHaveBeenCalledWith(
+        expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
             { range: '7d', kind: 'briefing' },
             { preserveState: true, preserveScroll: true },

@@ -25,8 +25,8 @@ describe('TopNav', () => {
     it('highlights the active tab from the current URL', () => {
         setMockPage(user(), '/aktivitas');
         render(<TopNav />);
-        const riwayat = screen.getByText('Riwayat');
-        expect(riwayat.className).toContain('text-ink');
+        expect(screen.getByText('Riwayat')).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByText('Hari Ini')).not.toHaveAttribute('aria-current');
     });
 
     it('gives tab links and the brand link a keyboard focus ring', () => {

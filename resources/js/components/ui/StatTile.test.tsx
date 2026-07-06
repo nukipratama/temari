@@ -15,13 +15,24 @@ describe('StatTile', () => {
         expect(screen.getByText('Beban sedang')).toBeInTheDocument();
     });
 
-    it.each(['plain', 'plainSky', 'card', 'cream', 'creamDeep', 'sunken', 'sky'] as const)(
-        'renders tone %s',
-        (tone) => {
-            render(<StatTile value="x" label="y" tone={tone} />);
-            expect(screen.getByText('x')).toBeInTheDocument();
-        },
-    );
+    it.each([
+        ['plain', 'text-ink'],
+        ['plainSky', 'text-cream'],
+        ['card', 'border-line'],
+        ['cream', 'bg-cream'],
+        ['creamDeep', 'bg-cream-deep'],
+        ['sunken', 'bg-line/20'],
+        ['sky', 'border-cream/[0.12]'],
+    ] as const)('renders tone %s with its tone-specific class', (tone, expected) => {
+        const { container } = render(<StatTile value="x" label="y" tone={tone} />);
+        // plain/plainSky carry no surface class on the root — their tone signal
+        // is the value text color (onSky flips text-ink -> text-cream) instead.
+        const target =
+            tone === 'plain' || tone === 'plainSky'
+                ? screen.getByText('x')
+                : (container.firstElementChild as HTMLElement);
+        expect(target.className).toContain(expected);
+    });
 
     it('applies on-sky text tokens for sky tones', () => {
         const { container } = render(<StatTile value="x" label="y" tone="plainSky" />);

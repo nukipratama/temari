@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import Login from './Login';
-import { setMockPage } from '@/test/setup';
+import { formMock, setMockPage } from '@/test/setup';
 
 describe('Login', () => {
     it('shows the Strava CTA with the given URL', () => {
@@ -64,6 +64,7 @@ describe('Login', () => {
         setMockPage({ demoLoginEnabled: true });
         render(<Login authStravaUrl="/x" />);
         await userEvent.setup().click(screen.getByText('Coba versi demo'));
+        expect(formMock.post).toHaveBeenCalledWith('/auth/demo');
     });
 
     it('shows a real sample Kartu as concrete proof of the product', () => {

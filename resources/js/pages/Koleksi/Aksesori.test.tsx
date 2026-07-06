@@ -132,8 +132,19 @@ describe('Koleksi/Aksesori', () => {
             item('accessory.medal_pertama', 'medal', false, false),
         ];
         render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
-        const btn = screen.getAllByRole('button').find((b) => /belum kebuka/.test(b.textContent ?? ''));
+        // Each slot section has its own toggle + locked-item wrapper, so scope
+        // both to the ikat_kepala section rather than the first "belum kebuka"
+        // button in the document (medal's section also has one).
+        const section = screen.getByText('accessory.ikat_kepala_legendaris').closest('section');
+        const btn = section && Array.from(section.querySelectorAll('button')).find((b) => /belum kebuka/.test(b.textContent ?? ''));
+        // The locked-item wrapper is hidden on mobile until toggled ("hidden sm:contents").
+        const lockedWrapper = screen.getByText('accessory.ikat_kepala_legendaris').closest('article')?.parentElement;
+        expect(lockedWrapper?.className).toBe('hidden sm:contents');
+
         fireEvent.click(btn ?? document.body);
+        expect(lockedWrapper?.className).toBe('contents');
+
         fireEvent.click(btn ?? document.body);
+        expect(lockedWrapper?.className).toBe('hidden sm:contents');
     });
 });

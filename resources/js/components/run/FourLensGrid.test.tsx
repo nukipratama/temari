@@ -1,5 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { router } from '@inertiajs/react';
 import FourLensGrid from './FourLensGrid';
 import type { AnalysisPayload } from '@/types/inertia';
 
@@ -39,10 +40,27 @@ describe('FourLensGrid', () => {
     });
 
     it('disables the bulk trigger button while pending', () => {
-        globalThis.fetch = vi.fn(() => new Promise(() => {})) as typeof fetch;
+        vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
         render(<FourLensGrid {...defaultProps} isChainHead />);
         fireEvent.click(screen.getByText(/Baca ulang semua/i).closest('button') as Element);
         expect(screen.getByText(/Lagi dibaca/i)).toBeInTheDocument();
+    });
+
+    it('reloads via inertia and re-enables the button once the bulk trigger settles', async () => {
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 200 }))));
+        render(<FourLensGrid {...defaultProps} isChainHead />);
+
+        fireEvent.click(screen.getByText(/Baca ulang semua/i).closest('button') as Element);
+
+        await waitFor(() => {
+            expect(router.reload).toHaveBeenCalledWith({
+                only: ['speechAnalysis', 'insightTechnical', 'insightSplits', 'insightZones'],
+            });
+        });
+        await waitFor(() => {
+            expect(screen.getByText('Baca ulang semua')).toBeInTheDocument();
+        });
+        expect(screen.getByText(/Baca ulang semua/i).closest('button')).not.toBeDisabled();
     });
 
     it('drops the per-lens reanalyze buttons on the head run', () => {

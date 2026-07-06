@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { router } from '@inertiajs/react';
 import AksesoriUnlockModal from './AksesoriUnlockModal';
 
 const epikUnlock = {
@@ -67,8 +68,10 @@ describe('AksesoriUnlockModal', () => {
 
     it('calls onClose when "Pakai sekarang" is clicked', () => {
         const onClose = vi.fn();
+        vi.mocked(router.visit).mockReset();
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={onClose} />);
         fireEvent.click(screen.getByText('Pakai sekarang'));
         expect(onClose).toHaveBeenCalledOnce();
+        expect(router.visit).toHaveBeenCalledWith('/aksesori', { preserveScroll: false });
     });
 });

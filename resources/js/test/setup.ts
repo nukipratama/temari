@@ -29,6 +29,40 @@ export function setMockPage(props: Record<string, unknown>, url = DEFAULT_URL) {
     mockUrl = url;
 }
 
+// Global useForm() mock — a stable object (not a fresh literal per call) so a
+// component test can hold `formMock` and assert `formMock.post` was called
+// with the expected url/options, the same way `router.post` is assertable
+// below. `processing`/`data`/`errors` are plain fields a test can set directly
+// before rendering (e.g. `formMock.processing = true`); everything resets to
+// its default between tests so files don't bleed into each other.
+const FORM_MOCK_DEFAULTS = {
+    data: {} as Record<string, unknown>,
+    errors: {} as Record<string, unknown>,
+    processing: false,
+};
+
+export const formMock = {
+    ...FORM_MOCK_DEFAULTS,
+    post: vi.fn(),
+    get: vi.fn(),
+    put: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    submit: vi.fn(),
+    reset: vi.fn(),
+};
+
+function resetFormMock() {
+    Object.assign(formMock, FORM_MOCK_DEFAULTS);
+    formMock.post.mockReset();
+    formMock.get.mockReset();
+    formMock.put.mockReset();
+    formMock.patch.mockReset();
+    formMock.delete.mockReset();
+    formMock.submit.mockReset();
+    formMock.reset.mockReset();
+}
+
 // Authenticated-user fixture for `usePage().props.auth.user`. Defaults to the
 // demo user shape; pass overrides to vary name etc.
 export function makeUser(overrides: Record<string, unknown> = {}) {
@@ -50,6 +84,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
     mockPageProps = { ...DEFAULT_PAGE_PROPS };
     mockUrl = DEFAULT_URL;
+    resetFormMock();
 });
 
 vi.mock('@inertiajs/react', async () => {
@@ -108,16 +143,7 @@ vi.mock('@inertiajs/react', async () => {
         Head: ({ children }: { children?: ReactNode }) => children ?? null,
         Link: linkComponent,
         usePage: () => ({ props: mockPageProps, url: mockUrl }),
-        useForm: () => ({
-            data: {},
-            errors: {},
-            processing: false,
-            post: vi.fn(),
-            get: vi.fn(),
-            put: vi.fn(),
-            delete: vi.fn(),
-            reset: vi.fn(),
-        }),
+        useForm: () => formMock,
         router: { post: vi.fn(), get: vi.fn(), patch: vi.fn(), delete: vi.fn(), reload: vi.fn(), visit: vi.fn() },
         usePoll: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
     };

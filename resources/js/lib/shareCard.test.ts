@@ -177,7 +177,7 @@ describe('shareCardBlob', () => {
             getContext: () => ctx,
             toBlob: (cb: (b: Blob | null) => void) => cb(blob),
         };
-        vi.spyOn(document, 'createElement').mockReturnValue(canvas as unknown as HTMLCanvasElement);
+        vi.spyOn(document, 'createElement').mockReturnValueOnce(canvas as unknown as HTMLCanvasElement);
 
         await expect(
             shareCardBlob({ kartu, layout: 'kartu', format: 'story' }),
@@ -192,7 +192,7 @@ describe('shareCardBlob', () => {
             getContext: () => ctx,
             toBlob: (cb: (b: Blob | null) => void) => cb(null),
         };
-        vi.spyOn(document, 'createElement').mockReturnValue(canvas as unknown as HTMLCanvasElement);
+        vi.spyOn(document, 'createElement').mockReturnValueOnce(canvas as unknown as HTMLCanvasElement);
 
         await expect(
             shareCardBlob({ kartu, layout: 'rute', format: 'feed' }),

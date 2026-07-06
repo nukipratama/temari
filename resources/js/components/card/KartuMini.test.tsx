@@ -30,6 +30,13 @@ describe('KartuMini', () => {
         expect(screen.getByText('#2/5')).toBeInTheDocument();
     });
 
+    it('joins edition and date with a separator when both are provided', () => {
+        render(<KartuMini name="x" date="18 Mei" edition={{ index: 2, total: 5 }} />);
+        expect(screen.getByText('#2/5')).toBeInTheDocument();
+        expect(screen.getByText('18 Mei')).toBeInTheDocument();
+        expect(screen.getByText('·')).toBeInTheDocument();
+    });
+
     it('renders the TemariProto mascot in the art zone', () => {
         const { container } = render(<KartuMini name="x" />);
         // Art zone always contains the mascot SVG.

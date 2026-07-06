@@ -37,6 +37,21 @@ const epicReveal: PendingReveal = {
   edition: { index: 3, total: 7 },
 };
 
+const legendaryReveal: PendingReveal = {
+  card_id: 88,
+  activity_id: 55,
+  rarity: "legendary",
+  special_move: "Raja Jarak Jauh",
+  mood: "nyala",
+  badges: ["jauh"],
+  detail_name: "Half marathon",
+  distance_m: 21000,
+  moving_time_sec: 6300,
+  trimp_edwards: 210,
+  public_share_url: "https://teman-lari.test/k/88?signature=abc",
+  edition: { index: 1, total: 2 },
+};
+
 const commonReveal: PendingReveal = {
   card_id: 7,
   activity_id: 12,
@@ -252,6 +267,15 @@ describe("CardReveal", () => {
     expect(screen.queryByText("Lihat koleksi")).toBeNull();
     await u.click(screen.getByTestId("pack-wrapper"));
     expect(await screen.findByText("Lihat koleksi")).toBeInTheDocument();
+  });
+
+  it("shows the legendary light-flash overlay after tearing the pack (glow pose)", async () => {
+    const u = userEvent.setup();
+    const { container } = render(<CardReveal pending={legendaryReveal} />);
+    await u.click(screen.getByTestId("pack-wrapper"));
+    expect(screen.getByText(/★ Legendaris/)).toBeInTheDocument();
+    // Legendary-only "light flash" overlay, absent for other rarities.
+    expect(container.querySelector('[class*="bg-white/50"]')).not.toBeNull();
   });
 
   it("skips the wrapper entirely under prefers-reduced-motion", async () => {

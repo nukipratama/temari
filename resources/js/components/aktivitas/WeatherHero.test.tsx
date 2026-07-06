@@ -9,34 +9,47 @@ describe('WeatherHero', () => {
     });
 
     it('renders cool weather (<27°C) with brand tint', () => {
-        render(<WeatherHero detail={{ weather_temp_c: 22, weather_humidity_pct: 70 }} />);
-        expect(screen.getByText('22')).toBeInTheDocument();
+        const { container } = render(<WeatherHero detail={{ weather_temp_c: 22, weather_humidity_pct: 70 }} />);
+        const temp = screen.getByText('22');
+        expect(temp).toBeInTheDocument();
+        expect(temp).toHaveClass('text-leaf-deep');
         expect(screen.getByText(/70% humidity/)).toBeInTheDocument();
+        expect(container.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'mdi:weather-partly-cloudy');
     });
 
     it('renders warm weather (27-30°C) with squished tone', () => {
-        render(<WeatherHero detail={{ weather_temp_c: 28 }} />);
-        expect(screen.getByText('28')).toBeInTheDocument();
+        const { container } = render(<WeatherHero detail={{ weather_temp_c: 28 }} />);
+        const temp = screen.getByText('28');
+        expect(temp).toBeInTheDocument();
+        expect(temp).toHaveClass('text-mood-oleng');
+        expect(container.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'mdi:weather-partly-cloudy');
     });
 
     it('renders hot weather (≥31°C) with cooked tone', () => {
-        render(<WeatherHero detail={{ weather_temp_c: 32 }} />);
-        expect(screen.getByText('32')).toBeInTheDocument();
+        const { container } = render(<WeatherHero detail={{ weather_temp_c: 32 }} />);
+        const temp = screen.getByText('32');
+        expect(temp).toBeInTheDocument();
+        expect(temp).toHaveClass('text-mood-lemes');
+        expect(container.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'mdi:weather-sunny-alert');
     });
 
     it('renders rain state with mood-mumet gradient and rain icon', () => {
-        render(<WeatherHero detail={{ weather_temp_c: 25, weather_rain_detected: true }} />);
+        const { container } = render(<WeatherHero detail={{ weather_temp_c: 25, weather_rain_detected: true }} />);
         expect(screen.getByText(/hujan saat lari/)).toBeInTheDocument();
+        expect(container.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'mdi:weather-rainy');
     });
 
     it('renders hot + rain combo (rain icon takes precedence)', () => {
-        render(
+        const { container } = render(
             <WeatherHero
                 detail={{ weather_temp_c: 33, weather_rain_detected: true, weather_humidity_pct: 85 }}
             />,
         );
-        expect(screen.getByText('33')).toBeInTheDocument();
+        const temp = screen.getByText('33');
+        expect(temp).toBeInTheDocument();
+        expect(temp).toHaveClass('text-mood-lemes');
         expect(screen.getByText(/hujan saat lari/)).toBeInTheDocument();
+        expect(container.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'mdi:weather-rainy');
     });
 
     it('renders location alone when only location_name is set', () => {

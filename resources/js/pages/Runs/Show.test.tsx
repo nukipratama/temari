@@ -5,6 +5,14 @@ import RunsShow from './Show';
 import { setMockPage } from '@/test/setup';
 import type { ActivityDetail, AnalysisPayload, StoryLine } from '@/types/inertia';
 
+// RouteMap is lazy()-loaded and wraps real leaflet/react-leaflet/@mapbox/polyline
+// (see its own dedicated test file for those stubs). Stub it here too so the
+// dynamic import resolving after a test's assertions doesn't try to mount the
+// real map against jsdom without those stubs.
+vi.mock('@/components/run/RouteMap', () => ({
+    default: () => <div data-testid="route-map" />,
+}));
+
 beforeEach(() => {
     setMockPage({
         auth: { user: { id: 1, name: 'A', first_name: 'A', avatar_url: null } },

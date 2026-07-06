@@ -11,13 +11,15 @@ describe('Card', () => {
         expect(root.className).toMatch(/border-line/);
     });
 
-    it.each(['cream', 'cream-deep', 'sky-glass', 'empty'] satisfies CardTone[])(
-        'renders tone %s',
-        (tone) => {
-            const { container } = render(<Card tone={tone}>x</Card>);
-            expect(container.firstChild).toBeInTheDocument();
-        },
-    );
+    it.each([
+        ['cream', 'bg-surface-card'],
+        ['cream-deep', 'bg-cream-deep'],
+        ['sky-glass', 'bg-cream/[0.06]'],
+        ['empty', 'border-dashed'],
+    ] satisfies [CardTone, string][])('renders tone %s with its surface class', (tone, expected) => {
+        const { container } = render(<Card tone={tone}>x</Card>);
+        expect((container.firstChild as HTMLElement).className).toContain(expected);
+    });
 
     it('renders as <section> when as="section"', () => {
         const { container } = render(<Card as="section">x</Card>);

@@ -23,6 +23,14 @@ describe('StravaSyncBadge', () => {
     it('renders an inert badge when ready', () => {
         render(<StravaSyncBadge sync={sync('ready', '2026-07-04T00:00:00Z')} />);
         expect(screen.queryByRole('link')).not.toBeInTheDocument();
+        expect(screen.getByText(/^Strava synced/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^Strava synced/)).toBeInTheDocument();
+    });
+
+    it('uses the compact label variant when density is compact', () => {
+        render(<StravaSyncBadge sync={sync('syncing')} density="compact" />);
+        expect(screen.getByText('Sinkron')).toBeInTheDocument();
+        expect(screen.queryByText('Lagi sinkron')).not.toBeInTheDocument();
     });
 
     it('renders a reconnect link to the OAuth redirect when revoked', () => {

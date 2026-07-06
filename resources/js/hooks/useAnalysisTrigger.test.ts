@@ -82,6 +82,7 @@ describe('useAnalysisTrigger', () => {
             await result.current.trigger();
         });
         expect(result.current.status).toBe('queued');
+        expect(router.reload).toHaveBeenCalledWith({ only: ['briefing'] });
     });
 
     it('catches non-Error throwables and records error string', async () => {

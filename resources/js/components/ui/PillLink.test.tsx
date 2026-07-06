@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import PillLink from './PillLink';
 
 describe('PillLink', () => {
@@ -15,5 +15,22 @@ describe('PillLink', () => {
         const link = screen.getByRole('link', { name: /klik/i });
         expect(link.className).toMatch(/mt-6/);
         expect(link.className).toMatch(/rounded-full/);
+    });
+
+    it('applies tone-specific classes', () => {
+        render(<PillLink href="/x" tone="horizon">Klik</PillLink>);
+        expect(screen.getByRole('link', { name: /klik/i }).className).toContain('bg-horizon');
+    });
+
+    it('applies size-specific classes', () => {
+        render(<PillLink href="/x" size="sm">Klik</PillLink>);
+        expect(screen.getByRole('link', { name: /klik/i }).className).toContain('text-[13px]');
+    });
+
+    it('fires onClick when clicked', () => {
+        const onClick = vi.fn();
+        render(<PillLink href="/x" onClick={onClick}>Klik</PillLink>);
+        fireEvent.click(screen.getByRole('link', { name: /klik/i }));
+        expect(onClick).toHaveBeenCalledOnce();
     });
 });

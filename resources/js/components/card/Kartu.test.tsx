@@ -93,17 +93,6 @@ describe('Kartu', () => {
         expect(screen.queryByText('Lemes')).toBeNull();
     });
 
-    it.each([
-        ['common', '●'],
-        ['uncommon', '◆'],
-        ['rare', '★'],
-        ['epic', '✦'],
-        ['legendary', '✺'],
-    ] satisfies Array<[Rarity, string]>)('shows the %s set symbol', (rarity, symbol) => {
-        render(<Kartu name="x" km="1" durasi="1:00" trimp={1} rarity={rarity} />);
-        expect(screen.getByText(symbol)).toBeInTheDocument();
-    });
-
     it('shows a labeled stat grid on the full tier', () => {
         render(
             <Kartu

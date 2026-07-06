@@ -22,8 +22,32 @@ describe('JourneyStrip', () => {
         );
         expect(screen.getByText(/Kamu vs Lari Pertama Kamu/i)).toBeInTheDocument();
         expect(screen.getByText(/80\.4 km/)).toBeInTheDocument();
-        expect(screen.getByText(/60 detik\/km lebih cepat/)).toBeInTheDocument();
-        expect(screen.getByText(/15 bpm lebih rendah/)).toBeInTheDocument();
+        const paceSpan = screen.getByText(/60 detik\/km lebih cepat/);
+        expect(paceSpan).toBeInTheDocument();
+        expect(paceSpan).toHaveClass('text-leaf-deep');
+        const hrSpan = screen.getByText(/15 bpm lebih rendah/);
+        expect(hrSpan).toBeInTheDocument();
+        expect(hrSpan).toHaveClass('text-leaf-deep');
+    });
+
+    it('renders the negative-tone copy and class when pace/HR got worse', () => {
+        render(
+            <JourneyStrip
+                match={{
+                    first: { date: '2026-01-01', name: 'First', distance_km: 5, pace_sec_per_km: 360, avg_hr: 150 },
+                    current: { date: '2026-05-21', name: 'Latest', distance_km: 5, pace_sec_per_km: 420, avg_hr: 165 },
+                    pace_improvement_sec: -10,
+                    hr_improvement_bpm: -5,
+                    total_km: 80.4,
+                }}
+            />,
+        );
+        const paceSpan = screen.getByText(/10 detik\/km lebih lambat/);
+        expect(paceSpan).toBeInTheDocument();
+        expect(paceSpan).toHaveClass('text-ember-deep');
+        const hrSpan = screen.getByText(/5 bpm lebih tinggi/);
+        expect(hrSpan).toBeInTheDocument();
+        expect(hrSpan).toHaveClass('text-ember-deep');
     });
 
     it('formats the first-run date as a wall-clock short date (RunController sends a date-only string)', () => {
@@ -54,6 +78,7 @@ describe('JourneyStrip', () => {
             />,
         );
         expect(screen.getByText(/not-a-date/)).toBeInTheDocument();
+        expect(screen.queryByText(/detik\/km/)).not.toBeInTheDocument();
     });
 
     it('skips the hr line when no HR data on either side', () => {

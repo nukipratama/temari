@@ -1,8 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import KoleksiKartu from './Kartu';
 import { setMockPage } from '@/test/setup';
 import type { Activity, ActivityDetail, RunCard } from '@/types/inertia';
+
+// ConfettiBurst renders real framer-motion particles on a real timer; stub it
+// with a DOM probe so a tap's `burstKey` can be asserted directly instead of
+// depending on animation/effect timing.
+vi.mock('@/components/ConfettiBurst', () => ({
+    default: ({ burstKey }: { burstKey: string | number | null }) => (
+        <div data-testid="confetti-burst" data-burst-key={burstKey ?? ''} />
+    ),
+}));
 
 const rarityCounts = { common: 5, uncommon: 4, rare: 3, epic: 2, legendary: 0 };
 
@@ -74,17 +83,27 @@ describe('Koleksi/Kartu', () => {
 
     it('triggers a confetti burst when an epic grid card is tapped', () => {
         const cards = { ...emptyCards(), data: [cardWithRel(7, 'epic', 'Tancap di Akhir')] };
-        render(<KoleksiKartu cards={cards} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
+        const { container } = render(<KoleksiKartu cards={cards} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
+        const confetti = container.querySelector<HTMLElement>('[data-testid="confetti-burst"]');
+        expect(confetti?.dataset.burstKey).toBe('');
+
         const cardLink = screen.getAllByRole('link').find((el) => el.getAttribute('href') === '/aktivitas/7');
         fireEvent.click(cardLink!);
+
+        expect(confetti?.dataset.burstKey).not.toBe('');
     });
 
     it('renders the grid when cards.data has entries + handles cell taps', () => {
         const cards = { ...emptyCards(), data: [cardWithRel(1, 'epic', 'Tendangan Epic'), cardWithRel(2, 'common')] };
-        render(<KoleksiKartu cards={cards} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
+        const { container } = render(<KoleksiKartu cards={cards} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
         expect(screen.getByText('Tendangan Epic')).toBeInTheDocument();
+
+        const confetti = container.querySelector<HTMLElement>('[data-testid="confetti-burst"]');
         const links = screen.getAllByRole('link').filter((el) => el.getAttribute('href') === '/aktivitas/1');
         fireEvent.click(links[0]);
+
+        // Card 1 is epic, so the tap fires a confetti burst.
+        expect(confetti?.dataset.burstKey).not.toBe('');
     });
 
     it('falls back to the special move in the banner when there is no flavor analysis', () => {
