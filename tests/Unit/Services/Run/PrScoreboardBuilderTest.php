@@ -37,6 +37,13 @@ describe('roundedTargetSec bucket thresholds', function (): void {
         expect($this->builder->roundedTargetSec(3601))->toBe(3600);
     });
 
+    it('keeps exactly 1:00:00 in the hour-scale (5-min) bucket rather than dropping to the 1-min bucket', function (): void {
+        // 3600 is >= the hour-scale threshold, so it uses the same 5-min bucket as
+        // its neighbors (3300, i.e. Sub-55:00) instead of falling through to the
+        // 1-min bucket (which would give 3540, Sub-59:00 — a discontinuity with 3601).
+        expect($this->builder->roundedTargetSec(3600))->toBe(3300);
+    });
+
     it('rounds 10-to-60-minute times down to the next whole minute', function (): void {
         // 29:11 (1751) → 29:00 (1740).
         expect($this->builder->roundedTargetSec(1751))->toBe(1740)

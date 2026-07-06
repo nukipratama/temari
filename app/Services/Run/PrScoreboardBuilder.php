@@ -117,8 +117,10 @@ class PrScoreboardBuilder
 
     public function roundedTargetSec(int $current): int
     {
-        if ($current > 3600) {
+        if ($current >= 3600) {
             // Hour-scale: drop to next-lower 5-min increment (e.g., 1:02 → 1:00).
+            // >= (not >) so a PR of exactly 1:00:00 stays in the same 5-min
+            // bucket as its neighbors instead of falling into the 1-min bucket.
             return (intdiv($current - 1, 300)) * 300;
         }
         if ($current > 600) {
