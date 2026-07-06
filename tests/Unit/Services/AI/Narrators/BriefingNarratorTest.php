@@ -2,12 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Services\AI\StructuredChatCaller;
-use App\Services\AI\TokenUsageRecorder;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
-use App\Services\AI\AzureOpenAIClient;
 use App\Exceptions\AI\UnavailableException;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
@@ -38,15 +35,12 @@ function bootNarrator(string $jsonContent): array
     ]);
 
     $client = new ClientFake([fakeAzureResponse($jsonContent)]);
-    $azure = Mockery::mock(AzureOpenAIClient::class);
-    $azure->shouldReceive('client')->andReturn($client);
-    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
 
     $narrator = new BriefingNarrator(
         app(Vibe::class),
         app(TrainingLoad::class),
         app(VerdictNarrator::class),
-        new StructuredChatCaller($azure, app(TokenUsageRecorder::class)),
+        fakeStructuredCaller($client),
     );
 
     return ['user' => $user, 'narrator' => $narrator, 'client' => $client];
@@ -79,15 +73,12 @@ it('throws UnavailableException when required fields are missing', function (): 
 it('throws UnavailableException when the Azure HTTP call itself throws', function (): void {
     $user = User::factory()->create();
     $client = new ClientFake([new RuntimeException('Azure 500')]);
-    $azure = Mockery::mock(AzureOpenAIClient::class);
-    $azure->shouldReceive('client')->andReturn($client);
-    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
 
     $narrator = new BriefingNarrator(
         app(Vibe::class),
         app(TrainingLoad::class),
         app(VerdictNarrator::class),
-        new StructuredChatCaller($azure, app(TokenUsageRecorder::class)),
+        fakeStructuredCaller($client),
     );
     $narrator->generate($user, Carbon::today());
 })->throws(UnavailableException::class, 'Azure OpenAI call failed');

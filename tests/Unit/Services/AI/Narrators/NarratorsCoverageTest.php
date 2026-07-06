@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Services\AI\StructuredChatCaller;
-use App\Services\AI\TokenUsageRecorder;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -14,7 +13,6 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
@@ -58,11 +56,8 @@ function fakeCaller(string $content): StructuredChatCaller
 function capturingCaller(string $content): array
 {
     $client = new ClientFake([fakeAzureResponse($content)]);
-    $azure = Mockery::mock(AzureOpenAIClient::class);
-    $azure->shouldReceive('client')->andReturn($client);
-    $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
 
-    return [new StructuredChatCaller($azure, app(TokenUsageRecorder::class)), $client];
+    return [fakeStructuredCaller($client), $client];
 }
 
 // ── PostRunSpeechNarrator ─────────────────────────────────────────────
