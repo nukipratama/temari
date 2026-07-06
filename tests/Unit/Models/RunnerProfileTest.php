@@ -6,48 +6,9 @@ use App\Models\RunnerProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
-
-it('returns config runner defaults from hrProfile when the user has no profile', function (): void {
-    $user = User::factory()->create();
-
-    expect($user->hrProfile())->toBe([
-        'max_hr' => (int) config('runner.max_hr'),
-        'resting_hr' => (int) config('runner.resting_hr'),
-        'hr_zones' => config('runner.hr_zones'),
-        'optimal_cadence_spm' => (int) config('runner.optimal_cadence_spm'),
-    ]);
-});
-
-it('returns the stored profile row values from hrProfile when a profile exists', function (): void {
-    $user = User::factory()->create();
-    RunnerProfile::factory()->for($user)->create([
-        'max_hr' => 190,
-        'resting_hr' => 48,
-        'hr_zones' => [
-            'Z1' => ['lo' => 120, 'hi' => 140],
-            'Z2' => ['lo' => 140, 'hi' => 160],
-            'Z3' => ['lo' => 160, 'hi' => 172],
-            'Z4' => ['lo' => 172, 'hi' => 182],
-            'Z5' => ['lo' => 182, 'hi' => 999],
-        ],
-        'optimal_cadence_spm' => 178,
-    ]);
-
-    expect($user->refresh()->hrProfile())->toEqual([
-        'max_hr' => 190,
-        'resting_hr' => 48,
-        'hr_zones' => [
-            'Z1' => ['lo' => 120, 'hi' => 140],
-            'Z2' => ['lo' => 140, 'hi' => 160],
-            'Z3' => ['lo' => 160, 'hi' => 172],
-            'Z4' => ['lo' => 172, 'hi' => 182],
-            'Z5' => ['lo' => 182, 'hi' => 999],
-        ],
-        'optimal_cadence_spm' => 178,
-    ]);
-});
 
 it('belongs to a user', function (): void {
     $user = User::factory()->create();
@@ -99,4 +60,14 @@ it('leaves hr_zones_changed_at untouched when only optimal_cadence_spm changes',
 
     expect($profile->fresh()->hr_zones_changed_at)->toBeNull()
         ->and($profile->fresh()->optimal_cadence_spm)->toBe(175);
+});
+
+it('forgets the shared hr-zones-changed-at cache prop on every save', function (): void {
+    $profile = RunnerProfile::factory()->create();
+    $cacheKey = "hr-zones-changed-at:{$profile->user_id}";
+    Cache::put($cacheKey, 'stale-value');
+
+    $profile->update(['optimal_cadence_spm' => 175]);
+
+    expect(Cache::has($cacheKey))->toBeFalse();
 });

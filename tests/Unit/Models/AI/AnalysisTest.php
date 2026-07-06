@@ -183,3 +183,37 @@ it('ownerId is null when the subject row no longer exists', function (): void {
     $row = new Analysis(['subject_type' => Activity::class, 'subject_id' => 999999]);
     expect($row->ownerId())->toBeNull();
 });
+
+it('ownerIdsForRows batches owner resolution across mixed subject types', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    $snap = WeeklySnapshot::factory()->for($user)->create();
+
+    $rowActivity = Analysis::factory()->create(['subject_type' => Activity::class, 'subject_id' => $activity->id]);
+    $rowSnap = Analysis::factory()->create(['subject_type' => WeeklySnapshot::class, 'subject_id' => $snap->id]);
+
+    $owners = Analysis::ownerIdsForRows(Analysis::query()->whereKey([$rowActivity->id, $rowSnap->id])->get());
+
+    expect($owners[$rowActivity->id])->toBe($user->id)
+        ->and($owners[$rowSnap->id])->toBe($user->id);
+});
+
+it('ownerIdsForRows falls back to subject_id for an unmapped subject type', function (): void {
+    $user = User::factory()->create();
+    $row = Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+    ]);
+
+    $owners = Analysis::ownerIdsForRows(Analysis::query()->whereKey($row->id)->get());
+
+    expect($owners[$row->id])->toBe($user->id);
+});
+
+it('ownerIdsForRows maps to null when the subject row no longer exists', function (): void {
+    $row = Analysis::factory()->create(['subject_type' => Activity::class, 'subject_id' => 999999]);
+
+    $owners = Analysis::ownerIdsForRows(Analysis::query()->whereKey($row->id)->get());
+
+    expect($owners[$row->id])->toBeNull();
+});

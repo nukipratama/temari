@@ -75,3 +75,19 @@ it('cascades deletion from activity', function (): void {
 
     expect(ActivityDetail::query()->find($detail->id))->toBeNull();
 });
+
+it('paceSecPerKm computes pace and returns null for a zero-distance run', function (): void {
+    $normal = ActivityDetail::factory()->create(['distance' => 5000.0, 'moving_time' => 1500]);
+    $zeroDistance = ActivityDetail::factory()->create(['distance' => 0.0, 'moving_time' => 1500]);
+
+    expect($normal->paceSecPerKm())->toBe(300.0)
+        ->and($zeroDistance->paceSecPerKm())->toBeNull();
+});
+
+it('streamSummary falls back to an empty array when stream_summary is null', function (): void {
+    $withSummary = ActivityDetail::factory()->create(['stream_summary' => ['decoupling_pct' => 5.5]]);
+    $withoutSummary = ActivityDetail::factory()->create(['stream_summary' => null]);
+
+    expect($withSummary->streamSummary())->toBe(['decoupling_pct' => 5.5])
+        ->and($withoutSummary->streamSummary())->toBe([]);
+});

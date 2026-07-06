@@ -3,9 +3,12 @@
 declare(strict_types=1);
 
 use App\Models\Activity;
+use App\Models\Analytics\StravaSyncLog;
 use App\Models\PersonalRecord;
+use App\Models\RunnerProfile;
 use App\Models\StoryLine;
 use App\Models\StravaConnection;
+use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,6 +32,93 @@ it('returns null stravaConnection when none is attached', function (): void {
     $user = User::factory()->create();
 
     expect($user->stravaConnection)->toBeNull();
+});
+
+it('has one runner profile', function (): void {
+    $user = User::factory()->create();
+    $profile = RunnerProfile::factory()->for($user)->create();
+
+    expect($user->runnerProfile)->toBeInstanceOf(RunnerProfile::class)
+        ->and($user->runnerProfile->is($profile))->toBeTrue();
+});
+
+it('has one telegram connection', function (): void {
+    $user = User::factory()->create();
+    $connection = TelegramConnection::factory()->for($user)->create();
+
+    expect($user->telegramConnection)->toBeInstanceOf(TelegramConnection::class)
+        ->and($user->telegramConnection->is($connection))->toBeTrue();
+});
+
+it('returns config runner defaults from hrProfile when the user has no profile', function (): void {
+    $user = User::factory()->create();
+
+    expect($user->hrProfile())->toBe([
+        'max_hr' => (int) config('runner.max_hr'),
+        'resting_hr' => (int) config('runner.resting_hr'),
+        'hr_zones' => config('runner.hr_zones'),
+        'optimal_cadence_spm' => (int) config('runner.optimal_cadence_spm'),
+    ]);
+});
+
+it('returns the stored profile row values from hrProfile when a profile exists', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create([
+        'max_hr' => 190,
+        'resting_hr' => 48,
+        'hr_zones' => [
+            'Z1' => ['lo' => 120, 'hi' => 140],
+            'Z2' => ['lo' => 140, 'hi' => 160],
+            'Z3' => ['lo' => 160, 'hi' => 172],
+            'Z4' => ['lo' => 172, 'hi' => 182],
+            'Z5' => ['lo' => 182, 'hi' => 999],
+        ],
+        'optimal_cadence_spm' => 178,
+    ]);
+
+    expect($user->refresh()->hrProfile())->toEqual([
+        'max_hr' => 190,
+        'resting_hr' => 48,
+        'hr_zones' => [
+            'Z1' => ['lo' => 120, 'hi' => 140],
+            'Z2' => ['lo' => 140, 'hi' => 160],
+            'Z3' => ['lo' => 160, 'hi' => 172],
+            'Z4' => ['lo' => 172, 'hi' => 182],
+            'Z5' => ['lo' => 182, 'hi' => 999],
+        ],
+        'optimal_cadence_spm' => 178,
+    ]);
+});
+
+it('writes a sync log when a user with an active strava connection is deleted', function (): void {
+    // The connection row itself cascade-deletes with the user (FK
+    // cascadeOnDelete), so markRevoked()'s effect isn't independently
+    // observable afterward — this proves the deleting hook doesn't crash on
+    // the "still-active connection" branch and that the log write survives.
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $user->delete();
+
+    expect(StravaConnection::query()->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and(StravaSyncLog::query()->where('user_id', $user->id)->where('status', 'deleted')->exists())->toBeTrue();
+});
+
+it('does not crash on the already-revoked-connection branch when the user is deleted', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->revoked()->create();
+
+    $user->delete();
+
+    expect(StravaSyncLog::query()->where('user_id', $user->id)->where('status', 'deleted')->exists())->toBeTrue();
+});
+
+it('logs the deletion even when the user has no strava connection', function (): void {
+    $user = User::factory()->create();
+
+    $user->delete();
+
+    expect(StravaSyncLog::query()->where('user_id', $user->id)->where('status', 'deleted')->exists())->toBeTrue();
 });
 
 it('notDemo scope excludes demo users', function (): void {
