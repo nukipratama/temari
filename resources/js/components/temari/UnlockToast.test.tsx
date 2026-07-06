@@ -41,26 +41,28 @@ describe('UnlockToast', () => {
         expect(toast.className).toContain('lg:bottom-6');
     });
 
-    it('schedules the auto-dismiss timer when flash.unlock is present', () => {
+    it('schedules the auto-dismiss timer when flash.unlock is present', async () => {
         const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
         setMockPage({
             flash: flashWithUnlock({ unlock_key: 'accessory.crown', name: 'Mahkota', icon: 'mdi:crown' }),
         });
         render(<UnlockToast />);
         expect(setTimeoutSpy).toHaveBeenCalled();
-        act(() => {
+        // async act flushes AnimatePresence's safe-to-remove tick after setActive(null).
+        await act(async () => {
             vi.advanceTimersByTime(6000);
         });
     });
 
-    it('close button is wired up to dismiss handler', () => {
+    it('close button is wired up to dismiss handler', async () => {
         setMockPage({
             flash: flashWithUnlock({ unlock_key: 'accessory.crown', name: 'Mahkota', icon: 'mdi:crown' }),
         });
         render(<UnlockToast />);
         const dismissBtn = screen.getByLabelText('Tutup notifikasi');
         expect(dismissBtn).toBeInTheDocument();
-        act(() => {
+        // async act flushes AnimatePresence's safe-to-remove tick after setActive(null).
+        await act(async () => {
             dismissBtn.click();
         });
         // After click, internal state is cleared; toast eventually hides via AnimatePresence.

@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('./LottiePlayer', () => ({
@@ -27,10 +27,14 @@ describe('TemariLottie', () => {
         });
         vi.stubGlobal('fetch', fetchMock);
         render(<TemariLottie mood="nyala" src="/lottie/temari.json" />);
-        // The component dispatches a fetch on mount; we don't need to await
-        // resolution — confirming the GET fired is enough to cover the
-        // useEffect path.
         expect(fetchMock).toHaveBeenCalledWith('/lottie/temari.json', expect.anything());
+        // The mocked fetch still resolves for real (just not over the network),
+        // so its .then chain (setData) fires on a later microtask regardless of
+        // whether this test cares about the result — flush it inside act() so
+        // React doesn't warn about an update after the test returns.
+        await act(async () => {
+            await Promise.resolve();
+        });
         vi.unstubAllGlobals();
     });
 
@@ -38,8 +42,12 @@ describe('TemariLottie', () => {
         // Reject with a non-AbortError so the catch branch sets errored=true.
         vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')));
         const { container } = render(<TemariLottie mood="enteng" src="/lottie/bad.json" />);
-        // Even after error, fallback path renders the SVG character.
-        await new Promise((r) => setTimeout(r, 0));
+        // Even after error, fallback path renders the SVG character. Wrapped in
+        // act() (not a bare awaited setTimeout) so the catch handler's
+        // setErrored(true) is flushed as a monitored update.
+        await act(async () => {
+            await new Promise((r) => setTimeout(r, 0));
+        });
         expect(container.querySelectorAll('svg').length).toBeGreaterThanOrEqual(1);
         vi.unstubAllGlobals();
     });
@@ -47,7 +55,9 @@ describe('TemariLottie', () => {
     it('falls back when fetch returns a non-OK status', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }));
         const { container } = render(<TemariLottie mood="lemes" src="/lottie/missing.json" />);
-        await new Promise((r) => setTimeout(r, 0));
+        await act(async () => {
+            await new Promise((r) => setTimeout(r, 0));
+        });
         expect(container.querySelectorAll('svg').length).toBeGreaterThanOrEqual(1);
         vi.unstubAllGlobals();
     });

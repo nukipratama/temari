@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import SuggestionCard from './SuggestionCard';
 import type { ActivityDetail, AnalysisPayload } from '@/types/inertia';
@@ -57,10 +57,15 @@ describe('SuggestionCard', () => {
         expect(screen.queryByText(/°C/)).not.toBeInTheDocument();
     });
 
-    it('flips "Saran lain" to its pending label when triggered', () => {
+    it('flips "Saran lain" to its pending label when triggered', async () => {
         render(<SuggestionCard suggestion={suggestion('Tempo ringan.')} lastRun={null} />);
         fireEvent.click(screen.getByRole('button', { name: 'Saran lain' }));
         expect(screen.getByRole('button', { name: 'Lagi mikir…' })).toBeInTheDocument();
+        // The global default fetch mock (a 404) still resolves for real, so the
+        // trigger's catch/finally (setStatus('failed'), setPending(false)) fires
+        // on a later microtask — wait for it to settle back to the idle label
+        // instead of leaving it to fire unmonitored after the test returns.
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Saran lain' })).toBeInTheDocument());
     });
 
     it('disables "Saran lain" and shows a countdown while on cooldown', () => {

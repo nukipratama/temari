@@ -9,8 +9,13 @@ beforeEach(() => {
     globalThis.sessionStorage.clear();
 });
 
-afterEach(() => {
-    vi.runOnlyPendingTimers();
+afterEach(async () => {
+    // async act flushes any state update a still-pending timer fires here
+    // (e.g. the hide timer left pending by a test that only advanced past the
+    // show delay), so React doesn't warn about an update outside a test body.
+    await act(async () => {
+        vi.runOnlyPendingTimers();
+    });
     vi.useRealTimers();
     globalThis.sessionStorage.clear();
 });

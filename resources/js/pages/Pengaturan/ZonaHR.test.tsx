@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ZonaHR, { deriveZones } from './ZonaHR';
 import { makeUser, setMockPage } from '@/test/setup';
@@ -133,7 +133,12 @@ describe('ZonaHR', () => {
             onStart: () => void;
             onFinish: () => void;
         };
-        options.onStart();
-        options.onFinish();
+        // onStart/onFinish call setProcessing directly; router.patch is mocked
+        // so nothing else invokes them, and calling them bare (outside act())
+        // is what React warns about.
+        act(() => {
+            options.onStart();
+            options.onFinish();
+        });
     });
 });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import HariIni from './HariIni';
 import { makeUser, setMockPage } from '@/test/setup';
@@ -361,13 +361,17 @@ describe('HariIni', () => {
         expect(screen.getByText('Pemulihan: 41j')).toBeInTheDocument();
     });
 
-    it('flips the "Saran lain" button to its pending label when triggered', () => {
+    it('flips the "Saran lain" button to its pending label when triggered', async () => {
         render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
         const button = screen.getByRole('button', { name: 'Saran lain' });
         // trigger() flips `pending` synchronously before its fetch awaits, so the
         // re-render swaps the label to the in-flight copy.
         fireEvent.click(button);
         expect(screen.getByRole('button', { name: 'Lagi mikir…' })).toBeInTheDocument();
+        // The global default fetch mock (a 404) still resolves for real, so the
+        // trigger's catch/finally fires on a later microtask — wait for it to
+        // settle back to the idle label instead of leaving it unmonitored.
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Saran lain' })).toBeInTheDocument());
     });
 
     it('renders the suggestion as a title + body when the text has two paragraphs', () => {
