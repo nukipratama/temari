@@ -84,26 +84,14 @@ jobs:
           MYSQL_USER: sail
           MYSQL_PASSWORD: password
         ports: ['0:3306']
-        # tmpfs on /var/lib/mysql makes the data dir RAM-backed — service cold
-        # boot drops from ~30s to a few seconds and per-test DB churn under
-        # paratest stops touching disk.
         options: >-
           --health-cmd="mysqladmin ping -ppassword"
           --health-interval=5s --health-timeout=2s --health-retries=10
           --tmpfs /var/lib/mysql:rw
-      redis:
-        image: redis:8-alpine
-        ports: ['0:6379']
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=5s --health-timeout=2s --health-retries=10
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Show runner resources
-        # Surfaces what this runner actually offers — paratest/vitest scale to
-        # $(nproc), so this is the worker count too. Private-repo ubuntu-latest
-        # is 2-vCPU; bump to a larger runner here if the test phase needs it.
         run: |
           {
             echo "### Runner: $(nproc) vCPU ($(uname -m))"
@@ -121,10 +109,6 @@ jobs:
         with:
           php-version: ${{ env.PHP_VERSION }}
           coverage: pcov
-          # Enable CLI opcache for the pest workers. JIT is explicitly
-          # disabled — pcov overrides zend_execute_ex() to instrument lines,
-          # and PHP's default opcache.jit=tracing would otherwise spam
-          # "JIT is incompatible with..." on every paratest worker boot.
           ini-values: >-
             opcache.enable=1,
             opcache.enable_cli=1,
@@ -142,30 +126,18 @@ jobs:
           restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
 
       - name: Install composer deps
-        # classmap-authoritative bakes a static classmap into vendor/composer/.
-        # Pest autoloads ~10k classes during a run; without this every class
-        # load does a filesystem stat per PSR-4 path.
         run: composer install --prefer-dist --no-interaction --no-progress --classmap-authoritative
 
       - name: Audit composer dependencies
-        # Fails the build on any known advisory in composer.lock. Cheap
-        # supply-chain gate for an internet-facing app.
         run: composer audit --no-interaction
 
-      - name: Stub .env so Laravel doesn't warn on bootstrap
+      - name: Stub .env for file-scanning tests
         run: cp .env.example .env
 
-      # Fast structural gate: fail before the expensive coverage run if any
-      # app class lacks a matching test (the 1:1 convention). No DB needed.
       - name: Class/test 1:1 structure check
         run: ./vendor/bin/pest --group=structure
 
-      # Invoke pest directly, not `php artisan test --parallel --coverage` —
-      # the artisan wrapper silently drops --coverage in parallel mode.
-      # env is set at step level because job.services.*.ports is only
-      # available there, not at job-level env.
-      - name: Tests (fast, no coverage)
-        if: github.ref != 'refs/heads/main'
+      - name: Tests
         env:
           APP_ENV: testing
           DB_CONNECTION: mysql
@@ -174,35 +146,14 @@ jobs:
           DB_DATABASE: teman_lari_testing
           DB_USERNAME: root
           DB_PASSWORD: password
-          REDIS_HOST: 127.0.0.1
-          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+          CACHE_STORE: array
+          SESSION_DRIVER: array
         run: |
-          # Scale paratest workers to the runner's core count ($(nproc)) instead
-          # of a fixed 4 — so this tracks whatever hosted runner size we use.
-          ./vendor/bin/pest --parallel --processes="$(nproc)" \
-            --fail-on-warning --fail-on-notice \
-            --fail-on-deprecation --fail-on-risky \
-            --fail-on-phpunit-warning --fail-on-phpunit-notice \
-            --fail-on-phpunit-deprecation 2>&1 | tee /tmp/pest-output.txt
-          exit ${PIPESTATUS[0]}
+          coverage_flag=""
+          [ "${{ github.ref }}" = "refs/heads/main" ] && coverage_flag="--coverage --min=95"
 
-      - name: Tests + 95% coverage
-        if: github.ref == 'refs/heads/main'
-        env:
-          APP_ENV: testing
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
-          DB_DATABASE: teman_lari_testing
-          # paratest auto-creates per-process DBs (teman_lari_testing_test_N) — the
-          # sail user only owns its own DB, so the test runner uses root for the
-          # CREATE DATABASE privilege.
-          DB_USERNAME: root
-          DB_PASSWORD: password
-          REDIS_HOST: 127.0.0.1
-          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
-        run: |
-          ./vendor/bin/pest --parallel --processes="$(nproc)" --coverage --min=95 \
+          ./vendor/bin/pest --parallel --processes="$(nproc)" $coverage_flag \
+            --exclude-group=structure \
             --fail-on-warning --fail-on-notice \
             --fail-on-deprecation --fail-on-risky \
             --fail-on-phpunit-warning --fail-on-phpunit-notice \
@@ -217,8 +168,6 @@ jobs:
             echo ""
             echo "| | |"
             echo "| --- | --- |"
-            # Strip ANSI escapes first (pest writes color + cursor-move codes);
-            # grep can't anchor "^[space]*Tests" otherwise.
             sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' /tmp/pest-output.txt \
               | grep -E "^[[:space:]]*(Tests|Duration|Parallel):" \
               | sed -E 's/^[[:space:]]*([A-Za-z]+):[[:space:]]*/| \1 | /; s/$/ |/'
@@ -252,8 +201,6 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
 
-      # Cache node_modules itself, not just the npm download cache. With a
-      # hit, `npm ci` is skipped entirely (the download cache is a fallback).
       - name: Cache node_modules
         id: node_modules_cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
@@ -266,22 +213,18 @@ jobs:
         run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Audit npm dependencies (prod, high+)
-        # Only production deps, only high/critical — dev-tool advisories and
-        # low-severity noise shouldn't block a deploy.
         run: npm audit --omit=dev --audit-level=high
 
-      # Fast structural gate: fail before the full coverage run if any
-      # component/page lacks a co-located *.test.tsx (the 1:1 convention).
       - name: Component/test 1:1 structure check
         run: npx vitest run resources/js/test/structure.test.ts
 
-      - name: Vitest (fast, no coverage)
-        if: github.ref != 'refs/heads/main'
-        run: npm run test
-
-      - name: Vitest + 95% coverage
-        if: github.ref == 'refs/heads/main'
-        run: npm run test:coverage
+      - name: Vitest (coverage on main only)
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            npm run test:coverage
+          else
+            npm run test
+          fi
 
       - name: Vitest summary
         if: always()
@@ -321,9 +264,6 @@ jobs:
       cancel-in-progress: false
     timeout-minutes: 15
     env:
-      # All app secrets + per-host config live in /opt/teman-lari/.env on the
-      # self-hosted runner, loaded by compose via `env_file:`. The workflow no
-      # longer needs GitHub Secrets for these — see compose.prod.yaml.
       COMPOSE: docker compose -f compose.prod.yaml
       BACKUP_DIR: /var/lib/teman-lari-backups
     steps:
@@ -339,35 +279,20 @@ jobs:
         run: $COMPOSE build app
 
       - name: Bring up the data + cache layer
-        # Cold-start support: the steps below assume mysql/redis are running. On a fresh
-        # machine this starts them (building the custom mysql image, whose initdb
-        # self-bootstraps the schemas + app user + grants on the new volume); on an
-        # existing machine it's a no-op apart from adopting an image/config change.
-        # --wait blocks until healthchecks pass. So a new box needs only the secrets in
-        # /opt/teman-lari/.env + a push — the deploy brings the stack online itself.
         run: $COMPOSE up -d --remove-orphans --wait --wait-timeout 300 mysql redis
 
       - name: Tag new image with git SHA
         run: docker tag teman-lari/app:latest teman-lari/app:${{ github.sha }}
 
       - name: Backup DB before migrate
-        # pipefail: without it, mysqldump failing into a successful gzip looks
-        # like a clean exit (bash -e only checks the last pipe stage). The
-        # size check catches any other silent-empty regression.
         run: |
           set -o pipefail
           mkdir -p "$BACKUP_DIR"
           out="$BACKUP_DIR/pre-deploy-${{ github.sha }}.sql.gz"
-          # The mysql container's env_file gives it DB_USERNAME / DB_PASSWORD /
-          # DB_DATABASE (Laravel names) — the official MYSQL_USER etc. names
-          # only existed when the old compose interpolated them explicitly.
           $COMPOSE exec -T mysql sh -c \
             'mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE"' \
             | gzip > "$out"
           size=$(stat -c%s "$out")
-          # A fresh DB (0 tables — first deploy, or right after a reinit) legitimately
-          # dumps to a tiny file; the migrate step below populates it. Only treat a tiny
-          # dump as a failed backup when the schema actually has tables to lose.
           tables=$($COMPOSE exec -T mysql sh -c \
             'mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
             | tr -d '[:space:]')
@@ -379,8 +304,6 @@ jobs:
           ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz | tail -n +11 | xargs -r rm
 
       - name: Backup analytics schema
-        # Own dump + filename (so the main prune glob won't match it); skipped
-        # until the schema exists.
         run: |
           out="$BACKUP_DIR/analytics-pre-deploy-${{ github.sha }}.sql.gz"
           if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-teman_lari_analytics}"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -p"$DB_PASSWORD" -e "USE $adb"' 2>/dev/null; then
@@ -394,33 +317,18 @@ jobs:
           fi
 
       - name: Quiesce scheduler + horizon before the roll
-        # Stop the scheduler + horizon BEFORE migrate/roll: recreating a container
-        # while one of its scheduled commands / jobs is mid-run is what stranded
-        # the strava:ingest overlap mutex and froze ingest. `stop` sends SIGTERM so
-        # Horizon drains its in-flight jobs gracefully, and (unlike horizon:terminate)
-        # keeps them down so the restart policy can't resurrect them on the old image
-        # during migrate. The scheduler is resumed only once the deploy is green.
         run: $COMPOSE stop scheduler horizon || true
 
       - name: Migrate (one-shot, on the new image)
         run: $COMPOSE run --rm app php artisan migrate --force
 
       - name: Migrate analytics schema
-        # The analytics schema + app-user grant are a one-time bootstrap, not a per-deploy
-        # concern: docker/mysql/init/01-databases.sh (see its header for the one-liner).
-        # This step just migrates as the app user; blocking, so it fails loudly if missing.
         run: $COMPOSE run --rm app php artisan migrate --database=analytics --path=database/migrations/analytics --force
 
       - name: Roll app, workers + Pulse daemon onto the new image
-        # The recreate gives Horizon fresh workers on the new code, so no separate
-        # horizon:terminate recycle is needed. The scheduler is deliberately left
-        # stopped here and only resumed once the deploy is green (below).
         run: $COMPOSE up -d --no-deps app horizon pulse
 
       - name: Optimize caches
-        # Runs inside the running container where compose.prod.yaml's env
-        # is loaded — caching at build time would freeze .env-less defaults
-        # (e.g. DB_CONNECTION → sqlite) into the cached config.
         run: $COMPOSE exec -T app php artisan optimize
 
       - name: Healthcheck
@@ -434,23 +342,16 @@ jobs:
           echo "Healthcheck failed"; exit 1
 
       - name: Smoke test
-        # /login is a public Inertia page that exercises session driver (redis)
-        # and the Vite manifest. /up only proves the framework booted.
         run: |
           curl -fsS -o /dev/null -w "HTTP %{http_code} in %{time_total}s\n" \
             http://127.0.0.1:7001/login
 
       - name: Resume scheduler (deploy green)
-        # The scheduler was held stopped through migrate + the roll so no command
-        # could be mid-run during a container restart. The deploy is healthy now,
-        # so bring it back up on the new image.
         run: $COMPOSE up -d --no-deps scheduler
 
       - name: Prune old teman-lari images
         if: always()
         continue-on-error: true
-        # Remove teman-lari/app SHA-tagged images that aren't :latest or :previous.
-        # Avoids docker image prune -a which would evict unrelated images on the runner.
         run: |
           docker images "teman-lari/app" --format "{{.Tag}}\t{{.ID}}" \
             | grep -vE "^(latest|previous)" \

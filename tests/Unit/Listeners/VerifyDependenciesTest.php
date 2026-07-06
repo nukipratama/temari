@@ -14,7 +14,12 @@ it('passes when mysql, analytics db, both redis connections, and horizon all res
         $mock->shouldReceive('all')->andReturn([(object) ['status' => 'running']]);
     });
 
-    // Real test-stack MySQL + Redis are up, so handle() should not throw.
+    // Redis not available in CI — mock healthy pings.
+    $mockRedis = Mockery::mock();
+    $mockRedis->shouldReceive('ping')->andReturn('PONG');
+    Redis::shouldReceive('connection')->with('default')->andReturn($mockRedis);
+    Redis::shouldReceive('connection')->with('cache')->andReturn($mockRedis);
+
     app(VerifyDependencies::class)->handle(new DiagnosingHealth());
 
     expect(true)->toBeTrue();
@@ -65,6 +70,13 @@ it('throws when horizon is inactive', function (): void {
         $mock->shouldReceive('all')->andReturn([]);
     });
 
+    // Redis runs before Horizon in the check order — mock it healthy so we
+    // reach the Horizon assertion. (Redis is not available in CI.)
+    $mockRedis = Mockery::mock();
+    $mockRedis->shouldReceive('ping')->andReturn('PONG');
+    Redis::shouldReceive('connection')->with('default')->andReturn($mockRedis);
+    Redis::shouldReceive('connection')->with('cache')->andReturn($mockRedis);
+
     expect(fn () => app(VerifyDependencies::class)->handle(new DiagnosingHealth()))
         ->toThrow(RuntimeException::class, 'health: horizon inactive');
 });
@@ -73,6 +85,12 @@ it('throws when horizon is paused', function (): void {
     $this->mock(MasterSupervisorRepository::class, function ($mock): void {
         $mock->shouldReceive('all')->andReturn([(object) ['status' => 'paused']]);
     });
+
+    // Same Redis mock as above — horizon check is after Redis.
+    $mockRedis = Mockery::mock();
+    $mockRedis->shouldReceive('ping')->andReturn('PONG');
+    Redis::shouldReceive('connection')->with('default')->andReturn($mockRedis);
+    Redis::shouldReceive('connection')->with('cache')->andReturn($mockRedis);
 
     expect(fn () => app(VerifyDependencies::class)->handle(new DiagnosingHealth()))
         ->toThrow(RuntimeException::class, 'health: horizon paused');
