@@ -9,10 +9,9 @@ use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\UserUnlock;
-use App\Models\WeeklySnapshot;
+use App\Services\Gamification\GamificationContext;
 use App\Services\Gamification\GoalResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -136,25 +135,30 @@ it('counts rarity cards toward ikat_kepala goals', function (): void {
         ->and($byId['accessory.ikat_kepala_legendaris']['current'])->toBe(1); // 1 legendary, target 1
 });
 
-it('tracks consecutive-week streak for aura_pemanasan', function (): void {
-    // Freeze "now" so the newest week (2026-05-31) is still the current week and
-    // the streak counts as live.
-    Carbon::setTestNow('2026-06-02');
+it('caps aura_pemanasan progress at the 2-week target regardless of the actual streak length', function (): void {
+    // The streak computation itself is GamificationContext's job (its own test
+    // proves the gap/zero-run edge cases) — this only checks GoalResolver's own
+    // min(streak, target) capping, so a streak longer than the target is
+    // injected directly rather than re-deriving it from real WeeklySnapshot rows.
     $user = User::factory()->create();
-    // 3 consecutive weeks ending on adjacent Sundays.
-    $base = Carbon::parse('2026-05-31');
-    foreach ([0, 1, 2] as $w) {
-        WeeklySnapshot::factory()->for($user)->create([
-            'week_ending' => $base->copy()->subWeeks($w)->toDateString(),
-            'runs' => 2,
-        ]);
-    }
+    $ctx = new GamificationContext(
+        user: $user,
+        prCount: 0,
+        activityCount: 0,
+        totalDistanceM: 0.0,
+        rarityCounts: [],
+        streakWeeks: 0,
+        twoWeekStreak: 5,
+        tenKPlus: 0,
+        fiveKPlus: 0,
+        halfMarathon: 0,
+        fastPace: 0,
+        badgeCounts: [],
+    );
 
-    $byId = goalsById($this->resolver, $user);
+    $byId = collect($this->resolver->forUser($user, $ctx))->keyBy('id')->all();
 
     expect($byId['accessory.aura_pemanasan']['current'])->toBe(2); // min(streak, 2)
-
-    Carbon::setTestNow();
 });
 
 it('tracks accumulated distance toward sepatu km goals', function (): void {

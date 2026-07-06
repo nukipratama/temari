@@ -140,7 +140,11 @@ it('reports a negative delta when km dropped vs last week', function (): void {
     expect($recap->deltaPct)->toBe(-25);
 });
 
-it('counts a consecutive-week streak of adjacent run weeks', function (): void {
+it('passes the streak from GamificationContext through to the recap unchanged', function (): void {
+    // The streak *computation* (gap-breaking, zero-run weeks) is
+    // GamificationContext's own responsibility and is fully covered by
+    // GamificationContextTest; WeeklyRecapBuilder only forwards ctx->streakWeeks,
+    // so this just proves that passthrough wiring with a simple adjacent-weeks case.
     $user = User::factory()->create();
     foreach (['2026-04-26', '2026-05-03', '2026-05-10', '2026-05-17'] as $weekEnding) {
         WeeklySnapshot::factory()->for($user)->create([
@@ -153,46 +157,6 @@ it('counts a consecutive-week streak of adjacent run weeks', function (): void {
     $recap = $this->builder->forUser($user);
 
     expect($recap->streakWeeks)->toBe(4);
-});
-
-it('breaks the streak at a missing (gap) week', function (): void {
-    $user = User::factory()->create();
-    // 05-17 and 05-10 are adjacent; then a gap (no 05-03); then 04-26.
-    foreach (['2026-04-26', '2026-05-10', '2026-05-17'] as $weekEnding) {
-        WeeklySnapshot::factory()->for($user)->create([
-            'week_ending' => $weekEnding,
-            'distance_km' => 20.0,
-            'runs' => 3,
-        ]);
-    }
-
-    $recap = $this->builder->forUser($user);
-
-    expect($recap->streakWeeks)->toBe(2);
-});
-
-it('ignores zero-run weeks when counting the streak', function (): void {
-    $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-17',
-        'distance_km' => 20.0,
-        'runs' => 2,
-    ]);
-    // The intervening week exists but has no runs, so it breaks adjacency.
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-10',
-        'distance_km' => 0.0,
-        'runs' => 0,
-    ]);
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-03',
-        'distance_km' => 15.0,
-        'runs' => 2,
-    ]);
-
-    $recap = $this->builder->forUser($user);
-
-    expect($recap->streakWeeks)->toBe(1);
 });
 
 it('picks the highest-rarity card among this week as the best card', function (): void {
