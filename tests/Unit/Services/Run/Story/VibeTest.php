@@ -94,10 +94,10 @@ it('does not hibernate when the analysis as-of date predates the latest run', fu
     expect(app(Vibe::class)->current($user, $asOfBeforeRun))->not->toBe(Vibe::HIBERNATING);
 });
 
-it('returns pumped on a recent PR with non-negative form', function (): void {
+/** 80 days of steady 50 TRIMP/day → CTL catches ATL, form ≈ -7 (within optimal). */
+function userWithOptimalForm(): User
+{
     $user = User::factory()->create();
-
-    // 80 days of steady 50 TRIMP/day → CTL catches ATL, form ≈ -7 (within optimal).
     for ($i = 0; $i < 80; $i++) {
         $activity = Activity::factory()->for($user)->create();
         ActivityDetail::factory()->for($activity)->create([
@@ -105,6 +105,12 @@ it('returns pumped on a recent PR with non-negative form', function (): void {
             'start_date_local' => Carbon::today()->subDays(79 - $i),
         ]);
     }
+
+    return $user;
+}
+
+it('returns pumped on a recent PR with non-negative form', function (): void {
+    $user = userWithOptimalForm();
     PersonalRecord::factory()->for($user)->create([
         'category' => '5km',
         'value_sec' => 1300.0,
@@ -112,6 +118,28 @@ it('returns pumped on a recent PR with non-negative form', function (): void {
     ]);
 
     expect(app(Vibe::class)->current($user))->toBe(Vibe::PUMPED);
+});
+
+it('still counts a PR set exactly 14 days ago as recent', function (): void {
+    $user = userWithOptimalForm();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1300.0,
+        'set_at' => Carbon::today()->subDays(14),
+    ]);
+
+    expect(app(Vibe::class)->current($user))->toBe(Vibe::PUMPED);
+});
+
+it('no longer counts a PR set 15 days ago as recent', function (): void {
+    $user = userWithOptimalForm();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1300.0,
+        'set_at' => Carbon::today()->subDays(15),
+    ]);
+
+    expect(app(Vibe::class)->current($user))->not->toBe(Vibe::PUMPED);
 });
 
 it('averages decoupling_pct across recent runs to drive the vibe', function (): void {

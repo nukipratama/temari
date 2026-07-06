@@ -846,6 +846,103 @@ it('awards anak_dingin badge for a run before 6am', function (): void {
     expect($card->badges)->toContain('anak_dingin');
 });
 
+// --- weeklyConsistency ---
+
+it('flags weekly consistency with 3 runs in the same Mon-Sun week', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-05-11 07:00:00'); // a Monday
+
+    foreach ([0, 2] as $offsetDays) {
+        $other = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($other)->create([
+            'start_date_local' => $monday->copy()->addDays($offsetDays),
+        ]);
+    }
+
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $monday->copy()->addDays(4),
+    ]);
+
+    expect(app(RunCardFactory::class)->weeklyConsistency($activity))->toBeTrue();
+});
+
+it('does not flag weekly consistency with only 2 runs in the week', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-05-11 07:00:00');
+
+    $other = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($other)->create([
+        'start_date_local' => $monday->copy()->addDays(1),
+    ]);
+
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $monday->copy()->addDays(4),
+    ]);
+
+    expect(app(RunCardFactory::class)->weeklyConsistency($activity))->toBeFalse();
+});
+
+it('does not flag weekly consistency when a 3rd run falls in the following week', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-05-11 07:00:00');
+
+    $other = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($other)->create([
+        'start_date_local' => $monday->copy()->addDays(1),
+    ]);
+    $nextWeek = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($nextWeek)->create([
+        'start_date_local' => $monday->copy()->addWeek(),
+    ]);
+
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $monday->copy()->addDays(4),
+    ]);
+
+    expect(app(RunCardFactory::class)->weeklyConsistency($activity))->toBeFalse();
+});
+
+it('returns false for weekly consistency when the activity has no start date', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => null]);
+
+    expect(app(RunCardFactory::class)->weeklyConsistency($activity))->toBeFalse();
+});
+
+it('adds 1 point to the rarity score when weekly consistency is met', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-05-11 07:00:00');
+
+    // 2 other runs the same week + this activity = 3, meeting the threshold.
+    foreach ([0, 2] as $offsetDays) {
+        $other = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($other)->create([
+            'start_date_local' => $monday->copy()->addDays($offsetDays),
+        ]);
+    }
+    // A prior run already reached the 5K bracket, so isFirstDistanceBracket
+    // doesn't also score and confound this test.
+    $earlier = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($earlier)->create([
+        'distance' => 5_000,
+        'start_date_local' => $monday->copy()->subWeek(),
+    ]);
+
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_000,
+        'start_date_local' => $monday->copy()->addDays(4),
+    ]);
+
+    $score = app(RunCardFactory::class)->rarityScore($activity, $detail, [], [], false);
+
+    expect($score)->toBe(1);
+});
+
 // --- Point-based scoring tests ---
 
 it('maps score 0-1 to Biasa (Common)', function (): void {

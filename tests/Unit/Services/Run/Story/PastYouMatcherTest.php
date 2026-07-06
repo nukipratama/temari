@@ -60,6 +60,25 @@ it('rejects matches less than 21 days apart', function (): void {
     expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
 });
 
+it('accepts a match exactly 21 days apart', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27];
+    seedRun($user, Carbon::today()->subDays(21), 10_000, 4_200, $temp);
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200, $temp);
+
+    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->not->toBeNull();
+});
+
+it('rejects a match exactly 20 days apart', function (): void {
+    $user = User::factory()->create();
+    seedRun($user, Carbon::today()->subDays(20), 10_000, 4_200);
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200);
+
+    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
+});
+
 it('rejects matches in a different pace band', function (): void {
     $user = User::factory()->create();
     seedRun($user, Carbon::today()->subDays(60), 10_000, 3_300);
@@ -78,11 +97,48 @@ it('rejects matches outside the ±20% distance window', function (): void {
     expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
 });
 
+it('accepts a match exactly 500m off', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27];
+    seedRun($user, Carbon::today()->subDays(60), 10_500, 4_410, $temp);
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200, $temp);
+
+    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->not->toBeNull();
+});
+
+it('rejects a match 501m off', function (): void {
+    $user = User::factory()->create();
+    seedRun($user, Carbon::today()->subDays(60), 10_501, 4_410);
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200);
+
+    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
+});
+
 it('rejects matches outside the ±3°C temp window when both have weather', function (): void {
     $user = User::factory()->create();
     seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, ['weather_temp_c' => 22]);
 
     $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 32]);
+
+    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
+});
+
+it('accepts a match exactly 3°C off', function (): void {
+    $user = User::factory()->create();
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, ['weather_temp_c' => 24]);
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 27]);
+
+    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->not->toBeNull();
+});
+
+it('rejects a match 4°C off', function (): void {
+    $user = User::factory()->create();
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, ['weather_temp_c' => 23]);
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 27]);
 
     expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
 });
@@ -169,4 +225,13 @@ it('classifies pace into recovery, easy, and threshold bands', function (): void
     expect($matcher->paceBand(460))->toBe(PastYouMatcher::BAND_RECOVERY)
         ->and($matcher->paceBand(420))->toBe(PastYouMatcher::BAND_EASY)
         ->and($matcher->paceBand(350))->toBe(PastYouMatcher::BAND_THRESHOLD);
+});
+
+it('classifies pace bands exactly at the floor boundaries', function (): void {
+    $matcher = new PastYouMatcher();
+
+    expect($matcher->paceBand(450.0))->toBe(PastYouMatcher::BAND_RECOVERY)
+        ->and($matcher->paceBand(449.9))->toBe(PastYouMatcher::BAND_EASY)
+        ->and($matcher->paceBand(390.0))->toBe(PastYouMatcher::BAND_EASY)
+        ->and($matcher->paceBand(389.9))->toBe(PastYouMatcher::BAND_THRESHOLD);
 });

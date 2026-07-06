@@ -21,6 +21,7 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     Bus::fake();
 });
+afterEach(fn () => Carbon::setTestNow());
 
 it('returns pending payloads on first compose and dispatches NO LLM jobs', function (): void {
     $user = User::factory()->create();
@@ -150,6 +151,38 @@ it('returns a null streak label when the user has never run', function (): void 
     $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
 
     expect($result->streakLabel)->toBeNull();
+});
+
+it('labels recovery hours as "X jam" under 72h and "Y hari" at 72h and beyond', function (int $hoursAgo, string $label): void {
+    // hoursSinceLastRun measures against Carbon::now() when $asOf is "today" on
+    // the wall clock (else it bumps to end-of-day), so freeze "now" to asOf
+    // itself to get exact hour control.
+    $asOf = Carbon::parse('2026-05-18 12:00:00');
+    Carbon::setTestNow($asOf);
+
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $asOf->copy()->subHours($hoursAgo),
+        'trimp_edwards' => 50.0,
+    ]);
+
+    $result = app(BriefingComposer::class)->compose($user, $asOf);
+
+    expect($result->recoveryHoursLabel)->toBe($label);
+})->with([
+    '10 hours ago' => [10, '10 jam'],
+    '71 hours ago (just under the day boundary)' => [71, '71 jam'],
+    'exactly 72 hours ago (day boundary)' => [72, '3 hari'],
+    '100 hours ago' => [100, '4 hari'],
+]);
+
+it('returns a null recovery hours label when the user has never run', function (): void {
+    $user = User::factory()->create();
+
+    $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
+
+    expect($result->recoveryHoursLabel)->toBeNull();
 });
 
 it('computes non-LLM fields (vibe label, streak, mood) without an LLM call', function (): void {

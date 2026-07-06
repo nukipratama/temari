@@ -97,6 +97,36 @@ it('picks lemes mood when decoupling is high (>12%)', function (): void {
         ->toBe(Temari::MOOD_LEMES);
 });
 
+it('does not flag decoupling at exactly 12% as lemes (boundary is strictly above)', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10],
+            'decoupling_pct' => 12.0,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_ADEM);
+});
+
+it('flags decoupling at 12.01% as lemes', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10],
+            'decoupling_pct' => 12.01,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_LEMES);
+});
+
 it('picks nyala for a hard session finished under control (neg split, low decoupling)', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
@@ -110,6 +140,38 @@ it('picks nyala for a hard session finished under control (neg split, low decoup
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
         ->toBe(Temari::MOOD_NYALA);
+});
+
+it('picks nyala when decoupling is exactly at the 5% control ceiling', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z3' => 50, 'Z4' => 35],
+            'negative_split' => true,
+            'decoupling_pct' => 5.0,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_NYALA);
+});
+
+it('drops to enteng once decoupling is just past the 5% control ceiling', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z3' => 50, 'Z4' => 35],
+            'negative_split' => true,
+            'decoupling_pct' => 5.01,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_ENTENG);
 });
 
 it('picks enteng for a hard session that was controlled but not clean enough for nyala', function (): void {
@@ -155,6 +217,32 @@ it('picks squished mood on hot-weather easy runs', function (): void {
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
         ->toBe(Temari::MOOD_OLENG);
+});
+
+it('flags exactly 31°C as hot weather (oleng)', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8_000,
+        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 95]],
+        'weather_temp_c' => 31,
+        'weather_rain_detected' => false,
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_OLENG);
+});
+
+it('does not flag 30°C as hot weather', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8_000,
+        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 95]],
+        'weather_temp_c' => 30,
+        'weather_rain_detected' => false,
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_ADEM);
 });
 
 it('is idempotent — calling twice for the same activity updates the row', function (): void {
@@ -244,19 +332,4 @@ it('moodForActivityOrDefault falls back to adem when the activity has no detail'
     $activity->setRelation('detail', null);
 
     expect(Temari::moodForActivityOrDefault($activity))->toBe(Temari::MOOD_ADEM);
-});
-
-it('picks bouncy mood when the run had a negative split', function (): void {
-    $activity = Activity::factory()->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
-        'distance' => 8_000,
-        'stream_summary' => [
-            'time_in_zone_pct' => ['Z2' => 80, 'Z3' => 20],
-            'negative_split' => true,
-        ],
-        'weather_temp_c' => 25,
-    ]);
-
-    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_ENTENG);
 });

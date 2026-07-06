@@ -47,6 +47,22 @@ it('picks stretched-thin on overreaching + high aerobic decoupling', function ()
     ])))->toBe('stretched_thin');
 });
 
+it('treats decoupling of exactly 5.0 as cooked, not stretched-thin (boundary is strictly above)', function (): void {
+    expect((new VibeMatrix())->pick(signals([
+        'form_status' => 'overreaching',
+        'form' => -40.0,
+        'decoupling_avg' => 5.0,
+    ])))->toBe('cooked');
+});
+
+it('picks stretched-thin once decoupling is just past 5.0', function (): void {
+    expect((new VibeMatrix())->pick(signals([
+        'form_status' => 'overreaching',
+        'form' => -40.0,
+        'decoupling_avg' => 5.01,
+    ])))->toBe('stretched_thin');
+});
+
 it('picks cooked on overreaching with healthy aerobic system', function (): void {
     expect((new VibeMatrix())->pick(signals([
         'form_status' => 'overreaching',

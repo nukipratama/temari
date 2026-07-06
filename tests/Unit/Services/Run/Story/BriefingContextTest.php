@@ -78,6 +78,28 @@ it('falls back to last-week form_status when this week has no snapshot yet', fun
     expect($ctx->formStatus)->toBe('fatigued');
 });
 
+it('falls back to last-week form_status when this week has a snapshot but no form_status yet', function (): void {
+    $user = User::factory()->create();
+    $asOf = Carbon::create(2026, 5, 21, 8); // week ending 2026-05-24
+
+    // This week is aggregated (has a runs count) but form_status hasn't been
+    // computed into it yet — must still fall back to last week's, not stay null.
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-24',
+        'runs' => 3,
+        'form_status' => null,
+    ]);
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-17',
+        'form_status' => 'fatigued',
+        'runs' => 2,
+    ]);
+
+    $ctx = BriefingContext::forUser($user, $asOf);
+
+    expect($ctx->formStatus)->toBe('fatigued');
+});
+
 it('counts consecutive active weeks back from the current week', function (): void {
     $user = User::factory()->create();
     $asOf = Carbon::create(2026, 5, 21, 8); // week ending 2026-05-24
@@ -105,6 +127,14 @@ it('buckets the hour-of-day into Indonesian-friendly labels', function (int $hou
     'sore 17:00' => [17, 'sore'],
     'malam 21:00' => [21, 'malam'],
     'dini hari 02:00' => [2, 'malam'],
+    'malam 03:00 (just before subuh)' => [3, 'malam'],
+    'pagi 06:00 (subuh/pagi boundary)' => [6, 'pagi'],
+    'pagi 10:00 (just before siang)' => [10, 'pagi'],
+    'siang 11:00 (pagi/siang boundary)' => [11, 'siang'],
+    'siang 14:00 (just before sore)' => [14, 'siang'],
+    'sore 15:00 (siang/sore boundary)' => [15, 'sore'],
+    'sore 18:00 (just before malam)' => [18, 'sore'],
+    'malam 19:00 (sore/malam boundary)' => [19, 'malam'],
 ]);
 
 it('serialises to a compact array suitable for the LLM user message', function (): void {
