@@ -34,7 +34,6 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
     const panelRef = useRef<HTMLDivElement>(null);
     const temariContainerRef = useRef<HTMLDivElement>(null);
 
-
     useDismissable(kartu !== null, panelRef, onClose);
     useFocusTrap(kartu !== null, panelRef);
 

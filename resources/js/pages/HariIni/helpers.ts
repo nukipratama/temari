@@ -5,6 +5,7 @@ import type { ActivityDetail, Mood, Rarity, RunCard, ZonePct } from '@/types/ine
 
 export interface FeaturedCard {
     cardId: number;
+    activityId: number;
     name: string;
     subtitle: string;
     km: string;
@@ -32,6 +33,7 @@ export interface StripItem {
 function toFeaturedCard(r: ActivityDetail, card: RunCard, mood?: Mood | null): FeaturedCard {
     return {
         cardId: card.id,
+        activityId: r.activity_id,
         name: card.special_move,
         subtitle: `${RARITY_LABELS[card.rarity]} · ${formatNaiveRelativeId(r.start_date_local)}`,
         km: formatKm(r.distance),

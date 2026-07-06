@@ -2,7 +2,7 @@ import Kartu from '@/components/card/Kartu';
 import FeaturedCardHero from '@/components/card/FeaturedCardHero';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
-import { kartuUrl } from '@/lib/routes';
+import { aktivitasUrl } from '@/lib/routes';
 import type { FeaturedCard } from '@/pages/HariIni/helpers';
 import type { AnalysisPayload } from '@/types/inertia';
 
@@ -19,7 +19,7 @@ export default function FeaturedKartuPanel({
             stats={featured.stats}
             durasi={featured.durasi}
             badges={featured.badges}
-            ctaHref={kartuUrl({ id: featured.cardId })}
+            ctaHref={aktivitasUrl({ activity_id: featured.activityId })}
             voice={
                 <AnalysisStatus
                     analysis={featuredKartuVoice}

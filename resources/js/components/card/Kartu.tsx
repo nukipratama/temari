@@ -52,16 +52,10 @@ interface KartuProps {
     className?: string;
 }
 
-// Foil treatment per rarity — a calm border halo only (no window-flooding
-// sweep). The `--glow-strength` multiplier escalates the halo per tier; tiers at
-// 0 get no `kartu-glow` class at all (flat frame).
-const GLOW_STRENGTH: Record<Rarity, number> = {
-    common: 0,
-    uncommon: 0,
-    rare: 1,
-    epic: 1.6,
-    legendary: 2.4,
-};
+// Foil treatment — a calm border halo, tinted by the card's own `--rarity`
+// hex, same strength on every tier (a common card glows in muted grey just
+// as brightly as a legendary glows in gold — consistency over escalation).
+const GLOW_STRENGTH = 2;
 
 const MASCOT_SIZE: Record<NonNullable<KartuProps['size']>, number> = {
     md: 36,
@@ -85,12 +79,13 @@ const SIZE_KM: Record<NonNullable<KartuProps['size']>, string> = {
  * The collectible run card — a dark-frame, One-Piece-dense TCG card.
  *
  * A dark navy frame holds a bright art window where the **route is the hero**
- * (bold, filled) with Temari as a small corner companion. Below sits a dark
- * stat block: rarity ribbon, special-move name, the run's numbers
- * (KM big; a labeled PACE · HR · CADENCE · DURASI · BEST grid on the full tier),
- * and a Z1..Z5 HR-zone effort bar. Rarity drives a vivid loot-ladder color
- * (gray → green → blue → purple → gold) on the frame, ribbon, and route, with a
- * calm per-tier border halo (no window-flooding foil). All cards tilt on hover.
+ * (bold, filled) with Temari as a small corner companion, plus floating rarity
+ * and TRIMP chips in its top corners. Below sits a dark stat block:
+ * special-move name, the run's numbers (KM big; a labeled
+ * PACE · HR · CADENCE · DURASI · BEST grid), badges, and a Z1..Z5 HR-zone
+ * effort bar. Rarity drives a vivid loot-ladder color (gray → green → blue →
+ * purple → gold) on the frame and route, with the same calm border halo on
+ * every tier (no window-flooding foil).
  */
 export default function Kartu({
     name,
@@ -113,8 +108,7 @@ export default function Kartu({
     const rarityHex = RARITY_HEX[rarity];
 
     const moodColor = moodSigilColor(mood);
-    const glowStrength = GLOW_STRENGTH[rarity];
-    const rootStyle = { '--rarity': rarityHex, '--glow-strength': glowStrength } as CSSProperties;
+    const rootStyle = { '--rarity': rarityHex, '--glow-strength': GLOW_STRENGTH } as CSSProperties;
     const nameGlow = nameGlowFor(rarity);
 
     // Pearl art-window backdrop — mirrors the canvas share card: a rarity tier
@@ -137,7 +131,7 @@ export default function Kartu({
                 'relative flex aspect-[5/7] flex-col overflow-hidden rounded-[16px] bg-sky-deep',
                 isFull ? 'border-[3px] p-1.5' : 'border-2 p-1',
                 RARITY_BORDER[rarity],
-                glowStrength > 0 && 'kartu-glow',
+                'kartu-glow',
                 className,
             )}
         >
@@ -160,21 +154,25 @@ export default function Kartu({
                     />
                 </span>
 
-                {/* Corner-attached chips (mirrors the share card): rarity top-left,
-                    TRIMP "power" top-right, edition bottom-left; the mascot owns
-                    bottom-right. overflow-hidden clips their outer corners to the
-                    art window radius so they read as stuck to the corner. */}
-                <div className="absolute left-0 top-0">
-                    <RarityChip rarity={rarity} />
-                </div>
-                <div className="absolute right-0 top-0">
-                    <TRIMPBadge trimp={trimp} mood={mood} />
-                </div>
+                {/* Edition mark hugs the art window's own bottom-left corner
+                    (the window's bottom edge sits mid-card, above the stat
+                    block, so it stays inside the window, not the outer card). */}
                 {edition && (
                     <div className="absolute bottom-0 left-0">
                         <EditionMark edition={edition} />
                     </div>
                 )}
+            </div>
+
+            {/* Rarity + TRIMP hug the CARD's own top corners (not the art window's),
+                so they sit flush against the outer edge with no border/padding
+                sliver; overflow-hidden on the outer frame clips their square outer
+                corners to its radius. Mirrors the share card's corner treatment. */}
+            <div className="absolute left-0 top-0">
+                <RarityChip rarity={rarity} />
+            </div>
+            <div className="absolute right-0 top-0">
+                <TRIMPBadge trimp={trimp} mood={mood} />
             </div>
 
             {/* ── STAT BLOCK ── dark, high-contrast text. The SAME full layout at
@@ -192,7 +190,7 @@ export default function Kartu({
 
                 {/* KM hero, centred */}
                 <div className="mt-1 flex items-baseline justify-center gap-1">
-                    <span className={cn('font-collectible font-bold tabular-nums leading-none text-horizon', SIZE_KM[size])}>
+                    <span className={cn('font-collectible font-bold tabular-nums leading-none', RARITY_TEXT[rarity], SIZE_KM[size])}>
                         {km}
                     </span>
                     <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-cream">km</span>

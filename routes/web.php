@@ -99,7 +99,6 @@ Route::middleware(['auth'])->group(function (): void {
         ->name('rekap.bulanan.telegram');
 
     Route::get('/kartu', [CardController::class, 'index'])->name('kartu.index');
-    Route::get('/kartu/{card}', [CardController::class, 'show'])->name('kartu.show');
 
     // Catatan merged into Aktivitas — keep deep links working.
     Route::permanentRedirect('/catatan', '/aktivitas');

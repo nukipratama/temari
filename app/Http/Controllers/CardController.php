@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\Temari;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -48,47 +47,6 @@ class CardController extends Controller
             'selectedRarity' => $rarity,
             'featuredCard' => $this->featuredCard($user, $rarity, $editions, $counts),
             'rarityCounts' => $counts,
-        ]);
-    }
-
-    public function show(Request $request, RunCard $card): Response
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        $card->loadMissing('activity');
-        abort_if($card->activity->user_id !== $user->id, 404);
-
-        $card->loadMissing('activity.detail', 'activity.postRunStoryLine');
-
-        $counts = $this->rarityCounts($user);
-        $editions = $this->editionIndexMap($user);
-
-        $flavorAnalysis = Analysis::query()
-            ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
-            ->first();
-
-        $relatedCards = RunCard::query()
-            ->forUser($user->id)
-            ->with(['activity.detail', 'activity.postRunStoryLine'])
-            ->where('rarity', $card->rarity)
-            ->where('id', '!=', $card->id)
-            ->orderByDesc('id')
-            ->limit(3)
-            ->get()
-            ->map(fn (RunCard $c) => $this->cardPayload($c, $editions, $counts))
-            ->values();
-
-        return Inertia::render('Koleksi/KartuDetail', [
-            'card' => [
-                ...$this->cardPayload($card, $editions, $counts),
-                'flavor_analysis' => Analysis::toPayload($flavorAnalysis, AnalysisType::CardFlavor, RunCard::class, $card->id),
-                // Signed public URL for the share modal — minted server-side since
-                // signing needs the app key. Recipients open it without a session.
-                'public_share_url' => URL::signedRoute('kartu.publik', ['card' => $card->id]),
-            ],
-            'relatedCards' => $relatedCards,
-            'totalForRarity' => $counts[$card->rarity->value] ?? 0,
         ]);
     }
 

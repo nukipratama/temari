@@ -108,6 +108,12 @@ const C = {
     } as Record<string, string>,
 };
 
+// Every card gets the SAME bright border bloom regardless of rarity — unlike
+// the in-app Kartu's `.kartu-glow`, which only lights up rare+. The share
+// image is a standalone poster with no surrounding hero glow to lean on, so
+// it needs its own consistent glow rather than a rarity-gated one.
+const BORDER_GLOW_BLUR = 60;
+
 interface Palette {
     isDark: boolean;
     text: string;
@@ -171,6 +177,28 @@ function roundRectPathCorners(
     ctx.lineTo(x, y + tl);
     ctx.arcTo(x, y, x + tl, y, tl);
     ctx.closePath();
+}
+
+/**
+ * Full-bleed rounded card frame shared by every share template: a dark navy
+ * body edge-to-edge with a vivid rarity border and the same bright inward
+ * bloom on every rarity (matches the in-app Kartu's `.kartu-glow`). No
+ * surrounding backdrop — rounded corners reveal the same navy, so it reads
+ * as a full-bleed card rather than a floating one.
+ */
+function drawCardFrame(ctx: CanvasRenderingContext2D, w: number, h: number, rarityCol: string): void {
+    const border = 12;
+    const radius = 44;
+    roundRectPath(ctx, 0, 0, w, h, radius);
+    ctx.fillStyle = C.skyDeep;
+    ctx.fill();
+    ctx.lineWidth = border;
+    ctx.strokeStyle = rarityCol;
+    ctx.shadowColor = rarityCol;
+    ctx.shadowBlur = BORDER_GLOW_BLUR;
+    roundRectPath(ctx, border / 2, border / 2, w - border, h - border, radius - border / 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
 }
 
 /**
@@ -389,6 +417,7 @@ function drawRute(d: DrawCtx): void {
     const story = cfg.format === 'story';
     const rarityCol = C.rarity[k.rarity] ?? C.line;
     paintGlow(ctx, w / 2, h * 0.38, w * 0.5);
+    drawCardFrame(ctx, w, h, rarityCol);
     drawBrand(ctx, w - PAD, PAD, pal.isDark, bunny);
     drawRarityFlag(ctx, PAD, PAD, k.rarity);
 
@@ -434,7 +463,7 @@ function drawRute(d: DrawCtx): void {
     if (cells.length > 0) {
         drawHeroStatGrid(ctx, cells, PAD, sy, w - PAD * 2, story);
         if (story) {
-            const statH = Math.ceil(cells.length / 3) * 70;
+            const statH = Math.ceil(cells.length / 3) * HERO_STAT_ROW_H.story;
             drawBadgesRow(ctx, k, PAD, sy + statH + 44, w - PAD * 2, story);
         }
     }
@@ -644,8 +673,24 @@ interface HeroBlock {
     gapBonus?: number;
 }
 
-/** Sections in the block that share the even `gapBonus` distribution. */
-const HERO_BLOCK_SECTIONS = 6;
+/**
+ * How many of the block's sections will actually render for this card+format,
+ * so `gapBonus` divides the leftover space across only the rows that draw
+ * (name + KM always render; badges/stat-grid/zone-bar/context row are each
+ * conditional on their own data). Getting this wrong under-counts and leaves
+ * unfilled slack at the bottom for sparser cards instead of an even rhythm.
+ */
+function heroBlockSectionCount(k: ShareKartuData, story: boolean): number {
+    const statCells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
+    const hasContext = (k.location != null && k.location !== '') || k.wind != null || k.date != null;
+    return (
+        2 // name + KM always render
+        + (k.tags.length > 0 ? 1 : 0)
+        + (statCells.length > 0 ? 1 : 0)
+        + (k.zonePct ? 1 : 0)
+        + (hasContext ? 1 : 0)
+    );
+}
 
 function drawHeroBlock(s: HeroBlock): number {
     // The rarity ribbon now floats on the art window, so the block leads with the
@@ -685,7 +730,7 @@ function heroNameRow(s: HeroBlock, y: number): number {
 
 /** KM hero number + "KM" suffix, centred as a group (number floods horizon). */
 function heroKmRow(s: HeroBlock, y: number): number {
-    const { ctx, k, box, story, draw } = s;
+    const { ctx, k, box, story, draw, rarityCol } = s;
     const kmSize = story ? box.w * 0.135 : box.w * 0.12;
     const suffixSize = story ? 28 : 24;
     const gap = 16;
@@ -702,7 +747,7 @@ function heroKmRow(s: HeroBlock, y: number): number {
         ctx.textBaseline = 'alphabetic';
         ctx.font = `700 ${kmSize}px "Oswald"`;
         ctx.letterSpacing = '-1px';
-        ctx.fillStyle = C.horizon;
+        ctx.fillStyle = rarityCol;
         ctx.fillText(k.km, startX, y);
         ctx.letterSpacing = '0px';
         ctx.font = `700 ${suffixSize}px "JetBrains Mono"`;
@@ -710,6 +755,41 @@ function heroKmRow(s: HeroBlock, y: number): number {
         ctx.fillText('KM', startX + kmW + gap, y);
     }
     return y;
+}
+
+/** A single tag + its measured pill width, for row-packing. */
+interface PillSpec {
+    label: string;
+    w: number;
+}
+
+/** Measure each tag (with its emoji emblem) into a pill spec for row-packing. */
+function measurePillSpecs(ctx: CanvasRenderingContext2D, tags: string[], tagEmojis: string[], padX: number): PillSpec[] {
+    return tags.map((tag, i) => {
+        const label = (tagEmojis[i] ?? '✦') + ' ' + tag;
+        return { label, w: ctx.measureText(label).width + padX * 2 };
+    });
+}
+
+/** Greedily wrap pills into rows that each fit within `maxWidth`, shared by the
+ *  centred (hero) and left-aligned (route poster) badge layouts. */
+function packPillRows(pills: PillSpec[], maxWidth: number, gap: number): PillSpec[][] {
+    const rows: PillSpec[][] = [];
+    let cur: PillSpec[] = [];
+    let curW = 0;
+    for (const p of pills) {
+        if (cur.length > 0 && curW + gap + p.w > maxWidth) {
+            rows.push(cur);
+            cur = [];
+            curW = 0;
+        }
+        curW += (cur.length > 0 ? gap : 0) + p.w;
+        cur.push(p);
+    }
+    if (cur.length > 0) {
+        rows.push(cur);
+    }
+    return rows;
 }
 
 /** A centred row (wraps if needed) of up to 4 badge pills below the KM hero. */
@@ -723,26 +803,7 @@ function heroBadgeClusterRow(s: HeroBlock, y: number): number {
     const pillH = story ? 56 : 46;
     const gap = story ? 12 : 10;
     const padX = 22;
-    const pills = tags.map((tag, i) => ({
-        label: (k.tagEmojis[i] ?? '✦') + ' ' + tag,
-        w: ctx.measureText((k.tagEmojis[i] ?? '✦') + ' ' + tag).width + padX * 2,
-    }));
-    // Pack into centred rows within the block width.
-    const rows: Array<typeof pills> = [];
-    let cur: typeof pills = [];
-    let curW = 0;
-    for (const p of pills) {
-        if (cur.length > 0 && curW + gap + p.w > box.w) {
-            rows.push(cur);
-            cur = [];
-            curW = 0;
-        }
-        curW += (cur.length > 0 ? gap : 0) + p.w;
-        cur.push(p);
-    }
-    if (cur.length > 0) {
-        rows.push(cur);
-    }
+    const rows = packPillRows(measurePillSpecs(ctx, tags, k.tagEmojis, padX), box.w, gap);
     y += (story ? 32 : 24) + (s.gapBonus ?? 0);
     if (draw) {
         let by = y;
@@ -761,7 +822,11 @@ function heroBadgeClusterRow(s: HeroBlock, y: number): number {
 
 function heroStatGridRow(s: HeroBlock, y: number): number {
     const { ctx, k, box, story, draw } = s;
-    const cells = heroStatCells(k);
+    // Feed (1:1) keeps only one row (3 cells, same PACE/HR/CADENCE trio as
+    // drawRute) instead of the full 2-row grid: the square canvas has far
+    // less total height than story for the same width, so a second stat row
+    // was squeezing the art window into a flattened ("gepeng") banner.
+    const cells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
     if (cells.length === 0) {
         return y;
     }
@@ -769,7 +834,7 @@ function heroStatGridRow(s: HeroBlock, y: number): number {
     if (draw) {
         drawHeroStatGrid(ctx, cells, box.x, y, box.w, story);
     }
-    return y + Math.ceil(cells.length / 3) * (story ? 92 : 74);
+    return y + Math.ceil(cells.length / 3) * (story ? HERO_STAT_ROW_H.story : HERO_STAT_ROW_H.feed);
 }
 
 function heroZoneBarRow(s: HeroBlock, y: number): number {
@@ -824,17 +889,15 @@ function drawBadgesRow(
     const pillH = story ? 56 : 46;
     const gap = story ? 14 : 11;
     const padX = 20;
-    let x = left;
+    const rows = packPillRows(measurePillSpecs(ctx, tags, k.tagEmojis, padX), w, gap);
     let by = y;
-    tags.forEach((tag, i) => {
-        const label = (k.tagEmojis[i] ?? '✦') + ' ' + tag;
-        const pillW = ctx.measureText(label).width + padX * 2;
-        if (x + pillW > left + w && x > left) {
-            x = left;
-            by += pillH + gap;
-        }
-        drawBadgePill(ctx, label, x, by, pillW, pillH, padX);
-        x += pillW + gap;
+    rows.forEach((row) => {
+        let x = left;
+        row.forEach((p) => {
+            drawBadgePill(ctx, p.label, x, by, p.w, pillH, padX);
+            x += p.w + gap;
+        });
+        by += pillH + gap;
     });
     ctx.textBaseline = 'alphabetic';
 }
@@ -858,7 +921,9 @@ function heroContextRow(s: HeroBlock, y: number): number {
     }
     y += (story ? 40 : 30) + (s.gapBonus ?? 0);
     if (draw) {
-        ctx.font = `500 ${story ? 29 : 23}px "JetBrains Mono"`;
+        // Same size + style in both formats — this row reads as small metadata
+        // either way, no reason for feed to shrink it further than story.
+        ctx.font = '500 29px "JetBrains Mono"';
         ctx.fillStyle = C.cream;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
@@ -879,7 +944,6 @@ function truncateToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: 
     return trimmed + '…';
 }
 
-
 /**
  * PACE · HR · CADENCE · DURASI · BEST · ELEVASI cells, present-only. Elevation
  * gain is the 6th cell (under CADENCE, col 3 row 2); TRIMP stays as the floating
@@ -898,6 +962,10 @@ function heroStatCells(k: ShareKartuData): Array<{ label: string; value: string 
     return raw.filter((c): c is { label: string; value: string } => c.value != null && c.value !== '' && c.value !== '—');
 }
 
+/** Row height of the stat grid, shared by every caller that needs to know how
+ *  much vertical space `drawHeroStatGrid` will actually consume. */
+const HERO_STAT_ROW_H = { story: 92, feed: 74 } as const;
+
 /** A 3-column label-over-value stat grid starting at top `y`. */
 function drawHeroStatGrid(
     ctx: CanvasRenderingContext2D,
@@ -908,7 +976,7 @@ function drawHeroStatGrid(
     story: boolean,
 ): void {
     const colW = w / 3;
-    const rowH = story ? 92 : 74;
+    const rowH = story ? HERO_STAT_ROW_H.story : HERO_STAT_ROW_H.feed;
     const labelSize = story ? 23 : 18;
     const valueSize = story ? 39 : 31;
     const maxValueW = colW - 16; // gutter so a wide value never bleeds into the next column
@@ -969,13 +1037,12 @@ function drawZoneBar(
     ctx.restore();
 }
 
-
 /**
- * Dark-frame TCG hero: a dark navy card with a vivid rarity border, an inner
- * hairline + corner pips, a bright art window up top (big mascot watermark +
- * route hero + floating edition/TRIMP pills), and a dark stat block below
- * (rarity ribbon, nameplate, type line, KM + stats, badges). Mirrors the React
- * Kartu component.
+ * Dark-frame TCG hero: a dark navy card with a single vivid rarity border, a
+ * bright art window up top (big mascot watermark + route hero + floating
+ * rarity/TRIMP/edition pills), and a dark stat block below (centred name, KM
+ * hero, badges, stat grid, zone bar, location/wind/date context strip).
+ * Mirrors the React Kartu component.
  */
 function drawHero(d: DrawCtx): void {
     const { ctx, w, h, cfg, moodBunny } = d;
@@ -985,35 +1052,20 @@ function drawHero(d: DrawCtx): void {
     const moodCol = moodSigilColor(k.mood);
 
     paintGlow(ctx, w / 2, h * 0.36, w * 0.5);
+    drawCardFrame(ctx, w, h, rarityCol);
 
-    // The card fills the whole canvas edge-to-edge: no surrounding backdrop, the
-    // rarity border hugs the frame. Rounded corners reveal the same navy, so it
-    // reads as a full-bleed card rather than a floating one.
     const cx = 0;
     const cy = 0;
-    const cw = w;
-    const ch = h;
-    const border = 12;
-    const radius = 44;
-    const framePad = border + 24;
-
-    // Dark card body + vivid rarity border.
-    roundRectPath(ctx, cx, cy, cw, ch, radius);
-    ctx.fillStyle = C.skyDeep;
-    ctx.fill();
-    ctx.lineWidth = border;
-    ctx.strokeStyle = rarityCol;
-    roundRectPath(ctx, cx + border / 2, cy + border / 2, cw - border, ch - border, radius - border / 2);
-    ctx.stroke();
+    const framePad = 12 + 24;
 
     // Single clean rarity border only — the live Kartu has no inner hairline or
     // corner pips, so neither does the share card.
 
     // Inner content frame.
     const innerX = cx + framePad;
-    const innerW = cw - framePad * 2;
+    const innerW = w - framePad * 2;
     const innerTop = cy + framePad;
-    const innerH = ch - framePad * 2;
+    const innerH = h - framePad * 2;
     const blockGap = 22;
 
     const makeBlock = (y: number, draw: boolean, gapBonus = 0): HeroBlock => ({
@@ -1032,10 +1084,10 @@ function drawHero(d: DrawCtx): void {
     // (gapBonus) so the block fills the card with a consistent rhythm instead of
     // one big gap under a shorter map.
     const measuredBlockH = drawHeroBlock(makeBlock(innerTop, false)) + 20;
-    const maxArtFrac = story ? 0.52 : 0.5;
+    const maxArtFrac = story ? 0.52 : 0.62;
     const artH = Math.min(Math.round(innerH * maxArtFrac), innerH - measuredBlockH - blockGap);
     const slack = Math.max(0, innerH - artH - blockGap - measuredBlockH);
-    const gapBonus = slack / HERO_BLOCK_SECTIONS;
+    const gapBonus = slack / heroBlockSectionCount(k, story);
     drawHeroArtWindow(ctx, k, cfg.temariImg ?? moodBunny, { x: innerX, y: innerTop, w: innerW, h: artH }, rarityCol, moodCol, story);
     drawHeroBlock(makeBlock(innerTop + artH + blockGap, true, gapBonus));
 }

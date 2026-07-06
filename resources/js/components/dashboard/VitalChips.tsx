@@ -12,19 +12,24 @@ import type { BriefingResult, RecoveryTone, TrainingLoad } from '@/types/inertia
 const FORM_RANGE = 40;
 
 export default function VitalChips({ briefing, load }: Readonly<{ briefing: BriefingResult; load: TrainingLoad | null }>) {
-    // Vibe leads with the qualitative emoji: there's no numeric vibe score, and
-    // the old absolute-form proxy duplicated Kesiapan's number whenever form was
-    // positive (|form| == form). The label sits on the sub-line; the horizon
-    // gauge still shows form intensity.
-    const vibeValue = briefing.vibeEmoji;
-    const vibeSub = briefing.vibeLabel.toLowerCase();
+    // Vibe leads with the qualitative emoji + its label side by side: there's no
+    // numeric vibe score, and the old absolute-form proxy duplicated Kesiapan's
+    // number whenever form was positive (|form| == form). The horizon gauge still
+    // shows form intensity; the sub-line becomes an invisible spacer (like
+    // RecoveryRail below) so its gauge still aligns with its two siblings'.
+    const vibeValue = (
+        <span className="inline-flex items-baseline gap-2">
+            <span className="text-[1.6rem] leading-none">{briefing.vibeEmoji}</span>
+            <span className="font-display text-xl font-semibold not-italic text-horizon-deep">{briefing.vibeLabel}</span>
+        </span>
+    );
 
     return (
         <div className="grid h-full grid-cols-3 gap-3">
             <VitalChip
                 label="Vibe"
                 value={vibeValue}
-                sub={vibeSub}
+                sub={' '}
                 tone="horizon"
                 explainerKey="vibe_vs_mood"
                 gauge={load?.form != null ? { label: 'Vibe', value: Math.abs(load.form), min: 0, max: FORM_RANGE, tone: 'horizon', anchors: ['0', String(FORM_RANGE)] } : undefined}
@@ -115,7 +120,7 @@ function VitalChip({
     explainerKey,
     gauge,
     recoveryTone,
-}: Readonly<{ label: string; value: string; sub: string; tone: 'horizon' | 'leaf' | 'ink'; explainerKey?: MetricKey; gauge?: GaugeConfig; recoveryTone?: RecoveryTone }>) {
+}: Readonly<{ label: string; value: ReactNode; sub: string; tone: 'horizon' | 'leaf' | 'ink'; explainerKey?: MetricKey; gauge?: GaugeConfig; recoveryTone?: RecoveryTone }>) {
     // Color the tiny label dot, not the number — keeps the page from feeling
     // like a paint-store sample card while still tagging the metric's family.
     const dotClass = {

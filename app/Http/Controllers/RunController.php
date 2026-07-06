@@ -8,6 +8,7 @@ use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -17,6 +18,7 @@ use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -325,7 +327,7 @@ class RunController extends Controller
         return Inertia::render('Runs/Show', [
             'activity' => $activity,
             'detail' => $detail,
-            'card' => $activity->runCard,
+            'card' => $this->cardPayload($activity->runCard, $user),
             'storyLine' => $storyLine,
             // Backend-computed mood for the (rare) window before the post-run
             // StoryLine lands, so the detail mascot matches the share card
@@ -339,5 +341,50 @@ class RunController extends Controller
             'insightZones' => $payloadFor(AnalysisType::RunInsightZones),
             'pastYou' => $matcher->findMatch($activity, $detail),
         ]);
+    }
+
+    /**
+     * The card's full view now lives on this page (see docs/decisions), so it
+     * carries the same flavor/edition/share fields the old `/kartu/{card}`
+     * detail page used to load.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function cardPayload(?RunCard $card, User $user): ?array
+    {
+        if ($card === null) {
+            return null;
+        }
+
+        $flavorAnalysis = Analysis::query()
+            ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
+            ->first();
+
+        // One aggregate pass for both the edition index and the rarity total,
+        // instead of two separate COUNT queries.
+        $editionStats = RunCard::query()
+            ->forUser($user->id)
+            ->where('rarity', $card->rarity)
+            ->selectRaw('COUNT(*) as total, SUM(id <= ?) as edition_index', [$card->id])
+            ->first();
+
+        return [
+            // Explicit whitelist (not `...$card->toArray()`) so internal columns
+            // like `share_image_path` never leak into the Inertia payload —
+            // mirrors CardController::cardPayload's shared shape.
+            'id' => $card->id,
+            'activity_id' => $card->activity_id,
+            'rarity' => $card->rarity->value,
+            'special_move' => $card->special_move,
+            'badges' => $card->badges,
+            'flavor_analysis' => Analysis::toPayload($flavorAnalysis, AnalysisType::CardFlavor, RunCard::class, $card->id),
+            'edition' => [
+                'index' => (int) $editionStats?->getAttribute('edition_index'),
+                'total' => (int) $editionStats?->getAttribute('total'),
+            ],
+            // Signed public URL for the share modal — minted server-side since
+            // signing needs the app key. Recipients open it without a session.
+            'public_share_url' => URL::signedRoute('kartu.publik', ['card' => $card->id]),
+        ];
     }
 }

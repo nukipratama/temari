@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -309,7 +310,7 @@ it('shows a single run detail with Temari speech + run card', function (): void 
             'decoupling_pct' => 4.2,
         ],
     ]);
-    RunCard::factory()->for($activity)->create(['special_move' => 'Paru-paru Baja']);
+    $card = RunCard::factory()->for($activity)->create(['special_move' => 'Paru-paru Baja', 'rarity' => 'epic']);
     StoryLine::factory()->for($activity)->create([
         'user_id' => $user->id,
         'speech' => 'Run yang solid, paru-paru baja keluar.',
@@ -321,7 +322,25 @@ it('shows a single run detail with Temari speech + run card', function (): void 
             ->component('Runs/Show')
             ->where('detail.name', 'Morning Run')
             ->where('storyLine.speech', 'Run yang solid, paru-paru baja keluar.')
-            ->where('card.special_move', 'Paru-paru Baja'));
+            ->where('card.special_move', 'Paru-paru Baja')
+            ->has('card.flavor_analysis')
+            ->where('card.edition', ['index' => 1, 'total' => 1])
+            ->where('card.public_share_url', URL::signedRoute('kartu.publik', ['card' => $card->id])));
+});
+
+it('numbers the run card\'s edition within its rarity across the user\'s collection', function (): void {
+    $user = User::factory()->create();
+    foreach (['First', 'Second', 'Third'] as $move) {
+        $act = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($act)->create();
+        RunCard::factory()->for($act)->create(['rarity' => 'rare', 'special_move' => $move]);
+    }
+    $latest = Activity::query()->whereHas('runCard', fn ($q) => $q->where('special_move', 'Second'))->firstOrFail();
+
+    $this->actingAs($user)->get("/aktivitas/{$latest->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('card.edition', ['index' => 2, 'total' => 3]));
 });
 
 it('surfaces the run speech Telegram cooldown when a send is on cooldown', function (): void {

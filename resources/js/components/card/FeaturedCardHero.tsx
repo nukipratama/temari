@@ -44,7 +44,7 @@ export default function FeaturedCardHero({
     badges,
     voice,
     ctaHref,
-    ctaLabel = 'Lihat kartu',
+    ctaLabel = 'Lihat aktivitas',
     card,
 }: Readonly<FeaturedCardHeroProps>) {
     const catchLine = `${RARITY_SYMBOL[rarity]} ${RARITY_LABELS[rarity]} · ${km} KM`;
@@ -115,10 +115,10 @@ export default function FeaturedCardHero({
             </HeroPanel>
 
             {/* The frame-breaker — desktop only. Pinned right, taller than the
-                panel via negative top/bottom so the tilted corners poke out.
+                panel via negative top/bottom so it bleeds past the top/bottom edge.
                 Callers pass the Kartu with `w-full`; the slot sets the size. */}
             <div className="pointer-events-none absolute -bottom-6 -top-6 right-10 hidden items-center lg:flex">
-                <div className="w-[300px] rotate-[5deg]">{card}</div>
+                <div className="w-[300px]">{card}</div>
             </div>
         </div>
     );
