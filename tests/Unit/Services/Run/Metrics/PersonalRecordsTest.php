@@ -9,6 +9,7 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
+use App\Services\Gamification\UnlockEngine;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -17,6 +18,12 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
+    // UnlockEngine::grantEligible does a live DB query on every PR break and its
+    // own behavior has a dedicated suite (UnlockEngineTest); nothing here asserts
+    // on unlocks, so it's faked to keep this file scoped to PR-detection logic.
+    $unlockEngine = Mockery::mock(UnlockEngine::class);
+    $unlockEngine->shouldReceive('grantEligible')->andReturn([]);
+    $this->app->instance(UnlockEngine::class, $unlockEngine);
     $this->records = app(PersonalRecords::class);
 });
 

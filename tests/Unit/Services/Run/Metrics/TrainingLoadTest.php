@@ -70,6 +70,18 @@ it('uses wide thresholds for veteran runners', function (): void {
         ->and($this->load->formStatus(25, 60))->toBe('fresh');
 });
 
+it('uses moderate thresholds exactly at the low-CTL boundary (ctl=20), not narrow', function (): void {
+    // At ctl=20, narrow(5.0) would call -10 "overreaching" (not > -10);
+    // moderate(15.0) — the correct tier at this boundary — calls it "optimal".
+    expect($this->load->formStatus(-10, 20))->toBe('optimal');
+});
+
+it('uses moderate thresholds exactly at the high-CTL boundary (ctl=50), not wide', function (): void {
+    // At ctl=50, moderate(15.0) — the correct tier at this boundary — calls -18
+    // "fatigued"; wide(20.0) would call it "optimal".
+    expect($this->load->formStatus(-18, 50))->toBe('fatigued');
+});
+
 it('returns null when the user has no TRIMP-bearing activities', function (): void {
     $user = User::factory()->create();
     expect($this->load->summary($user))->toBeNull();
@@ -179,7 +191,8 @@ it('computes Foster monotony and strain over the week', function (): void {
 
     $summary = $this->load->summary($user);
 
-    expect($summary['monotony'])->toBeFloat()->toBeGreaterThan(2.0);
+    // Uniform daily TRIMP → sd≈0, so monotony hits its 5.0 cap exactly.
+    expect($summary['monotony'])->toBe(5.0);
     expect($summary['strain'])->toBeFloat()->toBeGreaterThan(0);
 
 });

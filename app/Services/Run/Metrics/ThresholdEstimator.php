@@ -67,15 +67,7 @@ class ThresholdEstimator
      */
     private function isHardSession(array $summary): bool
     {
-        $pct = $summary['time_in_zone_pct'] ?? null;
-        if (! is_array($pct)) {
-            return false;
-        }
-        $hardShare = (float) ($pct['Z3'] ?? 0)
-            + (float) ($pct['Z4'] ?? 0)
-            + (float) ($pct['Z5'] ?? 0);
-
-        return $hardShare >= self::HARD_SESSION_Z3_PLUS_PCT;
+        return StreamSummary::hardZoneShare($summary) >= self::HARD_SESSION_Z3_PLUS_PCT;
     }
 
     /**
