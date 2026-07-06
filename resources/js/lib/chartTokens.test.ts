@@ -22,9 +22,9 @@ describe('hrZone map', () => {
         expect(Object.keys(hrZone)).toEqual(['Z1', 'Z2', 'Z3', 'Z4', 'Z5']);
     });
 
-    it('keeps the cool→warm sports-convention ramp as named hex', () => {
-        expect(hrZone.Z1).toBe('#5fb088');
-        expect(hrZone.Z5).toBe('#b8302f');
+    it('ramps cool teal (recovery) → warm red (max) as named hex', () => {
+        expect(hrZone.Z1).toBe('#35c6da'); // bright cool teal: barely working
+        expect(hrZone.Z5).toBe('#b8302f'); // red: maxed
         for (const value of Object.values(hrZone)) {
             expect(value).toMatch(/^#[0-9a-f]{6}$/);
         }

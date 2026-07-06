@@ -189,6 +189,7 @@ export interface ActivityDetail {
     start_date_local: string | null;
     distance: number | null;
     moving_time: number | null;
+    total_elevation_gain?: number | null;
     average_heartrate: number | null;
     trimp_edwards: number | null;
     location_name?: string | null;

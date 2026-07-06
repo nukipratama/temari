@@ -1,5 +1,4 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
@@ -8,11 +7,7 @@ import { useFocusTrap } from '@/hooks/useFocusTrap';
 import PillButton from '@/components/ui/PillButton';
 import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 import { RARITY_LABELS } from '@/lib/runcard';
-import { MOOD_TO_POSE } from '@/lib/temariPose';
 import { drawShareCard, shareCardBlob, type Format, type Layout, type ShareKartuData } from '@/lib/shareCard';
-import TemariProto, { type TemariEquipped } from '@/components/temari/TemariProto';
-import { serverToEquipped } from '@/lib/equippedAccessories';
-import type { SharedProps } from '@/types/inertia';
 
 export type { ShareKartuData };
 
@@ -33,51 +28,11 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
     // Transient status under the CTAs: confirms a copy/share that has no native
     // UI of its own, or surfaces a failure instead of swallowing it silently.
     const [status, setStatus] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
-    const [temariImg, setTemariImg] = useState<HTMLImageElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
-    const temariContainerRef = useRef<HTMLDivElement>(null);
-
-    // The mascot is dressed exactly as the user has it elsewhere. Read the
-    // shared equip state defensively (mirrors Temari component) so this still renders
-    // a bare bunny when there's no Inertia page context (e.g. unit tests).
-    let equipped: TemariEquipped | null = null;
-    try {
-        const acc = usePage<SharedProps>().props.equippedAccessories;
-        if (acc) {
-            equipped = serverToEquipped(acc);
-        }
-    } catch {
-        equipped = null;
-    }
 
     useDismissable(kartu !== null, panelRef, onClose);
     useFocusTrap(kartu !== null, panelRef);
-
-    // Serialise the live Temari SVG (with real accessories from the DOM) into a
-    // canvas-compatible image whenever the mood changes. Falls back gracefully
-    // when the element isn't ready.
-    useEffect(() => {
-        if (kartu === null) return;
-        const container = temariContainerRef.current;
-        if (!container) return;
-
-        // Give React a tick to render the Temari into the hidden container.
-        const id = globalThis.setTimeout(() => {
-            const svg = container.querySelector('svg');
-            if (!svg) return;
-            try {
-                const svgStr = new XMLSerializer().serializeToString(svg);
-                const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`;
-                const img = new Image();
-                img.onload = () => setTemariImg(img);
-                img.src = url;
-            } catch {
-                // Serialisation failure is non-fatal — the flat bunny fallback kicks in.
-            }
-        }, 60);
-        return () => globalThis.clearTimeout(id);
-    }, [kartu?.mood, kartu]);
 
     // Repaint the fixed-resolution canvas whenever any knob changes. The canvas
     // IS the export, so the on-screen preview can never drift from the shared
@@ -86,8 +41,8 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
         if (kartu === null || canvasRef.current === null) {
             return;
         }
-        void drawShareCard(canvasRef.current, { kartu, layout, format, temariImg });
-    }, [kartu, layout, format, temariImg]);
+        void drawShareCard(canvasRef.current, { kartu, layout, format });
+    }, [kartu, layout, format]);
 
     // Auto-clear the status line so it reads as a transient toast.
     useEffect(() => {
@@ -102,7 +57,7 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
     const hasRoute = kartu.polyline != null && kartu.polyline !== '';
     const availableLayouts = hasRoute ? LAYOUTS : LAYOUTS.filter((l) => l !== 'rute');
 
-    const cfg = { kartu, layout, format, temariImg };
+    const cfg = { kartu, layout, format };
 
     const captureImage = (): Promise<Blob> => shareCardBlob(cfg);
 
@@ -283,16 +238,6 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                     </div>
                 </motion.div>
             </motion.div>
-            {/* Hidden container — TemariProto renders its SVG here with rarity-driven
-                headband/pose so we can serialise it to a canvas image. */}
-            <div ref={temariContainerRef} aria-hidden className="sr-only pointer-events-none">
-                <TemariProto
-                    pose={MOOD_TO_POSE[kartu.mood]}
-                    equipped={equipped}
-                    size={120}
-                    animate={false}
-                />
-            </div>
         </AnimatePresence>
     );
 }

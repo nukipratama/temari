@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import Kartu from './Kartu';
 import type { Rarity } from '@/types/inertia';
 
@@ -49,9 +49,8 @@ describe('Kartu', () => {
     });
 
     it('renders the art zone at all sizes including compact', () => {
-        // Art zone is always present (mascot background + route glyph fallback).
+        // RouteGlyph always renders an SVG in the art zone (route path or its glyph fallback).
         const { container } = render(<Kartu name="x" km="1" durasi="1:00" trimp={1} size="md" />);
-        // TemariProto always renders an SVG in the art zone.
         expect(container.querySelector('svg')).not.toBeNull();
     });
 
@@ -61,10 +60,9 @@ describe('Kartu', () => {
         expect(container.querySelector('[data-variant="glyph"]')).not.toBeNull();
     });
 
-    it('does not render badge pips at the compact (md) size', () => {
+    it('renders badge pips at the compact (md) size too (same full block as the share card)', () => {
         render(<Kartu name="x" km="1" durasi="1:00" trimp={1} badges={['negative_split']} size="md" />);
-        // No overlay at compact size — badges are not shown.
-        expect(screen.queryByText('Negative Split')).toBeNull();
+        expect(screen.getByText('Negative Split')).toBeInTheDocument();
     });
 
     it('shows badge pips (name only, no description) in the art overlay at the full (lg) size', () => {
@@ -75,22 +73,12 @@ describe('Kartu', () => {
                 durasi="1:00"
                 trimp={1}
                 badges={['negative_split']}
-                flavor="Some quote."
                 size="lg"
             />,
         );
         expect(screen.getByText('Negative Split')).toBeInTheDocument();
         // Description lives in the title attribute, not visible DOM text.
         expect(screen.queryByText(/malah lebih ngebut/)).toBeNull();
-    });
-
-    it('shows the flavor quote in the art overlay only on the full tier', () => {
-        const { rerender } = render(
-            <Kartu name="x" km="1" durasi="1:00" trimp={1} flavor="Comeback paruh kedua." size="md" />,
-        );
-        expect(screen.queryByText(/Comeback paruh kedua/)).toBeNull();
-        rerender(<Kartu name="x" km="1" durasi="1:00" trimp={1} flavor="Comeback paruh kedua." size="lg" />);
-        expect(screen.getByText(/Comeback paruh kedua/)).toBeInTheDocument();
     });
 
     it('exposes the mood via the TRIMP badge aria-label', () => {
@@ -140,9 +128,10 @@ describe('Kartu', () => {
         const { container } = render(
             <Kartu name="x" km="1" durasi="1:00" trimp={1} size="lg" zonePct={{ Z1: 20, Z2: 50, Z3: 30 }} />,
         );
-        // The bar segments carry per-zone titles; the legend shows Z labels.
+        // The bar segments carry per-zone titles. The card uses the bare bar now
+        // (no Z1..Z5 legend), matching the share card.
         expect(container.querySelector('[title="Z2: 50%"]')).not.toBeNull();
-        expect(screen.getByText('Z1')).toBeInTheDocument();
+        expect(screen.queryByText('Z1')).toBeNull();
     });
 
     it('omits the HR-zone bar when there is no zone data', () => {
@@ -150,12 +139,12 @@ describe('Kartu', () => {
         expect(container.querySelector('[title^="Z"]')).toBeNull();
     });
 
-    it('shows pace/HR but omits duration on the compact tier', () => {
+    it('shows the full stat grid (pace, HR, duration) at the compact tier too', () => {
         render(<Kartu name="x" km="1" durasi="1:00" trimp={1} size="md" stats={{ pace: '5:30/km', hr: '150 bpm' }} />);
-        // Compact tiles carry the core run identity (pace + HR) but not duration.
+        // md now renders the same full stat block as the share card, duration included.
         expect(screen.getByText(/5:30\/km/)).toBeInTheDocument();
         expect(screen.getByText(/150 bpm/)).toBeInTheDocument();
-        expect(screen.queryByText(/1:00/)).toBeNull();
+        expect(screen.getByText(/1:00/)).toBeInTheDocument();
     });
 
     it('renders the badge emoji pip in the art overlay at the full (lg) size', () => {
@@ -166,16 +155,10 @@ describe('Kartu', () => {
                 durasi="1:00"
                 trimp={1}
                 badges={['negative_split']}
-                flavor="Some quote."
                 size="lg"
             />,
         );
         expect(screen.getByText('👻')).toBeInTheDocument();
-    });
-
-    it('renders the subtitle when provided', () => {
-        render(<Kartu name="x" km="1" durasi="1:00" trimp={1} subtitle="Pagi negatif-split" />);
-        expect(screen.getByText('Pagi negatif-split')).toBeInTheDocument();
     });
 
     it('falls back to the slug name as the pip title when a badge has no ability', () => {
@@ -196,54 +179,4 @@ describe('Kartu', () => {
         expect(screen.queryByText('Durasi')).toBeNull();
     });
 
-    describe('hover tilt handlers', () => {
-        const originalMatchMedia = globalThis.matchMedia;
-
-        afterEach(() => {
-            globalThis.matchMedia = originalMatchMedia;
-        });
-
-        function mockMatchMedia(reduced: boolean) {
-            globalThis.matchMedia = vi.fn().mockReturnValue({
-                matches: reduced,
-                media: '',
-                addEventListener: vi.fn(),
-                removeEventListener: vi.fn(),
-            }) as unknown as typeof globalThis.matchMedia;
-        }
-
-        it('sets tilt CSS vars on mouse move and clears them on mouse leave', () => {
-            mockMatchMedia(false);
-            render(<Kartu name="x" km="1" durasi="1:00" trimp={1} />);
-            const card = screen.getByRole('img', { name: 'x' });
-            // jsdom gives a zero-size rect; the math still runs and writes vars.
-            vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({
-                left: 0,
-                top: 0,
-                width: 200,
-                height: 280,
-                right: 200,
-                bottom: 280,
-                x: 0,
-                y: 0,
-                toJSON: () => ({}),
-            } as DOMRect);
-
-            fireEvent.mouseMove(card, { clientX: 150, clientY: 70 });
-            expect(card.style.getPropertyValue('--tilt-x')).not.toBe('');
-            expect(card.style.getPropertyValue('--tilt-y')).not.toBe('');
-
-            fireEvent.mouseLeave(card);
-            expect(card.style.getPropertyValue('--tilt-x')).toBe('');
-            expect(card.style.getPropertyValue('--tilt-y')).toBe('');
-        });
-
-        it('skips the tilt when the user prefers reduced motion', () => {
-            mockMatchMedia(true);
-            render(<Kartu name="x" km="1" durasi="1:00" trimp={1} />);
-            const card = screen.getByRole('img', { name: 'x' });
-            fireEvent.mouseMove(card, { clientX: 10, clientY: 10 });
-            expect(card.style.getPropertyValue('--tilt-x')).toBe('');
-        });
-    });
 });

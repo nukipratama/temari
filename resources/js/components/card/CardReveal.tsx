@@ -1,4 +1,5 @@
 import { router } from "@inertiajs/react";
+import { Icon } from "@iconify/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ConfettiBurst from "@/components/ConfettiBurst";
@@ -279,7 +280,6 @@ export default function CardReveal({
                   </AnimatePresence>
                   <Kartu
                     name={pending.special_move}
-                    subtitle={subtitle}
                     km={km}
                     durasi={durasi}
                     trimp={trimp}
@@ -315,6 +315,7 @@ export default function CardReveal({
                         transition={{ delay: 0 }}
                       >
                         <PillButton tone="horizon" onClick={viewKoleksi}>
+                          <Icon icon="mdi:cards-outline" width={16} height={16} aria-hidden />
                           Lihat koleksi
                         </PillButton>
                       </motion.div>
@@ -330,12 +331,14 @@ export default function CardReveal({
                             setShareOpen(true);
                           }}
                         >
+                          <Icon icon="mdi:share-variant" width={16} height={16} aria-hidden />
                           Bagikan
                         </PillButton>
                       </motion.div>
                     </>
                   )}
                   <PillButton tone="ghost" onSky size="sm" onClick={dismiss}>
+                    <Icon icon="mdi:close" width={14} height={14} aria-hidden />
                     Tutup
                   </PillButton>
                 </div>

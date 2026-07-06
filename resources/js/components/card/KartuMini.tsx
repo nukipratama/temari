@@ -1,7 +1,6 @@
 import { cn } from '@/lib/cn';
 import {
     RARITY_BORDER,
-    RARITY_HEADBAND,
     RARITY_HEX,
     RARITY_LABELS,
     RARITY_POSE,
@@ -9,7 +8,7 @@ import {
     RARITY_TEXT,
 } from '@/lib/runcard';
 import RouteGlyph from '@/components/card/RouteGlyph';
-import TemariProto from '@/components/temari/TemariProto';
+import Temari from '@/components/temari/Temari';
 import { moodSigilColor } from '@/lib/mood';
 import type { CardEdition, Mood, Rarity } from '@/types/inertia';
 import type { CSSProperties } from 'react';
@@ -70,13 +69,7 @@ export default function KartuMini({
                     </div>
                 )}
                 <span aria-hidden className="pointer-events-none absolute bottom-0.5 right-0.5">
-                    <TemariProto
-                        pose={RARITY_POSE[rarity]}
-                        size={26}
-                        equipped={{ headband: RARITY_HEADBAND[rarity], medal: 'none' }}
-                        animate={false}
-                        dropShadow={false}
-                    />
+                    <Temari pose={RARITY_POSE[rarity]} size={26} animate={false} dropShadow={false} />
                 </span>
             </div>
 

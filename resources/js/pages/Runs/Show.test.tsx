@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
 import RunsShow from './Show';
 import { setMockPage } from '@/test/setup';
-import type { ActivityDetail, AnalysisPayload, RunCard, StoryLine } from '@/types/inertia';
+import type { ActivityDetail, AnalysisPayload, StoryLine } from '@/types/inertia';
 
 beforeEach(() => {
     setMockPage({
@@ -51,12 +51,23 @@ const detail: ActivityDetail & {
     location_name: 'Senayan, Jakarta Pusat',
 };
 
-const runCard: RunCard = {
+const runCard: NonNullable<Parameters<typeof RunsShow>[0]['card']> = {
     id: 1,
     activity_id: 99,
     rarity: 'epic',
     special_move: 'Paru-paru Baja',
     badges: ['negative_split'],
+    edition: { index: 3, total: 5 },
+    flavor_analysis: {
+        id: 2,
+        status: 'done',
+        content: 'Napas kuat sampai akhir.',
+        type: 'card_flavor',
+        subject_type: String.raw`App\Models\RunCard`,
+        subject_id: 1,
+        discriminator: null,
+    },
+    public_share_url: 'https://teman-lari.test/k/abc123',
 };
 
 const storyLine: StoryLine = {
@@ -142,9 +153,10 @@ describe('Runs/Show', () => {
 
     it('renders the DURASI hero tile with the HMS-formatted moving_time', () => {
         renderShow();
-        // moving_time 3600s → 1:00:00 in the digital H:MM:SS form.
+        // moving_time 3600s → 1:00:00 in the digital H:MM:SS form (hero tile + the
+        // kartu section below it both show it).
         expect(screen.getByText('DURASI')).toBeInTheDocument();
-        expect(screen.getByText('1:00:00')).toBeInTheDocument();
+        expect(screen.getAllByText('1:00:00').length).toBeGreaterThan(0);
     });
 
     it('renders the as-recorded date and start time in the hero', () => {
@@ -174,25 +186,34 @@ describe('Runs/Show', () => {
         expect(screen.getByText(/Run solid banget/)).toBeInTheDocument();
     });
 
-    it('embeds the kartu in the side panel when one exists', () => {
+    it('renders the kartu section with its own view (no link elsewhere) when a card exists', () => {
         renderShow();
-        expect(screen.getByText('Paru-paru Baja')).toBeInTheDocument();
-        const cardLink = screen.getAllByRole('link').find((el) => el.getAttribute('href') === '/kartu/1');
-        expect(cardLink).toBeDefined();
+        expect(screen.getAllByText('Paru-paru Baja').length).toBeGreaterThan(0);
+        expect(screen.getByText('Bagikan')).toBeInTheDocument();
+        expect(screen.getByText('Buka ulang kartu')).toBeInTheDocument();
+        expect(screen.getByText(/Kenapa dapet Istimewa/)).toBeInTheDocument();
     });
 
-    it('omits the kartu side panel when card is null', () => {
+    it('omits the kartu section when card is null', () => {
         renderShow({ card: null });
         expect(screen.queryByText('Paru-paru Baja')).not.toBeInTheDocument();
-        const cardLink = screen.queryAllByRole('link').find((el) => el.getAttribute('href') === '/kartu/1');
-        expect(cardLink).toBeUndefined();
+        expect(screen.queryByText('Bagikan')).not.toBeInTheDocument();
     });
 
     it('renders the map+weather panel with temp + location when present', () => {
         renderShow();
         expect(screen.getByText(/32°/)).toBeInTheDocument();
         expect(screen.getByText(/80% lembab/)).toBeInTheDocument();
-        expect(screen.getByText('Senayan, Jakarta Pusat')).toBeInTheDocument();
+        // Splits across two lines (place / province): "Senayan" then "Jakarta Pusat".
+        expect(screen.getByText('Senayan')).toBeInTheDocument();
+        expect(screen.getByText('Jakarta Pusat')).toBeInTheDocument();
+    });
+
+    it('splits a 4-segment location into place + province,country lines (no truncation)', () => {
+        const withFullLocation = { ...detail, location_name: 'Gelora Bung Karno, Jakarta Pusat, DKI Jakarta, Indonesia' };
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withFullLocation }, detail: withFullLocation });
+        expect(screen.getByText('Gelora Bung Karno, Jakarta Pusat')).toBeInTheDocument();
+        expect(screen.getByText('DKI Jakarta, Indonesia')).toBeInTheDocument();
     });
 
     it('hides the wind row when weather_wind_speed_kmh is absent', () => {
@@ -235,9 +256,10 @@ describe('Runs/Show', () => {
     it('renders the splits per-km section + highlights the fastest km', () => {
         renderShow();
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
-        // Fastest is the 5:45 km (km 2): caption leads with the km, value is the highlight.
+        // Fastest is the 5:45 km (km 2): caption leads with the km, value is the highlight
+        // (the kartu section's own "fastest km" stat can repeat the same value).
         expect(screen.getByText(/Paling kenceng di km 2/)).toBeInTheDocument();
-        expect(screen.getByText('5:45/km')).toBeInTheDocument();
+        expect(screen.getAllByText('5:45/km').length).toBeGreaterThan(0);
     });
 
     it('renders the past-you strip when journeyMatch is present', () => {

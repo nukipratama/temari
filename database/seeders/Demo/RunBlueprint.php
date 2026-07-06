@@ -21,6 +21,7 @@ final readonly class RunBlueprint
         public ?int $weatherTempC = 27,
         public ?int $weatherHumidityPct = 75,
         public bool $weatherRainDetected = false,
+        public ?int $weatherWindSpeedKmh = 11,
         public ?string $name = null,
         public array $tags = [],
         public bool $hasGps = true,

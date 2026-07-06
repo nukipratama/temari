@@ -239,37 +239,17 @@ body {
         @apply font-display text-quote-lg italic text-ink;
     }
 
-    /* 3-D perspective tilt — fires on all cards via JS mousemove setting
-       --tilt-x / --tilt-y custom props. Resets on mouseleave. */
-    .kartu-tilt {
-        transform: perspective(700px)
-                   rotateX(var(--tilt-x, 0deg))
-                   rotateY(var(--tilt-y, 0deg));
-        transition: transform 0.12s ease-out;
-        /* `will-change` is set per-card only while a pointer is hovering (see
-           Kartu's mousemove/leave handlers) so a grid of cards doesn't each
-           hold a permanent compositor layer — dead weight on touch, where the
-           tilt never fires. */
-    }
-
-    /* Rarity halo — rare+ get a calm, static glow ring around the dark frame,
-       reading `--rarity` (the loot-ladder hex, set per card from JS). This is
-       the ONLY foil treatment: no holo sweep, sparkle, or rainbow flooding the
-       bright art window — so the route stays the hero and legendary stops
-       blowing out. Intensity escalates per tier via the inline `--glow-strength`
-       the card sets (rare faint → legendary a touch stronger). */
+    /* Rarity halo — every card gets a calm, static glow ring in its own
+       `--rarity` color (the loot-ladder hex, set per card from JS), same
+       strength on every tier. `inset` keeps the bloom INSIDE the card's own
+       border (against the dark frame), not bleeding out past the edge into
+       whatever it's mounted on. This is the ONLY foil treatment: no holo
+       sweep, sparkle, or rainbow flooding the bright art window — so the
+       route stays the hero. */
     .kartu-glow {
         box-shadow:
-            0 0 0 1px color-mix(in oklab, var(--rarity, white) 45%, transparent),
-            0 0 calc(12px * var(--glow-strength, 1)) calc(-3px + 1px * var(--glow-strength, 1))
-                color-mix(in oklab, var(--rarity, white) 60%, transparent);
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .kartu-tilt {
-            transform: none;
-            transition: none;
-        }
+            0 0 0 1px color-mix(in oklab, var(--rarity, white) 55%, transparent),
+            inset 0 0 calc(16px * var(--glow-strength, 1)) color-mix(in oklab, var(--rarity, white) 65%, transparent);
     }
 }
 

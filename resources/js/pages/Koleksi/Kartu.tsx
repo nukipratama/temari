@@ -6,11 +6,12 @@ import ConfettiBurst from '@/components/ConfettiBurst';
 import Card from '@/components/ui/Card';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import Kartu from '@/components/card/Kartu';
+import KartuMount from '@/components/card/KartuMount';
 import FeaturedCardHero from '@/components/card/FeaturedCardHero';
 import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
 import { cn } from '@/lib/cn';
 import { pressShrink } from '@/lib/motion';
-import { kartuUrl } from '@/lib/routes';
+import { aktivitasUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
 import { RARITY_LABELS, RARITY_ORDER, kartuPropsFromDetail } from '@/lib/runcard';
 import { memo, useCallback, useDeferredValue, useMemo, useState, type ReactNode } from 'react';
@@ -161,11 +162,9 @@ export default function KoleksiKartu({
 function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
     const detail = featured.detail;
     const kartuProps = useMemo(() => {
-        const { subtitle, ...rest } = kartuPropsFromDetail(detail);
         return {
             name: featured.special_move,
-            subtitle: subtitle ?? undefined,
-            ...rest,
+            ...kartuPropsFromDetail(detail),
             rarity: featured.rarity,
             mood: featured.mood,
             badges: featured.badges ?? [],
@@ -184,7 +183,7 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
             stats={kartuProps.stats}
             durasi={kartuProps.durasi}
             badges={kartuProps.badges}
-            ctaHref={kartuUrl(featured)}
+            ctaHref={aktivitasUrl(featured)}
             voice={
                 featured.flavor_analysis && (
                     <AnalysisStatus
@@ -310,27 +309,28 @@ const CardCell = memo(function CardCell({
 
     return (
         <MotionLink
-            href={kartuUrl(card)}
+            href={aktivitasUrl(card)}
             whileTap={pressShrink}
             onClick={() => onTap(card.rarity, card.id)}
-            className="mx-auto block w-full max-w-[300px] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-horizon focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="mx-auto block w-full max-w-[300px] focus-visible:ring-2 focus-visible:ring-horizon focus-visible:ring-offset-2 focus-visible:outline-none"
         >
-            <Kartu
-                name={card.special_move}
-                subtitle={derived.subtitle}
-                km={derived.km}
-                durasi={derived.durasi}
-                trimp={derived.trimp}
-                rarity={card.rarity}
-                mood={card.mood}
-                badges={card.badges ?? []}
-                stats={derived.stats}
-                zonePct={derived.zonePct}
-                polyline={detail.summary_polyline}
-                paceShape={derived.paceShape}
-                edition={card.edition}
-                size="md"
-            />
+            <KartuMount>
+                <Kartu
+                    name={card.special_move}
+                    km={derived.km}
+                    durasi={derived.durasi}
+                    trimp={derived.trimp}
+                    rarity={card.rarity}
+                    mood={card.mood}
+                    badges={card.badges ?? []}
+                    stats={derived.stats}
+                    zonePct={derived.zonePct}
+                    polyline={detail.summary_polyline}
+                    paceShape={derived.paceShape}
+                    edition={card.edition}
+                    size="md"
+                />
+            </KartuMount>
         </MotionLink>
     );
 });

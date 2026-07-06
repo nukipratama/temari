@@ -2,12 +2,8 @@ import polylineCodec from '@mapbox/polyline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { drawShareCard, shareCardBlob, type Layout, type Format, type ShareKartuData } from './shareCard';
 
-// A straight two-point line: start and finish project to opposite corners of
-// the route box, so `drawRoute`'s point-to-point gate is unambiguously true.
+// A straight two-point line used to exercise the route-stroke path.
 const pointToPointPolyline = polylineCodec.encode([[0, 0], [0.01, 0.01]]);
-// A loop that returns to its exact starting coordinate, so start === finish
-// and the point-to-point gate is unambiguously false.
-const loopPolyline = polylineCodec.encode([[0, 0], [0, 0.01], [0.01, 0.01], [0, 0]]);
 
 const kartu: ShareKartuData = {
     id: 1,
@@ -138,6 +134,20 @@ describe('drawShareCard', () => {
         expect(ctx.createRadialGradient).toHaveBeenCalled();
         expect(ctx.stroke).toHaveBeenCalled();
         expect(ctx.drawImage).toHaveBeenCalled();
+    });
+
+    it('renders a multi-badge cluster on both layouts (2-col beside KM / row on rute)', async () => {
+        const many = {
+            ...kartu,
+            tags: ['Pejuang Hujan', 'Rajin', 'Z2 Master', 'Negative Split'],
+            tagEmojis: ['🌧️', '💪', '❤️‍🔥', '⚡'],
+        };
+        for (const layout of ['kartu', 'rute'] as Layout[]) {
+            const ctx = makeCtx();
+            const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
+            await drawShareCard(canvas, { kartu: many, layout, format: 'story' });
+            expect(ctx.fillText).toHaveBeenCalledWith(expect.stringContaining('Rajin'), expect.any(Number), expect.any(Number));
+        }
     });
 
     it('still renders the kartu hero when the run has no GPS route', async () => {
@@ -318,14 +328,6 @@ describe('drawShareCard — edge / branch cases', () => {
         },
     );
 
-    it('prefers an explicit temariImg over the fallback bunny', async () => {
-        const ctx = makeCtx();
-        const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
-        const temariImg = { naturalWidth: 120, naturalHeight: 200, width: 120, height: 200 } as HTMLImageElement;
-        await drawShareCard(canvas, { kartu, layout: 'kartu', format: 'story', temariImg });
-        expect(ctx.drawImage).toHaveBeenCalled();
-    });
-
     it('renders the kartu hero with no edition (no floating edition pill)', async () => {
         const ctx = makeCtx();
         const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
@@ -412,26 +414,16 @@ describe('drawShareCard — edge / branch cases', () => {
     });
 
     it.each(['kartu', 'rute'] as Layout[])(
-        'draws a start dot and a hollow finish ring for a point-to-point route on %s, but only the dot for a loop',
+        'strokes the route path on %s (no start/finish markers)',
         async (layout) => {
-            const p2pCtx = makeCtx();
+            const ctx = makeCtx();
             await drawShareCard(
-                { width: 0, height: 0, getContext: () => p2pCtx } as unknown as HTMLCanvasElement,
+                { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement,
                 { kartu: { ...kartu, polyline: pointToPointPolyline }, layout, format: 'story' },
             );
-            const p2pArcCalls = p2pCtx.arc.mock.calls.length;
-
-            const loopCtx = makeCtx();
-            await drawShareCard(
-                { width: 0, height: 0, getContext: () => loopCtx } as unknown as HTMLCanvasElement,
-                { kartu: { ...kartu, polyline: loopPolyline }, layout, format: 'story' },
-            );
-            const loopArcCalls = loopCtx.arc.mock.calls.length;
-
-            // Both routes draw the start dot; only the point-to-point route also
-            // draws the hollow finish ring (mirrors RouteGlyph's `isPointToPoint`
-            // gate) — so it issues exactly one more `arc` call than the loop.
-            expect(p2pArcCalls).toBe(loopArcCalls + 1);
+            // The route is drawn as a stroked path; markers were removed.
+            expect(ctx.stroke).toHaveBeenCalled();
+            expect(ctx.lineTo).toHaveBeenCalled();
         },
     );
 
@@ -462,10 +454,29 @@ describe('drawShareCard — edge / branch cases', () => {
         expect(Math.max(...longRun.widths)).toBeLessThan(Math.max(...shortRun.widths));
     });
 
-    it('draws the temanlari.app attribution handle on every export', async () => {
+    it('puts elevation in the stat grid and location + date in the bottom context strip', async () => {
         const ctx = makeCtx();
         const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
-        await drawShareCard(canvas, { kartu, layout: 'kartu', format: 'story' });
-        expect(ctx.fillText).toHaveBeenCalledWith('temanlari.app', expect.any(Number), expect.any(Number));
+        await drawShareCard(canvas, { kartu: { ...kartu, ascent: '128 m' }, layout: 'kartu', format: 'story' });
+        // Elevation earns the grid's 6th cell (was TANGGAL, briefly TRIMP); TRIMP
+        // stays as the floating badge; date + location ride the muted context strip;
+        // no "temanlari.app" wordmark.
+        expect(ctx.fillText).toHaveBeenCalledWith('ELEVASI', expect.any(Number), expect.any(Number));
+        expect(ctx.fillText).toHaveBeenCalledWith('128 m', expect.any(Number), expect.any(Number));
+        expect(ctx.fillText).not.toHaveBeenCalledWith('TANGGAL', expect.any(Number), expect.any(Number));
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            expect.stringContaining('Gelora Bung Karno'),
+            expect.any(Number),
+            expect.any(Number),
+        );
+        expect(ctx.fillText).toHaveBeenCalledWith(expect.stringContaining('30 Mei 2026'), expect.any(Number), expect.any(Number));
+        expect(ctx.fillText).not.toHaveBeenCalledWith('temanlari.app', expect.any(Number), expect.any(Number));
+    });
+
+    it('shows wind in the context strip when present', async () => {
+        const ctx = makeCtx();
+        const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
+        await drawShareCard(canvas, { kartu: { ...kartu, wind: '14 km/j' }, layout: 'kartu', format: 'story' });
+        expect(ctx.fillText).toHaveBeenCalledWith(expect.stringContaining('14 km/j'), expect.any(Number), expect.any(Number));
     });
 });

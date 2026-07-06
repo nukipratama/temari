@@ -6,6 +6,7 @@ import type { AnalysisPayload } from '@/types/inertia';
 
 const featured: FeaturedCard = {
     cardId: 7,
+    activityId: 42,
     name: 'Pembalik Keadaan',
     subtitle: 'Epik · 2 hari lalu',
     km: '5.28',
@@ -32,12 +33,12 @@ const voice: AnalysisPayload = {
 };
 
 describe('FeaturedKartuPanel', () => {
-    it('renders the eyebrow, card name, and a CTA to the kartu detail', () => {
+    it('renders the eyebrow, card name, and a CTA to the run', () => {
         render(<FeaturedKartuPanel featured={featured} featuredKartuVoice={voice} />);
         expect(screen.getByText(/Kartu andalan dari Temari/)).toBeInTheDocument();
         expect(screen.getAllByText('Pembalik Keadaan').length).toBeGreaterThan(0);
-        const cta = screen.getByRole('link', { name: /lihat kartu/i });
-        expect(cta).toHaveAttribute('href', '/kartu/7');
+        const cta = screen.getByRole('link', { name: /lihat aktivitas/i });
+        expect(cta).toHaveAttribute('href', '/aktivitas/42');
     });
 
     it('renders the featured-kartu voice quote', () => {

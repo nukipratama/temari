@@ -1,6 +1,5 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { setMockPage } from '@/test/setup';
 
 // The canvas renderer is unit-tested on its own; here we stub it so the modal
 // tests don't depend on a real 2d context (jsdom doesn't implement one).
@@ -144,23 +143,6 @@ describe('ShareCardModal', () => {
         expect(canvas.height).toBe(1080);
     });
 
-    it('dresses the mascot from the shared equipped accessories', () => {
-        setMockPage({
-            equippedAccessories: {
-                ikat_kepala: 'accessory.ikat_kepala_legendaris',
-                medal: null,
-                pita: null,
-                kaus: null,
-                celana: null,
-                sepatu: null,
-                aura: null,
-            },
-        });
-        // Exercises the serverToEquipped branch — just needs to render cleanly.
-        render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
-        expect(screen.getAllByText(/Tendangan Balik/).length).toBeGreaterThan(0);
-    });
-
     describe('native share (Web Share API)', () => {
         const original = {
             share: Object.getOwnPropertyDescriptor(navigator, 'share'),
@@ -281,7 +263,7 @@ describe('ShareCardModal', () => {
         });
     });
 
-    describe('transient status + mascot serialisation effects', () => {
+    describe('transient status effect', () => {
         afterEach(() => {
             vi.useRealTimers();
             vi.restoreAllMocks();
@@ -299,30 +281,6 @@ describe('ShareCardModal', () => {
                 () => expect(screen.queryByText('Gambar kartu kesalin.')).toBeNull(),
                 { timeout: 4000 },
             );
-        });
-
-        it('serialises the live mascot SVG into an image for the canvas', async () => {
-            // Capture the Image instance the effect builds so we can fire onload.
-            const images: Array<{ onload: (() => void) | null; src: string }> = [];
-            class FakeImage {
-                onload: (() => void) | null = null;
-                #src = '';
-                get src() {
-                    return this.#src;
-                }
-                set src(value: string) {
-                    this.#src = value;
-                    images.push(this);
-                    // Resolve the data: URL asynchronously, as a real image would.
-                    queueMicrotask(() => this.onload?.());
-                }
-            }
-            vi.stubGlobal('Image', FakeImage);
-            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
-            // The serialisation runs behind a 60ms timeout after the SVG renders.
-            await waitFor(() => expect(images.length).toBeGreaterThan(0), { timeout: 2000 });
-            // onload fired → setTemariImg ran without throwing.
-            expect(images[0].src).toContain('data:image/svg+xml');
         });
     });
 });

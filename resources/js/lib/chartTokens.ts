@@ -26,12 +26,12 @@ export const DAYBREAK = {
 export type DaybreakColor = keyof typeof DAYBREAK;
 
 /**
- * HR-zone fills. HR zones follow a sports-convention cool→warm ramp (green easy
- * → red max) rather than the Daybreak brand hues, but they live here as NAMED
+ * HR-zone fills. Z1 (recovery / warm-up) is a bright cool teal so the ramp reads
+ * cool→warm: teal easy → green → amber → orange → red. They live here as NAMED
  * tokens so they are not loose hex scattered in the component.
  */
 export const hrZone = {
-    Z1: '#5fb088',
+    Z1: '#35c6da',
     Z2: '#2f956a',
     Z3: '#d99a1a',
     Z4: '#c46f1c',

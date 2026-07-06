@@ -216,6 +216,7 @@ export interface CardStatStrings {
     hr?: string;
     cadence?: string;
     fastestKm?: string;
+    elevation?: string;
 }
 
 /**
@@ -233,6 +234,7 @@ export function buildCardStats(detail?: ActivityDetail | null): CardStatStrings 
         hr: detail?.average_heartrate != null ? `${Math.round(detail.average_heartrate)} bpm` : undefined,
         cadence: cadence != null ? `${cadence} spm` : undefined,
         fastestKm: fastestKm != null ? `${fastestKm}/km` : undefined,
+        elevation: detail?.total_elevation_gain != null ? `${Math.round(detail.total_elevation_gain)} m` : undefined,
     };
 }
 

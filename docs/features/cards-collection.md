@@ -1,12 +1,11 @@
 ---
 title: Card collection (Koleksi/Kartu)
-description: The run-card grid, featured banner, rarity filter, and the card detail page with share + reveal-replay.
+description: The run-card grid, featured banner, rarity filter, and per-card full view on the run detail page.
 tags: [feature, cards]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-07-06
 code_refs:
   - resources/js/pages/Koleksi/Kartu.tsx
-  - resources/js/pages/Koleksi/KartuDetail.tsx
   - app/Http/Controllers/CardController.php
   - resources/js/components/card/Kartu.tsx
   - resources/js/components/card/FeaturedCardHero.tsx
@@ -21,7 +20,7 @@ code_refs:
 
 # Card collection (Koleksi/Kartu)
 
-Every Strava run that syncs becomes a **kartu** — a trading-card view of that run with a rarity, a few badges, and a Temari-written "special move" name. `/kartu` is the whole collection; tapping any card opens its detail page.
+Every Strava run that syncs becomes a **kartu** — a trading-card view of that run with a rarity, a few badges, and a Temari-written "special move" name. `/kartu` is the whole collection; tapping any card opens its run in [[run-detail]], where the card gets its own full-view section (see below). There is no separate card detail page or URL — a card and its run are the same page.
 
 ## The grid (`/kartu`)
 
@@ -36,9 +35,9 @@ The page component [KoleksiKartu](../../resources/js/pages/Koleksi/Kartu.tsx) re
 
 Tapping an **epic or legendary** cell fires a viewport-wide confetti burst via [ConfettiBurst](../../resources/js/components/ConfettiBurst.tsx) — `triggerBurstFor` only sets the burst key for those two rarities; commons stay quiet.
 
-## The detail page (`/kartu/{card}`)
+## The card's full view (on [[run-detail]])
 
-The `show` method of [CardController](../../app/Http/Controllers/CardController.php) 404s on a card the user doesn't own, then loads the card payload plus its `CardFlavor` analysis and up to three same-rarity **related cards**. The page [KartuDetail](../../resources/js/pages/Koleksi/KartuDetail.tsx) lays out a sky hero with the big card + Temari mascot on the left, and the lore on the right: the special-move title, the streamed flavor quote (re-analyzable here), a "Kenapa [rarity]" block explaining each badge, a link back to the run (see [[run-detail]]), and the related-card grid.
+There is no standalone `/kartu/{card}` route. A card's full view — the big card + lore — lives in its own section on `/aktivitas/{activity}`, right below the hero, built by `RunController::show` in [RunController.php](../../app/Http/Controllers/RunController.php): it enriches the run's `RunCard` with the `CardFlavor` analysis, its edition (`index`/`total` within its rarity), and a signed `public_share_url`. [Show.tsx](../../resources/js/pages/Runs/Show.tsx) lays out a sky hero with the big card + actions on the left, and the lore on the right: the special-move title, the streamed flavor quote (re-analyzable here), and a "Kenapa [rarity]" block explaining each badge.
 
 Two actions sit under the hero:
 

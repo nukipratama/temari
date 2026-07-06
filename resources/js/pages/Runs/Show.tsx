@@ -1,14 +1,18 @@
-import { lazy, Suspense, useMemo } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { lazy, Suspense, useMemo, useState } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import AppShell from '@/layouts/AppShell';
 import PillButton from '@/components/ui/PillButton';
 import SendToTelegramButton from '@/components/SendToTelegramButton';
 import Card from '@/components/ui/Card';
+import Chip from '@/components/ui/Chip';
 import FourLensGrid from '@/components/run/FourLensGrid';
 import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from '@/components/card/Kartu';
+import KartuMount from '@/components/card/KartuMount';
+import ShareCardModal from '@/components/card/ShareCardModal';
+import type { ShareKartuData } from '@/lib/shareCard';
 import BackLink from '@/components/ui/BackLink';
 import MoodChip from '@/components/ui/MoodChip';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -16,20 +20,34 @@ import StatTile from '@/components/ui/StatTile';
 import MetricExplainer from '@/components/MetricExplainer';
 import type { MetricKey } from '@/lib/metricGlossary';
 import Temari from '@/components/temari/Temari';
+import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
-import { aktivitasUrl, kartuUrl } from '@/lib/routes';
+import { csrfToken } from '@/lib/http';
+import { aktivitasUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
-import { formatIdDate, formatKm, formatPace, formatShortDateTimeId, paceSecPerKm, parsePaceSec } from '@/lib/pace';
-import { kartuPropsFromDetail } from '@/lib/runcard';
+import {
+    formatIdDate,
+    formatKm,
+    formatNaiveTimeId,
+    formatPace,
+    formatShortDateId,
+    formatShortDateTimeId,
+    paceSecPerKm,
+    parsePaceSec,
+} from '@/lib/pace';
+import { districtFromLocation } from '@/pages/HariIni/helpers';
+import { BADGE_ABILITY, RARITY_LABELS, avgCadenceFromDetail, badgeEmblem, badgeName, fastestKmFromDetail, kartuPropsFromDetail } from '@/lib/runcard';
+import { renderBold } from '@/lib/richText';
 import { emberGlowStyle } from '@/lib/styles';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type {
     Activity,
     ActivityDetail,
     AnalysisPayload,
+    CardEdition,
     Mood,
-    RunCard as RunCardModel,
+    RunCard,
     SharedProps,
     StoryLine,
 } from '@/types/inertia';
@@ -69,10 +87,18 @@ interface PerKmRow {
     avg_cadence_spm?: number;
 }
 
+/** The run's RunCard, enriched with the flavor/edition/share fields this page's
+ *  card section needs (see RunController::cardPayload). */
+type RunCardDetail = Omit<RunCard, 'activity' | 'edition'> & {
+    edition: CardEdition | null;
+    flavor_analysis: AnalysisPayload;
+    public_share_url: string;
+};
+
 interface ShowProps {
     activity: DetailedActivity;
     detail: DetailedActivityDetail;
-    card: RunCardModel | null;
+    card: RunCardDetail | null;
     storyLine: StoryLine | null;
     speechAnalysis: AnalysisPayload;
     insightTechnical: AnalysisPayload;
@@ -118,6 +144,81 @@ export default function RunsShow({
 
     const [resyncing, resync] = usePendingPost(`/aktivitas/${activity.id}/resync`, { preserveScroll: true });
 
+    const [shareOpen, setShareOpen] = useState(false);
+    const [replaying, setReplaying] = useState(false);
+
+    // Re-arm the reveal for this card, then reload the pendingReveal prop so the
+    // CardReveal modal (mounted in AppShell) plays again.
+    const replayReveal = () => {
+        if (replaying || card === null) {
+            return;
+        }
+        setReplaying(true);
+        void fetch(`/api/kartu/${card.id}/replay`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: '{}',
+        })
+            .then(() => router.reload({ only: ['pendingReveal'] }))
+            .finally(() => setReplaying(false));
+    };
+
+    const cardBadges = (card?.badges ?? []).slice(0, 3);
+    const cadence = avgCadenceFromDetail(detail);
+    const fastestKm = fastestKmFromDetail(detail);
+    const rarityLabel = card ? RARITY_LABELS[card.rarity] : null;
+
+    const shareDate = detail.start_date_local
+        ? (() => {
+              const time = formatNaiveTimeId(detail.start_date_local);
+              const shortDate = formatShortDateId(detail.start_date_local);
+              return time === null ? shortDate : `${shortDate}\n${time}`;
+          })()
+        : null;
+
+    const shareWeather = (() => {
+        if (detail.weather_temp_c == null) {
+            return null;
+        }
+        const temp = `${Math.round(detail.weather_temp_c)}°C`;
+        const wind = detail.weather_wind_speed_kmh != null ? `, angin ${Math.round(detail.weather_wind_speed_kmh)} km/j` : '';
+        return `${temp}${wind}`;
+    })();
+
+    const shareData: ShareKartuData | null = card === null ? null : {
+        id: card.id,
+        name: card.special_move,
+        shareUrl: card.public_share_url,
+        rarity: card.rarity,
+        mood,
+        subtitle: kartuProps.subtitle,
+        date: shareDate,
+        km,
+        durasi: kartuProps.durasi,
+        pace: paceSec != null ? formatPace(paceSec) : null,
+        trimp: kartuProps.trimp,
+        hr: hr != null ? `${hr} bpm` : null,
+        cadence: cadence != null ? `${cadence} spm` : null,
+        fastestKm: fastestKm != null ? `${fastestKm}/km` : null,
+        ascent: detail.total_elevation_gain != null ? `${Math.round(detail.total_elevation_gain)} m` : null,
+        zonePct: kartuProps.zonePct,
+        location: districtFromLocation(detail.location_name ?? null),
+        weather: shareWeather,
+        wind: detail.weather_wind_speed_kmh != null ? `${Math.round(detail.weather_wind_speed_kmh)} km/j` : null,
+        tags: cardBadges.map((b) => badgeName(b)),
+        tagEmojis: cardBadges.map((b) => badgeEmblem(b)),
+        quote: card.flavor_analysis.content ?? null,
+        polyline: detail.summary_polyline ?? null,
+        distanceKm: detail.distance != null ? detail.distance / 1000 : null,
+        edition: card.edition ?? null,
+    };
+
     return (
         <AppShell>
             <Head title={detail.name ?? 'Run'} />
@@ -150,116 +251,185 @@ export default function RunsShow({
                     />
                 </div>
 
-                {/* HERO — stats left + route map right */}
-                <section className="grid items-stretch gap-4 lg:grid-cols-[1.4fr_1fr]">
+                {/* HERO — one panel, stats left + route map right */}
+                <section>
                     <HeroPanel className="lg:px-9 lg:py-8">
                         <span
                             aria-hidden
                             className="pointer-events-none absolute -right-10 -top-10 h-52 w-52 rounded-full"
                             style={emberGlowStyle()}
                         />
-                        <div className="relative">
-                            <div className="mb-5 flex items-start gap-4">
-                                <Temari pose={pose} size={72} animate={false} />
-                                <div className="min-w-0 flex-1">
-                                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                                        <MoodChip mood={mood} onSky />
-                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
-                                            {formatShortDateTimeId(detail.start_date_local)}
-                                        </span>
+                        <div className="relative grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-stretch">
+                            <div className="flex h-full flex-col justify-center">
+                                <div className="mb-5 flex items-start gap-4">
+                                    <Temari pose={pose} size={72} animate={false} />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                                            <MoodChip mood={mood} onSky />
+                                            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
+                                                {formatShortDateTimeId(detail.start_date_local)}
+                                            </span>
+                                        </div>
+                                        <h1 className="font-display text-display-sm text-cream">
+                                            {detail.name ?? 'Lari'}
+                                        </h1>
                                     </div>
-                                    <h1 className="font-display text-display-sm text-cream">
-                                        {detail.name ?? 'Lari'}
-                                    </h1>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-5 sm:grid-cols-5">
-                                <StatTile tone="plainSky" size="md" label="JARAK" value={km} unit="km" />
-                                <StatTile tone="plainSky" size="md" label="DURASI" value={kartuProps.durasi} />
-                                <StatTile tone="plainSky" size="md" label="PACE" value={pace} unit="/km" />
-                                <StatTile tone="plainSky" size="md" label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
-                                <StatTile tone="plainSky" size="md" label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" explainerKey="trimp" />
+                                <div className="grid grid-cols-2 gap-5 sm:grid-cols-5">
+                                    <StatTile tone="plainSky" size="md" label="JARAK" value={km} unit="km" />
+                                    <StatTile tone="plainSky" size="md" label="DURASI" value={kartuProps.durasi} />
+                                    <StatTile tone="plainSky" size="md" label="PACE" value={pace} unit="/km" />
+                                    <StatTile tone="plainSky" size="md" label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
+                                    <StatTile tone="plainSky" size="md" label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" explainerKey="trimp" />
+                                </div>
+
+                                {/* KAMU VS KAMU DULU — inline in hero */}
+                                {pastYou && (
+                                    <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-cream/15 bg-cream/[0.08] px-4 py-3 backdrop-blur-sm">
+                                        <div className="min-w-0">
+                                            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-cream/60">
+                                                Kamu vs {pastYou.days_ago} hari lalu
+                                            </div>
+                                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-cream/90">
+                                                <span className={cn('font-bold tabular-nums', pastYou.pace_diff_sec > 0 ? 'text-leaf' : 'text-citrus')}>
+                                                    {Math.abs(Math.round(pastYou.pace_diff_sec))}d/km {pastYou.pace_diff_sec > 0 ? 'lebih cepat' : 'lebih lambat'}
+                                                </span>
+                                                {pastYou.hr_diff_bpm !== null && (
+                                                    <span className={cn('font-bold tabular-nums', pastYou.hr_diff_bpm < 0 ? 'text-leaf' : 'text-citrus')}>
+                                                        {Math.abs(Math.round(pastYou.hr_diff_bpm))} bpm {pastYou.hr_diff_bpm < 0 ? 'lebih rendah' : 'lebih tinggi'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {pastYou.past.activity_id != null && (
+                                            <Link
+                                                href={aktivitasUrl({ activity_id: pastYou.past.activity_id })}
+                                                className="focus-ring-on-sky shrink-0 rounded-full border border-cream/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream/70 transition hover:border-cream/40 hover:text-cream"
+                                            >
+                                                Lihat →
+                                            </Link>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
-                            {/* KAMU VS KAMU DULU — inline in hero */}
-                            {pastYou && (
-                                <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-cream/15 bg-cream/[0.08] px-4 py-3 backdrop-blur-sm">
-                                    <div className="min-w-0">
-                                        <div className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-cream/60">
-                                            Kamu vs {pastYou.days_ago} hari lalu
-                                        </div>
-                                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-cream/90">
-                                            <span className={cn('font-bold tabular-nums', pastYou.pace_diff_sec > 0 ? 'text-leaf' : 'text-citrus')}>
-                                                {Math.abs(Math.round(pastYou.pace_diff_sec))}d/km {pastYou.pace_diff_sec > 0 ? 'lebih cepat' : 'lebih lambat'}
-                                            </span>
-                                            {pastYou.hr_diff_bpm !== null && (
-                                                <span className={cn('font-bold tabular-nums', pastYou.hr_diff_bpm < 0 ? 'text-leaf' : 'text-citrus')}>
-                                                    {Math.abs(Math.round(pastYou.hr_diff_bpm))} bpm {pastYou.hr_diff_bpm < 0 ? 'lebih rendah' : 'lebih tinggi'}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {pastYou.past.activity_id != null && (
-                                        <Link
-                                            href={aktivitasUrl({ activity_id: pastYou.past.activity_id })}
-                                            className="focus-ring-on-sky shrink-0 rounded-full border border-cream/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream/70 transition hover:border-cream/40 hover:text-cream"
-                                        >
-                                            Lihat →
-                                        </Link>
-                                    )}
-                                </div>
-                            )}
+                            <MapWeatherPanel detail={detail} />
                         </div>
                     </HeroPanel>
-                    <MapWeatherPanel detail={detail} />
                 </section>
 
-                {/* KATA TEMARI (70%) + KARTU (30%) */}
-                <section className="mt-8 grid gap-6 lg:grid-cols-[7fr_3fr]">
-                    <div>
-                        <header className="mb-4 flex items-center gap-3.5">
-                            <Temari pose="observational" size={48} animate={false} />
-                            <div>
-                                <h2 className="font-display text-headline-sm text-ink">
-                                    Kata Temari
-                                </h2>
-                                <p className="mt-1 font-sans text-xs text-ink-3">Empat cara liat lari ini.</p>
-                            </div>
-                        </header>
-                        <FourLensGrid
-                            cerita={speechAnalysis}
-                            terjemahan={insightTechnical}
-                            split={insightSplits}
-                            hr={insightZones}
-                            isChainHead={isChainHead}
-                        />
-                    </div>
+                {/* KARTU — its own section. The card sits in a slim sky mount sized
+                    to fit it (not a full hero panel); actions + lore live on the right. */}
+                {card && (
+                    <section className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,340px)_1fr] lg:items-start">
+                        <KartuMount>
+                            <Kartu
+                                name={card.special_move}
+                                km={kartuProps.km}
+                                durasi={kartuProps.durasi}
+                                trimp={kartuProps.trimp}
+                                rarity={card.rarity}
+                                mood={mood}
+                                badges={cardBadges}
+                                stats={kartuProps.stats}
+                                zonePct={kartuProps.zonePct}
+                                polyline={detail.summary_polyline}
+                                paceShape={kartuProps.paceShape}
+                                edition={card.edition}
+                                size="lg"
+                                className="w-full"
+                            />
+                        </KartuMount>
 
-                    {/* Kartu sidebar */}
-                    <div className="flex items-center justify-center">
-                        {card && (
-                            <Link
-                                href={kartuUrl(card)}
-                                className="focus-ring block w-full max-w-[320px] rounded-2xl"
-                            >
-                                <Kartu
-                                    name={card.special_move}
-                                    subtitle={kartuProps.subtitle ?? undefined}
-                                    km={kartuProps.km}
-                                    durasi={kartuProps.durasi}
-                                    trimp={kartuProps.trimp}
-                                    rarity={card.rarity}
-                                    mood={mood}
-                                    badges={(card.badges ?? []).slice(0, 3)}
-                                    stats={kartuProps.stats}
-                                    zonePct={kartuProps.zonePct}
-                                    polyline={detail.summary_polyline}
-                                    paceShape={kartuProps.paceShape}
-                                    size="md"
-                                />
-                            </Link>
-                        )}
-                    </div>
+                        <div className="flex flex-col gap-6">
+                            <div>
+                                <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-2">
+                                    ★ {rarityLabel}{card.edition && ` · ${card.edition.total} dari koleksimu`}
+                                </div>
+                                <h2 className="font-display text-display-sm leading-[0.95] tracking-[-0.02em] text-ink">
+                                    {card.special_move}.
+                                </h2>
+                                <div className="mt-3">
+                                    <AnalysisStatus
+                                        analysis={card.flavor_analysis}
+                                        inertiaReloadProps={['card']}
+                                        allowReanalyze
+                                        showTimestamp={false}
+                                        renderContent={(text) => (
+                                            <p className="font-display text-quote-md italic leading-relaxed text-ink-2">
+                                                &ldquo;{renderBold(text)}&rdquo;
+                                            </p>
+                                        )}
+                                    />
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <PillButton tone="sky" size="sm" onClick={() => setShareOpen(true)}>
+                                        <Icon icon="mdi:share-variant" width={14} height={14} aria-hidden />
+                                        Bagikan
+                                    </PillButton>
+                                    <PillButton tone="outline" size="sm" onClick={replayReveal} disabled={replaying}>
+                                        <Icon
+                                            icon="mdi:refresh"
+                                            width={14}
+                                            height={14}
+                                            className={replaying ? 'animate-spin' : undefined}
+                                            aria-hidden
+                                        />
+                                        {replaying ? 'Menyiapkan…' : 'Buka ulang kartu'}
+                                    </PillButton>
+                                </div>
+                            </div>
+
+                            {/* Kenapa [rarity] — always shown (even with no badges):
+                                rarity is a composite score, so a badge-less card still
+                                deserves an honest explanation instead of a blank. */}
+                            <Card padding="md" className="flex flex-col gap-4">
+                                <SectionLabel>Kenapa dapet {rarityLabel}</SectionLabel>
+                                <p className="text-sm text-ink-2">
+                                    Ditentuin dari gabungan hal keren di lari ini: PR, pace yang stabil atau makin
+                                    ngebut, jarak jauh, konsistensi mingguan, plus badge yang kamu bawa pulang.
+                                </p>
+                                {cardBadges.length > 0 && (
+                                    <div className="flex flex-col gap-3">
+                                        {cardBadges.map((b, i) => (
+                                            <div
+                                                key={b}
+                                                className={cn(
+                                                    'flex items-start gap-3 pb-3',
+                                                    i < cardBadges.length - 1 ? 'border-b border-dashed border-cream-deep' : '',
+                                                )}
+                                            >
+                                                <Chip tone="horizon">{badgeName(b)}</Chip>
+                                                <p className="flex-1 text-sm text-ink-2">
+                                                    {BADGE_ABILITY[b] ?? 'Kondisi spesial yang bikin lari ini istimewa.'}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </Card>
+                        </div>
+                    </section>
+                )}
+
+                {/* KATA TEMARI */}
+                <section className="mt-8">
+                    <header className="mb-4 flex items-center gap-3.5">
+                        <Temari pose="observational" size={48} animate={false} />
+                        <div>
+                            <h2 className="font-display text-headline-sm text-ink">
+                                Kata Temari
+                            </h2>
+                            <p className="mt-1 font-sans text-xs text-ink-3">Empat cara liat lari ini.</p>
+                        </div>
+                    </header>
+                    <FourLensGrid
+                        cerita={speechAnalysis}
+                        terjemahan={insightTechnical}
+                        split={insightSplits}
+                        hr={insightZones}
+                        isChainHead={isChainHead}
+                    />
                 </section>
 
                 {/* DETAIL TILES */}
@@ -274,6 +444,10 @@ export default function RunsShow({
                     Tersambung otomatis dari Strava · {formatIdDate(activity.analyzed_at ?? null, 'long')}
                 </footer>
             </PageContainer>
+            <ShareCardModal
+                kartu={shareOpen ? shareData : null}
+                onClose={() => setShareOpen(false)}
+            />
         </AppShell>
     );
 }
@@ -289,7 +463,7 @@ function MapWeatherPanel({ detail }: Readonly<{ detail: DetailedActivityDetail }
     const showGust = gust != null && windSpeed != null && gust - windSpeed >= 8;
 
     return (
-        <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-sky px-5 py-4 text-cream">
+        <div className="relative flex flex-col gap-2">
             {(temp != null || location != null) && (
                 <div className="flex items-baseline gap-3">
                     {temp != null && (
@@ -298,12 +472,12 @@ function MapWeatherPanel({ detail }: Readonly<{ detail: DetailedActivityDetail }
                                 {Math.round(temp)}°<span className="text-sm font-medium">C</span>
                             </div>
                             {humidity != null && (
-                                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-on-sky">
+                                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cream">
                                     {Math.round(humidity)}% lembab
                                 </div>
                             )}
                             {windSpeed != null && (
-                                <div className="mt-0.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-on-sky">
+                                <div className="mt-0.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cream">
                                     <Icon icon="mdi:weather-windy" width={11} height={11} aria-hidden />
                                     {Math.round(windSpeed)} km/j
                                     {showGust && <span>· gust {Math.round(gust)}</span>}
@@ -323,13 +497,25 @@ function MapWeatherPanel({ detail }: Readonly<{ detail: DetailedActivityDetail }
                     )}
                     {location != null && (
                         <div className="min-w-0 flex-1 border-l border-cream/15 pl-3">
-                            <div className="truncate font-display text-sm leading-tight tracking-[-0.005em]">{location}</div>
+                            {(() => {
+                                const [place, region] = splitLocationLines(location);
+                                return (
+                                    <>
+                                        <div className="truncate font-display text-xl leading-tight tracking-[-0.005em]">{place}</div>
+                                        {region && (
+                                            <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.1em] text-cream/70">
+                                                {region}
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
                         </div>
                     )}
                 </div>
             )}
             {hasPolyline && (
-                <div className="mt-3 overflow-hidden rounded-xl bg-cream/[0.04]">
+                <div className="overflow-hidden rounded-xl bg-cream/[0.04]">
                     <Suspense fallback={<div className="h-[180px] animate-pulse" />}>
                         <RouteMap polyline={detail.summary_polyline ?? ''} distanceKm={formatKm(detail.distance)} />
                     </Suspense>
@@ -337,6 +523,24 @@ function MapWeatherPanel({ detail }: Readonly<{ detail: DetailedActivityDetail }
             )}
         </div>
     );
+}
+
+/**
+ * Splits a comma-separated reverse-geocoded name ("Gelora Bung Karno, Jakarta
+ * Pusat, DKI Jakarta, Indonesia") into a place line and a province/country
+ * line, instead of truncating the whole thing to one row. The last two
+ * segments (province, country) become the second line; everything before
+ * them stays on the first.
+ */
+function splitLocationLines(location: string): [string, string | null] {
+    const parts = location.split(', ');
+    if (parts.length <= 1) {
+        return [location, null];
+    }
+    if (parts.length === 2) {
+        return [parts[0], parts[1]];
+    }
+    return [parts.slice(0, -2).join(', '), parts.slice(-2).join(', ')];
 }
 
 interface DetailTile {

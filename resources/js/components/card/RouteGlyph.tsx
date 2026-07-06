@@ -41,10 +41,6 @@ export default function RouteGlyph({ polyline, paceShape, rarity, color, distanc
     if (route !== null) {
         const d = route.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
         const strokeWidth = distanceKm != null && Number.isFinite(distanceKm) ? Math.max(2.2, 3.8 - Math.log2(Math.max(distanceKm, 1)) * 0.5) : 3.8;
-        const finish = route.points.at(-1) ?? route.start;
-        // Only mark the finish separately on point-to-point routes; on a loop the ring
-        // would sit on top of the start dot (start≈finish is itself the "loop" cue).
-        const isPointToPoint = Math.hypot(finish[0] - route.start[0], finish[1] - route.start[1]) >= 2;
         return (
             <svg
                 aria-hidden
@@ -63,10 +59,6 @@ export default function RouteGlyph({ polyline, paceShape, rarity, color, distanc
                     opacity={0.95}
                     style={{ filter: `drop-shadow(0 0 1.5px ${stroke})` }}
                 />
-                <circle cx={route.start[0]} cy={route.start[1]} r={3} fill={stroke} />
-                {isPointToPoint && (
-                    <circle cx={finish[0]} cy={finish[1]} r={3.2} fill="none" stroke={stroke} strokeWidth={1.4} />
-                )}
             </svg>
         );
     }

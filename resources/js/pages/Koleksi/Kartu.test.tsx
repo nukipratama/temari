@@ -75,7 +75,7 @@ describe('Koleksi/Kartu', () => {
     it('triggers a confetti burst when an epic grid card is tapped', () => {
         const cards = { ...emptyCards(), data: [cardWithRel(7, 'epic', 'Tancap di Akhir')] };
         render(<KoleksiKartu cards={cards} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
-        const cardLink = screen.getAllByRole('link').find((el) => el.getAttribute('href') === '/kartu/7');
+        const cardLink = screen.getAllByRole('link').find((el) => el.getAttribute('href') === '/aktivitas/7');
         fireEvent.click(cardLink!);
     });
 
@@ -83,7 +83,7 @@ describe('Koleksi/Kartu', () => {
         const cards = { ...emptyCards(), data: [cardWithRel(1, 'epic', 'Tendangan Epic'), cardWithRel(2, 'common')] };
         render(<KoleksiKartu cards={cards} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
         expect(screen.getByText('Tendangan Epic')).toBeInTheDocument();
-        const links = screen.getAllByRole('link').filter((el) => el.getAttribute('href') === '/kartu/1');
+        const links = screen.getAllByRole('link').filter((el) => el.getAttribute('href') === '/aktivitas/1');
         fireEvent.click(links[0]);
     });
 
