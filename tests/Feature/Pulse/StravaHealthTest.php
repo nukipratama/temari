@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Livewire\Pulse\StravaHealth;
+use App\Models\Activity;
+use App\Models\Analytics\StravaSyncLog;
 use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,6 +43,24 @@ it('shows a warn health badge when a connection token has expired', function ():
 it('shows an alert health badge when a connection is revoked', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create(['revoked_at' => Carbon::now()]);
+
+    Livewire::test(StravaHealth::class)
+        ->assertOk()
+        ->assertSee('health: alert');
+});
+
+it('shows a warn health badge when an un-analyzed activity is stranded', function (): void {
+    Activity::factory()->stub()->create();
+
+    Livewire::test(StravaHealth::class)
+        ->assertOk()
+        ->assertSee('health: warn');
+});
+
+it('shows an alert health badge when a user\'s latest sync errored', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    StravaSyncLog::log($user->id, 'error', error: 'sync failed');
 
     Livewire::test(StravaHealth::class)
         ->assertOk()

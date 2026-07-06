@@ -46,6 +46,17 @@ it('shows an alert health badge when the breaker is open', function (): void {
         ->assertSee('health: alert');
 });
 
+it('shows a warn health badge when the breaker is half-open', function (): void {
+    // half_open is a probe state reached after the open cooldown elapses; the
+    // breaker itself only sets it via a request-time check, so we set the
+    // stored state directly to prove the severity mapping in isolation.
+    app(AppConfig::class)->set(AppConfigKey::StravaBreakerState, StravaCircuitBreaker::STATE_HALF_OPEN);
+
+    Livewire::test(SystemControl::class)
+        ->assertOk()
+        ->assertSee('health: warn');
+});
+
 it('counts pending vs stranded activities correctly', function (): void {
     Activity::factory()->stub()->count(2)->create(['detail_fail_count' => 0]);
     Activity::factory()->stub()->create(['detail_fail_count' => 5]); // stranded

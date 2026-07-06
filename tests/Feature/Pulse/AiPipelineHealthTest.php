@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Livewire\Pulse\AiPipelineHealth;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
+use App\Services\AI\AnalysisType;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,15 +30,11 @@ it('shows an ok health badge when no analysis has failed', function (): void {
 });
 
 it('shows an alert health badge when an analysis has failed', function (): void {
-    DB::table('ai_analyses')->insert([
+    Analysis::factory()->failed('boom')->create([
         'subject_type' => Activity::class,
         'subject_id' => 7,
-        'analysis_type' => 'activity_story',
-        'status' => 'failed',
-        'error' => 'boom',
+        'analysis_type' => AnalysisType::PostRunSpeech,
         'attempts' => 3,
-        'created_at' => now(),
-        'updated_at' => now(),
     ]);
 
     Livewire::test(AiPipelineHealth::class)
@@ -46,15 +43,11 @@ it('shows an alert health badge when an analysis has failed', function (): void 
 });
 
 it('surfaces a recent failed analysis with its error', function (): void {
-    DB::table('ai_analyses')->insert([
+    Analysis::factory()->failed('Azure timed out')->create([
         'subject_type' => Activity::class,
         'subject_id' => 42,
-        'analysis_type' => 'activity_story',
-        'status' => 'failed',
-        'error' => 'Azure timed out',
+        'analysis_type' => AnalysisType::PostRunSpeech,
         'attempts' => 3,
-        'created_at' => now(),
-        'updated_at' => now(),
     ]);
 
     Livewire::test(AiPipelineHealth::class)
@@ -70,15 +63,11 @@ it('shows no dead-letter attention link when nothing is dead-lettered', function
 });
 
 it('surfaces a dead-letter attention link when a failed analysis exhausted self-heal', function (): void {
-    DB::table('ai_analyses')->insert([
+    Analysis::factory()->failed('gave up')->create([
         'subject_type' => Activity::class,
         'subject_id' => 99,
-        'analysis_type' => 'activity_story',
-        'status' => 'failed',
-        'error' => 'gave up',
+        'analysis_type' => AnalysisType::PostRunSpeech,
         'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
-        'created_at' => now(),
-        'updated_at' => now(),
     ]);
 
     Livewire::test(AiPipelineHealth::class)
