@@ -28,17 +28,21 @@ it('renders the Kalender page for the current month by default', function (): vo
             ->has('cells'));
 });
 
-it('shares telegramConnected reflecting a live connection', function (): void {
+it('shares telegramConnected true for a live connection', function (): void {
     $connected = User::factory()->create();
     TelegramConnection::factory()->for($connected)->create();
     $this->actingAs($connected)->get('/kalender')
         ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', true));
+});
 
+it('shares telegramConnected false for a revoked connection', function (): void {
     $revoked = User::factory()->create();
     TelegramConnection::factory()->for($revoked)->revoked()->create();
     $this->actingAs($revoked)->get('/kalender')
         ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
+});
 
+it('shares telegramConnected false when there is no connection', function (): void {
     $none = User::factory()->create();
     $this->actingAs($none)->get('/kalender')
         ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));

@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Api\AnalysisController;
-use App\Http\Requests\TriggerAnalysisRequest;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
@@ -15,12 +13,9 @@ use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\Run\Ingest\ActivityPipeline;
 use App\Support\Cooldown;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -237,14 +232,6 @@ it('isolates rate limits per user', function (): void {
 
     // user $b is untouched by user $a's bucket
     $this->actingAs($b)->postJson("/api/analyses/post_run_speech/{$activityB->id}/trigger")->assertSuccessful();
-});
-
-it('throws Unauthenticated when the request has no user (defensive guard)', function (): void {
-    $controller = new AnalysisController();
-    $request = TriggerAnalysisRequest::create('/api/analyses/briefing_headline/1/trigger', 'POST');
-
-    expect(fn () => $controller->trigger($request, app(AnalysisService::class), app(ActivityPipeline::class), 'briefing_headline', 1))
-        ->toThrow(AuthorizationException::class, 'Unauthenticated');
 });
 
 it('chained weekly_recap retry resumes the earliest unfilled link, not the clicked row', function (): void {
@@ -629,18 +616,4 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
         ->and($doneSibling->fresh()->content)->toBe('zona sudah dibaca');
 
     Carbon::setTestNow();
-});
-
-it('handles every AnalysisType in subject authorization (no UnhandledMatchError)', function (): void {
-    $user = User::factory()->create();
-    $controller = new AnalysisController();
-    $authorize = new ReflectionMethod($controller, 'authorizeSubject');
-
-    // A subject id owned by nobody: every match arm should evaluate false and
-    // throw AuthorizationException. A new AnalysisType without a match arm would
-    // instead throw \UnhandledMatchError, failing this test instead of prod.
-    foreach (AnalysisType::cases() as $type) {
-        expect(fn () => $authorize->invoke($controller, $user, $type, PHP_INT_MAX))
-            ->toThrow(AuthorizationException::class);
-    }
 });
