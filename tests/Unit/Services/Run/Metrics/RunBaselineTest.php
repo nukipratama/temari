@@ -71,6 +71,20 @@ it('counts runs but nulls metrics that have no data', function () use ($asOf): v
         ->and($result['avg_decoupling_pct'])->toBeNull();
 });
 
+it('counts a run with zero moving_time toward runs but leaves pace null', function () use ($asOf): void {
+    // moving_time <= 0 is excluded from the pace-weighted sum (RunBaseline.php:49)
+    // but the run still counts toward `runs`, so a window with only such a run
+    // must show runs > 0 with avg_pace_sec_per_km null rather than 0/0.
+    $user = User::factory()->create();
+    baselineRun($user, $asOf()->copy()->subDays(5), 5000.0, 0, 150.0, null);
+
+    $result = (new RunBaseline())->forUserAsOf($user->id, $asOf());
+
+    expect($result['runs'])->toBe(1)
+        ->and($result['avg_pace_sec_per_km'])->toBeNull()
+        ->and($result['avg_hr'])->toBe(150);
+});
+
 it('scopes the baseline to the given user', function () use ($asOf): void {
     $user = User::factory()->create();
     $other = User::factory()->create();
