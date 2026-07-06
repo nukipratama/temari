@@ -33,3 +33,7 @@ it('spans more than one distinct location so maps vary', function (): void {
 
     expect(count(array_unique($names)))->toBeGreaterThan(1);
 });
+
+it('default returns the first library entry (Gelora Bung Karno)', function (): void {
+    expect(DemoLocation::default())->toEqual(DemoLocation::library()[0]);
+});

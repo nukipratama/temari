@@ -22,3 +22,17 @@ it('ranks cases from common (0) to legendary (4)', function (): void {
         ->and(Rarity::Legendary->rank())->toBe(4)
         ->and(Rarity::Epic->rank())->toBeGreaterThan(Rarity::Rare->rank());
 });
+
+/*
+ * Parity guard: these hex values are mirrored in resources/js/lib/runcard.ts
+ * (RARITY_HEX), the client's single source of truth per the docblock. A
+ * server-rendered surface (RunCardImageRenderer, kartu.blade.php) that drifts
+ * from the client's tint fails here first.
+ */
+it('exposes the Daybreak rarity hex tints', function (): void {
+    expect(Rarity::Common->hexColor())->toBe('#7d8694')
+        ->and(Rarity::Uncommon->hexColor())->toBe('#2fb350')
+        ->and(Rarity::Rare->hexColor())->toBe('#2f81f7')
+        ->and(Rarity::Epic->hexColor())->toBe('#a855f7')
+        ->and(Rarity::Legendary->hexColor())->toBe('#f5a623');
+});

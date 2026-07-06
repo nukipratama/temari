@@ -31,6 +31,31 @@ it('upserts in place rather than inserting duplicate rows', function (): void {
         ->and((new AppConfig())->integer(AppConfigKey::StravaBreakerThreshold))->toBe(8);
 });
 
+it('forget drops the memo so the next get re-reads from the DB', function (): void {
+    $config = new AppConfig();
+    $config->set(AppConfigKey::StravaBreakerThreshold, 3);
+    expect($config->integer(AppConfigKey::StravaBreakerThreshold))->toBe(3);
+
+    // Change the stored value out from under the same instance's memo.
+    DB::table('app_config')->where('key', 'strava.breaker.threshold')->update(['value' => json_encode(9)]);
+    expect($config->integer(AppConfigKey::StravaBreakerThreshold))->toBe(3); // still memoized
+
+    $config->forget(AppConfigKey::StravaBreakerThreshold);
+    expect($config->integer(AppConfigKey::StravaBreakerThreshold))->toBe(9); // re-read after forget
+});
+
+it('setMany writes multiple keys atomically in a single call', function (): void {
+    $config = new AppConfig();
+    $config->setMany([
+        [AppConfigKey::StravaBreakerThreshold, 7],
+        [AppConfigKey::AiEnabled, false],
+    ]);
+
+    $fresh = new AppConfig();
+    expect($fresh->integer(AppConfigKey::StravaBreakerThreshold))->toBe(7)
+        ->and($fresh->boolean(AppConfigKey::AiEnabled))->toBeFalse();
+});
+
 it('reflects a set value immediately on the same instance (memo updated)', function (): void {
     $config = new AppConfig();
     expect($config->boolean(AppConfigKey::StravaEnabled))->toBeTrue();

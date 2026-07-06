@@ -43,3 +43,70 @@ it('returns empty splits for short streams', function (): void {
 
     expect((new SplitsBuilder())->build($streams))->toBe([]);
 });
+
+it('returns empty splits when time and distance arrays have mismatched lengths', function (): void {
+    $streams = [
+        'time' => ['data' => [0, 1, 2, 3]],
+        'distance' => ['data' => [0, 10, 20]],
+        'heartrate' => ['data' => []],
+    ];
+
+    expect((new SplitsBuilder())->build($streams))->toBe([]);
+});
+
+it('includes average_heartrate when a heartrate stream is present, mirroring Strava', function (): void {
+    $streams = [
+        'time' => ['data' => range(0, 299)],
+        'distance' => ['data' => array_map(fn (int $i): float => round($i * 33.45, 2), range(0, 299))],
+        'heartrate' => ['data' => array_fill(0, 300, 150)],
+    ];
+
+    $splits = (new SplitsBuilder())->build($streams);
+
+    expect($splits)->not->toBeEmpty();
+    foreach ($splits as $split) {
+        expect($split)->toHaveKey('average_heartrate')
+            ->and($split['average_heartrate'])->toBe(150.0);
+    }
+});
+
+it('omits average_heartrate entirely when no heartrate stream was paired', function (): void {
+    $streams = [
+        'time' => ['data' => range(0, 299)],
+        'distance' => ['data' => array_map(fn (int $i): float => round($i * 33.45, 2), range(0, 299))],
+        'heartrate' => ['data' => []],
+    ];
+
+    $splits = (new SplitsBuilder())->build($streams);
+
+    expect($splits)->not->toBeEmpty();
+    foreach ($splits as $split) {
+        expect($split)->not->toHaveKey('average_heartrate');
+    }
+});
+
+it('drops a trailing leftover distance under 100m instead of appending a tiny final split', function (): void {
+    $streams = [
+        'time' => ['data' => [0, 500, 1000, 1050]],
+        'distance' => ['data' => [0, 500, 1000, 1050]],
+        'heartrate' => ['data' => []],
+    ];
+
+    $splits = (new SplitsBuilder())->build($streams);
+
+    // Only the one full-km split; the 50m leftover (< 100m) is dropped, not appended.
+    expect($splits)->toHaveCount(1);
+});
+
+it('appends a trailing leftover distance of 100m or more as a final split', function (): void {
+    $streams = [
+        'time' => ['data' => [0, 500, 1000, 1150]],
+        'distance' => ['data' => [0, 500, 1000, 1150]],
+        'heartrate' => ['data' => []],
+    ];
+
+    $splits = (new SplitsBuilder())->build($streams);
+
+    expect($splits)->toHaveCount(2)
+        ->and($splits[1]['distance'])->toBe(150.0);
+});

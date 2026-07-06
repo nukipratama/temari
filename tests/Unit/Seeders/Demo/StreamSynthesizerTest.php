@@ -72,3 +72,65 @@ it('keeps the velocity series consistent with the distance series after rescale'
 
     expect($acc)->toEqualWithDelta((float) end($distance), count($velocity) * 0.001 + 0.5);
 });
+
+it('omits the heartrate stream entirely when the blueprint has no HR sensor', function (): void {
+    $synth = new StreamSynthesizer();
+    $blueprint = new RunBlueprint(
+        startsAt: Carbon::parse('2026-05-01 06:00:00'),
+        distanceM: 5_000,
+        targetPaceSecPerKm: 330,
+        hrProfile: HrProfile::Z2Steady,
+        hasHrSensor: false,
+    );
+
+    $streams = $synth->build($blueprint);
+
+    expect($streams)->not->toHaveKey('heartrate');
+});
+
+it('omits the cadence stream entirely when the blueprint has no cadence sensor', function (): void {
+    $synth = new StreamSynthesizer();
+    $blueprint = new RunBlueprint(
+        startsAt: Carbon::parse('2026-05-01 06:00:00'),
+        distanceM: 5_000,
+        targetPaceSecPerKm: 330,
+        hrProfile: HrProfile::Z2Steady,
+        hasCadenceSensor: false,
+    );
+
+    $streams = $synth->build($blueprint);
+
+    expect($streams)->not->toHaveKey('cadence');
+});
+
+it('omits the latlng stream entirely when the blueprint has no GPS', function (): void {
+    $synth = new StreamSynthesizer();
+    $blueprint = new RunBlueprint(
+        startsAt: Carbon::parse('2026-05-01 06:00:00'),
+        distanceM: 5_000,
+        targetPaceSecPerKm: 330,
+        hrProfile: HrProfile::Z2Steady,
+        hasGps: false,
+    );
+
+    $streams = $synth->build($blueprint);
+
+    expect($streams)->not->toHaveKey('latlng');
+});
+
+it('falls back to a 1-second duration instead of dividing by zero when moving time is zero', function (): void {
+    $synth = new StreamSynthesizer();
+    $blueprint = new RunBlueprint(
+        startsAt: Carbon::parse('2026-05-01 06:00:00'),
+        distanceM: 0,
+        targetPaceSecPerKm: 330,
+        hrProfile: HrProfile::Z2Steady,
+    );
+
+    expect($blueprint->movingTimeSec())->toBe(0);
+
+    $streams = $synth->build($blueprint);
+
+    // duration forced to 1 means exactly 2 samples (t = 0 and t = 1).
+    expect($streams['time']['data'])->toBe([0, 1]);
+});

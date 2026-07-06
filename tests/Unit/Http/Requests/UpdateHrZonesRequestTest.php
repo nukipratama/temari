@@ -77,6 +77,14 @@ it('rejects a resting_hr outside 30-90', function (): void {
         ->and(validateHrZones(hrZonePayload(['resting_hr' => 91]))->passes())->toBeFalse();
 });
 
+it('accepts max_hr and resting_hr exactly at their inclusive between() boundaries', function (): void {
+    $lowBoundary = array_values(UpdateHrZonesRequest::deriveZones(120, 30));
+    $highBoundary = array_values(UpdateHrZonesRequest::deriveZones(220, 90));
+
+    expect(validateHrZones(hrZonePayload(['max_hr' => 120, 'resting_hr' => 30], $lowBoundary))->passes())->toBeTrue()
+        ->and(validateHrZones(hrZonePayload(['max_hr' => 220, 'resting_hr' => 90], $highBoundary))->passes())->toBeTrue();
+});
+
 it('rejects a resting_hr greater than or equal to max_hr', function (): void {
     expect(validateHrZones(hrZonePayload(['max_hr' => 120, 'resting_hr' => 80]))->passes())->toBeTrue()
         ->and(validateHrZones(hrZonePayload(['max_hr' => 80, 'resting_hr' => 80]))->passes())->toBeFalse();

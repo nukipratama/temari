@@ -21,5 +21,7 @@ it('coerces raw values into the canonical type', function (): void {
         ->and(AppConfigKey::AiEnabled->cast(1))->toBeTrue()
         ->and(AppConfigKey::StravaBreakerThreshold->cast('7'))->toBe(7)
         ->and(AppConfigKey::StravaBreakerState->cast('open'))->toBe('open')
-        ->and(AppConfigKey::StravaBreakerOpenedAt->cast(null))->toBeNull();
+        ->and(AppConfigKey::StravaBreakerOpenedAt->cast(null))->toBeNull()
+        ->and(AppConfigKey::StravaBreakerOpenedAt->cast('2026-06-09T10:00:00+00:00'))
+        ->toBe('2026-06-09T10:00:00+00:00');
 });
