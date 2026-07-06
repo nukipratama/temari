@@ -39,6 +39,27 @@ function builder(): RuleBasedInsightBuilder
     return new RuleBasedInsightBuilder();
 }
 
+/**
+ * runInsightSplits()/runInsightZones() only read the passed ActivityDetail's
+ * own attributes, no query/relation involved, so no persisted Activity/User
+ * is needed to drive them.
+ *
+ * @param  array<string, mixed>  $detailAttrs
+ */
+function makeDetail(array $detailAttrs = []): ActivityDetail
+{
+    return ActivityDetail::factory()->make(array_merge([
+        'activity_id' => 1,
+        'distance' => 10000.0,
+        'moving_time' => 3000,
+        'average_cadence' => null,
+        'average_heartrate' => null,
+        'max_heartrate' => null,
+        'total_elevation_gain' => null,
+        'stream_summary' => null,
+    ], $detailAttrs));
+}
+
 it('returns the consistent fallback when no technical parts qualify', function (): void {
     $user = User::factory()->create();
     [$activity, $detail] = makeRun($user);
@@ -298,8 +319,7 @@ it('combines multiple technical parts into one sentence', function (): void {
 });
 
 it('returns the not-enough-data message for splits without enough per-km entries', function (?array $summary): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, ['stream_summary' => $summary]);
+    $detail = makeDetail(['stream_summary' => $summary]);
 
     expect(builder()->runInsightSplits($detail))
         ->toBe('Data split belum cukup buat dianalisis.');
@@ -310,8 +330,7 @@ it('returns the not-enough-data message for splits without enough per-km entries
 ]);
 
 it('labels a genuine negative split as negative when flagged upstream', function (): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => [
             'negative_split' => true,
             'per_km' => [
@@ -325,8 +344,7 @@ it('labels a genuine negative split as negative when flagged upstream', function
 });
 
 it('labels a flat run as merata, never positive split, when not a negative split', function (?bool $neg): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => [
             'negative_split' => $neg, // false or absent => not a strong negative split
             'per_km' => [
@@ -346,8 +364,7 @@ it('labels a flat run as merata, never positive split, when not a negative split
 ]);
 
 it('labels a genuine positive split when the second half slows meaningfully', function (): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => [
             'negative_split' => false,
             'per_km' => [
@@ -364,8 +381,7 @@ it('labels a genuine positive split when the second half slows meaningfully', fu
 });
 
 it('describes km range bands (wide, moderate, tight)', function (array $perKm, string $expected): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => ['per_km' => $perKm],
     ]);
 
@@ -389,9 +405,8 @@ it('describes km range bands (wide, moderate, tight)', function (array $perKm, s
 ]);
 
 it('capitalises every sentence, not just the first, in a multi-clause splits note', function (): void {
-    $user = User::factory()->create();
     // Positive split so two sentences assemble: direction + km range.
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => ['per_km' => [
             ['km' => 1, 'pace' => '4:30'],
             ['km' => 2, 'pace' => '5:00'],
@@ -409,10 +424,9 @@ it('capitalises every sentence, not just the first, in a multi-clause splits not
 });
 
 it('does not restate pace consistency three times on an even-effort run', function (): void {
-    $user = User::factory()->create();
     // Even effort (merata) with a tight range and low variability: the old
     // builder said "merata" + "pacing sangat konsisten" + "konsistensi pace ...".
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => [
             'pace_variability_sec' => 5.0,
             'per_km' => [
@@ -431,8 +445,7 @@ it('does not restate pace consistency three times on an even-effort run', functi
 });
 
 it('skips the km range part when fewer than three valid paces parse', function (): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => [
             'negative_split' => true,
             'per_km' => [
@@ -451,8 +464,7 @@ it('skips the km range part when fewer than three valid paces parse', function (
 });
 
 it('renders the wide km range with the fastest km pace string', function (): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => ['per_km' => [
             ['km' => 1, 'pace' => '4:30'],
             ['km' => 2, 'pace' => '5:00'],
@@ -466,8 +478,7 @@ it('renders the wide km range with the fastest km pace string', function (): voi
 });
 
 it('comments on variability consistency for splits (sangat bagus / cukup baik)', function (float $var, string $expected): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => [
             'pace_variability_sec' => $var,
             'per_km' => [
@@ -484,8 +495,7 @@ it('comments on variability consistency for splits (sangat bagus / cukup baik)',
 ]);
 
 it('omits the variability comment when variability is high or absent', function (?float $var): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => [
             'pace_variability_sec' => $var,
             'per_km' => [
@@ -503,16 +513,14 @@ it('omits the variability comment when variability is high or absent', function 
 ]);
 
 it('returns the no-zone-data message when zones are unavailable', function (): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, ['stream_summary' => null]);
+    $detail = makeDetail(['stream_summary' => null]);
 
     expect(builder()->runInsightZones($detail))
         ->toBe('Data heart rate zone belum tersedia.');
 });
 
 it('returns the no-zone-data message when zone minutes total zero', function (): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 0]],
     ]);
 
@@ -521,8 +529,7 @@ it('returns the no-zone-data message when zone minutes total zero', function ():
 });
 
 it('derives zone percentages from minutes when pct is absent', function (): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => ['time_in_zone_min' => ['Z1' => 30, 'Z2' => 30, 'Z3' => 0, 'Z4' => 0, 'Z5' => 0]],
     ]);
 
@@ -532,8 +539,7 @@ it('derives zone percentages from minutes when pct is absent', function (): void
 });
 
 it('uses pct directly and labels dominant zone with the 70% phrasing', function (): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => ['time_in_zone_pct' => ['Z1' => 5, 'Z2' => 75, 'Z3' => 20]],
     ]);
 
@@ -542,8 +548,7 @@ it('uses pct directly and labels dominant zone with the 70% phrasing', function 
 });
 
 it('labels dominant zone with the didominasi phrasing below 70%', function (): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => ['time_in_zone_pct' => ['Z1' => 30, 'Z2' => 40, 'Z3' => 30]],
     ]);
 
@@ -552,8 +557,7 @@ it('labels dominant zone with the didominasi phrasing below 70%', function (): v
 });
 
 it('assesses zone discipline across each band', function (array $pct, string $expected): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => ['time_in_zone_pct' => $pct],
     ]);
 
@@ -566,9 +570,8 @@ it('assesses zone discipline across each band', function (array $pct, string $ex
 ]);
 
 it('produces no discipline phrase when no band matches', function (): void {
-    $user = User::factory()->create();
     // easy 55 (<60), hard 25 (<30): match falls through to null.
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 35, 'Z3' => 20, 'Z4' => 5, 'Z5' => 0]],
     ]);
 
@@ -580,8 +583,7 @@ it('produces no discipline phrase when no band matches', function (): void {
 });
 
 it('warns when Z5 exceeds 10 percent', function (): void {
-    $user = User::factory()->create();
-    [, $detail] = makeRun($user, [
+    $detail = makeDetail([
         'stream_summary' => ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 40, 'Z3' => 10, 'Z4' => 15, 'Z5' => 15]],
     ]);
 

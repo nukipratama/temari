@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Exceptions\AI\TransientUpstreamException;
@@ -104,14 +103,14 @@ it('records a token-usage row on successful call', function (): void {
 });
 
 it('records user_id when passed by the narrator', function (): void {
-    $user = User::factory()->create();
-
+    // ai_token_usages.user_id has no FK constraint, so a literal id proves the
+    // same pass-through behavior without persisting a User row.
     structuredCaller(
         json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR),
         ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15],
-    )->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(userId: $user->id));
+    )->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(userId: 42));
 
-    expect(TokenUsage::query()->first()->user_id)->toBe($user->id);
+    expect(TokenUsage::query()->first()->user_id)->toBe(42);
 });
 
 it('flags truncated=true when the response stays length-truncated after the single retry', function (): void {

@@ -12,6 +12,9 @@ use App\Services\AI\Narrators\BriefingFeaturedKartuVoiceNarrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use OpenAI\Testing\ClientFake;
 
+// The narrator itself never queries the DB, but fakeStructuredCaller() wires a
+// real TokenUsageRecorder, and StructuredChatCaller::call() persists a
+// TokenUsage row on every successful response.
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -34,19 +37,23 @@ function bootFeaturedKartuNarrator(string $jsonContent): array
 /** @param  list<string>  $badges */
 function featuredCard(User $user, Rarity $rarity, ?float $distance, array $badges): RunCard
 {
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['distance' => $distance]);
-    RunCard::factory()->for($activity)->create([
+    $activity = Activity::factory()->make(['id' => 1, 'user_id' => $user->id]);
+    $detail = ActivityDetail::factory()->make(['activity_id' => 1, 'distance' => $distance]);
+    $activity->setRelation('detail', $detail);
+
+    $card = RunCard::factory()->make([
+        'activity_id' => 1,
         'rarity' => $rarity,
         'special_move' => 'Langkah Sunyi',
         'badges' => $badges,
     ]);
+    $card->setRelation('activity', $activity);
 
-    return RunCard::query()->with('activity.detail')->whereBelongsTo($activity)->firstOrFail();
+    return $card;
 }
 
 it('returns the kartu voice for the resolved card from a valid LLM response', function (): void {
-    $user = User::factory()->create(['name' => 'Ada Lovelace']);
+    $user = User::factory()->make(['id' => 1, 'name' => 'Ada Lovelace']);
     $card = featuredCard($user, Rarity::Legendary, 12000.0, ['anak_pagi', 'negative_split', 'tahan_diri', 'hari_panas']);
 
     ['narrator' => $narrator, 'client' => $client] = bootFeaturedKartuNarrator(json_encode([
@@ -67,7 +74,7 @@ it('returns the kartu voice for the resolved card from a valid LLM response', fu
 });
 
 it('returns a fallback line and skips the LLM when there is no featured card', function (): void {
-    $user = User::factory()->create();
+    $user = User::factory()->make(['id' => 1]);
 
     ['narrator' => $narrator, 'client' => $client] = bootFeaturedKartuNarrator(
         json_encode(['kartu_voice' => 'unused'], JSON_THROW_ON_ERROR),
@@ -79,7 +86,7 @@ it('returns a fallback line and skips the LLM when there is no featured card', f
 });
 
 it('handles a card whose run has a null distance (em dash km) and no badges', function (): void {
-    $user = User::factory()->create();
+    $user = User::factory()->make(['id' => 1]);
     $card = featuredCard($user, Rarity::Epic, null, []);
 
     ['narrator' => $narrator] = bootFeaturedKartuNarrator(json_encode([
@@ -90,7 +97,7 @@ it('handles a card whose run has a null distance (em dash km) and no badges', fu
 });
 
 it('throws UnavailableException when required keys are missing', function (): void {
-    $user = User::factory()->create();
+    $user = User::factory()->make(['id' => 1]);
     $card = featuredCard($user, Rarity::Rare, 9000.0, []);
 
     ['narrator' => $narrator] = bootFeaturedKartuNarrator(

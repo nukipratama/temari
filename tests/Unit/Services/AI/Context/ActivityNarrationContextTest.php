@@ -2,21 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\User;
 use App\Services\AI\Context\ActivityNarrationContext;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-
-uses(RefreshDatabase::class);
 
 function narrationDetail(array $attributes = []): ActivityDetail
 {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-
-    return ActivityDetail::factory()->for($activity)->create([
+    return ActivityDetail::factory()->make([
+        'activity_id' => 1,
         'start_date_local' => Carbon::today(),
         ...$attributes,
     ]);
@@ -34,7 +27,7 @@ it('builds the shared fields from a populated detail', function (): void {
         ],
     ]);
 
-    $ctx = ActivityNarrationContext::fromDetail($detail->fresh());
+    $ctx = ActivityNarrationContext::fromDetail($detail);
 
     expect($ctx->distanceMeters)->toBe(8250.0)
         ->and($ctx->decouplingPct)->toBe(5.2)
@@ -47,7 +40,7 @@ it('builds the shared fields from a populated detail', function (): void {
 it('rounds distance to the requested precision', function (): void {
     $detail = narrationDetail(['distance' => 8256.0]);
 
-    $ctx = ActivityNarrationContext::fromDetail($detail->fresh());
+    $ctx = ActivityNarrationContext::fromDetail($detail);
 
     expect($ctx->distanceKm(1))->toBe(8.3)
         ->and($ctx->distanceKm(2))->toBe(8.26)
@@ -57,7 +50,7 @@ it('rounds distance to the requested precision', function (): void {
 it('treats a missing distance as 0 km but null for the nullable accessor', function (): void {
     $detail = narrationDetail(['distance' => null]);
 
-    $ctx = ActivityNarrationContext::fromDetail($detail->fresh());
+    $ctx = ActivityNarrationContext::fromDetail($detail);
 
     expect($ctx->distanceMeters)->toBeNull()
         ->and($ctx->distanceKm(1))->toBe(0.0)
@@ -68,7 +61,7 @@ it('treats a missing distance as 0 km but null for the nullable accessor', funct
 it('falls back to nulls and an empty zone map when the stream summary is null', function (): void {
     $detail = narrationDetail(['stream_summary' => null]);
 
-    $ctx = ActivityNarrationContext::fromDetail($detail->fresh());
+    $ctx = ActivityNarrationContext::fromDetail($detail);
 
     expect($ctx->decouplingPct)->toBeNull()
         ->and($ctx->negativeSplit)->toBeNull()
