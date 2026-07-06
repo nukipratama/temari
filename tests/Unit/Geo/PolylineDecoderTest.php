@@ -37,3 +37,14 @@ it('returns null when the latitude chunk is truncated', function (): void {
 it('returns null when only the latitude chunk is present', function (): void {
     expect((new PolylineDecoder())->firstPoint('_p~iF'))->toBeNull();
 });
+
+it('returns the points decoded so far when the stream truncates mid-point after a valid first point', function (): void {
+    // A complete first-point encoding, then one dangling continuation byte
+    // ('~' has its 0x20 continuation bit set) that never terminates — decode()
+    // must return the one point it already had, not crash or drop it too.
+    $points = (new PolylineDecoder())->decode('_p~iF~ps|U' . '~');
+
+    expect($points)->toHaveCount(1)
+        ->and($points[0][0])->toEqualWithDelta(38.5, 0.0001)
+        ->and($points[0][1])->toEqualWithDelta(-120.2, 0.0001);
+});

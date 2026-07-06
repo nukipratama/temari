@@ -73,6 +73,17 @@ it('skips notes that declare no code_refs', function (): void {
     expect((new DocStalenessChecker())->findStale($this->dir, $resolver))->toBe([]);
 });
 
+it('skips a note with malformed YAML frontmatter instead of throwing', function (): void {
+    file_put_contents(
+        $this->dir.'/broken.md',
+        "---\ntitle: \"unterminated quote\ncode_refs:\n  - app/Foo.php\n---\n\n# Broken\n",
+    );
+
+    $resolver = fn (string $path): ?CarbonImmutable => CarbonImmutable::parse('2030-01-01');
+
+    expect((new DocStalenessChecker())->findStale($this->dir, $resolver))->toBe([]);
+});
+
 it('ignores underscore-prefixed scaffolding and .obsidian files', function (): void {
     staleFixtureNote($this->dir.'/_template.md', '2026-01-01', ['app/Foo.php']);
     mkdir($this->dir.'/.obsidian');

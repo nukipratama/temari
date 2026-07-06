@@ -78,6 +78,50 @@ it('hits the archive endpoint for activities older than 7 days', function (): vo
     Http::assertSent(fn ($req): bool => str_contains((string) $req->url(), 'archive-api.open-meteo.com/v1/archive'));
 });
 
+it('hits the forecast endpoint at exactly the 7-day boundary', function (): void {
+    $startedAt = CarbonImmutable::now()->subDays(7);
+    Http::fake([
+        'api.open-meteo.com/*' => Http::response([
+            'hourly' => [
+                'time' => [$startedAt->format('Y-m-d\TH:00')],
+                'temperature_2m' => [25.0],
+                'relative_humidity_2m' => [80],
+                'precipitation' => [0],
+                'wind_speed_10m' => [10.0],
+                'wind_gusts_10m' => [15.0],
+                'wind_direction_10m' => [90],
+            ],
+        ]),
+    ]);
+
+    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+
+    expect($snap)->toBeInstanceOf(WeatherSnapshot::class);
+    Http::assertSent(fn ($req): bool => str_contains((string) $req->url(), 'api.open-meteo.com/v1/forecast'));
+});
+
+it('hits the archive endpoint just past the 7-day boundary (8 days)', function (): void {
+    $startedAt = CarbonImmutable::now()->subDays(8);
+    Http::fake([
+        'archive-api.open-meteo.com/*' => Http::response([
+            'hourly' => [
+                'time' => [$startedAt->format('Y-m-d\TH:00')],
+                'temperature_2m' => [25.0],
+                'relative_humidity_2m' => [80],
+                'precipitation' => [0],
+                'wind_speed_10m' => [10.0],
+                'wind_gusts_10m' => [15.0],
+                'wind_direction_10m' => [90],
+            ],
+        ]),
+    ]);
+
+    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+
+    expect($snap)->toBeInstanceOf(WeatherSnapshot::class);
+    Http::assertSent(fn ($req): bool => str_contains((string) $req->url(), 'archive-api.open-meteo.com/v1/archive'));
+});
+
 it('fetchArchive forces the archive endpoint and returns an observed (non-forecast) snapshot', function (): void {
     $startedAt = CarbonImmutable::parse('2026-05-10 06:30:00'); // within the forecast window, but forced to archive
     Http::fake([
