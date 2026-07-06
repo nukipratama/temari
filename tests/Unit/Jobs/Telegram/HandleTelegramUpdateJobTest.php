@@ -106,3 +106,32 @@ it('ignores an update with no message', function (): void {
 
     Http::assertNothingSent();
 });
+
+it('ignores a message with a missing or non-int chat id', function (?array $chat): void {
+    runUpdate(['message' => ['chat' => $chat, 'text' => 'halo bot']]);
+
+    Http::assertNothingSent();
+})->with([
+    'missing chat entirely' => [null],
+    'non-numeric id' => [['id' => 'not-an-id']],
+]);
+
+it('clears a revoked connection from another user before re-linking the same chat_id', function (): void {
+    // A Telegram account previously linked to user A, then /stop-ped, now tries
+    // to link to user B via the same chat_id. Without clearing the stale
+    // revoked row first, the unique constraint on chat_id would throw.
+    $userA = User::factory()->create();
+    TelegramConnection::factory()->for($userA)->revoked()->create(['chat_id' => 555]);
+
+    $userB = User::factory()->create(['name' => 'Budi Lari']);
+    $token = app(TelegramLinkToken::class)->mint($userB->id);
+
+    runUpdate(startUpdate(555, $token, 'budi_runs'));
+
+    expect(TelegramConnection::query()->where('chat_id', 555)->where('user_id', $userA->id)->exists())->toBeFalse();
+    $this->assertDatabaseHas('telegram_connections', [
+        'user_id' => $userB->id,
+        'chat_id' => 555,
+        'revoked_at' => null,
+    ]);
+});
