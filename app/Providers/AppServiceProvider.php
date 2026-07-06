@@ -8,6 +8,7 @@ use App\Events\ActivityIngested;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Listeners\RecordScheduledTaskRun;
 use App\Listeners\VerifyDependencies;
+use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\VerdictTimeline;
@@ -66,8 +67,11 @@ class AppServiceProvider extends ServiceProvider
         // Edge basicauth (docker/Caddyfile) is the sole gate for the ops dashboards,
         // covering the pages and the Livewire action endpoint. These app-layer gates
         // stay open so the framework's dashboard authorization always passes through.
-        Gate::define('viewPulse', fn (): bool => true);
-        Gate::define('viewAiUsage', fn (): bool => true);
+        // The closures must accept a nullable user: Gate treats a zero-parameter
+        // closure as guest-unsafe and denies unauthenticated requests before ever
+        // calling it, which is exactly how ops hits these pages (no Strava session).
+        Gate::define('viewPulse', fn (?User $user = null): bool => true);
+        Gate::define('viewAiUsage', fn (?User $user = null): bool => true);
 
         RateLimiter::for('analysis-trigger', function (Request $request): Limit {
             $perMinute = max(1, (int) config('ai.rate_limit_per_minute', 8));

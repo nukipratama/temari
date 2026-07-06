@@ -62,6 +62,13 @@ it('leaves the viewPulse and viewAiUsage gates open (edge basicauth is the sole 
         ->and(Gate::forUser($demo)->allows('viewAiUsage'))->toBeTrue();
 });
 
+it('leaves the viewPulse and viewAiUsage gates open for guests (ops has no Strava session)', function (): void {
+    app()->detectEnvironment(fn (): string => 'production');
+
+    expect(Gate::allows('viewPulse'))->toBeTrue()
+        ->and(Gate::allows('viewAiUsage'))->toBeTrue();
+});
+
 it('binds AnalysisService as scoped, not a cross-request singleton', function (): void {
     // Under Octane the worker stays booted; `scoped` flushes between requests so
     // a leaked `withoutDispatching()` flag can't survive into the next request.
