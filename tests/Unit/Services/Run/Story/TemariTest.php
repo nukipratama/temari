@@ -329,7 +329,10 @@ it('moodForActivityOrDefault matches the mood the post-run line would persist', 
 
 it('moodForActivityOrDefault falls back to adem when the activity has no detail', function (): void {
     // Returns before hasPr()'s query, so the activity never needs to be persisted.
-    $activity = Activity::factory()->make(['id' => 1]);
+    // user_id is pinned so the factory doesn't fall through to its
+    // `User::factory()` default, which ->create()s a real User row even
+    // under ->make() (nested belongsTo factory attributes always persist).
+    $activity = Activity::factory()->make(['id' => 1, 'user_id' => 1]);
     $activity->setRelation('detail', null);
 
     expect(Temari::moodForActivityOrDefault($activity))->toBe(Temari::MOOD_ADEM);

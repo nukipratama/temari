@@ -19,13 +19,17 @@ function renderCard(RunCard $card): string
  * render() only reads $card->activity->detail (loadMissing() is a no-op once
  * the relation is already set), so a persisted chain isn't needed.
  *
+ * user_id is pinned to a literal so the Activity factory doesn't fall through
+ * to its `User::factory()` default, which persists a real User row even
+ * under ->make() (nested belongsTo factory attributes are always create()'d).
+ *
  * @param  array<string, mixed>  $detailAttrs
  * @param  array<string, mixed>  $cardAttrs
  */
 function makeRunCard(array $detailAttrs, array $cardAttrs): RunCard
 {
     $detail = ActivityDetail::factory()->make(array_merge(['activity_id' => 1], $detailAttrs));
-    $activity = Activity::factory()->make(['id' => 1]);
+    $activity = Activity::factory()->make(['id' => 1, 'user_id' => 1]);
     $activity->setRelation('detail', $detail);
 
     $card = RunCard::factory()->make(array_merge(['activity_id' => 1], $cardAttrs));

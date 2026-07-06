@@ -12,11 +12,18 @@ beforeEach(function (): void {
     $this->builder = new PrScoreboardBuilder();
 });
 
-/** A lightweight (un-persisted) PR carrying just category + value_sec. */
+/**
+ * A lightweight (un-persisted) PR carrying just category + value_sec.
+ *
+ * user_id is pinned to a literal so the factory doesn't fall through to its
+ * `User::factory()` default, which persists a real User row even under
+ * ->make() (nested belongsTo factory attributes are always create()'d).
+ */
 function makePr(string $category, int|float $valueSec = 0, ?int $id = null): PersonalRecord
 {
     return PersonalRecord::factory()->make([
         'id' => $id,
+        'user_id' => 1,
         'category' => $category,
         'value_sec' => $valueSec,
     ]);
@@ -143,11 +150,12 @@ describe('featuredExtras', function (): void {
                 ['distance' => 1000, 'moving_time' => 350],
             ],
         ]);
-        $activity = Activity::factory()->make(['id' => 1]);
+        $activity = Activity::factory()->make(['id' => 1, 'user_id' => 1]);
         $activity->setRelation('detail', $detail);
 
         $pr = PersonalRecord::factory()->make([
             'id' => 1,
+            'user_id' => 1,
             'activity_id' => 1,
             'category' => '5km',
             'value_sec' => 1751,
