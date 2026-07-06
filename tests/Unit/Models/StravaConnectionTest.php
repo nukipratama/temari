@@ -13,9 +13,12 @@ use Illuminate\Support\Facades\Crypt;
 uses(RefreshDatabase::class);
 
 it('encrypts the access token at rest', function (): void {
-    $connection = StravaConnection::factory()->create(['access_token' => 'plain-access']);
+    $connection = StravaConnection::factory()->make(['user_id' => 1, 'access_token' => 'plain-access']);
 
-    $stored = $connection->getRawOriginal('access_token');
+    // getRawOriginal() needs a synced $original snapshot (only set on save()); an
+    // unpersisted model's raw stored value lives in getAttributes() instead, and
+    // the encrypted cast is applied at set-time regardless of persistence.
+    $stored = $connection->getAttributes()['access_token'];
 
     expect($stored)->not->toBe('plain-access')
         ->and(Crypt::decryptString($stored))->toBe('plain-access')
@@ -23,9 +26,9 @@ it('encrypts the access token at rest', function (): void {
 });
 
 it('encrypts the refresh token at rest', function (): void {
-    $connection = StravaConnection::factory()->create(['refresh_token' => 'plain-refresh']);
+    $connection = StravaConnection::factory()->make(['user_id' => 1, 'refresh_token' => 'plain-refresh']);
 
-    $stored = $connection->getRawOriginal('refresh_token');
+    $stored = $connection->getAttributes()['refresh_token'];
 
     expect($stored)->not->toBe('plain-refresh')
         ->and(Crypt::decryptString($stored))->toBe('plain-refresh')
@@ -33,7 +36,7 @@ it('encrypts the refresh token at rest', function (): void {
 });
 
 it('casts token_expires_at to a Carbon instance', function (): void {
-    $connection = StravaConnection::factory()->create(['token_expires_at' => '2026-01-01 00:00:00']);
+    $connection = StravaConnection::factory()->make(['user_id' => 1, 'token_expires_at' => '2026-01-01 00:00:00']);
 
     expect($connection->token_expires_at)->toBeInstanceOf(Carbon::class)
         ->and($connection->token_expires_at->toDateTimeString())->toBe('2026-01-01 00:00:00');
@@ -47,7 +50,7 @@ it('casts strava_athlete_id to an integer on read', function (): void {
 });
 
 it('hides sensitive tokens from array serialization', function (): void {
-    $connection = StravaConnection::factory()->create();
+    $connection = StravaConnection::factory()->make(['user_id' => 1]);
 
     $array = $connection->toArray();
 
@@ -79,15 +82,15 @@ it('belongs to a user', function (): void {
 });
 
 it('casts revoked_at to a Carbon instance', function (): void {
-    $connection = StravaConnection::factory()->create(['revoked_at' => '2026-01-01 00:00:00']);
+    $connection = StravaConnection::factory()->make(['user_id' => 1, 'revoked_at' => '2026-01-01 00:00:00']);
 
     expect($connection->revoked_at)->toBeInstanceOf(Carbon::class)
         ->and($connection->revoked_at->toDateTimeString())->toBe('2026-01-01 00:00:00');
 });
 
 it('reports revoked state via isRevoked', function (): void {
-    $active = StravaConnection::factory()->create();
-    $revoked = StravaConnection::factory()->create(['revoked_at' => Carbon::now()]);
+    $active = StravaConnection::factory()->make(['user_id' => 1]);
+    $revoked = StravaConnection::factory()->make(['user_id' => 1, 'revoked_at' => Carbon::now()]);
 
     expect($active->isRevoked())->toBeFalse()
         ->and($revoked->isRevoked())->toBeTrue();

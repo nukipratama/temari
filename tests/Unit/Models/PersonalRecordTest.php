@@ -21,7 +21,8 @@ it('forUser scopes to records owned by the user', function (): void {
 });
 
 it('casts value_sec to float and set_at to Carbon', function (): void {
-    $pr = PersonalRecord::factory()->create([
+    $pr = PersonalRecord::factory()->make([
+        'user_id' => 1,
         'value_sec' => '341.82',
         'set_at' => '2026-04-09 00:00:00',
     ]);

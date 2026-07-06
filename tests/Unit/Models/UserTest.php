@@ -16,7 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 it('hides remember_token from array serialization', function (): void {
-    $user = User::factory()->create();
+    $user = User::factory()->make();
 
     expect($user->toArray())->not->toHaveKey('remember_token');
 });
@@ -129,10 +129,10 @@ it('notDemo scope excludes demo users', function (): void {
 });
 
 it('casts is_demo to a boolean and defaults it to false', function (): void {
-    $user = User::factory()->create();
+    $user = User::factory()->make();
 
     expect($user->is_demo)->toBeFalse()
-        ->and(User::factory()->demo()->create()->is_demo)->toBeTrue();
+        ->and(User::factory()->demo()->make()->is_demo)->toBeTrue();
 });
 
 it('has many activities', function (): void {

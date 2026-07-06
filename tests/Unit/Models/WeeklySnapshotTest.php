@@ -11,7 +11,8 @@ use Illuminate\Support\Carbon;
 uses(RefreshDatabase::class);
 
 it('casts week_ending to a Carbon date and load metrics to floats', function (): void {
-    $snap = WeeklySnapshot::factory()->create([
+    $snap = WeeklySnapshot::factory()->make([
+        'user_id' => 1,
         'week_ending' => '2026-05-10',
         'weekly_trimp' => '459',
         'monotony' => '0.92',
@@ -34,7 +35,7 @@ it('serializes week_ending as a plain Y-m-d string under a non-UTC timezone', fu
     date_default_timezone_set('Asia/Jakarta');
 
     try {
-        $snap = WeeklySnapshot::factory()->create(['week_ending' => '2026-06-14']);
+        $snap = WeeklySnapshot::factory()->make(['user_id' => 1, 'week_ending' => '2026-06-14']);
 
         $serialized = $snap->toArray()['week_ending'];
 

@@ -15,7 +15,8 @@ it('belongs to a user', function (): void {
 });
 
 it('casts chat id and notify flags', function (): void {
-    $connection = TelegramConnection::factory()->create([
+    $connection = TelegramConnection::factory()->make([
+        'user_id' => 1,
         'chat_id' => 12345,
         'notify_post_run' => true,
         'notify_weekly_recap' => false,

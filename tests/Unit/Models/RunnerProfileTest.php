@@ -19,7 +19,7 @@ it('belongs to a user', function (): void {
 });
 
 it('casts hr_zones to an array', function (): void {
-    $profile = RunnerProfile::factory()->create();
+    $profile = RunnerProfile::factory()->make(['user_id' => 1]);
 
     expect($profile->hr_zones)->toBeArray()
         ->and($profile->hr_zones['Z1'])->toBe(['lo' => 116, 'hi' => 138]);

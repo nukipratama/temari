@@ -20,7 +20,8 @@ it('forUser scopes to details whose activity belongs to the user', function (): 
 });
 
 it('casts numeric, boolean, datetime, and json columns', function (): void {
-    $detail = ActivityDetail::factory()->create([
+    $detail = ActivityDetail::factory()->make([
+        'activity_id' => 1,
         'start_date_local' => '2026-04-26 16:20:08',
         'distance' => '10001.23',
         'moving_time' => '3600',
@@ -77,16 +78,16 @@ it('cascades deletion from activity', function (): void {
 });
 
 it('paceSecPerKm computes pace and returns null for a zero-distance run', function (): void {
-    $normal = ActivityDetail::factory()->create(['distance' => 5000.0, 'moving_time' => 1500]);
-    $zeroDistance = ActivityDetail::factory()->create(['distance' => 0.0, 'moving_time' => 1500]);
+    $normal = ActivityDetail::factory()->make(['activity_id' => 1, 'distance' => 5000.0, 'moving_time' => 1500]);
+    $zeroDistance = ActivityDetail::factory()->make(['activity_id' => 1, 'distance' => 0.0, 'moving_time' => 1500]);
 
     expect($normal->paceSecPerKm())->toBe(300.0)
         ->and($zeroDistance->paceSecPerKm())->toBeNull();
 });
 
 it('streamSummary falls back to an empty array when stream_summary is null', function (): void {
-    $withSummary = ActivityDetail::factory()->create(['stream_summary' => ['decoupling_pct' => 5.5]]);
-    $withoutSummary = ActivityDetail::factory()->create(['stream_summary' => null]);
+    $withSummary = ActivityDetail::factory()->make(['activity_id' => 1, 'stream_summary' => ['decoupling_pct' => 5.5]]);
+    $withoutSummary = ActivityDetail::factory()->make(['activity_id' => 1, 'stream_summary' => null]);
 
     expect($withSummary->streamSummary())->toBe(['decoupling_pct' => 5.5])
         ->and($withoutSummary->streamSummary())->toBe([]);

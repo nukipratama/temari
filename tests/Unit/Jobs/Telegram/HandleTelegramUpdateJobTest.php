@@ -54,8 +54,9 @@ it('links the chat and replies with a welcome naming the account on a valid toke
 });
 
 it('does not link and replies with the expired copy on an expired token', function (): void {
-    $user = User::factory()->create();
-    $expired = $this->travelTo(now()->subHours(2), fn (): string => app(TelegramLinkToken::class)->mint($user->id));
+    // The expiry check fails before the job ever reads the user row, so mint()
+    // only needs a plausible id, not a persisted User.
+    $expired = $this->travelTo(now()->subHours(2), fn (): string => app(TelegramLinkToken::class)->mint(999));
 
     runUpdate(startUpdate(555, $expired));
 

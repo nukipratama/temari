@@ -12,7 +12,7 @@ use Illuminate\Support\Carbon;
 uses(RefreshDatabase::class);
 
 it('casts for_date to Carbon', function (): void {
-    $line = StoryLine::factory()->dailyGreeting('2026-05-10')->create();
+    $line = StoryLine::factory()->dailyGreeting('2026-05-10')->make(['user_id' => 1]);
 
     expect($line->for_date)->toBeInstanceOf(Carbon::class)
         ->and($line->for_date->toDateString())->toBe('2026-05-10');

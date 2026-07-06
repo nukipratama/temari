@@ -27,7 +27,7 @@ function startRowCooldown(Analysis $row): string
 
 it('returns null cooldown for non-Done rows even with an active window', function (): void {
     foreach ([AnalysisStatus::Pending, AnalysisStatus::Queued, AnalysisStatus::Processing, AnalysisStatus::Failed] as $i => $status) {
-        $row = Analysis::factory()->create([
+        $row = Analysis::factory()->make([
             'discriminator' => "2026-05-{$i}",
             'status' => $status,
         ]);
@@ -37,25 +37,25 @@ it('returns null cooldown for non-Done rows even with an active window', functio
 });
 
 it('returns null cooldown for a Done row with no active window', function (): void {
-    $row = Analysis::factory()->done('x')->create();
+    $row = Analysis::factory()->done('x')->make();
     expect($row->cooldownRemaining())->toBeNull();
 });
 
 it('returns positive remaining seconds while the window is active', function (): void {
-    $row = Analysis::factory()->done('x')->create();
+    $row = Analysis::factory()->done('x')->make();
     startRowCooldown($row);
     expect($row->cooldownRemaining())->toBeGreaterThan(0)->toBeLessThanOrEqual(Cooldown::WINDOW_SECONDS);
 });
 
 it('returns null once the window is released', function (): void {
-    $row = Analysis::factory()->done('x')->create();
+    $row = Analysis::factory()->done('x')->make();
     $key = startRowCooldown($row);
     RateLimiter::clear($key);
     expect($row->cooldownRemaining())->toBeNull();
 });
 
 it('toPayload surfaces retry_after_seconds from the active window', function (): void {
-    $row = Analysis::factory()->done('hi')->create();
+    $row = Analysis::factory()->done('hi')->make();
     startRowCooldown($row);
 
     $payload = Analysis::toPayload($row, $row->analysis_type, $row->subject_type, $row->subject_id, $row->discriminator);

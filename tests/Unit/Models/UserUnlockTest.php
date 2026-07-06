@@ -18,7 +18,8 @@ it('belongs to a user', function (): void {
 });
 
 it('casts unlocked_at to Carbon and metadata to array', function (): void {
-    $unlock = UserUnlock::factory()->create([
+    $unlock = UserUnlock::factory()->make([
+        'user_id' => 1,
         'unlocked_at' => '2026-05-11 10:00:00',
         'metadata' => ['source' => 'pr_engine'],
     ]);
