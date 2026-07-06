@@ -5,7 +5,10 @@ declare(strict_types=1);
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\StravaConnection;
 use App\Models\User;
+use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
@@ -228,6 +231,19 @@ it('redirects back to login when strava returns an error', function (): void {
 
 it('redirects back to login when fetching the strava user fails', function (): void {
     mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andThrow(new InvalidStateException()));
+
+    $this->get(route('auth.strava.callback'))
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors(['strava' => 'Gagal nyambungin Strava. Coba lagi sebentar ya.']);
+
+    $this->assertGuest();
+});
+
+it('redirects back to login when the strava API errors out during the callback', function (): void {
+    // A distinct failure mode from InvalidStateException: Strava's token/user
+    // endpoint itself erroring (500/timeout) during the OAuth callback.
+    $response = new Response(new Psr7Response(500));
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andThrow(new RequestException($response)));
 
     $this->get(route('auth.strava.callback'))
         ->assertRedirect(route('login'))
