@@ -23,10 +23,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Classify the push so each suite skips when its files weren't touched.
-      # Shared-infra paths (ci.yml, Dockerfile, compose, .env.example) match
-      # both, so an infra change runs the full pipeline. Diff is against the
-      # merge-base with main; on main pushes both jobs run anyway (see the `if`).
       - name: Detect changed areas
         id: filter
         run: |
@@ -44,7 +40,6 @@ jobs:
           echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
           echo "Result: backend=$backend frontend=$frontend"
 
-  # Runs on every event, independent of the path filter.
   secret-scan:
     runs-on: ubuntu-latest
     permissions:
@@ -58,8 +53,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Runs on every event, independent of the path filter: a code deletion anywhere
-  # can orphan a citation in docs/, so guard against "the doc references code that's gone".
   docs-citation-guard:
     runs-on: ubuntu-latest
     steps:
@@ -71,10 +64,12 @@ jobs:
       - name: Check doc citations resolve
         run: php scripts/check-doc-citations.php
 
-  # ─── PR-child: Unit tests ───────────────────────────────────────────────
-  # Only runs on PR branches (skipped on main push).
-  backend-unit:
-    name: Backend (Unit)
+  # ═════════════════════════════════════════════════════════════════════════
+  # Backend — PR-only child jobs (each with its own MySQL + Redis)
+  # ═════════════════════════════════════════════════════════════════════════
+
+  backend-unit-run:
+    name: Unit · Run
     if: github.ref != 'refs/heads/main' && needs.changes.outputs.backend == 'true'
     needs: changes
     runs-on: ubuntu-latest
@@ -144,10 +139,7 @@ jobs:
       - name: Stub .env
         run: cp .env.example .env
 
-      - name: Class/test 1:1 structure check
-        run: ./vendor/bin/pest --group=structure
-
-      - name: Unit tests
+      - name: Unit tests — Services/Run
         env:
           APP_ENV: testing
           DB_CONNECTION: mysql
@@ -159,7 +151,7 @@ jobs:
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
         run: |
-          ./vendor/bin/pest tests/Unit --parallel --processes="$(nproc)" \
+          ./vendor/bin/pest --testsuite=Unit-Services-Run --parallel --processes="$(nproc)" \
             --fail-on-warning --fail-on-notice \
             --fail-on-deprecation --fail-on-risky \
             --fail-on-phpunit-warning --fail-on-phpunit-notice \
@@ -170,7 +162,7 @@ jobs:
         if: always()
         run: |
           {
-            echo "### Backend — Unit"
+            echo "### Backend — Unit · Run"
             echo ""
             echo "| | |"
             echo "| --- | --- |"
@@ -180,9 +172,216 @@ jobs:
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # ─── PR-child: Feature tests ────────────────────────────────────────────
+  backend-unit-ai:
+    name: Unit · AI
+    if: github.ref != 'refs/heads/main' && needs.changes.outputs.backend == 'true'
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: teman_lari_testing
+          MYSQL_USER: sail
+          MYSQL_PASSWORD: password
+        ports: ['0:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ppassword"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+          --tmpfs /var/lib/mysql:rw
+      redis:
+        image: redis:8-alpine
+        ports: ['0:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Show runner resources
+        run: |
+          {
+            echo "### Runner: $(nproc) vCPU ($(uname -m))"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| nproc (= test workers) | $(nproc) |"
+            echo "| Model | $(lscpu | sed -n 's/^Model name:[[:space:]]*//p') |"
+            echo "| Memory | $(free -h | awk '/^Mem:/{print $2}') |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: pcov
+          ini-values: >-
+            opcache.enable=1,
+            opcache.enable_cli=1,
+            opcache.memory_consumption=256,
+            opcache.max_accelerated_files=20000,
+            opcache.validate_timestamps=0,
+            opcache.jit=disable,
+            opcache.jit_buffer_size=0
+
+      - name: Cache composer vendor
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
+      - name: Install composer deps
+        run: composer install --prefer-dist --no-interaction --no-progress --classmap-authoritative
+
+      - name: Audit composer dependencies
+        run: composer audit --no-interaction
+
+      - name: Stub .env
+        run: cp .env.example .env
+
+      - name: Unit tests — Services/AI
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+          DB_DATABASE: teman_lari_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+        run: |
+          ./vendor/bin/pest --testsuite=Unit-Services-AI --parallel --processes="$(nproc)" \
+            --fail-on-warning --fail-on-notice \
+            --fail-on-deprecation --fail-on-risky \
+            --fail-on-phpunit-warning --fail-on-phpunit-notice \
+            --fail-on-phpunit-deprecation 2>&1 | tee /tmp/pest-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Pest summary
+        if: always()
+        run: |
+          {
+            echo "### Backend — Unit · AI"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' /tmp/pest-output.txt \
+              | grep -E "^[[:space:]]*(Tests|Duration|Parallel):" \
+              | sed -E 's/^[[:space:]]*([A-Za-z]+):[[:space:]]*/| \1 | /; s/$/ |/'
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  backend-unit-other:
+    name: Unit · Other
+    if: github.ref != 'refs/heads/main' && needs.changes.outputs.backend == 'true'
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: teman_lari_testing
+          MYSQL_USER: sail
+          MYSQL_PASSWORD: password
+        ports: ['0:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ppassword"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+          --tmpfs /var/lib/mysql:rw
+      redis:
+        image: redis:8-alpine
+        ports: ['0:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Show runner resources
+        run: |
+          {
+            echo "### Runner: $(nproc) vCPU ($(uname -m))"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| nproc (= test workers) | $(nproc) |"
+            echo "| Model | $(lscpu | sed -n 's/^Model name:[[:space:]]*//p') |"
+            echo "| Memory | $(free -h | awk '/^Mem:/{print $2}') |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: pcov
+          ini-values: >-
+            opcache.enable=1,
+            opcache.enable_cli=1,
+            opcache.memory_consumption=256,
+            opcache.max_accelerated_files=20000,
+            opcache.validate_timestamps=0,
+            opcache.jit=disable,
+            opcache.jit_buffer_size=0
+
+      - name: Cache composer vendor
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
+      - name: Install composer deps
+        run: composer install --prefer-dist --no-interaction --no-progress --classmap-authoritative
+
+      - name: Audit composer dependencies
+        run: composer audit --no-interaction
+
+      - name: Stub .env
+        run: cp .env.example .env
+
+      - name: Unit tests — Other
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+          DB_DATABASE: teman_lari_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+        run: |
+          ./vendor/bin/pest --testsuite=Unit-Other --parallel --processes="$(nproc)" \
+            --fail-on-warning --fail-on-notice \
+            --fail-on-deprecation --fail-on-risky \
+            --fail-on-phpunit-warning --fail-on-phpunit-notice \
+            --fail-on-phpunit-deprecation 2>&1 | tee /tmp/pest-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Pest summary
+        if: always()
+        run: |
+          {
+            echo "### Backend — Unit · Other"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' /tmp/pest-output.txt \
+              | grep -E "^[[:space:]]*(Tests|Duration|Parallel):" \
+              | sed -E 's/^[[:space:]]*([A-Za-z]+):[[:space:]]*/| \1 | /; s/$/ |/'
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
   backend-feature:
-    name: Backend (Feature)
+    name: Feature
     if: github.ref != 'refs/heads/main' && needs.changes.outputs.backend == 'true'
     needs: changes
     runs-on: ubuntu-latest
@@ -264,7 +463,7 @@ jobs:
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
         run: |
-          ./vendor/bin/pest tests/Feature --parallel --processes="$(nproc)" \
+          ./vendor/bin/pest --testsuite=Feature --parallel --processes="$(nproc)" \
             --fail-on-warning --fail-on-notice \
             --fail-on-deprecation --fail-on-risky \
             --fail-on-phpunit-warning --fail-on-phpunit-notice \
@@ -285,9 +484,9 @@ jobs:
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # ─── Backend: main push ──────────────────────────────────────────────────
-  # Full combined suite + coverage (existing behavior). Runs only on main push.
-  # Branch protection references this job name as the required backend check.
+  # ═════════════════════════════════════════════════════════════════════════
+  # Backend — main push (full combined suite + coverage, existing behavior)
+  # ═════════════════════════════════════════════════════════════════════════
   backend-tests:
     if: github.ref == 'refs/heads/main' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main')
     needs: changes
@@ -395,22 +594,19 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ─── Backend: PR aggregator ─────────────────────────────────────────────
-  # Lightweight — no services, no PHP, no checkout. Just a shell-echo so
-  # the same `backend-tests` name exists for branch protection on PRs.
-  # The actual testing happened in backend-unit + backend-feature.
+  # Lightweight — no services, no PHP, no checkout. Just a shell-echo.
+  # Actual testing happened in the 4 PR child jobs above.
   backend-tests-pr:
     name: Backend
-    needs: [backend-unit, backend-feature]
+    needs: [backend-unit-run, backend-unit-ai, backend-unit-other, backend-feature]
     if: github.ref != 'refs/heads/main' && !cancelled() && needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Backend tests passed (unit + feature)"
+      - run: echo "All backend children passed"
 
-  # ─── Frontend tests ────────────────────────────────────────────────────
-  # Branch protection references this job name as the required frontend check.
-  #
-  # On main push: single job, full suite + coverage (existing behavior).
-  # On PR branch: 2 shards via matrix (no coverage — faster).
+  # ═════════════════════════════════════════════════════════════════════════
+  # Frontend tests
+  # ═════════════════════════════════════════════════════════════════════════
   frontend-tests:
     needs: changes
     if: ${{ needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main' }}
@@ -457,7 +653,6 @@ jobs:
       - name: Audit npm dependencies (prod, high+)
         run: npm audit --omit=dev --audit-level=high
 
-      # ── main push: full suite + coverage ──
       - name: Class/test 1:1 structure check
         if: github.ref == 'refs/heads/main'
         run: npx vitest run resources/js/test/structure.test.ts
@@ -466,7 +661,6 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: npm run test:coverage
 
-      # ── PR branch: shard ──
       - name: Component/test 1:1 structure check
         if: github.ref != 'refs/heads/main' && matrix.shard == 1
         run: npx vitest run resources/js/test/structure.test.ts
@@ -489,7 +683,9 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  # Single required check for branch protection.
+  # ═════════════════════════════════════════════════════════════════════════
+  # CI gate + Deploy
+  # ═════════════════════════════════════════════════════════════════════════
   ci-gate:
     needs: [backend-tests, backend-tests-pr, frontend-tests, secret-scan]
     if: always()
@@ -498,8 +694,6 @@ jobs:
       - name: Require upstream jobs to have succeeded (or cleanly skipped)
         run: |
           for r in "${{ needs.backend-tests.result }}" "${{ needs.backend-tests-pr.result }}" "${{ needs.frontend-tests.result }}"; do
-            # Empty means the job was never scheduled (its if: was false on this
-            # branch) — that's fine, skip the check.
             [ -z "$r" ] && continue
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a test job did not pass ($r)"; exit 1; }
           done

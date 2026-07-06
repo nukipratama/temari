@@ -8,6 +8,32 @@
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
         </testsuite>
+        <testsuite name="Unit-Services-Run">
+            <directory>tests/Unit/Services/Run</directory>
+            <directory>tests/Unit/Services/Weather</directory>
+            <directory>tests/Unit/Services/Geo</directory>
+        </testsuite>
+        <testsuite name="Unit-Services-AI">
+            <directory>tests/Unit/Services/AI</directory>
+        </testsuite>
+        <testsuite name="Unit-Other">
+            <directory>tests/Unit/Services/Gamification</directory>
+            <directory>tests/Unit/Services/Strava</directory>
+            <directory>tests/Unit/Services/Telegram</directory>
+            <directory>tests/Unit/Services/Docs</directory>
+            <directory>tests/Unit/Jobs</directory>
+            <directory>tests/Unit/Models</directory>
+            <directory>tests/Unit/Console</directory>
+            <directory>tests/Unit/Listeners</directory>
+            <directory>tests/Unit/Enums</directory>
+            <directory>tests/Unit/Exceptions</directory>
+            <directory>tests/Unit/Http</directory>
+            <directory>tests/Unit/Policies</directory>
+            <directory>tests/Unit/Providers</directory>
+            <directory>tests/Unit/Support</directory>
+            <directory>tests/Unit/Seeders</directory>
+            <directory>tests/Unit/Architecture</directory>
+        </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
