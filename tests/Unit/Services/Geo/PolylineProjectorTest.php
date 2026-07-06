@@ -10,6 +10,17 @@ function project(?string $polyline, float $w = 320, float $h = 320, float $pad =
     return (new PolylineProjector(new PolylineDecoder()))->project($polyline, $w, $h, $pad);
 }
 
+/**
+ * @return list<array{0: float, 1: float}>
+ */
+function parseProjectedCoords(string $points): array
+{
+    return array_map(
+        fn (string $pair): array => array_map('floatval', explode(',', $pair)),
+        explode(' ', $points),
+    );
+}
+
 it('returns null when there is no polyline', function (): void {
     expect(project(null))->toBeNull()
         ->and(project(''))->toBeNull();
@@ -54,10 +65,7 @@ it('handles a perfectly horizontal route (constant latitude) without dividing by
     $points = (new PolylineProjector($decoder))->project('irrelevant', 320, 320, 24);
 
     expect($points)->not->toBeNull();
-    $coords = array_map(
-        fn (string $pair): array => array_map('floatval', explode(',', $pair)),
-        explode(' ', $points),
-    );
+    $coords = parseProjectedCoords($points);
     // Constant latitude -> constant y; longitude differs -> x differs. Both finite.
     expect($coords[0][1])->toBe($coords[1][1])
         ->and($coords[0][0])->not->toBe($coords[1][0]);
@@ -73,10 +81,7 @@ it('handles a perfectly vertical route (constant longitude) without dividing by 
     $points = (new PolylineProjector($decoder))->project('irrelevant', 320, 320, 24);
 
     expect($points)->not->toBeNull();
-    $coords = array_map(
-        fn (string $pair): array => array_map('floatval', explode(',', $pair)),
-        explode(' ', $points),
-    );
+    $coords = parseProjectedCoords($points);
     // Constant longitude -> constant x; latitude differs -> y differs. Both finite.
     expect($coords[0][0])->toBe($coords[1][0])
         ->and($coords[0][1])->not->toBe($coords[1][1]);
