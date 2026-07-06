@@ -44,12 +44,26 @@ function postRunAnalysisFor(User $user, string $content = 'Mantap!'): int
     ])->id;
 }
 
-function runSend(int $analysisId): void
+/**
+ * A fake renderer returning dummy PNG bytes — RunCardImageRenderer's own
+ * rendering correctness has its own dedicated (real-Imagick) test suite; this
+ * job only needs to know "photo when render succeeds, text when it doesn't."
+ */
+function fakeImageRenderer(?Throwable $throws = null): RunCardImageRenderer
+{
+    $renderer = Mockery::mock(RunCardImageRenderer::class);
+    $expectation = $renderer->shouldReceive('render');
+    $throws !== null ? $expectation->andThrow($throws) : $expectation->andReturn('fake-png-bytes');
+
+    return $renderer;
+}
+
+function runSend(int $analysisId, ?RunCardImageRenderer $imageRenderer = null): void
 {
     (new SendTelegramNotificationJob($analysisId))->handle(
         app(NotifiableAnalysis::class),
         app(TelegramClient::class),
-        app(RunCardImageRenderer::class),
+        $imageRenderer ?? fakeImageRenderer(),
     );
 }
 
@@ -91,6 +105,28 @@ it('sends the post-run notification as a single photo with the narration as capt
             && str_contains((string) $caption, 'Pace konsisten.');
     });
     Http::assertNotSent(fn ($request): bool => str_contains((string) $request->url(), '/sendMessage'));
+});
+
+it('falls back to a text message when card rendering throws', function (): void {
+    fakeTelegramOk();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'notify_post_run' => true]);
+
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
+    RunCard::factory()->for($activity)->create(['rarity' => 'epic']);
+    $analysisId = Analysis::factory()->done('Render gagal, tetap kirim.')->create([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'discriminator' => null,
+    ])->id;
+
+    runSend($analysisId, fakeImageRenderer(throws: new RuntimeException('imagick boom')));
+
+    Http::assertSent(fn ($request): bool => str_contains((string) $request->url(), '/sendMessage')
+        && str_contains((string) $request['text'], 'Render gagal, tetap kirim.'));
+    Http::assertNotSent(fn ($request): bool => str_contains((string) $request->url(), '/sendPhoto'));
 });
 
 it('falls back to a text message when the post-run activity has no card', function (): void {
@@ -194,7 +230,7 @@ function runForceSend(int $analysisId): void
     (new SendTelegramNotificationJob($analysisId, force: true))->handle(
         app(NotifiableAnalysis::class),
         app(TelegramClient::class),
-        app(RunCardImageRenderer::class),
+        fakeImageRenderer(),
     );
 }
 
