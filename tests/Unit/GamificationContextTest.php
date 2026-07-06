@@ -97,7 +97,10 @@ it('counts run cards by rarity across the user\'s activities', function (): void
 
     $ctx = GamificationContext::forUser($user);
 
-    expect($ctx->rarityCounts)->toBe(['rare' => 2, 'legendary' => 1]);
+    // toEqual (not toBe): the underlying query is a GROUP BY with no ORDER BY,
+    // so MySQL doesn't guarantee key order — only the rarity=>count mapping
+    // itself is part of the contract.
+    expect($ctx->rarityCounts)->toEqual(['rare' => 2, 'legendary' => 1]);
 });
 
 it('counts runs at exactly the 10km and 5km thresholds as qualifying', function (): void {
