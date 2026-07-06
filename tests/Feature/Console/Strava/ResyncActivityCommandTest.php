@@ -31,3 +31,17 @@ it('returns a failure when the activity does not exist', function (): void {
         ->expectsOutputToContain('Activity 999999 not found.')
         ->assertFailed();
 });
+
+it('lets a pipeline failure propagate uncaught, unlike the batch strava:sync command', function (): void {
+    // Deliberate design difference from SyncCommand (which swallows Throwable
+    // per-user so one bad run doesn't kill a batch): this command is a
+    // single-activity admin tool for iterating on compute logic, so a failure
+    // should surface immediately with a real stack trace, not be swallowed.
+    $activity = Activity::factory()->create();
+
+    $pipeline = Mockery::mock(ActivityPipeline::class);
+    $pipeline->shouldReceive('ingest')->once()->andThrow(new RuntimeException('boom'));
+    $this->app->instance(ActivityPipeline::class, $pipeline);
+
+    $this->artisan('strava:resync-activity', ['activity' => $activity->id])->run();
+})->throws(RuntimeException::class, 'boom');
