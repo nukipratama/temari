@@ -1,50 +1,20 @@
-import { renderHook } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { formatNumericTooltip, kmAxisTick, tooltipFromTheme, useChartTheme } from './chartTheme';
 
-afterEach(() => {
-    vi.unstubAllGlobals();
-});
-
-function mockMatchMedia(matches: boolean) {
-    const fn = vi.fn(() => ({
-        matches,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-    }));
-    Object.defineProperty(globalThis, 'matchMedia', { configurable: true, writable: true, value: fn });
-}
-
 describe('useChartTheme', () => {
-    it('returns light theme when prefers-color-scheme is light', () => {
-        mockMatchMedia(false);
-        const { result } = renderHook(() => useChartTheme());
-        expect(result.current.isDark).toBe(false);
-        expect(result.current.tick).toBe('#3d362a');
-    });
-
-    it('returns dark theme when prefers-color-scheme is dark', () => {
-        mockMatchMedia(true);
-        const { result } = renderHook(() => useChartTheme());
-        expect(result.current.isDark).toBe(true);
-        expect(result.current.tick).toBe('#d0c6b5');
-    });
-
-    it('falls back to light when matchMedia is absent (SSR)', () => {
-        // @ts-expect-error stubbing for SSR-like env
-        delete globalThis.matchMedia;
-        const { result } = renderHook(() => useChartTheme());
-        expect(result.current.isDark).toBe(false);
+    it('returns the light theme (app is light-mode only)', () => {
+        const theme = useChartTheme();
+        expect(theme.isDark).toBe(false);
+        expect(theme.tick).toBe('#3d362a');
     });
 });
 
 describe('tooltipFromTheme', () => {
     it('forwards theme colors into a Chart.js tooltip config', () => {
-        mockMatchMedia(false);
-        const { result } = renderHook(() => useChartTheme());
-        const tip = tooltipFromTheme(result.current);
-        expect(tip.backgroundColor).toBe(result.current.tooltip.backgroundColor);
-        expect(tip.bodyColor).toBe(result.current.tooltip.bodyColor);
+        const theme = useChartTheme();
+        const tip = tooltipFromTheme(theme);
+        expect(tip.backgroundColor).toBe(theme.tooltip.backgroundColor);
+        expect(tip.bodyColor).toBe(theme.tooltip.bodyColor);
         expect(tip.enabled).toBe(true);
     });
 });

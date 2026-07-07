@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\UnlockEngine;
+use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Enumerable;
 use Illuminate\Support\LazyCollection;
@@ -26,6 +27,7 @@ class WeeklyAggregator
 
     public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot
     {
+        TrainingLoad::clearSummaryCache($user);
         $weekEnding = $when->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
         // Load a converged lead-in window through this week so the CTL EWMA
@@ -50,6 +52,7 @@ class WeeklyAggregator
      */
     public function rebuildForwardFrom(User $user, CarbonInterface $weekAnchor): ?WeeklySnapshot
     {
+        TrainingLoad::clearSummaryCache($user);
         $anchorWeekEnding = Carbon::instance($weekAnchor)->endOfWeek(Carbon::SUNDAY)->startOfDay();
         $lastWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
@@ -109,6 +112,7 @@ class WeeklyAggregator
 
     public function rebuildFor(User $user): int
     {
+        TrainingLoad::clearSummaryCache($user);
         /** @var \Illuminate\Support\LazyCollection<int, ActivityDetail> $details */
         $details = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')

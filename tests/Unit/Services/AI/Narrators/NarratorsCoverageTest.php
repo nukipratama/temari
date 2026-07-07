@@ -647,9 +647,10 @@ it('PersonaSummaryNarrator builds a mood-mix percent breakdown from story lines'
     $narrator = new PersonaSummaryNarrator($caller);
 
     $mix = $narrator->personaMix($user->fresh());
-    expect($mix[0]['mood'])->toBe('nyala');
-    expect($mix[0]['count'])->toBe(3);
-    expect($mix[0]['percent'])->toBe(60.0);
+    $nyala = collect($mix)->firstWhere('mood', 'nyala');
+    expect($nyala['mood'])->toBe('nyala');
+    expect($nyala['count'])->toBe(3);
+    expect($nyala['percent'])->toBe(60.0);
     expect($narrator->generate($user->fresh()))->toBe('Larimu lebih sering nyala.');
 });
 

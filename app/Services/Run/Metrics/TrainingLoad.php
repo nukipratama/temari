@@ -8,6 +8,7 @@ use Illuminate\Support\Collection;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class TrainingLoad
@@ -42,15 +43,26 @@ class TrainingLoad
     /**
      * @return array<string, mixed>|null
      */
+    /**
+     * Cache TTL for the dashboard training-load summary. The numbers only
+     * change when an activity is ingested, so a short cache trades a tiny
+     * staleness window for skipping the 365-day data-load + EWMA roll.
+     */
+    private const int SUMMARY_CACHE_SECONDS = 300;
+
     public function summary(User $user, ?Carbon $asOf = null): ?array
     {
         $today = ($asOf ?? Carbon::today())->copy()->startOfDay();
-        $dailyTrimp = $this->loadDailyTrimp($user, $today);
-        if ($dailyTrimp === []) {
-            return null;
-        }
+        $cacheKey = "training-load:{$user->id}:{$today->toDateString()}";
 
-        return $this->summaryFromDailyMap($dailyTrimp, $today);
+        return Cache::remember($cacheKey, self::SUMMARY_CACHE_SECONDS, function () use ($user, $today): ?array {
+            $dailyTrimp = $this->loadDailyTrimp($user, $today);
+            if ($dailyTrimp === []) {
+                return null;
+            }
+
+            return $this->summaryFromDailyMap($dailyTrimp, $today);
+        });
     }
 
     /**
@@ -111,6 +123,16 @@ class TrainingLoad
         return $rows->mapWithKeys(fn (object $r): array => [
             $r->dt => (float) $r->trimp_sum,
         ])->all();
+    }
+
+    /**
+     * Bust the summary cache for a user so the next dashboard load sees fresh
+     * ATL/CTL values. Called after activity ingest or deletion.
+     */
+    public static function clearSummaryCache(User $user): void
+    {
+        $today = Carbon::today()->toDateString();
+        Cache::forget("training-load:{$user->id}:{$today}");
     }
 
     public function formStatus(float $form, float $ctl): string
