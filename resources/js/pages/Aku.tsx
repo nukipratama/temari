@@ -15,7 +15,7 @@ import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import ProgressionChart from '@/components/koleksi/ProgressionChart';
-import { formatDurationHMS, formatIdDate, formatPace, formatShortDateId, monthsSinceId } from '@/lib/pace';
+import { formatDurationHMS, formatPace, formatShortDateId, monthsSinceId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
@@ -93,7 +93,6 @@ export default function Aku({
     const stravaRevoked = stravaSync?.state === 'revoked';
     const firstName = sharedUser?.first_name ?? identity.name.split(' ')[0] ?? '';
     const firstRunShort = identity.first_run_at ? formatShortDateId(identity.first_run_at) : null;
-    const memberSince = identity.member_since ? formatIdDate(identity.member_since, 'long') : null;
     const monthsSinceFirstRun = monthsSinceId(identity.first_run_at);
 
     const eyebrowParts: string[] = ['Aku'];
@@ -137,10 +136,6 @@ export default function Aku({
                                 />
                             )}
                             <div className="mt-5 flex flex-wrap items-center gap-2">
-                                <Chip tone="onSky">
-                                    {identity.strava_connected ? 'Strava aktif' : 'Strava off'}
-                                </Chip>
-                                {memberSince && <Chip tone="onSky">Gabung sejak {memberSince}</Chip>}
                                 {stravaRevoked && (
                                     <a
                                         href="/auth/strava/redirect"
@@ -367,9 +362,11 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
     return (
         <div className="flex flex-col gap-5">
             <div className="flex items-center justify-between gap-3">
-                <Chip tone="horizon">
-                    Telegram aktif{telegram.username ? ` · @${telegram.username}` : ''}
-                </Chip>
+                <span className="min-w-0 overflow-hidden">
+                    <Chip tone="horizon" className="truncate">
+                        Telegram aktif{telegram.username ? ` · @${telegram.username}` : ''}
+                    </Chip>
+                </span>
                 <button
                     type="button"
                     onClick={() => guard(() => router.delete('/profil/telegram', { preserveScroll: true }))}

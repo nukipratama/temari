@@ -24,40 +24,9 @@ import {
     LinearScale,
     PointElement,
     Tooltip,
-    type Plugin,
 } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
-
-/**
- * Labels only the FIRST and LAST point of the "Best time" line with its formatted
- * value (every point would clutter a multi-week series), so the progression reads
- * without hovering for a tooltip.
- */
-const endpointLabelsPlugin: Plugin<'line'> = {
-    id: 'endpointLabels',
-    afterDatasetsDraw(chart) {
-        const points = chart.getDatasetMeta(0).data;
-        // Dataset 0 ("Best time") is always fed plain `number | null` values (never
-        // Chart.js's `Point` object form) — see the `data` prop below.
-        const values = (chart.data.datasets[0]?.data ?? []) as Array<number | null>;
-        const drawn = new Set<number>();
-        const indices = [values.findIndex((v) => v != null), lastDefinedIndex(values)];
-        const ctx = chart.ctx;
-        ctx.save();
-        ctx.font = '600 11px "JetBrains Mono", monospace';
-        ctx.fillStyle = '#3d362a';
-        ctx.textAlign = 'center';
-        for (const i of indices) {
-            if (i < 0 || drawn.has(i) || points[i] == null) continue;
-            drawn.add(i);
-            const v = values[i];
-            if (v == null) continue;
-            ctx.fillText(formatDurationHMS(Math.round(v * 60)), points[i].x, points[i].y - 10);
-        }
-        ctx.restore();
-    },
-};
 
 function lastDefinedIndex(values: ReadonlyArray<number | null>): number {
     for (let i = values.length - 1; i >= 0; i--) {
@@ -171,7 +140,7 @@ export default function ProgressionChart({
         <div role="img" aria-label={`${chartLabel}. ${summarySentence}`} className={cn('h-[260px] sm:h-[300px]', className)}>
             <span className="sr-only">{summarySentence}</span>
             <Suspense fallback={<div className="h-full w-full animate-pulse rounded-xl bg-cream-deep/40" />}>
-                <Line data={data} options={options} plugins={[endpointLabelsPlugin]} />
+                <Line data={data} options={options} />
             </Suspense>
         </div>
     );

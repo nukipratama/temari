@@ -28,23 +28,13 @@ type ChartOptions = {
     };
 };
 
-type EndpointLabelsPlugin = {
-    afterDatasetsDraw: (chart: {
-        getDatasetMeta: (i: number) => { data: Array<{ x: number; y: number } | null> };
-        data: { datasets: Array<{ data: Array<number | null> }> };
-        ctx: { save: () => void; restore: () => void; fillText: () => void };
-    }) => void;
-};
-
 let lastData: ChartData | null = null;
 let lastOptions: ChartOptions | null = null;
-let lastPlugins: EndpointLabelsPlugin[] | null = null;
 
 vi.mock('react-chartjs-2', () => ({
-    Line: (props: { data: ChartData; options: ChartOptions; plugins: EndpointLabelsPlugin[] }) => {
+    Line: (props: { data: ChartData; options: ChartOptions }) => {
         lastData = props.data;
         lastOptions = props.options;
-        lastPlugins = props.plugins;
         return createElement('div', { 'data-testid': 'line-chart' });
     },
 }));
@@ -53,7 +43,6 @@ describe('ProgressionChart', () => {
     beforeEach(() => {
         lastData = null;
         lastOptions = null;
-        lastPlugins = null;
     });
 
     it('renders the empty state when there are no weeks', () => {
@@ -186,32 +175,6 @@ describe('ProgressionChart', () => {
             expect(createLinearGradient).toHaveBeenCalledWith(0, 0, 0, 260);
             expect(addColorStop).toHaveBeenCalledTimes(2);
             expect(gradient).toEqual({ addColorStop });
-        });
-    });
-
-    describe('endpoint labels plugin', () => {
-        it('draws the formatted best time at the first and last defined points', () => {
-            render(
-                <ProgressionChart
-                    weeks={['2026-01-05', '2026-01-12', '2026-01-19']}
-                    timesSec={[1500, null, 1440]}
-                    goalSec={null}
-                />,
-            );
-            const plugin = lastPlugins![0];
-            const points = [{ x: 10, y: 20 }, null, { x: 30, y: 40 }];
-            const fillText = vi.fn();
-            const chart = {
-                getDatasetMeta: () => ({ data: points }),
-                data: { datasets: [{ data: [25, null, 24] }] },
-                ctx: { save: vi.fn(), restore: vi.fn(), fillText },
-            };
-
-            plugin.afterDatasetsDraw(chart);
-
-            expect(fillText).toHaveBeenCalledTimes(2);
-            expect(fillText).toHaveBeenNthCalledWith(1, '25:00', 10, 10);
-            expect(fillText).toHaveBeenNthCalledWith(2, '24:00', 30, 30);
         });
     });
 

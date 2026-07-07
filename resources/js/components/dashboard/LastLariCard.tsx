@@ -2,12 +2,13 @@ import { Icon } from '@iconify/react';
 import LinkCard from '@/components/ui/LinkCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
+import MoodChip from '@/components/ui/MoodChip';
 import Temari from '@/components/temari/Temari';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { renderBold } from '@/lib/richText';
 import { aktivitasUrl } from '@/lib/routes';
 import { formatKm, formatPace, formatNaiveRelativeId, formatNaiveTimeId, paceSecPerKm } from '@/lib/pace';
-import { MOOD_UPPER, formatIdDateUpper, formatWeather, shortenLocation } from '@/pages/HariIni/helpers';
+import { formatIdDateUpper, formatWeather, shortenLocation } from '@/pages/HariIni/helpers';
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
 export interface LastRunNote {
@@ -25,7 +26,6 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
 
     const dateUpper = formatIdDateUpper(run.start_date_local);
     const timeLabel = formatNaiveTimeId(run.start_date_local);
-    const subline = [dateUpper, timeLabel, note ? MOOD_UPPER[note.mood] : null].filter(Boolean).join(' · ');
 
     return (
         <LinkCard href={aktivitasUrl(run)} padding="md" className="flex h-full flex-col gap-3">
@@ -36,18 +36,20 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
                     <div className="font-display text-2xl leading-tight tracking-[-0.01em] text-ink">
                         {run.name ?? 'Lari'}
                     </div>
-                    {subline !== '' && (
-                        <div className="mt-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
-                            {subline}
+                    {dateUpper && (
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
+                            <span>{dateUpper}</span>
+                            {timeLabel && <><span aria-hidden>·</span><span>{timeLabel}</span></>}
+                            {note && <><span aria-hidden>·</span><MoodChip mood={note.mood} size="sm" /></>}
                         </div>
                     )}
                     {(locationShort || weatherLabel) && (
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2">
                             {locationShort && (
-                                <span className="inline-flex items-center gap-1 text-[13px]">
-                                    <Icon icon="mdi:map-marker-outline" width={13} height={13} aria-hidden />
-                                    {locationShort}
-                                </span>
+<span className="inline-flex items-center gap-1">
+    <Icon icon="mdi:map-marker-outline" width={11} height={11} aria-hidden />
+    {locationShort}
+</span>
                             )}
                             {locationShort && weatherLabel && <span aria-hidden>·</span>}
                             {weatherLabel && <span>{weatherLabel}</span>}
