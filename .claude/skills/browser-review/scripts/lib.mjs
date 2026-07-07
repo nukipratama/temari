@@ -14,8 +14,11 @@ export const VIEWPORT_DEFS = {
   wide: { viewport: { width: 1536, height: 864 } },
 };
 
+// tablet (834px) renders the same mobile nav chrome as mobile (390px) — both are
+// below the lg breakpoint — so it's dropped from the default sweep to halve the
+// screenshot/read cost. Opt back in with VIEWPORTS=tablet or VIEWPORTS=mobile,tablet,desktop,wide.
 export function parseViewports() {
-  return (process.env.VIEWPORTS ?? 'mobile,tablet,desktop,wide')
+  return (process.env.VIEWPORTS ?? 'mobile,desktop,wide')
     .split(',').map((s) => s.trim()).filter(Boolean)
     .filter((v) => VIEWPORT_DEFS[v] || (console.log(`skip unknown viewport: ${v}`), false));
 }

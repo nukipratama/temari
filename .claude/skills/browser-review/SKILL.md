@@ -6,7 +6,7 @@ description: Drive a real browser to screenshot every user-facing page across a 
 # browser-review
 
 End-to-end visual review: log in as the demo user, **discover every page from the route table**,
-screenshot each at four viewports, collect JS/console errors, and flag any horizontal overflow.
+screenshot each across the viewport matrix, collect JS/console errors, and flag any horizontal overflow.
 Then read the PNGs back to spot layout bugs. Everything runs **inside the Sail `app` container**
 (no host browser needed), so the page list is never hardcoded — it comes from
 `php artisan route:list` each run and auto-includes new pages.
@@ -16,19 +16,24 @@ Then read the PNGs back to spot layout bugs. Everything runs **inside the Sail `
 Both sides of the Tailwind `lg` (1024px) breakpoint are covered on purpose — that's where the app
 swaps its whole nav chrome (desktop `TopNav` ↔ `MobileTopBar` + `MobileBottomNav`):
 
-| key | size | nav shown |
-|-----|------|-----------|
-| `mobile`  | 390×844  (iPhone 13)   | mobile (top bar + bottom nav) |
-| `tablet`  | 834×1112 (iPad portrait) | **still mobile** (834 < 1024) |
-| `desktop` | 1280×800               | desktop `TopNav` |
-| `wide`    | 1536×864 (`2xl`)       | desktop, widest `max-w-page-2xl` layout |
+| key | size | nav shown | in default sweep? |
+|-----|------|-----------|--------------------|
+| `mobile`  | 390×844  (iPhone 13)   | mobile (top bar + bottom nav) | yes |
+| `tablet`  | 834×1112 (iPad portrait) | **still mobile** (834 < 1024) | no — same nav chrome as `mobile`, opt in explicitly |
+| `desktop` | 1280×800               | desktop `TopNav` | yes |
+| `wide`    | 1536×864 (`2xl`)       | desktop, widest `max-w-page-2xl` layout | yes |
 
-Narrow the sweep with `VIEWPORTS=mobile` (or `mobile,wide`, etc.).
+Default is `mobile,desktop,wide` — `tablet` renders identical nav chrome to `mobile` (both below
+the `lg` breakpoint), so it's redundant for the common case and dropped to keep the default sweep
+cheaper. Narrow further with `VIEWPORTS=mobile` (or `mobile,wide`, etc.), or opt back into the full
+four-way matrix with `VIEWPORTS=mobile,tablet,desktop,wide` when tablet-specific coverage actually
+matters (e.g. right before a release).
 
 ## Prerequisites
 
 ```bash
 ./vendor/bin/sail up -d
+./vendor/bin/sail npm run build               # fresh built assets — stale/missing build = Vite manifest errors or old UI
 ./vendor/bin/sail artisan demo:seed          # demo user + ~126 runs, deterministic
 # .env must have DEMO_LOGIN_ENABLED=true (the scripts log in via the /login demo button)
 ```
@@ -57,11 +62,13 @@ binaries or edits `package.json`.
 # 1. one-time setup per container lifetime (apk needs root)
 docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.sh
 
-# 2. screenshots across the viewport matrix (default all four)
+# 2. screenshots across the viewport matrix (default mobile,desktop,wide — see Viewport matrix above)
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/shoot.mjs
 #    e.g. just phone:    VIEWPORTS=mobile ./vendor/bin/sail exec -e VIEWPORTS=mobile app node .../shoot.mjs
+#    e.g. full 4-way:    VIEWPORTS=mobile,tablet,desktop,wide ./vendor/bin/sail exec -e VIEWPORTS=mobile,tablet,desktop,wide app node .../shoot.mjs
 
-# 3. horizontal-overflow audit across the matrix
+# 3. horizontal-overflow audit across the matrix (run BEFORE Inspect — its output gates which
+#    pages get the expensive vision read, see "Inspect in parallel" below)
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/audit.mjs
 
 # 4. teardown (restore node_modules; screenshots are kept as history)
@@ -71,27 +78,59 @@ docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.s
 Each run lands in its own batch dir, keyed by date + execution time:
 `storage/app/browser-review/<YYYY-MM-DD>/<HHMMSS>/<viewport>/NN-<page>-{viewport,full}.png`. `shoot.mjs`
 clears prior batches at the start, so only the latest sweep is on disk, and prints the resolved dir as
-`BATCH_DIR=...` on its last line — **capture that and pass it to the inspect workflow.** The script also prints any console/`pageerror` per page, and the audit prints
-`HORIZ-OVERFLOW=true/false` per page per viewport (ignoring intentional `overflow-x-auto` scroll
-containers and decorative `pointer-events-none` glow blobs).
+`BATCH_DIR=...` on its last line — **capture that and pass it to the inspect workflow.** The script also
+prints any console/`pageerror` per page. The audit prints a human-readable `HORIZ-OVERFLOW=true/false`
+line per page per viewport (ignoring intentional `overflow-x-auto` scroll containers and decorative
+`pointer-events-none` glow blobs) plus a machine-parseable `AUDIT vp=<viewport> name=<page-slug>
+overflow=<true|false>` line for every page — **capture and parse these too**, they gate the Inspect
+phase below (`name` matches the `-<name>-full.png` slug in `shoot.mjs`'s filenames, so the two scripts'
+independent page orderings don't need to line up).
 
 > These PNGs are gitignored (`storage/app/.gitignore` ignores `*`) and your IDE may hide gitignored
 > files — they're on disk under `storage/app/browser-review/`, not in a temp dir.
 
-## Inspect in parallel (Sonnet subagents, keep the main context lean)
+## Inspect in parallel (audit-gated, split across model tiers, keep the main context lean)
 
-A sweep produces a lot of images — **don't read them all into the orchestrating context.** Run the
-inspection as a `Workflow`: one Sonnet subagent per viewport (parallel), each reading only its own
-`<BATCH_DIR>/<viewport>/*-full.png` files and returning structured findings. Pass the batch dir and the
-viewports you shot as `args`, e.g. `{ "dir": "storage/app/browser-review/2026-06-19/143022", "viewports": ["mobile","wide"] }`
-(`dir` is the `BATCH_DIR=` line `shoot.mjs` printed; omit `viewports` for all four). Merge the lists,
-then open only the flagged PNGs to confirm before acting.
+A sweep produces a lot of images — **don't read them all into the orchestrating context, and don't
+vision-read every page at full reasoning effort.** `audit.mjs` already found horizontal overflow
+programmatically for every page; reserve the expensive judgment call for what code can't check.
+
+Run the inspection as a `Workflow` that splits each viewport's pages into two agent calls:
+
+- **Audit-flagged pages → `model: 'haiku'`** *(fast/cheap tier — confirm-only work)*. The overflow is
+  already found; the agent just describes what's actually broken on the known-flagged PNG so it's
+  fixable. No persona needed — the task is fully specified by the audit flag.
+- **A small evenly-spaced sample of non-flagged pages (4 per viewport) → `model: 'sonnet',
+  effort: 'medium'`** *(default/capable tier — open-ended judgment)*. These pages passed the automated
+  check, so this agent hunts for what code can't detect: overlapping/clipped text, wrong nav chrome,
+  off-screen elements, awkward hierarchy. Framed with a short persona ("senior product designer and
+  frontend engineer doing a visual QA pass") since the task is genuinely subjective, not yes/no.
+
+If the model roster changes later (e.g. Haiku or Sonnet is retired), swap in whatever fills the same
+fast/cheap or default/capable tier at the time — the split above is the instruction, the specific model
+names are just today's mapping onto it.
+
+Pass the batch dir, the viewports you shot, and the parsed `AUDIT` lines as `args`, e.g.:
+```json
+{
+  "dir": "storage/app/browser-review/2026-06-19/143022",
+  "viewports": ["mobile", "wide"],
+  "pages": {
+    "mobile": [{ "name": "hari-ini", "overflow": false }, { "name": "aktivitas-detail", "overflow": true }],
+    "wide":   [{ "name": "hari-ini", "overflow": false }, { "name": "aktivitas-detail", "overflow": false }]
+  }
+}
+```
+(`dir` is the `BATCH_DIR=` line `shoot.mjs` printed; `pages[viewport]` is every `AUDIT` line for that
+viewport from step 3, `{name, overflow}`; omit `viewports` to use every key in `pages`.) Merge the
+results, then open only the flagged PNGs to confirm before acting — and **state the batch dir path in
+your final summary to the user** so they can open the PNGs directly without digging through logs.
 
 ```js
 export const meta = {
   name: 'browser-review-inspect',
-  description: 'Read browser-review screenshots per viewport in parallel (Sonnet) and report layout bugs',
-  phases: [{ title: 'Inspect', detail: 'one Sonnet agent per viewport reads its PNGs', model: 'sonnet' }],
+  description: 'Confirm audit-flagged pages (haiku) + hunt a small sample (sonnet, medium) per viewport',
+  phases: [{ title: 'Inspect', detail: 'flagged pages on haiku, a small non-flagged sample on sonnet' }],
 }
 
 const NAV = {
@@ -101,7 +140,9 @@ const NAV = {
   wide:    { size: '1536x864', nav: 'desktop TopNav, widest max-w-page-2xl layout' },
 }
 const dir = args?.dir ?? 'storage/app/browser-review'
-const viewports = args?.viewports?.length ? args.viewports : Object.keys(NAV)
+// args.pages: { [viewport]: [{ name, overflow }] } — parsed from audit.mjs's `AUDIT vp=... name=... overflow=...` lines
+const pagesByViewport = args?.pages ?? {}
+const viewports = args?.viewports?.length ? args.viewports : Object.keys(pagesByViewport)
 
 const FINDINGS = {
   type: 'object',
@@ -125,17 +166,47 @@ const FINDINGS = {
   },
 }
 
+// Plain JS, no fs needed — the workflow only has the page names/overflow flags passed in via args.
+function evenSample(names, k) {
+  if (names.length <= k) return names
+  const step = names.length / k
+  return Array.from({ length: k }, (_, i) => names[Math.floor(i * step)])
+}
+
 phase('Inspect')
-return (await parallel(viewports.map((vp) => () =>
-  agent(
-    `Review the "${vp}" viewport (${NAV[vp]?.size}, ${NAV[vp]?.nav}) of the teman-lari app. Read every ` +
-    `*-full.png in ${dir}/${vp}/ and report ONLY real layout bugs (horizontal overflow, ` +
-    `overlapping/clipped/truncated text, wrong nav chrome for this viewport, off-screen elements). Ignore by ` +
-    `design: width-capped content (PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page artifact, ` +
-    `sparse demo-data grids, and intentional overflow-x-auto. Return only flagged pages.`,
-    { label: `inspect:${vp}`, phase: 'Inspect', model: 'sonnet', effort: 'high', schema: FINDINGS }
-  )
-))).filter(Boolean)
+const calls = []
+for (const vp of viewports) {
+  const pages = pagesByViewport[vp] ?? []
+  const flagged = pages.filter((p) => p.overflow).map((p) => p.name)
+  const sample = evenSample(pages.filter((p) => !p.overflow).map((p) => p.name), 4)
+
+  if (flagged.length) {
+    calls.push(() => agent(
+      `Confirm layout bugs on audit-flagged pages of the "${vp}" viewport (${NAV[vp]?.size}, ${NAV[vp]?.nav}) of ` +
+      `the teman-lari app. Read only the *-full.png files in ${dir}/${vp}/ whose filename contains one of these ` +
+      `page names (match by "-<name>-full.png"): ${flagged.join(', ')}. audit.mjs already found horizontal ` +
+      `overflow here — describe what's actually broken so it's fixable. Ignore by design: width-capped content ` +
+      `(PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page artifact, sparse demo-data grids, and ` +
+      `intentional overflow-x-auto. Return only pages with a real, describable issue.`,
+      { label: `inspect:${vp}:flagged`, phase: 'Inspect', model: 'haiku' /* fast/cheap tier */, schema: FINDINGS }
+    ))
+  }
+  if (sample.length) {
+    calls.push(() => agent(
+      `You are a senior product designer and frontend engineer doing a visual QA pass on the "${vp}" viewport ` +
+      `(${NAV[vp]?.size}, ${NAV[vp]?.nav}) of the teman-lari app. Read only the *-full.png files in ${dir}/${vp}/ ` +
+      `whose filename contains one of these page names (match by "-<name>-full.png"): ${sample.join(', ')}. These ` +
+      `pages passed the automated overflow check, so hunt for issues code can't detect: overlapping/clipped/` +
+      `truncated text, wrong nav chrome for this viewport, off-screen elements, awkward spacing or hierarchy. ` +
+      `Ignore by design: width-capped content (PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page ` +
+      `artifact, sparse demo-data grids, and intentional overflow-x-auto. Return only flagged pages.`,
+      { label: `inspect:${vp}:sample`, phase: 'Inspect', model: 'sonnet' /* default/capable tier */, effort: 'medium', schema: FINDINGS }
+    ))
+  }
+}
+const results = (await parallel(calls)).filter(Boolean)
+log(`Batch dir: ${dir}`)
+return results
 ```
 
 ## What the scripts handle for you
