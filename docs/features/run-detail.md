@@ -21,6 +21,16 @@ code_refs:
 which 404s on a foreign or not-yet-analyzed activity and lazily kicks a
 location-resolve job when the run has GPS but no resolved place name.
 
+**Navigation:** `route('runs.show', activity)` → `/aktivitas/{activity}`. Named route: `runs.show`.
+
+## System dependencies
+
+- **AI narration** — the four-lens grid, card flavor, and Past You context are all `Analysis` rows from the [[ai-pipeline]].
+- **Ingestion** — `detail` / `stream_summary` are populated by the [[run-ingest-pipeline]].
+- **Geo** — location name is resolved by [[geo-reverse-geocoding]].
+- **Weather** — conditions come from [[weather-integration]].
+- **Gamification** — the kartu rarity/badges are assigned by [[gamification]] during ingest.
+
 ## Hero — stats + route + weather
 
 The top section is a sky-toned `HeroPanel`: the mascot in a mood-derived pose

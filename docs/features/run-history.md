@@ -22,6 +22,17 @@ that share a header tab strip. [RiwayatTabs](../../resources/js/components/riway
 links **Jejak** (`/aktivitas`) and **Kalender** (`/kalender`) — two routes, two
 controllers, one mental model.
 
+**Navigation:** `route('runs.index')` → `/aktivitas` (Jejak, `RunController::index`);
+`route('calendar')` → `/kalender` (Kalender, `CalendarController::__invoke`).
+Named routes: `runs.index`, `calendar`.
+
+## System dependencies
+
+- **AI narration** — weekly and monthly recaps come from the [[ai-pipeline]] via `AnalysisType::WeeklyRecap` / `MonthlyRecap`.
+- **Recap windowing** — the open week/month is window-gated ([[deferred-recap-windowing]]); recaps are [[chained-narration|chained]].
+- **Training metrics** — `WeeklySnapshot` payloads carry CTL/ATL/form from [[training-load-metrics]].
+- **Data model** — the shape of `Activity`, `ActivityDetail`, `WeeklySnapshot` is in [[data-model]].
+
 ## Jejak — the timeline
 
 [Jejak.tsx](../../resources/js/pages/Riwayat/Jejak.tsx) (default export

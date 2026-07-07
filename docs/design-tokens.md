@@ -132,3 +132,11 @@ Data maps that are *not* style-variant matrices — [lib/mood.ts](../resources/j
 face / label / fill) and [lib/tones.ts](../resources/js/lib/tones.ts) (icon-tile tones) — stay as
 plain `Record` lookups; do **not** fold those into cva. The remaining ~16 Record-table components
 can be migrated to this pattern incrementally; `Card` / `PillButton` / `Chip` are the pilots.
+
+## Common pitfalls
+
+- **Raw Tailwind colors slip in.** A quick `bg-gray-100` or `text-lime-600` reads as laziness or an incomplete refactor. Every utility must resolve to a semantic `--color-*` token. Sweep `rg 'bg-(gray|slate|zinc|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d'` before merging.
+- **`text-ink-3` on body prose.** `ink-3` is for labels/timestamps/metadata only, never wrapping a `<p>` of running text. Sweep `grep text-ink-3` before merging — if any match wraps a prose paragraph, it's wrong.
+- **Missing `tabular-nums` on stat displays.** Any big-number display (`<span class="text-stat">`, KPI tiles, PR times) must carry `tabular-nums` so digits don't jitter as they change. The `.text-stat` / `.text-stat-sm` utilities include it; raw `font-mono` alone does not.
+- **`font-mono` omitted from uppercase labels.** Because `font-sans` is Tailwind's default, every `.text-label-micro` / `.text-label-small` utility needs an explicit `font-mono` — without it the label renders in the body font. Prefer the utility class over hand-rolling the combo.
+- **Gradient text on non-numeric content.** `<GradientText>` is for numbers only (display-sized stats, KPI values), never for headlines or body prose. Scarcity makes it premium; using it on a heading feels like Las Vegas.

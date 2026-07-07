@@ -20,6 +20,15 @@ code_refs:
 
 The app's home (`/`). It greets the runner by name, hands them Temari's read on the day, then stacks the day's vitals, this week's featured kartu, a session suggestion, the last run, training load, and the nearest goals. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [HariIni](resources/js/pages/HariIni.tsx) page.
 
+**Navigation:** `route('dashboard')` → `/`. Named route: `dashboard`.
+
+## System dependencies
+
+- **AI narration** — every voice block (greeting, briefing, suggestion, featured-kartu voice) is an `Analysis` row from the [[ai-pipeline]].
+- **Training metrics** — `load` comes from `TrainingLoad::summary`; `trendAnalysis` / `weeklyRecap` are computed by the training-load engine. See [[training-load-metrics]].
+- **Gamification** — the featured kartu is picked by rarity rank. See [[gamification]].
+- **Dawn-shift** — surface tints drift by time of day via `useDawnShift`. See [[frontend-architecture]].
+
 ## The headline
 
 `HariIni` builds the eyebrow line from `formatWeekdayDateId` + `formatTimeId` + the briefing's `vibeLabel`, and the `<h1>` reads "Halo, {firstName}" over an italic `vibeSubtitle`. The vibe drives Temari's `pose` (`VIBE_TO_POSE`). The greeting prose itself comes from the server: `DashboardController::resolveGreeting` returns today's cached `StoryLine` (kind `daily_greeting`) or generates it via the `Temari` story service.

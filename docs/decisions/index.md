@@ -3,7 +3,7 @@ title: Decisions — Map of Content
 description: The architecture decision timeline (ADRs)
 tags: [decision, moc]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-07-07
 ---
 
 # Decisions (ADRs)

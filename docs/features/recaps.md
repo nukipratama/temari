@@ -18,6 +18,15 @@ code_refs:
 
 Temari narrates the runner's history at three cadences — per **week**, per **month**, and a rolling **persona** read. This note covers where each narrative is *rendered* and which controller feeds it. The generation mechanics live in [[ai-pipeline]], the "don't generate the open period yet" rule in [[deferred-recap-windowing]], and the prev-link continuity in [[chained-narration]].
 
+**No dedicated route** — recaps render inline on [[run-history]] (Jejak/Kalender) and [[profile]] (Aku) pages.
+
+## System dependencies
+
+- **AI pipeline** — every recap is an `Analysis` row from [[ai-pipeline]]; weekly = `AnalysisType::WeeklyRecap`, monthly = `MonthlyRecap`, profile = `AkuProfileVoice` / `PersonaSummary`.
+- **Windowing** — the open week/month is gated by [[deferred-recap-windowing]]; chaining is handled by [[chained-narration]].
+- **Training metrics** — weekly recaps read `TrainingLoad` / `WeeklySnapshot` from [[training-load-metrics]].
+- **Notifications** — completed recaps fan out to [[telegram-notifications]].
+
 Every recap is an `Analysis` row surfaced through the shared [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) state machine, which handles spinner / failed / empty / "Coba lagi" / "Baca ulang", and — for recaps — the `chained` + `isChainHead` + `awaitingSchedule` flags.
 
 ## Weekly recap — on Jejak

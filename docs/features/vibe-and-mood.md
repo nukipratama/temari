@@ -19,6 +19,15 @@ code_refs:
 
 Two distinct "feelings" drive how the app speaks. The **vibe** is a daily, *whole-runner* read derived from training-load signals — it colours the dashboard headline, picks [[temari-mascot]]'s pose, and steers the LLM's tone. The **mood** is a *per-run* reaction attached to a single activity's card. They share a vocabulary at the seams (the vibe maps onto a mood for the daily greeting) but answer different questions: "how are you doing lately?" vs "how did *that run* go?".
 
+**No dedicated route** — this is a service-layer system that feeds [[dashboard]], [[run-detail]], and [[profile]].
+
+## System dependencies
+
+- **Training metrics** — the vibe is derived from `TrainingLoad::summary` (form, form_status) in [[training-load-metrics]].
+- **Stream analysis** — run-level mood reads `stream_summary` from [[stream-analysis]].
+- **Gamification** — mood for a run is written by `Temari` service during [[gamification]] ingest.
+- **AI narration** — the vibe key is consumed as a tone signal by narrators in the [[ai-pipeline]].
+
 ## The daily vibe
 
 [Vibe::current](../../app/Services/Run/Story/Vibe.php) gathers five signals for a user as-of a date — current `form` and `form_status` from [TrainingLoad::summary](../../app/Services/Run/Metrics/TrainingLoad.php), days since the last run, whether a [[records|PR]] landed recently, and the average HR/pace `decoupling` over a recent window. The PR lookback and decoupling lookback windows are constants on the class ([Vibe.php:57](../../app/Services/Run/Story/Vibe.php#L57)). It hands all five to a pure lookup table.

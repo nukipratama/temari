@@ -17,6 +17,15 @@ code_refs:
 
 The "Aku" page (`/aku`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, recent PRs, and their accessory collection. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Aku](resources/js/pages/Aku.tsx) page.
 
+**Navigation:** `route('profile')` → `/aku`. Named route: `profile`.
+
+## System dependencies
+
+- **AI narration** — `profileVoice` (`AkuProfileVoice`) and `personaSummary` (`PersonaSummary`) are `Analysis` rows from the [[ai-pipeline]].
+- **Gamification** — PRs come from [[gamification]]; accessories from `UserUnlock` rows.
+- **Telegram** — the Telegram connection panel links to [[telegram-notifications]].
+- **Data model** — `PersonalRecord`, `UserUnlock`, `TelegramConnection` shapes in [[data-model]].
+
 ## Identity + Kata Temari tentang kamu
 
 The header eyebrow is built from first-run date and months-since-first-run, over an "{firstName} Runner, ceritanya." headline. Below it a `HeroPanel` pairs the [Temari](resources/js/components/temari/Temari.tsx) mascot (pose `proud`) with **"★ Kata Temari tentang kamu"** — the AI profile voice (`profileVoice`), rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) `onSky` as an italic quote. Two chips below show Strava status (`identity.strava_connected`) and "Gabung sejak …".

@@ -22,6 +22,16 @@ code_refs:
 
 Every Strava run that syncs becomes a **kartu** — a trading-card view of that run with a rarity, a few badges, and a Temari-written "special move" name. `/kartu` is the whole collection; tapping any card opens its run in [[run-detail]], where the card gets its own full-view section (see below). There is no separate card detail page or URL — a card and its run are the same page.
 
+**Navigation:** `route('cards.index')` → `/kartu` (Card grid, `CardController::index`).
+Named route: `cards.index`. All cards link to their respective `route('runs.show', activity)`.
+
+## System dependencies
+
+- **Gamification engine** — rarities, badges, and special moves are assigned by [[gamification]] during ingest.
+- **AI narration** — the featured card flavor and the "Kenapa [rarity]" explanations come from `Analysis` rows ([[ai-pipeline]]).
+- **Data model** — `RunCard`, `Activity`, `Rarity` enum, edition numbering in [[data-model]].
+- **Share** — `public_share_url` is a signed route; the share image is generated client-side on a canvas.
+
 ## The grid (`/kartu`)
 
 Served by the `index` method of [CardController](../../app/Http/Controllers/CardController.php). It paginates the user's cards 24-per-page **newest-first** (`orderByDesc('id')`), and — when a `?rarity=` query is present — narrows to a single rarity. Three derived props ride along: `rarityCounts` (per-rarity totals), `featuredCard`, and the `selectedRarity` echo. Edition numbering ("#3 of 12 epics") is computed in one window-function pass by the private `editionIndexMap` method, so there's no N+1.

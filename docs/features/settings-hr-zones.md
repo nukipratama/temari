@@ -17,6 +17,13 @@ code_refs:
 
 `/pengaturan/zona` lets a runner set their personal heart-rate zones so every run is scored against *their* physiology, not a default. Until they save, the app falls back to a standard profile.
 
+**Navigation:** `route('pengaturan.zona')` → `/pengaturan/zona` (GET); PATCH to same route saves. Named route: `pengaturan.zona`.
+
+## System dependencies
+
+- **Stream analysis** — zones are consumed by [[stream-analysis]] to compute time-in-zone per run.
+- **Data model** — `RunnerProfile`, `User::hrProfile()` shapes in [[data-model]].
+
 ## The page
 
 [ZonaHR.tsx](../../resources/js/pages/Pengaturan/ZonaHR.tsx) is split into three stacked sections:

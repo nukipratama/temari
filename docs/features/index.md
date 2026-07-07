@@ -31,4 +31,5 @@ _Systems_
 - [[vibe-and-mood]] — the daily vibe matrix + run mood that drive Temari's tone and the featured kartu
 - [[strava-connect]] — OAuth, sync, webhook
 - [[telegram-notifications]] — link a Telegram account, per-type toggles, post-run + weekly-recap push
+- [[streak-reminders]] — Saturday Telegram nudges for at-risk weekly streaks
 - [[temari-mascot]] — poses, accessories, vibes

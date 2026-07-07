@@ -18,6 +18,15 @@ code_refs:
 
 Strava is the only identity in the app — there is no email/password. Signing in *is* connecting Strava. This note covers the three user-facing moments: the OAuth connect, the manual re-pull, and the live webhook push. The mechanics that turn a fetched activity into a card live in [[run-ingest-pipeline]].
 
+**Navigation:** Login page at `route('login')` → `/login` (pre-auth). OAuth callback: `auth.strava.callback`. Named routes: `login`, `auth.strava.redirect`, `auth.strava.callback`.
+
+## System dependencies
+
+- **Strava client** — the HTTP client, circuit breaker, and rate-limit guards in [[strava-client]].
+- **Ingestion** — sync dispatches `SyncActivitiesJob`, which feeds the [[run-ingest-pipeline]].
+- **Circuit breaker** — rate-limit resilience is detailed in [[strava-circuit-breaker-rate-limit]].
+- **Edge** — webhook runs behind Cloudflare per [[trust-all-proxies-cloudflare]].
+
 ## Connect (OAuth)
 
 The login screen is the front door. [Login.tsx](../../resources/js/pages/Auth/Login.tsx) renders a Strava-branded button whose `href` is the server-issued `authStravaUrl`; it is a plain `<a>` full navigation, not an Inertia visit (the brand mark and "Sambungkan dengan Strava" label are a deliberate product decision, see the comment in the page).

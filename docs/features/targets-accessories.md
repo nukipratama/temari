@@ -17,6 +17,14 @@ code_refs:
 
 Two sides of the same loop: **Target** (`/target`) shows what you're working toward, and **Aksesori** (`/aksesori`) is the wardrobe of what you've earned and can put on Temari. Both are organized by the same six equipment **slots**: Medali, Ikat Kepala, Kaus, Celana, Sepatu, Aura.
 
+**Navigation:** `route('target')` → `/target` (GoalController::index); `route('accessories')` → `/aksesori` (AksesoriController::index). Named routes: `target`, `accessories`.
+
+## System dependencies
+
+- **Gamification** — goals are computed by `GoalResolver`; unlocks are granted by `UnlockEngine` during [[gamification]].
+- **Temari mascot** — the live preview hero uses `TemariProto` to render equipped gear; see [[temari-mascot]].
+- **Data model** — `UserUnlock`, `RunnerProfile` shapes in [[data-model]].
+
 ## Targets (`/target`)
 
 The [GoalController](../../app/Http/Controllers/GoalController.php) `index` delegates to the `GoalResolver` service, which returns the user's goals (each with `current` / `target` / `unit`, a `slot`, a `rarity`, and an `is_completed` flag) plus a completed count. The page [Target](../../resources/js/pages/Target.tsx) groups goals by slot in a fixed order, and renders each as a `GoalCard` with a progress bar driven by `goalProgressRatio`. A completed goal flips to a horizon accent with a check chip; the header shows the running "N / total tercapai" tally. The page is read-only — progress is recomputed server-side from run data, not edited here.

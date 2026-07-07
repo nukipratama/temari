@@ -3,7 +3,7 @@ title: Data model
 description: The core Eloquent domain — User → Strava/Activity graph, gamification rows, and the polymorphic AI/analytics tables split across two DB connections
 tags: [architecture, data]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-07-07
 code_refs:
   - app/Models/User.php
   - app/Models/Activity.php
@@ -59,7 +59,7 @@ TokenUsage / StravaSyncLog ── standalone on `analytics`, user_id column only
 - [User](app/Models/User.php) is the aggregate root. `hasOne` [StravaConnection](app/Models/StravaConnection.php) + [RunnerProfile](app/Models/RunnerProfile.php); `hasMany` `activities`, `personalRecords`, `weeklySnapshots`, `storyLines`. The `scopeNotDemo` local scope (filters `is_demo`) keeps the seeded demo account out of schedulers. Deleting a User revokes its Strava connection and writes a `deleted` row to [StravaSyncLog](app/Models/Analytics/StravaSyncLog.php) via a `deleting` hook.
 - [StravaConnection](app/Models/StravaConnection.php): `access_token`/`refresh_token` cast `encrypted` (and `Hidden`); `token_expires_at`/`revoked_at` are `datetime`. `markRevoked()` also purges that user's un-ingested stubs.
 - [Activity](app/Models/Activity.php) is the run spine: `belongsTo` User, `hasOne` `detail`/`stream`/`runCard`, `hasMany` `personalRecords`/`storyLines`, and `morphMany` `analyses`. It carries the `#[ScopedBy(AnalyzedScope)]` global scope — see below. JSON cast: `milestone_payload` (`array`, also `$hidden`). See [[run-ingest-pipeline]].
-- [ActivityDetail](app/Models/ActivityDetail.php) holds the computed metrics (`belongsTo` Activity). Heavy JSON casts: `splits_metric`, `stream_summary` (`array`). `start_date_local` uses `datetime:Y-m-d\TH:i:s` (no zone suffix — guards against the UTC-shift off-by-one).
+- [ActivityDetail](app/Models/ActivityDetail.php) holds the computed metrics (`belongsTo` Activity). Heavy JSON casts: `splits_metric`, `stream_summary` (`array`). `start_date_local` uses `datetime:Y-m-d\TH:i:s` (no zone suffix — guards against the UTC-shift off-by-one). Weather columns: `weather_temp_c`, `weather_humidity_pct`, `weather_rain_detected`, `weather_wind_speed_kmh`, `weather_wind_gust_kmh`, `weather_wind_direction_deg`, `weather_rain_is_forecast` — all nullable, filled once during ingest by [`ActivityPipeline::lookupWeather`](app/Services/Run/Ingest/ActivityPipeline.php#L295).
 - [ActivityStream](app/Models/ActivityStream.php): the raw `data` longText cast `array`. Docblock warns: never eager-load in list queries.
 - [RunCard](app/Models/RunCard.php) (`belongsTo` Activity): `badges` cast `array`, `rarity` cast to the `Rarity` enum.
 - [StoryLine](app/Models/StoryLine.php): the Temari mood/speech layer. `belongsTo` User **and** (nullable) Activity. `kind` discriminates `post_run` vs `daily_greeting`; `for_date` cast `date`.

@@ -20,6 +20,15 @@ code_refs:
 
 Gamification isn't a page — it's an engine that runs as each activity is ingested. The visible payoffs (cards, rarities, records, unlock progress) surface across [[cards-collection]], [[records]] and [[targets-accessories]]. This note describes the engine and where each piece is wired.
 
+**No dedicated route** — this is a service-layer engine, not a page.
+
+## System dependencies
+
+- **Ingestion** — `RunCardFactory` is invoked by the [[run-ingest-pipeline]] during activity ingest; `GenerateRunCardJob` handles async card generation.
+- **AI narration** — `Temari` writes `StoryLine` rows (mood, speech) that the [[ai-pipeline]] narrators reference.
+- **Training metrics** — PRs are detected by `PersonalRecords` using data from [[stream-analysis]] and [[training-load-metrics]].
+- **Data model** — `RunCard`, `UserUnlock`, `PersonalRecord` shapes in [[data-model]].
+
 ## A run becomes a card
 
 [RunCardFactory](../../app/Services/Run/Story/RunCardFactory.php) (`build(Activity, ActivityDetail): RunCard`) is the centrepiece. It scores the run, derives a **rarity** from that score, attaches a list of **badges** (weather, distance bracket, splits, streak), and names a **special move**. It is invoked from the ingest pipeline (`app/Services/Run/Ingest/ActivityPipeline.php`) and from `app/Jobs/Story/GenerateRunCardJob.php`.

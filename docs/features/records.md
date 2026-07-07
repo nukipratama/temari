@@ -18,6 +18,14 @@ code_refs:
 
 `/rekor` is the runner's PR wall: best time at every distance, the standout effort blown up into a scoreboard, and a "you used to be slower" progression chart per distance.
 
+**Navigation:** `route('records')` → `/rekor`. Named route: `records`.
+
+## System dependencies
+
+- **Gamification** — PRs are detected during ingest by [[gamification]]; this page reads the `personal_records` table.
+- **AI narration** — the PR context line is a `PrContext` analysis from the [[ai-pipeline]].
+- **Progression** — `ProgressionSeriesBuilder` computes the weekly-best time series per distance (5K/10K/HM/FM).
+
 ## What the controller assembles
 
 The single-action [RekorController](../../app/Http/Controllers/RekorController.php) loads the user's `PersonalRecord` rows (with just the activity-detail columns it needs), attaches each row's `PrContext` AI analysis, and computes three extras via injected services:

@@ -19,10 +19,10 @@ Note: casual vernacular like `kebuka` / `kepoin` / `nyambung` is **on-voice and 
 
 For any English word, ask: **"would a Jakarta runner actually say this word in English while chatting?"**
 
-- **Common running terms → keep English.** `pace, split, negative split, tempo, easy run, long run, recovery, cadence, warmup, cooldown, PR, HR, splits`. This is how runners talk. Card badges like `Negative Split` / `Long Slow Distance` count here.
-- **Loanwords people genuinely say → keep.** `highlight`, `sync`, `share`, `rekap`. Forcing `sorotan` / `sinkronkan` / `bagikan` sounds like a manual. (`★ Highlight minggu ini`, not `Sorotan`.)
-- **Generic UI / everyday English → translate.** It reads as lazy translation otherwise: `earn → dapetin`, `tap → ketuk`, `Quality day! → Lari berkualitas!`.
-- **Internal consistency beats translation.** Localize a word everywhere or nowhere. Rarity is shown in Indonesian, so there is no `Epic+`.
+- **Common running terms → keep English.** `pace, split, negative split, tempo, easy run, long run, recovery, cadence, warmup, cooldown, PR, HR, splits, interval, threshold, gear, workout, cool down, warm up`. This is how runners talk. Card badges like `Negative Split` / `Long Slow Distance` count here.
+- **Loanwords people genuinely say → keep.** `highlight, sync, share, rekap, progress, streak, vibe, mood, fit, mode, podium`. Forcing `sorotan` / `sinkronkan` / `bagikan` / `mode` sounds like a manual. (`★ Highlight minggu ini`, not `Sorotan`.)
+- **Generic UI / everyday English → translate.** It reads as lazy translation otherwise: `earn → dapetin`, `tap → ketuk`, `Quality day! → Lari berkualitas!`, `continue → lanjut`, `back → kembali`, `save → simpan`, `next → berikutnya`.
+- **Internal consistency beats translation.** Localize a word everywhere or nowhere. Rarity is shown in Indonesian, so there is no `Epic+`; `hr` appears as `HR` consistently, never translated to `DNJ`.
 
 ## Beginner-accessibility tier (obscure jargon)
 
@@ -71,6 +71,19 @@ Labels only — the `Rarity` enum cases (`common…legendary`) and `rarity-*` co
 | Milestone | `… Quality day!` | `… Lari berkualitas!` |
 | Special move | `Mode Metronom` | `Metronom` |
 | Rarity (epic) | `Epik` | `Istimewa` |
+| Profile page | `Aktivitas terbaru` | `Lari terbaru` |
+| Streak nudge (Telegram) | `Your streak is at risk` | `Streak lari {n} minggu kamu belum ada progres minggu ini` |
+| Past you match | `You were faster/slower` | `Dulu kamu {lebih cepat/lebih lambat}` |
+
+### Common calque patterns to avoid
+
+| Calqued phrase | Natural alternative | Why |
+|---|---|---|
+| `tumbuh seiring larimu` | `makin sering lari, makin banyak kartunya` | "tumbuh seiring" is formal-paper, not chat |
+| `Yang [verb] [obj]` (e.g. `yang serupa dari koleksi`) | `kartu mirip di koleksimu` | "Yang … dari" is English "the ones … from" structure |
+| `ada [N]-nya` (e.g. `belum ada kartunya`) | `belum ada kartu di sini` | "-nya" possessive is a calqued "its" |
+| `Ini layak kartu.` | `Ini pantas dapet kartu.` | "layak" without a verb is English compression |
+| `Tidak ada…` vs `Gak ada…` | `Gak ada…` | Formal negation where casual is natural |
 
 ## LLM prompts
 

@@ -17,6 +17,14 @@ code_refs:
 
 `/ai-usage` is the operator's view of what the LLM pipeline is costing. It is not part of the runner-facing app — it has no `auth` middleware so ops can open it without a Strava session, and is protected at the edge instead (see Access below).
 
+**Navigation:** `route('ai-usage')` → `/ai-usage`. Named route: `ai-usage`.
+
+## System dependencies
+
+- **Cost ceiling** — spend is bounded by [[idempotent-dispatch-cost-ceiling]] (dispatch-time) and the execution-time guard in `AnalyzeBaseJob`.
+- **Analytics DB** — metering rows live on the separate `analytics` connection; see [[analytics-db]].
+- **AI pipeline** — all analyses are produced by [[ai-pipeline]].
+
 ## What it shows
 
 [AiUsage.tsx](../../resources/js/pages/AiUsage.tsx) renders, for a chosen date window:

@@ -21,6 +21,15 @@ recap, speech, and insight. The component family lives in
 `resources/js/components/temari/`. There are two layers: a pure SVG renderer and
 a dressed-up wrapper, plus a few presentational variants.
 
+**No dedicated route** — Temari is mounted inline across [[dashboard]], [[run-detail]], [[profile]], [[run-history]], and [[cards-collection]].
+
+## System dependencies
+
+- **Gamification** — the `equipped` accessories map is written by [[gamification]] during ingest.
+- **Vibe & mood** — pose is driven by the daily vibe (`VIBE_TO_POSE`) or run mood (`MOOD_TO_POSE`) from [[vibe-and-mood]].
+- **Design tokens** — all SVG fills are tuned to the Daybreak palette in [[design-tokens]].
+- **Voice** — Temari's speech copy follows [[voice-and-tone]].
+
 ## The two core components
 
 [TemariProto.tsx](../../resources/js/components/temari/TemariProto.tsx) is the
