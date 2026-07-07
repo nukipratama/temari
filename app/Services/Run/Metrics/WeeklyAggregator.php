@@ -9,8 +9,9 @@ use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\UnlockEngine;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Enumerable;
+use Illuminate\Support\LazyCollection;
 
 use function count;
 use function is_array;
@@ -90,11 +91,11 @@ class WeeklyAggregator
     }
 
     /**
-     * @return Collection<int, ActivityDetail>
+     * @return LazyCollection<int, ActivityDetail>
      */
-    private function loadHistoryThrough(User $user, Carbon $weekEnding, Carbon $from): Collection
+    private function loadHistoryThrough(User $user, Carbon $weekEnding, Carbon $from): LazyCollection
     {
-        /** @var Collection<int, ActivityDetail> */
+        /** @var LazyCollection<int, ActivityDetail> */
         return ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $user->id)
@@ -108,14 +109,14 @@ class WeeklyAggregator
 
     public function rebuildFor(User $user): int
     {
-        /** @var Collection<int, ActivityDetail> $details */
+        /** @var \Illuminate\Support\LazyCollection<int, ActivityDetail> $details */
         $details = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->orderBy('activity_details.start_date_local')
             ->select('activity_details.*')
-            ->get();
+            ->lazy();
 
         if ($details->isEmpty()) {
             return 0;
@@ -141,10 +142,10 @@ class WeeklyAggregator
     }
 
     /**
-     * @param  Collection<int, ActivityDetail>  $details
+     * @param  Enumerable<int, ActivityDetail>  $details
      * @param  array<string, float>  $dailyTrimp
      */
-    private function upsertWeek(User $user, Carbon $weekEnding, Collection $details, array $dailyTrimp): void
+    private function upsertWeek(User $user, Carbon $weekEnding, Enumerable $details, array $dailyTrimp): void
     {
         $weekStart = $weekEnding->copy()->subDays(6)->startOfDay();
         $weekEnd = $weekEnding->copy()->endOfDay();
@@ -188,10 +189,10 @@ class WeeklyAggregator
     }
 
     /**
-     * @param  Collection<int, ActivityDetail>  $details
+     * @param  Enumerable<int, ActivityDetail>  $details
      * @return array<string, float>
      */
-    private function dailyTrimpMap(Collection $details): array
+    private function dailyTrimpMap(Enumerable $details): array
     {
         $map = [];
         foreach ($details as $detail) {
@@ -207,9 +208,9 @@ class WeeklyAggregator
     }
 
     /**
-     * @param  Collection<int, ActivityDetail>  $details
+     * @param  Enumerable<int, ActivityDetail>  $details
      */
-    private function averageDecoupling(Collection $details): ?float
+    private function averageDecoupling(Enumerable $details): ?float
     {
         $values = [];
         foreach ($details as $detail) {

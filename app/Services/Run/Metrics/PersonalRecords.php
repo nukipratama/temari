@@ -40,7 +40,7 @@ class PersonalRecords
             ->orderBy('activity_details.start_date_local')
             ->with('detail')
             ->select('activities.*')
-            ->get();
+            ->lazy();
 
         foreach ($activities as $activity) {
             $detail = $activity->detail;

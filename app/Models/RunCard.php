@@ -45,17 +45,17 @@ class RunCard extends Model
     public static function badgeCountsForUser(int $userId): array
     {
         $tracked = Badge::tracked();
-        $counts = array_fill_keys(
-            array_map(fn (Badge $b): string => $b->value, $tracked),
-            0,
-        );
+        $trackedValues = array_map(fn (Badge $b): string => $b->value, $tracked);
+        $counts = array_fill_keys($trackedValues, 0);
 
-        $allBadges = self::query()
+        $rows = self::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $userId))
-            ->pluck('badges');
+            ->selectRaw('JSON_EXTRACT(badges, "$[*]") as badge_list')
+            ->lazy();
 
-        foreach ($allBadges as $cardBadges) {
-            foreach ($cardBadges ?? [] as $badge) {
+        foreach ($rows as $row) {
+            $badgeList = json_decode($row->getRawOriginal('badges') ?? '[]', true) ?? [];
+            foreach ($badgeList as $badge) {
                 if (isset($counts[$badge])) {
                     $counts[$badge]++;
                 }
