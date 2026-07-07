@@ -227,11 +227,26 @@ interface WeekSectionProps {
 
 const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, matchedRunIds }: Readonly<WeekSectionProps>) {
     const telegramConnected = usePage<SharedProps>().props.telegramConnected ?? false;
-    const trimpLabel = Math.round(bucket.totalTrimp);
     const matchCount = matchedRunIds
         ? bucket.runs.filter((r) => matchedRunIds.has(r.id)).length
         : bucket.runs.length;
     const wholeWeekDimmed = matchedRunIds !== null && matchCount === 0;
+
+    // The date-range filter can truncate a week's runs list without truncating
+    // the week itself, e.g. the range boundary lands mid-week. bucket.* only
+    // sums the runs actually in view, so it can undercount vs. the pre-aggregated
+    // WeeklySnapshot the recap text below quotes — prefer the snapshot's totals
+    // whenever one exists so the header always agrees with the narration.
+    // Except the in-progress week: WeeklyAggregator recomputes the snapshot from
+    // a queued listener (DispatchPostRunAnalysis), so right after a fresh sync
+    // bucket (live, from this request's own run query) can be more current than
+    // a snapshot the worker hasn't caught up to yet.
+    const useSnapshotTotals = snapshot !== null && matchedRunIds === null && !snapshot.is_current_week;
+    const runCount = useSnapshotTotals && snapshot.runs !== null ? snapshot.runs : bucket.runs.length;
+    const totalKm = useSnapshotTotals && snapshot.distance_km !== null ? snapshot.distance_km : bucket.totalKm;
+    const trimpLabel = Math.round(
+        useSnapshotTotals && snapshot.weekly_trimp !== null ? snapshot.weekly_trimp : bucket.totalTrimp,
+    );
 
     return (
         <Card
@@ -250,10 +265,10 @@ const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, 
                         label={
                             matchedRunIds
                                 ? `${matchCount} / ${bucket.runs.length} run`
-                                : `${bucket.runs.length} run`
+                                : `${runCount} run`
                         }
                     />
-                    <Stat icon="mdi:map-marker-distance" label={`${bucket.totalKm.toFixed(1)} km`} />
+                    <Stat icon="mdi:map-marker-distance" label={`${totalKm.toFixed(1)} km`} />
                     <Stat icon="mdi:fire" label={`${trimpLabel} TRIMP`} />
                     {snapshot && <WeeklyStatusChips snapshot={snapshot} />}
                 </div>

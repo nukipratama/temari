@@ -183,6 +183,99 @@ describe('Riwayat/Jejak', () => {
         expect(screen.getByText(/Pas/)).toBeInTheDocument();
     });
 
+    it('shows the snapshot totals (not the range-truncated bucket count) when a snapshot exists', () => {
+        // Only 1 of the week's runs falls inside rangeStart, but the WeeklySnapshot
+        // (computed independently of the range filter) says the week had 4 runs /
+        // 35.5 km — the header must agree with that, not the truncated bucket.
+        const runs = [run(101, 'Long run pelan', '2026-05-19T06:00:00')];
+        const snapshots = [
+            {
+                id: 1,
+                week_ending: '2026-05-24',
+                distance_km: 35.5,
+                runs: 4,
+                weekly_trimp: 320,
+                atl_7d: 44.5,
+                ctl_42d: 42,
+                form: -2.5,
+                form_status: 'optimal' as const,
+                avg_decoupling: 3.2,
+                monotony: 1.2,
+                strain: 384,
+                is_current_week: false,
+                is_chain_head: true,
+                recap_analysis: {
+                    id: 1,
+                    status: 'done' as const,
+                    content: 'Minggu ini kekumpul 35.5 km dari 4 sesi.',
+                    type: 'weekly_recap' as const,
+                    subject_type: 'weekly_snapshot',
+                    subject_id: 1,
+                    discriminator: null,
+                },
+                telegram_retry_after_seconds: null,
+            },
+        ];
+        render(
+            <RunsIndex
+                runs={runs}
+                rangeFilter="8w"
+                rangeStart="2026-05-18"
+                weeklySnapshots={snapshots}
+            />,
+        );
+        expect(screen.getByText('4 run')).toBeInTheDocument();
+        expect(screen.getByText('35.5 km')).toBeInTheDocument();
+    });
+
+    it('shows the live bucket totals (not a stale snapshot) for the in-progress week', () => {
+        // The snapshot for the current week is recomputed by a queued listener,
+        // so right after a fresh sync it can lag behind the runs this request
+        // just fetched live. The header must reflect what's actually rendered.
+        const runs = [
+            run(101, 'Pagi', '2026-05-19T06:00:00'),
+            run(102, 'Sore', '2026-05-20T18:00:00'),
+        ];
+        const snapshots = [
+            {
+                id: 1,
+                week_ending: '2026-05-24',
+                distance_km: 5,
+                runs: 1,
+                weekly_trimp: 50,
+                atl_7d: 44.5,
+                ctl_42d: 42,
+                form: -2.5,
+                form_status: 'optimal' as const,
+                avg_decoupling: 3.2,
+                monotony: 1.2,
+                strain: 384,
+                is_current_week: true,
+                is_chain_head: false,
+                recap_analysis: {
+                    id: 1,
+                    status: 'pending' as const,
+                    content: null,
+                    type: 'weekly_recap' as const,
+                    subject_type: 'weekly_snapshot',
+                    subject_id: 1,
+                    discriminator: null,
+                },
+                telegram_retry_after_seconds: null,
+            },
+        ];
+        render(
+            <RunsIndex
+                runs={runs}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                weeklySnapshots={snapshots}
+            />,
+        );
+        expect(screen.getByText('2 run')).toBeInTheDocument();
+        expect(screen.getByText('10.0 km')).toBeInTheDocument();
+    });
+
     const doneWeekSnapshot = {
         id: 7,
         week_ending: '2026-05-24',
