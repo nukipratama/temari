@@ -15,7 +15,7 @@ import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import ProgressionChart from '@/components/koleksi/ProgressionChart';
-import { formatDurationHMS, formatIdDate, formatPace, formatShortDateId, monthsSinceId } from '@/lib/pace';
+import { formatDurationHMS, formatPace, formatShortDateId, monthsSinceId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
@@ -93,7 +93,6 @@ export default function Aku({
     const stravaRevoked = stravaSync?.state === 'revoked';
     const firstName = sharedUser?.first_name ?? identity.name.split(' ')[0] ?? '';
     const firstRunShort = identity.first_run_at ? formatShortDateId(identity.first_run_at) : null;
-    const memberSince = identity.member_since ? formatIdDate(identity.member_since, 'long') : null;
     const monthsSinceFirstRun = monthsSinceId(identity.first_run_at);
 
     const eyebrowParts: string[] = ['Aku'];
