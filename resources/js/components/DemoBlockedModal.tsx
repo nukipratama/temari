@@ -25,6 +25,7 @@ export default function DemoBlockedModal({ open, onClose }: Readonly<DemoBlocked
                 </>
             }
             primaryLabel="Masuk pakai Strava"
+            primaryIcon="mdi:strava"
             onPrimary={() => router.post('/logout')}
         />
     );

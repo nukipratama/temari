@@ -249,7 +249,7 @@ function AksesoriCard({
                 <p className="mt-auto font-display text-xs italic text-ink-3">{item.criteria}</p>
             )}
             {!locked && item.equipped && (
-                <PillButton tone="horizon" size="sm" disabled className="mt-auto gap-1.5">
+                <PillButton tone="sky" size="sm" disabled className="mt-auto gap-1.5">
                     <Icon icon="mdi:check-circle" width={15} height={15} aria-hidden />
                     Terpasang
                 </PillButton>

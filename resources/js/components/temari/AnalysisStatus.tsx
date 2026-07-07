@@ -79,6 +79,9 @@ const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
     md: 'text-base leading-relaxed',
 };
 
+/** Widths of the stacked skeleton bars shown while a block is queued/processing. */
+const SKELETON_WIDTHS = ['w-full', 'w-[70%]', 'w-[85%]'];
+
 function RateLimitedNote() {
     return (
         <span className="text-xs text-horizon-deep">
@@ -145,18 +148,21 @@ export default function AnalysisStatus({
     }
 
     if (effectiveStatus === 'queued' || effectiveStatus === 'processing') {
+        const skeletonBg = onSky ? 'bg-cream/15' : 'bg-surface-sunken';
         return (
-            <span
-                className={`inline-flex items-center gap-2 rounded-full text-xs px-3 py-1.5 ${onSky ? 'bg-cream/10 text-cream/70' : 'bg-surface-sunken text-ink-2'}`}
-                role="status"
-                aria-live="polite"
-            >
-                <Icon icon="mdi:loading" className="animate-spin" aria-hidden />
-                <span>
-                    Lagi dipikirin Temari…
-                    {attempts > 1 && ` (percobaan ${attempts})`}
-                </span>
-            </span>
+            <div className={`flex flex-col gap-3 ${TEXT_SIZE[size]}`} role="status" aria-live="polite">
+                <span className="sr-only">Lagi dipikirin Temari…</span>
+                <div className="flex flex-col gap-1.5">
+                    {SKELETON_WIDTHS.map((width) => (
+                        <div key={width} className={`animate-pulse h-[1.625em] rounded ${width} ${skeletonBg}`} aria-hidden />
+                    ))}
+                </div>
+                {attempts > 1 && (
+                    <span className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}>
+                        Percobaan {attempts}
+                    </span>
+                )}
+            </div>
         );
     }
 

@@ -314,7 +314,7 @@ export default function CardReveal({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0 }}
                       >
-                        <PillButton tone="horizon" onClick={viewKoleksi}>
+                        <PillButton tone="sky" onClick={viewKoleksi}>
                           <Icon icon="mdi:cards-outline" width={16} height={16} aria-hidden />
                           Lihat koleksi
                         </PillButton>
@@ -325,7 +325,7 @@ export default function CardReveal({
                         transition={{ delay: 0.1 }}
                       >
                         <PillButton
-                          tone="horizon"
+                          tone="sky"
                           onClick={(e) => {
                             e.stopPropagation();
                             setShareOpen(true);

@@ -6,6 +6,7 @@ const baseProps = {
     title: 'Judul nudge',
     body: 'Isi pesan yang ramah.',
     primaryLabel: 'Lakuin',
+    primaryIcon: 'mdi:check',
     onPrimary: vi.fn(),
 };
 

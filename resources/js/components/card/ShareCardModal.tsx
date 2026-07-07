@@ -218,9 +218,11 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                     {/* CTAs — pinned footer. */}
                     <div className="flex flex-col gap-2 border-t border-cream-deep bg-cream px-5 py-4">
                         <PillButton tone="sky" onClick={handleShare} className="w-full justify-center py-3.5 font-semibold">
+                            <Icon icon="mdi:share-variant" width={16} height={16} aria-hidden />
                             Bagikan
                         </PillButton>
                         <PillButton tone="ghost" onClick={handleCopy} className="w-full justify-center">
+                            <Icon icon="mdi:content-copy" width={16} height={16} aria-hidden />
                             Salin gambar
                         </PillButton>
                         {status !== null && (

@@ -25,6 +25,7 @@ export default function ConnectTelegramModal({ open, onClose }: Readonly<Connect
                 </>
             }
             primaryLabel="Sambungin Telegram"
+            primaryIcon="mdi:telegram"
             onPrimary={() => router.visit('/profil')}
         />
     );

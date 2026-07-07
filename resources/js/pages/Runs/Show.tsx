@@ -298,9 +298,10 @@ export default function RunsShow({
                                         {pastYou.past.activity_id != null && (
                                             <Link
                                                 href={aktivitasUrl({ activity_id: pastYou.past.activity_id })}
-                                                className="focus-ring-on-sky shrink-0 rounded-full border border-cream/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream/70 transition hover:border-cream/40 hover:text-cream"
+                                                className="focus-ring-on-sky inline-flex shrink-0 items-center gap-1 rounded-full border border-cream/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream/70 transition hover:border-cream/40 hover:text-cream"
                                             >
-                                                Lihat →
+                                                Lihat
+                                                <Icon icon="mdi:arrow-right" width={12} height={12} aria-hidden />
                                             </Link>
                                         )}
                                     </div>

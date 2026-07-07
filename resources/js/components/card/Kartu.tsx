@@ -195,31 +195,19 @@ export default function Kartu({
                     </div>
                 )}
 
-        {/* Labeled stat grid — the dense TCG stat block */}
-                 {hideStats ? (
-                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                         {slugs.length > 0 &&
-                             slugs.map((slug) => (
-                                 <span
-                                     key={slug}
-                                     className="inline-flex items-center gap-0.5 rounded-full bg-cream/10 px-1.5 py-0.5 font-mono text-[10px] text-cream"
-                                 >
-                                     <span aria-hidden>{badgeEmblem(slug)}</span>
-                                     <span>{badgeName(slug)}</span>
-                                 </span>
-                             ))}
-                     </div>
-                 ) : (
-                     <>
-                         <StatGrid stats={stats} durasi={durasi} />
+                {/* Labeled stat grid — the dense TCG stat block. At narrow (mobile grid)
+                    widths it's too tight for six truncation-prone cells, so `hideStats`
+                    drops it below the `sm` breakpoint; badges above stay as the mobile
+                    summary. Wider/detail renders keep the full grid. */}
+                <div className={cn(hideStats && 'hidden sm:block')}>
+                    <StatGrid stats={stats} durasi={durasi} />
 
-                         {/* HR-zone effort bar — bare (no Z1..Z5 legend), matching the share
-                             card's rounded legendless bar. */}
-                         {zonePct != null && (
-                             <ZoneBar zonePct={zonePct} showLegend={false} className="mt-1.5" />
-                         )}
-                     </>
-                 )}
+                    {/* HR-zone effort bar — bare (no Z1..Z5 legend), matching the share
+                        card's rounded legendless bar. */}
+                    {zonePct != null && (
+                        <ZoneBar zonePct={zonePct} showLegend={false} className="mt-1.5" />
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties, type ReactNode } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { dawnRayStyle, glowStyle, GLOW_COLORS, noiseFilterStyle } from '@/lib/styles';
 

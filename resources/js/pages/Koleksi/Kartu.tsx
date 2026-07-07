@@ -307,8 +307,6 @@ const CardCell = memo(function CardCell({
         return null;
     }
 
-    const hideStats = false; // hide dense stat grid on mobile
-
     return (
         <MotionLink
             href={aktivitasUrl(card)}
@@ -325,14 +323,14 @@ const CardCell = memo(function CardCell({
                     rarity={card.rarity}
                     mood={card.mood}
                     badges={card.badges ?? []}
-                    stats={hideStats ? undefined : derived.stats}
-                    zonePct={hideStats ? null : derived.zonePct}
+                    stats={derived.stats}
+                    zonePct={derived.zonePct}
                     polyline={detail.summary_polyline}
                     paceShape={derived.paceShape}
                     edition={card.edition}
                     size="md"
+                    hideStats
                     hideName
-                    hideStats={hideStats}
                     className="w-full"
                 />
             </KartuMount>

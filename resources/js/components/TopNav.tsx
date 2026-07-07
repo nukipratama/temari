@@ -28,7 +28,7 @@ const ITEMS: ReadonlyArray<NavItem> = [
     href: "/aktivitas",
     prefixes: ["/riwayat", "/aktivitas", "/kalender"],
   },
-  { id: "aku", label: "Aku", href: "/profil", prefixes: ["/aku", "/profil"] },
+  { id: "aku", label: "Aku", href: "/profil", prefixes: ["/aku", "/profil", "/pengaturan"] },
 ];
 
 export function activeTabFromUrl(url: string): TabId | null {

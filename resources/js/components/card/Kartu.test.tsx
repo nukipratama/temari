@@ -168,4 +168,24 @@ describe('Kartu', () => {
         expect(screen.queryByText('Durasi')).toBeNull();
     });
 
+    it('hides the stat grid below the sm breakpoint (not the DOM) when hideStats is set', () => {
+        // A narrow mobile grid tile has no room for the dense labeled stat block —
+        // `hideStats` wraps it in `hidden sm:block` (CSS, so wider grid columns at
+        // sm+ still reveal it) rather than stripping it from the tree.
+        render(
+            <Kartu
+                name="x"
+                km="1"
+                durasi="1:00"
+                trimp={1}
+                size="md"
+                hideStats
+                stats={{ pace: '5:30/km', hr: '150 bpm' }}
+            />,
+        );
+        const paceCell = screen.getByText('5:30/km').closest('div.min-w-0');
+        const wrapper = paceCell?.closest('dl')?.parentElement;
+        expect(wrapper).toHaveClass('hidden', 'sm:block');
+    });
+
 });

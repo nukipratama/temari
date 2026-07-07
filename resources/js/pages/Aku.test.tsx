@@ -98,7 +98,7 @@ describe('Aku', () => {
         expect(screen.getByText('Threshold pace')).toBeInTheDocument();
     });
 
-    it('shows the connect button when Telegram is not connected', () => {
+    it('shows the connect link when Telegram is not connected', () => {
         const telegram = {
             connected: false,
             username: null,
@@ -109,11 +109,11 @@ describe('Aku', () => {
             notify_daily_briefing: false,
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
-        const link = screen.getByText('Hubungkan Telegram').closest('a');
+        const link = screen.getByText('Telegram').closest('a');
         expect(link).toHaveAttribute('href', 'https://t.me/temari_bot?start=tok');
     });
 
-    it('disables the connect button and opens the demo modal for a demo user', () => {
+    it('shows the demo modal when a demo user taps the Telegram row', () => {
         setMockPage({
             auth: { user: makeUser({ is_demo: true }) },
             flash: {},
@@ -130,9 +130,9 @@ describe('Aku', () => {
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
 
-        // Not an anchor (can't deep-link the shared bot); tapping explains why.
-        expect(screen.getByText('Hubungkan Telegram').closest('a')).toBeNull();
-        fireEvent.click(screen.getByText('Hubungkan Telegram'));
+        // Not an anchor (can't deep-link the shared bot)
+        expect(screen.getByText('Telegram').closest('a')).toBeNull();
+        fireEvent.click(screen.getByText('Telegram'));
         expect(screen.getByText('Telegram-nya lagi istirahat dulu')).toBeInTheDocument();
     });
 
@@ -385,7 +385,7 @@ describe('Aku', () => {
         };
         render(<Aku identity={identity} stats={stats} telegram={telegram} />);
 
-        fireEvent.click(screen.getByText('Hubungkan Telegram'));
+        fireEvent.click(screen.getByText('Telegram'));
         expect(screen.getByText('Telegram-nya lagi istirahat dulu')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Nanti aja' }));

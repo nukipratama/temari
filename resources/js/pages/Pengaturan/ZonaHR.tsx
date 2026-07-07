@@ -1,6 +1,8 @@
 import { Head, router, usePage } from '@inertiajs/react';
+import { Icon } from '@iconify/react';
 import { useMemo, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
+import BackLink from '@/components/ui/BackLink';
 import Card from '@/components/ui/Card';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
@@ -104,6 +106,9 @@ export default function ZonaHR({ profile, hasCustomProfile }: Readonly<ZonaHRPro
             <Head title="Pengaturan · Zona HR" />
             <PageContainer>
                 <header>
+                    <BackLink href="/profil" className="mb-4">
+                        Aku · Pengaturan
+                    </BackLink>
                     <SectionLabel dot dotClass="bg-horizon">
                         Pengaturan
                     </SectionLabel>
@@ -138,6 +143,7 @@ export default function ZonaHR({ profile, hasCustomProfile }: Readonly<ZonaHRPro
 
                     <div className="mt-5 flex flex-wrap items-center gap-3">
                         <PillButton tone="outline" size="sm" onClick={applyDerived}>
+                            <Icon icon="mdi:calculator-variant-outline" width={14} height={14} aria-hidden />
                             Hitung otomatis dari Max & Resting
                         </PillButton>
                     </div>
@@ -220,7 +226,8 @@ export default function ZonaHR({ profile, hasCustomProfile }: Readonly<ZonaHRPro
                 </p>
 
                 <div className="mt-5">
-                    <PillButton tone="horizon" onClick={submit} disabled={processing}>
+                    <PillButton tone="sky" onClick={submit} disabled={processing}>
+                        <Icon icon="mdi:content-save-outline" width={16} height={16} aria-hidden />
                         Simpan zona
                     </PillButton>
                 </div>

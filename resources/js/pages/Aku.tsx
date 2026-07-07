@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useCallback, useRef, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
@@ -6,7 +6,9 @@ import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
+import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
+import SettingsRow from '@/components/ui/SettingsRow';
 import StatTile from '@/components/ui/StatTile';
 import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -139,8 +141,9 @@ export default function Aku({
                                 {stravaRevoked && (
                                     <a
                                         href="/auth/strava/redirect"
-                                        className="focus-ring rounded-full border border-cream-deep/40 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream transition hover:bg-cream/10"
+                                        className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-strava-orange-hover"
                                     >
+                                        <Icon icon="mdi:strava" width={12} height={12} aria-hidden />
                                         Sambungin lagi
                                     </a>
                                 )}
@@ -187,25 +190,13 @@ export default function Aku({
                     <div className="mt-3">
                         <Card padding="lg">
                             <TelegramPanel telegram={telegram} />
-                        </Card>
-                    </div>
-                    <div className="mt-4">
-                        <Card padding="lg">
-                            <Link
+                            <div className="my-5 border-t border-line" />
+                            <SettingsRow
+                                icon="mdi:heart-pulse"
+                                label="Zona HR"
+                                description="Atur sendiri batas Z1-Z5 biar Temari baca larimu lebih pas."
                                 href="/pengaturan/zona"
-                                className="focus-ring -m-2 flex items-center justify-between gap-3 rounded-xl p-2 transition hover:bg-cream-deep/40"
-                            >
-                                <span className="flex items-center gap-3">
-                                    <Icon icon="mdi:heart-pulse" width={20} height={20} className="text-ink-3" aria-hidden />
-                                    <span className="flex flex-col">
-                                        <span className="font-sans text-sm font-semibold text-ink">Zona HR</span>
-                                        <span className="font-sans text-[12px] text-ink-3">
-                                            Atur sendiri batas Z1-Z5 biar Temari baca larimu lebih pas.
-                                        </span>
-                                    </span>
-                                </span>
-                                <Icon icon="mdi:chevron-right" width={18} height={18} className="text-ink-3" aria-hidden />
-                            </Link>
+                            />
                         </Card>
                     </div>
                 </section>
@@ -320,42 +311,30 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
     }, []);
 
     if (!telegram.connected) {
-        let connectAffordance;
         if (telegram.connect_url === null) {
-            connectAffordance = <p className="font-sans text-[12px] text-ink-3">Bot Telegram belum dikonfigurasi.</p>;
-        } else if (isDemo) {
-            // Demo shares one bot, so it can't link a personal chat: show the
-            // button disabled and route the tap to the friendly demo modal.
-            connectAffordance = (
-                <button
-                    type="button"
+            return <p className="font-sans text-[12px] text-ink-3">Bot Telegram belum dikonfigurasi.</p>;
+        }
+
+        if (isDemo) {
+            return (
+                <SettingsRow
+                    icon="mdi:telegram"
+                    label="Telegram"
+                    description="Sambungin biar Temari bisa kabarin kamu."
                     onClick={() => setOpen(true)}
-                    className="inline-flex items-center gap-2 self-start rounded-full bg-[#229ED9] px-5 py-2.5 text-sm font-semibold text-white opacity-60 transition"
                 >
-                    <Icon icon="mdi:telegram" width={18} height={18} aria-hidden />
-                    Hubungkan Telegram
-                </button>
-            );
-        } else {
-            connectAffordance = (
-                <a
-                    href={telegram.connect_url}
-                    className="inline-flex items-center gap-2 self-start rounded-full bg-[#229ED9] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1c8cbf]"
-                >
-                    <Icon icon="mdi:telegram" width={18} height={18} aria-hidden />
-                    Hubungkan Telegram
-                </a>
+                    <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
+                </SettingsRow>
             );
         }
 
         return (
-            <div className="flex flex-col gap-4">
-                <p className="font-display text-base italic text-ink-2">
-                    Sambungin Telegram biar Temari bisa kabarin kamu tiap abis lari sama pas rekap mingguan.
-                </p>
-                {connectAffordance}
-                <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
-            </div>
+            <SettingsRow
+                icon="mdi:telegram"
+                label="Telegram"
+                description="Sambungin biar Temari bisa kabarin kamu."
+                externalHref={telegram.connect_url}
+            />
         );
     }
 
@@ -422,14 +401,13 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     }
                 />
             </div>
-            <button
-                type="button"
+            <PillButton
+                tone="outline"
                 onClick={() => guard(() => router.post('/profil/telegram/test', {}, { preserveScroll: true }))}
-                className="focus-ring inline-flex items-center gap-1.5 self-start rounded-full border border-cream-deep bg-cream px-4 py-2 font-sans text-[13px] font-semibold text-ink-2 transition hover:text-ink"
             >
                 <Icon icon="mdi:send-outline" width={14} height={14} aria-hidden />
                 Kirim notifikasi tes
-            </button>
+            </PillButton>
             <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
         </div>
     );
@@ -464,16 +442,3 @@ function NotifyToggle({
         </label>
     );
 }
-
-function RekorMini({ pr }: Readonly<{ pr: TopPrEntry }>) {
-    return (
-        <PrCard
-            category={PR_CATEGORY_LABELS[pr.category] ?? pr.category}
-            time={formatPrValue(pr.category, pr.value_sec)}
-            setAt={formatNaiveIdDate(pr.set_at, 'short')}
-            activityId={pr.activity_id}
-        />
-    );
-}
-
-

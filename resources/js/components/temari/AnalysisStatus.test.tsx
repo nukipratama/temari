@@ -49,14 +49,16 @@ describe('AnalysisStatus', () => {
         expect(screen.getByTestId('custom').textContent).toBe('[raw]');
     });
 
-    it('renders the queued spinner status', () => {
-        render(<AnalysisStatus analysis={payload({ status: 'queued' })} />);
-        expect(screen.getByRole('status')).toHaveTextContent(/Lagi dipikirin Temari/);
+    it('renders a skeleton placeholder when queued', () => {
+        const { container } = render(<AnalysisStatus analysis={payload({ status: 'queued' })} />);
+        expect(screen.getByRole('status')).toBeInTheDocument();
+        expect(container.querySelector('.animate-pulse')).not.toBeNull();
     });
 
-    it('renders the processing spinner status', () => {
-        render(<AnalysisStatus analysis={payload({ status: 'processing' })} />);
-        expect(screen.getByRole('status')).toHaveTextContent(/Lagi dipikirin Temari/);
+    it('renders a skeleton placeholder when processing', () => {
+        const { container } = render(<AnalysisStatus analysis={payload({ status: 'processing' })} />);
+        expect(screen.getByRole('status')).toBeInTheDocument();
+        expect(container.querySelector('.animate-pulse')).not.toBeNull();
     });
 
     it('renders the failed retry button', () => {
@@ -112,9 +114,9 @@ describe('AnalysisStatus', () => {
         vi.useRealTimers();
     });
 
-    it('appends "(percobaan N)" when attempts > 1 on queued/processing', () => {
+    it('shows attempt count when attempts > 1 on queued/processing', () => {
         render(<AnalysisStatus analysis={payload({ status: 'processing', attempts: 3 })} />);
-        expect(screen.getByRole('status').textContent).toMatch(/percobaan 3/);
+        expect(screen.getByText(/Percobaan 3/)).toBeInTheDocument();
     });
 
     it('disables Analisis ulang and shows countdown when retry_after_seconds > 0', () => {

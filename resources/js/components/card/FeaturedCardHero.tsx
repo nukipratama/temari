@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import { Icon } from '@iconify/react';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PillLink from '@/components/ui/PillLink';
 import { type KartuStats } from '@/components/card/Kartu';
@@ -98,6 +99,7 @@ export default function FeaturedCardHero({
                         <div className="mt-4 max-w-md text-sm">{voice}</div>
                     )}
                     <PillLink href={ctaHref} onSky className="mt-6">
+                        <Icon icon="mdi:run" width={16} height={16} aria-hidden />
                         {ctaLabel}
                     </PillLink>
                 </div>

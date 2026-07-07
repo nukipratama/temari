@@ -68,6 +68,12 @@ describe('TopNav', () => {
         expect(screen.queryByLabelText(/Buka menu/)).not.toBeInTheDocument();
     });
 
+    it('highlights Aku for the nested /pengaturan settings pages', () => {
+        setMockPage(user(), '/pengaturan/zona');
+        render(<TopNav />);
+        expect(screen.getByText('Aku')).toHaveAttribute('aria-current', 'page');
+    });
+
     it('activeTabFromUrl returns null for paths that do not match any prefix', () => {
         setMockPage(user(), '/settings');
         render(<TopNav />);

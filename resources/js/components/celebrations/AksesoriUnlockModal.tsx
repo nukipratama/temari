@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Icon } from '@iconify/react';
 import { useRef } from 'react';
 import TemariProto from '@/components/temari/TemariProto';
 import { keyToPreviewEquipped } from '@/lib/equippedAccessories';
@@ -124,15 +125,17 @@ export default function AksesoriUnlockModal({
                         <button
                             type="button"
                             onClick={handleEquip}
-                            className="focus-ring-on-sky w-full rounded-full bg-horizon py-[14px] font-sans text-sm font-semibold text-sky transition-opacity hover:opacity-90"
+                            className="focus-ring-on-sky inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-horizon py-[14px] font-sans text-sm font-semibold text-sky transition-opacity hover:opacity-90"
                         >
+                            <Icon icon="mdi:hanger" width={16} height={16} aria-hidden />
                             Pakai sekarang
                         </button>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="focus-ring-on-sky w-full rounded-full border border-cream/30 py-3 font-sans text-[13px] font-medium text-cream transition-colors hover:bg-cream/10"
+                            className="focus-ring-on-sky inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-cream/30 py-3 font-sans text-[13px] font-medium text-cream transition-colors hover:bg-cream/10"
                         >
+                            <Icon icon="mdi:close" width={14} height={14} aria-hidden />
                             Nanti aja
                         </button>
                     </div>
