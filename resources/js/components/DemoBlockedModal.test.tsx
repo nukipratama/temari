@@ -13,7 +13,7 @@ describe('DemoBlockedModal', () => {
         render(<DemoBlockedModal open onClose={vi.fn()} />);
         expect(screen.getByText('Telegram-nya lagi istirahat dulu')).toBeInTheDocument();
         expect(screen.getByText(/Sambungin Strava-mu sendiri/)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Masuk pakai Strava' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Sambungkan dengan Strava' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Nanti aja' })).toBeInTheDocument();
     });
 
@@ -28,7 +28,7 @@ describe('DemoBlockedModal', () => {
     it('posts to /logout when the primary CTA is clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<DemoBlockedModal open onClose={vi.fn()} />);
-        fireEvent.click(screen.getByRole('button', { name: 'Masuk pakai Strava' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Sambungkan dengan Strava' }));
         expect(router.post).toHaveBeenCalledWith('/logout');
     });
 

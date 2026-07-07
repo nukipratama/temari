@@ -24,8 +24,9 @@ export default function DemoBlockedModal({ open, onClose }: Readonly<DemoBlocked
                     orang lain. Sambungin Strava-mu sendiri, nanti notif beneran masuk ke HP kamu.
                 </>
             }
-            primaryLabel="Masuk pakai Strava"
+            primaryLabel="Sambungkan dengan Strava"
             primaryIcon="mdi:strava"
+            primaryClassName="bg-strava-orange text-white hover:bg-strava-orange-hover"
             onPrimary={() => router.post('/logout')}
         />
     );

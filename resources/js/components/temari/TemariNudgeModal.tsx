@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { usePage } from '@inertiajs/react';
 import { useRef, type ReactNode } from 'react';
 import { Icon } from '@iconify/react';
+import { cn } from '@/lib/cn';
 import { useDismissable } from '@/hooks/useDismissable';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import PillButton from '@/components/ui/PillButton';
@@ -19,6 +20,8 @@ interface TemariNudgeModalProps {
     primaryLabel: string;
     /** Iconify icon name shown before the primary label. */
     primaryIcon: string;
+    /** Extra classes merged onto the primary CTA (e.g. a brand color override). */
+    primaryClassName?: string;
     onPrimary: () => void;
     /** Secondary dismiss label; defaults to a soft "Nanti aja". */
     secondaryLabel?: string;
@@ -38,6 +41,7 @@ export default function TemariNudgeModal({
     body,
     primaryLabel,
     primaryIcon,
+    primaryClassName,
     onPrimary,
     secondaryLabel = 'Nanti aja',
     pose = 'observational',
@@ -99,7 +103,7 @@ export default function TemariNudgeModal({
                             <PillButton
                                 tone="sky"
                                 onClick={onPrimary}
-                                className="w-full justify-center py-3.5 font-semibold"
+                                className={cn('w-full justify-center py-3.5 font-semibold', primaryClassName)}
                             >
                                 <Icon icon={primaryIcon} width={16} height={16} aria-hidden />
                                 {primaryLabel}
