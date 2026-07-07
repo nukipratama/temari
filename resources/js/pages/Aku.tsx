@@ -137,10 +137,6 @@ export default function Aku({
                                 />
                             )}
                             <div className="mt-5 flex flex-wrap items-center gap-2">
-                                <Chip tone="onSky">
-                                    {identity.strava_connected ? 'Strava aktif' : 'Strava off'}
-                                </Chip>
-                                {memberSince && <Chip tone="onSky">Gabung sejak {memberSince}</Chip>}
                                 {stravaRevoked && (
                                     <a
                                         href="/auth/strava/redirect"
