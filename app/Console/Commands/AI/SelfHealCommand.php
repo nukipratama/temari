@@ -72,24 +72,28 @@ class SelfHealCommand extends Command
      */
     private function resumePerActivity(AnalysisService $service): int
     {
-        $userIds = Activity::query()
+        $resumed = 0;
+        $processed = 0;
+
+        Activity::query()
             ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
             ->whereNotNull('activity_details.start_date_local')
             ->whereHas('analyses', fn ($query) => $query
                 ->where('analysis_type', AnalysisType::PostRunSpeech)
                 ->where('status', AnalysisStatus::Pending))
             ->distinct()
-            ->pluck('activities.user_id');
-
-        $resumed = 0;
-        foreach ($userIds as $userId) {
-            $earliest = AnalyzeActivityJob::earliestPendingActivityForUser((int) $userId);
-            if ($earliest === null) {
-                continue;
-            }
-            $service->requestActivityGroup($earliest, invalidate: false);
-            $resumed++;
-        }
+            ->select('activities.user_id')
+            ->chunkById(100, function ($users) use ($service, &$resumed, &$processed): void {
+                foreach ($users as $row) {
+                    $earliest = AnalyzeActivityJob::earliestPendingActivityForUser((int) $row->user_id);
+                    if ($earliest === null) {
+                        continue;
+                    }
+                    $service->requestActivityGroup($earliest, invalidate: false);
+                    $resumed++;
+                    $processed++;
+                }
+            }, 'activities.user_id', 'user_id');
 
         return $resumed;
     }

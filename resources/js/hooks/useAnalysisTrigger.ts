@@ -193,7 +193,7 @@ export function useAnalysisTrigger(
         } finally {
             setPending(false);
         }
-    }, [pending, payload.type, payload.subject_id, payload.discriminator, inertiaReloadProps, options]);
+    }, [pending, payload.type, payload.subject_id, payload.discriminator, inertiaReloadProps, options.onUpdate]);
 
     useEffect(() => {
         setStatus(payload.status);

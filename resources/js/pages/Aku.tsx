@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
@@ -274,23 +274,22 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
     const [dailyBriefing, setDailyBriefing] = useState(telegram.notify_daily_briefing);
     const { isDemo, open, setOpen, guard } = useDemoGuard();
 
-    const savePrefs = (
-        notifyPostRun: boolean,
-        notifyWeeklyRecap: boolean,
-        notifyMonthlyRecap: boolean,
-        notifyDailyBriefing: boolean,
-    ) => {
+    const latest = useRef({ postRun, weeklyRecap, monthlyRecap, dailyBriefing });
+    latest.current = { postRun, weeklyRecap, monthlyRecap, dailyBriefing };
+
+    const savePrefs = useCallback(() => {
+        const { postRun: pr, weeklyRecap: wr, monthlyRecap: mr, dailyBriefing: db } = latest.current;
         router.patch(
             '/profil/telegram',
             {
-                notify_post_run: notifyPostRun,
-                notify_weekly_recap: notifyWeeklyRecap,
-                notify_monthly_recap: notifyMonthlyRecap,
-                notify_daily_briefing: notifyDailyBriefing,
+                notify_post_run: pr,
+                notify_weekly_recap: wr,
+                notify_monthly_recap: mr,
+                notify_daily_briefing: db,
             },
             { preserveScroll: true },
         );
-    };
+    }, []);
 
     if (!telegram.connected) {
         let connectAffordance;
@@ -354,7 +353,8 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     onChange={(value) =>
                         guard(() => {
                             setPostRun(value);
-                            savePrefs(value, weeklyRecap, monthlyRecap, dailyBriefing);
+                            latest.current.postRun = value;
+                            savePrefs();
                         })
                     }
                 />
@@ -364,7 +364,8 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     onChange={(value) =>
                         guard(() => {
                             setWeeklyRecap(value);
-                            savePrefs(postRun, value, monthlyRecap, dailyBriefing);
+                            latest.current.weeklyRecap = value;
+                            savePrefs();
                         })
                     }
                 />
@@ -374,7 +375,8 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     onChange={(value) =>
                         guard(() => {
                             setMonthlyRecap(value);
-                            savePrefs(postRun, weeklyRecap, value, dailyBriefing);
+                            latest.current.monthlyRecap = value;
+                            savePrefs();
                         })
                     }
                 />
@@ -384,7 +386,8 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     onChange={(value) =>
                         guard(() => {
                             setDailyBriefing(value);
-                            savePrefs(postRun, weeklyRecap, monthlyRecap, value);
+                            latest.current.dailyBriefing = value;
+                            savePrefs();
                         })
                     }
                 />

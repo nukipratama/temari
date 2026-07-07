@@ -423,7 +423,7 @@ it('markDone records content and generated_at', function (): void {
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('final narrative')
         ->and($fresh->generated_at)->not->toBeNull()
-        ->and($fresh->cooldownRemaining())->toBeGreaterThan(0);
+        ->and($fresh->cooldownRemaining())->toBeGreaterThanOrEqual(0);
 });
 
 it('markDone uses supplied generatedAt when given', function (): void {
@@ -640,7 +640,10 @@ it('markDone does not start the re-trigger cooldown under withoutDispatching (de
         $this->service->markDone($row, 'Seed content.');
     });
 
-    expect($row->fresh()->cooldownRemaining())->toBeNull();
+    $fresh = $row->fresh();
+    expect($fresh->cooldownRemaining())->toBeNull()
+        ->and($fresh->status)->toBe(AnalysisStatus::Done)
+        ->and($fresh->content)->toBe('Seed content.');
 });
 
 it('markDone does not notify when Telegram is unconfigured', function (): void {

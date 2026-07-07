@@ -53,6 +53,9 @@ class RunController extends Controller
      */
     private const int MAX_RUNS = 365;
 
+    /** Safety cap on weekly snapshots loaded into memory (10 years ≈ 520 weeks). */
+    private const int MAX_WEEKS = 520;
+
     public function index(Request $request, PostRunNoteReader $noteReader): Response
     {
         /** @var User $user */
@@ -87,6 +90,7 @@ class RunController extends Controller
             ->where('user_id', $user->id)
             ->when($rangeStart !== null, fn ($q) => $q->where('week_ending', '>=', $rangeStart))
             ->orderByDesc('week_ending')
+            ->limit(self::MAX_WEEKS)
             ->get();
 
         $recapAnalyses = $this->recapAnalysesFor($weeklySnapshots->all());

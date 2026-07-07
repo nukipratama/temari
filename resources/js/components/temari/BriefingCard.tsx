@@ -172,7 +172,7 @@ function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload
             type="button"
             onClick={trigger}
             disabled={cooling || pending}
-            aria-label={cooldownAriaLabel(remaining, 'baca ulang') ?? (error ?? undefined)}
+            aria-label={error ? 'Coba lagi' : cooldownAriaLabel(remaining, 'baca ulang')}
             className="focus-ring inline-flex items-center gap-1 rounded-full bg-surface-sunken/80 px-2.5 py-1 text-xs text-ink-3 backdrop-blur-sm transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
         >
             <Icon icon="mdi:auto-awesome" aria-hidden />

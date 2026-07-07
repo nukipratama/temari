@@ -57,6 +57,19 @@ it('returns an empty equipped set when nothing is equipped', function (): void {
     ]);
 });
 
+it('picks one equipped item when two items compete for the same slot', function (): void {
+    $user = User::factory()->create();
+    UserUnlock::factory()->for($user)->equipped()->create([
+        'unlock_key' => 'accessory.ikat_kepala_legendaris',
+    ]);
+    UserUnlock::factory()->for($user)->equipped()->create([
+        'unlock_key' => 'accessory.ikat_kepala_epik',
+    ]);
+
+    $result = $this->service->forUser($user);
+    expect($result['ikat_kepala'])->not->toBeNull();
+});
+
 it('resolves equipped accessories into unlock keys per slot', function (): void {
     $user = User::factory()->create();
     UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.ikat_kepala_legendaris']);

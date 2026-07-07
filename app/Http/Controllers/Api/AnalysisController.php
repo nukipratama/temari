@@ -81,7 +81,7 @@ class AnalysisController extends Controller
             && $analysisType->subjectType() === Activity::class
             && $user->runnerProfile !== null
         ) {
-            $activity = Activity::find($subjectId);
+            $activity = Activity::with(['detail', 'stream'])->find($subjectId);
             if ($activity !== null) {
                 $pipeline->recomputeSummary($activity);
             }

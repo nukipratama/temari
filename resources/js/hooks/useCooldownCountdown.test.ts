@@ -40,6 +40,19 @@ describe('useCooldownCountdown', () => {
         expect(result.current).toBe(0);
     });
 
+    it('clears the interval on unmount', () => {
+        const { result, unmount } = renderHook(() => useCooldownCountdown(10));
+        expect(result.current).toBe(10);
+
+        unmount();
+
+        // No crash and no state update after unmount.
+        act(() => {
+            vi.advanceTimersByTime(5000);
+        });
+        expect(result.current).toBe(10);
+    });
+
     it('restarts the countdown when initialSeconds changes', () => {
         const { result, rerender } = renderHook(({ s }) => useCooldownCountdown(s), {
             initialProps: { s: 2 },

@@ -1,15 +1,9 @@
 <?php
 
-namespace Tests\Feature;
+declare(strict_types=1);
 
-use Tests\TestCase;
+it('returns a redirect for the guest homepage', function (): void {
+    $response = $this->get('/');
 
-class ExampleTest extends TestCase
-{
-    public function test_the_application_returns_a_successful_response(): void
-    {
-        $response = $this->get('/');
-
-        $response->assertRedirect();
-    }
-}
+    $response->assertRedirect();
+});

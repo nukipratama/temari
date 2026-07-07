@@ -44,13 +44,12 @@ export default function TemariNudgeModal({
     // Read the shared equip state defensively (mirrors ShareCardModal) so this
     // still renders a bare bunny when there's no Inertia page context (e.g. unit tests).
     let equipped: TemariEquipped | null = null;
-    try {
+    const pageProps = (globalThis as unknown as Record<string, unknown>).__inertia;
+    if (pageProps) {
         const acc = usePage<SharedProps>().props.equippedAccessories;
         if (acc) {
             equipped = serverToEquipped(acc);
         }
-    } catch {
-        equipped = null;
     }
 
     useDismissable(open, panelRef, onClose);

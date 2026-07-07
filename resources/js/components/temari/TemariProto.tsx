@@ -18,7 +18,7 @@ export interface TemariEquipped {
     kaus?: 'pemula' | 'pagi' | 'hujan' | 'legendaris' | null;
     celana?: 'ringan' | 'jarak' | 'split' | 'maraton' | null;
     sepatu?: 'basic' | 'cepat' | 'tahan' | 'legendaris' | null;
-    aura?: 'pemanasan' | 'gerah' | 'tenang' | 'jagoan' | 'angin' | boolean | null;
+    aura?: 'pemanasan' | 'gerah' | 'tenang' | 'jagoan' | 'angin' | true | null;
 }
 
 export interface TemariProtoProps {

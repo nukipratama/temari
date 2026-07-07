@@ -51,6 +51,8 @@ class HandleInertiaRequests extends Middleware
         /** @var User|null $user */
         $user = $request->user();
 
+        $user?->load(['telegramConnection', 'runnerProfile', 'stravaConnection']);
+
         return [
             ...parent::share($request),
             'auth' => [

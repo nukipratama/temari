@@ -99,13 +99,17 @@ describe('AnalysisStatus', () => {
     });
 
     it('shows "Dibuat X lalu" hint when generated_at is present on done content', () => {
-        const ts = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        vi.useFakeTimers();
+        const now = new Date('2026-07-07T12:00:00Z');
+        vi.setSystemTime(now);
+        const ts = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
         render(
             <AnalysisStatus
                 analysis={payload({ status: 'done', content: 'ok', generated_at: ts })}
             />,
         );
         expect(screen.getByText(/Dibuat 5 menit lalu/)).toBeInTheDocument();
+        vi.useRealTimers();
     });
 
     it('appends "(percobaan N)" when attempts > 1 on queued/processing', () => {

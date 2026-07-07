@@ -9,6 +9,7 @@ use App\Models\UserUnlock;
 use App\Services\Gamification\EquippedAccessories;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -90,12 +91,14 @@ class AksesoriController extends Controller
             fn (string $k): bool => $this->equipped->slotFor($k) === $slot && $k !== $key,
         ));
 
-        UserUnlock::query()
-            ->where('user_id', $user->id)
-            ->whereIn('unlock_key', $siblingKeys)
-            ->update(['equipped' => false]);
+        DB::transaction(function () use ($user, $siblingKeys, $unlock): void {
+            UserUnlock::query()
+                ->where('user_id', $user->id)
+                ->whereIn('unlock_key', $siblingKeys)
+                ->update(['equipped' => false]);
 
-        $unlock->forceFill(['equipped' => true])->save();
+            $unlock->forceFill(['equipped' => true])->save();
+        });
 
         return back();
     }

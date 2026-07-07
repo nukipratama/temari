@@ -340,9 +340,14 @@ class AnalysisService
             'queued_at' => $canDispatch ? Carbon::now() : null,
         ];
 
-        $rows = new Collection();
-        foreach ($groupTypes as $type) {
-            $row = $existing->get($type->value) ?? Analysis::query()->firstOrCreate(
+        $missingValues = array_values(array_filter(
+            $groupTypes,
+            fn (AnalysisType $type): bool => ! $existing->has($type->value),
+        ));
+
+        $insertedKeys = [];
+        foreach ($missingValues as $type) {
+            $row = Analysis::query()->firstOrCreate(
                 [
                     'subject_type' => $subjectType,
                     'subject_id' => $subjectId,
@@ -351,6 +356,15 @@ class AnalysisService
                 ],
                 $defaults,
             );
+            $existing->put($type->value, $row);
+            if ($row->wasRecentlyCreated) {
+                $insertedKeys[] = $type->value;
+            }
+        }
+
+        $rows = new Collection();
+        foreach ($groupTypes as $type) {
+            $row = $existing->get($type->value);
             $rows->put($type->value, $row);
         }
 
