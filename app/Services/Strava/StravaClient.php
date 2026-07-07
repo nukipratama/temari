@@ -11,7 +11,6 @@ use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
