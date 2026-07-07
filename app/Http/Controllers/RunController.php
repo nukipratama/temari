@@ -18,7 +18,6 @@ use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -382,9 +381,7 @@ class RunController extends Controller
                 'index' => (int) $editionStats?->getAttribute('edition_index'),
                 'total' => (int) $editionStats?->getAttribute('total'),
             ],
-            // Signed public URL for the share modal — minted server-side since
-            // signing needs the app key. Recipients open it without a session.
-            'public_share_url' => URL::signedRoute('kartu.publik', ['card' => $card->id]),
+            'public_share_url' => route('aktivitas.show', ['activity' => $card->activity_id]),
         ];
     }
 }

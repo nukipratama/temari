@@ -152,6 +152,8 @@ jobs:
           coverage_flag=""
           [ "${{ github.ref }}" = "refs/heads/main" ] && coverage_flag="--coverage --min=95"
 
+          echo "Running Pest${coverage_flag:+ with coverage (--min=95)}"
+
           ./vendor/bin/pest --parallel --processes="$(nproc)" $coverage_flag \
             --exclude-group=structure \
             --fail-on-warning --fail-on-notice \

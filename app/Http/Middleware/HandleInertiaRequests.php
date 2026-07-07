@@ -12,7 +12,6 @@ use App\Services\Gamification\GoalResolver;
 use App\Services\Run\Story\Temari;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\URL;
 use Inertia\Middleware;
 use Override;
 
@@ -252,7 +251,7 @@ class HandleInertiaRequests extends Middleware
             'average_heartrate' => $detail?->average_heartrate,
             'stream_summary' => $detail?->stream_summary,
             'summary_polyline' => $detail?->summary_polyline,
-            'public_share_url' => URL::signedRoute('kartu.publik', ['card' => $card->id]),
+            'public_share_url' => route('aktivitas.show', ['activity' => $card->activity_id]),
             'edition' => $this->editionFor($user, $card),
         ];
     }

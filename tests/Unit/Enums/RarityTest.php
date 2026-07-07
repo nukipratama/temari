@@ -24,9 +24,9 @@ it('ranks cases from common (0) to legendary (4)', function (): void {
 });
 
 /*
- * Parity guard: these hex values are mirrored in resources/js/lib/runcard.ts
+* Parity guard: these hex values are mirrored in resources/js/lib/runcard.ts
  * (RARITY_HEX), the client's single source of truth per the docblock. A
- * server-rendered surface (RunCardImageRenderer, kartu.blade.php) that drifts
+ * server-rendered surface (RunCardImageRenderer) that drifts
  * from the client's tint fails here first.
  */
 it('exposes the Daybreak rarity hex tints', function (): void {

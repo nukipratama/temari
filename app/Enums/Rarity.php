@@ -39,10 +39,9 @@ enum Rarity: string
     }
 
     /**
-     * Daybreak rarity tint, mirrored from the client's `RARITY_HEX`
+* Daybreak rarity tint, mirrored from the client's `RARITY_HEX`
      * ({@see resources/js/lib/runcard.ts}). Single source of truth for the
-     * server-rendered card surfaces ({@see \App\Services\Run\Story\RunCardImageRenderer},
-     * resources/views/public/kartu.blade.php).
+     * server-rendered card surface ({@see \App\Services\Run\Story\RunCardImageRenderer}).
      */
     public function hexColor(): string
     {

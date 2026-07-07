@@ -16,7 +16,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -339,7 +338,7 @@ it('shows a single run detail with Temari speech + run card', function (): void 
             ->where('card.special_move', 'Paru-paru Baja')
             ->has('card.flavor_analysis')
             ->where('card.edition', ['index' => 1, 'total' => 1])
-            ->where('card.public_share_url', URL::signedRoute('kartu.publik', ['card' => $card->id])));
+            ->where('card.public_share_url', route('aktivitas.show', ['activity' => $card->activity_id])));
 });
 
 it('numbers the run card\'s edition within its rarity across the user\'s collection', function (): void {

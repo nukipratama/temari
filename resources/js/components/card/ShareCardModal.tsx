@@ -88,7 +88,7 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
         } else if (navigator.clipboard?.writeText !== undefined) {
             try {
                 await navigator.clipboard.writeText(url);
-                setStatus({ tone: 'ok', text: 'Link kartu kesalin.' });
+                setStatus({ tone: 'ok', text: 'Link aktivitas kesalin.' });
             } catch {
                 setStatus({ tone: 'err', text: 'Gagal nyalin link.' });
             }

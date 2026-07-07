@@ -27,7 +27,7 @@ function stubDataUrlFetch() {
 const kartu: ShareKartuData = {
     id: 7,
     name: 'Tendangan Balik',
-    shareUrl: 'https://teman-lari.test/k/7?signature=abc',
+    shareUrl: '/aktivitas/7',
     rarity: 'epic',
     mood: 'enteng',
     subtitle: 'Pagi negatif-split · 20 Mei 2026',
@@ -99,7 +99,7 @@ describe('ShareCardModal', () => {
         await act(async () => {
             fireEvent.click(screen.getAllByRole('button').find((b) => b.textContent === 'Bagikan') ?? document.body);
         });
-        expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/k/7'));
+        expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/aktivitas/7'));
     });
 
     it('fires Salin Gambar and copies image to clipboard', async () => {
@@ -188,7 +188,7 @@ describe('ShareCardModal', () => {
             await act(async () => { clickBagikan(); });
             expect(share).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    url: expect.stringContaining('/k/7'),
+                    url: expect.stringContaining('/aktivitas/7'),
                     // The card has a quote, so it rides along as the share text.
                     text: kartu.quote,
                 }),
@@ -214,7 +214,7 @@ describe('ShareCardModal', () => {
             Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
             render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
             await act(async () => { clickBagikan(); });
-            expect(await screen.findByText('Link kartu kesalin.')).toBeInTheDocument();
+            expect(await screen.findByText('Link aktivitas kesalin.')).toBeInTheDocument();
         });
 
         it('shows an error toast when copying the link to the clipboard fails', async () => {

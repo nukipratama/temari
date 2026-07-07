@@ -38,7 +38,7 @@ interface KartuProps {
     /** Raw badge slugs — rendered as emblem pips in the stat block (full tier). */
     badges?: ReadonlyArray<string>;
     /** Secondary stats for the stat row. */
-    stats?: KartuStats;
+    stats?: KartuStats | undefined;
     /** HR zone distribution (Z1..Z5 %) for the effort bar. Hidden when absent. */
     zonePct?: ZonePct | null;
     /** Run route polyline + per-km pace seconds, for the art-window glyph. */
@@ -47,6 +47,10 @@ interface KartuProps {
     /** Collector number within the rarity ("#3/12"). */
     edition?: CardEdition | null;
     size?: 'md' | 'lg' | 'xl';
+    /** Hide the special-move name on mobile (below sm). */
+    hideName?: boolean;
+    /** Hide the full stat grid on very small screens. */
+    hideStats?: boolean;
     className?: string;
 }
 
@@ -93,6 +97,8 @@ export default function Kartu({
     paceShape,
     edition,
     size = 'md',
+    hideName = false,
+    hideStats = false,
     className,
 }: Readonly<KartuProps>) {
     const isFull = size !== 'md';
@@ -162,7 +168,11 @@ export default function Kartu({
             <div className={cn('px-2 pb-1.5 text-center text-cream', isFull ? 'pt-2' : 'pt-1.5')}>
                 {/* Special-move name (rarity now floats on the art window) */}
                 <div
-                    className={cn('font-collectible font-semibold uppercase leading-[1.02] tracking-[0.01em] text-cream', SIZE_NAME[size])}
+                    className={cn(
+                        'font-collectible font-semibold uppercase leading-[1.02] tracking-[0.01em] text-cream',
+                        SIZE_NAME[size],
+                        hideName && 'hidden sm:block',
+                    )}
                     style={nameGlow}
                 >
                     {name}
@@ -185,14 +195,31 @@ export default function Kartu({
                     </div>
                 )}
 
-                {/* Labeled stat grid — the dense TCG stat block */}
-                <StatGrid stats={stats} durasi={durasi} />
+        {/* Labeled stat grid — the dense TCG stat block */}
+                 {hideStats ? (
+                     <div className="mt-1.5 flex flex-wrap gap-1.5">
+                         {slugs.length > 0 &&
+                             slugs.map((slug) => (
+                                 <span
+                                     key={slug}
+                                     className="inline-flex items-center gap-0.5 rounded-full bg-cream/10 px-1.5 py-0.5 font-mono text-[10px] text-cream"
+                                 >
+                                     <span aria-hidden>{badgeEmblem(slug)}</span>
+                                     <span>{badgeName(slug)}</span>
+                                 </span>
+                             ))}
+                     </div>
+                 ) : (
+                     <>
+                         <StatGrid stats={stats} durasi={durasi} />
 
-                {/* HR-zone effort bar — bare (no Z1..Z5 legend), matching the share
-                    card's rounded legendless bar. */}
-                {zonePct != null && (
-                    <ZoneBar zonePct={zonePct} showLegend={false} className="mt-1.5" />
-                )}
+                         {/* HR-zone effort bar — bare (no Z1..Z5 legend), matching the share
+                             card's rounded legendless bar. */}
+                         {zonePct != null && (
+                             <ZoneBar zonePct={zonePct} showLegend={false} className="mt-1.5" />
+                         )}
+                     </>
+                 )}
             </div>
         </div>
     );

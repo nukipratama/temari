@@ -16,7 +16,7 @@ const pendingCard: PendingReveal = {
     distance_m: 5000,
     moving_time_sec: 1800,
     trimp_edwards: 42,
-    public_share_url: 'https://teman-lari.test/k/1?signature=abc',
+    public_share_url: '/aktivitas/1',
     edition: { index: 1, total: 1 },
 };
 

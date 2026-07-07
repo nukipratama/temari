@@ -280,7 +280,7 @@ export default function RunsShow({
                                     <StatTile tone="plainSky" size="md" label="DURASI" value={kartuProps.durasi} />
                                     <StatTile tone="plainSky" size="md" label="PACE" value={pace} unit="/km" />
                                     <StatTile tone="plainSky" size="md" label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
-                                    <StatTile tone="plainSky" size="md" label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" explainerKey="trimp" />
+                                    <StatTile tone="plainSky" size="md" label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" explainerKey="trimp" className="col-span-2 sm:col-span-1" />
                                 </div>
 
                                 {/* KAMU VS KAMU DULU — inline in hero */}
@@ -313,7 +313,7 @@ export default function RunsShow({
                                 )}
                             </div>
 
-                            <MapWeatherPanel detail={detail} />
+                            <MapWeatherPanel detail={detail} className="hidden lg:flex" />
                         </div>
                     </HeroPanel>
                 </section>
@@ -452,7 +452,7 @@ export default function RunsShow({
     );
 }
 
-function MapWeatherPanel({ detail }: Readonly<{ detail: DetailedActivityDetail }>) {
+function MapWeatherPanel({ detail, className }: Readonly<{ detail: DetailedActivityDetail; className?: string }>) {
     const temp = detail.weather_temp_c;
     const humidity = detail.weather_humidity_pct;
     const location = detail.location_name;
@@ -463,7 +463,7 @@ function MapWeatherPanel({ detail }: Readonly<{ detail: DetailedActivityDetail }
     const showGust = gust != null && windSpeed != null && gust - windSpeed >= 8;
 
     return (
-        <div className="relative flex flex-col gap-2">
+        <div className={cn("relative flex flex-col gap-2", className)}>
             {(temp != null || location != null) && (
                 <div className="flex items-baseline gap-3">
                     {temp != null && (

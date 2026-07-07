@@ -75,7 +75,7 @@ const runCard: NonNullable<Parameters<typeof RunsShow>[0]['card']> = {
         subject_id: 1,
         discriminator: null,
     },
-    public_share_url: 'https://teman-lari.test/k/abc123',
+    public_share_url: '/aktivitas/255',
 };
 
 const storyLine: StoryLine = {
