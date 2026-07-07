@@ -3,7 +3,7 @@ title: AI narration pipeline
 description: How AI copy flows from a narrator through a queued job into an Analysis row, with cadence, chaining, idempotency, cost ceiling, manual retry, and the rule-based fallback.
 tags: [architecture, ai]
 status: living
-reviewed: 2026-06-25
+reviewed: 2026-07-07
 code_refs:
   - app/Services/AI/AnalysisService.php
   - app/Services/AI/AnalysisType.php
@@ -43,6 +43,8 @@ The full catalogue of copy kinds lives in the [AnalysisType](app/Services/AI/Ana
 - `jobClass()` maps the type to its concrete [AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php) subclass.
 - `subjectType()` maps it to a model class or a synthetic string subject (e.g. `briefing_user_day`, `monthly_recap_user_month`) — the subject for daily/weekly/monthly copy is a user+period token, not a row.
 - `isRuleBased()`, `isChained()`, `isZoneDependent()` are flags consumed below.
+
+Recurring recap windows are modelled by [RecapPeriod](app/Services/AI/RecapPeriod.php) — it resolves the current open period's boundaries (e.g. which ISO week is "this week", which calendar month is "this month") and is used by the scheduled commands and `AnalysisController::trigger()` to gate deferred dispatch (see [[deferred-recap-windowing]]).
 
 ## Group jobs vs row jobs
 

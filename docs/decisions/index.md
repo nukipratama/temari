@@ -12,6 +12,18 @@ Architecturally significant decisions, each a dated point-in-time record. **ADRs
 
 Only decisions that clear the bar live here — costly to reverse, cross-cutting, or whose rationale isn't obvious from the code. Most day-to-day choices never get an ADR, by design.
 
+## Pattern index
+
+ADRs grouped by the problem they solve, for easier navigation than a flat timeline:
+
+| Pattern | ADRs |
+|---|---|
+| **Cost guards** | [[idempotent-dispatch-cost-ceiling]] (dispatch-time + daily ceiling); [[bounded-self-heal-and-dead-letter]] (execution-time + bounded retry); [[per-block-manual-retry]] *(superseded)* |
+| **Data isolation** | [[analytics-db-separate-connection]] (metering outlives app resets); [[date-cast-utc-shift]] (UTC off-by-one guard) |
+| **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[trust-all-proxies-cloudflare]] (proxy trust behind tunnel); [[deferred-recap-windowing]] (window-gated generation) |
+| **AI routing** | [[azure-openai-routing]] (per-narrator-kind deployment selection); [[demo-user-billing-exclusion]] (demo user omitted from auto-billing) |
+| **Ops / deploy** | [[fixed-session-cookie]] (stable cookie name); [[defer-config-cache]] (config cache timing); [[telegram-account-linking]] (signed deep-link token) |
+
 ## Timeline
 
 _AI cost & flow_
