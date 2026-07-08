@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-leaflet', () => ({
@@ -47,5 +48,15 @@ describe('RouteMap', () => {
     it('falls back to a placeholder when the polyline decodes to 0 points', () => {
         render(<RouteMap polyline="empty" />);
         expect(screen.getByText(/Rute tidak tersedia/i)).toBeInTheDocument();
+    });
+
+    it('gates interaction behind a tap-to-activate overlay, then removes it once tapped', async () => {
+        render(<RouteMap polyline="good" />);
+        const overlay = screen.getByRole('button', { name: /Aktifkan peta/i });
+        expect(overlay).toBeInTheDocument();
+
+        await userEvent.setup().click(overlay);
+
+        expect(screen.queryByRole('button', { name: /Aktifkan peta/i })).not.toBeInTheDocument();
     });
 });

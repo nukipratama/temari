@@ -79,8 +79,11 @@
     --text-stat--line-height: 1;
 
     /* Fluid variant for stat numbers in narrow grid columns (e.g. the 3-up
-       VitalChips row): shrinks on small viewports so signed values still fit. */
-    --text-stat-fluid: clamp(24px, 6.5vw, 40px);
+       VitalChips row): shrinks on small viewports so signed values still fit.
+       Floor tuned to 19px (was 24px) against the live rendered element at
+       320px (iPhone SE) — the 24px floor still truncated real signed values
+       in the 1/3-width tile. Ceiling (40px) untouched. */
+    --text-stat-fluid: clamp(19px, 6vw, 40px);
     --text-stat-fluid--line-height: 1;
 
     /* ─── Daybreak palette — pre-dawn Jakarta at 05:30. ─────────────

@@ -17,7 +17,7 @@ export default function MobileTopBar() {
     return (
         <header className="flex items-center justify-between gap-3 border-b border-line bg-cream-deep px-5 py-3 lg:hidden">
             <Link href="/" aria-label="Beranda" className="focus-ring rounded">
-                <BrandMark />
+                <BrandMark wordmarkClassName="hidden min-[350px]:inline" />
             </Link>
             <div className="flex items-center gap-2">
                 <StravaSyncBadge sync={stravaSync} density="compact" />

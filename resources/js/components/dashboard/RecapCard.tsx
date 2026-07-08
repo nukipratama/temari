@@ -66,7 +66,7 @@ export default function RecapCard({ recap }: Readonly<{ recap: WeeklyRecap }>) {
             </div>
 
             {hasRuns ? (
-                <div className="relative mt-5 grid gap-6 lg:grid-cols-[1.3fr_auto]">
+                <div className="relative mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_auto]">
                     {/* LEFT: km hero + delta + chips */}
                     <div className="min-w-0">
                         <div className="flex items-baseline gap-2">

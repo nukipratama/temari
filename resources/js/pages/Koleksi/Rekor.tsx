@@ -115,7 +115,7 @@ function HeroScoreboard({
                 Row 3 — splits, full width.
                The previous 1.4fr_1fr split left the right column with just a
                180px mascot + a max-w-sm card, ringed by a sea of empty sky.  */}
-            <div className="relative grid items-center gap-8 lg:grid-cols-[1fr_minmax(320px,_360px)] lg:gap-12">
+            <div className="relative grid grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_minmax(320px,_360px)] lg:gap-12">
                 <div>
                     <div className="mb-5 flex flex-wrap items-center gap-2">
                         <Chip tone="onSky">{category}</Chip>

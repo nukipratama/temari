@@ -250,7 +250,7 @@ function ProgressionSection({
                     ))}
                 </div>
             )}
-            <div className="grid items-center gap-7 lg:grid-cols-[1fr_1.4fr]">
+            <div className="grid grid-cols-1 items-center gap-7 lg:grid-cols-[1fr_1.4fr]">
                 <div>
                     <SectionLabel>Perjalanan · {label}</SectionLabel>
                     <p className="font-display text-headline-sm text-ink">

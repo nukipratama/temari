@@ -41,7 +41,7 @@ export default function Login({ authStravaUrl, from = null }: Readonly<LoginProp
     return (
         <AppShell withNav={false}>
             <Head title="Masuk · TemanLari" />
-            <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+            <div className="grid grid-cols-1 min-h-screen lg:grid-cols-[1.05fr_1fr]">
                 <HeroSide />
                 <FormSide
                     authStravaUrl={stravaUrl}

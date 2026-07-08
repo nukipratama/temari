@@ -65,7 +65,7 @@ export default function SplitsSparkline({ paceSec, className }: Readonly<SplitsS
                     const heightPct = norm * 78 + 22;
                     const isBest = i === fastestIdx;
                     return (
-                        <div key={`${b.from}-${b.to}`} className="flex flex-1 flex-col items-center gap-1.5">
+                        <div key={`${b.from}-${b.to}`} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
                             <div
                                 className={cn(
                                     'w-full min-h-[8px] rounded-sm transition-opacity',

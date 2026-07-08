@@ -56,7 +56,7 @@ export default function HariIni({
             <Head title="Hari Ini" />
             <PageContainer>
                 {/* HEADLINE */}
-                <header className="grid items-end gap-9 lg:grid-cols-[1.4fr_1fr]">
+                <header className="grid grid-cols-1 items-end gap-9 lg:grid-cols-[1.4fr_1fr]">
                     <div>
                         <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-2">
                             {dateLine}

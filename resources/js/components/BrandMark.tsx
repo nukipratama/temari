@@ -4,16 +4,18 @@ interface BrandMarkProps {
     /** Wordmark color tone — flip to 'cream' when the mark sits on a dark hero surface. */
     tone?: 'ink' | 'cream';
     className?: string;
+    /** Extra classes on the wordmark span — lets a cramped host (e.g. the mobile top bar) hide it responsively. */
+    wordmarkClassName?: string;
 }
 
-export default function BrandMark({ tone = 'ink', className }: Readonly<BrandMarkProps>) {
+export default function BrandMark({ tone = 'ink', className, wordmarkClassName }: Readonly<BrandMarkProps>) {
     const wordColor = tone === 'cream' ? 'text-cream' : 'text-ink';
 
     return (
         <div className={cn('flex items-center gap-2.5', className)}>
             <BunnyGlyph size={28} tone={tone} />
             <span
-                className={cn('font-mono font-bold leading-none tracking-[-0.02em]', wordColor)}
+                className={cn('font-mono font-bold leading-none tracking-[-0.02em]', wordColor, wordmarkClassName)}
                 style={{ fontSize: 20 }}
             >
                 TemanLari
