@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import polylineCodec from '@mapbox/polyline';
 import { latLngBounds } from 'leaflet';
 import { MapContainer, Polyline, TileLayer } from 'react-leaflet';
@@ -13,6 +13,7 @@ interface RouteMapProps {
 }
 
 export default function RouteMap({ polyline, distanceKm }: Readonly<RouteMapProps>) {
+    const [active, setActive] = useState(false);
     const positions = useMemo<Array<[number, number]>>(
         () => polylineCodec.decode(polyline) as Array<[number, number]>,
         [polyline],
@@ -34,7 +35,7 @@ export default function RouteMap({ polyline, distanceKm }: Readonly<RouteMapProp
         <div
             role="img"
             aria-label={mapLabel}
-            className="isolate overflow-hidden rounded-2xl border border-line [&_.leaflet-tile-pane]:[filter:sepia(0.35)_saturate(0.85)_hue-rotate(-6deg)_brightness(1.04)_contrast(0.96)]"
+            className="relative isolate overflow-hidden rounded-2xl border border-line [&_.leaflet-tile-pane]:[filter:sepia(0.35)_saturate(0.85)_hue-rotate(-6deg)_brightness(1.04)_contrast(0.96)]"
         >
             <MapContainer
                 bounds={latLngBounds(positions)}
@@ -59,6 +60,22 @@ export default function RouteMap({ polyline, distanceKm }: Readonly<RouteMapProp
                 />
                 <Polyline positions={positions} pathOptions={{ color: DAYBREAK.leaf, weight: 4, opacity: 0.9 }} />
             </MapContainer>
+            {/* A swipe starting on the map pans it instead of scrolling the page (Leaflet
+                calls preventDefault on touchmove during drag). Gate real interaction
+                behind a tap so a swipe-to-scroll passes through untouched until then,
+                the same "tap/click to activate" pattern Google Maps embeds use. */}
+            {!active && (
+                <button
+                    type="button"
+                    onClick={() => setActive(true)}
+                    aria-label="Aktifkan peta untuk menggeser dan memperbesar"
+                    className="absolute inset-0 z-[1000] flex items-end justify-center bg-transparent p-3"
+                >
+                    <span className="rounded-full bg-ink/70 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-cream backdrop-blur-sm">
+                        Ketuk untuk interaktif
+                    </span>
+                </button>
+            )}
         </div>
     );
 }

@@ -253,7 +253,7 @@ export default function RunsShow({
                 {/* HERO — one panel, stats left + route map right */}
                 <section>
                     <HeroPanel className="lg:px-9 lg:py-8">
-                        <div className="relative grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-stretch">
+                        <div className="relative grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-stretch">
                             <div className="flex h-full flex-col justify-center">
                                 <div className="mb-5 flex items-start gap-4">
                                     <Temari pose={pose} size={72} animate={false} />
@@ -308,7 +308,7 @@ export default function RunsShow({
                                 )}
                             </div>
 
-                            <MapWeatherPanel detail={detail} className="hidden lg:flex" />
+                            <MapWeatherPanel detail={detail} className="flex" />
                         </div>
                     </HeroPanel>
                 </section>
