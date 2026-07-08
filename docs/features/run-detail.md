@@ -3,7 +3,7 @@ title: Run detail (single activity)
 description: One run, fully unpacked — hero stats, route+weather, four AI lenses, splits, and a "Past You" match
 tags: [feature, runs]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-07-08
 code_refs:
   - resources/js/pages/Runs/Show.tsx
   - app/Http/Controllers/RunController.php
@@ -40,11 +40,15 @@ right here in the hero — `RunController::show` calls a `PastYouMatcher` and
 passes a `pastYou` match (pace + HR delta vs a similar run N days ago) with a
 link to that older run.
 
-To the right, `MapWeatherPanel` (a local component in `Show.tsx`) shows
+To the right (below the stats on mobile, since the hero grid stacks under the
+`lg` breakpoint), `MapWeatherPanel` (a local component in `Show.tsx`) shows
 temperature / humidity / location and the **route map**. The map is the only
 heavyweight child: [RouteMap](../../resources/js/components/run/RouteMap.tsx) is
 `lazy()`-loaded and decodes `detail.summary_polyline`, so a treadmill run with
-no polyline simply omits it.
+no polyline simply omits it. The map starts behind a tap-to-activate overlay
+button — Leaflet's drag handler otherwise captures a touch-scroll swipe as a
+pan gesture, trapping the page mid-scroll on mobile; one tap dismisses the
+overlay and enables full drag/zoom, the same pattern Google Maps embeds use.
 
 ## Kata Temari — the four AI lenses
 

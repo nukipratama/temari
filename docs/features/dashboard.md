@@ -3,7 +3,7 @@ title: Dashboard (Hari Ini)
 description: The home page — daily greeting, Temari's briefing, vitals, featured kartu, suggestion, last run, training load, goals
 tags: [feature, dashboard]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-07-08
 code_refs:
   - resources/js/pages/HariIni.tsx
   - app/Http/Controllers/DashboardController.php
@@ -39,7 +39,7 @@ The headline's right rail is [KataTemariCompact](resources/js/components/dashboa
 
 ## Vital chips
 
-[VitalChips](resources/js/components/dashboard/VitalChips.tsx) is a 3-up row: **Vibe** (absolute form score as a numeric proxy, qualitative label below), **Kesiapan** (`load.form` signed, with `formStatusLabel`), and **Recovery** (`recoveryHoursLabel` / streak / recovery label). The Vibe and Kesiapan chips carry a `MetricExplainer` tooltip. `load` is the `TrainingLoad::summary` payload.
+[VitalChips](resources/js/components/dashboard/VitalChips.tsx) is a 3-up row: **Vibe** (the `vibeLabel` word, e.g. "Membara" — `load.form`'s magnitude only drives the hidden `<meter>` gauge, not visible text), **Kesiapan** (`load.form` signed, with `formStatusLabel`), and **Recovery** (`recoveryHoursLabel` / streak / recovery label). The Vibe and Kesiapan chips carry a `MetricExplainer` tooltip. `load` is the `TrainingLoad::summary` payload. All three values use a fluid font-size clamp (`text-stat-fluid` for the numeric two, a local word clamp for Vibe) tuned against the narrowest supported width (iPhone SE, 320px) so real values never silently truncate in the 1/3-width tile.
 
 ## Featured kartu
 
