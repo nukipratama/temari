@@ -19,15 +19,21 @@ swaps its whole nav chrome (desktop `TopNav` ↔ `MobileTopBar` + `MobileBottomN
 | key | size | nav shown | in default sweep? |
 |-----|------|-----------|--------------------|
 | `mobile`  | 390×844  (iPhone 13)   | mobile (top bar + bottom nav) | yes |
+| `se`      | 320×568  (iPhone SE)   | **still mobile** (320 < 1024) | yes — narrowest real device, catches width-driven bugs `mobile` misses |
 | `tablet`  | 834×1112 (iPad portrait) | **still mobile** (834 < 1024) | no — same nav chrome as `mobile`, opt in explicitly |
 | `desktop` | 1280×800               | desktop `TopNav` | yes |
 | `wide`    | 1536×864 (`2xl`)       | desktop, widest `max-w-page-2xl` layout | yes |
 
-Default is `mobile,desktop,wide` — `tablet` renders identical nav chrome to `mobile` (both below
-the `lg` breakpoint), so it's redundant for the common case and dropped to keep the default sweep
-cheaper. Narrow further with `VIEWPORTS=mobile` (or `mobile,wide`, etc.), or opt back into the full
-four-way matrix with `VIEWPORTS=mobile,tablet,desktop,wide` when tablet-specific coverage actually
-matters (e.g. right before a release).
+Default is `mobile,se,desktop,wide` — `tablet` renders identical nav chrome to `mobile` (both below
+the `lg` breakpoint) *and* is wide enough that it rarely disagrees with `mobile` on layout, so it's
+dropped to keep the default sweep cheaper. `se`, in contrast, is kept in the default despite sharing
+`mobile`'s nav chrome too: its narrower 320px width has caught real overflow that 390px missed
+entirely — a CSS grid track sized to its widest child instead of shrinking to fit, a fluid font clamp
+whose floor was tuned for a wider column and silently ellipsis-truncated real values. Those are
+width-driven bugs, not breakpoint-driven ones, so they don't reproduce at 390px. Narrow further with
+`VIEWPORTS=mobile` (or `mobile,wide`, etc.), or opt into the full five-way matrix with
+`VIEWPORTS=mobile,se,tablet,desktop,wide` when tablet-specific coverage also matters (e.g. right
+before a release).
 
 ## Prerequisites
 
@@ -62,10 +68,10 @@ binaries or edits `package.json`.
 # 1. one-time setup per container lifetime (apk needs root)
 docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.sh
 
-# 2. screenshots across the viewport matrix (default mobile,desktop,wide — see Viewport matrix above)
+# 2. screenshots across the viewport matrix (default mobile,se,desktop,wide — see Viewport matrix above)
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/shoot.mjs
 #    e.g. just phone:    VIEWPORTS=mobile ./vendor/bin/sail exec -e VIEWPORTS=mobile app node .../shoot.mjs
-#    e.g. full 4-way:    VIEWPORTS=mobile,tablet,desktop,wide ./vendor/bin/sail exec -e VIEWPORTS=mobile,tablet,desktop,wide app node .../shoot.mjs
+#    e.g. full 5-way:    VIEWPORTS=mobile,se,tablet,desktop,wide ./vendor/bin/sail exec -e VIEWPORTS=mobile,se,tablet,desktop,wide app node .../shoot.mjs
 
 # 3. horizontal-overflow audit across the matrix (run BEFORE Inspect — its output gates which
 #    pages get the expensive vision read, see "Inspect in parallel" below)
@@ -84,7 +90,10 @@ line per page per viewport (ignoring intentional `overflow-x-auto` scroll contai
 `pointer-events-none` glow blobs) plus a machine-parseable `AUDIT vp=<viewport> name=<page-slug>
 overflow=<true|false>` line for every page — **capture and parse these too**, they gate the Inspect
 phase below (`name` matches the `-<name>-full.png` slug in `shoot.mjs`'s filenames, so the two scripts'
-independent page orderings don't need to line up).
+independent page orderings don't need to line up). The overflow flag is `true` if *either* the
+document's `scrollWidth` exceeds the viewport *or* any individual element's box extends past it — the
+latter alone still flags a page, since an `overflow-hidden` ancestor can clip a child without growing
+`scrollWidth`, which would otherwise hide real off-screen content from the check entirely.
 
 > These PNGs are gitignored (`storage/app/.gitignore` ignores `*`) and your IDE may hide gitignored
 > files — they're on disk under `storage/app/browser-review/`, not in a temp dir.
@@ -135,6 +144,7 @@ export const meta = {
 
 const NAV = {
   mobile:  { size: '390x844',  nav: 'mobile nav (top bar + bottom nav)' },
+  se:      { size: '320x568',  nav: 'still mobile nav (320 < 1024 lg breakpoint), narrowest real device' },
   tablet:  { size: '834x1112', nav: 'still mobile nav (834 < 1024 lg breakpoint)' },
   desktop: { size: '1280x800', nav: 'desktop TopNav' },
   wide:    { size: '1536x864', nav: 'desktop TopNav, widest max-w-page-2xl layout' },

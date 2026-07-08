@@ -9,6 +9,7 @@ export const BASE = process.env.BASE ?? 'http://localhost';
 // Both sides of the Tailwind lg(1024px) breakpoint, where the app swaps nav chrome.
 export const VIEWPORT_DEFS = {
   mobile: { ...devices['iPhone 13'] },
+  se: { ...devices['iPhone SE'] },
   tablet: { viewport: { width: 834, height: 1112 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
   desktop: { viewport: { width: 1280, height: 800 } },
   wide: { viewport: { width: 1536, height: 864 } },
@@ -17,8 +18,14 @@ export const VIEWPORT_DEFS = {
 // tablet (834px) renders the same mobile nav chrome as mobile (390px) — both are
 // below the lg breakpoint — so it's dropped from the default sweep to halve the
 // screenshot/read cost. Opt back in with VIEWPORTS=tablet or VIEWPORTS=mobile,tablet,desktop,wide.
+//
+// se (iPhone SE, 320px) stays in the default sweep despite sharing mobile's nav chrome:
+// unlike tablet, it's not redundant with mobile — its narrower raw width has caught real
+// overflow mobile (390px) missed entirely (a grid track sized to its widest child instead
+// of shrinking, a fluid font clamp whose floor was tuned for a wider column and silently
+// ellipsis-truncated real values). Width-driven CSS bugs like these don't reproduce at 390px.
 export function parseViewports() {
-  return (process.env.VIEWPORTS ?? 'mobile,desktop,wide')
+  return (process.env.VIEWPORTS ?? 'mobile,se,desktop,wide')
     .split(',').map((s) => s.trim()).filter(Boolean)
     .filter((v) => VIEWPORT_DEFS[v] || (console.log(`skip unknown viewport: ${v}`), false));
 }

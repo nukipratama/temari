@@ -36,14 +36,21 @@ for (const vp of selected) {
         const rect = el.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) continue;
         if (rect.right > vw + 1) {
-          // Ignore intentional scroll containers and decorative non-interactive glows.
+          // Ignore intentional scroll containers, decorative non-interactive glows, and
+          // Leaflet's internal tile buffer (it always renders past the visible map edge
+          // for smooth panning, clipped by the map's own overflow-hidden — never visible).
           const inScroller = el.closest('[class*="overflow-x-auto"],[class*="overflow-auto"],[class*="overflow-scroll"]');
           const decorative = (el.getAttribute('class') || '').includes('pointer-events-none');
-          if ((inScroller && inScroller !== el) || decorative) continue;
+          const leafletTile = el.closest('.leaflet-tile-pane');
+          if ((inScroller && inScroller !== el) || decorative || leafletTile) continue;
           real.push({ tag: el.tagName.toLowerCase(), cls: (el.getAttribute('class') || '').slice(0, 70), right: Math.round(rect.right) });
         }
       }
-      return { vw, docW, overflow: docW > vw + 1, real: real.sort((a, b) => b.right - a.right).slice(0, 5) };
+      // docW > vw alone misses clipped overflow: an `overflow-hidden` ancestor stops
+      // scrollWidth from growing while still visually cutting off descendants (e.g. a
+      // grid track sized to its widest child's min-content instead of shrinking to fit),
+      // so a page can have real off-screen elements in `real` while docW == vw.
+      return { vw, docW, overflow: docW > vw + 1 || real.length > 0, real: real.sort((a, b) => b.right - a.right).slice(0, 5) };
     });
     console.log(`  ${landed.padEnd(22)} vw=${r.vw} docW=${r.docW} ${r.overflow ? 'HORIZ-OVERFLOW=true ⚠' : 'ok'}`);
     // Machine-parseable line: `name` matches the slug shoot.mjs uses in its filenames
