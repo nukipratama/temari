@@ -12,8 +12,8 @@ import type { BriefingResult, RecoveryTone, TrainingLoad } from '@/types/inertia
 const FORM_RANGE = 40;
 
 // A one-line gloss per vibe, keyed by its Indonesian label (mirrors Vibe::LABELS).
-// Sits on the sub-line now that the label rides up next to the emoji, so the tile
-// says something ("badan lagi enteng") instead of just restating the word.
+// Sits on the sub-line so the tile says something ("badan lagi enteng") instead
+// of just restating the word.
 const VIBE_SUB: Record<string, string> = {
     Lincah: 'badan lagi enteng',
     Stabil: 'ritme kejaga',
@@ -26,13 +26,13 @@ const VIBE_SUB: Record<string, string> = {
 };
 
 export default function VitalChips({ briefing, load }: Readonly<{ briefing: BriefingResult; load: TrainingLoad | null }>) {
-    // Vibe leads with the emoji + its label together (a lone emoji read too
-    // sparse next to the numeric siblings). There's no numeric vibe score, so the
+    // Vibe's value is just the label word — pairing it with the emoji inline
+    // read richer, but "emoji + longest label" (e.g. "Hibernasi") never fit one
+    // line in the narrow 3-up mobile tile, and forcing the emoji onto its own
+    // line broke the single-line rhythm shared with Kesiapan/Recovery even on
+    // wide screens with room to spare. There's no numeric vibe score, so the
     // horizon gauge shows form intensity and the sub-line glosses what the vibe means.
-    // The 3-up mobile tile is too narrow to fit "emoji + longest label" (e.g. "Hibernasi")
-    // on one line at any legible size, so the newline (rendered via `whitespace-pre-line`)
-    // forces the emoji onto its own line, leaving the word room to stay on a single line.
-    const vibeValue = `${briefing.vibeEmoji}\n${briefing.vibeLabel}`;
+    const vibeValue = briefing.vibeLabel;
     const vibeSub = VIBE_SUB[briefing.vibeLabel] ?? '';
 
     return (
@@ -166,18 +166,15 @@ function VitalChip({
                         'min-w-0 font-sans font-bold tracking-[-0.02em]',
                         // A vibe is a word (e.g. "Hibernasi"), not a number: the big
                         // numeric stat size overflows the narrow 3-up mobile tile, so it
-                        // gets a word-friendly fluid size, scaling up on desktop. Even at
-                        // this size, "emoji + longest label" never fits one line in the
-                        // ~55px mobile column, so `whitespace-pre-line` (paired with the
-                        // value's embedded \n) puts the emoji on its own line, leaving the
-                        // word alone to fit — the floor (11px) was measured against the live
-                        // rendered element (not estimated) so "Hibernasi", the longest label,
-                        // stays on one line down to 320px (iPhone SE). The ceiling (30px) is
-                        // unchanged from before — only the floor needed to shrink, capping the
-                        // max too would just make wide screens smaller for no reason.
-                        // `break-words` stays as a safety net for any future longer label.
+                        // gets a word-friendly fluid size, scaling up on desktop. The floor
+                        // (11px) was measured against the live rendered element (not
+                        // estimated) so "Hibernasi", the longest label, stays on one line
+                        // down to 320px (iPhone SE). The ceiling (30px) is unchanged from
+                        // before — only the floor needed to shrink, capping the max too would
+                        // just make wide screens smaller for no reason. `break-words` stays
+                        // as a safety net should an even longer label be added later.
                         wordValue
-                            ? 'text-[clamp(11px,3.5vw,30px)] leading-tight whitespace-pre-line break-words'
+                            ? 'text-[clamp(11px,3.5vw,30px)] leading-tight break-words'
                             // Same idea for the numeric siblings: `text-stat-fluid`'s floor was
                             // tuned for a full-width single stat, not a 1/3-column tile, so its
                             // floor was lowered in app.css (its one call site) rather than
