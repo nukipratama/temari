@@ -29,7 +29,10 @@ export default function VitalChips({ briefing, load }: Readonly<{ briefing: Brie
     // Vibe leads with the emoji + its label together (a lone emoji read too
     // sparse next to the numeric siblings). There's no numeric vibe score, so the
     // horizon gauge shows form intensity and the sub-line glosses what the vibe means.
-    const vibeValue = `${briefing.vibeEmoji} ${briefing.vibeLabel}`;
+    // The 3-up mobile tile is too narrow to fit "emoji + longest label" (e.g. "Hibernasi")
+    // on one line at any legible size, so the newline (rendered via `whitespace-pre-line`)
+    // forces the emoji onto its own line, leaving the word room to stay on a single line.
+    const vibeValue = `${briefing.vibeEmoji}\n${briefing.vibeLabel}`;
     const vibeSub = VIBE_SUB[briefing.vibeLabel] ?? '';
 
     return (
@@ -162,10 +165,23 @@ function VitalChip({
                     className={cn(
                         'min-w-0 font-sans font-bold tracking-[-0.02em]',
                         // A vibe is a word (e.g. "Hibernasi"), not a number: the big
-                        // numeric stat size overflows the narrow 3-up mobile tile, so
-                        // it gets a word-friendly fluid size and is allowed to wrap
-                        // (emoji then word) instead of truncating, scaling up on desktop.
-                        wordValue ? 'text-[clamp(16px,4vw,30px)] leading-tight break-words' : 'truncate text-stat-fluid tabular-nums',
+                        // numeric stat size overflows the narrow 3-up mobile tile, so it
+                        // gets a word-friendly fluid size, scaling up on desktop. Even at
+                        // this size, "emoji + longest label" never fits one line in the
+                        // ~55px mobile column, so `whitespace-pre-line` (paired with the
+                        // value's embedded \n) puts the emoji on its own line, leaving the
+                        // word alone to fit — the floor (11px) was measured against the live
+                        // rendered element (not estimated) so "Hibernasi", the longest label,
+                        // stays on one line down to 320px (iPhone SE). The ceiling (30px) is
+                        // unchanged from before — only the floor needed to shrink, capping the
+                        // max too would just make wide screens smaller for no reason.
+                        // `break-words` stays as a safety net for any future longer label.
+                        wordValue
+                            ? 'text-[clamp(11px,3.5vw,30px)] leading-tight whitespace-pre-line break-words'
+                            // Same idea for the numeric siblings: `text-stat-fluid`'s floor (24px)
+                            // was tuned for a full-width single stat, not a 1/3-column tile — its
+                            // ceiling (40px) was never the problem, so only the floor moves here.
+                            : 'truncate text-[clamp(19px,6vw,40px)] tabular-nums',
                         valueClass,
                     )}
                 >

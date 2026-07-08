@@ -66,8 +66,9 @@ describe('VitalChips', () => {
 
     it('scales the value with a fluid clamp so it fits the narrow mobile column', () => {
         render(<VitalChips briefing={briefing} load={load} />);
-        // The signed form value must shrink below 40px on narrow viewports.
-        expect(screen.getByText('-2.5').className).toContain('text-stat-fluid');
+        // A fixed-floor fluid size (e.g. text-stat-fluid's 24px min) still truncates
+        // real values in a 1/3-width tile, so this uses its own tighter clamp.
+        expect(screen.getByText('-2.5').className).toContain('clamp(19px,6vw,40px)');
     });
 
     it('still shows the vibe emoji + label and an em-dash Kesiapan when load is null', () => {
