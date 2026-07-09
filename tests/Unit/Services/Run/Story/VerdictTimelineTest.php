@@ -161,6 +161,71 @@ it('converts meters to kilometers in the item DTO', function (): void {
     expect($items[0]->distanceKm)->toBe(7.3);
 });
 
+it('classifies session intensity from TRIMP density', function (float $trimp, int $movingTime, ?string $intensity): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today(),
+        'distance' => 6000.0,
+        'trimp_edwards' => $trimp,
+        'moving_time' => $movingTime,
+    ]);
+    StoryLine::query()->create([
+        'user_id' => $user->id,
+        'activity_id' => $activity->id,
+        'kind' => StoryLine::KIND_POST_RUN,
+        'mood' => Temari::MOOD_ENTENG,
+        'speech' => null,
+        'sigil_pattern' => 'dddd',
+    ]);
+    Analysis::factory()->done('verdict')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $items = app(VerdictTimeline::class)->recent($user);
+
+    expect($items[0]->intensity)->toBe($intensity);
+})->with([
+    'easy: density 1.5' => [45.0, 1800, 'easy'],       // 45 / 30min = 1.5
+    'moderate: density 2.5' => [75.0, 1800, 'moderate'], // 75 / 30min = 2.5
+    'hard: density 3.5' => [105.0, 1800, 'hard'],        // 105 / 30min = 3.5
+    'boundary 2.0 is moderate' => [60.0, 1800, 'moderate'], // exactly 2.0 -> not < 2.0
+    'boundary 2.8 is moderate' => [84.0, 1800, 'moderate'], // exactly 2.8 -> <= 2.8
+    'just over 2.8 is hard' => [84.6, 1800, 'hard'],         // 2.82 -> > 2.8
+]);
+
+it('returns a null intensity when TRIMP or moving time is missing', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today(),
+        'distance' => 6000.0,
+        'trimp_edwards' => null,
+        'moving_time' => 1800,
+    ]);
+    StoryLine::query()->create([
+        'user_id' => $user->id,
+        'activity_id' => $activity->id,
+        'kind' => StoryLine::KIND_POST_RUN,
+        'mood' => Temari::MOOD_ENTENG,
+        'speech' => null,
+        'sigil_pattern' => 'dddd',
+    ]);
+    Analysis::factory()->done('verdict')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $items = app(VerdictTimeline::class)->recent($user);
+
+    expect($items[0]->intensity)->toBeNull();
+});
+
 it('maps an unknown mood to the default rain face', function (): void {
     $user = User::factory()->create();
     seedVerdict($user, Carbon::today(), Temari::MOOD_ADEM, 'dim verdict', 5000.0);

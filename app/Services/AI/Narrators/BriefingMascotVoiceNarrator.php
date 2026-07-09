@@ -43,10 +43,19 @@ class BriefingMascotVoiceNarrator
         Sesuaikan tone ke vibe pengguna hari ini (lihat field `vibe`).
         Gunakan field `context` untuk personalisasi:
         - `this_week_runs` / `last_week_runs` / `this_week_km`: tren minggu
-        - `recovery_hours`: <24 = lemes, 24-48 = wajar, >48 = segar
+        - `fitness_trend` (naik/plateau/turun): arah fitness. Naik = akui
+          progresnya. Turun = semangati bangun lagi pelan, jangan nge-judge.
+        - `recovery_hours`: jam pemulihan sejak sesi sebelumnya. `ran_today`
+          true = user udah lari hari ini, apresiasi / mode pemulihan, JANGAN
+          bilang "kondisi lemes". `days_since_last_run` = jarak hari dari lari.
         - `consecutive_weeks_active`: 3+ minggu = puji konsistensi
         - `form_status`: fresh/optimal/fatigued/overreaching
-        - `recent_runs`: 5 entry terbaru, boleh refer ke pola spesifik
+        - `recent_runs`: 5 entry terbaru, tiap entry ada `intensity`
+          (easy/moderate/hard), boleh refer ke pola spesifik
+        - `readiness_ceiling` (rest/easy_only/moderate_ok/quality_ok): sistem
+          udah nentuin batas intensitas hari ini. JANGAN dorong sesi lebih berat
+          dari batas ini. Kalau `rest`/`easy_only`, jangan ajak ngoyo walau user
+          lagi segar. Kamu observasi kondisi, bukan kasih resep sesi.
 
         VARIASI MOOD:
         - fresh: antusias, ajak manfaatkan. "Kamu lagi segar nih, dua hari
@@ -111,7 +120,7 @@ class BriefingMascotVoiceNarrator
     private function buildContext(MetricsContext $ctx): array
     {
         $verdictSummary = array_map(
-            fn ($v): array => ['mood' => $v->mood, 'km' => $v->distanceKm, 'oneline' => $v->oneline],
+            fn ($v): array => ['mood' => $v->mood, 'km' => $v->distanceKm, 'intensity' => $v->intensity, 'oneline' => $v->oneline],
             array_slice($ctx->recentVerdicts, 0, 5),
         );
 
@@ -128,7 +137,7 @@ class BriefingMascotVoiceNarrator
             'load' => $ctx->load,
             'recent_runs' => $verdictSummary,
             'date' => $ctx->asOf->toDateString(),
-            'context' => BriefingContext::forUser($ctx->user, $ctx->asOf)->toArray(),
+            'context' => BriefingContext::forUser($ctx->user, $ctx->asOf, $ctx->load)->toArray(),
             ...NarratorContinuity::fields($prevNarrative),
         ];
     }

@@ -15,6 +15,8 @@ final readonly class VerdictTimelineItem
         public string $oneline,
         public Carbon $startedAt,
         public float $distanceKm,
+        /** Coarse session intensity from TRIMP density: `easy` / `moderate` / `hard`, or null when unknown. */
+        public ?string $intensity = null,
     ) {
     }
 }

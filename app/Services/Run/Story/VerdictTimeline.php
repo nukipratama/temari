@@ -64,6 +64,7 @@ class VerdictTimeline implements VerdictNarrator
                 oneline: $speech,
                 startedAt: $detail->start_date_local,
                 distanceKm: round((float) ($detail->distance ?? 0) / 1000, 1),
+                intensity: $this->intensity($detail->trimp_edwards, $detail->moving_time),
             );
         }
 
@@ -89,5 +90,26 @@ class VerdictTimeline implements VerdictNarrator
     private function moodFace(string $mood): string
     {
         return self::MOOD_FACES[$mood] ?? '🌧️';
+    }
+
+    /**
+     * Coarse session intensity from TRIMP density (Edwards TRIMP per moving
+     * minute). Density separates a short hard effort from a long easy one that
+     * both carry high total TRIMP: a pure Z1-Z2 run sits near 1-2, a tempo or
+     * interval near 3+. Null when the inputs to compute it are missing.
+     */
+    private function intensity(?float $trimp, ?int $movingTime): ?string
+    {
+        if ($trimp === null || $movingTime === null || $movingTime <= 0) {
+            return null;
+        }
+
+        $density = $trimp / ($movingTime / 60);
+
+        return match (true) {
+            $density < 2.0 => 'easy',
+            $density <= 2.8 => 'moderate',
+            default => 'hard',
+        };
     }
 }

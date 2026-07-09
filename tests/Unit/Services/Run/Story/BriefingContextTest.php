@@ -12,6 +12,8 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
+afterEach(fn () => Carbon::setTestNow());
+
 it('returns nulls when the user has no snapshots or activities', function (): void {
     $user = User::factory()->create();
 
@@ -20,8 +22,15 @@ it('returns nulls when the user has no snapshots or activities', function (): vo
     expect($ctx->thisWeekRuns)->toBeNull()
         ->and($ctx->lastWeekRuns)->toBeNull()
         ->and($ctx->recoveryHours)->toBeNull()
+        ->and($ctx->ranToday)->toBeFalse()
+        ->and($ctx->daysSinceLastRun)->toBeNull()
         ->and($ctx->formStatus)->toBeNull()
-        ->and($ctx->consecutiveWeeksActive)->toBe(0);
+        ->and($ctx->consecutiveWeeksActive)->toBe(0)
+        ->and($ctx->fitnessTrend)->toBe('plateau')
+        ->and($ctx->volumeRampPct)->toBeNull()
+        // No form + no recovery data -> conservative moderate cap, no build nudge.
+        ->and($ctx->readinessCeiling)->toBe('moderate_ok')
+        ->and($ctx->buildNudge)->toBeFalse();
 });
 
 it('pulls this-week and last-week snapshots aligned to Sunday week_ending', function (): void {
@@ -50,8 +59,9 @@ it('pulls this-week and last-week snapshots aligned to Sunday week_ending', func
 });
 
 it('computes recovery hours from the most recent activity start', function (): void {
-    $user = User::factory()->create();
     $asOf = Carbon::create(2026, 5, 21, 18);
+    Carbon::setTestNow($asOf);
+    $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::create(2026, 5, 20, 6),
@@ -59,7 +69,57 @@ it('computes recovery hours from the most recent activity start', function (): v
 
     $ctx = BriefingContext::forUser($user, $asOf);
 
-    expect($ctx->recoveryHours)->toBe(36);
+    expect($ctx->recoveryHours)->toBe(36)
+        ->and($ctx->ranToday)->toBeFalse()
+        ->and($ctx->daysSinceLastRun)->toBe(1);
+});
+
+it('does not report a same-day run as zero recovery (reframes to the prior run day)', function (): void {
+    $asOf = Carbon::create(2026, 5, 21, 12);
+    Carbon::setTestNow($asOf);
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::create(2026, 5, 19, 7)]);
+    $today = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($today)->create(['start_date_local' => Carbon::create(2026, 5, 21, 6)]);
+
+    $ctx = BriefingContext::forUser($user, $asOf);
+
+    expect($ctx->ranToday)->toBeTrue()
+        ->and($ctx->recoveryHours)->toBe(53)   // from the 05-19 run, not the 05-21 morning run
+        ->and($ctx->recoveryHours)->not->toBe(0);
+});
+
+it('reads the CTL slope over recent snapshots as a fitness trend', function (array $ctlSeries, string $trend): void {
+    $user = User::factory()->create();
+    $asOf = Carbon::create(2026, 5, 21, 8); // week ending 2026-05-24
+    $weekEnd = Carbon::parse('2026-05-24');
+    foreach ($ctlSeries as $i => $ctl) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => $weekEnd->copy()->subWeeks(count($ctlSeries) - 1 - $i)->toDateString(),
+            'runs' => 3,
+            'ctl_42d' => $ctl,
+        ]);
+    }
+
+    $ctx = BriefingContext::forUser($user, $asOf);
+
+    expect($ctx->fitnessTrend)->toBe($trend);
+})->with([
+    'rising' => [[30.0, 33.0, 36.0, 40.0], 'naik'],
+    'falling' => [[40.0, 36.0, 33.0, 30.0], 'turun'],
+    'flat' => [[35.0, 35.2, 34.9, 35.1], 'plateau'],
+]);
+
+it('exposes a deterministic readiness ceiling from the live load, capping quality on a red flag', function (): void {
+    $asOf = Carbon::create(2026, 5, 21, 8);
+    Carbon::setTestNow($asOf);
+    $user = User::factory()->create();
+
+    // Overreaching load is a hard red flag -> rest, regardless of anything else.
+    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => 'overreaching', 'monotony' => 1.0]);
+
+    expect($ctx->readinessCeiling)->toBe('rest');
 });
 
 it('falls back to last-week form_status when this week has no snapshot yet', function (): void {
@@ -143,6 +203,8 @@ it('serialises to a compact array suitable for the LLM user message', function (
 
     expect($ctx->toArray())->toHaveKeys([
         'this_week_runs', 'last_week_runs', 'this_week_km', 'last_week_km',
-        'recovery_hours', 'form_status', 'time_bucket', 'consecutive_weeks_active',
+        'recovery_hours', 'ran_today', 'days_since_last_run', 'form_status',
+        'time_bucket', 'consecutive_weeks_active', 'fitness_trend',
+        'volume_ramp_pct', 'readiness_ceiling', 'build_nudge',
     ]);
 });

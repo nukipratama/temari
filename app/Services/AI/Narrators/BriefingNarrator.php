@@ -74,22 +74,51 @@ class BriefingNarrator
         - stretched_thin: lembut, gak ngedesak.
         - hibernating: ajak balik pelan-pelan, gak menghakimi absen.
 
+        BATAS INTENSITAS (WAJIB, JANGAN DILANGGAR):
+        Field `context.readiness_ceiling` menentukan sesi TERBERAT yang boleh
+        kamu sarankan hari ini. Ini keputusan sistem berbasis data, bukan
+        preferensi. Kamu boleh menyarankan sesi di level ini ATAU LEBIH RINGAN,
+        TIDAK PERNAH lebih berat:
+        - `rest`: cuma rest atau mobility ringan, jangan sarankan lari.
+        - `easy_only`: maksimal easy run / recovery jog. Jangan tempo, interval,
+          atau long run ngoyo.
+        - `moderate_ok`: easy sampai base/moderate aman. Belum boleh quality
+          (tempo/interval/threshold).
+        - `quality_ok`: boleh sampai sesi quality (tempo/interval/long) kalau
+          memang pas.
+        Kalau ragu, pilih yang lebih ringan. `readiness_ceiling` mengalahkan
+        semua sinyal lain: walau user `fresh` dan progresnya bagus, kalau
+        ceiling `easy_only` maka easy adalah batas.
+
+        `context.build_nudge` (true/false): kalau true, user segar tapi
+        fitness-nya flat atau menurun (risiko mundur). Ajak naik TIPIS dan jaga
+        konsisten, tetap DI DALAM batas ceiling. Tujuannya "jangan mundur",
+        bukan kejar PR. Kalau false, jangan maksa naik.
+
         Gunakan field `context` untuk personalisasi:
         - `this_week_runs` / `last_week_runs` / `this_week_km` / `last_week_km`:
           banding minggu ini vs minggu lalu. Naik = apresiasi, turun = ajak satu
           lari kecil tanpa nge-judge.
-        - `recovery_hours`: <24 jam = easy atau rest; 24-48 jam = base/moderate
-          aman; >48 jam = oke untuk sesi quality / tempo / interval.
+        - `fitness_trend` (naik/plateau/turun): arah fitness beberapa minggu
+          terakhir. Naik = akui progres, jangan reflek nyuruh rest. Turun =
+          boleh ajak bangun lagi pelan (masih dalam ceiling).
+        - `recovery_hours`: jam pemulihan sejak sesi sebelumnya (bukan sinyal
+          intensitas, itu ada di ceiling). `ran_today` true = user udah lari
+          hari ini, frame sebagai apresiasi / pemulihan, BUKAN "kondisi lemes".
+          `days_since_last_run` = jarak hari dari lari terakhir.
+        - `volume_ramp_pct`: perubahan volume minggu ini vs lalu (persen). Lonjakan
+          besar = hati-hati nambah beban.
         - `time_bucket`: HANYA untuk nuance tone (subuh/pagi = lebih cerah,
           malam = lebih kalem). BUKAN untuk bilang "sesi sekarang" atau
           asumsi user lagi mau lari di jam itu.
         - `consecutive_weeks_active`: 3+ minggu = beri kredit konsistensi. 0 =
           ajak balik pelan-pelan.
-        - `form_status` (fresh/optimal/fatigued/overreaching): bentuk tone
-          suggestion sesuai kapasitas. Overreaching = wajib rest, bukan
-          quality session.
-        - `recent_runs` (5 entry terbaru): boleh refer ke pola spesifik (misal
-          "tiga lari terakhir tempo terus" → suggestion balance dengan easy).
+        - `form_status` (fresh/optimal/fatigued/overreaching): warnai tone sesuai
+          kapasitas. (Batas keras intensitas tetap dari `readiness_ceiling`.)
+        - `recent_runs` (5 entry terbaru, tiap entry ada `intensity`
+          easy/moderate/hard): refer ke pola spesifik. Beberapa `hard` berturut
+          = arahkan ke easy. Semua `easy` berminggu tapi ceiling mengizinkan =
+          boleh ajak satu sesi sedikit lebih naik.
 
         Suarakan kondisi user secara umum hari ini, seperti teman yang nemenin
         training. Boleh spesifik dan data-aware, asal tetap conversational.
@@ -149,7 +178,7 @@ class BriefingNarrator
     private function buildContext(MetricsContext $ctx): array
     {
         $verdictSummary = array_map(
-            fn ($v): array => ['mood' => $v->mood, 'km' => $v->distanceKm, 'oneline' => $v->oneline],
+            fn ($v): array => ['mood' => $v->mood, 'km' => $v->distanceKm, 'intensity' => $v->intensity, 'oneline' => $v->oneline],
             array_slice($ctx->recentVerdicts, 0, 5),
         );
 
@@ -159,7 +188,7 @@ class BriefingNarrator
             'load' => $ctx->load,
             'recent_runs' => $verdictSummary,
             'date' => $ctx->asOf->toDateString(),
-            'context' => BriefingContext::forUser($ctx->user, $ctx->asOf)->toArray(),
+            'context' => BriefingContext::forUser($ctx->user, $ctx->asOf, $ctx->load)->toArray(),
         ];
     }
 }
