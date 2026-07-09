@@ -193,7 +193,7 @@ export default function CardReveal({
         role="dialog"
         aria-modal="true"
         aria-label="Kartu baru"
-        className="fixed inset-0 z-50 flex justify-center overflow-y-auto bg-sky-deep/80 px-4 py-6 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex justify-center overflow-y-auto overflow-x-clip bg-sky-deep/80 px-4 py-6 backdrop-blur-md"
         onClick={() => { if (opened) dismiss(); }}
       >
         <ConfettiBurst burstKey={confettiKey} />
