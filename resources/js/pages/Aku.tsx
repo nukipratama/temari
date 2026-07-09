@@ -180,7 +180,7 @@ export default function Aku({
                                     [
                                         ['Easy', fitness.training_paces.easy, 'pace_easy'],
                                         ['Marathon', fitness.training_paces.marathon, 'pace_marathon'],
-                                        ['Threshold', fitness.training_paces.threshold, 'threshold_pace'],
+                                        ['Threshold (target)', fitness.training_paces.threshold, 'pace_threshold'],
                                         ['Interval', fitness.training_paces.interval, 'pace_interval'],
                                     ] as const
                                 ).map(([label, paceSec, explainerKey]) => (
