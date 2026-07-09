@@ -12,6 +12,7 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Context\ActivityNarrationContext;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Story\PastYouMatcher;
 
 use function is_string;
 
@@ -46,10 +47,20 @@ class PostRunSpeechNarrator
         JANGAN PERNAH menyebut "PR" atau "personal record" kecuali has_pr bernilai
         true. Kalau has_pr false, rayakan sorotan nyata lain (jarak, konsistensi,
         finish, atau cuaca), bukan PR yang tidak ada.
+
+        DIRI KAMU DULU: kalau field `past_you` terisi (ada lari serupa di masa
+        lalu), boleh jadikan hook buka atau tutup yang personal, misal
+        "dibanding sesi serupa {days_ago} hari lalu, pace-mu {pace_diff_sec}
+        detik lebih cepat". pace_diff_sec dan time_diff_sec positif = sekarang
+        LEBIH CEPAT, negatif = lebih pelan (akui apa adanya, jangan dipoles jadi
+        selalu menang). hr_diff_bpm positif = HR lebih tinggi sekarang. Kalau
+        `past_you` null, JANGAN mengarang perbandingan masa lalu.
         PROMPT;
 
-    public function __construct(private readonly StructuredChatCaller $caller)
-    {
+    public function __construct(
+        private readonly StructuredChatCaller $caller,
+        private readonly PastYouMatcher $pastYou,
+    ) {
     }
 
     /**
@@ -95,6 +106,7 @@ class PostRunSpeechNarrator
             'dominant_zone' => is_string($dominantZone) ? $dominantZone : null,
             'decoupling_pct' => $shared->decouplingPct,
             'negative_split' => $shared->negativeSplit,
+            'past_you' => $this->pastYou->findMatchContext($activity, $detail),
             'weather_temp_c' => $shared->weatherTempC,
             'weather_rain' => $shared->weatherRain,
             'weather_rain_source' => $shared->weatherRainSource,

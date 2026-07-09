@@ -29,6 +29,7 @@ use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\ProgressionSeriesBuilder;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
+use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -90,21 +91,21 @@ function postRunFixture(): array
 it('PostRunSpeechNarrator returns speech on valid JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['speech' => 'Nice run today!'], JSON_THROW_ON_ERROR));
-    $narrator = new PostRunSpeechNarrator($caller);
+    $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
     expect($narrator->generate($a, $d, 'nyala', postRunInsightsFixture()))->toBe('Nice run today!');
 });
 
 it('PostRunSpeechNarrator throws on non-JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller('not json');
-    $narrator = new PostRunSpeechNarrator($caller);
+    $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
     $narrator->generate($a, $d, 'nyala', postRunInsightsFixture());
 })->throws(UnavailableException::class, 'non-JSON');
 
 it('PostRunSpeechNarrator throws on missing key', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new PostRunSpeechNarrator($caller);
+    $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
     $narrator->generate($a, $d, 'nyala', postRunInsightsFixture());
 })->throws(UnavailableException::class, 'missing speech');
 
@@ -112,7 +113,7 @@ it('PostRunSpeechNarrator does not fatal when the stream summary is null', funct
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => null]);
     $caller = fakeCaller(json_encode(['speech' => 'Mantap'], JSON_THROW_ON_ERROR));
-    $narrator = new PostRunSpeechNarrator($caller);
+    $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
     expect($narrator->generate($a, $d->fresh(), 'dim', postRunInsightsFixture()))->toBe('Mantap');
 });
 
@@ -124,7 +125,7 @@ it('PostRunSpeechNarrator resolves the dominant zone from a populated stream sum
         'negative_split' => true,
     ]]);
     $caller = fakeCaller(json_encode(['speech' => 'Base solid'], JSON_THROW_ON_ERROR));
-    $narrator = new PostRunSpeechNarrator($caller);
+    $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
     expect($narrator->generate($a, $d->fresh(), 'nyala', postRunInsightsFixture()))->toBe('Base solid');
 });
 
@@ -132,7 +133,7 @@ it('PostRunSpeechNarrator carries the insight triplet into context', function ()
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $insights = postRunInsightsFixture();
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala', $insights);
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))->context($a, $d->fresh(), 'nyala', $insights);
 
     expect($context['insights'])->toBe($insights);
 });
@@ -163,7 +164,7 @@ it('PostRunSpeechNarrator feeds prev_narrative from the prior activity post-run 
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'Lari kemarin enteng banget.');
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
     expect($context['prev_narrative'])->toBe('Lari kemarin enteng banget.')
         // prev_opener is the first few words, so the model can steer away from it.
@@ -183,7 +184,7 @@ it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
     expect($context['prev_narrative'])->toBeNull()
         ->and($context['prev_opener'])->toBeNull();
@@ -197,10 +198,41 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
         'Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup dan pace makin rapi di akhir.',
     );
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}')))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
     expect($context['prev_opener'])->toBe('Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup')
         ->and(str_word_count((string) $context['prev_opener']))->toBeLessThanOrEqual(10);
+});
+
+it('PostRunSpeechNarrator feeds a past-you comparison when a comparable past run exists', function (): void {
+    // Current run: 5km in 1500s (5:00/km, threshold band).
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['weather_temp_c' => null]); // don't let the random factory temp gate the match
+    // A comparable run 30 days earlier: same distance band + threshold pace, but slower.
+    $past = Activity::factory()->for($a->user)->analyzed()->create();
+    ActivityDetail::factory()->for($past)->create([
+        'start_date_local' => Carbon::today()->subDays(30),
+        'distance' => 5000.0,
+        'moving_time' => 1560, // 5:12/km, slower than the current 5:00/km
+        'weather_temp_c' => null,
+    ]);
+
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))
+        ->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+
+    expect($context['past_you'])->not->toBeNull()
+        ->and($context['past_you']['days_ago'])->toBe(30)
+        ->and($context['past_you']['pace_diff_sec'])->toBeGreaterThan(0.0) // current is faster
+        ->and($context['past_you']['past_km'])->toBe(5.0);
+});
+
+it('PostRunSpeechNarrator leaves past_you null when no comparable past run exists', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+
+    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))
+        ->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+
+    expect($context['past_you'])->toBeNull();
 });
 
 // ── DailyGreetingNarrator ─────────────────────────────────────────────

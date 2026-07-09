@@ -115,6 +115,33 @@ class PastYouMatcher
         return null;
     }
 
+    /**
+     * Compact, LLM-safe shape of {@see findMatch}: the comparison deltas plus a
+     * couple of descriptors of the matched past run, without the full
+     * ActivityDetail model. `pace_diff_sec`/`time_diff_sec` are positive when the
+     * current run is faster; `hr_diff_bpm` is positive when HR is higher now.
+     *
+     * @return array{days_ago: int, pace_diff_sec: float, time_diff_sec: float, hr_diff_bpm: float|null, past_km: float, past_date: string|null}|null
+     */
+    public function findMatchContext(Activity $activity, ActivityDetail $detail): ?array
+    {
+        $match = $this->findMatch($activity, $detail);
+        if ($match === null) {
+            return null;
+        }
+
+        $past = $match['past'];
+
+        return [
+            'days_ago' => $match['days_ago'],
+            'pace_diff_sec' => $match['pace_diff_sec'],
+            'time_diff_sec' => $match['time_diff_sec'],
+            'hr_diff_bpm' => $match['hr_diff_bpm'],
+            'past_km' => round((float) ($past->distance ?? 0) / 1000, 1),
+            'past_date' => $past->start_date_local?->toDateString(),
+        ];
+    }
+
     public function paceBand(float $secPerKm): string
     {
         return match (true) {
