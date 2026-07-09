@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use OpenAI\Resources\Responses;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Exceptions\AI\TransientUpstreamException;
@@ -79,7 +80,7 @@ it('sends the narrator-tuned temperature in every request', function (): void {
     fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(temperature: 0.42));
 
     $client->assertSent(
-        OpenAI\Resources\Responses::class,
+        Responses::class,
         fn (string $method, array $params): bool => $method === 'create' && $params['temperature'] === 0.42,
     );
 });

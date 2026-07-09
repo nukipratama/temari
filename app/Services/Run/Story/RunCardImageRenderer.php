@@ -81,7 +81,7 @@ class RunCardImageRenderer
         );
         $panel = $this->routePanel($routePoints, $rarity);
         $stats = $this->statsRow($detail);
-        $badges = $this->badgeRow($card->badges ?? [], $rarity);
+        $badges = $this->badgeRow(array_values($card->badges ?? []), $rarity);
 
         [$cream, $sky, $skyDeep, $inkOnSky] = [self::CREAM, self::SKY, self::SKY_DEEP, self::INK_ON_SKY];
 

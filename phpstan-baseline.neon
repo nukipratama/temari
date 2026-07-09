@@ -1,10 +1,22 @@
 parameters:
 	ignoreErrors:
 		-
+			message: '#^Strict comparison using \=\=\= between App\\Models\\User and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Console/Commands/Gamification/StreakRemindCommand.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
-			path: app/Services/AI/TokenUsageReport.php
+			path: app/Http/Controllers/TokenUsageController.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type App\\Models\\Activity\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/AI/Analysis.php
 
 		-
 			message: '#^Offset ''pace'' on array\{km\: int, pace\: string\} on left side of \?\? always exists and is not nullable\.$#'
@@ -17,3 +29,15 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/AI/TokenUsageReport.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between Illuminate\\Support\\Carbon and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Run/ProgressionSeriesBuilder.php

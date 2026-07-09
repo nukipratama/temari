@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Client\Request;
 use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Services\Telegram\TelegramClient;
 use Illuminate\Http\Client\ConnectionException;
@@ -12,7 +13,7 @@ beforeEach(function (): void {
 });
 
 /** Read a multipart field's string contents from a faked outbound request. */
-function multipartField(Illuminate\Http\Client\Request $request, string $name): ?string
+function multipartField(Request $request, string $name): ?string
 {
     foreach ($request->data() as $field) {
         if (($field['name'] ?? null) === $name) {

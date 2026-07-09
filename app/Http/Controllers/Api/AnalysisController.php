@@ -157,7 +157,7 @@ class AnalysisController extends Controller
      * each successor still reads a Done predecessor. Returns null for an unknown
      * chained type so the caller keeps the clicked row's identity.
      *
-     * @return array{0: int, 1: string|null, 2: \App\Models\AI\Analysis|null}|null
+     * @return array{0: int, 1: string|null, 2: Analysis|null}|null
      */
     private function earliestUnfilledChainLink(User $user, AnalysisType $type): ?array
     {
@@ -172,7 +172,7 @@ class AnalysisController extends Controller
         };
     }
 
-    /** @return array{0: int, 1: string|null, 2: \App\Models\AI\Analysis|null}|null */
+    /** @return array{0: int, 1: string|null, 2: Analysis|null}|null */
     private function earliestUnfilledWeeklyLink(User $user): ?array
     {
         $lastWeekEnding = RecapPeriod::lastClosedWeekEnding();
@@ -206,7 +206,7 @@ class AnalysisController extends Controller
      * row is staged Pending but inert until the month closes), so resuming never
      * narrates an incomplete month.
      *
-     * @return array{0: int, 1: string|null, 2: \App\Models\AI\Analysis|null}|null
+     * @return array{0: int, 1: string|null, 2: Analysis|null}|null
      */
     private function earliestUnfilledMonthlyLink(User $user): ?array
     {
@@ -235,7 +235,7 @@ class AnalysisController extends Controller
      * (the clicked row is then used as-is, which the head-regenerate path
      * handles).
      *
-     * @return array{0: int, 1: string|null, 2: \App\Models\AI\Analysis|null}|null
+     * @return array{0: int, 1: string|null, 2: Analysis|null}|null
      */
     private function earliestUnfilledActivityLink(User $user, AnalysisType $type): ?array
     {

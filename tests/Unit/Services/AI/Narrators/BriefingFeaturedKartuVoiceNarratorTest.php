@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use OpenAI\Resources\Responses;
 use App\Enums\Rarity;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
@@ -63,7 +64,7 @@ it('returns the kartu voice for the resolved card from a valid LLM response', fu
     expect($narrator->generate($user, $card))->toBe('Aku kasih kartu ini karena 12 km tadi solid.');
 
     // Badge slugs are humanized before the prompt, capped at 3 tags.
-    $client->assertSent(OpenAI\Resources\Responses::class, function (string $method, array $params): bool {
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
         $payload = json_encode($params, JSON_THROW_ON_ERROR);
 
         return str_contains($payload, 'Anak Pagi')

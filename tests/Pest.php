@@ -1,5 +1,7 @@
 <?php
 
+use OpenAI\Responses\Responses\CreateResponse;
+use OpenAI\Responses\Meta\MetaInformation;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
@@ -57,8 +59,8 @@ function fakeAzureResponse(
     ?string $truncateReason = null,
     int $inputTokens = 10,
     int $outputTokens = 5,
-): OpenAI\Responses\Responses\CreateResponse {
-    return OpenAI\Responses\Responses\CreateResponse::from([
+): CreateResponse {
+    return CreateResponse::from([
         'id' => 'resp_test', 'object' => 'response', 'created_at' => 0, 'status' => $status, 'error' => null,
         'incomplete_details' => $truncateReason !== null ? ['reason' => $truncateReason] : null,
         'instructions' => null, 'max_output_tokens' => null, 'model' => 'test',
@@ -75,7 +77,7 @@ function fakeAzureResponse(
             'input_tokens_details' => ['cached_tokens' => 0], 'output_tokens_details' => ['reasoning_tokens' => 0],
         ],
         'user' => null, 'metadata' => [],
-    ], OpenAI\Responses\Meta\MetaInformation::from([]));
+    ], MetaInformation::from([]));
 }
 
 /**

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Bus;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
@@ -255,7 +256,7 @@ it('AnalyzeWeeklyRecapJob advances the chain to the next Pending week on complet
     config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
     config()->set('azure_openai.api_key', 'fake-key');
     config()->set('ai.backfill_stagger_seconds', 7);
-    Illuminate\Support\Facades\Bus::fake();
+    Bus::fake();
 
     $user = User::factory()->create();
     $thisWeek = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 3]);
@@ -276,13 +277,13 @@ it('AnalyzeWeeklyRecapJob advances the chain to the next Pending week on complet
 
     expect($thisRow->fresh()->content)->toBe('this week narrative')
         ->and($nextRow->fresh()->status)->toBe(AnalysisStatus::Queued);
-    Illuminate\Support\Facades\Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
+    Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
 it('AnalyzeWeeklyRecapJob does not advance when no later Pending week exists', function (): void {
     config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
     config()->set('azure_openai.api_key', 'fake-key');
-    Illuminate\Support\Facades\Bus::fake();
+    Bus::fake();
 
     $user = User::factory()->create();
     $thisWeek = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
@@ -293,14 +294,14 @@ it('AnalyzeWeeklyRecapJob does not advance when no later Pending week exists', f
     (new AnalyzeWeeklyRecapJob($thisRow->id))->handle(app(AnalysisService::class));
 
     expect($thisRow->fresh()->content)->toBe('tail narrative');
-    Illuminate\Support\Facades\Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
 it('AnalyzeWeeklyRecapJob does not advance into the still-open current week', function (): void {
     Carbon::setTestNow('2026-05-18'); // latest fully-closed week ends 2026-05-17
     config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
     config()->set('azure_openai.api_key', 'fake-key');
-    Illuminate\Support\Facades\Bus::fake();
+    Bus::fake();
 
     $user = User::factory()->create();
     $lastClosed = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
@@ -319,7 +320,7 @@ it('AnalyzeWeeklyRecapJob does not advance into the still-open current week', fu
 
     // The open week stays Pending: the chain must not narrate an incomplete week.
     expect($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
-    Illuminate\Support\Facades\Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
     Carbon::setTestNow();
 });
 
@@ -327,7 +328,7 @@ it('AnalyzeMonthlyRecapJob does not advance into the still-open current month', 
     Carbon::setTestNow('2026-05-18'); // latest fully-closed month is 2026-04
     config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
     config()->set('azure_openai.api_key', 'fake-key');
-    Illuminate\Support\Facades\Bus::fake();
+    Bus::fake();
 
     $user = User::factory()->create();
     $openRow = Analysis::factory()->create([
@@ -481,7 +482,7 @@ it('AnalyzeMonthlyRecapJob advances the chain to the next Pending month on compl
     config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
     config()->set('azure_openai.api_key', 'fake-key');
     config()->set('ai.backfill_stagger_seconds', 7);
-    Illuminate\Support\Facades\Bus::fake();
+    Bus::fake();
 
     $user = User::factory()->create();
     // The next month's recap is pre-staged Pending so the chain has a link to walk to.
@@ -500,13 +501,13 @@ it('AnalyzeMonthlyRecapJob advances the chain to the next Pending month on compl
 
     expect($thisRow->fresh()->content)->toBe('this month narrative')
         ->and($nextRow->fresh()->status)->toBe(AnalysisStatus::Queued);
-    Illuminate\Support\Facades\Bus::assertDispatched(AnalyzeMonthlyRecapJob::class);
+    Bus::assertDispatched(AnalyzeMonthlyRecapJob::class);
 });
 
 it('AnalyzeMonthlyRecapJob does not advance when no later Pending month exists', function (): void {
     config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
     config()->set('azure_openai.api_key', 'fake-key');
-    Illuminate\Support\Facades\Bus::fake();
+    Bus::fake();
 
     $user = User::factory()->create();
 
@@ -516,5 +517,5 @@ it('AnalyzeMonthlyRecapJob does not advance when no later Pending month exists',
     (new AnalyzeMonthlyRecapJob($thisRow->id))->handle(app(AnalysisService::class));
 
     expect($thisRow->fresh()->content)->toBe('tail narrative');
-    Illuminate\Support\Facades\Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
+    Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
 });

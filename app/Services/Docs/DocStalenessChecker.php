@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Docs;
 
+use DateTimeInterface;
 use Carbon\CarbonImmutable;
 use FilesystemIterator;
 use RecursiveDirectoryIterator;
@@ -121,7 +122,7 @@ class DocStalenessChecker
         // so normalize whatever shape the date scalar arrives in.
         $rawReviewed = $parsed['reviewed'] ?? null;
         $reviewed = match (true) {
-            $rawReviewed instanceof \DateTimeInterface => CarbonImmutable::instance($rawReviewed),
+            $rawReviewed instanceof DateTimeInterface => CarbonImmutable::instance($rawReviewed),
             is_int($rawReviewed) => CarbonImmutable::createFromTimestamp($rawReviewed),
             is_string($rawReviewed) && $rawReviewed !== '' => CarbonImmutable::parse($rawReviewed),
             default => null,

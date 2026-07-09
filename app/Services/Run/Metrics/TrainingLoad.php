@@ -41,15 +41,15 @@ class TrainingLoad
     }
 
     /**
-     * @return array<string, mixed>|null
-     */
-    /**
      * Cache TTL for the dashboard training-load summary. The numbers only
      * change when an activity is ingested, so a short cache trades a tiny
      * staleness window for skipping the 365-day data-load + EWMA roll.
      */
     private const int SUMMARY_CACHE_SECONDS = 300;
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function summary(User $user, ?Carbon $asOf = null): ?array
     {
         $today = ($asOf ?? Carbon::today())->copy()->startOfDay();
