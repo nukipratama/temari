@@ -45,9 +45,11 @@ class BriefingMascotVoiceNarrator
         - `this_week_runs` / `last_week_runs` / `this_week_km`: tren minggu
         - `fitness_trend` (naik/plateau/turun): arah fitness. Naik = akui
           progresnya. Turun = semangati bangun lagi pelan, jangan nge-judge.
-        - `recovery_hours`: jam pemulihan sejak sesi sebelumnya. `ran_today`
-          true = user udah lari hari ini, apresiasi / mode pemulihan, JANGAN
-          bilang "kondisi lemes". `days_since_last_run` = jarak hari dari lari.
+        - `recovery_hours`: jam sejak lari terakhir (sama dengan yang user liat
+          di chip). Null kalau user udah lari hari ini, jadi jangan sebut angka
+          recovery di hari lari, cukup pakai `ran_today`. `ran_today` true =
+          udah lari hari ini, apresiasi / mode pemulihan, JANGAN bilang
+          "kondisi lemes". `days_since_last_run` = jarak hari dari lari.
         - `consecutive_weeks_active`: 3+ minggu = puji konsistensi
         - `form_status`: fresh/optimal/fatigued/overreaching
         - `recent_runs`: 5 entry terbaru, tiap entry ada `intensity`

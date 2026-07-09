@@ -102,10 +102,12 @@ class BriefingNarrator
         - `fitness_trend` (naik/plateau/turun): arah fitness beberapa minggu
           terakhir. Naik = akui progres, jangan reflek nyuruh rest. Turun =
           boleh ajak bangun lagi pelan (masih dalam ceiling).
-        - `recovery_hours`: jam pemulihan sejak sesi sebelumnya (bukan sinyal
-          intensitas, itu ada di ceiling). `ran_today` true = user udah lari
-          hari ini, frame sebagai apresiasi / pemulihan, BUKAN "kondisi lemes".
-          `days_since_last_run` = jarak hari dari lari terakhir.
+        - `recovery_hours`: jam sejak lari terakhir, sama dengan yang user liat
+          di chip (bukan sinyal intensitas, itu ada di ceiling). Null kalau user
+          udah lari hari ini, jadi jangan sebut angka recovery di hari lari.
+          `ran_today` true = udah lari hari ini, frame sebagai apresiasi /
+          pemulihan, BUKAN "kondisi lemes". `days_since_last_run` = jarak hari
+          dari lari terakhir.
         - `volume_ramp_pct`: perubahan volume minggu ini vs lalu (persen). Lonjakan
           besar = hati-hati nambah beban.
         - `time_bucket`: HANYA untuk nuance tone (subuh/pagi = lebih cerah,

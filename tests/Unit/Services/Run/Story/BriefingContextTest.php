@@ -74,7 +74,7 @@ it('computes recovery hours from the most recent activity start', function (): v
         ->and($ctx->daysSinceLastRun)->toBe(1);
 });
 
-it('does not report a same-day run as zero recovery (reframes to the prior run day)', function (): void {
+it('reports null recovery on a run day so the narration cannot contradict the chip', function (): void {
     $asOf = Carbon::create(2026, 5, 21, 12);
     Carbon::setTestNow($asOf);
     $user = User::factory()->create();
@@ -86,8 +86,7 @@ it('does not report a same-day run as zero recovery (reframes to the prior run d
     $ctx = BriefingContext::forUser($user, $asOf);
 
     expect($ctx->ranToday)->toBeTrue()
-        ->and($ctx->recoveryHours)->toBe(53)   // from the 05-19 run, not the 05-21 morning run
-        ->and($ctx->recoveryHours)->not->toBe(0);
+        ->and($ctx->recoveryHours)->toBeNull();
 });
 
 it('reads the CTL slope over recent snapshots as a fitness trend', function (array $ctlSeries, string $trend): void {

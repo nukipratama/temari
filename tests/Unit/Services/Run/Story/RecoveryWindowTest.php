@@ -46,8 +46,10 @@ it('measures from the most recent run when the last run was a previous day', fun
         ->and($w->recoveryHours)->toBe(30);
 });
 
-it('reframes recovery from the prior run day when the last run was today', function (): void {
-    // The bug this fixes: a run logged this morning must not report ~0 recovery.
+it('reports null recovery on a run day so it never contradicts the chip', function (): void {
+    // The narration must not cite a recovery number the day the user ran: the
+    // briefing regenerates at ingest, so a literal count reads ~0 and would
+    // fight the chip. ran_today carries the framing instead.
     $asOf = Carbon::parse('2026-05-18 12:00');
     Carbon::setTestNow($asOf);
     $user = User::factory()->create();
@@ -57,9 +59,23 @@ it('reframes recovery from the prior run day when the last run was today', funct
     $w = RecoveryWindow::forUser($user, $asOf);
 
     expect($w->ranToday)->toBeTrue()
-        ->and($w->hoursSinceLastRun)->toBe(6)          // literal recency, for the chip
+        ->and($w->hoursSinceLastRun)->toBe(6) // literal recency, still drives the chip
         ->and($w->daysSinceLastRun)->toBe(0)
-        ->and($w->recoveryHours)->toBe(53);            // from the 05-16 run, not the 05-18 one
+        ->and($w->recoveryHours)->toBeNull();
+});
+
+it('mirrors hours-since as the recovery signal on a rest day', function (): void {
+    $asOf = Carbon::parse('2026-05-18 12:00');
+    Carbon::setTestNow($asOf);
+    $user = User::factory()->create();
+    seedRecoveryRun($user, '2026-05-17 06:00'); // yesterday, not today
+
+    $w = RecoveryWindow::forUser($user, $asOf);
+
+    // Same number the chip shows (hoursSinceLastRun) -> no contradiction.
+    expect($w->ranToday)->toBeFalse()
+        ->and($w->recoveryHours)->toBe($w->hoursSinceLastRun)
+        ->and($w->recoveryHours)->toBe(30);
 });
 
 it('ignores runs after asOf so a backdated recompute stays historical', function (): void {
