@@ -243,8 +243,23 @@ it('force-sends even when the user has opted out of post-run notifications', fun
     runForceSend($analysisId);
 
     Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Manual push.'));
-    // A manual push never claims the once-only delivery row, so it can re-send.
-    $this->assertDatabaseMissing('telegram_deliveries', ['analysis_id' => $analysisId]);
+    // A manual push records the delivery claim (so a later automatic re-notify is
+    // deduped), but can still re-send because it bypasses the claim CHECK.
+    $this->assertDatabaseHas('telegram_deliveries', ['analysis_id' => $analysisId]);
+});
+
+it('records the delivery claim on a force-send so a later automatic push is deduped', function (): void {
+    fakeTelegramOk();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'notify_post_run' => true]);
+    $analysisId = postRunAnalysisFor($user);
+
+    runForceSend($analysisId); // manual push claims the delivery row
+    runSend($analysisId);      // automatic path for the same row (e.g. a re-analysis)
+
+    // Only the manual push went out; the automatic re-notify found the claim and bailed.
+    Http::assertSentCount(1);
+    $this->assertDatabaseHas('telegram_deliveries', ['analysis_id' => $analysisId]);
 });
 
 it('force-sends again even when the activity was already delivered', function (): void {

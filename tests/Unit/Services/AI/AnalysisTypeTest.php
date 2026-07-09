@@ -24,6 +24,7 @@ it('flags exactly the heart-rate-zone-derived types as zone-dependent', function
 })->with([
     'zones' => [AnalysisType::RunInsightZones, true],
     'weekly recap' => [AnalysisType::WeeklyRecap, true],
+    'monthly recap (reads zone-weighted CTL for its fitness arc)' => [AnalysisType::MonthlyRecap, true],
     'technical (uses run-peak HR, not zones)' => [AnalysisType::RunInsightTechnical, false],
     'splits' => [AnalysisType::RunInsightSplits, false],
     'post-run speech' => [AnalysisType::PostRunSpeech, false],

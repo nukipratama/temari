@@ -184,7 +184,8 @@ enum AnalysisType: string
     {
         return match ($this) {
             self::RunInsightZones,
-            self::WeeklyRecap => true,
+            self::WeeklyRecap,
+            self::MonthlyRecap => true,
             default => false,
         };
     }

@@ -25,8 +25,10 @@ use Illuminate\Support\Facades\Log;
  * idempotent).
  *
  * A manual push ($force) bypasses the recency gate, the opt-in toggle, and the
- * once-only delivery claim, so a user can (re)send a run to Telegram on demand
- * from its detail page.
+ * once-only delivery-claim CHECK, so a user can (re)send a run to Telegram on
+ * demand from its detail page. It still RECORDS the claim on success, so a later
+ * automatic notification for the same row (e.g. a "Baca ulang" re-analysis) is
+ * deduped against it and can't fire a second push.
  */
 class SendTelegramNotificationJob implements ShouldQueue
 {
@@ -122,6 +124,23 @@ class SendTelegramNotificationJob implements ShouldQueue
             DB::table('telegram_deliveries')->where('analysis_id', $analysis->id)->delete();
 
             throw $e;
+        }
+
+        // Reached only after a successful deliver. A manual push records the
+        // delivery claim too (the automatic path already claimed before sending),
+        // so a later automatic notification for the same row (e.g. a "Baca ulang"
+        // re-analysis) is deduped instead of firing a second push. Best-effort and
+        // outside the deliver try: a claim hiccup must not be misread as a send
+        // failure (the message already went out) nor trigger a duplicate on retry.
+        if ($this->force) {
+            try {
+                $this->claimDelivery($analysis);
+            } catch (Throwable $e) {
+                Log::warning('telegram.force_send.claim_failed', [
+                    'analysis_id' => $analysis->id,
+                    'reason' => $e->getMessage(),
+                ]);
+            }
         }
     }
 
