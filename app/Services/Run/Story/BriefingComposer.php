@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
-use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
@@ -74,21 +73,7 @@ class BriefingComposer
 
     private function hoursSinceLastRun(User $user, Carbon $asOf): ?int
     {
-        $lastRun = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->whereNotNull('start_date_local')
-            ->orderByDesc('start_date_local')
-            ->value('start_date_local');
-
-        if ($lastRun === null) {
-            return null;
-        }
-
-        // Hours between the last run's local timestamp and `now` on the same
-        // local clock (asOf is start-of-day; bump to now-of-day for precision).
-        $now = $asOf->isSameDay(Carbon::now()) ? Carbon::now() : $asOf->copy()->endOfDay();
-
-        return max(0, (int) Carbon::parse($lastRun)->diffInHours($now, absolute: true));
+        return RecoveryWindow::forUser($user, $asOf)->hoursSinceLastRun;
     }
 
     private function recoveryHoursLabel(?int $hoursSince): ?string
