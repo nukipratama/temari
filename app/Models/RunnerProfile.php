@@ -16,20 +16,24 @@ use Override;
 /**
  * @property int $id
  * @property int $user_id
+ * @property string $source
  * @property int $max_hr
  * @property int $resting_hr
  * @property array<string, array{lo:int, hi:int}> $hr_zones
  * @property int $optimal_cadence_spm
  * @property Carbon|null $hr_zones_changed_at
+ * @property Carbon|null $strava_zones_synced_at
  * @property-read User $user
  */
 #[Fillable([
     'user_id',
+    'source',
     'max_hr',
     'resting_hr',
     'hr_zones',
     'optimal_cadence_spm',
     'hr_zones_changed_at',
+    'strava_zones_synced_at',
 ])]
 class RunnerProfile extends Model
 {
@@ -72,6 +76,7 @@ class RunnerProfile extends Model
             'hr_zones' => 'array',
             'optimal_cadence_spm' => 'integer',
             'hr_zones_changed_at' => 'datetime',
+            'strava_zones_synced_at' => 'datetime',
         ];
     }
 }

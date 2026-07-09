@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\Strava\SyncActivitiesJob;
+use App\Jobs\Strava\SyncZonesJob;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Support\LocalRedirectPath;
@@ -23,7 +24,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse
 
 class StravaAuthController extends Controller
 {
-    private const array SCOPES = ['read', 'activity:read_all'];
+    private const array SCOPES = ['read', 'activity:read_all', 'profile:read_all'];
 
     public function redirect(Request $request): SymfonyRedirectResponse
     {
@@ -66,6 +67,7 @@ class StravaAuthController extends Controller
         // per-user lock + insertOrIgnore make a redundant dispatch harmless anyway.
         if ($isFreshConnection) {
             SyncActivitiesJob::dispatch($user->id);
+            SyncZonesJob::dispatch($user->id);
         }
 
         return redirect()->intended(route('dashboard'));
