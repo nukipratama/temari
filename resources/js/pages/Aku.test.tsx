@@ -98,6 +98,61 @@ describe('Aku', () => {
         expect(screen.getByText('Threshold pace')).toBeInTheDocument();
     });
 
+    it('renders the Latihan pace block when training_paces is provided', () => {
+        render(
+            <Aku
+                identity={identity}
+                stats={stats}
+                fitness={{
+                    vdot: 42.1,
+                    threshold_pace_sec: 300,
+                    threshold_confidence: 'high',
+                    training_paces: { easy: 390, marathon: 330, threshold: 300, interval: 270 },
+                }}
+            />,
+        );
+        expect(screen.getByText(/Latihan/)).toBeInTheDocument();
+        expect(screen.getByText('Easy')).toBeInTheDocument();
+        expect(screen.getByText('Marathon')).toBeInTheDocument();
+        expect(screen.getByText('Interval')).toBeInTheDocument();
+        expect(screen.getByText('6:30')).toBeInTheDocument();
+    });
+
+    it('omits the Latihan pace block when training_paces is absent', () => {
+        render(
+            <Aku
+                identity={identity}
+                stats={stats}
+                fitness={{ vdot: 42.1, threshold_pace_sec: 300, threshold_confidence: 'high', training_paces: null }}
+            />,
+        );
+        expect(screen.queryByText(/Latihan/)).not.toBeInTheDocument();
+    });
+
+    it('shows the Strava zone reconnect banner when stravaZoneScopeMissing is true', () => {
+        setMockPage({
+            auth: { user: makeUser() },
+            flash: {},
+            demoLoginEnabled: false,
+            stravaZoneScopeMissing: true,
+        });
+        render(<Aku identity={identity} stats={stats} />);
+        expect(screen.getByText(/Sambungin ulang Strava/)).toBeInTheDocument();
+        const link = screen.getByText('Sambungin lagi').closest('a');
+        expect(link).toHaveAttribute('href', '/auth/strava/redirect');
+    });
+
+    it('hides the Strava zone reconnect banner when the scope is present', () => {
+        setMockPage({
+            auth: { user: makeUser() },
+            flash: {},
+            demoLoginEnabled: false,
+            stravaZoneScopeMissing: false,
+        });
+        render(<Aku identity={identity} stats={stats} />);
+        expect(screen.queryByText(/Sambungin ulang Strava/)).not.toBeInTheDocument();
+    });
+
     it('shows the connect link when Telegram is not connected', () => {
         const telegram = {
             connected: false,

@@ -77,6 +77,16 @@ it('creates a runner_profiles row and bumps hr_zones_changed_at', function (): v
         ->and($profile->hr_zones_changed_at)->not->toBeNull();
 });
 
+it('marks the profile source as manual on save', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch('/pengaturan/zona', validZonesPayload())
+        ->assertRedirect();
+
+    expect(RunnerProfile::query()->where('user_id', $user->id)->value('source'))->toBe('manual');
+});
+
 it('updates the existing row in place rather than creating a second one', function (): void {
     $user = User::factory()->create();
     RunnerProfile::factory()->for($user)->create(['max_hr' => 170]);

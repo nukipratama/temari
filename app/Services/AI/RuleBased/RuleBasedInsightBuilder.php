@@ -8,7 +8,10 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Support\Carbon;
 
 /**
@@ -22,8 +25,14 @@ use Illuminate\Support\Carbon;
  * - RunInsightZones
  * - TrendCaption
  */
-final class RuleBasedInsightBuilder
+final readonly class RuleBasedInsightBuilder
 {
+    public function __construct(
+        private VdotEstimator $vdotEstimator = new VdotEstimator(),
+        private TrainingPaceCalculator $trainingPaceCalculator = new TrainingPaceCalculator(),
+    ) {
+    }
+
     // Cadence thresholds (spm, already doubled)
     private const int CADENCE_IDEAL = 180;
     private const int CADENCE_MODERATE = 170;
@@ -37,6 +46,18 @@ final class RuleBasedInsightBuilder
     // Decoupling (% pace drift)
     private const int DECOUPLING_HIGH = 5;
     private const int DECOUPLING_OK = 2;
+
+    // Weather temp (C) above which high decoupling is expected, not alarming
+    // (matches the "panas" threshold used elsewhere, e.g. Temari.php, RunCardFactory.php)
+    private const int DECOUPLING_HOT_TEMP_C = 31;
+
+    // Grey-zone nudge: an easy-paced/easy-HR run that drifted into excessive
+    // Z3+ effort. Thresholds are intentionally strict (anti-nag guard) so an
+    // ordinary firm run never trips this.
+    private const int GREY_ZONE_HARD_SHARE_MIN = 55; // Z3+Z4+Z5 pct
+    private const int GREY_ZONE_MIN_DISTANCE_M = 3000;
+    private const int GREY_ZONE_MAX_DISTANCE_M = 15000;
+    private const int GREY_ZONE_PACE_MARGIN_SEC = 60; // current pace must be this much slower than threshold pace
 
     // Pace variability (seconds)
     private const int VARIABILITY_CONSISTENT = 8;
@@ -84,7 +105,7 @@ final class RuleBasedInsightBuilder
         $parts = [];
         $this->appendCadencePart($detail, $parts);
         $this->appendHrPart($detail, $parts);
-        $this->appendDecouplingPart($summary, $parts);
+        $this->appendDecouplingPart($detail, $summary, $parts);
         $this->appendElevationPart($summary, $parts);
         $this->appendPaceVariabilityPart($summary, $parts);
         $this->appendPaceComparisonPart($activity, $detail, $parts);
@@ -152,7 +173,7 @@ final class RuleBasedInsightBuilder
      * @param  array<string, mixed>  $summary
      * @param  list<string>  $parts
      */
-    private function appendDecouplingPart(array $summary, array &$parts): void
+    private function appendDecouplingPart(ActivityDetail $detail, array $summary, array &$parts): void
     {
         $raw = $summary['decoupling_pct'] ?? null;
         if ($raw === null) {
@@ -161,10 +182,26 @@ final class RuleBasedInsightBuilder
 
         $decoupling = (float) $raw;
         if ($decoupling > self::DECOUPLING_HIGH) {
-            $parts[] = 'decoupling +' . number_format($decoupling, 1) . '%, aerobik base belum solid';
+            $parts[] = $this->decouplingHighPart($decoupling, $detail->weather_temp_c);
         } elseif ($decoupling > self::DECOUPLING_OK) {
             $parts[] = 'decoupling +' . number_format($decoupling, 1) . '%, masih wajar';
         }
+    }
+
+    /**
+     * High decoupling reads as lost aerobic efficiency, but heat alone can
+     * drive the same cardiac drift in an otherwise solid aerobic base. Soften
+     * the message instead of implying lost fitness when the weather explains it.
+     */
+    private function decouplingHighPart(float $decoupling, ?int $weatherTempC): string
+    {
+        $label = 'decoupling +' . number_format($decoupling, 1) . '%';
+
+        if ($weatherTempC !== null && $weatherTempC >= self::DECOUPLING_HOT_TEMP_C) {
+            return "{$label}, tapi wajar soalnya tadi panas ~{$weatherTempC}°C";
+        }
+
+        return "{$label}, aerobik base belum solid";
     }
 
     /**
@@ -382,6 +419,7 @@ final class RuleBasedInsightBuilder
         /** @var list<string> $parts */
         $parts = [];
         $this->appendZoneAnalysis($zonePct, $summary, $parts);
+        $this->appendGreyZoneNudge($detail, $zonePct, $parts);
 
         return ucfirst(implode(', ', $parts)) . '.';
     }
@@ -458,6 +496,79 @@ final class RuleBasedInsightBuilder
         if (((float) ($zonePct['Z5'] ?? 0)) > 10) {
             $parts[] = 'Z5 cukup banyak, pastikan recovery cukup';
         }
+    }
+
+    /**
+     * Grey-zone nudge: a run that read as intended-easy (pace clearly slower
+     * than threshold, or HR reads comfortable when threshold is unknown) but
+     * still drifted into excessive Z3+ effort, defeating the aerobic-base
+     * purpose of an easy run. Thresholds are strict by design (anti-nag guard)
+     * so an ordinary firm run never trips this.
+     *
+     * @param  array<string, float>  $zonePct
+     * @param  list<string>  $parts
+     */
+    private function appendGreyZoneNudge(ActivityDetail $detail, array $zonePct, array &$parts): void
+    {
+        $hardShare = (float) ($zonePct['Z3'] ?? 0) + (float) ($zonePct['Z4'] ?? 0) + (float) ($zonePct['Z5'] ?? 0);
+        if ($hardShare < self::GREY_ZONE_HARD_SHARE_MIN) {
+            return;
+        }
+
+        $distance = $detail->distance;
+        if ($distance === null || $distance < self::GREY_ZONE_MIN_DISTANCE_M || $distance > self::GREY_ZONE_MAX_DISTANCE_M) {
+            return;
+        }
+
+        $currentPace = $detail->paceSecPerKm();
+        if ($currentPace === null) {
+            return;
+        }
+
+        $easyPaceLabel = $this->greyZoneEasyPaceLabel($detail, $currentPace);
+        if ($easyPaceLabel === false) {
+            return;
+        }
+
+        $parts[] = $easyPaceLabel !== null
+            ? "kalau niatnya easy, coba tahan di sekitar {$easyPaceLabel}/km biar aerobiknya lebih kebentuk"
+            : 'kalau niatnya easy, coba lebih pelan dikit biar aerobiknya lebih kebentuk';
+    }
+
+    /**
+     * Confirms the run reads as intended-easy and resolves the pace label to
+     * quote back, when a VDOT-derived threshold pace is available.
+     *
+     * Returns `false` when the run does not read as easy (caller should skip
+     * the nudge), a formatted "m:ss" pace label when VDOT is available, or
+     * `null` when the HR-only fallback confirmed "easy" without a pace number.
+     */
+    private function greyZoneEasyPaceLabel(ActivityDetail $detail, float $currentPace): string|false|null
+    {
+        // The zones insight is relation-optional (it can run on an unpersisted
+        // detail), so degrade to the HR-only path when no activity/user resolves.
+        /** @var Activity|null $activity */
+        $activity = $detail->activity;
+        $vdotResult = $activity !== null
+            ? $this->vdotEstimator->estimate($activity->user)
+            : null;
+
+        if ($vdotResult !== null) {
+            $paces = $this->trainingPaceCalculator->fromVdot($vdotResult['vdot']);
+            if ($currentPace - $paces['threshold'] < self::GREY_ZONE_PACE_MARGIN_SEC) {
+                return false;
+            }
+
+            return PaceFormatter::format((float) $paces['easy']);
+        }
+
+        $avgHr = $detail->average_heartrate;
+        $maxHr = $detail->max_heartrate;
+        if ($avgHr === null || $maxHr === null || $maxHr <= 0) {
+            return false;
+        }
+
+        return (($avgHr / $maxHr) * 100) <= self::HR_RESERVE_EASY ? null : false;
     }
 
     /**

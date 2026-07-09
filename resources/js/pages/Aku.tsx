@@ -53,10 +53,18 @@ interface ProgressionSeries {
     goal_sec: number | null;
 }
 
+interface TrainingPaces {
+    easy: number;
+    marathon: number;
+    threshold: number;
+    interval: number;
+}
+
 interface FitnessPayload {
     vdot: number | null;
     threshold_pace_sec: number | null;
     threshold_confidence: string | null;
+    training_paces?: TrainingPaces | null;
 }
 
 interface AkuProps {
@@ -162,6 +170,35 @@ export default function Aku({
                         )}
                     </div>
                 </HeroPanel>
+
+                {fitness?.training_paces && (
+                    <section className="mt-10">
+                        <SectionLabel>Latihan · pace target</SectionLabel>
+                        <Card className="mt-3">
+                            <div className="grid grid-cols-2 gap-5 sm:grid-cols-4 justify-items-center">
+                                {(
+                                    [
+                                        ['Easy', fitness.training_paces.easy, 'pace_easy'],
+                                        ['Marathon', fitness.training_paces.marathon, 'pace_marathon'],
+                                        ['Threshold (target)', fitness.training_paces.threshold, 'pace_threshold'],
+                                        ['Interval', fitness.training_paces.interval, 'pace_interval'],
+                                    ] as const
+                                ).map(([label, paceSec, explainerKey]) => (
+                                    <StatTile
+                                        key={explainerKey}
+                                        tone="cream"
+                                        size="sm"
+                                        align="center"
+                                        label={label}
+                                        value={formatPace(paceSec)}
+                                        unit="/km"
+                                        explainerKey={explainerKey}
+                                    />
+                                ))}
+                            </div>
+                        </Card>
+                    </section>
+                )}
 
                 <section className="mt-10">
                     <SectionLabel>Persona · 12 minggu terakhir</SectionLabel>

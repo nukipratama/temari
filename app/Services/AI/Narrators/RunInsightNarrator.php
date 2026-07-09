@@ -13,6 +13,8 @@ use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Support\Carbon;
 
 class RunInsightNarrator
@@ -39,6 +41,16 @@ class RunInsightNarrator
           * HR rata-rata di Z3-Z4 untuk sesi easy: "HR kamu rata-rata 165 di
             sesi yang seharusnya easy. Mungkin pace-nya keburu, atau cuaca
             panas."
+
+          CUACA & DECOUPLING: kalau decoupling tinggi (>10%) TAPI weather_temp_c
+          di atas 30 derajat, JANGAN bilang base aerobik jelek atau fitness
+          turun. Bingkai sebagai wajar karena panas: jantung kerja lebih keras
+          buat bantu tubuh buang panas, bukan sinyal kebugaran yang hilang.
+          Kalau decoupling tinggi dan cuacanya sejuk (atau data cuaca gak ada),
+          baru itu sinyal aerobik belum solid seperti biasa.
+          * Oke (panas): "Decoupling +14%, tapi ini karena cuaca 32 derajat,
+            wajar HR ikut naik buat bantu badan dingin. Bukan berarti aerobik
+            kamu mundur."
 
           ANGIN: weather_wind_speed_kmh (kecepatan, km/j), weather_wind_gust_kmh
           (hembusan puncak), weather_wind_direction_deg (arah asal angin dalam
@@ -73,6 +85,15 @@ class RunInsightNarrator
             beban ringan, besok bisa lanjut."
           * "Mayoritas Z3-Z4 padahal ini easy run. HR gampang naik, coba
             perlambat pace atau tambah run-walk."
+
+          GREY ZONE: kalau sesi ini kebaca sebagai easy/recovery tapi banyak
+          waktunya nyangkut di Z3 ke atas, dan easy_pace_sec ada di konteks,
+          boleh selipkan saran lembut buat turunin ke pace easy-nya (konversi
+          easy_pace_sec ke menit:detik per km). Ini cuma opsi, bukan tegoran.
+          Sebut sekali, jangan diulang-ulang, dan jangan pakai kalau sesinya
+          memang niat tempo/threshold (bukan easy).
+          * "Ini kerasa kayak easy run tapi banyak nyangkut di Z3. Kalau mau,
+            coba turunin ke sekitar 7:15/km biar aerobiknya lebih kebangun."
 
         HUJAN: kalau weather_rain true, perhatikan weather_rain_source. Kalau
         "observed" boleh sebut hujan dengan tegas ("sempat hujan"). Kalau
@@ -112,6 +133,8 @@ class RunInsightNarrator
         private readonly StructuredChatCaller $caller,
         private readonly TrainingLoad $trainingLoad,
         private readonly RunBaseline $baseline,
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $trainingPaceCalculator,
     ) {
     }
 
@@ -147,6 +170,7 @@ class RunInsightNarrator
             $detail,
             AnalysisType::RunInsightTechnical,
         );
+        $paces = $this->trainingPaces($activity);
 
         return [
             'distance_km' => $shared->distanceKm(2),
@@ -173,8 +197,21 @@ class RunInsightNarrator
             'weather_wind_direction_deg' => $shared->weatherWindDirectionDeg,
             'training_load' => $this->trainingLoadContext($activity, $asOf),
             'recent_baseline_28d' => $this->baseline->forUserAsOf($activity->user_id, $asOf, $activity->id),
+            'easy_pace_sec' => $paces['easy'] ?? null,
+            'threshold_pace_sec' => $paces['threshold'] ?? null,
             ...NarratorContinuity::fields($prevNarrative),
         ];
+    }
+
+    /**
+     * The runner's Daniels training paces derived from their current VDOT, or
+     * null when there is not yet enough PR history to estimate one.
+     *
+     * @return array{easy: int, marathon: int, threshold: int, interval: int}|null
+     */
+    private function trainingPaces(Activity $activity): ?array
+    {
+        return $this->trainingPaceCalculator->fromVdotResult($this->vdotEstimator->estimate($activity->user));
     }
 
     /**

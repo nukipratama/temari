@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\AI\Analysis;
+use OpenAI\Resources\Responses;
 use App\Services\AI\StructuredChatCaller;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
@@ -27,6 +29,7 @@ use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\ProgressionSeriesBuilder;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
@@ -151,7 +154,7 @@ function priorActivityWithDoneAnalysis(User $user, AnalysisType $kind, string $c
         'distance' => 4000.0,
         'moving_time' => 1200,
     ]);
-    \App\Models\AI\Analysis::factory()->done($content)->create([
+    Analysis::factory()->done($content)->create([
         'subject_type' => Activity::class,
         'subject_id' => $prior->id,
         'analysis_type' => $kind,
@@ -177,7 +180,7 @@ it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done
     // A prior activity exists but its post-run is only Pending, so it is not a usable predecessor.
     $prior = Activity::factory()->for($a->user)->analyzed()->create();
     ActivityDetail::factory()->for($prior)->create(['start_date_local' => Carbon::parse('2026-05-09')]);
-    \App\Models\AI\Analysis::factory()->create([
+    Analysis::factory()->create([
         'subject_type' => Activity::class,
         'subject_id' => $prior->id,
         'analysis_type' => AnalysisType::PostRunSpeech,
@@ -261,7 +264,7 @@ it('DailyGreetingNarrator throws on non-JSON response', function (): void {
 
 it('DailyGreetingNarrator feeds prev_narrative from the prior day greeting when Done', function (): void {
     $user = User::factory()->create();
-    \App\Models\AI\Analysis::factory()->done('Halo, kemarin kamu fresh banget.')->create([
+    Analysis::factory()->done('Halo, kemarin kamu fresh banget.')->create([
         'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::DailyGreeting,
@@ -276,7 +279,7 @@ it('DailyGreetingNarrator feeds prev_narrative from the prior day greeting when 
 
 it('DailyGreetingNarrator omits prev_narrative when the prior day greeting is not yet Done', function (): void {
     $user = User::factory()->create();
-    \App\Models\AI\Analysis::factory()->create([
+    Analysis::factory()->create([
         'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::DailyGreeting,
@@ -308,7 +311,7 @@ it('RunInsightNarrator returns 3-string payload on valid JSON', function (): voi
         'splits' => 'splits text',
         'zones' => 'zones text',
     ], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline());
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     $payload = $narrator->generate($a, $d);
     expect($payload['technical'])->toBe('tech text')
         ->and($payload['splits'])->toBe('splits text')
@@ -318,14 +321,14 @@ it('RunInsightNarrator returns 3-string payload on valid JSON', function (): voi
 it('RunInsightNarrator throws on missing keys', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['technical' => 'only one'], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline());
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     $narrator->generate($a, $d);
 })->throws(UnavailableException::class);
 
 it('RunInsightNarrator throws on non-JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller('not json');
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline());
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     $narrator->generate($a, $d);
 })->throws(UnavailableException::class, 'non-JSON');
 
@@ -335,7 +338,7 @@ it('RunInsightNarrator does not fatal when the stream summary is null', function
     $caller = fakeCaller(json_encode([
         'technical' => 't', 'splits' => 's', 'zones' => 'z',
     ], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline());
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     $payload = $narrator->generate($a, $d->fresh());
     expect($payload['zones'])->toBe('z');
 });
@@ -352,7 +355,7 @@ it('RunInsightNarrator feeds training-load + pace-variability + zone-minutes int
         ],
     ]);
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline());
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['trimp'])->toBe(92.4)
@@ -365,7 +368,7 @@ it('RunInsightNarrator leaves the new context fields null when no stream summary
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => null, 'trimp_edwards' => null]);
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline());
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['trimp'])->toBeNull()
@@ -386,7 +389,7 @@ it('RunInsightNarrator feeds the 28-day baseline + training load into the contex
         'stream_summary' => ['decoupling_pct' => 6.0, 'time_in_zone_min' => ['Z2' => 40]],
     ]);
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline());
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['recent_baseline_28d'])->toMatchArray([
@@ -403,7 +406,7 @@ it('RunInsightNarrator feeds prev_narrative from the prior activity technical in
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     priorActivityWithDoneAnalysis($a->user, AnalysisType::RunInsightTechnical, 'Cadence kemarin 168, mulai membaik.');
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline());
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['prev_narrative'])->toBe('Cadence kemarin 168, mulai membaik.');
@@ -412,10 +415,32 @@ it('RunInsightNarrator feeds prev_narrative from the prior activity technical in
 it('RunInsightNarrator leaves prev_narrative null when no prior technical insight is Done', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline());
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['prev_narrative'])->toBeNull();
+});
+
+it('RunInsightNarrator feeds easy and threshold training paces derived from the runner VDOT', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    PersonalRecord::factory()->for($a->user)->create(['category' => '5km', 'value_sec' => 1200]);
+
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $context = $narrator->context($a, $d->fresh());
+
+    expect($context['easy_pace_sec'])->toBeInt()
+        ->and($context['threshold_pace_sec'])->toBeInt()
+        ->and($context['easy_pace_sec'])->toBeGreaterThan($context['threshold_pace_sec']);
+});
+
+it('RunInsightNarrator leaves training paces null when the runner has no VDOT-eligible PR', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $context = $narrator->context($a, $d->fresh());
+
+    expect($context['easy_pace_sec'])->toBeNull()
+        ->and($context['threshold_pace_sec'])->toBeNull();
 });
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
@@ -483,10 +508,10 @@ it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', fun
 it('WeeklyRecapNarrator feeds prev_narrative when the prior week recap is Done', function (): void {
     $user = User::factory()->create();
     $prior = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10']);
-    \App\Models\AI\Analysis::factory()->done('Minggu lalu kamu solid.')->create([
+    Analysis::factory()->done('Minggu lalu kamu solid.')->create([
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $prior->id,
-        'analysis_type' => \App\Services\AI\AnalysisType::WeeklyRecap,
+        'analysis_type' => AnalysisType::WeeklyRecap,
         'discriminator' => null,
     ]);
     $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
@@ -499,12 +524,12 @@ it('WeeklyRecapNarrator feeds prev_narrative when the prior week recap is Done',
 it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not yet Done', function (): void {
     $user = User::factory()->create();
     $prior = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10']);
-    \App\Models\AI\Analysis::factory()->create([
+    Analysis::factory()->create([
         'subject_type' => WeeklySnapshot::class,
         'subject_id' => $prior->id,
-        'analysis_type' => \App\Services\AI\AnalysisType::WeeklyRecap,
+        'analysis_type' => AnalysisType::WeeklyRecap,
         'discriminator' => null,
-        'status' => \App\Services\AI\AnalysisStatus::Pending,
+        'status' => AnalysisStatus::Pending,
     ]);
     $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
 
@@ -704,7 +729,7 @@ it('CardFlavorNarrator humanizes badge slugs so no raw code reaches the prompt',
     [$caller, $client] = capturingCaller(json_encode(['flavor' => 'ok'], JSON_THROW_ON_ERROR));
     (new CardFlavorNarrator($caller))->generate($card->fresh());
 
-    $client->assertSent(OpenAI\Resources\Responses::class, function (string $method, array $params): bool {
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
         $payload = json_encode($params, JSON_THROW_ON_ERROR);
 
         return str_contains($payload, 'Long Slow Distance')
@@ -723,7 +748,7 @@ it('CardFlavorNarrator feeds decoupling + negative split pacing into the payload
     [$caller, $client] = capturingCaller(json_encode(['flavor' => 'ok'], JSON_THROW_ON_ERROR));
     (new CardFlavorNarrator($caller))->generate($card->fresh());
 
-    $client->assertSent(OpenAI\Resources\Responses::class, function (string $method, array $params): bool {
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
         $payload = json_encode($params, JSON_THROW_ON_ERROR);
 
         return str_contains($payload, 'decoupling_pct')
@@ -878,10 +903,10 @@ it('MonthlyRecapNarrator leaves fitness null when the month has no snapshots', f
 
 it('MonthlyRecapNarrator feeds prev_narrative when the prior month recap is Done', function (): void {
     $user = User::factory()->create();
-    \App\Models\AI\Analysis::factory()->done('Bulan lalu kamu konsisten.')->create([
-        'subject_type' => \App\Services\AI\AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+    Analysis::factory()->done('Bulan lalu kamu konsisten.')->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => \App\Services\AI\AnalysisType::MonthlyRecap,
+        'analysis_type' => AnalysisType::MonthlyRecap,
         'discriminator' => '2026-04',
     ]);
 
@@ -892,12 +917,12 @@ it('MonthlyRecapNarrator feeds prev_narrative when the prior month recap is Done
 
 it('MonthlyRecapNarrator omits prev_narrative when the prior month recap is not yet Done', function (): void {
     $user = User::factory()->create();
-    \App\Models\AI\Analysis::factory()->create([
-        'subject_type' => \App\Services\AI\AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => \App\Services\AI\AnalysisType::MonthlyRecap,
+        'analysis_type' => AnalysisType::MonthlyRecap,
         'discriminator' => '2026-04',
-        'status' => \App\Services\AI\AnalysisStatus::Pending,
+        'status' => AnalysisStatus::Pending,
     ]);
 
     $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, '2026-05');
@@ -918,7 +943,7 @@ it('MonthlyRecapNarrator leaves prev_narrative null on the first month', functio
 it('AkuProfileVoiceNarrator returns profile voice on valid JSON', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(json_encode(['profile_voice' => 'Kamu udah lari 50 km, keren.'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     expect($narrator->generate($user))->toBe('Kamu udah lari 50 km, keren.');
 });
 
@@ -931,7 +956,7 @@ it('AkuProfileVoiceNarrator builds context from user stats', function (): void {
     ]);
 
     $caller = fakeCaller(json_encode(['profile_voice' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     $context = $narrator->context($user->fresh());
     expect($context['total_runs'])->toBe(1)
@@ -960,7 +985,7 @@ it('AkuProfileVoiceNarrator reads the weekly streak and the most common run time
         ]);
     }
 
-    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class)))->context($user->fresh());
+    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class)))->context($user->fresh());
 
     expect($context['weekly_streak'])->toBe(2)
         ->and($context['favorite_time'])->toBe('malam');
@@ -973,7 +998,7 @@ it('AkuProfileVoiceNarrator feeds the latest form_status as the consistency spin
         'runs' => 3, 'form_status' => 'overreaching',
     ]);
 
-    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class)))
+    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class)))
         ->context($user->fresh());
 
     expect($context['form_status'])->toBe('overreaching');
@@ -982,16 +1007,41 @@ it('AkuProfileVoiceNarrator feeds the latest form_status as the consistency spin
 it('AkuProfileVoiceNarrator throws on missing profile_voice key', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     $narrator->generate($user);
 })->throws(UnavailableException::class);
 
 it('AkuProfileVoiceNarrator throws on non-JSON', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller('not json');
-    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     $narrator->generate($user);
 })->throws(UnavailableException::class, 'non-JSON');
+
+it('AkuProfileVoiceNarrator feeds the four training paces derived from the runner VDOT', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+
+    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class)))
+        ->context($user->fresh());
+
+    expect($context['easy_pace_sec'])->toBeInt()
+        ->and($context['marathon_pace_sec'])->toBeInt()
+        ->and($context['threshold_pace_sec'])->toBeInt()
+        ->and($context['interval_pace_sec'])->toBeInt();
+});
+
+it('AkuProfileVoiceNarrator leaves training paces null when the user has no VDOT-eligible PR', function (): void {
+    $user = User::factory()->create();
+
+    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class)))
+        ->context($user->fresh());
+
+    expect($context['easy_pace_sec'])->toBeNull()
+        ->and($context['marathon_pace_sec'])->toBeNull()
+        ->and($context['threshold_pace_sec'])->toBeNull()
+        ->and($context['interval_pace_sec'])->toBeNull();
+});
 
 // ── BriefingMascotVoiceNarrator ───────────────────────────────────────
 
@@ -1029,7 +1079,7 @@ it('BriefingMascotVoiceNarrator throws on non-JSON', function (): void {
 
 it('BriefingMascotVoiceNarrator feeds prev_narrative from the prior day Kata Temari when Done', function (): void {
     $user = User::factory()->create();
-    \App\Models\AI\Analysis::factory()->done('Kemarin aku liat km kamu naik.')->create([
+    Analysis::factory()->done('Kemarin aku liat km kamu naik.')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingMascotVoice,
@@ -1043,7 +1093,7 @@ it('BriefingMascotVoiceNarrator feeds prev_narrative from the prior day Kata Tem
 
 it('BriefingMascotVoiceNarrator omits prev_narrative when the prior day Kata Temari is not yet Done', function (): void {
     $user = User::factory()->create();
-    \App\Models\AI\Analysis::factory()->create([
+    Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingMascotVoice,

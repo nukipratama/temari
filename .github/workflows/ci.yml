@@ -242,16 +242,55 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
+  # Cold static analysis. Local pre-commit/caches can mask drift (unchanged
+  # files skip re-analysis), so a fresh checkout here is the only place that
+  # reliably catches new phpstan/rector/pint regressions. Pre-existing findings
+  # are captured in phpstan-baseline.neon; this gate blocks anything NEW.
+  static-analysis:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+
+      - name: Cache composer vendor
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
+      - name: Install composer deps
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Stub .env (larastan boots the app to resolve types)
+        run: cp .env.example .env
+
+      - name: Pint (code style)
+        run: vendor/bin/pint --test
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress
+
+      - name: Rector (dry-run)
+        run: vendor/bin/rector --dry-run --no-progress-bar
+
   # Single required check for branch protection.
   ci-gate:
-    needs: [backend-tests, frontend-tests, secret-scan]
+    needs: [backend-tests, frontend-tests, static-analysis, secret-scan]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require upstream jobs to have succeeded (or cleanly skipped)
         run: |
-          for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}"; do
-            [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a test job did not pass ($r)"; exit 1; }
+          for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.static-analysis.result }}"; do
+            [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
           [ "${{ needs.secret-scan.result }}" = "success" ] \
             || { echo "::error::secret-scan did not pass (${{ needs.secret-scan.result }})"; exit 1; }

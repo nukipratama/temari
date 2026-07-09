@@ -112,7 +112,7 @@ class WeeklyAggregator
     public function rebuildFor(User $user): int
     {
         TrainingLoad::clearSummaryCache($user);
-        /** @var \Illuminate\Support\LazyCollection<int, ActivityDetail> $details */
+        /** @var LazyCollection<int, ActivityDetail> $details */
         $details = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $user->id)
@@ -127,8 +127,13 @@ class WeeklyAggregator
 
         $dailyTrimp = $this->dailyTrimpMap($details);
 
+        $firstDetail = $details->first();
+        if ($firstDetail === null) {
+            return 0;
+        }
+
         /** @var Carbon $earliest */
-        $earliest = $details->first()->start_date_local;
+        $earliest = $firstDetail->start_date_local;
         $weekEnding = $earliest->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
         $today = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 

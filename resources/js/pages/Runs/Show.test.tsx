@@ -294,10 +294,55 @@ describe('Runs/Show', () => {
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
 
-    it('exposes the decoupling tile as a warning when |decoupling| > 8%', () => {
-        const hot = { ...detail, stream_summary: { ...(detail.stream_summary ?? {}), decoupling_pct: 12.5 } };
+    it('exposes the decoupling tile as a warning when |decoupling| > 8% on a cool run', () => {
+        const cool = {
+            ...detail,
+            weather_temp_c: 20,
+            stream_summary: { ...(detail.stream_summary ?? {}), decoupling_pct: 12.5 },
+        };
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: cool }, detail: cool });
+        const value = screen.getByText('+12.5%');
+        expect(value).toHaveClass('text-ember');
+        expect(screen.getByText('napas melar di paruh kedua')).toBeInTheDocument();
+    });
+
+    it('softens the decoupling tile with a heat explanation when the run was hot', () => {
+        const hot = {
+            ...detail,
+            weather_temp_c: 32,
+            stream_summary: { ...(detail.stream_summary ?? {}), decoupling_pct: 12.5 },
+        };
         renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: hot }, detail: hot });
-        expect(screen.getByText('+12.5%')).toBeInTheDocument();
+        const value = screen.getByText('+12.5%');
+        expect(value).not.toHaveClass('text-ember');
+        expect(screen.getByText('wajar, tadi panas 32°C')).toBeInTheDocument();
+    });
+
+    it('still flags a high decoupling on a run without weather data', () => {
+        const noWeather = {
+            ...detail,
+            weather_temp_c: null,
+            stream_summary: { ...(detail.stream_summary ?? {}), decoupling_pct: 12.5 },
+        };
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noWeather }, detail: noWeather });
+        const value = screen.getByText('+12.5%');
+        expect(value).toHaveClass('text-ember');
+    });
+
+    it('does not apply the heat explanation to a large negative decoupling on a hot run', () => {
+        // Negative decoupling means HR:pace improved in the second half — heat only
+        // ever explains a positive drift, so a strongly negative value on a hot run
+        // must still read as a plain warning, not "wajar, tadi panas".
+        const hotNegative = {
+            ...detail,
+            weather_temp_c: 32,
+            stream_summary: { ...(detail.stream_summary ?? {}), decoupling_pct: -12.5 },
+        };
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: hotNegative }, detail: hotNegative });
+        const value = screen.getByText('-12.5%');
+        expect(value).toHaveClass('text-ember');
+        expect(screen.getByText('napas melar di paruh kedua')).toBeInTheDocument();
+        expect(screen.queryByText(/wajar, tadi panas/)).not.toBeInTheDocument();
     });
 
     it('skips the decoupling + ascent tiles when their values are non-numeric (no "NaN%")', () => {

@@ -81,6 +81,8 @@ export interface SharedProps {
     hrZonesChangedAt?: string | null;
     /** Whether the auth user has a live (non-revoked) Telegram connection. */
     telegramConnected?: boolean;
+    /** True when the auth user's Strava connection is live but lacks the `profile:read_all` scope needed for HR-zone sync. */
+    stravaZoneScopeMissing?: boolean;
     /** Inertia's shared validation/error bag, keyed by field (e.g. `strava`). */
     errors?: Record<string, string>;
     [key: string]: unknown;

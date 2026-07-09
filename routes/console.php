@@ -33,6 +33,11 @@ Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01');
 // invalidated weekly. Demo excluded. Mid-week freshness stays on "Baca ulang".
 Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
 
+// 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough
+// (also piggybacks the per-connect SyncZonesJob dispatch). Skips manual-source
+// profiles and connections lacking `profile:read_all`.
+Schedule::command('strava:sync-zones')->monthlyOn(1, '00:10')->withoutOverlapping(55);
+
 // 1st of the month 05:45: same pattern for the monthly recap.
 Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45');
 

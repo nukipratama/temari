@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\Strava\SyncActivitiesJob;
+use App\Jobs\Strava\SyncZonesJob;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Support\LocalRedirectPath;
@@ -23,7 +24,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse
 
 class StravaAuthController extends Controller
 {
-    private const array SCOPES = ['read', 'activity:read_all'];
+    private const array SCOPES = ['read', 'activity:read_all', 'profile:read_all'];
 
     public function redirect(Request $request): SymfonyRedirectResponse
     {
@@ -56,7 +57,7 @@ class StravaAuthController extends Controller
         // in the `scope` query param. Store those, not what we requested.
         $grantedScopes = (string) $request->query('scope', '');
 
-        [$user, $isFreshConnection] = $this->upsertUser($stravaUser, $grantedScopes);
+        [$user, $isFreshConnection, $zoneScopeNewlyGranted] = $this->upsertUser($stravaUser, $grantedScopes);
 
         Auth::login($user, remember: true);
 
@@ -66,6 +67,13 @@ class StravaAuthController extends Controller
         // per-user lock + insertOrIgnore make a redundant dispatch harmless anyway.
         if ($isFreshConnection) {
             SyncActivitiesJob::dispatch($user->id);
+        }
+
+        // Zones need their own trigger beyond "fresh connection": an already-connected
+        // user who reconnects specifically to grant `profile:read_all` (the
+        // StravaZoneReconnectBanner flow) must not wait for the monthly sweep.
+        if ($isFreshConnection || $zoneScopeNewlyGranted) {
+            SyncZonesJob::dispatch($user->id);
         }
 
         return redirect()->intended(route('dashboard'));
@@ -90,9 +98,11 @@ class StravaAuthController extends Controller
     /**
      * Upsert the athlete's user + connection. Returns the user alongside a flag
      * that is true only when the Strava connection was created for the first
-     * time (so the caller can kick off a one-time history backfill).
+     * time (so the caller can kick off a one-time history backfill), and a flag
+     * that is true when this callback newly granted `profile:read_all` on an
+     * already-existing connection (so the caller can kick off a zone sync).
      *
-     * @return array{0: User, 1: bool}
+     * @return array{0: User, 1: bool, 2: bool}
      */
     private function upsertUser(SocialiteUser $stravaUser, string $grantedScopes = ''): array
     {
@@ -124,10 +134,13 @@ class StravaAuthController extends Controller
         $connection = StravaConnection::where('strava_athlete_id', $stravaUser->getId())->first();
 
         if ($connection !== null) {
+            $hadZoneScope = str_contains((string) $connection->scopes, 'profile:read_all');
             $connection->user->fill($userAttributes)->save();
             $connection->fill($connectionAttributes)->save();
 
-            return [$connection->user, false];
+            $zoneScopeNewlyGranted = ! $hadZoneScope && str_contains($scopes, 'profile:read_all');
+
+            return [$connection->user, false, $zoneScopeNewlyGranted];
         }
 
         $user = User::create($userAttributes);
@@ -136,6 +149,6 @@ class StravaAuthController extends Controller
             ...$connectionAttributes,
         ]);
 
-        return [$user, true];
+        return [$user, true, false];
     }
 }

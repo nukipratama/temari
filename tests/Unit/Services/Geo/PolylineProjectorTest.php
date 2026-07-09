@@ -16,7 +16,7 @@ function project(?string $polyline, float $w = 320, float $h = 320, float $pad =
 function parseProjectedCoords(string $points): array
 {
     return array_map(
-        fn (string $pair): array => array_map('floatval', explode(',', $pair)),
+        fn (string $pair): array => array_map(floatval(...), explode(',', $pair)),
         explode(' ', $points),
     );
 }
@@ -37,8 +37,8 @@ it('projects points fitted inside the padded box', function (): void {
     expect($points)->not->toBeNull();
 
     $coords = array_map(
-        fn (string $pair): array => array_map('floatval', explode(',', $pair)),
-        explode(' ', $points),
+        fn (string $pair): array => array_map(floatval(...), explode(',', $pair)),
+        explode(' ', (string) $points),
     );
 
     foreach ($coords as [$x, $y]) {
@@ -50,7 +50,7 @@ it('projects points fitted inside the padded box', function (): void {
 it('honours a non-square box', function (): void {
     $points = project('_p~iF~ps|U_ulLnnqC_mqNvxq`@', 484, 330, 34);
 
-    $xs = array_map(fn (string $pair): float => (float) explode(',', $pair)[0], explode(' ', $points));
+    $xs = array_map(fn (string $pair): float => (float) explode(',', $pair)[0], explode(' ', (string) $points));
 
     expect(max($xs))->toBeLessThanOrEqual(450.0); // width(484) - pad(34)
 });

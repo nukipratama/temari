@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
@@ -131,6 +132,7 @@ it('flags high decoupling and wajar decoupling, and skips low decoupling', funct
     $user = User::factory()->create();
     [$activity, $detail] = makeRun($user, [
         'stream_summary' => ['decoupling_pct' => $dc],
+        'weather_temp_c' => 20, // cool: isolates decoupling from the heat-aware softening
     ]);
 
     $out = builder()->runInsightTechnical($activity, $detail);
@@ -143,6 +145,25 @@ it('flags high decoupling and wajar decoupling, and skips low decoupling', funct
     'high' => [8.0, 'aerobik base belum solid'],
     'ok' => [3.0, 'masih wajar'],
     'low' => [1.0, null],
+]);
+
+it('softens high decoupling when the run was hot, keeps the alarm when cool', function (?int $tempC, string $expected, string $unexpected): void {
+    $user = User::factory()->create();
+    [$activity, $detail] = makeRun($user, [
+        'stream_summary' => ['decoupling_pct' => 8.0],
+        'weather_temp_c' => $tempC,
+    ]);
+
+    $out = builder()->runInsightTechnical($activity, $detail);
+
+    expect($out)
+        ->toContain('decoupling')
+        ->toContain($expected)
+        ->not->toContain($unexpected);
+})->with([
+    'hot' => [32, 'tapi wajar soalnya tadi panas ~32°C', 'aerobik base belum solid'],
+    'cool' => [20, 'aerobik base belum solid', 'tapi wajar soalnya tadi panas'],
+    'no weather data' => [null, 'aerobik base belum solid', 'tapi wajar soalnya tadi panas'],
 ]);
 
 it('appends elevation gain when ascent exceeds 50m and skips otherwise', function (float $ascent, bool $present): void {
@@ -589,6 +610,103 @@ it('warns when Z5 exceeds 10 percent', function (): void {
 
     expect(builder()->runInsightZones($detail))
         ->toContain('Z5 cukup banyak');
+});
+
+it('nudges a Z3+-heavy run that reads as intended-easy via VDOT threshold pace', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1200.0, // VDOT ~50 => threshold pace ~4:00/km
+    ]);
+
+    [$activity, $detail] = makeRun($user, [
+        'distance' => 8000.0,
+        'moving_time' => 3360, // 7:00/km, way slower than threshold => clearly easy
+        'stream_summary' => ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 20, 'Z3' => 30, 'Z4' => 20, 'Z5' => 10]],
+    ]);
+
+    expect(builder()->runInsightZones($detail))
+        ->toContain('kalau niatnya easy')
+        ->toMatch('/\d+:\d{2}\/km/');
+});
+
+it('does not nudge a correctly-easy run: low Z3+ share never trips the guard', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1200.0,
+    ]);
+
+    [$activity, $detail] = makeRun($user, [
+        'distance' => 8000.0,
+        'moving_time' => 3360, // 7:00/km, clearly easy pace
+        'stream_summary' => ['time_in_zone_pct' => ['Z1' => 70, 'Z2' => 20, 'Z3' => 10, 'Z4' => 0, 'Z5' => 0]],
+    ]);
+
+    expect(builder()->runInsightZones($detail))->not->toContain('niatnya easy');
+});
+
+it('does not nudge a firm/tempo run: pace too close to threshold to read as intended-easy', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1200.0, // threshold pace ~4:00/km
+    ]);
+
+    [$activity, $detail] = makeRun($user, [
+        'distance' => 8000.0,
+        'moving_time' => 1960, // ~4:05/km, only ~5s slower than threshold
+        'stream_summary' => ['time_in_zone_pct' => ['Z1' => 5, 'Z2' => 15, 'Z3' => 30, 'Z4' => 30, 'Z5' => 20]],
+    ]);
+
+    expect(builder()->runInsightZones($detail))->not->toContain('niatnya easy');
+});
+
+it('nudges via the HR-only fallback when the user has no VDOT, without printing a pace number', function (): void {
+    $user = User::factory()->create();
+    // No PersonalRecord => VdotEstimator::estimate() returns null.
+
+    [$activity, $detail] = makeRun($user, [
+        'distance' => 8000.0,
+        'moving_time' => 3360,
+        'average_heartrate' => 130.0,
+        'max_heartrate' => 200, // 65% HR reserve <= HR_RESERVE_EASY (70)
+        'stream_summary' => ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 20, 'Z3' => 30, 'Z4' => 20, 'Z5' => 10]],
+    ]);
+
+    expect(builder()->runInsightZones($detail))
+        ->toContain('kalau niatnya easy, coba lebih pelan dikit')
+        ->not->toMatch('/\d+:\d{2}\/km/');
+});
+
+it('skips the grey-zone nudge when no VDOT and no HR data can confirm intended-easy', function (): void {
+    $user = User::factory()->create();
+
+    [$activity, $detail] = makeRun($user, [
+        'distance' => 8000.0,
+        'moving_time' => 3360,
+        'average_heartrate' => null,
+        'max_heartrate' => null,
+        'stream_summary' => ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 20, 'Z3' => 30, 'Z4' => 20, 'Z5' => 10]],
+    ]);
+
+    expect(builder()->runInsightZones($detail))->not->toContain('niatnya easy');
+});
+
+it('skips the grey-zone nudge when the run is outside the short-to-moderate distance band', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1200.0,
+    ]);
+
+    [$activity, $detail] = makeRun($user, [
+        'distance' => 21097.0, // half marathon: too long for the guard
+        'moving_time' => 21097 * 7, // 7:00/km, clearly easy pace
+        'stream_summary' => ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 20, 'Z3' => 30, 'Z4' => 20, 'Z5' => 10]],
+    ]);
+
+    expect(builder()->runInsightZones($detail))->not->toContain('niatnya easy');
 });
 
 it('exposes all three insights via runInsights', function (): void {

@@ -538,6 +538,11 @@ function splitLocationLines(location: string): [string, string | null] {
     return [parts.slice(0, -2).join(', '), parts.slice(-2).join(', ')];
 }
 
+// Mirrors the "hot run" threshold used across the backend narration (e.g.
+// RunCardFactory, Story/Temari) so the frontend softens the same runs the
+// narrators already treat as heat-affected.
+const HOT_TEMP_C = 31;
+
 interface DetailTile {
     label: string;
     value: string;
@@ -568,11 +573,21 @@ function DetailTiles({
     }
     const decoupling = Number(summary.decoupling_pct);
     if (summary.decoupling_pct != null && Number.isFinite(decoupling)) {
+        const decouplingHigh = Math.abs(decoupling) > 8;
+        // A hot run drifts HR up for a physiological reason (body works harder to shed
+        // heat), not a fitness regression, so it doesn't earn the scary warn tone. Only
+        // applies to a positive drift, mirroring the backend's rule (RuleBasedInsightBuilder
+        // decoupling > DECOUPLING_HIGH) — a large negative decoupling isn't HR drift at all,
+        // so heat can't explain it away.
+        const wasHot = detail.weather_temp_c != null && detail.weather_temp_c >= HOT_TEMP_C;
+        const heatExplainsIt = decoupling > 8 && wasHot;
         tiles.push({
             label: 'DECOUPLING',
             value: `${decoupling >= 0 ? '+' : ''}${decoupling.toFixed(1)}%`,
-            sub: 'napas melar di paruh kedua',
-            warn: Math.abs(decoupling) > 8,
+            sub: heatExplainsIt
+                ? `wajar, tadi panas ${Math.round(detail.weather_temp_c as number)}°C`
+                : 'napas melar di paruh kedua',
+            warn: decouplingHigh && !heatExplainsIt,
             wide: true,
             metricKey: 'decoupling',
         });

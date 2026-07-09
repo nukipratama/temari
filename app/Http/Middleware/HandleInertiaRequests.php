@@ -77,7 +77,24 @@ class HandleInertiaRequests extends Middleware
             'goalsSummary' => fn () => $this->goalsSummaryFor($user),
             'hrZonesChangedAt' => fn () => $this->hrZonesChangedAtFor($user),
             'telegramConnected' => fn (): bool => $this->telegramConnectedFor($user),
+            'stravaZoneScopeMissing' => fn (): bool => $this->stravaZoneScopeMissingFor($user),
         ];
+    }
+
+    /**
+     * True when the auth user has a live (non-revoked) Strava connection whose
+     * granted scopes lack `profile:read_all` — the zone-sync gate needs that
+     * scope, so this drives the reconnect banner rather than provoking a 403.
+     */
+    private function stravaZoneScopeMissingFor(?User $user): bool
+    {
+        $connection = $user?->stravaConnection;
+
+        if ($connection === null || $connection->isRevoked()) {
+            return false;
+        }
+
+        return ! str_contains((string) $connection->scopes, 'profile:read_all');
     }
 
     /**

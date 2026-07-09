@@ -13,6 +13,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\LifetimeStats;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\ProgressionSeriesBuilder;
 use Illuminate\Support\Carbon;
@@ -38,6 +39,12 @@ class AkuProfileVoiceNarrator
         progression_signal dengan delta_sec > 0, akui improvement-nya (mis.
         "5K kamu makin pedes, turun 2 menit dalam 3 bulan").
 
+        Kalau easy_pace_sec ada, boleh (gak wajib) kontraskan sama pace lari
+        harian pengguna kalau itu terasa relevan, mis. "target easy km kamu
+        sekitar 7:15/km, cocokin lagi pace santaimu ke situ." Cuma selipan
+        kecil, jangan jadi fokus utama, dan jangan dipaksakan kalau gak ada
+        cerita yang pas.
+
         form_status (kondisi beban terkini: fresh/optimal/fatigued/overreaching)
         cuma buat nyelarasin nada, bukan subjek utama. Jangan dorong "gas terus"
         kalau lagi fatigued/overreaching, dan jangan kontradiksi sama recap.
@@ -50,6 +57,7 @@ class AkuProfileVoiceNarrator
     public function __construct(
         private readonly StructuredChatCaller $caller,
         private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $trainingPaceCalculator,
         private readonly ProgressionSeriesBuilder $progressionSeriesBuilder,
         private readonly LifetimeStats $lifetimeStats,
     ) {
@@ -91,6 +99,7 @@ class AkuProfileVoiceNarrator
 
         $vdot = $this->vdotEstimator->estimate($user);
         $vdotScore = $vdot['vdot'] ?? null;
+        $paces = $this->trainingPaceCalculator->fromVdotResult($vdot);
 
         $progressionSignal = $this->buildProgressionSignal($user);
 
@@ -107,6 +116,10 @@ class AkuProfileVoiceNarrator
             'favorite_time' => $this->favoriteTimeBucket($user),
             'strava_connected' => $user->stravaConnection !== null,
             'vdot' => $vdotScore,
+            'easy_pace_sec' => $paces['easy'] ?? null,
+            'marathon_pace_sec' => $paces['marathon'] ?? null,
+            'threshold_pace_sec' => $paces['threshold'] ?? null,
+            'interval_pace_sec' => $paces['interval'] ?? null,
             'progression_signal' => $progressionSignal,
             'form_status' => WeeklySnapshot::latestFormStatus($user->id),
         ];

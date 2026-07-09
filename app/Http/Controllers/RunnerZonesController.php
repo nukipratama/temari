@@ -46,6 +46,7 @@ class RunnerZonesController extends Controller
                 'max_hr' => (int) $request->validated('max_hr'),
                 'resting_hr' => (int) $request->validated('resting_hr'),
                 'hr_zones' => $hrZones,
+                'source' => 'manual',
             ],
         );
 

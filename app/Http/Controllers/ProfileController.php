@@ -10,6 +10,7 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\Run\Metrics\ThresholdEstimator;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\ProgressionSeriesBuilder;
 use App\Services\AI\AnalysisType;
@@ -43,6 +44,7 @@ class ProfileController extends Controller
         ProgressionSeriesBuilder $progressionSeriesBuilder,
         VdotEstimator $vdotEstimator,
         ThresholdEstimator $thresholdEstimator,
+        TrainingPaceCalculator $trainingPaceCalculator,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -76,7 +78,7 @@ class ProfileController extends Controller
             ->orderBy('category')
             ->get();
 
-        $fitness = $this->fitness($vdotEstimator, $thresholdEstimator, $user);
+        $fitness = $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user);
         $progressionByCategory = $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $personalRecords);
 
         return Inertia::render('Aku', [
@@ -218,9 +220,9 @@ class ProfileController extends Controller
     }
 
     /**
-     * @return array{vdot: float|null, threshold_pace_sec: float|null, threshold_confidence: string|null}|null
+     * @return array{vdot: float|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null}|null
      */
-    private function fitness(VdotEstimator $vdotEstimator, ThresholdEstimator $thresholdEstimator, User $user): ?array
+    private function fitness(VdotEstimator $vdotEstimator, ThresholdEstimator $thresholdEstimator, TrainingPaceCalculator $trainingPaceCalculator, User $user): ?array
     {
         $vdot = $vdotEstimator->estimate($user);
         $threshold = $thresholdEstimator->estimate($user);
@@ -233,6 +235,7 @@ class ProfileController extends Controller
             'vdot' => $vdot['vdot'] ?? null,
             'threshold_pace_sec' => $threshold['pace_sec'] ?? null,
             'threshold_confidence' => $threshold['confidence'] ?? null,
+            'training_paces' => $trainingPaceCalculator->fromVdotResult($vdot),
         ];
     }
 }

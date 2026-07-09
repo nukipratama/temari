@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use OpenAI\Resources\Responses;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
@@ -97,7 +98,7 @@ it('feeds the 28-day pace/HR baseline into the prompt payload', function (): voi
 
     $narrator->generate($user, Carbon::today());
 
-    $client->assertSent(OpenAI\Resources\Responses::class, function (string $method, array $params): bool {
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
         $payload = json_encode($params, JSON_THROW_ON_ERROR);
 
         return str_contains($payload, 'recent_baseline_28d')

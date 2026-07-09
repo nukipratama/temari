@@ -18,6 +18,15 @@ use App\Models\User;
  */
 class VdotEstimator
 {
+    // Coefficients of the VO2 = c + b·v + a·v² relationship (v in m/min),
+    // shared with {@see \App\Services\Run\Metrics\TrainingPaceCalculator}, which
+    // solves this same quadratic for v given a target VO2.
+    public const float VO2_COEFFICIENT_A = 0.000104;
+
+    public const float VO2_COEFFICIENT_B = 0.182258;
+
+    public const float VO2_COEFFICIENT_C = -4.60;
+
     /**
      * @return array{vdot: float, source_category: string}|null
      */
@@ -64,7 +73,7 @@ class VdotEstimator
         $timeMin = $elapsedSec / 60.0;
         $velocity = $distanceMeters / $timeMin; // m/min
 
-        $vo2 = -4.60 + 0.182258 * $velocity + 0.000104 * $velocity * $velocity;
+        $vo2 = self::VO2_COEFFICIENT_C + self::VO2_COEFFICIENT_B * $velocity + self::VO2_COEFFICIENT_A * $velocity * $velocity;
 
         // pmax is mathematically always > 0.8 (both exponential terms are positive),
         // so no defensive divide-by-zero check is needed here.

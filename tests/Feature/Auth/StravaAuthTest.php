@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Jobs\Strava\SyncActivitiesJob;
+use App\Jobs\Strava\SyncZonesJob;
 use App\Models\StravaConnection;
 use App\Models\User;
 use GuzzleHttp\Psr7\Response as Psr7Response;
@@ -47,7 +48,7 @@ it('renders dashboard for authenticated visitors at root', function (): void {
 
 it('redirects to strava on the redirect endpoint', function (): void {
     mockStravaDriver(function ($driver): void {
-        $driver->shouldReceive('scopes')->once()->with(['read', 'activity:read_all'])->andReturnSelf();
+        $driver->shouldReceive('scopes')->once()->with(['read', 'activity:read_all', 'profile:read_all'])->andReturnSelf();
         $driver->shouldReceive('redirect')->once()->andReturn(redirect('https://www.strava.com/oauth/authorize?fake'));
     });
 
@@ -153,7 +154,7 @@ it('creates a new user from the strava callback and logs them in', function (): 
         ->and($user->avatar_url)->toBe('https://strava.test/avatar.png')
         ->and($connection->access_token)->toBe('access-token-xyz')
         ->and($connection->refresh_token)->toBe('refresh-token-xyz')
-        ->and($connection->scopes)->toBe('read,activity:read_all');
+        ->and($connection->scopes)->toBe('read,activity:read_all,profile:read_all');
 
     // First connect kicks off a full-history backfill (no single-activity scope).
     Bus::assertDispatched(
@@ -176,7 +177,7 @@ it('stores only the granted scopes and logs when a required scope is declined', 
 
     mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
 
-    // Strava reports only `read` was granted; activity:read_all was declined.
+    // Strava reports only `read` was granted; activity:read_all + profile:read_all declined.
     $this->get(route('auth.strava.callback', ['scope' => 'read']))
         ->assertRedirect(route('dashboard'));
 
@@ -184,7 +185,7 @@ it('stores only the granted scopes and logs when a required scope is declined', 
     expect($connection->scopes)->toBe('read');
 
     Log::shouldHaveReceived('warning')->once()->with('strava.scopes.partial', Mockery::on(
-        fn (array $ctx): bool => $ctx['missing'] === ['activity:read_all'] && $ctx['granted'] === 'read',
+        fn (array $ctx): bool => $ctx['missing'] === ['activity:read_all', 'profile:read_all'] && $ctx['granted'] === 'read',
     ));
 });
 
@@ -219,6 +220,58 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
 
     // Re-login on an existing connection must NOT re-trigger a backfill.
     Bus::assertNotDispatched(SyncActivitiesJob::class);
+});
+
+it('dispatches SyncZonesJob when a reconnect newly grants profile:read_all', function (): void {
+    // Simulates the StravaZoneReconnectBanner flow: an already-connected user
+    // whose original grant predates the profile:read_all scope reconnects to add it.
+    $existingUser = User::factory()->create();
+    StravaConnection::factory()->for($existingUser)->create([
+        'strava_athlete_id' => 987654,
+        'scopes' => 'read,activity:read_all',
+    ]);
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'new-access';
+    $stravaUser->refreshToken = 'new-refresh';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('987654');
+    $stravaUser->shouldReceive('getName')->andReturn('Existing Runner');
+    $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/new.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->get(route('auth.strava.callback', ['scope' => 'read,activity:read_all,profile:read_all']))
+        ->assertRedirect(route('dashboard'));
+
+    Bus::assertDispatched(SyncZonesJob::class, fn (SyncZonesJob $job): bool => $job->userId === $existingUser->id);
+    // Not a fresh connection, so no redundant history backfill.
+    Bus::assertNotDispatched(SyncActivitiesJob::class);
+});
+
+it('does not re-dispatch SyncZonesJob on a reconnect that grants no new scopes', function (): void {
+    $existingUser = User::factory()->create();
+    StravaConnection::factory()->for($existingUser)->create([
+        'strava_athlete_id' => 987654,
+        'scopes' => 'read,activity:read_all,profile:read_all',
+    ]);
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'new-access';
+    $stravaUser->refreshToken = 'new-refresh';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('987654');
+    $stravaUser->shouldReceive('getName')->andReturn('Existing Runner');
+    $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/new.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->get(route('auth.strava.callback', ['scope' => 'read,activity:read_all,profile:read_all']))
+        ->assertRedirect(route('dashboard'));
+
+    Bus::assertNotDispatched(SyncZonesJob::class);
 });
 
 it('redirects back to login when strava returns an error', function (): void {

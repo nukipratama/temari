@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\User;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -124,7 +125,7 @@ it('reads today\'s post-run speech straight from the story line for a user', fun
 });
 
 it('returns the newest story line speech when several exist for today', function (): void {
-    $user = \App\Models\User::factory()->create();
+    $user = User::factory()->create();
 
     $older = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::today()->setTime(6, 0)]);

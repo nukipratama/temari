@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
@@ -111,7 +112,7 @@ it('stages the monthly recap Pending keyed by the run month (monthly cadence)', 
 });
 
 it('does not stage a monthly recap for the demo user (monthly is real-users-only)', function (): void {
-    $demo = App\Models\User::factory()->demo()->create();
+    $demo = User::factory()->demo()->create();
     $activity = analyzedActivity('2026-05-10 06:30:00', $demo->id);
 
     fire($activity);

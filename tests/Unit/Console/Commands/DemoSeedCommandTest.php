@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Gamification\EquippedAccessories;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -66,8 +67,8 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     expect($equipped)->toContain('accessory.ikat_kepala_legendaris', 'accessory.medal_emas');
 
     // At most one unlock equipped per slot: no double-equipped Medali (#53).
-    $slots = new App\Services\Gamification\EquippedAccessories();
-    $equippedSlots = array_map(fn (string $key): ?string => $slots->slotFor($key), $equipped);
+    $slots = new EquippedAccessories();
+    $equippedSlots = array_map($slots->slotFor(...), $equipped);
     expect($equippedSlots)->toBe(array_unique($equippedSlots));
 
     // Persona summary is backfilled to a done analysis row.
