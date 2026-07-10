@@ -137,8 +137,8 @@ export const METRIC_GLOSSARY = {
         label: 'Interval pace',
         body: 'Pace tercepat buat repetisi pendek, di atas threshold. Dipakai buat sesi interval, bukan sesi panjang.',
     },
-    pace_threshold: {
-        label: 'Threshold (target)',
+    pace_tempo: {
+        label: 'Tempo pace',
         body: 'Pace target buat sesi tempo, turunan dari skor VDOT. Beda dari "Threshold pace" di kartu atas, yang perkiraan ambang laktat kamu sekarang dari lari-lari kencang terakhir.',
     },
 } as const satisfies Record<string, MetricGlossaryEntry>;

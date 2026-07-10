@@ -148,7 +148,7 @@ export default function Aku({
                             <div className="mt-5 flex flex-wrap items-center gap-2">
                                 {stravaRevoked && (
                                     <a
-                                        href="/auth/strava/redirect"
+                                        href="/auth/strava/redirect?from=/profil"
                                         className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-strava-orange-hover"
                                     >
                                         <Icon icon="mdi:strava" width={12} height={12} aria-hidden />
@@ -180,7 +180,7 @@ export default function Aku({
                                     [
                                         ['Easy', fitness.training_paces.easy, 'pace_easy'],
                                         ['Marathon', fitness.training_paces.marathon, 'pace_marathon'],
-                                        ['Threshold (target)', fitness.training_paces.threshold, 'pace_threshold'],
+                                        ['Tempo', fitness.training_paces.threshold, 'pace_tempo'],
                                         ['Interval', fitness.training_paces.interval, 'pace_interval'],
                                     ] as const
                                 ).map(([label, paceSec, explainerKey]) => (

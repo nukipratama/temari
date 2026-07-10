@@ -55,10 +55,16 @@ Route::post('/client-errors', ClientErrorController::class)
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
-    Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->name('auth.strava.redirect');
-    Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->name('auth.strava.callback');
     Route::post('/auth/demo', [DemoAuthController::class, 'login'])->name('auth.demo');
 });
+
+// Strava OAuth is reachable by guests (first connect) AND authenticated users
+// (reconnect to grant a newly added scope, e.g. the StravaZoneReconnectBanner).
+// The callback upserts by athlete id, so a logged-in user re-authing just refreshes
+// their existing connection. Keeping these out of the `guest` group is what lets the
+// reconnect flow reach the redirect/callback at all instead of bouncing to dashboard.
+Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->name('auth.strava.redirect');
+Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->name('auth.strava.callback');
 
 Route::middleware(['auth'])->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
