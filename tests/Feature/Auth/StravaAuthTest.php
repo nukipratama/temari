@@ -222,6 +222,46 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
     Bus::assertNotDispatched(SyncActivitiesJob::class);
 });
 
+it('lets an already-authenticated user start a strava reconnect', function (): void {
+    // Regression: the reconnect banner links here for a logged-in user. If the OAuth
+    // routes sit behind `guest`, an authed user is bounced to the dashboard instead of
+    // being sent to Strava — which looks like the button just reloading the page.
+    mockStravaDriver(function ($driver): void {
+        $driver->shouldReceive('scopes')->once()->andReturnSelf();
+        $driver->shouldReceive('redirect')->once()->andReturn(redirect('https://www.strava.com/oauth/authorize?fake'));
+    });
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('auth.strava.redirect'))
+        ->assertRedirect('https://www.strava.com/oauth/authorize?fake');
+});
+
+it('reaches the callback and upgrades scopes when an authenticated user reconnects', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create([
+        'strava_athlete_id' => 424242,
+        'scopes' => 'read,activity:read_all', // granted before profile:read_all existed
+    ]);
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'new-access';
+    $stravaUser->refreshToken = 'new-refresh';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('424242');
+    $stravaUser->shouldReceive('getName')->andReturn('Nuki');
+    $stravaUser->shouldReceive('getEmail')->andReturn('nuki@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/a.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->actingAs($user)
+        ->get(route('auth.strava.callback', ['scope' => 'read,activity:read_all,profile:read_all']))
+        ->assertRedirect();
+
+    expect($user->stravaConnection()->first()->scopes)->toBe('read,activity:read_all,profile:read_all');
+    Bus::assertDispatched(SyncZonesJob::class, fn (SyncZonesJob $job): bool => $job->userId === $user->id);
+});
+
 it('dispatches SyncZonesJob when a reconnect newly grants profile:read_all', function (): void {
     // Simulates the StravaZoneReconnectBanner flow: an already-connected user
     // whose original grant predates the profile:read_all scope reconnects to add it.

@@ -24,7 +24,7 @@ export default function StravaZoneReconnectBanner() {
                     Sambungin ulang Strava buat sinkronin zona HR kamu otomatis.
                 </p>
                 <a
-                    href="/auth/strava/redirect"
+                    href="/auth/strava/redirect?from=/profil"
                     className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-strava-orange-hover"
                 >
                     <Icon icon="mdi:strava" width={12} height={12} aria-hidden />
