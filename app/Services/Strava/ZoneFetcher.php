@@ -26,7 +26,7 @@ class ZoneFetcher
      *
      * @return array<string, array{lo:int, hi:int}>|null
      */
-    public function fetch(StravaConnection $connection): ?array
+    public function fetch(StravaConnection $connection, int $restingHr): ?array
     {
         if (! $connection->hasZoneScope()) {
             return null;
@@ -45,7 +45,7 @@ class ZoneFetcher
         /** @var list<array{min:int, max:int}> $ranges */
         $ranges = $response->json('heart_rate.zones') ?? [];
 
-        return $this->parse($ranges);
+        return $this->parse($ranges, $restingHr);
     }
 
     /**
@@ -53,7 +53,7 @@ class ZoneFetcher
      *                                                  zone ranges, ordered Z1..Z5.
      * @return array<string, array{lo:int, hi:int}>|null
      */
-    private function parse(array $ranges): ?array
+    private function parse(array $ranges, int $restingHr): ?array
     {
         if (count($ranges) !== count(self::KEYS)) {
             return null;
@@ -71,6 +71,11 @@ class ZoneFetcher
                 'hi' => $max === -1 ? 999 : $max,
             ];
         }
+
+        // Strava anchors Z1 at 0 ("Rest"), but the app requires Z1 to start at
+        // or above the resting HR (UpdateHrZonesRequest), so lift the floor —
+        // otherwise every synced profile fails validation on a manual edit.
+        $zones['Z1']['lo'] = max($zones['Z1']['lo'], $restingHr);
 
         return $zones;
     }
