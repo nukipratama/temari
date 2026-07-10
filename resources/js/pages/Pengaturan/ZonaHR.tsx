@@ -2,6 +2,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useMemo, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
+import { cn } from '@/lib/cn';
 import BackLink from '@/components/ui/BackLink';
 import Card from '@/components/ui/Card';
 import PageContainer from '@/components/ui/PageContainer';
@@ -28,19 +29,22 @@ const ZONE_LABEL: Record<ZoneKey, string> = {
 
 type ZoneSource = 'default' | 'strava' | 'manual';
 
-const SOURCE_INFO: Record<ZoneSource, { icon: string; label: string; description: string }> = {
+const SOURCE_INFO: Record<ZoneSource, { icon: string; iconClass: string; label: string; description: string }> = {
     default: {
         icon: 'mdi:tune-variant',
+        iconClass: 'text-ink-3',
         label: 'Zona standar',
         description: 'Sekarang masih pakai zona standar. Bikin punyamu sendiri di bawah.',
     },
     strava: {
-        icon: 'mdi:sync',
+        icon: 'mdi:cloud-check-variant-outline',
+        iconClass: 'text-leaf-deep',
         label: 'Disinkron dari Strava',
         description: 'Zona ini disinkron otomatis dari Strava. Ubah manual di bawah kalau mau atur sendiri.',
     },
     manual: {
         icon: 'mdi:pencil-outline',
+        iconClass: 'text-ink-2',
         label: 'Diatur manual',
         description: 'Kamu udah atur zona sendiri. Ubah kapan aja di bawah.',
     },
@@ -131,24 +135,25 @@ export default function ZonaHR({ profile, source = 'default', stravaSyncedLabel 
                     <BackLink href="/profil" className="mb-4">
                         Aku · Pengaturan
                     </BackLink>
-                    <SectionLabel dot dotClass="bg-horizon">
-                        Pengaturan
-                    </SectionLabel>
                     <h1 className="font-display italic text-display-md text-ink">
                         Zona Heart Rate kamu.
                     </h1>
                     <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-ink-2">
                         {SOURCE_INFO[source].description}
                     </p>
-                    <div className="mt-3 inline-flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-full border border-line bg-surface-sunken px-3 py-1 text-ink-2">
-                        <Icon icon={SOURCE_INFO[source].icon} width={12} height={12} aria-hidden />
-                        <span className="font-mono text-[11px] uppercase tracking-[0.1em]">
+                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="inline-flex items-center gap-2 rounded-full bg-sky/[0.06] px-3.5 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-ink-2">
+                            <Icon
+                                icon={SOURCE_INFO[source].icon}
+                                width={13}
+                                height={13}
+                                aria-hidden
+                                className={cn('shrink-0', SOURCE_INFO[source].iconClass)}
+                            />
                             {SOURCE_INFO[source].label}
                         </span>
                         {source === 'strava' && stravaSyncedLabel && (
-                            <span className="font-sans text-[11px] text-ink-3">
-                                · terakhir sinkron {stravaSyncedLabel}
-                            </span>
+                            <span className="text-meta">· terakhir sinkron {stravaSyncedLabel}</span>
                         )}
                     </div>
                 </header>

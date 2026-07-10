@@ -85,10 +85,15 @@ class HandleInertiaRequests extends Middleware
      * True when the auth user has a live (non-revoked) Strava connection whose
      * granted scopes lack `profile:read_all` — the zone-sync gate needs that
      * scope, so this drives the reconnect banner rather than provoking a 403.
+     * The demo user never syncs zones from Strava, so it is never nudged.
      */
     private function stravaZoneScopeMissingFor(?User $user): bool
     {
-        $connection = $user?->stravaConnection;
+        if ($user === null || $user->is_demo) {
+            return false;
+        }
+
+        $connection = $user->stravaConnection;
 
         if ($connection === null || $connection->isRevoked()) {
             return false;
