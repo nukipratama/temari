@@ -38,17 +38,26 @@ describe('ZonaHR', () => {
         expect(screen.getByText(/dipakai ke semua lari berikutnya/i)).toBeInTheDocument();
     });
 
-    it('updates the derived-zone preview when the max HR changes', () => {
+    it('loads the zone table from saved data, not an auto-calc', () => {
+        const stored = {
+            ...DEFAULT_PROFILE,
+            hr_zones: { ...DEFAULT_PROFILE.hr_zones, Z2: { lo: 141, hi: 157 } },
+        };
+        render(<ZonaHR profile={stored} hasCustomProfile source="manual" />);
+
+        // The input shows the saved value (141), not the Karvonen-derived 138.
+        expect((screen.getByTestId('zone-Z2-lo') as HTMLInputElement).value).toBe('141');
+        expect(deriveZones(180, 55).Z2.lo).toBe(138);
+    });
+
+    it('keeps Simpan zona disabled until something changes', () => {
         render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
 
-        const previewZ1 = screen.getByTestId('preview-Z1');
-        expect(previewZ1.textContent).toContain('116');
+        expect(screen.getByRole('button', { name: 'Simpan zona' })).toBeDisabled();
 
-        fireEvent.change(screen.getByLabelText('Max HR'), { target: { value: '200' } });
+        fireEvent.change(screen.getByLabelText('Max HR'), { target: { value: '185' } });
 
-        const expected = deriveZones(200, 55);
-        expect(screen.getByTestId('preview-Z1').textContent).toContain(String(expected.Z1.lo));
-        expect(screen.getByTestId('preview-Z5').textContent).toContain(String(expected.Z5.lo));
+        expect(screen.getByRole('button', { name: 'Simpan zona' })).toBeEnabled();
     });
 
     it('lets the user override a manual boundary', () => {
@@ -153,12 +162,14 @@ describe('ZonaHR', () => {
     it('submits the current zones and toggles processing around the request', () => {
         render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
 
+        // Save is disabled until dirty; bump Max HR so the payload is sendable.
+        fireEvent.change(screen.getByLabelText('Max HR'), { target: { value: '185' } });
         fireEvent.click(screen.getByRole('button', { name: 'Simpan zona' }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/pengaturan/zona',
             {
-                max_hr: 180,
+                max_hr: 185,
                 resting_hr: 55,
                 zones: [
                     { lo: 116, hi: 138 },

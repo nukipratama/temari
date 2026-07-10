@@ -1,6 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import { cn } from '@/lib/cn';
 import BackLink from '@/components/ui/BackLink';
@@ -14,7 +14,7 @@ type ZoneKey = (typeof ZONE_KEYS)[number];
 
 /**
  * Karvonen %HRR breakpoints, mirrored from {@link UpdateHrZonesRequest} so the
- * live preview matches the server derivation byte for byte.
+ * "Hitung otomatis" result matches the server derivation byte for byte.
  */
 const ZONE_BREAKPOINTS = [0.488, 0.664, 0.792, 0.904, 0.968] as const;
 const Z5_SENTINEL_HI = 999;
@@ -103,7 +103,10 @@ export default function ZonaHR({
     const [restingHr, setRestingHr] = useState<number>(profile.resting_hr);
     const [zones, setZones] = useState<HrZones>(profile.hr_zones);
 
-    const derived = useMemo(() => deriveZones(maxHr, restingHr), [maxHr, restingHr]);
+    const isDirty =
+        maxHr !== profile.max_hr ||
+        restingHr !== profile.resting_hr ||
+        ZONE_KEYS.some((key) => zones[key].lo !== profile.hr_zones[key].lo || zones[key].hi !== profile.hr_zones[key].hi);
 
     const pageProps = usePage<{ errors?: Record<string, string> }>().props;
     const errors = pageProps.errors ?? {};
@@ -220,31 +223,8 @@ export default function ZonaHR({
                     </p>
                 </Card>
 
-                <section className="mt-6">
-                    <SectionLabel>Preview zona (otomatis)</SectionLabel>
-                    <div className="grid gap-2.5">
-                        {ZONE_KEYS.map((key) => (
-                            <div
-                                key={key}
-                                data-testid={`preview-${key}`}
-                                className="flex items-center justify-between rounded-xl border border-cream-deep bg-surface-card px-4 py-3"
-                            >
-                                <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
-                                    {ZONE_LABEL[key]}
-                                </span>
-                                <span className="font-mono text-sm font-semibold tabular-nums text-ink">
-                                    {derived[key].lo}
-                                    <span className="text-ink-3"> – </span>
-                                    {key === 'Z5' ? `${derived[key].lo}+` : derived[key].hi}
-                                    <span className="ml-1 text-[11px] font-normal text-ink-3">bpm</span>
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
                 <Card as="section" padding="lg" className="mt-6">
-                    <SectionLabel>Atur manual (opsional)</SectionLabel>
+                    <SectionLabel>Zona kamu</SectionLabel>
                     <p className="mb-4 font-sans text-xs text-ink-3">
                         Tiap batas atas harus sama dengan batas bawah zona berikutnya, biar nggak ada celah.
                     </p>
@@ -292,7 +272,7 @@ export default function ZonaHR({
                 </p>
 
                 <div className="mt-5">
-                    <PillButton tone="sky" onClick={submit} disabled={processing}>
+                    <PillButton tone="sky" onClick={submit} disabled={processing || !isDirty}>
                         <Icon icon="mdi:content-save-outline" width={16} height={16} aria-hidden />
                         Simpan zona
                     </PillButton>
