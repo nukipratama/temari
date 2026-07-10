@@ -23,6 +23,6 @@ describe('StravaZoneReconnectBanner', () => {
         render(<StravaZoneReconnectBanner />);
         expect(screen.getByText(/Sambungin ulang Strava/)).toBeInTheDocument();
         const link = screen.getByText('Sambungin lagi').closest('a');
-        expect(link).toHaveAttribute('href', '/auth/strava/redirect');
+        expect(link).toHaveAttribute('href', '/auth/strava/redirect?from=/profil');
     });
 });

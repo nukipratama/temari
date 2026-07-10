@@ -139,7 +139,7 @@ describe('Aku', () => {
         render(<Aku identity={identity} stats={stats} />);
         expect(screen.getByText(/Sambungin ulang Strava/)).toBeInTheDocument();
         const link = screen.getByText('Sambungin lagi').closest('a');
-        expect(link).toHaveAttribute('href', '/auth/strava/redirect');
+        expect(link).toHaveAttribute('href', '/auth/strava/redirect?from=/profil');
     });
 
     it('hides the Strava zone reconnect banner when the scope is present', () => {
@@ -406,7 +406,7 @@ describe('Aku', () => {
         });
         render(<Aku identity={identity} stats={stats} />);
         const link = screen.getByText('Sambungin lagi').closest('a');
-        expect(link).toHaveAttribute('href', '/auth/strava/redirect');
+        expect(link).toHaveAttribute('href', '/auth/strava/redirect?from=/profil');
     });
 
     it('renders the profile voice quote when profileVoice is provided', () => {
