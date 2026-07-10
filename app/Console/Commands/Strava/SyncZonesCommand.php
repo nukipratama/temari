@@ -56,7 +56,7 @@ class SyncZonesCommand extends Command
             return;
         }
 
-        $zones = $fetcher->fetch($connection);
+        $zones = $fetcher->fetch($connection, $user->hrProfile()['resting_hr']);
         if ($zones === null) {
             $this->line("user {$user->id}: no zones synced");
 

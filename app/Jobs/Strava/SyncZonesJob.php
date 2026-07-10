@@ -57,7 +57,7 @@ class SyncZonesJob implements ShouldQueue
         }
 
         try {
-            $zones = $fetcher->fetch($connection);
+            $zones = $fetcher->fetch($connection, $user->hrProfile()['resting_hr']);
         } catch (StravaRateLimitedException $e) {
             Log::warning('strava-zone-sync rate-limited', [
                 'user_id' => $user->id,
