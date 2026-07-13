@@ -19,6 +19,15 @@ final class NarratorContinuity
      * prev_opener (the same subject's previous chain link) to steer away from
      * repetition instead of forcing a literal callback opener.
      */
+    /**
+     * The continuity context keys every chained narrator carries. The single
+     * source of truth for both {@see self::fields()} (which populates them) and
+     * StructuredChatCaller (which strips them to retry past a content filter).
+     *
+     * @var list<string>
+     */
+    public const array CONTEXT_KEYS = ['prev_narrative', 'prev_opener'];
+
     public const string RULE = <<<'PROMPT'
         KESINAMBUNGAN: prev_narrative dan prev_opener itu narasi kamu yang
         SEBELUMNYA buat subjek yang sama. Pakai buat MENGHINDARI pengulangan:
@@ -49,8 +58,8 @@ final class NarratorContinuity
     public static function fields(?string $prevNarrative): array
     {
         return [
-            'prev_narrative' => $prevNarrative,
-            'prev_opener' => self::opener($prevNarrative),
+            self::CONTEXT_KEYS[0] => $prevNarrative,
+            self::CONTEXT_KEYS[1] => self::opener($prevNarrative),
         ];
     }
 }

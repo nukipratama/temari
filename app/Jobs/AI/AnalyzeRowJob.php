@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Jobs\AI;
 
+use App\Exceptions\AI\ContentFilterException;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 abstract class AnalyzeRowJob extends AnalyzeBaseJob
@@ -32,6 +35,17 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
         try {
             $content = $this->generateContent($row);
             $service->markDone($row, $content);
+            $this->afterDone($row, $service);
+        } catch (ContentFilterException) {
+            // The continuity-stripped retry still content-filtered. Degrade to
+            // rule-based content instead of dead-lettering: the user gets a
+            // benign line, and (for chained narrators) that benign line becomes
+            // the next prev_narrative, breaking the poison loop at its source.
+            $service->markDone($row, app(RuleBasedNarrationFiller::class)->fillFor($row));
+            Log::info('narrator.ai.content_filter_fallback', [
+                'kind' => $row->analysis_type->value,
+                'subject' => $row->subject_id,
+            ]);
             $this->afterDone($row, $service);
         } catch (Throwable $e) {
             $this->settleFailure(

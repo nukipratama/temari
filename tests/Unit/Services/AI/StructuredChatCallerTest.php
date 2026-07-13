@@ -6,8 +6,10 @@ use App\Support\Config\AppConfig;
 use OpenAI\Resources\Responses;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
+use App\Services\AI\Narrators\NarratorContinuity;
 use App\Models\AI\TokenUsage;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
@@ -352,6 +354,80 @@ it('retries truncation at most once and surfaces the still-truncated second resp
 
     // Only two responses were queued; a third call would throw "No fake responses left".
     expect($payload)->toBe(['headline' => 'two']);
+});
+
+// ── content-filter: distinct terminal type + continuity-strip retry ───
+
+function contentFilterError(): ErrorException
+{
+    return new ErrorException(
+        ['message' => 'blocked', 'type' => 'invalid_request_error', 'code' => 'content_filter'],
+        new Psr7Response(400),
+    );
+}
+
+it('maps a content_filter ErrorException into a terminal ContentFilterException', function (): void {
+    // No continuity keys in context, so there is nothing to strip and it propagates.
+    expect(fn () => callerWithResponses([contentFilterError()])
+        ->call('daily_greeting', 'sys', ['name' => 'Nuki'], 'schema', ['speech']))
+        ->toThrow(ContentFilterException::class, 'Azure OpenAI call failed');
+
+    expect(TokenUsage::query()->count())->toBe(0);
+});
+
+it('detects a content filter from the message when the error code is absent', function (): void {
+    $error = new ErrorException(
+        ['message' => 'The response was filtered due to the prompt triggering Azure OpenAI content management policy.', 'type' => 'invalid_request_error'],
+        new Psr7Response(400),
+    );
+
+    expect(fn () => callerWithResponses([$error])->call('daily_greeting', 'sys', [], 'schema', ['speech']))
+        ->toThrow(ContentFilterException::class);
+});
+
+it('strips continuity context and retries once when the first attempt content-filters', function (): void {
+    Log::spy();
+
+    $client = new ClientFake([
+        contentFilterError(),
+        fakeAzureResponse(json_encode(['speech' => 'clean'], JSON_THROW_ON_ERROR)),
+    ]);
+
+    $payload = fakeStructuredCaller($client)->call(
+        'daily_greeting',
+        'sys',
+        ['name' => 'Nuki', 'prev_narrative' => 'poison', 'prev_opener' => 'poison'],
+        'TemariDailyGreeting',
+        ['speech'],
+    );
+
+    expect($payload)->toBe(['speech' => 'clean']);
+
+    // The retry request must have dropped the continuity keys from the user JSON.
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $userMessage = $params['input'][1]['content'];
+
+        return $method === 'create'
+            && ! str_contains($userMessage, 'prev_narrative')
+            && str_contains($userMessage, 'Nuki');
+    });
+
+    Log::shouldHaveReceived('info')->with('narrator.ai.content_filter_retry', Mockery::on(
+        fn (array $ctx): bool => $ctx['kind'] === 'daily_greeting'
+            && $ctx['stripped_keys'] === NarratorContinuity::CONTEXT_KEYS,
+    ));
+});
+
+it('propagates ContentFilterException when the continuity-stripped retry still content-filters', function (): void {
+    $client = new ClientFake([contentFilterError(), contentFilterError()]);
+
+    expect(fn () => fakeStructuredCaller($client)->call(
+        'daily_greeting',
+        'sys',
+        ['prev_narrative' => 'poison', 'prev_opener' => 'poison'],
+        'schema',
+        ['speech'],
+    ))->toThrow(ContentFilterException::class);
 });
 
 it('does not retry truncation once the bumped cap would hit the ceiling', function (): void {

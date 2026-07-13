@@ -35,6 +35,12 @@ it('bundles prev_narrative and prev_opener into one context slice', function ():
         ]);
 });
 
+it('keys fields() off the shared CONTEXT_KEYS constant', function (): void {
+    expect(NarratorContinuity::CONTEXT_KEYS)->toBe(['prev_narrative', 'prev_opener'])
+        ->and(array_keys(NarratorContinuity::fields('Lari kemarin enteng banget.')))
+        ->toBe(NarratorContinuity::CONTEXT_KEYS);
+});
+
 it('bundles null fields when there is no previous narrative', function (): void {
     expect(NarratorContinuity::fields(null))
         ->toBe([

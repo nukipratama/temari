@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Jobs\AI;
 
+use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 abstract class AnalyzeGroupJob extends AnalyzeBaseJob
@@ -62,6 +65,16 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         try {
             $this->finalizePending($pending, $service, $this->generateAll($subject));
             $this->afterGroupDone($service);
+        } catch (ContentFilterException) {
+            // Even the continuity-stripped retry content-filtered. Fill every
+            // pending row from the rule-based narrator so the group settles Done
+            // with benign content instead of dead-lettering the whole briefing.
+            $this->finalizePending($pending, $service, $this->ruleBasedPayload($pending));
+            Log::info('narrator.ai.content_filter_fallback', [
+                'kind' => static::subjectType(),
+                'subject' => $this->subjectId,
+            ]);
+            $this->afterGroupDone($service);
         } catch (Throwable $e) {
             $this->settleFailure(
                 $e,
@@ -97,6 +110,20 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         foreach ($pending as $row) {
             $service->markFailed($row, $reason);
         }
+    }
+
+    /**
+     * Rule-based content for each pending row, keyed the same way $pending is
+     * (by AnalysisType value) so it drops straight into {@see finalizePending}.
+     *
+     * @param  Collection<string, Analysis>  $pending
+     * @return array<string, string>
+     */
+    private function ruleBasedPayload(Collection $pending): array
+    {
+        $filler = app(RuleBasedNarrationFiller::class);
+
+        return $pending->map(fn (Analysis $row): string => $filler->fillFor($row))->all();
     }
 
     /**

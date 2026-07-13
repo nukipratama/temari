@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
+use App\Exceptions\AI\ContentFilterException;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
@@ -119,6 +120,28 @@ it('AnalyzeBriefingJob does not re-invoke the narrator when its rows are already
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Done)
             ->and($row->content)->toBe('preexisting');
+    }
+});
+
+it('AnalyzeBriefingJob falls back to rule-based content for every row when generation content-filters', function (): void {
+    $user = User::factory()->create();
+
+    $mock = Mockery::mock(BriefingNarrator::class);
+    $mock->shouldReceive('generate')->andThrow(new ContentFilterException('content filtered'));
+    app()->instance(BriefingNarrator::class, $mock);
+
+    (new AnalyzeBriefingJob($user->id, '2026-05-18'))->handle(app(AnalysisService::class));
+
+    $rows = Analysis::query()
+        ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
+        ->where('subject_id', $user->id)
+        ->where('discriminator', '2026-05-18')
+        ->get();
+
+    expect($rows)->toHaveCount(2);
+    foreach ($rows as $row) {
+        expect($row->status)->toBe(AnalysisStatus::Done)
+            ->and($row->content)->not->toBeEmpty();
     }
 });
 

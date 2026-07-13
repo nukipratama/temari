@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
+use App\Services\AI\Narrators\NarratorContinuity;
 use Illuminate\Support\Facades\Log;
 use JsonException;
 use OpenAI\Exceptions\ErrorException;
@@ -66,7 +68,27 @@ final readonly class StructuredChatCaller
             'text' => ['format' => self::textFormat($schemaName, $requiredKeys)],
         ];
 
-        $response = $this->createResponse($kind, $payload, $startedAt);
+        try {
+            $response = $this->createResponse($kind, $payload, $startedAt);
+        } catch (ContentFilterException $e) {
+            // A stored continuity line fed back as input can trip Azure's filter.
+            // Strip the continuity keys and retry once against the clean context;
+            // if the retry still content-filters, let it propagate.
+            $strippedKeys = array_values(array_intersect(NarratorContinuity::CONTEXT_KEYS, array_keys($context)));
+            if ($strippedKeys === []) {
+                throw $e;
+            }
+
+            $context = array_diff_key($context, array_flip(NarratorContinuity::CONTEXT_KEYS));
+            $payload['input'][1]['content'] = json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+            Log::info('narrator.ai.content_filter_retry', [
+                'kind' => $kind,
+                'stripped_keys' => $strippedKeys,
+            ]);
+
+            $response = $this->createResponse($kind, $payload, $startedAt);
+        }
 
         // Truncated structured output is unparseable, so retry once at a higher
         // token cap, bounded by self::MAX_RETRY_OUTPUT_TOKENS.
@@ -202,6 +224,15 @@ final readonly class StructuredChatCaller
     private static function mapAzureThrowable(Throwable $e): Throwable
     {
         $message = 'Azure OpenAI call failed: '.$e->getMessage();
+
+        // A content-filter rejection is an input-driven terminal 400: retrying
+        // the same prompt just re-trips the filter. Surface the distinct type so
+        // the caller can strip continuity context and retry, and the job can
+        // degrade to rule-based content instead of dead-lettering.
+        if (self::isContentFilter($e)) {
+            return new ContentFilterException($message, previous: $e);
+        }
+
         $response = self::transientResponse($e);
 
         if ($response === false) {
@@ -213,6 +244,27 @@ final readonly class StructuredChatCaller
             $response !== null ? self::retryAfterSeconds($response) : null,
             $e,
         );
+    }
+
+    /**
+     * Whether $e is an Azure content-filter rejection. Detected primarily by the
+     * error code (`content_filter`), with a defensive substring fallback on the
+     * message for the prose forms Azure sometimes returns without the code.
+     */
+    private static function isContentFilter(Throwable $e): bool
+    {
+        if (! $e instanceof ErrorException) {
+            return false;
+        }
+
+        if ($e->getErrorCode() === 'content_filter') {
+            return true;
+        }
+
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, 'content management policy')
+            || str_contains($message, 'content_filter');
     }
 
     /**

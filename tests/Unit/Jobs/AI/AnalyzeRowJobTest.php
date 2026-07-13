@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Jobs\AI\AnalyzeRowJob;
@@ -43,6 +44,16 @@ function fakeBoomRowJob(int $id): AnalyzeRowJob
         protected function generateContent(Analysis $row): string
         {
             throw new RuntimeException('boom');
+        }
+    };
+}
+
+function fakeContentFilterRowJob(int $id): AnalyzeRowJob
+{
+    return new class ($id) extends AnalyzeRowJob {
+        protected function generateContent(Analysis $row): string
+        {
+            throw new ContentFilterException('content filtered');
         }
     };
 }
@@ -125,6 +136,19 @@ it('marks row Failed without rethrowing for UnavailableException', function (): 
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Failed)
         ->and($fresh->error)->toBe('Azure down');
+});
+
+it('falls back to rule-based content (row Done) when generation content-filters', function (): void {
+    // The row (a DailyGreeting) content-filters even after the caller strips
+    // continuity. Instead of dead-lettering, the job degrades to rule-based copy.
+    $row = makeRowForRowJobTest();
+
+    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class));
+
+    $fresh = $row->fresh();
+    expect($fresh->status)->toBe(AnalysisStatus::Done)
+        ->and($fresh->content)->not->toBeEmpty()
+        ->and($fresh->error)->toBeNull();
 });
 
 it('re-raises unexpected throwables so the queue can apply retry policy', function (): void {
