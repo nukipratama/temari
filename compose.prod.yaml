@@ -22,15 +22,18 @@ x-app-env: &app-env
   DB_CONNECTION: mysql
   DB_HOST: mysql
   DB_PORT: "3306"
-  # Single Redis instance; DB 0 = queue/sessions (noeviction), DB 1 = cache,
-  # DB 2 = pulse ingest buffer. All three connections point at the same host.
+  # Two Redis instances. `redis` (durable: noeviction + AOF) holds queue +
+  # Horizon state + sessions (DB 0) and the Pulse ingest buffer (DB 2).
+  # `redis-cache` (allkeys-lru, no AOF) holds the cache keyspace so cache
+  # growth can never hit noeviction and wedge queue enqueues / session writes.
+  # Both listen on REDIS_PORT.
   REDIS_HOST: redis
-  REDIS_CACHE_HOST: redis
+  REDIS_CACHE_HOST: redis-cache
   REDIS_PORT: "6379"
   QUEUE_CONNECTION: redis
   SESSION_DRIVER: redis
-  # Sessions live on DB 0 (noeviction). Cache on DB 1 (same instance, but
-  # volatile-ok keys are namespaced away from queue/session keys by DB number).
+  # Sessions live on the durable `redis` (DB 0, noeviction). Cache lives on the
+  # dedicated `redis-cache` instance (DB 1 there), free to evict under pressure.
   SESSION_CONNECTION: default
   CACHE_STORE: redis
   # Pin the session cookie name and the Redis/cache key prefixes to fixed
@@ -92,6 +95,8 @@ x-app-base: &app-base
     mysql:
       condition: service_healthy
     redis:
+      condition: service_healthy
+    redis-cache:
       condition: service_healthy
   networks: [internal]
   volumes:
@@ -230,12 +235,12 @@ services:
         reservations:
           cpus: "0.5"
 
-  # Single Redis instance with DB-level separation:
-  #   DB 0 = queue jobs + Horizon state + sessions (noeviction)
-  #   DB 1 = cache (REDIS_CACHE_DB=1, keys namespaced away from queue)
-  #   DB 2 = Pulse ingest buffer (PULSE_REDIS_DB=2, LRU-safe via allkeys-lru
-  #           is NOT used here — noeviction is safer for the combined store;
-  #           at current usage ~37 MB across all three DBs, 512 MB is ample)
+  # Durable Redis, DB-level separation, noeviction so a full keyspace ERRORs
+  # (never silently drops a durable key):
+  #   DB 0 = queue jobs + Horizon state + sessions
+  #   DB 2 = Pulse ingest buffer (PULSE_REDIS_DB=2)
+  # Cache is NOT here anymore — it lives on the `redis-cache` instance below so
+  # cache growth can't push this store into noeviction and stall enqueues.
   # AOF everysec provides queue durability without the fsync overhead of always.
   redis:
     <<: *redis-prod-base
@@ -256,9 +261,33 @@ services:
         limits:
           cpus: "0.75"
           memory: 640m
-        # Floor: queue/session/cache store must not starve during build bursts.
+        # Floor: queue/session store must not starve during build bursts.
         reservations:
           cpus: "0.25"
+
+  # Dedicated cache Redis, split off `redis` above (DBG-8). allkeys-lru lets it
+  # evict under memory pressure instead of ERRORing, so cache growth can never
+  # wedge the durable queue/session store. appendonly no: cache is ephemeral and
+  # rebuilds itself, so no AOF and no persistence volume (a restart = cold cache,
+  # which the app refills lazily). Reuses the redis-prod-base SET write-probe
+  # healthcheck (no AOF replay here, but the probe still proves writes are live).
+  redis-cache:
+    <<: *redis-prod-base
+    command:
+      - "redis-server"
+      - "--appendonly"
+      - "no"
+      - "--maxmemory"
+      - "256mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 320m
+        reservations:
+          cpus: "0.1"
 
 volumes:
   mysql_data:
