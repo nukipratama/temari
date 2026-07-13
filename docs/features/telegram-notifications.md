@@ -22,8 +22,8 @@ code_refs:
   - app/Http/Middleware/HandleInertiaRequests.php
   - app/Console/Commands/Telegram/SetWebhookCommand.php
   - app/Console/Commands/Telegram/ListenCommand.php
-  - app/Http/Controllers/ProfileController.php
-  - resources/js/pages/Aku.tsx
+  - app/Http/Controllers/SettingsController.php
+  - resources/js/pages/Pengaturan/Index.tsx
   - resources/js/components/SendToTelegramButton.tsx
   - routes/web.php
 ---
@@ -43,13 +43,13 @@ A bot is created in Telegram's @BotFather (`/newbot`), which also sets its name,
 
 ## Linking an account
 
-Telegram has no OAuth, so the logged-in web session carries its identity through the bot. The Aku page ([ProfileController](../../app/Http/Controllers/ProfileController.php) `resolveTelegram()`) mints a signed deep-link token ([TelegramLinkToken](../../app/Services/Telegram/TelegramLinkToken.php), 60-min TTL) and renders a Telegram-branded "Hubungkan Telegram" button pointing at `t.me/<bot>?start=<token>`.
+Telegram has no OAuth, so the logged-in web session carries its identity through the bot. The Pengaturan page ([SettingsController](../../app/Http/Controllers/SettingsController.php) `resolveTelegram()`) mints a signed deep-link token ([TelegramLinkToken](../../app/Services/Telegram/TelegramLinkToken.php), 60-min TTL) and renders a Telegram-branded "Hubungkan Telegram" button pointing at `t.me/<bot>?start=<token>`.
 
 When the user taps Start, the update reaches [HandleTelegramUpdateJob](../../app/Jobs/Telegram/HandleTelegramUpdateJob.php) — via the webhook ([TelegramWebhookController](../../app/Http/Controllers/Telegram/TelegramWebhookController.php), CSRF-exempt and gated on the `X-Telegram-Bot-Api-Secret-Token` header) in prod, or `telegram:listen` in dev. It verifies the token (signature + expiry), then either links (storing the server-reported `chat_id`, replying with an account-naming welcome, and **consuming the token** so a leaked link can't be replayed), replies that the link is no longer valid without linking, or replies generically to garbage. `/stop` revokes. All reply copy is Temari-voiced in [TelegramReplies](../../app/Services/Telegram/TelegramReplies.php). The decision behind this flow is [[telegram-account-linking]].
 
 ## Preferences + disconnect
 
-The Aku page ([Aku.tsx](../../resources/js/pages/Aku.tsx)) shows four switches (`notify_post_run`, `notify_weekly_recap`, `notify_monthly_recap`, `notify_daily_briefing`) and a "Putuskan" button once connected; [TelegramConnectionController](../../app/Http/Controllers/Telegram/TelegramConnectionController.php) persists the toggles and revokes on disconnect. The Telegram connect button keeps Telegram's brand mark and blue (not recolored), the way the Strava button is left as-shipped (see [[strava-connect]]). There is no dedicated streak-reminder toggle: the [[streak-reminders]] Saturday nudge piggybacks `notify_weekly_recap` ([SendStreakReminderJob](../../app/Jobs/Telegram/SendStreakReminderJob.php), [StreakRemindCommand](../../app/Console/Commands/Gamification/StreakRemindCommand.php)), so opting out of weekly recaps also silences streak reminders.
+The Pengaturan page ([Pengaturan/Index.tsx](../../resources/js/pages/Pengaturan/Index.tsx)) shows four switches (`notify_post_run`, `notify_weekly_recap`, `notify_monthly_recap`, `notify_daily_briefing`) and a "Putuskan" button once connected; [TelegramConnectionController](../../app/Http/Controllers/Telegram/TelegramConnectionController.php) persists the toggles and revokes on disconnect. The Telegram connect button keeps Telegram's brand mark and blue (not recolored), the way the Strava button is left as-shipped (see [[strava-connect]]). There is no dedicated streak-reminder toggle: the [[streak-reminders]] Saturday nudge piggybacks `notify_weekly_recap` ([SendStreakReminderJob](../../app/Jobs/Telegram/SendStreakReminderJob.php), [StreakRemindCommand](../../app/Console/Commands/Gamification/StreakRemindCommand.php)), so opting out of weekly recaps also silences streak reminders.
 
 ## Sending
 

@@ -61,6 +61,30 @@ describe('AnalysisStatus', () => {
         expect(container.querySelector('.animate-pulse')).not.toBeNull();
     });
 
+    it('flips the queued skeleton to a quiet "muat ulang nanti" state after polling gives up', async () => {
+        vi.useFakeTimers();
+        try {
+            render(
+                <AnalysisStatus
+                    analysis={payload({ status: 'queued' })}
+                    inertiaReloadProps={['briefing']}
+                />,
+            );
+            // The working skeleton shows while polling is live.
+            expect(screen.getByRole('status')).toBeInTheDocument();
+
+            // Poll past the 30-attempt cap; the slot retires and notifies.
+            await act(async () => {
+                vi.advanceTimersByTime(20 * 60 * 1000);
+            });
+
+            expect(screen.getByText(/Masih diproses, muat ulang nanti ya/)).toBeInTheDocument();
+            expect(screen.queryByRole('status')).toBeNull();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('renders the failed retry button', () => {
         render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
         expect(screen.getByRole('button', { name: /Coba lagi/ })).toBeInTheDocument();

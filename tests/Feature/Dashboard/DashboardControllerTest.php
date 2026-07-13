@@ -86,45 +86,15 @@ it('renders KPIs + recent runs when the user has training-load history', functio
     Carbon::setTestNow();
 });
 
-it('includes a shaped weeklyRecap prop with the current-week range and zeroed stats for a fresh user', function (): void {
-    Carbon::setTestNow('2026-05-13 12:00:00'); // Wednesday → week Mon 05-11 .. Sun 05-17.
+it('does not ship the unused trendAnalysis or weeklyRecap props', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/')
+        ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('weeklyRecap.week_start', '2026-05-11')
-            ->where('weeklyRecap.week_end', '2026-05-17')
-            ->where('weeklyRecap.this_week_km', 0)
-            ->where('weeklyRecap.this_week_runs', 0)
-            ->where('weeklyRecap.delta_pct', null)
-            ->where('weeklyRecap.streak_weeks', 0)
-            ->where('weeklyRecap.best_card', null)
-            ->has('weeklyRecap.nearest_goal'));
-
-    Carbon::setTestNow();
-});
-
-it('populates weeklyRecap km, runs, and delta from this and last weeks snapshots', function (): void {
-    Carbon::setTestNow('2026-05-13 12:00:00');
-    $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-10',
-        'distance_km' => 20.0,
-        'runs' => 3,
-    ]);
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-17',
-        'distance_km' => 25.0,
-        'runs' => 4,
-    ]);
-
-    $this->actingAs($user)->get('/')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('weeklyRecap.this_week_km', 25)
-            ->where('weeklyRecap.this_week_runs', 4)
-            ->where('weeklyRecap.delta_pct', 25));
-
-    Carbon::setTestNow();
+            ->component('HariIni')
+            ->missing('trendAnalysis')
+            ->missing('weeklyRecap'));
 });
 
 it('reuses the same daily greeting on a second open within the day', function (): void {

@@ -206,6 +206,59 @@ describe('useAnalysisTrigger', () => {
         unmount();
     });
 
+    it('flips pollingRetired true when the max-attempts cap is hit', async () => {
+        vi.useFakeTimers();
+        const { result } = renderHook(() =>
+            useAnalysisTrigger(payload({ status: 'queued' }), ['briefing']),
+        );
+        expect(result.current.pollingRetired).toBe(false);
+
+        // Advance well past the 30-attempt cap (backoff maxes at 15s).
+        await act(async () => {
+            vi.advanceTimersByTime(20 * 60 * 1000);
+        });
+
+        expect(result.current.pollingRetired).toBe(true);
+    });
+
+    it('does not evict a live replacement slot registered under the same key (FE-6 evict-race guard)', async () => {
+        vi.useFakeTimers();
+        // Slot A subscribes, then polls to the max-attempts give-up. Give-up
+        // removes A from the registry but A's subscriber is still mounted.
+        const { unmount: unmountStale } = renderHook(() =>
+            useAnalysisTrigger(payload({ status: 'queued', subject_id: 1 }), ['briefing']),
+        );
+        await act(async () => {
+            vi.advanceTimersByTime(20 * 60 * 1000);
+        });
+
+        // A fresh subscriber registers a NEW slot B under the same reload key.
+        const { unmount: unmountB } = renderHook(() =>
+            useAnalysisTrigger(payload({ status: 'queued', subject_id: 2 }), ['briefing']),
+        );
+
+        // Unmounting the stale hook retires slot A. WITHOUT the guard this would
+        // `pollSlots.delete(key)` and evict the live B from the registry, so the
+        // next subscriber (C) can't find B and spins up a DUPLICATE slot.
+        unmountStale();
+
+        // C subscribes to the same key: with the guard it shares B; without it,
+        // it creates a second slot polling the same props in parallel.
+        renderHook(() =>
+            useAnalysisTrigger(payload({ status: 'queued', subject_id: 3 }), ['briefing']),
+        );
+
+        vi.mocked(router.reload).mockClear();
+        await act(async () => {
+            vi.advanceTimersByTime(20 * 60 * 1000);
+        });
+
+        // A single shared slot polls to its 30-attempt cap (~30 reloads); a
+        // duplicate slot would roughly double that.
+        expect(vi.mocked(router.reload).mock.calls.length).toBeLessThanOrEqual(32);
+        unmountB();
+    });
+
     it('shares a single polling slot across multiple hook instances with the same reload set', async () => {
         vi.useFakeTimers();
         const { unmount: unmountA } = renderHook(() =>

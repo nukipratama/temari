@@ -11,6 +11,10 @@ use Illuminate\Support\Carbon;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    // Freeze time so a seed at Carbon::today() and the report's "today" query
+    // can't straddle the Asia/Jakarta midnight boundary and flake the todayCost.
+    $this->freezeTime();
+
     config()->set('azure_openai.daily_cost_ceiling', null);
 
     // Deterministic manual rates: gpt-4o = 2.50 in / 10.00 out, gpt-4o-mini =

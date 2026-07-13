@@ -133,6 +133,18 @@ describe('ShareCardModal', () => {
         expect(screen.queryByText('Gaya')).toBeNull();
     });
 
+    it('clamps a stale rute layout to kartu for a no-GPS run so the map is never blank', async () => {
+        const { drawShareCard } = await import('@/lib/shareCard');
+        vi.mocked(drawShareCard).mockClear();
+        const { rerender } = render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+        // Pick the route template on a GPS card, then reuse the same modal for a
+        // no-GPS run: the carried-over 'rute' selection must not paint a blank map.
+        fireEvent.click(screen.getByRole('button', { name: 'Rute' }));
+        rerender(<ShareCardModal kartu={{ ...kartu, polyline: null }} onClose={vi.fn()} />);
+        const lastCall = vi.mocked(drawShareCard).mock.calls.at(-1);
+        expect(lastCall?.[1].layout).toBe('kartu');
+    });
+
     it('switches the export format when a format button is clicked', () => {
         render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
         const canvas = screen.getByLabelText(/Pratinjau kartu/) as HTMLCanvasElement;

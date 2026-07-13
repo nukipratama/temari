@@ -41,7 +41,11 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
         if (kartu === null || canvasRef.current === null) {
             return;
         }
-        void drawShareCard(canvasRef.current, { kartu, layout, format });
+        // Clamp to a drawable layout: a no-GPS run has no route, so a stale
+        // 'rute' selection (carried over from a previous GPS card) must not
+        // paint a blank map. See `hasRoute` below.
+        const drawLayout = kartu.polyline != null && kartu.polyline !== '' ? layout : 'kartu';
+        void drawShareCard(canvasRef.current, { kartu, layout: drawLayout, format });
     }, [kartu, layout, format]);
 
     // Auto-clear the status line so it reads as a transient toast.
@@ -56,8 +60,10 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
     // The route-hero template needs a polyline; hide it for no-GPS runs.
     const hasRoute = kartu.polyline != null && kartu.polyline !== '';
     const availableLayouts = hasRoute ? LAYOUTS : LAYOUTS.filter((l) => l !== 'rute');
+    // Clamp so share/copy never export a stale 'rute' layout on a no-GPS run.
+    const effectiveLayout: Layout = availableLayouts.includes(layout) ? layout : 'kartu';
 
-    const cfg = { kartu, layout, format };
+    const cfg = { kartu, layout: effectiveLayout, format };
 
     const captureImage = (): Promise<Blob> => shareCardBlob(cfg);
 

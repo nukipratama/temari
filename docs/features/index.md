@@ -17,6 +17,7 @@ _Pages_
 - [[run-history]] — Jejak/Kalender, weekly snapshots, filters, journey strip
 - [[run-detail]] — single run: four-lens, route map, splits, HR zones, AI insights
 - [[profile]] — Aku, persona, profile voice
+- [[settings]] — Pengaturan hub (Telegram toggles, HR-zone entry, account deletion)
 - [[settings-hr-zones]] — Zona HR (Karvonen zones)
 - [[ai-usage]] — token usage dashboard (ops-gated)
 

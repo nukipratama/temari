@@ -1,0 +1,280 @@
+import { Head, router } from '@inertiajs/react';
+import { Icon } from '@iconify/react';
+import { useCallback, useRef, useState } from 'react';
+import AppShell from '@/layouts/AppShell';
+import BackLink from '@/components/ui/BackLink';
+import Card from '@/components/ui/Card';
+import Chip from '@/components/ui/Chip';
+import PageContainer from '@/components/ui/PageContainer';
+import PillButton from '@/components/ui/PillButton';
+import SectionLabel from '@/components/ui/SectionLabel';
+import SettingsRow from '@/components/ui/SettingsRow';
+import DemoBlockedModal from '@/components/DemoBlockedModal';
+import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
+import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { cn } from '@/lib/cn';
+
+// The demo account can't be deleted; the backend guard rejects it and the
+// shared ErrorBanner surfaces the reason, so the confirm modal stays generic.
+
+interface TelegramPayload {
+    connected: boolean;
+    username: string | null;
+    connect_url: string | null;
+    notify_post_run: boolean;
+    notify_weekly_recap: boolean;
+    notify_monthly_recap: boolean;
+    notify_daily_briefing: boolean;
+}
+
+interface PengaturanProps {
+    telegram?: TelegramPayload;
+}
+
+const TELEGRAM_DEFAULT: TelegramPayload = {
+    connected: false,
+    username: null,
+    connect_url: null,
+    notify_post_run: true,
+    notify_weekly_recap: true,
+    notify_monthly_recap: true,
+    notify_daily_briefing: false,
+};
+
+export default function Pengaturan({ telegram = TELEGRAM_DEFAULT }: Readonly<PengaturanProps>) {
+    return (
+        <AppShell>
+            <Head title="Pengaturan" />
+            <PageContainer>
+                <header className="mb-8">
+                    <BackLink href="/profil" className="mb-3.5">
+                        Aku
+                    </BackLink>
+                    <h1 className="font-display text-display-lg text-ink">Pengaturan</h1>
+                </header>
+
+                <section>
+                    <SectionLabel>Notifikasi Telegram</SectionLabel>
+                    <div className="mt-3">
+                        <Card padding="lg">
+                            <TelegramPanel telegram={telegram} />
+                        </Card>
+                    </div>
+                </section>
+
+                <section className="mt-10">
+                    <SectionLabel>Lari</SectionLabel>
+                    <div className="mt-3">
+                        <Card padding="lg">
+                            <SettingsRow
+                                icon="mdi:heart-pulse"
+                                label="Zona HR"
+                                description="Atur sendiri batas Z1-Z5 biar Temari baca larimu lebih pas."
+                                href="/pengaturan/zona"
+                            />
+                        </Card>
+                    </div>
+                </section>
+
+                <section className="mt-10">
+                    <SectionLabel>Akun</SectionLabel>
+                    <div className="mt-3">
+                        <Card padding="lg">
+                            <DeleteAccountPanel />
+                        </Card>
+                    </div>
+                </section>
+            </PageContainer>
+        </AppShell>
+    );
+}
+
+function DeleteAccountPanel() {
+    const [confirmOpen, setConfirmOpen] = useState(false);
+
+    return (
+        <>
+            <SettingsRow
+                icon="mdi:account-remove-outline"
+                label="Hapus akun"
+                description="Hapus akun sekaligus lepasin sambungan Strava. Gak bisa dibalikin."
+                onClick={() => setConfirmOpen(true)}
+            />
+            <TemariNudgeModal
+                open={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                title="Yakin mau hapus akun?"
+                body={
+                    <>
+                        Semua lari, kartu, sama sambungan Strava kamu bakal dilepas dan gak bisa dibalikin.
+                        Kalau cuma mau ganti akun Strava, ini juga caranya.
+                    </>
+                }
+                primaryLabel="Ya, hapus akunku"
+                primaryIcon="mdi:account-remove-outline"
+                primaryClassName="bg-ember-deep text-cream hover:opacity-90"
+                onPrimary={() => router.delete('/akun')}
+            />
+        </>
+    );
+}
+
+function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
+    // Local state prevents a rapid-click race: if the user flips both toggles before
+    // Inertia refreshes props, the second PATCH would read stale props for the first
+    // toggle's value and silently revert it. Local state sees the latest flipped value.
+    const [postRun, setPostRun] = useState(telegram.notify_post_run);
+    const [weeklyRecap, setWeeklyRecap] = useState(telegram.notify_weekly_recap);
+    const [monthlyRecap, setMonthlyRecap] = useState(telegram.notify_monthly_recap);
+    const [dailyBriefing, setDailyBriefing] = useState(telegram.notify_daily_briefing);
+    const { isDemo, open, setOpen, guard } = useDemoGuard();
+
+    const latest = useRef({ postRun, weeklyRecap, monthlyRecap, dailyBriefing });
+    latest.current = { postRun, weeklyRecap, monthlyRecap, dailyBriefing };
+
+    const savePrefs = useCallback(() => {
+        const { postRun: pr, weeklyRecap: wr, monthlyRecap: mr, dailyBriefing: db } = latest.current;
+        router.patch(
+            '/profil/telegram',
+            {
+                notify_post_run: pr,
+                notify_weekly_recap: wr,
+                notify_monthly_recap: mr,
+                notify_daily_briefing: db,
+            },
+            { preserveScroll: true },
+        );
+    }, []);
+
+    if (!telegram.connected) {
+        if (telegram.connect_url === null) {
+            return <p className="font-sans text-[12px] text-ink-3">Bot Telegram belum dikonfigurasi.</p>;
+        }
+
+        if (isDemo) {
+            return (
+                <SettingsRow
+                    icon="mdi:telegram"
+                    label="Telegram"
+                    description="Sambungin biar Temari bisa kabarin kamu."
+                    onClick={() => setOpen(true)}
+                >
+                    <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
+                </SettingsRow>
+            );
+        }
+
+        return (
+            <SettingsRow
+                icon="mdi:telegram"
+                label="Telegram"
+                description="Sambungin biar Temari bisa kabarin kamu."
+                externalHref={telegram.connect_url}
+            />
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-5">
+            <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0 overflow-hidden">
+                    <Chip tone="horizon" className="truncate">
+                        Telegram aktif{telegram.username ? ` · @${telegram.username}` : ''}
+                    </Chip>
+                </span>
+                <button
+                    type="button"
+                    onClick={() => guard(() => router.delete('/profil/telegram', { preserveScroll: true }))}
+                    className="focus-ring inline-flex items-center gap-1 rounded font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3 transition hover:text-ember-deep"
+                >
+                    <Icon icon="mdi:link-off" width={13} height={13} aria-hidden />
+                    Putuskan
+                </button>
+            </div>
+            <div className="flex flex-col gap-3">
+                <NotifyToggle
+                    label="Cerita abis lari"
+                    checked={postRun}
+                    onChange={(value) =>
+                        guard(() => {
+                            setPostRun(value);
+                            latest.current.postRun = value;
+                            savePrefs();
+                        })
+                    }
+                />
+                <NotifyToggle
+                    label="Rekap mingguan"
+                    checked={weeklyRecap}
+                    onChange={(value) =>
+                        guard(() => {
+                            setWeeklyRecap(value);
+                            latest.current.weeklyRecap = value;
+                            savePrefs();
+                        })
+                    }
+                />
+                <NotifyToggle
+                    label="Rekap bulanan"
+                    checked={monthlyRecap}
+                    onChange={(value) =>
+                        guard(() => {
+                            setMonthlyRecap(value);
+                            latest.current.monthlyRecap = value;
+                            savePrefs();
+                        })
+                    }
+                />
+                <NotifyToggle
+                    label="Ringkasan harian"
+                    checked={dailyBriefing}
+                    onChange={(value) =>
+                        guard(() => {
+                            setDailyBriefing(value);
+                            latest.current.dailyBriefing = value;
+                            savePrefs();
+                        })
+                    }
+                />
+            </div>
+            <PillButton
+                tone="outline"
+                onClick={() => guard(() => router.post('/profil/telegram/test', {}, { preserveScroll: true }))}
+            >
+                <Icon icon="mdi:send-outline" width={14} height={14} aria-hidden />
+                Kirim notifikasi tes
+            </PillButton>
+            <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
+        </div>
+    );
+}
+
+function NotifyToggle({
+    label,
+    checked,
+    onChange,
+}: Readonly<{ label: string; checked: boolean; onChange: (value: boolean) => void }>) {
+    return (
+        <label className="flex items-center justify-between gap-3">
+            <span className="font-display text-base text-ink">{label}</span>
+            <button
+                type="button"
+                role="switch"
+                aria-checked={checked}
+                aria-label={label}
+                onClick={() => onChange(!checked)}
+                className={cn(
+                    'focus-ring relative h-6 w-11 rounded-full transition',
+                    checked ? 'bg-horizon' : 'bg-cream-deep',
+                )}
+            >
+                <span
+                    className={cn(
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white transition',
+                        checked ? 'left-[1.375rem]' : 'left-0.5',
+                    )}
+                />
+            </button>
+        </label>
+    );
+}

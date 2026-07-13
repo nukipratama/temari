@@ -14,7 +14,6 @@ code_refs:
   - resources/js/pages/Runs/Show.tsx
   - resources/js/components/dashboard/SuggestionCard.tsx
   - resources/js/components/dashboard/LastLariCard.tsx
-  - resources/js/components/aktivitas/WeatherHero.tsx
   - app/Services/AI/Context/ActivityNarrationContext.php
 ---
 
@@ -48,7 +47,7 @@ It's written during ingest by [ActivityPipeline::lookupWeather](app/Services/Run
 
 All consumers read the stored columns; none call Open-Meteo.
 
-- **[[run-detail]]** — `MapWeatherPanel` on [Runs/Show.tsx](resources/js/pages/Runs/Show.tsx#L450) renders the temp / humidity / wind / location block beside the route map, on both mobile and desktop. (A richer standalone [WeatherHero](resources/js/components/aktivitas/WeatherHero.tsx) card also exists, keyed off the same seven fields.)
+- **[[run-detail]]** — `MapWeatherPanel` on [Runs/Show.tsx](resources/js/pages/Runs/Show.tsx#L320) renders the temp / humidity / wind / location block beside the route map, on both mobile and desktop.
 - **[[dashboard]]** — the last-run weather chip on [LastLariCard](resources/js/components/dashboard/LastLariCard.tsx#L24) and [SuggestionCard](resources/js/components/dashboard/SuggestionCard.tsx#L50), both via the `formatWeather` helper.
 - **[[ai-pipeline|AI narration]]** — temp and rain flow into [ActivityNarrationContext](app/Services/AI/Context/ActivityNarrationContext.php#L41) so Temari's run commentary can mention the conditions.
 

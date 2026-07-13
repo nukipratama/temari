@@ -49,4 +49,4 @@ Both routes (`pengaturan.zona` GET, `pengaturan.zona.update` PATCH) live in [web
 
 ## See also
 
-[[data-model]] · [[run-detail]]
+[[settings]] · [[data-model]] · [[run-detail]]

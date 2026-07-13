@@ -45,6 +45,12 @@ interface TriggerResult {
      * trigger response and the reload completing.
      */
     retryAfterSeconds: number | null;
+    /**
+     * The client stopped polling this in-flight block after the max-attempts
+     * cap without it settling. The UI should drop the "working" skeleton for a
+     * quiet "reload later" affordance instead of spinning forever.
+     */
+    pollingRetired: boolean;
     trigger: () => Promise<void>;
 }
 
@@ -61,6 +67,8 @@ interface PollSlot {
     nextDelayMs: number;
     attempts: number;
     onVisibility: () => void;
+    /** Subscribers notified when the slot gives up after the max-attempts cap. */
+    onRetire: Set<() => void>;
 }
 const pollSlots = new Map<string, PollSlot>();
 
@@ -70,7 +78,7 @@ function scheduleNext(slot: PollSlot): void {
         slot.timeout = null;
         slot.attempts += 1;
         if (slot.attempts > POLL_MAX_ATTEMPTS) {
-            retireSlot(slot);
+            retireSlot(slot, true);
             return;
         }
         router.reload({ only: slot.only });
@@ -86,15 +94,23 @@ function stopSlot(slot: PollSlot): void {
 }
 
 // Stop the timer AND detach the visibility listener AND drop the slot from
-// the registry. Used by the max-attempts give-up path so we don't leak a
-// listener for a slot that no longer polls.
-function retireSlot(slot: PollSlot): void {
+// the registry. Used both by the last-subscriber teardown and the max-attempts
+// give-up path (`gaveUp`), so we don't leak a listener for a slot that no
+// longer polls. Only evict our OWN slot: a later subscribe under the same key
+// may have already replaced us in the registry (FE-6 evict-race guard).
+// When `gaveUp`, notify subscribers so their UI can leave the fake skeleton.
+function retireSlot(slot: PollSlot, gaveUp = false): void {
     stopSlot(slot);
     globalThis.document.removeEventListener('visibilitychange', slot.onVisibility);
-    pollSlots.delete(slot.key);
+    if (pollSlots.get(slot.key) === slot) {
+        pollSlots.delete(slot.key);
+    }
+    if (gaveUp) {
+        slot.onRetire.forEach((cb) => cb());
+    }
 }
 
-function subscribePoll(only: string[]): () => void {
+function subscribePoll(only: string[], onRetire: () => void): () => void {
     const key = only.join('|');
     let slot = pollSlots.get(key);
     if (slot === undefined) {
@@ -107,6 +123,7 @@ function subscribePoll(only: string[]): () => void {
             timeout: null,
             nextDelayMs: POLL_INITIAL_MS,
             attempts: 0,
+            onRetire: new Set(),
             onVisibility: () => {
                 if (globalThis.document.hidden) {
                     stopSlot(created);
@@ -122,10 +139,13 @@ function subscribePoll(only: string[]): () => void {
         scheduleNext(created);
     }
     slot.refs += 1;
+    slot.onRetire.add(onRetire);
+    const subscribed = slot;
     return () => {
-        slot.refs -= 1;
-        if (slot.refs <= 0) {
-            retireSlot(slot);
+        subscribed.onRetire.delete(onRetire);
+        subscribed.refs -= 1;
+        if (subscribed.refs <= 0) {
+            retireSlot(subscribed);
         }
     };
 }
@@ -145,6 +165,7 @@ export function useAnalysisTrigger(
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [retryAfterSeconds, setRetryAfterSeconds] = useState<number | null>(payload.retry_after_seconds ?? null);
+    const [pollingRetired, setPollingRetired] = useState(false);
     const lastTriggeredAtRef = useRef(0);
 
     const trigger = useCallback(async () => {
@@ -208,8 +229,9 @@ export function useAnalysisTrigger(
     const isInFlight = payload.status === 'queued' || payload.status === 'processing';
     useEffect(() => {
         if (!isInFlight || reloadKey === '') return;
-        return subscribePoll(reloadKey.split('|'));
+        setPollingRetired(false);
+        return subscribePoll(reloadKey.split('|'), () => setPollingRetired(true));
     }, [isInFlight, reloadKey]);
 
-    return { status, pending, error, retryAfterSeconds, trigger };
+    return { status, pending, error, retryAfterSeconds, pollingRetired, trigger };
 }

@@ -32,7 +32,7 @@ const FORM_CARD_SHADOW =
 // Button label is localized ("Sambungkan dengan Strava") per explicit product decision; accept
 // the small risk that Strava brand review may flag it.
 export default function Login({ authStravaUrl, from = null }: Readonly<LoginProps>) {
-    const { demoLoginEnabled } = usePage<SharedProps>().props;
+    const { demoLoginEnabled, flash } = usePage<SharedProps>().props;
     const demoForm = useForm({ from });
     const submitDemo = () => demoForm.post('/auth/demo');
 
@@ -48,6 +48,7 @@ export default function Login({ authStravaUrl, from = null }: Readonly<LoginProp
                     demoLoginEnabled={demoLoginEnabled}
                     onSubmitDemo={submitDemo}
                     demoPending={demoForm.processing}
+                    info={flash?.info ?? null}
                 />
             </div>
         </AppShell>
@@ -142,11 +143,21 @@ interface FormSideProps {
     demoLoginEnabled: boolean;
     onSubmitDemo: () => void;
     demoPending: boolean;
+    info?: string | null;
 }
 
-function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending }: Readonly<FormSideProps>) {
+function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending, info = null }: Readonly<FormSideProps>) {
     return (
         <div className="flex flex-col items-center justify-center gap-9 bg-cream px-8 py-12 sm:px-12 lg:px-[100px] lg:py-20">
+            {info && (
+                <div
+                    role="status"
+                    className="flex w-full max-w-[480px] items-start gap-2.5 rounded-2xl border border-leaf/30 bg-leaf/[0.08] px-4 py-3 font-sans text-[13px] leading-relaxed text-ink-2 2xl:max-w-[560px]"
+                >
+                    <Icon icon="mdi:check-circle-outline" width={16} height={16} aria-hidden className="mt-0.5 shrink-0 text-leaf-deep" />
+                    <span>{info}</span>
+                </div>
+            )}
             <ul className="grid w-full max-w-[480px] grid-cols-3 gap-3.5 2xl:max-w-[560px]">
                 {PILLARS.map((pillar) => (
                     <li
