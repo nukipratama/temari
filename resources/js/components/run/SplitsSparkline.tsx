@@ -46,6 +46,9 @@ export default function SplitsSparkline({ paceSec, className }: Readonly<SplitsS
     const negativeSplit = last < first;
     const fastestIdx = barPaces.indexOf(fastest);
     const kmLabel = (b: { from: number; to: number }) => (b.from === b.to ? `${b.to}` : `${b.from}–${b.to}`);
+    // Thin the km-scale labels to ~6 evenly-spaced ticks so they stay legible at
+    // 320px instead of colliding into an unreadable run of digits.
+    const labelStep = Math.max(1, Math.ceil(bars.length / 6));
 
     return (
         <div className={cn('rounded-xl border border-cream/[0.12] bg-sky/40 px-5 py-4 backdrop-blur', className)}>
@@ -75,7 +78,16 @@ export default function SplitsSparkline({ paceSec, className }: Readonly<SplitsS
                                 aria-label={`Km ${kmLabel(b)}: ${formatPace(b.pace)}`}
                                 title={`Km ${kmLabel(b)} · ${formatPace(b.pace)}/km`}
                             />
-                            <div className="font-mono text-[11px] tabular-nums text-ink-on-sky">{b.to}</div>
+                            <div
+                                className={cn(
+                                    'font-mono text-[11px] tabular-nums text-ink-on-sky',
+                                    // Hidden ticks keep their box (so the row stays aligned) but
+                                    // don't paint, leaving only the thinned, legible labels.
+                                    i % labelStep !== 0 && 'invisible',
+                                )}
+                            >
+                                {b.to}
+                            </div>
                         </div>
                     );
                 })}

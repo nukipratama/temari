@@ -134,8 +134,13 @@ describe('ZonaHR', () => {
         });
 
         render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
-        const maxHrField = screen.getByLabelText('Max HR').closest('label');
-        expect(within(maxHrField as HTMLElement).getByText(/di antara 120 dan 220/i)).toBeInTheDocument();
+        const maxHrInput = screen.getByLabelText('Max HR');
+        const maxHrField = maxHrInput.closest('label');
+        const errorEl = within(maxHrField as HTMLElement).getByText(/di antara 120 dan 220/i);
+        expect(errorEl).toBeInTheDocument();
+        // The input is programmatically associated with its error for screen readers.
+        expect(maxHrInput).toHaveAttribute('aria-invalid', 'true');
+        expect(maxHrInput.getAttribute('aria-describedby')).toBe(errorEl.getAttribute('id'));
     });
 
     it('lets the user override a manual hi boundary', () => {

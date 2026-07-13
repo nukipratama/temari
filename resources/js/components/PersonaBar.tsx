@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import EmptyState from '@/components/ui/EmptyState';
 import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
 import type { Mood } from '@/types/inertia';
 
@@ -16,11 +17,9 @@ interface PersonaBarProps {
 export default function PersonaBar({ mix, className }: Readonly<PersonaBarProps>) {
     if (mix.length === 0) {
         return (
-            <div className={cn('rounded-2xl border-2 border-dashed border-cream-deep bg-cream/40 px-6 py-5 text-center', className)}>
-                <p className="font-display text-base italic text-ink-3">
-                    Belum ada cukup lari buat baca personamu.
-                </p>
-            </div>
+            <EmptyState className={cn('py-5', className)}>
+                Belum ada cukup lari buat baca personamu.
+            </EmptyState>
         );
     }
 

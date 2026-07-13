@@ -47,6 +47,8 @@ describe('RunListRow', () => {
             />,
         );
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+        // BPM/TRIMP use a plain hyphen placeholder (no em-dash, per the copy ban).
+        expect(screen.getAllByText('-').length).toBeGreaterThan(0);
     });
 
     it('derives a mood from TRIMP when none is provided', () => {

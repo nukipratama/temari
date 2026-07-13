@@ -74,8 +74,8 @@ export const METRIC_GLOSSARY = {
     },
     hr_z2: {
         acronym: 'Z2',
-        label: 'Zone 2: Conversational',
-        body: 'Conversational pace, masih bisa mengobrol sambil lari. Zone andalan untuk base building.',
+        label: 'Zone 2: Ngobrol',
+        body: 'Masih santai, masih bisa mengobrol sambil lari. Zone andalan untuk base building.',
     },
     hr_z3: {
         acronym: 'Z3',

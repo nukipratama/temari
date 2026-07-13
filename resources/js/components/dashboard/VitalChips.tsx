@@ -155,7 +155,10 @@ function VitalChip({
     return (
         <div className="flex h-full flex-col justify-between rounded-xl border border-line bg-surface-card px-3.5 py-4">
             <SectionLabel dot dotClass={dotClass} className="mb-1">
-                <span className="inline-flex items-center gap-1.5">
+                {/* Tighten the tracking + icon gap at the narrowest width so the
+                    longest label ("Kesiapan") keeps its (?) icon inside the tile at
+                    320px; both relax back to the full spec from sm up. */}
+                <span className="inline-flex items-center gap-1 tracking-[0.02em] sm:gap-1.5 sm:tracking-[0.12em]">
                     {label}
                     {explainerKey && <MetricExplainer metricKey={explainerKey} size="xs" />}
                 </span>

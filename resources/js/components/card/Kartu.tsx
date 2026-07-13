@@ -51,6 +51,9 @@ interface KartuProps {
     hideName?: boolean;
     /** Hide the full stat grid on very small screens. */
     hideStats?: boolean;
+    /** Shrink the floating rarity + TRIMP corner chips so the longest rarity
+     *  name (LEGENDARIS) fits without clipping/overlap on the narrow grid tiles. */
+    compact?: boolean;
     className?: string;
 }
 
@@ -99,6 +102,7 @@ export default function Kartu({
     size = 'md',
     hideName = false,
     hideStats = false,
+    compact = false,
     className,
 }: Readonly<KartuProps>) {
     const isFull = size !== 'md';
@@ -155,10 +159,10 @@ export default function Kartu({
                 sliver; overflow-hidden on the outer frame clips their square outer
                 corners to its radius. Mirrors the share card's corner treatment. */}
             <div className="absolute left-0 top-0">
-                <RarityChip rarity={rarity} />
+                <RarityChip rarity={rarity} compact={compact} />
             </div>
             <div className="absolute right-0 top-0">
-                <TRIMPBadge trimp={trimp} mood={mood} />
+                <TRIMPBadge trimp={trimp} mood={mood} compact={compact} />
             </div>
 
             {/* ── STAT BLOCK ── dark, high-contrast text. The SAME full layout at
@@ -217,11 +221,26 @@ export default function Kartu({
 // window's `overflow-hidden` clips them to its radius, so they fill the corner
 // completely (no pearl sliver) and read as truly stuck to the corner. Opaque
 // background + bumped sizes for legibility.
-function RarityChip({ rarity }: Readonly<{ rarity: Rarity }>) {
+function RarityChip({ rarity, compact = false }: Readonly<{ rarity: Rarity; compact?: boolean }>) {
     return (
-        <span className="inline-flex items-center gap-1 rounded-br-[11px] bg-sky-deep px-2.5 py-1.5 leading-none">
-            <span aria-hidden className={cn('text-[12px] leading-none', RARITY_TEXT[rarity])}>{RARITY_SYMBOL[rarity]}</span>
-            <span className={cn('font-sans text-[11px] font-bold uppercase tracking-[0.04em]', RARITY_TEXT[rarity])}>
+        <span
+            className={cn(
+                'inline-flex items-center rounded-br-[11px] bg-sky-deep leading-none',
+                compact ? 'gap-0.5 px-1.5 py-1' : 'gap-1 px-2.5 py-1.5',
+            )}
+        >
+            {/* The set symbol is dropped on the compact grid tile to buy width for
+                the longest rarity name; the border color still tags the tier. */}
+            {!compact && (
+                <span aria-hidden className={cn('text-[12px] leading-none', RARITY_TEXT[rarity])}>{RARITY_SYMBOL[rarity]}</span>
+            )}
+            <span
+                className={cn(
+                    'font-sans font-bold uppercase',
+                    compact ? 'text-[8px] tracking-[0.02em]' : 'text-[11px] tracking-[0.04em]',
+                    RARITY_TEXT[rarity],
+                )}
+            >
                 {RARITY_LABELS[rarity]}
             </span>
         </span>
@@ -237,14 +256,22 @@ function EditionMark({ edition }: Readonly<{ edition: CardEdition }>) {
     );
 }
 
-function TRIMPBadge({ trimp, mood }: Readonly<{ trimp: string | number; mood: Mood }>) {
+function TRIMPBadge({ trimp, mood, compact = false }: Readonly<{ trimp: string | number; mood: Mood; compact?: boolean }>) {
     return (
-        <span className="inline-flex items-center gap-1.5 rounded-bl-[11px] bg-sky-deep px-2.5 py-1.5 leading-none">
+        <span
+            className={cn(
+                'inline-flex items-center rounded-bl-[11px] bg-sky-deep leading-none',
+                compact ? 'gap-1 px-1.5 py-1' : 'gap-1.5 px-2.5 py-1.5',
+            )}
+        >
             <span
                 aria-label={`Vibe ${MOOD_LABEL[mood]}`}
-                className={cn('h-3 w-3 shrink-0 rounded-full', MOOD_FILL[mood])}
+                className={cn('shrink-0 rounded-full', MOOD_FILL[mood], compact ? 'h-2.5 w-2.5' : 'h-3 w-3')}
             />
-            <span aria-hidden className="font-sans text-[13px] font-extrabold tabular-nums text-cream">
+            <span
+                aria-hidden
+                className={cn('font-sans font-extrabold tabular-nums text-cream', compact ? 'text-[11px]' : 'text-[13px]')}
+            >
                 {trimp}
             </span>
         </span>
@@ -290,7 +317,7 @@ function StatGrid({ stats, durasi }: Readonly<{ stats: KartuStats | undefined; d
     push('HR', stats?.hr);
     push('Cadence', stats?.cadence);
     push('Durasi', durasi);
-    push('Best km', stats?.fastestKm);
+    push('Best', stats?.fastestKm);
     push('Elevasi', stats?.elevation);
 
     if (cells.length === 0) {

@@ -110,7 +110,7 @@ describe('Kartu', () => {
         expect(screen.getByText('150 bpm')).toBeInTheDocument();
         expect(screen.getByText('Cadence')).toBeInTheDocument();
         expect(screen.getByText('178 spm')).toBeInTheDocument();
-        expect(screen.getByText('Best km')).toBeInTheDocument();
+        expect(screen.getByText('Best')).toBeInTheDocument();
     });
 
     it('renders the HR-zone effort bar when zone data is present', () => {

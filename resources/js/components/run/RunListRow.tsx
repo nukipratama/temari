@@ -48,7 +48,9 @@ function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowPro
             <div className="flex min-w-0 flex-1 flex-col gap-2">
                 <div className="flex items-center gap-4">
                     <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium text-ink">{detail.name ?? 'Run'}</div>
+                        {/* Wrap to two lines instead of a hard truncate so a run's
+                            distinguishing trailing number/date survives at narrow widths. */}
+                        <div className="line-clamp-2 font-medium text-ink">{detail.name ?? 'Run'}</div>
                         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-3">
                             <span>
                                 {formatNaiveIdDate(detail.start_date_local)}
@@ -61,8 +63,8 @@ function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowPro
                         <Cell value={km} unit="km" emphasize />
                         <Cell value={formatDurationHMS(detail.moving_time)} unit="durasi" hideOnNarrow="sm" />
                         <Cell value={paceLabel} unit="/km" hideOnNarrow="sm" />
-                        <Cell value={hr ?? '—'} unit="bpm" hideOnNarrow="md" />
-                        <Cell value={trimp ?? '—'} unit="TRIMP" hideOnNarrow="md" />
+                        <Cell value={hr ?? '-'} unit="bpm" hideOnNarrow="md" />
+                        <Cell value={trimp ?? '-'} unit="TRIMP" hideOnNarrow="md" />
                     </div>
                 </div>
                 {note && (

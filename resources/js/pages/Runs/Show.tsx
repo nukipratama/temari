@@ -286,7 +286,7 @@ export default function RunsShow({
                                             </div>
                                             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-cream/90">
                                                 <span className={cn('font-bold tabular-nums', pastYou.pace_diff_sec > 0 ? 'text-leaf' : 'text-citrus')}>
-                                                    {Math.abs(Math.round(pastYou.pace_diff_sec))}d/km {pastYou.pace_diff_sec > 0 ? 'lebih cepat' : 'lebih lambat'}
+                                                    {Math.abs(Math.round(pastYou.pace_diff_sec))} detik/km {pastYou.pace_diff_sec > 0 ? 'lebih cepat' : 'lebih lambat'}
                                                 </span>
                                                 {pastYou.hr_diff_bpm !== null && (
                                                     <span className={cn('font-bold tabular-nums', pastYou.hr_diff_bpm < 0 ? 'text-leaf' : 'text-citrus')}>

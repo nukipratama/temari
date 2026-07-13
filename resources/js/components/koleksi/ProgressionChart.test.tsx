@@ -10,7 +10,7 @@ type ChartData = {
     labels: string[];
     datasets: Array<{
         label: string;
-        data: Array<number | null>;
+        data: Array<number | null | { x: number; y: number }>;
         backgroundColor?: string | ((ctx: unknown) => string);
     }>;
 };
@@ -74,8 +74,9 @@ describe('ProgressionChart', () => {
         // Only the best-time dataset, no goal line.
         expect(lastData!.datasets).toHaveLength(1);
         expect(lastData!.datasets[0].label).toBe('Best time');
-        // Seconds converted to minutes; null stays null (gap).
-        expect(lastData!.datasets[0].data).toEqual([25, null, 24]);
+        // Seconds → minutes as {x,y} points spaced by real date (day offset from the
+        // first week); a null time stays a null gap.
+        expect(lastData!.datasets[0].data).toEqual([{ x: 0, y: 25 }, null, { x: 14, y: 24 }]);
         expect(lastData!.labels).toHaveLength(3);
     });
 
@@ -91,8 +92,8 @@ describe('ProgressionChart', () => {
         expect(lastData!.datasets).toHaveLength(2);
         const goal = lastData!.datasets[1];
         expect(goal.label).toBe('Goal');
-        // Flat line at goalSec/60 across every week.
-        expect(goal.data).toEqual([20, 20]);
+        // Flat line at goalSec/60 spanning the time range (first + last week x).
+        expect(goal.data).toEqual([{ x: 0, y: 20 }, { x: 7, y: 20 }]);
     });
 
     it('omits the goal dataset when goalSec is zero (falsy)', () => {
@@ -159,7 +160,8 @@ describe('ProgressionChart', () => {
 
             const color = backgroundColor({ chart: { chartArea: undefined, ctx: {} } });
 
-            expect(color).toBe('rgba(232, 160, 118, 0.18)');
+            // horizon token (#e8a076) at 0.18 alpha.
+            expect(color).toBe('#e8a0762e');
         });
 
         it('builds a vertical gradient once the chart area is known', () => {

@@ -520,7 +520,7 @@ function Legend({ className }: Readonly<{ className?: string }>) {
             {MOOD_ORDER.map((mood) => (
                 <span key={mood} className="inline-flex whitespace-nowrap items-center gap-2 text-xs lg:text-sm">
                     <span
-                        className={cn('inline-block h-3.5 w-3.5 rounded-sm border lg:h-4 lg:w-4', MOOD_SOFT_FILL[mood])}
+                        className={cn('inline-block h-3.5 w-3.5 rounded-sm border lg:h-4 lg:w-4', MOOD_FILL[mood])}
                         style={{ borderColor: moodSigilColor(mood) }}
                         aria-hidden
                     />

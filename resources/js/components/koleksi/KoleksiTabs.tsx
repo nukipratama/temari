@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
 
 export type KoleksiTab = 'kartu' | 'rekor' | 'aksesori' | 'target';
@@ -27,8 +28,25 @@ const TABS: ReadonlyArray<TabItem> = [
 ];
 
 export default function KoleksiTabs({ active, activeCount, className }: Readonly<KoleksiTabsProps>) {
+    const navRef = useRef<HTMLElement>(null);
+
+    // The tab row scrolls horizontally on narrow screens; bring the active tab
+    // into view on mount so a later tab (e.g. "Target") isn't clipped off-screen.
+    useEffect(() => {
+        const nav = navRef.current;
+        if (!nav) {
+            return;
+        }
+        const activeEl = nav.querySelector<HTMLElement>('[aria-current="page"]');
+        if (activeEl) {
+            const navRect = nav.getBoundingClientRect();
+            const elRect = activeEl.getBoundingClientRect();
+            nav.scrollLeft += elRect.left - navRect.left - 16;
+        }
+    }, [active]);
+
     return (
-        <nav aria-label="Sub-tab" className={cn('scrollbar-hide flex gap-1.5 overflow-x-auto', className)}>
+        <nav ref={navRef} aria-label="Sub-tab" className={cn('scrollbar-hide flex gap-1.5 overflow-x-auto', className)}>
             {TABS.map((tab) => {
                 const isActive = active === tab.id;
                 return (

@@ -351,7 +351,7 @@ function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow 
             )}
             {snapshot.form !== null && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-horizon/15 px-2.5 py-0.5 text-xs font-semibold text-horizon-deep">
-                    Form {snapshot.form >= 0 ? '+' : ''}
+                    Kesiapan {snapshot.form >= 0 ? '+' : ''}
                     {snapshot.form.toFixed(1)}
                 </span>
             )}
@@ -477,7 +477,7 @@ function ruleBasedFallback(snap: WeeklySnapshotRow): string {
     }
     if (snap.form !== null && snap.form_status) {
         const formLabel = formStatusLabel(snap.form_status);
-        parts.push(`Form ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, status ${formLabel.toLowerCase()}.`);
+        parts.push(`Kesiapan ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, status ${formLabel.toLowerCase()}.`);
     }
     return parts.join(' ') || 'Belum ada data minggu ini, sabar ya.';
 }

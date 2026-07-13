@@ -1,5 +1,7 @@
 import { lazy, Suspense, useMemo } from 'react';
 import { cn } from '@/lib/cn';
+import EmptyState from '@/components/ui/EmptyState';
+import Skeleton from '@/components/ui/Skeleton';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
 
 const Line = lazy(() => import('react-chartjs-2').then((m) => ({ default: m.Line })));
@@ -28,6 +30,22 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
+// Daybreak tokens resolved to the hex Chart.js needs (it paints to canvas and
+// can't read the CSS custom properties). Keep in sync with the @theme block in
+// resources/css/app.css. `#RRGGBBAA` suffixes are the token color at a set alpha.
+const CHART_TOKENS = {
+    horizon: '#e8a076', // --color-horizon (best-time line + area fill)
+    horizonDeep: '#d08a60', // --color-horizon-deep (point fill)
+    cream: '#f6f1e8', // --color-cream (point border)
+    citrus: '#d9b23a', // --color-citrus (goal line / PR accent)
+    ink2: '#3d362a', // --color-ink-2 (axis ticks)
+    ink3: '#6e6452', // --color-ink-3 (grid line)
+} as const;
+const HORIZON_FILL_FLAT = `${CHART_TOKENS.horizon}2e`; // 0.18 alpha
+const HORIZON_FILL_TOP = `${CHART_TOKENS.horizon}52`; // 0.32 alpha
+const HORIZON_FILL_BOTTOM = `${CHART_TOKENS.horizon}05`; // 0.02 alpha
+const GRID_LINE = `${CHART_TOKENS.ink3}1f`; // 0.12 alpha
+
 function lastDefinedIndex(values: ReadonlyArray<number | null>): number {
     for (let i = values.length - 1; i >= 0; i--) {
         if (values[i] != null) return i;
@@ -49,27 +67,34 @@ export default function ProgressionChart({
         firstIdx >= 0 && lastIdx >= 0
             ? `Dari ${formatDurationHMS(timesSec[firstIdx]!)} pada ${formatNaiveIdDate(weeks[firstIdx], 'short')} menjadi ${formatDurationHMS(timesSec[lastIdx]!)} pada ${formatNaiveIdDate(weeks[lastIdx], 'short')}.`
             : 'Belum ada data waktu untuk periode ini.';
+    // Space points by their real date (day-offset from the first week), not at even
+    // intervals, so uneven time gaps read honestly instead of overstating progress.
+    const xOffsets = useMemo(() => {
+        const baseMs = weeks.length > 0 ? Date.parse(weeks[0]) : 0;
+        return weeks.map((w) => (Date.parse(w) - baseMs) / 86_400_000);
+    }, [weeks]);
+
     const data = useMemo(() => ({
         labels: weeks.map((w) => formatNaiveIdDate(w, 'short')),
         datasets: [
             {
                 label: 'Best time',
-                data: timesSec.map((t) => (t == null ? null : t / 60)),
-                borderColor: 'rgba(232, 160, 118, 1)',
+                data: timesSec.map((t, i) => (t == null ? null : { x: xOffsets[i], y: t / 60 })),
+                borderColor: CHART_TOKENS.horizon,
                 // Vertical gradient area fill (denser near the line, fading to the axis)
                 // instead of a flat wash, so the chart reads as intentional, not a default.
                 backgroundColor: (ctx: { chart: { chartArea?: { top: number; bottom: number }; ctx: CanvasRenderingContext2D } }) => {
                     const { chartArea, ctx: canvasCtx } = ctx.chart;
-                    if (!chartArea) return 'rgba(232, 160, 118, 0.18)';
+                    if (!chartArea) return HORIZON_FILL_FLAT;
                     const g = canvasCtx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                    g.addColorStop(0, 'rgba(232, 160, 118, 0.32)');
-                    g.addColorStop(1, 'rgba(232, 160, 118, 0.02)');
+                    g.addColorStop(0, HORIZON_FILL_TOP);
+                    g.addColorStop(1, HORIZON_FILL_BOTTOM);
                     return g;
                 },
                 borderWidth: 2.5,
                 pointRadius: 4,
-                pointBackgroundColor: 'rgba(208, 138, 96, 1)',
-                pointBorderColor: 'rgba(246, 241, 232, 1)',
+                pointBackgroundColor: CHART_TOKENS.horizonDeep,
+                pointBorderColor: CHART_TOKENS.cream,
                 pointBorderWidth: 1.5,
                 tension: 0.32,
                 fill: true,
@@ -79,8 +104,15 @@ export default function ProgressionChart({
                 ? [
                       {
                           label: 'Goal',
-                          data: weeks.map(() => goalSec / 60),
-                          borderColor: 'rgba(217, 178, 58, 1)',
+                          // Flat line spanning the full time range (2 points, not one
+                          // per week) so its x still aligns with the time-scaled axis.
+                          data: xOffsets.length > 0
+                              ? [
+                                    { x: xOffsets[0], y: goalSec / 60 },
+                                    { x: xOffsets.at(-1)!, y: goalSec / 60 },
+                                ]
+                              : [],
+                          borderColor: CHART_TOKENS.citrus,
                           backgroundColor: 'transparent',
                           borderDash: [6, 6],
                           borderWidth: 1.5,
@@ -91,15 +123,31 @@ export default function ProgressionChart({
                   ]
                 : []),
         ],
-    }), [weeks, timesSec, goalSec]);
+    }), [weeks, timesSec, goalSec, xOffsets]);
 
-    const options = useMemo(() => ({
+    const options = useMemo(() => {
+        // Thin the x-axis to ~6 evenly-spaced date labels, pinned to the real point
+        // positions, so labels stay legible while the points keep their true spacing.
+        const tickStep = Math.max(1, Math.ceil(weeks.length / 6));
+        const tickIndices = weeks
+            .map((_, i) => i)
+            .filter((i) => i % tickStep === 0 || i === weeks.length - 1);
+        const tickXs = tickIndices.map((i) => xOffsets[i]);
+        const tickLabels = tickIndices.map((i) => formatNaiveIdDate(weeks[i], 'short'));
+        const xMin = xOffsets.length > 0 ? xOffsets[0] : 0;
+        const lastX = xOffsets.length > 0 ? xOffsets.at(-1)! : 0;
+        const xMax = lastX > xMin ? lastX : xMin + 1;
+        return {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: { display: false },
             tooltip: {
                 callbacks: {
+                    title: (items: Array<{ dataIndex: number }>) => {
+                        const i = items[0]?.dataIndex ?? 0;
+                        return weeks[i] ? formatNaiveIdDate(weeks[i], 'short') : '';
+                    },
                     label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
                         const v = ctx.parsed.y;
                         if (v == null) return '';
@@ -110,14 +158,26 @@ export default function ProgressionChart({
         },
         scales: {
             x: {
+                type: 'linear' as const,
+                min: xMin,
+                max: xMax,
                 grid: { display: false },
-                ticks: { color: '#3d362a', font: { size: 12 } },
+                ticks: {
+                    color: CHART_TOKENS.ink2,
+                    font: { size: 12 },
+                    autoSkip: false,
+                    maxRotation: 0,
+                    callback: (_val: number | string, index: number) => tickLabels[index] ?? '',
+                },
+                afterBuildTicks: (axis: { ticks: { value: number }[] }) => {
+                    axis.ticks = tickXs.map((value) => ({ value }));
+                },
             },
             y: {
                 reverse: true,
-                grid: { color: 'rgba(122, 111, 92, 0.12)' },
+                grid: { color: GRID_LINE },
                 ticks: {
-                    color: '#3d362a',
+                    color: CHART_TOKENS.ink2,
                     font: { size: 12 },
                     callback: (val: number | string) => {
                         const v = typeof val === 'number' ? val : Number(val);
@@ -126,20 +186,21 @@ export default function ProgressionChart({
                 },
             },
         },
-    }), []);
+        };
+    }, [weeks, xOffsets]);
 
     if (weeks.length === 0) {
         return (
-            <div className={cn('rounded-2xl border-2 border-dashed border-cream-deep bg-cream/40 px-6 py-10 text-center font-display text-base italic text-ink-3', className)}>
+            <EmptyState className={cn('py-10', className)}>
                 Belum cukup lari di jarak ini buat narik garis progresi.
-            </div>
+            </EmptyState>
         );
     }
 
     return (
         <div role="img" aria-label={`${chartLabel}. ${summarySentence}`} className={cn('h-[260px] sm:h-[300px]', className)}>
             <span className="sr-only">{summarySentence}</span>
-            <Suspense fallback={<div className="h-full w-full animate-pulse rounded-xl bg-cream-deep/40" />}>
+            <Suspense fallback={<Skeleton className="h-full w-full rounded-xl" />}>
                 <Line data={data} options={options} />
             </Suspense>
         </div>

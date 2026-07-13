@@ -41,14 +41,15 @@ export const MOOD_SOFT_FILL: Record<Mood, string> = {
 // Canonical mood ordering for legends + filter rows (best-day → rest-day).
 export const MOOD_ORDER: ReadonlyArray<Mood> = ['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'];
 
-// One-word English cause hint per mood; pairs with MOOD_LABEL in filter/legend rows.
+// Short cause hint per mood; pairs with MOOD_LABEL in filter/legend rows.
+// Running loanwords (PR, HR) stay English; everything else is casual Indonesian.
 export const MOOD_HINT: Record<Mood, string> = {
-    nyala: 'PR / win',
-    enteng: 'easy',
+    nyala: 'PR / menang',
+    enteng: 'santai',
     oleng: 'HR drift',
-    lemes: 'high strain',
-    mumet: 'overreaching',
-    adem: 'rest',
+    lemes: 'ngoyo',
+    mumet: 'kelewatan',
+    adem: 'istirahat',
 };
 
 export function moodToken(mood: Mood): Mood {

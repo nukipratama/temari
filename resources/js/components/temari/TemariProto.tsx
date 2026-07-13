@@ -1,4 +1,4 @@
-import { memo, type CSSProperties } from 'react';
+import { memo, useId, type CSSProperties } from 'react';
 
 import { cn } from '@/lib/cn';
 
@@ -364,18 +364,22 @@ function TemariProto({
 // ── Aura ─────────────────────────────────────────────────────────────
 
 function AuraLayer({ colors }: Readonly<{ colors: { inner: string; mid: string; outer: string } }>) {
+    // The gradient id must be unique per instance: it was document-global, so with
+    // several TemariProto auras on one page (e.g. the accessory grid) every circle
+    // resolved to the first-mounted aura's colors, misrepresenting the rest.
+    const gradId = `temari-aura-grad-${useId()}`;
     return (
         <g
             style={{ animation: 'temari-aura-pulse 2.4s ease-in-out infinite', transformOrigin: '60px 60px' }}
         >
             <defs>
-                <radialGradient id="temari-aura-grad">
+                <radialGradient id={gradId}>
                     <stop offset="0%" stopColor={colors.inner} stopOpacity="0.7" />
                     <stop offset="60%" stopColor={colors.mid} stopOpacity="0.2" />
                     <stop offset="100%" stopColor={colors.outer} stopOpacity="0" />
                 </radialGradient>
             </defs>
-            <circle cx="60" cy="60" r="68" fill="url(#temari-aura-grad)" opacity="0.7" />
+            <circle cx="60" cy="60" r="68" fill={`url(#${gradId})`} opacity="0.7" />
         </g>
     );
 }

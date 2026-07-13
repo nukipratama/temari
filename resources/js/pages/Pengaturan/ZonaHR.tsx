@@ -1,6 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import AppShell from '@/layouts/AppShell';
 import { cn } from '@/lib/cn';
 import { usePendingPost } from '@/hooks/usePendingPost';
@@ -111,6 +111,8 @@ export default function ZonaHR({
 
     const pageProps = usePage<{ errors?: Record<string, string> }>().props;
     const errors = pageProps.errors ?? {};
+    const hasZoneError = Object.keys(errors).some((k) => k.startsWith('zones'));
+    const zonesErrorId = useId();
     const [processing, setProcessing] = useState(false);
 
     const applyDerived = () => {
@@ -248,6 +250,8 @@ export default function ZonaHR({
                                     label={`${key} batas bawah`}
                                     testId={`zone-${key}-lo`}
                                     value={zones[key].lo}
+                                    invalid={hasZoneError}
+                                    describedBy={hasZoneError ? zonesErrorId : undefined}
                                     onChange={(v) => editBoundary(key, 'lo', v)}
                                 />
                                 {key === 'Z5' ? (
@@ -264,14 +268,16 @@ export default function ZonaHR({
                                         label={`${key} batas atas`}
                                         testId={`zone-${key}-hi`}
                                         value={zones[key].hi}
+                                        invalid={hasZoneError}
+                                        describedBy={hasZoneError ? zonesErrorId : undefined}
                                         onChange={(v) => editBoundary(key, 'hi', v)}
                                     />
                                 )}
                             </div>
                         ))}
                     </div>
-                    {Object.keys(errors).some((k) => k.startsWith('zones')) && (
-                        <p className="mt-3 font-sans text-xs text-ember-deep">
+                    {hasZoneError && (
+                        <p id={zonesErrorId} role="alert" className="mt-3 font-sans text-xs text-ember-deep">
                             Ada zona yang belum nyambung. Cek lagi batas atas dan bawahnya.
                         </p>
                     )}
@@ -301,6 +307,7 @@ interface NumberFieldProps {
 }
 
 function NumberField({ label, suffix, value, error, onChange }: Readonly<NumberFieldProps>) {
+    const errorId = useId();
     return (
         <label className="block">
             <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
@@ -311,13 +318,19 @@ function NumberField({ label, suffix, value, error, onChange }: Readonly<NumberF
                     type="number"
                     inputMode="numeric"
                     aria-label={label}
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? errorId : undefined}
                     value={Number.isNaN(value) ? '' : value}
                     onChange={(e) => onChange(Number.parseInt(e.target.value, 10))}
                     className="w-full bg-transparent font-mono text-base font-semibold tabular-nums text-ink outline-none"
                 />
                 {suffix && <span className="font-mono text-[11px] text-ink-3">{suffix}</span>}
             </span>
-            {error && <span className="mt-1 block font-sans text-xs text-ember-deep">{error}</span>}
+            {error && (
+                <span id={errorId} role="alert" className="mt-1 block font-sans text-xs text-ember-deep">
+                    {error}
+                </span>
+            )}
         </label>
     );
 }
@@ -326,19 +339,23 @@ interface BoundaryInputProps {
     label: string;
     testId: string;
     value: number;
+    invalid?: boolean;
+    describedBy?: string;
     onChange: (value: number) => void;
 }
 
-function BoundaryInput({ label, testId, value, onChange }: Readonly<BoundaryInputProps>) {
+function BoundaryInput({ label, testId, value, invalid, describedBy, onChange }: Readonly<BoundaryInputProps>) {
     return (
         <input
             type="number"
             inputMode="numeric"
             aria-label={label}
+            aria-invalid={invalid ? true : undefined}
+            aria-describedby={describedBy}
             data-testid={testId}
             value={Number.isNaN(value) ? '' : value}
             onChange={(e) => onChange(Number.parseInt(e.target.value, 10))}
-            className="w-20 rounded-lg border border-cream-deep bg-cream px-3 py-2 text-center font-mono text-sm font-semibold tabular-nums text-ink outline-none focus:border-horizon"
+            className="focus-ring w-20 rounded-lg border border-cream-deep bg-cream px-3 py-2 text-center font-mono text-sm font-semibold tabular-nums text-ink focus:border-horizon"
         />
     );
 }

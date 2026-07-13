@@ -331,6 +331,7 @@ const CardCell = memo(function CardCell({
                     size="md"
                     hideStats
                     hideName
+                    compact
                     className="w-full"
                 />
             </KartuMount>

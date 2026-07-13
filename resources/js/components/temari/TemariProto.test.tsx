@@ -41,7 +41,8 @@ describe('TemariProto', () => {
 
     it('renders an aura layer when equipped.aura is set', () => {
         const { container } = render(<TemariProto equipped={{ aura: 'pemanasan' }} />);
-        expect(container.querySelector('#temari-aura-grad')).toBeInTheDocument();
+        // Gradient id is now uniquified per instance (useId suffix), so match by prefix.
+        expect(container.querySelector('radialGradient[id^="temari-aura-grad"]')).toBeInTheDocument();
     });
 
     it('skips the medal when equipped.medal === "none"', () => {
