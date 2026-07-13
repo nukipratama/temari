@@ -152,7 +152,6 @@ Route::middleware(['auth'])->group(function (): void {
 
 // Gated by an authenticated maintainer session (`is_admin` per Strava account),
 // which authorizes both the page and its mutating retry POST at the app layer.
-// Edge basicauth (docker/Caddyfile) stays as defense-in-depth in prod.
 Route::middleware(['auth', 'admin'])->group(function (): void {
     Route::get('/ai-usage', [TokenUsageController::class, 'show'])->name('ai-usage');
     Route::post('/ai-usage/recover', [TokenUsageController::class, 'recover'])->name('ai-usage.recover');

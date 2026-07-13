@@ -26,8 +26,8 @@
 	encode zstd gzip
 
 	# `handle` blocks (not free-standing directives) — php_server's worker
-	# chain bypasses Caddy's middleware ordering otherwise, which silently
-	# skipped basicauth on /horizon and /pulse when it was free-standing.
+	# chain bypasses Caddy's middleware ordering otherwise, so cache headers on
+	# free-standing matchers were silently dropped.
 	@vite path /build/*
 	handle @vite {
 		header Cache-Control "public, max-age=31536000, immutable"
@@ -40,20 +40,8 @@
 		file_server
 	}
 
-	# Edge basic auth for ops dashboards (defense-in-depth behind Cloudflare
-	# Access). Lives outside Laravel so bots/scrapers never even boot the app.
-	# User + bcrypt hash come from /opt/teman-lari/.env on the host
-	# (DEVTOOLS_BASIC_AUTH_USER / DEVTOOLS_BASIC_AUTH_PASS_HASH).
-	# Generate the hash with `caddy hash-password`.
-	@devtools path /horizon* /pulse* /ai-usage* /livewire*
-	handle @devtools {
-		basicauth {
-			{$DEVTOOLS_BASIC_AUTH_USER} {$DEVTOOLS_BASIC_AUTH_PASS_HASH}
-		}
-		header -Server
-		php_server
-	}
-
+	# Ops dashboards (/horizon, /pulse, /ai-usage) authorize inside Laravel via
+	# `is_admin`; Cloudflare Access fronts the edge. No basic-auth wall here.
 	handle {
 		header -Server
 		php_server

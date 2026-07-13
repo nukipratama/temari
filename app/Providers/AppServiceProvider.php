@@ -18,10 +18,13 @@ use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route as RouteFacade;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 use Override;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 use SocialiteProviders\Strava\StravaExtendSocialite;
@@ -64,12 +67,14 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ScheduledTaskFinished::class, [RecordScheduledTaskRun::class, 'finished']);
         Event::listen(ScheduledTaskFailed::class, [RecordScheduledTaskRun::class, 'failed']);
 
-        // The ops dashboards require a logged-in maintainer (`is_admin` per Strava
-        // account); edge basicauth (docker/Caddyfile) stays as defense-in-depth.
-        // The closures accept a nullable user so a guest resolves to false rather
-        // than erroring.
+        // Nullable user so a guest resolves to false rather than erroring.
         Gate::define('viewPulse', fn (?User $user = null): bool => $user?->is_admin === true);
         Gate::define('viewAiUsage', fn (?User $user = null): bool => $user?->is_admin === true);
+
+        // Livewire's update endpoint (Pulse ops cards) is admin-only; `web` + the
+        // header guard are appended by setUpdateRoute.
+        Livewire::setUpdateRoute(fn ($handle, string $updatePath): Route => RouteFacade::post($updatePath, $handle)
+            ->middleware(['auth', 'admin']));
 
         RateLimiter::for('analysis-trigger', function (Request $request): Limit {
             $perMinute = max(1, (int) config('ai.rate_limit_per_minute', 8));

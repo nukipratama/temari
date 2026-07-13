@@ -35,7 +35,7 @@ The runtime stage serves on **`:7001`** plain HTTP — TLS terminates at Cloudfl
 
 ### Caddy front (in-container)
 
-[docker/Caddyfile](docker/Caddyfile) handles static caching (`/build/*` immutable, favicons 7d) and an **edge basic-auth** wall on `/horizon*`, `/pulse*`, `/ai-usage*` (the `@devtools` `handle` block, credentials from `DEVTOOLS_BASIC_AUTH_*` in the host `.env`). Basicauth lives in a `handle` block on purpose: as a free-standing directive the worker chain bypassed Caddy ordering and silently skipped auth. `trusted_proxies static private_ranges` is set, but the app trusts proxies via `bootstrap/app.php` `trustProxies(at: '*')` — see [[trust-all-proxies-cloudflare]].
+[docker/Caddyfile](docker/Caddyfile) handles static caching (`/build/*` immutable, favicons 7d). The ops dashboards (`/horizon`, `/pulse`, `/ai-usage`) and the Livewire update endpoint they POST through are authorized inside Laravel by the `is_admin` maintainer flag — there is no edge basic-auth wall (removed once `is_admin` became the single authz source); Cloudflare Access fronts the edge. `trusted_proxies static private_ranges` is set, but the app trusts proxies via `bootstrap/app.php` `trustProxies(at: '*')` — see [[trust-all-proxies-cloudflare]].
 
 ## The prod stack
 
