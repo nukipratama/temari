@@ -34,7 +34,10 @@ class CorrectForecastWeatherCommand extends Command
             ->whereNotNull('start_lat')
             ->whereNotNull('start_lng')
             ->where('start_date_local', '<', $cutoff)
-            ->orderBy('start_date_local')
+            // Newest-eligible first: a permanently-uncorrectable row (archive never
+            // returns a value) would otherwise sit at the head of an ASC ordering
+            // forever and starve every fresher row behind it, run after run.
+            ->orderByDesc('start_date_local')
             ->limit($limit);
 
         $corrected = 0;

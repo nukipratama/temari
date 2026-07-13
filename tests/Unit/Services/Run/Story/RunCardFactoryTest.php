@@ -367,6 +367,50 @@ it('is idempotent: rebuilding overwrites the same row', function (): void {
     expect(RunCard::query()->where('activity_id', $activity->id)->count())->toBe(1);
 });
 
+it('does not downgrade a PR-minted card when a later run beats that PR on resync', function (): void {
+    $user = User::factory()->create();
+    $prev = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($prev)->create([
+        'distance' => 8_000,
+        'start_date_local' => Carbon::parse('2026-04-20 10:00:00'),
+    ]);
+
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 12_500,
+        'moving_time' => 4_500,
+        'start_date_local' => Carbon::parse('2026-05-10 10:00:00'),
+        'elapsed_time' => 4_800,
+        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 60, 'Z3' => 40]],
+        'weather_temp_c' => 25,
+        'weather_rain_detected' => false,
+        'total_elevation_gain' => 0,
+        'average_heartrate' => 160,
+        'max_heartrate' => 190,
+    ]);
+    $pr = PersonalRecord::factory()->for($user)->create([
+        'category' => '10km',
+        'value_sec' => 3_300,
+        'activity_id' => $activity->id,
+    ]);
+
+    $card = app(RunCardFactory::class)->build($activity, $detail);
+    expect($card->rarity)->toBe(Rarity::Epic)
+        ->and($card->fresh()->pr_set)->toBeTrue();
+
+    // A later, faster run steals the 10km PR: PersonalRecords::updateIfFaster
+    // reassigns the record's activity_id, so this card no longer holds a live PR.
+    $faster = Activity::factory()->for($user)->analyzed()->create();
+    $pr->update(['activity_id' => $faster->id, 'value_sec' => 3_000]);
+
+    // A resync rebuilds the earlier card. The +3 PR contribution stays sticky, so
+    // the card keeps its earned tier instead of silently dropping to Langka.
+    $rebuilt = app(RunCardFactory::class)->build($activity->fresh(), $detail->fresh());
+
+    expect($rebuilt->rarity)->toBe(Rarity::Epic)
+        ->and($rebuilt->pr_set)->toBeTrue();
+});
+
 it('queues a card reveal on the user when a fresh card is built', function (): void {
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
@@ -822,7 +866,36 @@ it('awards hari_spesial badge on Indonesian Independence Day', function (): void
     expect($card->badges)->toContain('hari_spesial');
 });
 
-it('awards anak_dingin badge for a run before 6am', function (): void {
+it('awards anak_dingin on a cold run without also awarding anak_pagi', function (): void {
+    // A cold midday run: anak_dingin fires on temperature, anak_pagi does not
+    // (hour is not before 06:00). The two badges now diverge.
+    $user = User::factory()->create();
+    $prev = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($prev)->create([
+        'distance' => 3_000,
+        'start_date_local' => Carbon::parse('2026-04-20 10:00:00'),
+    ]);
+
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_000,
+        'start_date_local' => Carbon::parse('2026-05-10 15:00:00'),
+        'weather_temp_c' => 14,
+        'weather_rain_detected' => false,
+        'total_elevation_gain' => 0,
+        'average_heartrate' => 150,
+        'max_heartrate' => 190,
+    ]);
+
+    $card = app(RunCardFactory::class)->build($activity, $detail);
+
+    expect($card->badges)->toContain('anak_dingin')
+        ->and($card->badges)->not->toContain('anak_pagi');
+});
+
+it('awards anak_pagi on a warm pre-dawn run without also awarding anak_dingin', function (): void {
+    // The inverse divergence: an early but warm run earns anak_pagi only. Before
+    // the fix both fired on the same hour<6 condition, double-awarding rarity.
     $user = User::factory()->create();
     $prev = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($prev)->create([
@@ -834,7 +907,32 @@ it('awards anak_dingin badge for a run before 6am', function (): void {
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5_000,
         'start_date_local' => Carbon::parse('2026-05-10 05:30:00'),
-        'weather_temp_c' => 25,
+        'weather_temp_c' => 27,
+        'weather_rain_detected' => false,
+        'total_elevation_gain' => 0,
+        'average_heartrate' => 150,
+        'max_heartrate' => 190,
+    ]);
+
+    $card = app(RunCardFactory::class)->build($activity, $detail);
+
+    expect($card->badges)->toContain('anak_pagi')
+        ->and($card->badges)->not->toContain('anak_dingin');
+});
+
+it('falls back to a pre-dawn window for anak_dingin when no weather is stored', function (): void {
+    $user = User::factory()->create();
+    $prev = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($prev)->create([
+        'distance' => 3_000,
+        'start_date_local' => Carbon::parse('2026-04-20 10:00:00'),
+    ]);
+
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_000,
+        'start_date_local' => Carbon::parse('2026-05-10 04:30:00'),
+        'weather_temp_c' => null,
         'weather_rain_detected' => false,
         'total_elevation_gain' => 0,
         'average_heartrate' => 150,

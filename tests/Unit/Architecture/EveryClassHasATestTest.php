@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\GoalController;
 use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\Telegram\Concerns\PushesAnalysisToTelegram;
+use App\Jobs\Telegram\Concerns\RevokesConnectionOnPermanentFailure;
 use App\Events\ActivityIngested;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\AI\TokenUsage;
@@ -75,6 +76,7 @@ it('has a test class for every concrete app class', function (): void {
         ReadsPreviousActivityNarrative::class, // trait, exercised via PostRunSpeechNarratorTest + RunInsightNarratorTest
         ReadsPreviousDailyNarrative::class, // trait, exercised via DailyGreeting + BriefingMascotVoice cases in NarratorsCoverageTest
         PushesAnalysisToTelegram::class, // trait, exercised via the three Send*NotificationControllerTest suites
+        RevokesConnectionOnPermanentFailure::class, // trait, exercised via the three Telegram Send*JobTest suites
     ];
 
     $testedBasenames = collect(File::allFiles(base_path('tests')))

@@ -35,6 +35,7 @@ class RunCardFactory extends Factory
                 'Tendangan Awal',
                 'Tanpa Letih',
             ]),
+            'pr_set' => false,
             'share_image_path' => null,
         ];
     }

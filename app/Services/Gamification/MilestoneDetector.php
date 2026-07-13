@@ -115,9 +115,10 @@ class MilestoneDetector
 
         $paceFloat = PaceCalculator::secPerKm((float) $distanceMeters, $detail->moving_time);
         if ($paceFloat !== null) {
-            // Whole-second pace: a 7:00.4/km run is compared as 7:01.
-            $paceSec = (int) round($paceFloat);
-            $paceMilestone = $this->firstEverPace($activity, $detail, $paceSec);
+            // Compare the raw seconds-per-km against the threshold, matching the
+            // prior-run whereRaw check: a 7:00.4/km run (420.4s) must not claim a
+            // sub-7:00 milestone through rounding down to 420.
+            $paceMilestone = $this->firstEverPace($activity, $detail, $paceFloat);
             if ($paceMilestone !== null) {
                 $milestones[] = $paceMilestone;
             }
@@ -173,14 +174,14 @@ class MilestoneDetector
     /**
      * @return array{kind: string, label: string, body: string, priority: int}|null
      */
-    private function firstEverPace(Activity $activity, ActivityDetail $detail, int $paceSec): ?array
+    private function firstEverPace(Activity $activity, ActivityDetail $detail, float $paceSecPerKm): ?array
     {
         // Keep the fastest (smallest) threshold the pace beats, not the first. The
         // list is slowest-first, so iterating without breaking lands on the tightest
         // tier crossed, mirroring firstEverDistance()'s largest-distance logic.
         $thresholdMatched = null;
         foreach (self::PACE_THRESHOLDS_SEC as $threshold) {
-            if ($paceSec <= $threshold) {
+            if ($paceSecPerKm <= $threshold) {
                 $thresholdMatched = $threshold;
             }
         }

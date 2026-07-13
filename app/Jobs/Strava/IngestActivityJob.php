@@ -10,12 +10,13 @@ use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use DateTimeInterface;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Facades\Log;
 
-class IngestActivityJob implements ShouldQueue
+class IngestActivityJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -51,8 +52,19 @@ class IngestActivityJob implements ShouldQueue
      */
     private const int RETRY_WINDOW_HOURS = 6;
 
+    /**
+     * Hold the uniqueness lock for the whole retry window so the hourly ingest
+     * drain never re-dispatches a still-throttled stub as a duplicate job.
+     */
+    public int $uniqueFor = self::RETRY_WINDOW_HOURS * 3600;
+
     public function __construct(public readonly int $activityId)
     {
+    }
+
+    public function uniqueId(): string
+    {
+        return (string) $this->activityId;
     }
 
     /**

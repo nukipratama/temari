@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\ActivityDetail;
 use App\Services\Weather\OpenMeteoClient;
 use App\Services\Weather\WeatherSnapshot;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -116,6 +117,36 @@ it('does not touch RunCard badges when correcting weather', function (): void {
 
     // The badge/vibe-derived state is untouched even though rainDetected flips.
     expect($detail->fresh()->vibe_state)->toBe('nyala');
+});
+
+it('does not let a permanently-uncorrectable old row starve fresher rows', function (): void {
+    // The archive still misses for the very old row (uncorrectable) but has a value
+    // for the newer one. Under the old ASC ordering + a tight limit, the stuck old
+    // row would sit at the head every run and the newer row would never correct.
+    $this->mock(OpenMeteoClient::class)
+        ->shouldReceive('fetchArchive')
+        ->andReturnUsing(fn ($lat, $lng, CarbonImmutable $startedAt): ?WeatherSnapshot => $startedAt->isBefore(now()->subDays(30))
+            ? null
+            : new WeatherSnapshot(tempC: 24, humidityPct: 90, rainDetected: false, rainIsForecast: false));
+
+    $stuckOld = ActivityDetail::factory()->create([
+        'start_lat' => -6.24,
+        'start_lng' => 106.81,
+        'start_date_local' => now()->subDays(60),
+        'weather_rain_is_forecast' => true,
+    ]);
+    $fresher = ActivityDetail::factory()->create([
+        'start_lat' => -6.24,
+        'start_lng' => 106.81,
+        'start_date_local' => now()->subDays(10),
+        'weather_rain_is_forecast' => true,
+    ]);
+
+    // Limit of 1: only the head row is handled per run, so ordering decides who wins.
+    $this->artisan('weather:correct-forecast', ['--limit' => 1])->assertSuccessful();
+
+    expect($fresher->fresh()->weather_rain_is_forecast)->toBeFalse()
+        ->and($stuckOld->fresh()->weather_rain_is_forecast)->toBeTrue();
 });
 
 it('honors the --limit option', function (): void {

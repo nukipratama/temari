@@ -21,6 +21,7 @@ use Override;
  * @property Rarity $rarity
  * @property array<int, string> $badges
  * @property string $special_move
+ * @property bool $pr_set
  * @property string|null $share_image_path
  * @property-read Activity $activity
  */
@@ -29,6 +30,7 @@ use Override;
     'rarity',
     'badges',
     'special_move',
+    'pr_set',
     'share_image_path',
 ])]
 class RunCard extends Model
@@ -93,6 +95,7 @@ class RunCard extends Model
         return [
             'badges' => 'array',
             'rarity' => Rarity::class,
+            'pr_set' => 'boolean',
         ];
     }
 }

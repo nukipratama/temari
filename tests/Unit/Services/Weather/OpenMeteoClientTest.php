@@ -8,6 +8,7 @@ use App\Services\Weather\WeatherSnapshot;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 beforeEach(function (): void {
     Cache::flush();
@@ -209,6 +210,22 @@ it('returns null on HTTP failure (pipeline keeps moving)', function (): void {
     ]);
 
     expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+});
+
+it('logs a warning with status + coords + hour when the response fails', function (): void {
+    Log::spy();
+    $startedAt = CarbonImmutable::parse('2026-05-10 06:00:00');
+    Http::fake(['api.open-meteo.com/*' => Http::response(['error' => 'rate limited'], 429)]);
+
+    expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->withArgs(fn (string $message, array $context): bool => $message === 'open-meteo request failed'
+            && $context['status'] === 429
+            && $context['lat'] === -6.2
+            && $context['lng'] === 106.8
+            && $context['hour'] === '2026-05-10T06:00');
 });
 
 it('returns null when the response shape is missing hourly', function (): void {

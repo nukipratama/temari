@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs\Telegram;
 
+use App\Jobs\Telegram\Concerns\RevokesConnectionOnPermanentFailure;
 use App\Models\User;
+use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Services\Telegram\TelegramClient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -18,6 +20,7 @@ use Illuminate\Foundation\Queue\Queueable;
 class SendStreakReminderJob implements ShouldQueue
 {
     use Queueable;
+    use RevokesConnectionOnPermanentFailure;
 
     public int $tries = 3;
 
@@ -42,7 +45,14 @@ class SendStreakReminderJob implements ShouldQueue
             return;
         }
 
-        $client->sendMessage($connection->chat_id, $this->message());
+        try {
+            $client->sendMessage($connection->chat_id, $this->message());
+        } catch (TelegramApiException $e) {
+            if (! $this->isPermanentTelegramFailure($e)) {
+                throw $e;
+            }
+            $connection->markRevoked();
+        }
     }
 
     private function message(): string

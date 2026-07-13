@@ -6,6 +6,7 @@ use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Facades\Log;
@@ -111,6 +112,17 @@ it('lets the throttle middleware re-raise a genuine non rate-limit failure', fun
         ->toThrow(RuntimeException::class, 'genuine failure');
 
     expect($job->maxExceptions)->toBe(3);
+});
+
+it('is unique per activity id so a throttled stub is not re-dispatched as a duplicate', function (): void {
+    // ShouldBeUnique keyed on the activity id: while a throttled ingest job is
+    // still in flight (analyzed_at stays null), the hourly drain re-dispatch is
+    // deduped instead of piling on the rate-limit budget.
+    $job = new IngestActivityJob(4242);
+
+    expect($job)->toBeInstanceOf(ShouldBeUnique::class)
+        ->and($job->uniqueId())->toBe('4242')
+        ->and($job->uniqueFor)->toBe(6 * 3600);
 });
 
 it('logs the stuck activity when the job is finally marked failed', function (): void {

@@ -12,6 +12,12 @@ class ActivityFetcher
 {
     private const int PER_PAGE = 200;
 
+    /**
+     * Trailing window (days) within which the walk never stops at a known id, so
+     * a backdated upload nested among already-synced runs is still discovered.
+     */
+    private const int DISCOVERY_WINDOW_DAYS = 14;
+
     public function __construct(private readonly StravaClient $client)
     {
     }
@@ -20,9 +26,14 @@ class ActivityFetcher
      * Fetch external ids of activities not yet stored locally.
      *
      * Contract: relies on the Strava `/athlete/activities` invariant that
-     * results are ordered newest-first. The walk stops at the first already-known
-     * activity (everything older is assumed synced) and returns the new ids
-     * sorted oldest-first so the caller can ingest in chronological order.
+     * results are ordered newest-first, and returns the new ids sorted
+     * oldest-first so the caller can ingest in chronological order.
+     *
+     * The walk keeps scanning past a known id while the activity started within
+     * the trailing DISCOVERY_WINDOW_DAYS window — a backdated upload sits at its
+     * chronological position, nested among already-synced runs, so stopping at
+     * the first known id would miss it. Below the window a known id means the
+     * history is fully synced and the walk stops.
      *
      * When `$since` is given, the walk also stops at the first activity that
      * started on or before it — bounding a first-connect backfill to a recent
@@ -39,6 +50,7 @@ class ActivityFetcher
             ->map(fn (int|string $id): int => (int) $id)
             ->all();
         $existingSet = array_flip($existing);
+        $windowStart = CarbonImmutable::now()->subDays(self::DISCOVERY_WINDOW_DAYS);
 
         $newIds = [];
         $page = 1;
@@ -55,27 +67,7 @@ class ActivityFetcher
                 break;
             }
 
-            $stop = false;
-            foreach ($items as $item) {
-                $id = (int) ($item['id'] ?? 0);
-                if ($id <= 0) {
-                    continue;
-                }
-                if (isset($existingSet[$id])) {
-                    $stop = true;
-
-                    break;
-                }
-                if ($since !== null && $this->startedOnOrBefore($item, $since)) {
-                    $stop = true;
-
-                    break;
-                }
-                if (! $this->isRun($item)) {
-                    continue;
-                }
-                $newIds[] = $id;
-            }
+            $stop = $this->collectNewIds($items, $existingSet, $windowStart, $since, $newIds);
 
             if ($stop || count($items) < self::PER_PAGE) {
                 break;
@@ -90,6 +82,43 @@ class ActivityFetcher
     }
 
     /**
+     * Walk one page of activities, appending new run ids to $newIds. Returns true
+     * when the caller should stop paginating (known id below the window, or the
+     * $since bound reached).
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @param  array<int, int>  $existingSet
+     * @param  list<int>  $newIds
+     */
+    private function collectNewIds(array $items, array $existingSet, CarbonImmutable $windowStart, ?CarbonImmutable $since, array &$newIds): bool
+    {
+        foreach ($items as $item) {
+            $id = (int) ($item['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            if (isset($existingSet[$id])) {
+                // Don't stop inside the trailing window: a backdated upload can
+                // still sit below this already-synced run.
+                if ($this->startedAfter($item, $windowStart)) {
+                    continue;
+                }
+
+                return true;
+            }
+            if ($since !== null && $this->startedOnOrBefore($item, $since)) {
+                return true;
+            }
+            if (! $this->isRun($item)) {
+                continue;
+            }
+            $newIds[] = $id;
+        }
+
+        return false;
+    }
+
+    /**
      * @param  array<string, mixed>  $item
      */
     private function startedOnOrBefore(array $item, CarbonImmutable $since): bool
@@ -100,6 +129,19 @@ class ActivityFetcher
         }
 
         return CarbonImmutable::parse($start)->lessThanOrEqualTo($since);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function startedAfter(array $item, CarbonImmutable $moment): bool
+    {
+        $start = $item['start_date'] ?? null;
+        if (! is_string($start) || $start === '') {
+            return false;
+        }
+
+        return CarbonImmutable::parse($start)->greaterThan($moment);
     }
 
     /**
