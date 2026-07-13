@@ -32,6 +32,9 @@ class RunCardFactory
 
     private const int WEEKLY_CONSISTENCY_RUNS = 3;
 
+    /** At or below this temperature (Celsius) a run counts as cold. */
+    private const int COLD_TEMP_C = 20;
+
     /** Distance brackets (metres) for first-bracket tracking. */
     private const array DISTANCE_BRACKETS = [
         5_000,
@@ -67,7 +70,13 @@ class RunCardFactory
     public function build(Activity $activity, ActivityDetail $detail): RunCard
     {
         $summary = $detail->streamSummary();
-        $prSet = $this->hasPrFromThisActivity($activity);
+
+        $existing = RunCard::query()->where('activity_id', $activity->id)->first();
+
+        // The PR contribution is sticky: once a card is minted off a PR, a later
+        // run beating that PR (which reassigns personal_records.activity_id) must
+        // not retroactively downgrade this already-earned card on a rebuild.
+        $prSet = ($existing !== null && $existing->pr_set) || $this->hasPrFromThisActivity($activity);
 
         // Badges compute first so rarity can derive from badge count.
         $badges = $this->badges($activity, $detail, $summary);
@@ -81,7 +90,6 @@ class RunCardFactory
             'seed' => $activity->id,
         ]);
 
-        $existing = RunCard::query()->where('activity_id', $activity->id)->first();
         $previousRarityRank = $existing?->rarity->rank() ?? -1;
 
         $card = RunCard::query()->updateOrCreate(
@@ -90,6 +98,7 @@ class RunCardFactory
                 'rarity' => $rarity,
                 'badges' => $badges,
                 'special_move' => $move,
+                'pr_set' => $prSet,
             ],
         );
 
@@ -350,7 +359,7 @@ class RunCardFactory
         if (($zonePct['Z2'] ?? 0) > 80.0) {
             $badges[] = Badge::Z2Master->value;
         }
-        if ($hour !== null && $hour < 6) {
+        if ($this->isColdRun($detail, $hour)) {
             $badges[] = Badge::AnakDingin->value;
         }
         if ($this->isHardEffort($activity, $detail)) {
@@ -361,6 +370,21 @@ class RunCardFactory
         }
 
         return $badges;
+    }
+
+    /**
+     * Cold run for the ❄️ Anak Dingin badge. Prefer a real weather reading; when
+     * none is stored, fall back to a stricter pre-dawn window than AnakPagi's so
+     * the two badges stay distinct instead of double-awarding every early run.
+     */
+    private function isColdRun(ActivityDetail $detail, ?int $hour): bool
+    {
+        $temp = $detail->weather_temp_c;
+        if ($temp !== null) {
+            return $temp <= self::COLD_TEMP_C;
+        }
+
+        return $hour !== null && $hour < 5;
     }
 
     /**

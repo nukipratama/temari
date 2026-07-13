@@ -205,6 +205,19 @@ it('releases the delivery claim when the send fails so a retry can resend', func
     $this->assertDatabaseMissing('telegram_deliveries', ['analysis_id' => $analysisId]);
 });
 
+it('revokes the connection and does not retry when the bot is blocked (403)', function (): void {
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Forbidden: bot was blocked by the user'], 403)]);
+    $user = User::factory()->create();
+    $connection = TelegramConnection::factory()->for($user)->create();
+    $analysisId = postRunAnalysisFor($user);
+
+    // A blocked bot is a non-retryable 4xx: the job swallows it (no rethrow) so
+    // Horizon won't churn retries, and marks the connection dead like Strava does.
+    runSend($analysisId);
+
+    expect($connection->fresh()->isRevoked())->toBeTrue();
+});
+
 it('skips the automatic push for a backfilled activity older than the max age', function (): void {
     fakeTelegramOk();
     config(['services.telegram.notify_max_age_days' => 3]);

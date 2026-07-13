@@ -9,9 +9,9 @@ use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\UnlockEngine;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Enumerable;
-use Illuminate\Support\LazyCollection;
 
 use function count;
 use function is_array;
@@ -93,11 +93,13 @@ class WeeklyAggregator
     }
 
     /**
-     * @return LazyCollection<int, ActivityDetail>
+     * @return Collection<int, ActivityDetail>
      */
-    private function loadHistoryThrough(User $user, Carbon $weekEnding, Carbon $from): LazyCollection
+    private function loadHistoryThrough(User $user, Carbon $weekEnding, Carbon $from): Collection
     {
-        /** @var LazyCollection<int, ActivityDetail> */
+        // Materialize once: upsertWeek enumerates this set several times per week
+        // (filter + sums + decoupling), and a lazy query would re-run the whole
+        // 365-day scan on each pass. A user-year of rows fits comfortably in memory.
         return ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $user->id)
@@ -106,20 +108,19 @@ class WeeklyAggregator
             ->where('activity_details.start_date_local', '<=', $weekEnding->copy()->endOfDay())
             ->orderBy('activity_details.start_date_local')
             ->select('activity_details.*')
-            ->lazy();
+            ->get();
     }
 
     public function rebuildFor(User $user): int
     {
         TrainingLoad::clearSummaryCache($user);
-        /** @var LazyCollection<int, ActivityDetail> $details */
         $details = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->orderBy('activity_details.start_date_local')
             ->select('activity_details.*')
-            ->lazy();
+            ->get();
 
         if ($details->isEmpty()) {
             return 0;
@@ -127,10 +128,8 @@ class WeeklyAggregator
 
         $dailyTrimp = $this->dailyTrimpMap($details);
 
+        // Non-empty (guarded above), so first() is present.
         $firstDetail = $details->first();
-        if ($firstDetail === null) {
-            return 0;
-        }
 
         /** @var Carbon $earliest */
         $earliest = $firstDetail->start_date_local;

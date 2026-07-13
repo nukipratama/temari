@@ -189,6 +189,36 @@ it('stops at the first activity started on or before the --since bound', functio
     Http::assertSentCount(1);
 });
 
+it('discovers a backdated upload nested below already-synced runs within the trailing window', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-05-20 12:00:00'));
+
+    $connection = makeConnection();
+    // The two most recent runs are already stored; the backdated run (id 250,
+    // dated 3 days ago) was uploaded late and sits below them chronologically.
+    Activity::factory()->for($connection->user)->create(['strava_external_id' => 300]);
+    Activity::factory()->for($connection->user)->create(['strava_external_id' => 200]);
+    // An older already-synced run outside the 14-day window: the walk stops here.
+    Activity::factory()->for($connection->user)->create(['strava_external_id' => 100]);
+
+    Http::fake([
+        'strava.com/api/v3/athlete/activities*' => Http::sequence()
+            ->push([
+                ['id' => 300, 'sport_type' => 'Run', 'start_date' => '2026-05-19T06:00:00Z'],
+                ['id' => 250, 'sport_type' => 'Run', 'start_date' => '2026-05-17T06:00:00Z'],
+                ['id' => 200, 'sport_type' => 'Run', 'start_date' => '2026-05-16T06:00:00Z'],
+                ['id' => 100, 'sport_type' => 'Run', 'start_date' => '2026-04-20T06:00:00Z'],
+            ]),
+    ]);
+
+    $ids = (new ActivityFetcher(new StravaClient()))->fetchNewExternalIds($connection);
+
+    // 250 is found even though 300 (newer, known) precedes it; the walk stops at
+    // 100 which is outside the 14-day window.
+    expect($ids)->toBe([250]);
+
+    Carbon::setTestNow();
+});
+
 it('paginates beyond page 1 when a full page returns', function (): void {
     $connection = makeUnpersistedConnection();
     // 200 items == PER_PAGE → forces page 2.

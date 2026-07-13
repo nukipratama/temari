@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Jobs\Telegram;
 
 use Throwable;
+use App\Jobs\Telegram\Concerns\RevokesConnectionOnPermanentFailure;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\TelegramConnection;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\RunCardImageRenderer;
+use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Services\Telegram\NotifiableAnalysis;
 use App\Services\Telegram\TelegramClient;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -33,6 +35,7 @@ use Illuminate\Support\Facades\Log;
 class SendTelegramNotificationJob implements ShouldQueue
 {
     use Queueable;
+    use RevokesConnectionOnPermanentFailure;
 
     public int $tries = 3;
 
@@ -108,6 +111,16 @@ class SendTelegramNotificationJob implements ShouldQueue
         try {
             $this->deliver($client, $imageRenderer, $registry, $analysis, $connection);
         } catch (Throwable $e) {
+            // A blocked bot / gone chat / bad token is non-retryable: mark the
+            // connection dead (like a Strava revocation) and stop, instead of
+            // burning the retry budget and polluting failed_jobs. The stale claim
+            // is harmless: the revoked connection bails every future send anyway.
+            if ($e instanceof TelegramApiException && $this->isPermanentTelegramFailure($e)) {
+                $connection->markRevoked();
+
+                return;
+            }
+
             // A manual push has no delivery claim to dedupe a retry, so a failure
             // after the message already reached Telegram would resend on retry.
             // Treat it as one-shot: log and stop (the user can tap again).
