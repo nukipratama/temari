@@ -16,9 +16,7 @@ use Laravel\Pulse\Livewire\Card;
 /**
  * Superadmin control panel on /pulse: live ingest-backlog + circuit-breaker
  * state, plus the runtime kill-switches for AI and Strava. The toggle/reset
- * actions write to the durable app_config control plane and are gated by the
- * edge basicauth on /livewire* (docker/Caddyfile), the same gate that covers
- * the /pulse pages themselves.
+ * actions write to the durable app_config control plane.
  *
  * Not lazy: cheap count queries + control-plane reads, so deferring buys nothing.
  */

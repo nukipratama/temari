@@ -45,7 +45,7 @@ The metering rows (`ai_token_usages`) live on the separate `analytics` connectio
 
 ## Access (ops-gated)
 
-The route in [web.php](../../routes/web.php) (`ai-usage`) carries no `auth` guard *by design*. In production the edge enforces basic auth: [docker/Caddyfile](../../docker/Caddyfile) matches `path /horizon* /pulse* /ai-usage*` and applies a `basicauth` block driven by `DEVTOOLS_BASIC_AUTH_USER` / `DEVTOOLS_BASIC_AUTH_PASS_HASH`. So the dashboard sits behind the same operator allowlist as Horizon and Pulse, separate from the Strava login that gates the runner app.
+The route in [web.php](../../routes/web.php) (`ai-usage`) is gated by `['auth', 'admin']` — a logged-in maintainer carrying `is_admin` ([EnsureUserIsAdmin](../../app/Http/Middleware/EnsureUserIsAdmin.php)), the single source of authorization. The same `is_admin` gate covers Horizon (`viewHorizon`) and Pulse (`viewPulse`), so all three dashboards sit behind one operator allowlist, separate from the Strava login that gates the runner app. In production Cloudflare Access fronts the edge; there is no separate basic-auth wall.
 
 ## See also
 

@@ -100,6 +100,14 @@ it('denies the viewPulse and viewAiUsage gates for guests', function (): void {
         ->and(Gate::allows('viewAiUsage'))->toBeFalse();
 });
 
+it('gates the Livewire update route with auth and admin middleware', function (): void {
+    $route = app('router')->getRoutes()->getByName('livewire.update');
+
+    expect($route)->not->toBeNull()
+        ->and($route->middleware())->toContain('auth')
+        ->and($route->middleware())->toContain('admin');
+});
+
 it('binds AnalysisService as scoped, not a cross-request singleton', function (): void {
     // Under Octane the worker stays booted; `scoped` flushes between requests so
     // a leaked `withoutDispatching()` flag can't survive into the next request.
