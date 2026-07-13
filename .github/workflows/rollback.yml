@@ -38,10 +38,11 @@ jobs:
       - name: Re-tag :previous as :latest
         run: docker tag teman-lari/app:previous teman-lari/app:latest
 
-      - name: Roll app, horizon, scheduler onto rolled-back image
+      - name: Roll app, horizon, scheduler, pulse onto rolled-back image
         # Caches were already baked when :previous was first deployed — image
-        # is immutable, no need to re-run `artisan optimize`.
-        run: $COMPOSE up -d --no-deps app horizon scheduler
+        # is immutable, no need to re-run `artisan optimize`. Pulse is included
+        # so its daemon does not keep running the rolled-back-FROM (bad) image.
+        run: $COMPOSE up -d --no-deps app horizon scheduler pulse
 
       - name: Recycle Horizon workers
         run: $COMPOSE exec -T app php artisan horizon:terminate

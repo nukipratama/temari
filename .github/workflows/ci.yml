@@ -34,10 +34,10 @@ jobs:
           changed=$(git diff --name-only "$(git merge-base origin/main HEAD)" HEAD)
           printf 'Changed files:\n%s\n' "$changed"
           backend=false; frontend=false
-          if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
+          if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             backend=true
           fi
-          if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
+          if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             frontend=true
           fi
           echo "backend=$backend" >> "$GITHUB_OUTPUT"
@@ -149,8 +149,7 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
         run: |
-          coverage_flag=""
-          [ "${{ github.ref }}" = "refs/heads/main" ] && coverage_flag="--coverage --min=95"
+          coverage_flag="--coverage --min=95"
 
           echo "Running Pest${coverage_flag:+ with coverage (--min=95)}"
 
@@ -220,13 +219,8 @@ jobs:
       - name: Component/test 1:1 structure check
         run: npx vitest run resources/js/test/structure.test.ts
 
-      - name: Vitest (coverage on main only)
-        run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            npm run test:coverage
-          else
-            npm run test
-          fi
+      - name: Vitest (coverage)
+        run: npm run test:coverage
 
       - name: Vitest summary
         if: always()
@@ -283,7 +277,7 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [backend-tests, frontend-tests, static-analysis, secret-scan]
+    needs: [backend-tests, frontend-tests, static-analysis, secret-scan, docs-citation-guard]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -292,8 +286,9 @@ jobs:
           for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.static-analysis.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
-          [ "${{ needs.secret-scan.result }}" = "success" ] \
-            || { echo "::error::secret-scan did not pass (${{ needs.secret-scan.result }})"; exit 1; }
+          for r in "${{ needs.secret-scan.result }}" "${{ needs.docs-citation-guard.result }}"; do
+            [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
+          done
 
   deploy:
     name: Deploy
@@ -390,14 +385,24 @@ jobs:
       - name: Resume scheduler (deploy green)
         run: $COMPOSE up -d --no-deps scheduler
 
+      - name: Restart background processing if the deploy failed
+        # A failure between the quiesce step and here leaves scheduler + horizon
+        # stopped. `start` (not `up -d`) resumes the existing containers on the
+        # OLD image so background processing is never left down indefinitely.
+        if: failure()
+        run: $COMPOSE start scheduler horizon || true
+
       - name: Prune old teman-lari images
+        # Prune by TAG reference, never by image id: after a deploy the old image
+        # carries both :previous (the rollback target) and its old :<sha>. Deleting
+        # by id would drop the shared image and destroy the rollback target. Removing
+        # only the stale :<sha> tag leaves :previous/:latest intact.
         if: always()
         continue-on-error: true
         run: |
-          docker images "teman-lari/app" --format "{{.Tag}}\t{{.ID}}" \
-            | grep -vE "^(latest|previous)" \
-            | awk '{print $2}' \
-            | xargs --no-run-if-empty docker rmi --force 2>/dev/null || true
+          docker images "teman-lari/app" --format "{{.Repository}}:{{.Tag}}" \
+            | grep -vE ":(latest|previous|${{ github.sha }})$" \
+            | xargs --no-run-if-empty -n1 docker rmi 2>/dev/null || true
 
       - name: Deploy summary
         if: always()
