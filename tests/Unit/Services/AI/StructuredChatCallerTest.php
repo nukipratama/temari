@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Support\Config\AppConfig;
 use OpenAI\Resources\Responses;
+use OpenAI\Responses\Responses\CreateResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Exceptions\AI\ContentFilterException;
@@ -428,6 +429,50 @@ it('propagates ContentFilterException when the continuity-stripped retry still c
         'schema',
         ['speech'],
     ))->toThrow(ContentFilterException::class);
+});
+
+// ── output-side content filter: 200 incomplete/content_filter parity ──
+
+function outputFilteredResponse(): CreateResponse
+{
+    return fakeAzureResponse('', 'incomplete', 'content_filter');
+}
+
+it('maps an output-filtered 200 response into a terminal ContentFilterException', function (): void {
+    // No continuity keys to strip, so the mapped exception propagates.
+    expect(fn () => callerWithResponses([outputFilteredResponse()])
+        ->call('daily_greeting', 'sys', ['name' => 'Nuki'], 'schema', ['speech']))
+        ->toThrow(ContentFilterException::class, 'output filtered');
+
+    expect(TokenUsage::query()->count())->toBe(0);
+});
+
+it('strips continuity and retries when the first response is output-filtered', function (): void {
+    Log::spy();
+
+    $payload = callerWithResponses([
+        outputFilteredResponse(),
+        fakeAzureResponse(json_encode(['speech' => 'clean'], JSON_THROW_ON_ERROR)),
+    ])->call(
+        'daily_greeting',
+        'sys',
+        ['name' => 'Nuki', 'prev_narrative' => 'poison', 'prev_opener' => 'poison'],
+        'TemariDailyGreeting',
+        ['speech'],
+    );
+
+    expect($payload)->toBe(['speech' => 'clean']);
+
+    Log::shouldHaveReceived('info')->with('narrator.ai.content_filter_retry', Mockery::on(
+        fn (array $ctx): bool => $ctx['stripped_keys'] === NarratorContinuity::CONTEXT_KEYS,
+    ));
+});
+
+it('propagates ContentFilterException when the output-filtered retry is still filtered', function (): void {
+    // Both responses output-filtered: reaches the job so it can degrade to rule-based.
+    expect(fn () => callerWithResponses([outputFilteredResponse(), outputFilteredResponse()])
+        ->call('daily_greeting', 'sys', ['prev_narrative' => 'poison', 'prev_opener' => 'poison'], 'schema', ['speech']))
+        ->toThrow(ContentFilterException::class);
 });
 
 it('does not retry truncation once the bumped cap would hit the ceiling', function (): void {

@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Exceptions\AI;
 
 /**
- * Raised when Azure's content filter rejects a Responses call: an HTTP 400 whose
- * error code is `content_filter`. Extends {@see UnavailableException} so any
- * uncaught path still behaves as terminal (row Failed, no queue retry).
+ * Raised when Azure's content filter rejects a Responses call: either an HTTP 400
+ * whose error code is `content_filter` (input-side) or a 200 marked incomplete
+ * with a `content_filter` reason (output-side). Extends {@see UnavailableException}
+ * so any uncaught path still behaves as terminal (row Failed, no queue retry).
  *
  * Unlike a generic terminal failure, this one is *input*-driven and often
  * self-perpetuating: a chained narrator feeds its previous narrative back as

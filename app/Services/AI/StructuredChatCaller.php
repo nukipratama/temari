@@ -197,6 +197,14 @@ final readonly class StructuredChatCaller
         // streak is stale: reset the breaker (fast no-op when already closed).
         $this->configBreaker->recordSuccess();
 
+        // Output-side filtering returns HTTP 200 with an empty body rather than
+        // throwing a content_filter error, so it would otherwise decode as
+        // non-JSON and dead-letter. Map it to the same ContentFilterException as
+        // input-side so it flows through the strip-retry + rule-based fallback.
+        if (self::isOutputContentFiltered($response)) {
+            throw new ContentFilterException('Azure OpenAI call failed: output filtered by content management policy');
+        }
+
         return $response;
     }
 
@@ -304,6 +312,17 @@ final readonly class StructuredChatCaller
     {
         return $response->status === 'incomplete'
             && $response->incompleteDetails?->reason === 'max_output_tokens';
+    }
+
+    /**
+     * Whether Azure filtered the *output*: a 200 response marked incomplete with
+     * an explicit content_filter reason, the output-side twin of the thrown
+     * input-side content_filter 400.
+     */
+    private static function isOutputContentFiltered(CreateResponse $response): bool
+    {
+        return $response->status === 'incomplete'
+            && $response->incompleteDetails?->reason === 'content_filter';
     }
 
     /**
