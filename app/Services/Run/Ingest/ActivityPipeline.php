@@ -17,7 +17,11 @@ use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
+use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
+use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
+use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
+use App\Services\Strava\RunSportType;
 use App\Services\Strava\StravaClient;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -76,6 +80,25 @@ class ActivityPipeline
             // Don't burn a retry on a fixed backoff: let the queued job re-queue
             // with an exponential delay (see IngestActivityJob).
             throw $e;
+        } catch (StravaConnectionRevokedException|StravaTokenRefreshFailedException $e) {
+            // The token was rejected with a 401, or the refresh returned a
+            // permanent invalid_grant: the athlete deauthorized us. Mark the
+            // connection revoked so sync/ingest stop, and leave detail_fail_count
+            // untouched — a revocation is not the activity's fault and must not
+            // burn its retry budget (mirrors SyncActivitiesJob).
+            $connection->markRevoked();
+            Log::warning('ingest revoked connection after Strava auth failure', [
+                'activity_id' => $activity->id,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return;
+        } catch (StravaTokenRefreshTransientException $e) {
+            // A momentary token-endpoint blip (401 / 429 / 5xx / timeout) is not a
+            // deauthorization: rethrow so IngestActivityJob retries with backoff
+            // rather than eating the detail_fail_count budget or revoking a
+            // healthy connection.
+            throw $e;
         } catch (Throwable $e) {
             $this->handleDetailFailure($activity, $e);
 
@@ -84,6 +107,21 @@ class ActivityPipeline
 
         if (! is_array($detail)) {
             $this->handleDetailFailure($activity, new RuntimeException('Strava returned non-array detail'));
+
+            return;
+        }
+
+        // The webhook fires for every activity type; the detail payload is the
+        // authoritative sport_type. Drop non-run uploads (ride / walk / swim) here
+        // so they never mint a bogus PR / card / weekly snapshot or bill the AI
+        // narrator. The poll path filters these upstream; this is the webhook's
+        // equivalent choke point.
+        if (RunSportType::isExplicitlyNotRun($detail)) {
+            Log::info('ingest dropped a non-run activity', [
+                'activity_id' => $activity->id,
+                'sport_type' => $detail['sport_type'] ?? $detail['type'] ?? null,
+            ]);
+            $activity->delete();
 
             return;
         }

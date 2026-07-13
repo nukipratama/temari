@@ -16,6 +16,7 @@ use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Services\Gamification\MilestoneDetector;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
+use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use App\Services\Weather\OpenMeteoClient;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -275,6 +276,76 @@ it('treats non-array Strava detail as a fetch failure', function (): void {
 
     expect($activity->fresh()->detail_fail_count)->toBe(1)
         ->and(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
+});
+
+it('drops a non-run activity (ride) without minting a run', function (): void {
+    $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Evening Ride',
+            'sport_type' => 'Ride',
+            'distance' => 20000,
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    // The stub is deleted outright — no detail, no card, no analyzed ghost.
+    expect(Activity::withStubs()->find($activity->id))->toBeNull()
+        ->and(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeFalse()
+        ->and(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
+    // Only the detail fetch fired; we bail before the streams call.
+    Http::assertSentCount(1);
+});
+
+it('revokes the connection without burning detail_fail_count on a 401 (auth revoked)', function (): void {
+    $activity = makeActivityWithConnection();
+    // An already-ingested run (analyzed_at set) so markRevoked's stub purge leaves
+    // it in place and we can assert the retry budget stayed untouched.
+    $activity->update(['analyzed_at' => now(), 'detail_fail_count' => 0]);
+    $connection = $activity->user->stravaConnection;
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response(['error' => 'Authorization Error'], 401),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect($connection->fresh()->isRevoked())->toBeTrue()
+        ->and($activity->fresh()->detail_fail_count)->toBe(0);
+});
+
+it('revokes on a permanent token refresh failure (invalid_grant), budget untouched', function (): void {
+    $activity = makeActivityWithConnection();
+    $activity->update(['analyzed_at' => now(), 'detail_fail_count' => 0]);
+    $connection = $activity->user->stravaConnection;
+    $connection->update(['token_expires_at' => Carbon::now()->subMinute()]);
+
+    Http::fake([
+        'strava.com/oauth/token' => Http::response(['error' => 'invalid_grant'], 400),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect($connection->fresh()->isRevoked())->toBeTrue()
+        ->and($activity->fresh()->detail_fail_count)->toBe(0);
+});
+
+it('rethrows a transient token refresh blip so the job retries, without revoking or burning the budget', function (): void {
+    $activity = makeActivityWithConnection();
+    $connection = $activity->user->stravaConnection;
+    $connection->update(['token_expires_at' => Carbon::now()->subMinute()]);
+
+    Http::fake([
+        'strava.com/oauth/token' => Http::response(['error' => 'server'], 500),
+    ]);
+
+    expect(fn () => $this->pipeline->ingest($activity))
+        ->toThrow(StravaTokenRefreshTransientException::class);
+
+    expect($connection->fresh()->isRevoked())->toBeFalse()
+        ->and($activity->fresh()->detail_fail_count)->toBe(0);
 });
 
 it('computes stream_summary + Edwards TRIMP from the streams blob', function (): void {

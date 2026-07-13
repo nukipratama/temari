@@ -7,15 +7,19 @@ namespace App\Jobs\Strava;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Strava\StravaClient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Deletes a Strava-removed activity and heals the artifacts that don't cascade:
@@ -34,9 +38,9 @@ class CleanupDeletedActivityJob implements ShouldQueue
     ) {
     }
 
-    public function handle(WeeklyAggregator $weekly, PersonalRecords $personalRecords): void
+    public function handle(WeeklyAggregator $weekly, PersonalRecords $personalRecords, StravaClient $client): void
     {
-        $user = User::query()->find($this->userId);
+        $user = User::query()->with('stravaConnection')->find($this->userId);
         if ($user === null) {
             return;
         }
@@ -48,6 +52,19 @@ class CleanupDeletedActivityJob implements ShouldQueue
             ->with(['detail', 'runCard'])
             ->first();
         if ($activity === null) {
+            return;
+        }
+
+        // The delete webhook body is unauthenticated and forgeable; confirm Strava
+        // really returns a 404 for this activity before destroying the local row +
+        // its narration. A still-resolvable activity (or an unverifiable
+        // connection) is treated as an unverified hint and left untouched.
+        if (! $this->confirmDeletedOnStrava($client, $user->stravaConnection)) {
+            Log::info('strava.webhook delete event unverified — skipping local delete', [
+                'user_id' => $user->id,
+                'strava_external_id' => $this->stravaActivityId,
+            ]);
+
             return;
         }
 
@@ -100,5 +117,29 @@ class CleanupDeletedActivityJob implements ShouldQueue
             'user_id' => $user->id,
             'strava_external_id' => $this->stravaActivityId,
         ]);
+    }
+
+    /**
+     * Confirm the activity is genuinely gone from Strava (a 404) using the stored
+     * token, rather than trusting the forgeable webhook body. A 2xx (still
+     * exists), a missing/revoked connection, or any non-404 error (rate limit,
+     * circuit open, revoked token, transport) all return false: we only delete
+     * when Strava positively confirms the removal.
+     */
+    private function confirmDeletedOnStrava(StravaClient $client, ?StravaConnection $connection): bool
+    {
+        if ($connection === null || $connection->isRevoked()) {
+            return false;
+        }
+
+        try {
+            $client->get($connection, "/activities/{$this->stravaActivityId}");
+        } catch (RequestException $e) {
+            return $e->response->status() === 404;
+        } catch (Throwable) {
+            return false;
+        }
+
+        return false;
     }
 }

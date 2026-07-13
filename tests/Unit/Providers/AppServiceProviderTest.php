@@ -78,16 +78,6 @@ it('client-errors limiter caps at 30/min, keyed by IP', function (): void {
         ->and($limit->maxAttempts)->toBe(30);
 });
 
-it('public-card limiter caps at 60/min, keyed by IP', function (): void {
-    $request = Request::create('/kartu/1', 'GET', server: ['REMOTE_ADDR' => '203.0.113.7']);
-
-    $limit = RateLimiter::limiter('public-card')($request);
-
-    expect($limit)->toBeInstanceOf(Limit::class)
-        ->and($limit->key)->toBe('203.0.113.7')
-        ->and($limit->maxAttempts)->toBe(60);
-});
-
 it('shares one AnalysisService instance within a single request/CLI scope', function (): void {
     expect(app(AnalysisService::class))->toBe(app(AnalysisService::class));
 });

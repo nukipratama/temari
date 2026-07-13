@@ -40,7 +40,7 @@ Scheduled sync deliberately does **not** dispatch a job per stub. `strava:ingest
 
 [ActivityPipeline::ingest()](app/Services/Run/Ingest/ActivityPipeline.php) does the real work, in order:
 
-1. **Fetch detail** `/activities/{id}` → upsert [ActivityDetail](app/Models/ActivityDetail.php) via [storeDetail()](app/Services/Run/Ingest/ActivityPipeline.php).
+1. **Fetch detail** `/activities/{id}` → upsert [ActivityDetail](app/Models/ActivityDetail.php) via [storeDetail()](app/Services/Run/Ingest/ActivityPipeline.php). First the detail's `sport_type` is checked against [RunSportType](app/Services/Strava/RunSportType.php) (shared with the poll-path filter): a non-run upload (ride/walk/swim reaching ingest via the webhook, which fires for every type) has its stub **deleted** here so it never mints a bogus PR/card/snapshot or bills the narrator.
 2. **Fetch streams** (time/distance/HR/cadence/velocity/altitude/latlng) → upsert [ActivityStream](app/Models/ActivityStream.php). Best-effort: a 4xx (404 = no streams, treadmill/manual) is logged and ingest continues.
 3. **Compute summary** — [StreamAnalysis::compute()](app/Services/Run/Ingest/StreamAnalysis.php) derives HR time-in-zone, best-effort paces, decoupling, cadence distribution, per-km splits, etc. (see [[stream-analysis]]); [TrainingLoad::edwardsTrimp()](app/Services/Run/Metrics/TrainingLoad.php) folds zone minutes into a TRIMP (the load engine is [[training-load-metrics]]). Both land on the detail row.
 4. **Weather** — [lookupWeather()](app/Services/Run/Ingest/ActivityPipeline.php) reverse-looks the start coords from the stream; best-effort, never blocks. See [[weather-integration]].
@@ -60,6 +60,7 @@ The pipeline is re-runnable: detail/stream/card/PR writes are all `updateOrCreat
 - **Permanent 4xx** (404 deleted / 403 unshared) → stamp `analyzed_at` so it stops re-fetching every drain.
 - **Transient 5xx / transport** → bump `detail_fail_count`; the stub stays pending until [MAX_DETAIL_FETCH_ATTEMPTS](app/Models/Activity.php) (5), then it's stamped handled to stop the loop.
 - **429 / open circuit** are re-thrown unchanged so [IngestActivityJob](app/Jobs/Strava/IngestActivityJob.php)'s `ThrottlesExceptions` middleware re-queues with backoff (against `retryUntil`, not a fixed attempt count) — these never burn the failure budget.
+- **Auth failure** (a detail-fetch 401 or an `invalid_grant` refresh) → `markRevoked()` and return **without** touching `detail_fail_count` (a revocation isn't the activity's fault); a **transient** token-endpoint blip is re-thrown so the job retries with backoff. Mirrors [SyncActivitiesJob](app/Jobs/Strava/SyncActivitiesJob.php)'s handling so a mid-sync revocation never strands a run as a detail-less ghost.
 
 ## Downstream of the commit
 

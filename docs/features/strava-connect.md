@@ -53,7 +53,7 @@ Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../route
 [StravaWebhookController](../../app/Http/Controllers/Strava/StravaWebhookController.php) is unauthenticated by design — Strava calls it without a session.
 
 - `verify()` (GET) answers the subscription handshake, echoing `hub.challenge` only when `hub.verify_token` matches our configured secret via `hash_equals`.
-- `handle()` (POST) acks 200 fast and queues the work. Activity `create`/`update` → `SyncActivitiesJob` for that one activity; activity `delete` → cascade-deletes the local row; athlete `delete` or `updates.authorized === 'false'` → `markRevoked()`. Unknown `owner_id` is a silent ack, never a leak. A `strava_webhook` Pulse heartbeat lets ops spot a delivery flatline.
+- `handle()` (POST) acks 200 fast and queues the work. Activity `create`/`update` → `SyncActivitiesJob` for that one activity. **Destructive events are treated as forgeable hints, not commands** (the body's `owner_id` is attacker-supplied): activity `delete` queues `CleanupDeletedActivityJob`, which only deletes after Strava confirms the activity truly 404s with the stored token; athlete `delete` / `updates.authorized === 'false'` queues [VerifyStravaRevocationJob](../../app/Jobs/Strava/VerifyStravaRevocationJob.php), which only `markRevoked()`s after `/athlete` returns a genuine 401. A live grant (2xx) means the event was forged/stale and is ignored. Unknown `owner_id` is a silent ack, never a leak. A `strava_webhook` Pulse heartbeat lets ops spot a delivery flatline.
 
 The POST route is rate-limited (60/min) to blunt amplification. The kill-switch / rate limiting downstream lives in [[strava-circuit-breaker-rate-limit]]; the edge runs behind Cloudflare per [[trust-all-proxies-cloudflare]].
 

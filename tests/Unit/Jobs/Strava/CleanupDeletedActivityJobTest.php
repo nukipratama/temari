@@ -10,12 +10,15 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Strava\StravaClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -33,12 +36,24 @@ function makeCleanupRun(User $user, int $externalId, float $distance, CarbonInte
     return $activity;
 }
 
+/**
+ * The cleanup job now verifies the deletion against Strava (a 404) before acting.
+ * Give the user a live connection and fake the activity endpoint to 404 so the
+ * verification passes.
+ */
+function fakeStravaConfirms404(User $user, int $externalId): void
+{
+    StravaConnection::factory()->for($user)->create(['strava_athlete_id' => $externalId + 1_000_000]);
+    Http::fake(["strava.com/api/v3/activities/{$externalId}" => Http::response(['error' => 'Record Not Found'], 404)]);
+}
+
 it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narration', function (): void {
     $user = User::factory()->create();
     $week = now()->startOfWeek();
 
     $doomed = makeCleanupRun($user, 7_001, 5_000, $week->copy()->addDay());
     $survivor = makeCleanupRun($user, 7_002, 8_000, $week->copy()->addDays(2));
+    fakeStravaConfirms404($user, 7_001);
 
     // Snapshots reflect both runs before the delete.
     app(WeeklyAggregator::class)->rebuildFor($user);
@@ -66,6 +81,7 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
     (new CleanupDeletedActivityJob($user->id, 7_001))->handle(
         app(WeeklyAggregator::class),
         app(PersonalRecords::class),
+        app(StravaClient::class),
     );
 
     expect(Activity::query()->withStubs()->whereKey($doomed->id)->exists())->toBeFalse()
@@ -91,13 +107,14 @@ it('prunes a now-empty weekly snapshot when the deleted run was the last one', f
     $sole = makeCleanupRun($user, 7_003, 5_000, now()->startOfWeek()->addDay());
     $weekEnding = now()->endOfWeek(CarbonInterface::SUNDAY)->startOfDay()->toDateString();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => $weekEnding, 'runs' => 1]);
+    fakeStravaConfirms404($user, 7_003);
 
     $weekly = Mockery::mock(WeeklyAggregator::class);
     $weekly->shouldReceive('rebuildForwardFrom')->once()->andReturnNull();
     $personalRecords = Mockery::mock(PersonalRecords::class);
     $personalRecords->shouldReceive('rebuildForUser')->once();
 
-    (new CleanupDeletedActivityJob($user->id, 7_003))->handle($weekly, $personalRecords);
+    (new CleanupDeletedActivityJob($user->id, 7_003))->handle($weekly, $personalRecords, app(StravaClient::class));
 
     expect(Activity::query()->withStubs()->whereKey($sole->id)->exists())->toBeFalse()
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
@@ -109,7 +126,41 @@ it('no-ops when the activity is already gone', function (): void {
     (new CleanupDeletedActivityJob($user->id, 999_999))->handle(
         app(WeeklyAggregator::class),
         app(PersonalRecords::class),
+        app(StravaClient::class),
     );
 
     expect(true)->toBeTrue();
+});
+
+it('does NOT delete when Strava still returns the activity (forged delete event)', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);
+    $activity = makeCleanupRun($user, 7_010, 5_000, now()->startOfWeek()->addDay());
+
+    // Strava confirms the activity still exists: the delete webhook was forged.
+    Http::fake(['strava.com/api/v3/activities/7010' => Http::response(['id' => 7_010], 200)]);
+
+    (new CleanupDeletedActivityJob($user->id, 7_010))->handle(
+        app(WeeklyAggregator::class),
+        app(PersonalRecords::class),
+        app(StravaClient::class),
+    );
+
+    expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue()
+        ->and(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue();
+});
+
+it('does NOT delete when there is no live connection to verify against', function (): void {
+    $user = User::factory()->create();
+    $activity = makeCleanupRun($user, 7_011, 5_000, now()->startOfWeek()->addDay());
+    Http::fake();
+
+    (new CleanupDeletedActivityJob($user->id, 7_011))->handle(
+        app(WeeklyAggregator::class),
+        app(PersonalRecords::class),
+        app(StravaClient::class),
+    );
+
+    expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue();
+    Http::assertNothingSent();
 });

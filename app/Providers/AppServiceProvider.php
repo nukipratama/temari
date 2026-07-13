@@ -93,10 +93,5 @@ class AppServiceProvider extends ServiceProvider
         // Client-error telemetry sink. IP-keyed so a single misbehaving browser
         // (error loop) can't flood the logs.
         RateLimiter::for('client-errors', fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->ip()));
-
-        // Public share-card surfaces are unauthenticated and enumerable (plain
-        // auto-increment card ids). IP-cap them so an id sweep can't force a
-        // flood of synchronous Imagick renders and starve the few app workers.
-        RateLimiter::for('public-card', fn (Request $request): Limit => Limit::perMinute(60)->by((string) $request->ip()));
     }
 }

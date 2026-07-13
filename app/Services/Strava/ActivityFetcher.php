@@ -107,8 +107,6 @@ class ActivityFetcher
      */
     private function isRun(array $item): bool
     {
-        $type = (string) ($item['sport_type'] ?? $item['type'] ?? '');
-
-        return in_array($type, ['Run', 'VirtualRun', 'TrailRun'], strict: true);
+        return RunSportType::matches($item);
     }
 }

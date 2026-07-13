@@ -5,12 +5,14 @@ declare(strict_types=1);
 use App\Jobs\Strava\CleanupDeletedActivityJob;
 use App\Jobs\Strava\ResyncActivityJob;
 use App\Jobs\Strava\SyncActivitiesJob;
+use App\Jobs\Strava\VerifyStravaRevocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
 uses(RefreshDatabase::class);
@@ -161,6 +163,8 @@ it('removes the local activity on an activity delete event', function (): void {
     StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);
     $activity = Activity::factory()->for($user)->create(['strava_external_id' => 9_005]);
     ActivityDetail::factory()->for($activity)->create();
+    // The cleanup job verifies the deletion against Strava first (a 404).
+    Http::fake(['strava.com/api/v3/activities/9005' => Http::response(['error' => 'Record Not Found'], 404)]);
 
     $this->postJson(route('strava.webhook.handle'), [
         'object_type' => 'activity',
@@ -179,6 +183,7 @@ it('removes a not-yet-ingested stub activity on a delete event', function (): vo
     // A stub (analyzed_at null) is hidden by the AnalyzedScope; the delete must
     // still reach it via withStubs().
     $stub = Activity::factory()->for($user)->stub()->create(['strava_external_id' => 9_006]);
+    Http::fake(['strava.com/api/v3/activities/9006' => Http::response(['error' => 'Record Not Found'], 404)]);
 
     $this->postJson(route('strava.webhook.handle'), [
         'object_type' => 'activity',
@@ -190,7 +195,8 @@ it('removes a not-yet-ingested stub activity on a delete event', function (): vo
     expect(Activity::query()->withStubs()->whereKey($stub->id)->exists())->toBeFalse();
 });
 
-it('revokes the connection on athlete deauthorization', function (): void {
+it('queues a verification job on athlete deauthorization instead of revoking on the raw body', function (): void {
+    Bus::fake();
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);
 
@@ -202,7 +208,45 @@ it('revokes the connection on athlete deauthorization', function (): void {
         'updates' => ['authorized' => 'false'],
     ])->assertOk();
 
+    // The forgeable body must NOT revoke synchronously; a verification job does.
+    expect($connection->fresh()->isRevoked())->toBeFalse();
+    Bus::assertDispatched(
+        VerifyStravaRevocationJob::class,
+        fn (VerifyStravaRevocationJob $job): bool => $job->connectionId === $connection->id
+            && $job->source === 'webhook_deauth',
+    );
+});
+
+it('revokes the connection when the verified deauthorization is genuine (Strava returns 401)', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);
+    Http::fake(['strava.com/api/v3/athlete' => Http::response(['error' => 'Authorization Error'], 401)]);
+
+    $this->postJson(route('strava.webhook.handle'), [
+        'object_type' => 'athlete',
+        'object_id' => 42,
+        'aspect_type' => 'update',
+        'owner_id' => 42,
+        'updates' => ['authorized' => 'false'],
+    ])->assertOk();
+
     expect($connection->fresh()->isRevoked())->toBeTrue();
+});
+
+it('does NOT revoke on a forged deauthorization when the grant is still live', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);
+    Http::fake(['strava.com/api/v3/athlete' => Http::response(['id' => 42], 200)]);
+
+    $this->postJson(route('strava.webhook.handle'), [
+        'object_type' => 'athlete',
+        'object_id' => 42,
+        'aspect_type' => 'update',
+        'owner_id' => 42,
+        'updates' => ['authorized' => 'false'],
+    ])->assertOk();
+
+    expect($connection->fresh()->isRevoked())->toBeFalse();
 });
 
 it('ignores an athlete update that is not a deauthorization', function (): void {
