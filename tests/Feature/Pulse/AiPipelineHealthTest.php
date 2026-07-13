@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Models\Activity;
 use App\Livewire\Pulse\AiPipelineHealth;
 use App\Models\AI\Analysis;
@@ -110,6 +111,20 @@ it('shows AI generation as paused when Azure is unconfigured', function (): void
     Livewire::test(AiPipelineHealth::class)
         ->assertOk()
         ->assertSee('paused: Azure unconfigured');
+});
+
+it('shows AI generation as paused when the config circuit breaker is tripped', function (): void {
+    config(['azure_openai.uri' => 'https://x.openai.azure.com/x', 'azure_openai.api_key' => 'wrong-key']);
+
+    // Three consecutive config/auth failures trip the breaker open.
+    $breaker = app(AzureConfigCircuitBreaker::class);
+    for ($i = 0; $i < 3; $i++) {
+        $breaker->recordFailure();
+    }
+
+    Livewire::test(AiPipelineHealth::class)
+        ->assertOk()
+        ->assertSee('paused: check API key / base URL');
 });
 
 it('shows AI generation as paused when the daily cost ceiling is hit', function (): void {

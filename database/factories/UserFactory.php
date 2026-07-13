@@ -37,4 +37,9 @@ class UserFactory extends Factory
     {
         return $this->state(['is_demo' => true]);
     }
+
+    public function admin(): static
+    {
+        return $this->state(['is_admin' => true]);
+    }
 }

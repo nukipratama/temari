@@ -24,3 +24,16 @@ it('bounds the overlap expiry on the Strava drains', function (string $command, 
     'strava:ingest every 5 min' => ['strava:ingest', 10],
     'strava:sync running-hours' => ['strava:sync', 55],
 ]);
+
+/**
+ * failed_jobs is never pruned by default and bloats a constrained host, reading
+ * as an alarming count during triage though most rows are superseded dupes of
+ * the same Analysis rows. Guards that the retention sweep stays scheduled.
+ */
+it('schedules the failed_jobs retention prune', function (): void {
+    $events = collect(app(Schedule::class)->events());
+    $event = $events->first(fn (Event $e): bool => str_contains((string) $e->command, 'queue:prune-failed'));
+
+    expect($event)->not->toBeNull('queue:prune-failed is not scheduled')
+        ->and($event->command)->toContain('--hours=168');
+});

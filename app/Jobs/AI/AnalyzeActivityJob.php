@@ -9,6 +9,7 @@ use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use Illuminate\Database\Eloquent\Builder;
 use App\Models\StoryLine;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -121,6 +122,32 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             ->whereHas('analyses', fn ($query) => $query
                 ->where('analysis_type', AnalysisType::PostRunSpeech)
                 ->where('status', AnalysisStatus::Pending))
+            ->orderBy('activity_details.start_date_local')
+            ->select('activities.*')
+            ->first();
+    }
+
+    /**
+     * The user's earliest activity (by start_date_local) whose narration group is
+     * *stalled* on its representative PostRunSpeech row: Pending, or Failed still
+     * under the self-heal retry budget ({@see Analysis::scopeStalled}). Unlike
+     * {@see self::earliestPendingActivityForUser()} (Pending-only, which drives
+     * the chain advance), this also recovers a Failed-under-budget group so
+     * ai:self-heal can retry it, bounded to dead-letter. Returns null when the
+     * user has no stalled per-activity group left.
+     */
+    public static function earliestStalledActivityForUser(int $userId): ?Activity
+    {
+        return Activity::query()
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activities.user_id', $userId)
+            ->whereNotNull('activity_details.start_date_local')
+            ->whereHas('analyses', function ($query): void {
+                /** @var Builder<Analysis> $query */
+                $query
+                    ->where('analysis_type', AnalysisType::PostRunSpeech)
+                    ->stalled();
+            })
             ->orderBy('activity_details.start_date_local')
             ->select('activities.*')
             ->first();

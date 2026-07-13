@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\AI\AzureConfigCircuitBreaker;
 use Illuminate\Database\QueryException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
@@ -16,6 +17,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\MaintainerAlerter;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -457,6 +459,44 @@ it('markFailed records error message without clearing prior content', function (
         ->and($fresh->content)->toBe('prior content');
 });
 
+it('markFailed alerts maintainers exactly at the dead-letter crossing', function (): void {
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+    $this->app->forgetInstance(AnalysisService::class);
+    $service = app(AnalysisService::class);
+
+    $row = Analysis::factory()->queued()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'discriminator' => '2026-05-18',
+        'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
+    ]);
+
+    $alerter->shouldReceive('deadLettered')->once()->with(Mockery::type(Analysis::class));
+
+    $service->markFailed($row, 'Azure 500');
+});
+
+it('markFailed does not alert while a Failed row is still under the retry budget', function (): void {
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+    $this->app->forgetInstance(AnalysisService::class);
+    $service = app(AnalysisService::class);
+
+    $row = Analysis::factory()->queued()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'discriminator' => '2026-05-18',
+        'attempts' => 1,
+    ]);
+
+    $alerter->shouldNotReceive('deadLettered');
+
+    $service->markFailed($row, 'Azure 500');
+});
+
 it('markProcessing increments attempts', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
@@ -644,6 +684,36 @@ it('markDone does not start the re-trigger cooldown under withoutDispatching (de
     expect($fresh->cooldownRemaining())->toBeNull()
         ->and($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('Seed content.');
+});
+
+it('pauses generation and reports the config reason when the config breaker is tripped', function (): void {
+    // Configured (not blank) so the reason is "config", not "unconfigured".
+    config(['azure_openai.uri' => 'https://x.openai.azure.com/x', 'azure_openai.api_key' => 'wrong-key']);
+
+    $breaker = app(AzureConfigCircuitBreaker::class);
+    for ($i = 0; $i < 3; $i++) {
+        $breaker->recordFailure();
+    }
+
+    expect($this->service->generationPaused())->toBeTrue()
+        ->and($this->service->pauseReason())->toBe('config');
+});
+
+it('resumes generation for free once the config breaker resets (env fixed)', function (): void {
+    config(['azure_openai.uri' => 'https://x.openai.azure.com/x', 'azure_openai.api_key' => 'fixed-key']);
+
+    $breaker = app(AzureConfigCircuitBreaker::class);
+    for ($i = 0; $i < 3; $i++) {
+        $breaker->recordFailure();
+    }
+    expect($this->service->generationPaused())->toBeTrue();
+
+    // A successful probe (or an operator reset) closes the breaker; self-heal's
+    // generationPaused() gate then clears and dispatch resumes.
+    $breaker->reset();
+
+    expect($this->service->generationPaused())->toBeFalse()
+        ->and($this->service->pauseReason())->toBeNull();
 });
 
 it('markDone does not notify when Telegram is unconfigured', function (): void {

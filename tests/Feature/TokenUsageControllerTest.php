@@ -18,6 +18,12 @@ use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
+// The /ai-usage dashboard is admin-gated. Every case below acts as a logged-in
+// maintainer; the auth/authorization cases override this per test.
+beforeEach(function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+});
+
 /** Dead-letter a WeeklyRecap for $user (Failed, budget burned). */
 function deadLetterWeeklyRecap(User $user): Analysis
 {
@@ -53,8 +59,20 @@ function seedUsage(
     ]);
 }
 
-it('is reachable without a Laravel session (edge auth handles access in prod)', function (): void {
+it('is reachable by a logged-in admin', function (): void {
     $this->get('/ai-usage')->assertSuccessful();
+});
+
+it('redirects a guest to login', function (): void {
+    auth()->logout();
+
+    $this->get('/ai-usage')->assertRedirect('/login');
+});
+
+it('forbids a logged-in non-admin', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    $this->get('/ai-usage')->assertForbidden();
 });
 
 it('renders the AiUsage page with totals + per-kind breakdown filtered by date', function (): void {
@@ -328,11 +346,131 @@ it('retries a dead-lettered group for a hard-deleted user instead of 404ing', fu
     Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
 });
 
-it('retry is reachable without a Laravel session (edge auth handles access in prod)', function (): void {
+it('retry is reachable by a logged-in admin', function (): void {
     Bus::fake();
     $user = User::factory()->create();
 
-    // No dead-lettered rows: still a clean, session-less redirect (0 retried).
+    // No dead-lettered rows: still a clean redirect (0 retried).
     $this->post("/ai-usage/users/{$user->id}/retry-failed")->assertRedirect();
     Bus::assertNothingDispatched();
+});
+
+it('forbids the mutating retry for a logged-in non-admin', function (): void {
+    Bus::fake();
+    $this->actingAs(User::factory()->create());
+    $user = User::factory()->create();
+
+    $this->post("/ai-usage/users/{$user->id}/retry-failed")->assertForbidden();
+    Bus::assertNothingDispatched();
+});
+
+it('also re-arms a user\'s under-budget Failed blocks on retry (not only dead-lettered)', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $snap = WeeklySnapshot::factory()->for($user)->create();
+    $underBudget = Analysis::factory()->failed()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'attempts' => 1,
+    ]);
+
+    $this->post("/ai-usage/users/{$user->id}/retry-failed")->assertRedirect();
+
+    $fresh = $underBudget->fresh();
+    expect($fresh->attempts)->toBe(0)
+        ->and($fresh->status)->toBe(AnalysisStatus::Queued);
+    Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('surfaces the "Failed, belum menyerah" bucket grouped per user', function (): void {
+    $user = User::factory()->create(['name' => 'Eve']);
+    $snap = WeeklySnapshot::factory()->for($user)->create();
+    Analysis::factory()->failed()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'attempts' => 1,
+    ]);
+    // A dead-lettered block must NOT appear here (it belongs to the dead-letter panel).
+    deadLetterWeeklyRecap($user);
+
+    $this->get('/ai-usage')
+        ->assertSuccessful()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->has('failedUnderBudget', 1)
+                ->where('failedUnderBudget.0.user_name', 'Eve')
+                ->where('failedUnderBudget.0.count', 1)
+                ->has('deadLettered', 1),
+        );
+});
+
+it('surfaces the "Nyangkut" bucket for stale Pending/Queued blocks, excluding open-period recaps', function (): void {
+    $user = User::factory()->create(['name' => 'Frank']);
+    $old = Carbon::now()->subHours(3);
+
+    // created_at is not mass-assignable, so backdate it directly on the row.
+    $stale = function (Analysis $row) use ($old): void {
+        $row->forceFill(['created_at' => $old])->save();
+    };
+
+    // Stale Pending briefing (queued_at null, created long ago) -> nyangkut.
+    $stale(Analysis::factory()->create([
+        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::DailyGreeting,
+        'discriminator' => '2026-01-01',
+        'status' => AnalysisStatus::Pending,
+        'queued_at' => null,
+    ]));
+
+    // Open-MONTH monthly recap Pending, also old -> inert by design, excluded.
+    $stale(Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => Carbon::now()->format('Y-m'),
+        'status' => AnalysisStatus::Pending,
+        'queued_at' => null,
+    ]));
+
+    // A fresh Pending (< 2h) is not yet nyangkut.
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::DailyGreeting,
+        'discriminator' => '2026-02-02',
+        'status' => AnalysisStatus::Pending,
+        'queued_at' => null,
+    ]);
+
+    $this->get('/ai-usage')
+        ->assertSuccessful()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->has('nyangkut', 1)
+                ->where('nyangkut.0.user_name', 'Frank')
+                ->where('nyangkut.0.count', 1),
+        );
+});
+
+it('runs the recover command and flashes a confirmation', function (): void {
+    Bus::fake();
+    $row = deadLetterWeeklyRecap(User::factory()->create());
+
+    $this->post('/ai-usage/recover')
+        ->assertRedirect()
+        ->assertSessionHas('info');
+
+    $fresh = $row->fresh();
+    expect($fresh->attempts)->toBe(0)
+        ->and($fresh->status)->toBe(AnalysisStatus::Queued);
+    Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('forbids the recover action for a logged-in non-admin', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    $this->post('/ai-usage/recover')->assertForbidden();
 });

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Services\AI\MaintainerAlerter;
+use Illuminate\Console\Scheduling\Event;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -11,10 +13,19 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Push a maintainer Telegram alert when an AI-critical scheduled command fails,
+// so a dead scheduler surfaces as a push instead of silently taking down
+// background narration/recovery for days.
+$alertOnFailure = static function (Event $event, string $command): Event {
+    return $event->onFailure(static function () use ($command): void {
+        app(MaintainerAlerter::class)->schedulerFailed($command);
+    });
+};
+
 // 00:01: daily kickoff for active users (last 7 days) — briefing set (headline,
 // suggestion, mascot voice, featured kartu voice, greeting) + trend caption.
 // Idempotent: a same-day re-run dispatches only still-missing types, never re-bills.
-Schedule::command('ai:daily-briefing')->dailyAt('00:01');
+$alertOnFailure(Schedule::command('ai:daily-briefing')->dailyAt('00:01'), 'ai:daily-briefing');
 
 // 00:05: keep the seeded demo account fresh — one modest synthetic run (~5/week)
 // plus a rule-based refresh of today's briefing/greeting/trend so the demo never
@@ -25,7 +36,7 @@ Schedule::command('demo:daily-refresh')->dailyAt('00:05');
 // Monday 00:01: narrate last week's recap once per user, on final data. The
 // per-ingest cascade only stages the row Pending (weekly cadence) — this is
 // the single scheduled LLM call that fills it.
-Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01');
+$alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01'), 'ai:weekly-recap');
 
 // Monday 00:05: refresh the Aku-page persona summary + Kata Temari voice once a
 // week, just after the recap. These two have no per-run cadence, so this is
@@ -39,7 +50,7 @@ Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
 Schedule::command('strava:sync-zones')->monthlyOn(1, '00:10')->withoutOverlapping(55);
 
 // 1st of the month 05:45: same pattern for the monthly recap.
-Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45');
+$alertOnFailure(Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45'), 'ai:monthly-recap');
 
 // Hourly self-heal sweep: re-kicks the earliest stalled AI block per user
 // (weekly + monthly + per-activity chains, plus card/PR narration) — for
@@ -47,7 +58,12 @@ Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45');
 // failures. Idempotent (invalidate=false): a no-op on blocks already advancing,
 // never re-bills; Failed blocks are bounded by MAX_SELF_HEAL_ATTEMPTS then
 // dead-lettered. Early-exits while generation is paused.
-Schedule::command('ai:self-heal')->hourly()->withoutOverlapping(55);
+$alertOnFailure(Schedule::command('ai:self-heal')->hourly()->withoutOverlapping(55), 'ai:self-heal');
+
+// 02:20 daily: prune failed_jobs older than 7 days. Most entries are superseded
+// dupes of the same Analysis rows (which are the real source of truth), so the
+// table just bloats and reads as an alarming unexplained count during triage.
+Schedule::command('queue:prune-failed --hours=168')->dailyAt('02:20');
 
 // Fallback poll behind the Strava webhook, hourly across the two running peaks
 // (WIB: 04-10 and 16-22). Bounded withoutOverlapping so a strand self-releases, not 24h.

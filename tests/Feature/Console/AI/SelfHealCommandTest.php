@@ -36,6 +36,7 @@ function captureResumeRequests(array &$captured): AnalysisService
 {
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('generationPaused')->andReturn(false);
+    $service->shouldReceive('pauseReason')->andReturn(null);
     $service->shouldReceive('request')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
             $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'invalidate');
@@ -56,6 +57,7 @@ function nonDispatchingResumeService(): AnalysisService
 {
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('generationPaused')->andReturn(false);
+    $service->shouldReceive('pauseReason')->andReturn(null);
     $service->shouldNotReceive('request');
     $service->shouldNotReceive('requestActivityGroup');
 
@@ -493,6 +495,7 @@ it('early-exits without sweeping when AI generation is paused', function (): voi
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('generationPaused')->andReturn(true);
+    $service->shouldReceive('pauseReason')->andReturn('cost_ceiling');
     $service->shouldNotReceive('request');
     $service->shouldNotReceive('requestActivityGroup');
     $this->app->instance(AnalysisService::class, $service);

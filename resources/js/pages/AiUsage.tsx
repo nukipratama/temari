@@ -105,6 +105,8 @@ interface AiUsageProps {
     availableKinds: KindOption[];
     budget: Budget;
     deadLettered: DeadLetterGroup[];
+    failedUnderBudget: DeadLetterGroup[];
+    nyangkut: DeadLetterGroup[];
 }
 
 const numberFmt = new Intl.NumberFormat('id-ID');
@@ -182,6 +184,8 @@ export default function AiUsage({
     availableKinds,
     budget,
     deadLettered,
+    failedUnderBudget,
+    nyangkut,
 }: Readonly<AiUsageProps>) {
     const [fromInput, setFromInput] = useState<string>(from);
     const [toInput, setToInput] = useState<string>(to);
@@ -305,7 +309,7 @@ export default function AiUsage({
 
                 <BudgetGauge budget={budget} />
 
-                <DeadLetterPanel groups={deadLettered} />
+                <AttentionArea deadLettered={deadLettered} failedUnderBudget={failedUnderBudget} nyangkut={nyangkut} />
 
                 {daily.length > 0 && (
                     <section className="mt-10">
@@ -401,37 +405,116 @@ function FlashBanner({ message }: Readonly<{ message: string }>) {
     );
 }
 
-/* ─── Dead-letter panel ───────────────────────────────────────────── */
+/* ─── Attention area (dead-letter · failed · nyangkut) ─────────────── */
 
 /**
- * Blocks that ai:self-heal gave up on (Failed past the retry budget). Grouped
- * per user with a single "Coba lagi semua" that re-arms and re-dispatches all of
- * that user's stuck blocks. Hidden entirely when nothing is stuck.
+ * The "stuck work" cluster: a global one-shot recover action plus three buckets
+ * that stop the "healthy" dashboard from lying. Hidden entirely when nothing is
+ * stuck across all three.
  */
-function DeadLetterPanel({ groups }: Readonly<{ groups: DeadLetterGroup[] }>) {
+function AttentionArea({
+    deadLettered,
+    failedUnderBudget,
+    nyangkut,
+}: Readonly<{ deadLettered: DeadLetterGroup[]; failedUnderBudget: DeadLetterGroup[]; nyangkut: DeadLetterGroup[] }>) {
+    const hasAny = deadLettered.length + failedUnderBudget.length + nyangkut.length > 0;
+    if (!hasAny) {
+        return null;
+    }
+
+    return (
+        <>
+            <RecoverBar />
+
+            <AttentionPanel
+                title="Perlu perhatian"
+                subtitle="Blok AI yang gagal berulang dan berhenti dicoba otomatis. Coba lagi manual per user."
+                groups={deadLettered}
+                countLabel="blok berhenti dicoba otomatis"
+                actionable
+            />
+
+            <AttentionPanel
+                title="Failed, belum menyerah"
+                subtitle="Blok yang lagi gagal tapi masih dicoba otomatis. Bisa dipaksa lanjut sekarang per user."
+                groups={failedUnderBudget}
+                countLabel="blok gagal, masih dicoba otomatis"
+                actionable
+            />
+
+            <AttentionPanel
+                title="Nyangkut"
+                subtitle="Blok pending/queued yang mandek lama (job-nya hilang). Pakai Pulihkan semua di atas buat nyapu."
+                groups={nyangkut}
+                countLabel="blok nyangkut (pending/queued)"
+                actionable={false}
+            />
+        </>
+    );
+}
+
+/**
+ * One-shot "resume everything": re-arms every dead-lettered block across users
+ * and runs the full self-heal sweep immediately, instead of an N-click,
+ * up-to-60-min-cadence scavenger hunt. Sits above the buckets it recovers.
+ */
+function RecoverBar() {
+    const { post, processing } = useForm();
+
+    function recover(): void {
+        post('/ai-usage/recover', { preserveScroll: true });
+    }
+
+    return (
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev p-4">
+            <p className="text-sm text-ink-2">Baru pulih dari outage? Pulihkan semua blok yang nyangkut sekaligus.</p>
+            <button
+                type="button"
+                onClick={recover}
+                disabled={processing}
+                className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-sky px-4 py-2 text-xs font-semibold text-cream transition-colors hover:bg-sky-deep disabled:cursor-wait disabled:opacity-60"
+            >
+                <Icon icon="mdi:restore" aria-hidden />
+                <span>{processing ? 'Memulihkan…' : 'Pulihkan semua'}</span>
+            </button>
+        </div>
+    );
+}
+
+/**
+ * A per-user bucket of stuck blocks. When `actionable`, each group carries a
+ * "Coba lagi semua" that re-arms and re-dispatches all of that user's Failed
+ * blocks. Hidden when its bucket is empty.
+ */
+function AttentionPanel({
+    title,
+    subtitle,
+    groups,
+    countLabel,
+    actionable,
+}: Readonly<{ title: string; subtitle: string; groups: DeadLetterGroup[]; countLabel: string; actionable: boolean }>) {
     if (groups.length === 0) {
         return null;
     }
 
     return (
         <section className="mt-10">
-            <SectionHeading
-                icon="mdi:alert-circle-outline"
-                title="Perlu perhatian"
-                subtitle="Blok AI yang gagal berulang dan berhenti dicoba otomatis. Coba lagi manual per user."
-                tone="accent"
-            />
+            <SectionHeading icon="mdi:alert-circle-outline" title={title} subtitle={subtitle} tone="accent" />
 
             <div className="mt-4 space-y-3">
                 {groups.map((group) => (
-                    <DeadLetterGroupRow key={group.user_id} group={group} />
+                    <AttentionGroupRow key={group.user_id} group={group} countLabel={countLabel} actionable={actionable} />
                 ))}
             </div>
         </section>
     );
 }
 
-function DeadLetterGroupRow({ group }: Readonly<{ group: DeadLetterGroup }>) {
+function AttentionGroupRow({
+    group,
+    countLabel,
+    actionable,
+}: Readonly<{ group: DeadLetterGroup; countLabel: string; actionable: boolean }>) {
     const { post, processing } = useForm();
 
     function retry(): void {
@@ -443,17 +526,21 @@ function DeadLetterGroupRow({ group }: Readonly<{ group: DeadLetterGroup }>) {
             <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                     <p className="truncate font-medium text-ink">{group.user_name}</p>
-                    <p className="text-xs text-ink-3">{group.count} blok berhenti dicoba otomatis</p>
+                    <p className="text-xs text-ink-3">
+                        {group.count} {countLabel}
+                    </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={retry}
-                    disabled={processing}
-                    className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-leaf-deep px-3 py-1.5 text-xs font-semibold text-cream transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
-                >
-                    <Icon icon="mdi:auto-awesome" aria-hidden />
-                    <span>{processing ? 'Mengirim…' : 'Coba lagi semua'}</span>
-                </button>
+                {actionable && (
+                    <button
+                        type="button"
+                        onClick={retry}
+                        disabled={processing}
+                        className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-leaf-deep px-3 py-1.5 text-xs font-semibold text-cream transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+                    >
+                        <Icon icon="mdi:auto-awesome" aria-hidden />
+                        <span>{processing ? 'Mengirim…' : 'Coba lagi semua'}</span>
+                    </button>
+                )}
             </div>
 
             <ul className="mt-3 space-y-1 border-t border-line pt-3">

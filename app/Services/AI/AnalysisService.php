@@ -36,6 +36,8 @@ class AnalysisService
         private readonly AppConfig $config,
         private readonly LlmCostCalculator $costCalculator,
         private readonly NotifiableAnalysis $notifiableAnalysis,
+        private readonly AzureConfigCircuitBreaker $configBreaker,
+        private readonly MaintainerAlerter $alerter,
     ) {
     }
 
@@ -178,6 +180,15 @@ class AnalysisService
 
         // Feed the /pulse AI Pipeline-health card's failure-rate trend.
         Pulse::record('ai_failure', $row->analysis_type->value)->count();
+
+        // Push a maintainer alert exactly at the dead-letter crossing: attempts is
+        // bumped once per real run (markProcessing), so it reaches MAX only on the
+        // final failing attempt, making this fire once per dead-letter, not per
+        // failed attempt. A manual re-arm (attempts -> 0) re-opens the budget, so a
+        // later re-exhaustion is a genuine new dead-letter and alerts again.
+        if ($row->attempts >= Analysis::MAX_SELF_HEAL_ATTEMPTS) {
+            $this->alerter->deadLettered($row);
+        }
     }
 
     private function dispatchRow(
@@ -460,6 +471,12 @@ class AnalysisService
             return 'cost_ceiling';
         }
 
+        // A tripped config breaker (persistent 401/403 or wrong base URL) means
+        // the key/URL is fat-fingered: distinct from "unconfigured" (blank env).
+        if ($this->configBreaker->isTripped()) {
+            return 'config';
+        }
+
         return null;
     }
 
@@ -470,7 +487,11 @@ class AnalysisService
             && (bool) config('ai.auto_dispatch', true)
             && filled(config('azure_openai.uri'))
             && filled(config('azure_openai.api_key'))
-            && ! $this->dailyCostCeilingExceeded();
+            && ! $this->dailyCostCeilingExceeded()
+            // A tripped config breaker pauses generation (rows stay Pending, no
+            // attempt burn); it half-opens after a cooldown so a fixed env
+            // auto-resumes via the next dispatch/self-heal for free.
+            && $this->configBreaker->allowsRequest();
     }
 
     /**

@@ -7,6 +7,7 @@ namespace App\Listeners;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 use Laravel\Horizon\Contracts\MasterSupervisorRepository;
 use RuntimeException;
 use Throwable;
@@ -37,9 +38,22 @@ class VerifyDependencies
             throw new RuntimeException('health: analytics db unreachable', previous: $e);
         }
 
+        // A write-probe, not ping(): during a Redis restart replaying a large AOF,
+        // ping() answers PONG while the server is still LOADING and rejects every
+        // read/write, so sessions, cache, queues and Horizon dispatch all fail
+        // behind a healthy-looking /up. Writing a short-TTL sentinel and reading it
+        // back is the honest gate (mirrors the container healthcheck's SET probe).
         foreach (['default', 'cache'] as $connection) {
             try {
-                Redis::connection($connection)->ping();
+                $sentinel = 'health:probe:'.$connection.':'.Str::random(12);
+                $redis = Redis::connection($connection);
+                $redis->setex($sentinel, 5, '1');
+                $readBack = $redis->get($sentinel);
+                $redis->del($sentinel);
+
+                if ((string) $readBack !== '1') {
+                    throw new RuntimeException('sentinel read-back mismatch');
+                }
             } catch (Throwable $e) {
                 throw new RuntimeException("health: redis [{$connection}] unreachable", previous: $e);
             }

@@ -5,19 +5,22 @@ declare(strict_types=1);
 namespace App\Console\Commands\AI;
 
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use Illuminate\Database\Eloquent\Builder;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 #[Signature('ai:self-heal')]
 #[Description('Hourly safety net: re-kick the earliest stalled AI block per user (chains + card/PR/briefing/profile narration), under a retry budget')]
@@ -32,8 +35,13 @@ class SelfHealCommand extends Command
      * by {@see Analysis::MAX_SELF_HEAL_ATTEMPTS} so a terminally-broken block
      * drops out to the /ai-usage dead-letter instead of re-billing forever.
      */
-    public function handle(AnalysisService $service): int
+    public function handle(AnalysisService $service, MaintainerAlerter $alerter): int
     {
+        // Detect a pause on/off transition before the early-exit, so both entering
+        // a pause (healthy -> paused) and resuming (paused -> healthy) push an alert
+        // once, with the reason. Runs hourly regardless of the current pause state.
+        $alerter->syncPauseState($service->pauseReason());
+
         // Nothing this run can dispatch would bill while generation is paused
         // (cost ceiling / AI off / Azure unset) - every request() would no-op -
         // so skip the per-user queries until it clears.
@@ -43,12 +51,16 @@ class SelfHealCommand extends Command
             return self::SUCCESS;
         }
 
-        $resumed = $this->resumeWeekly($service)
+        // Rescue in-flight zombies first, so a row a lost queue job left stuck in
+        // Queued/Processing is back to Pending before the family sweeps run and
+        // can re-dispatch the earliest of them in this same pass.
+        $resumed = $this->revertStaleInFlight($service)
+            + $this->resumeWeekly($service)
             + $this->resumeMonthly($service)
             + $this->resumePerActivity($service)
             + $this->resumeCardFlavor($service)
             + $this->resumePrContext($service)
-            + $this->resumeSingleRowType($service, AnalysisType::BriefingHeadline)
+            + $this->resumeBriefingGroup($service)
             + $this->resumeSingleRowType($service, AnalysisType::BriefingMascotVoice)
             + $this->resumeSingleRowType($service, AnalysisType::BriefingFeaturedKartuVoice)
             + $this->resumeSingleRowType($service, AnalysisType::DailyGreeting)
@@ -63,39 +75,67 @@ class SelfHealCommand extends Command
 
     /**
      * Per-activity chains: the user's earliest activity (by start_date_local)
-     * whose narration group is still Pending. Dispatching it (invalidate:false)
-     * re-kicks the group; AnalyzeActivityJob then walks forward. Pending-only,
-     * because recovery runs through the Pending-only earliestPendingActivityForUser
-     * helper: a Failed group is not auto-retried here, so it recovers via the run
-     * page's manual "Coba lagi", and reaches the /ai-usage dead-letter only once
-     * its own $tries exhaust to the budget (a Failed-under-budget group is neither).
+     * whose narration group is *stalled* on its representative PostRunSpeech row
+     * (Pending, or Failed still under the retry budget). Dispatching it
+     * (invalidate:false) re-kicks the group; AnalyzeActivityJob then walks
+     * forward. Unlike the Pending-only chain advance, a Failed-under-budget group
+     * is auto-retried here too, so the biggest silent-rot class self-heals
+     * instead of waiting on the run page's manual "Coba lagi"; the attempts
+     * budget still caps re-billing and dead-letters a terminally-broken group.
+     * Demo is excluded (its per-activity rows are seeded Done, and this never
+     * auto-bills a demo LLM call) to match the other five families.
      */
     private function resumePerActivity(AnalysisService $service): int
     {
         $resumed = 0;
-        $processed = 0;
 
         Activity::query()
             ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
             ->whereNotNull('activity_details.start_date_local')
-            ->whereHas('analyses', fn ($query) => $query
-                ->where('analysis_type', AnalysisType::PostRunSpeech)
-                ->where('status', AnalysisStatus::Pending))
+            ->whereIn('activities.user_id', User::query()->notDemo()->select('id'))
+            ->whereHas('analyses', function ($query): void {
+                /** @var Builder<Analysis> $query */
+                $query
+                    ->where('analysis_type', AnalysisType::PostRunSpeech)
+                    ->stalled();
+            })
             ->distinct()
             ->select('activities.user_id')
-            ->chunkById(100, function ($users) use ($service, &$resumed, &$processed): void {
+            ->chunkById(100, function ($users) use ($service, &$resumed): void {
                 foreach ($users as $row) {
-                    $earliest = AnalyzeActivityJob::earliestPendingActivityForUser((int) $row->user_id);
+                    $earliest = AnalyzeActivityJob::earliestStalledActivityForUser((int) $row->user_id);
                     if ($earliest === null) {
                         continue;
                     }
                     $service->requestActivityGroup($earliest, invalidate: false);
                     $resumed++;
-                    $processed++;
                 }
             }, 'activities.user_id', 'user_id');
 
         return $resumed;
+    }
+
+    /**
+     * Stale in-flight sweep: a row stuck Queued/Processing past
+     * {@see Analysis::STALE_IN_FLIGHT_HOURS} (its queue job was lost to a Redis
+     * incident or ill-timed deploy) is reverted to Pending via the existing
+     * revertToPending path, with no attempt burn. That puts it back into the
+     * normal self-heal/dead-letter lifecycle: the family sweeps in this same run
+     * re-dispatch the earliest, and the rest get picked up next hour. Without this
+     * such a row shows an eternal "Lagi dipikirin Temari" skeleton, invisible to
+     * every other recovery path.
+     */
+    private function revertStaleInFlight(AnalysisService $service): int
+    {
+        $threshold = Carbon::now()->subHours(Analysis::STALE_IN_FLIGHT_HOURS);
+
+        $stale = Analysis::query()->staleInFlight($threshold)->get();
+
+        foreach ($stale as $row) {
+            $service->revertToPending($row);
+        }
+
+        return $stale->count();
     }
 
     /**
@@ -229,23 +269,60 @@ class SelfHealCommand extends Command
     }
 
     /**
+     * Briefing group (headline + suggestion): the earliest stalled briefing day
+     * per user, matched on *any* stalled grouped type, not only the headline
+     * representative. A BriefingSuggestion left Failed under a healthy (Done)
+     * headline is otherwise never swept, so it would rot with no recovery and no
+     * visibility. Dispatching via {@see AnalysisService::request()} with the
+     * headline type resolves the group job and re-runs both rows together;
+     * AnalyzeBriefingJob is idempotent for the already-Done sibling, so a Done
+     * headline is not re-billed. Stalled + budget-bounded; demo excluded;
+     * discriminator is a zero-padded date, so a plain string ORDER BY is
+     * chronological.
+     */
+    private function resumeBriefingGroup(AnalysisService $service): int
+    {
+        $groupedValues = array_map(
+            fn (AnalysisType $type): string => $type->value,
+            AnalyzeBriefingJob::groupedTypes(),
+        );
+
+        $earliestPerUser = Analysis::query()
+            ->stalled()
+            ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
+            ->whereIn('analysis_type', $groupedValues)
+            ->whereIn('subject_id', User::query()->notDemo()->select('id'))
+            ->orderBy('discriminator')
+            ->get(['subject_id', 'discriminator'])
+            ->unique('subject_id');
+
+        foreach ($earliestPerUser as $row) {
+            $service->request(
+                subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
+                subjectId: (int) $row->subject_id,
+                // The headline is the group's representative; request() resolves
+                // AnalyzeBriefingJob from it and re-dispatches the whole group.
+                type: AnalysisType::BriefingHeadline,
+                discriminator: $row->discriminator,
+                invalidate: false,
+            );
+        }
+
+        return $earliestPerUser->count();
+    }
+
+    /**
      * Single-row-per-user narration types with no chain/group of their own:
-     * BriefingHeadline, BriefingMascotVoice, BriefingFeaturedKartuVoice,
-     * DailyGreeting, TrendCaption, PersonaSummary, AkuProfileVoice. Each is
-     * dispatched only at its own kickoff (daily briefing / weekly profile)
-     * with no other scheduled recovery, so a capped-Pending or
-     * transiently-Failed row would sit stuck without this sweep. subject_id
-     * is the user id directly for all of these types, so no join is needed to
-     * scope by user. Stalled + budget-bounded; demo excluded; re-dispatched
-     * against the stalled row's own discriminator (not recomputed) so a
-     * resumed BriefingFeaturedKartuVoice still targets the card it originally
-     * narrated.
-     *
-     * BriefingHeadline doubles as the briefing group's representative: it and
-     * BriefingSuggestion are grouped through AnalyzeBriefingJob (mirrors
-     * {@see self::resumePerActivity()} checking only PostRunSpeech for its
-     * group), and {@see AnalysisService::request()} resolves the group job
-     * from the type and re-dispatches both rows together.
+     * BriefingMascotVoice, BriefingFeaturedKartuVoice, DailyGreeting,
+     * TrendCaption, PersonaSummary, AkuProfileVoice. Each is dispatched only at
+     * its own kickoff (daily briefing / weekly profile) with no other scheduled
+     * recovery, so a capped-Pending or transiently-Failed row would sit stuck
+     * without this sweep. subject_id is the user id directly for all of these
+     * types, so no join is needed to scope by user. Stalled + budget-bounded;
+     * demo excluded; re-dispatched against the stalled row's own discriminator
+     * (not recomputed) so a resumed BriefingFeaturedKartuVoice still targets the
+     * card it originally narrated. The grouped briefing types (headline +
+     * suggestion) are swept by {@see self::resumeBriefingGroup()} instead.
      *
      * Every other type's discriminator is a zero-padded date/week string, so a
      * plain string ORDER BY is chronological. BriefingFeaturedKartuVoice's

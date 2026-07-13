@@ -61,6 +61,15 @@ class Analysis extends Model
      */
     public const int MAX_SELF_HEAL_ATTEMPTS = 3;
 
+    /**
+     * How long a Queued/Processing row may sit before it counts as a lost-queue
+     * zombie ({@see self::scopeStaleInFlight()}), and how long a Pending/Queued
+     * row may sit before /ai-usage surfaces it as "Nyangkut". Well beyond the
+     * job's tries + backoff + Retry-After cap, so a genuinely in-flight row is
+     * never yanked mid-attempt.
+     */
+    public const int STALE_IN_FLIGHT_HOURS = 2;
+
     protected $table = 'ai_analyses';
 
     /** @return array<string, string> */
@@ -123,6 +132,32 @@ class Analysis extends Model
         return $query
             ->where($this->qualifyColumn('status'), AnalysisStatus::Failed)
             ->where($this->qualifyColumn('attempts'), '>=', self::MAX_SELF_HEAL_ATTEMPTS);
+    }
+
+    /**
+     * In-flight zombies: rows stuck Queued/Processing since before $threshold,
+     * i.e. their queue job was lost (Redis incident / ill-timed deploy) so they
+     * never settled. ai:self-heal reverts these to Pending. Uses queued_at (the
+     * enqueue time, untouched by markProcessing), falling back to updated_at for
+     * a row that somehow has no queued_at.
+     *
+     * @param  Builder<Analysis>  $query
+     * @return Builder<Analysis>
+     */
+    #[Scope]
+    protected function staleInFlight(Builder $query, Carbon $threshold): Builder
+    {
+        return $query
+            ->whereIn($this->qualifyColumn('status'), [AnalysisStatus::Queued, AnalysisStatus::Processing])
+            ->where(function (Builder $inner) use ($threshold): void {
+                $inner
+                    ->where($this->qualifyColumn('queued_at'), '<', $threshold)
+                    ->orWhere(function (Builder $fallback) use ($threshold): void {
+                        $fallback
+                            ->whereNull($this->qualifyColumn('queued_at'))
+                            ->where($this->qualifyColumn('updated_at'), '<', $threshold);
+                    });
+            });
     }
 
     /**

@@ -38,6 +38,8 @@ const baseProps = {
     ],
     budget: { todayCost: 0.02, dailyCeiling: 0.1, currency: 'USD' },
     deadLettered: [],
+    failedUnderBudget: [],
+    nyangkut: [],
 };
 
 const deadLetteredGroup = {
@@ -48,6 +50,13 @@ const deadLetteredGroup = {
         { type: 'weekly_recap', error: 'Azure down', failed_at: '2026-05-19T10:00:00+00:00' },
         { type: 'pr_context', error: null, failed_at: '2026-05-19T09:00:00+00:00' },
     ],
+};
+
+const nyangkutGroup = {
+    user_id: 8,
+    user_name: 'Dina',
+    count: 1,
+    blocks: [{ type: 'daily_greeting', error: null, failed_at: '2026-05-19T08:00:00+00:00' }],
 };
 
 describe('AiUsage page', () => {
@@ -88,6 +97,36 @@ describe('AiUsage page', () => {
         const button = screen.getByRole('button', { name: /Mengirim/ });
         expect(button).toBeDisabled();
         expect(screen.queryByRole('button', { name: /Coba lagi semua/ })).not.toBeInTheDocument();
+    });
+
+    it('renders the failed-under-budget bucket with a per-user re-arm button', () => {
+        render(<AiUsage {...baseProps} failedUnderBudget={[deadLetteredGroup]} />);
+        expect(screen.getByText('Failed, belum menyerah')).toBeInTheDocument();
+        expect(screen.getByText('2 blok gagal, masih dicoba otomatis')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Coba lagi semua/ })).toBeInTheDocument();
+    });
+
+    it('renders the nyangkut bucket without a per-user button (global recover handles it)', () => {
+        render(<AiUsage {...baseProps} nyangkut={[nyangkutGroup]} />);
+        expect(screen.getByText('Nyangkut')).toBeInTheDocument();
+        expect(screen.getByText('Dina')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Coba lagi semua/ })).not.toBeInTheDocument();
+    });
+
+    it('shows the global recover bar whenever any bucket is non-empty', () => {
+        render(<AiUsage {...baseProps} nyangkut={[nyangkutGroup]} />);
+        expect(screen.getByRole('button', { name: /Pulihkan semua/ })).toBeInTheDocument();
+    });
+
+    it('hides the recover bar when nothing is stuck', () => {
+        render(<AiUsage {...baseProps} />);
+        expect(screen.queryByRole('button', { name: /Pulihkan semua/ })).not.toBeInTheDocument();
+    });
+
+    it('posts to the recover route on "Pulihkan semua"', () => {
+        render(<AiUsage {...baseProps} deadLettered={[deadLetteredGroup]} />);
+        fireEvent.click(screen.getByRole('button', { name: /Pulihkan semua/ }));
+        expect(formMock.post).toHaveBeenCalledWith('/ai-usage/recover', expect.anything());
     });
 
     it('shows totals + active date range + breakdown rows', () => {

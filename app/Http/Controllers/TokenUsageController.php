@@ -6,11 +6,17 @@ namespace App\Http\Controllers;
 
 use App\Models\AI\Analysis;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
+use App\Services\AI\RecapPeriod;
 use App\Services\AI\TokenUsageReport;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -50,23 +56,39 @@ class TokenUsageController extends Controller
             'availableKinds' => $report['availableKinds'],
             'budget' => $report['budget'],
             'deadLettered' => $this->deadLetteredByUser(),
+            'failedUnderBudget' => $this->failedUnderBudgetByUser(),
+            'nyangkut' => $this->nyangkutByUser(),
         ]);
     }
 
     /**
-     * Re-arm and re-dispatch every dead-lettered block for one user (the blocks
-     * ai:self-heal gave up on). Resetting attempts to 0 restores the self-heal
-     * budget, and invalidate:false re-dispatches without re-billing any Done
-     * siblings. Cost-safe even mid-cap: the job-level guard reverts to Pending.
+     * One-shot post-outage recovery: re-arm every dead-lettered block across users
+     * and run the full self-heal sweep immediately, instead of an N-click,
+     * up-to-60-min-cadence scavenger hunt. Admin-gated by the route.
+     */
+    public function recover(): RedirectResponse
+    {
+        Artisan::call('ai:recover');
+
+        return back()->with('info', 'Pemulihan dijalankan: blok dead-letter di-coba ulang dan self-heal langsung disapu.');
+    }
+
+    /**
+     * Re-arm and re-dispatch every Failed block for one user, whether dead-lettered
+     * or still under budget. Resetting attempts to 0 restores the self-heal budget,
+     * and invalidate:false re-dispatches without re-billing any Done siblings.
+     * Cost-safe even mid-cap: the job-level guard reverts to Pending. Powers the
+     * re-arm button on both the "Perlu perhatian" (dead-letter) and "Failed, belum
+     * menyerah" panels.
      *
      * Binds by raw id rather than implicit `User` model binding: a hard-deleted
-     * user's user-keyed `ai_analyses` rows survive (no FK), so their dead-letter
-     * group must stay retryable even when the `users` row is gone. The user
-     * model is only needed for the flash message's display name.
+     * user's user-keyed `ai_analyses` rows survive (no FK), so their group must
+     * stay retryable even when the `users` row is gone. The user model is only
+     * needed for the flash message's display name.
      */
     public function retryFailed(int $userId): RedirectResponse
     {
-        $rows = Analysis::query()->deadLettered()->get();
+        $rows = Analysis::query()->where('status', AnalysisStatus::Failed)->get();
         $ownerIds = Analysis::ownerIdsForRows($rows);
         $matching = $rows->filter(fn (Analysis $row): bool => ($ownerIds[$row->id] ?? null) === $userId);
 
@@ -94,7 +116,108 @@ class TokenUsageController extends Controller
      */
     private function deadLetteredByUser(): array
     {
-        $rows = Analysis::query()->deadLettered()->orderByDesc('updated_at')->get();
+        return $this->groupByUser(Analysis::query()->deadLettered()->orderByDesc('updated_at')->get());
+    }
+
+    /**
+     * Failed blocks still under the retry budget (self-heal will keep trying), for
+     * the "Failed, belum menyerah" panel. Visible before a user complains, with the
+     * same per-user re-arm button to force a resume now instead of waiting.
+     *
+     * @return list<array{user_id:int, user_name:string, count:int, blocks:list<array{type:string, error:string|null, failed_at:string}>}>
+     */
+    private function failedUnderBudgetByUser(): array
+    {
+        $rows = Analysis::query()
+            ->where('status', AnalysisStatus::Failed)
+            ->where('attempts', '<', Analysis::MAX_SELF_HEAL_ATTEMPTS)
+            ->orderByDesc('updated_at')
+            ->get();
+
+        return $this->groupByUser($rows);
+    }
+
+    /**
+     * "Nyangkut": Pending/Queued rows stuck past {@see Analysis::STALE_IN_FLIGHT_HOURS}
+     * (a Pending that never dispatched, or a Queued whose job was lost), grouped per
+     * user. Window-gated recap rows for the still-open week/month are excluded: their
+     * Pending is inert by design (dispatch is deferred until the period closes), so
+     * they are a "recap incoming" signal, not a stuck block.
+     *
+     * @return list<array{user_id:int, user_name:string, count:int, blocks:list<array{type:string, error:string|null, failed_at:string}>}>
+     */
+    private function nyangkutByUser(): array
+    {
+        $threshold = Carbon::now()->subHours(Analysis::STALE_IN_FLIGHT_HOURS);
+
+        $rows = Analysis::query()
+            ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Queued])
+            ->where(function ($query) use ($threshold): void {
+                $query
+                    ->where('queued_at', '<', $threshold)
+                    ->orWhere(function ($fallback) use ($threshold): void {
+                        $fallback->whereNull('queued_at')->where('created_at', '<', $threshold);
+                    });
+            })
+            ->orderBy('created_at')
+            ->get();
+
+        return $this->groupByUser($this->rejectOpenPeriodRecaps($rows));
+    }
+
+    /**
+     * Drop recap rows whose period is still open (weekly for the current week,
+     * monthly for the current month), so the inert deferred-recap Pending never
+     * reads as "stuck". Small candidate set (already age-filtered), so the weekly
+     * snapshot lookup is a single batched query.
+     *
+     * @param  EloquentCollection<int, Analysis>  $rows
+     * @return EloquentCollection<int, Analysis>
+     */
+    private function rejectOpenPeriodRecaps(EloquentCollection $rows): EloquentCollection
+    {
+        $lastClosedMonth = RecapPeriod::lastClosedMonth();
+        $lastClosedWeekEnding = RecapPeriod::lastClosedWeekEnding();
+
+        $weeklySubjectIds = $rows
+            ->where('analysis_type', AnalysisType::WeeklyRecap)
+            ->pluck('subject_id')
+            ->unique()
+            ->all();
+
+        /** @var array<int, string> $weekEndings */
+        $weekEndings = $weeklySubjectIds === []
+            ? []
+            : WeeklySnapshot::query()
+                ->whereIn('id', $weeklySubjectIds)
+                ->pluck('week_ending', 'id')
+                ->map(fn (Carbon $weekEnding): string => $weekEnding->toDateString())
+                ->all();
+
+        return $rows->reject(function (Analysis $row) use ($lastClosedMonth, $lastClosedWeekEnding, $weekEndings): bool {
+            if ($row->analysis_type === AnalysisType::MonthlyRecap) {
+                return (string) $row->discriminator > $lastClosedMonth;
+            }
+
+            if ($row->analysis_type === AnalysisType::WeeklyRecap) {
+                $weekEnding = $weekEndings[$row->subject_id] ?? null;
+
+                return $weekEnding !== null && $weekEnding > $lastClosedWeekEnding;
+            }
+
+            return false;
+        });
+    }
+
+    /**
+     * Group Analysis rows by their owning user into the per-user panel shape shared
+     * by the dead-letter, failed-under-budget and nyangkut buckets.
+     *
+     * @param  EloquentCollection<int, Analysis>  $rows
+     * @return list<array{user_id:int, user_name:string, count:int, blocks:list<array{type:string, error:string|null, failed_at:string}>}>
+     */
+    private function groupByUser(EloquentCollection $rows): array
+    {
         $ownerIds = Analysis::ownerIdsForRows($rows);
 
         /** @var array<int, list<Analysis>> $byUser */

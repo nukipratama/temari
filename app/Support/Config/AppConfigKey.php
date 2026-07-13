@@ -21,6 +21,18 @@ enum AppConfigKey: string
     case StravaBreakerFailures = 'strava.breaker.failures';
     case StravaBreakerOpenedAt = 'strava.breaker.opened_at';
 
+    case AiConfigBreakerThreshold = 'ai.config_breaker.threshold';
+    case AiConfigBreakerCooldownSeconds = 'ai.config_breaker.cooldown_seconds';
+
+    // Breaker runtime state — managed by AzureConfigCircuitBreaker, not user-tuned.
+    case AiConfigBreakerState = 'ai.config_breaker.state';
+    case AiConfigBreakerFailures = 'ai.config_breaker.failures';
+    case AiConfigBreakerOpenedAt = 'ai.config_breaker.opened_at';
+
+    // Last pause reason pushed to maintainers — managed by MaintainerAlerter so a
+    // pause on/off transition is alerted once, not re-sent every self-heal run.
+    case AiLastPauseReason = 'ai.last_pause_reason';
+
     public function default(): mixed
     {
         return match ($this) {
@@ -30,6 +42,14 @@ enum AppConfigKey: string
             self::StravaBreakerState => 'closed',
             self::StravaBreakerFailures => 0,
             self::StravaBreakerOpenedAt => null,
+            // A misconfigured key/base URL keeps failing, so trip fast (3) and
+            // probe every 15 minutes so a fixed env auto-resumes for free.
+            self::AiConfigBreakerThreshold => 3,
+            self::AiConfigBreakerCooldownSeconds => 900,
+            self::AiConfigBreakerState => 'closed',
+            self::AiConfigBreakerFailures => 0,
+            self::AiConfigBreakerOpenedAt => null,
+            self::AiLastPauseReason => null,
         };
     }
 
@@ -42,9 +62,15 @@ enum AppConfigKey: string
             self::AiEnabled, self::StravaEnabled => (bool) $value,
             self::StravaBreakerThreshold,
             self::StravaBreakerCooldownSeconds,
-            self::StravaBreakerFailures => (int) $value,
+            self::StravaBreakerFailures,
+            self::AiConfigBreakerThreshold,
+            self::AiConfigBreakerCooldownSeconds,
+            self::AiConfigBreakerFailures => (int) $value,
             self::StravaBreakerState => (string) $value,
+            self::AiConfigBreakerState => (string) $value,
             self::StravaBreakerOpenedAt => $value === null ? null : (string) $value,
+            self::AiConfigBreakerOpenedAt => $value === null ? null : (string) $value,
+            self::AiLastPauseReason => $value === null ? null : (string) $value,
         };
     }
 }

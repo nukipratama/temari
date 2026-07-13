@@ -92,23 +92,22 @@ it('shares one AnalysisService instance within a single request/CLI scope', func
     expect(app(AnalysisService::class))->toBe(app(AnalysisService::class));
 });
 
-it('leaves the viewPulse and viewAiUsage gates open (edge basicauth is the sole gate)', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-
-    $user = User::factory()->make(['email' => 'random@example.com']);
+it('allows the viewPulse and viewAiUsage gates only for an admin user', function (): void {
+    $admin = User::factory()->admin()->make();
+    $plain = User::factory()->make(['email' => 'random@example.com']);
     $demo = User::factory()->demo()->make();
 
-    expect(Gate::forUser($user)->allows('viewPulse'))->toBeTrue()
-        ->and(Gate::forUser($user)->allows('viewAiUsage'))->toBeTrue()
-        ->and(Gate::forUser($demo)->allows('viewPulse'))->toBeTrue()
-        ->and(Gate::forUser($demo)->allows('viewAiUsage'))->toBeTrue();
+    expect(Gate::forUser($admin)->allows('viewPulse'))->toBeTrue()
+        ->and(Gate::forUser($admin)->allows('viewAiUsage'))->toBeTrue()
+        ->and(Gate::forUser($plain)->allows('viewPulse'))->toBeFalse()
+        ->and(Gate::forUser($plain)->allows('viewAiUsage'))->toBeFalse()
+        ->and(Gate::forUser($demo)->allows('viewPulse'))->toBeFalse()
+        ->and(Gate::forUser($demo)->allows('viewAiUsage'))->toBeFalse();
 });
 
-it('leaves the viewPulse and viewAiUsage gates open for guests (ops has no Strava session)', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-
-    expect(Gate::allows('viewPulse'))->toBeTrue()
-        ->and(Gate::allows('viewAiUsage'))->toBeTrue();
+it('denies the viewPulse and viewAiUsage gates for guests', function (): void {
+    expect(Gate::allows('viewPulse'))->toBeFalse()
+        ->and(Gate::allows('viewAiUsage'))->toBeFalse();
 });
 
 it('binds AnalysisService as scoped, not a cross-request singleton', function (): void {

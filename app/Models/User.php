@@ -21,8 +21,11 @@ use Override;
 
 /**
  * @property bool $is_demo
+ * @property bool $is_admin
  * @property int|null $pending_reveal_card_id
  */
+// `is_admin` is deliberately NOT fillable: it is a privilege flag granted only
+// via the `user:set-admin` command, never through mass assignment.
 #[Fillable(['name', 'email', 'avatar_url', 'is_demo', 'pending_reveal_card_id'])]
 #[Hidden(['remember_token'])]
 class User extends Authenticatable
@@ -55,6 +58,7 @@ class User extends Authenticatable
     {
         return [
             'is_demo' => 'boolean',
+            'is_admin' => 'boolean',
         ];
     }
 

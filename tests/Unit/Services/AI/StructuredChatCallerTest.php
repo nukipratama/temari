@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Support\Config\AppConfig;
 use OpenAI\Resources\Responses;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\TokenUsage;
+use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
@@ -135,7 +137,7 @@ it('does not record usage when Azure call fails', function (): void {
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
     $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
 
-    $caller = new StructuredChatCaller($azure, app(TokenUsageRecorder::class));
+    $caller = new StructuredChatCaller($azure, app(TokenUsageRecorder::class), app(AzureConfigCircuitBreaker::class));
 
     expect(fn () => $caller->call('briefing', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class);
@@ -153,7 +155,7 @@ it('routes the per-kind client and records the resolved deployment', function ()
     $azure->shouldReceive('deploymentFor')->with('briefing')->andReturn('gpt-4o-briefing');
     $azure->shouldReceive('client')->andReturn($client);
 
-    (new StructuredChatCaller($azure, app(TokenUsageRecorder::class)))
+    (new StructuredChatCaller($azure, app(TokenUsageRecorder::class), app(AzureConfigCircuitBreaker::class)))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
     expect(TokenUsage::query()->first()->model)->toBe('gpt-4o-briefing');
@@ -245,6 +247,77 @@ it('keeps a schema/JSON failure terminal even though the HTTP call succeeded', f
     expect(fn () => callerWithResponses([fakeAzureResponse('{not json')])
         ->call('briefing', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class, 'non-JSON');
+});
+
+// ── E0-11: config/auth failures feed the Azure config circuit breaker ──
+
+function configBreakerSnapshot(): array
+{
+    return (new AzureConfigCircuitBreaker(new AppConfig()))->snapshot();
+}
+
+it('counts a 401 auth failure toward the config circuit breaker', function (): void {
+    $error = new ErrorException(['message' => 'unauthorized', 'type' => 'invalid_api_key'], new Psr7Response(401));
+
+    expect(fn () => callerWithResponses([$error])->call('briefing', 'sys', [], 'schema', ['headline']))
+        ->toThrow(UnavailableException::class);
+
+    expect(configBreakerSnapshot())
+        ->toMatchArray(['state' => AzureConfigCircuitBreaker::STATE_CLOSED, 'failures' => 1]);
+});
+
+it('counts a 403 auth failure toward the config circuit breaker', function (): void {
+    $error = new ErrorException(['message' => 'forbidden', 'type' => 'access_denied'], new Psr7Response(403));
+
+    expect(fn () => callerWithResponses([$error])->call('briefing', 'sys', [], 'schema', ['headline']))
+        ->toThrow(UnavailableException::class);
+
+    expect(configBreakerSnapshot()['failures'])->toBe(1);
+});
+
+it('counts a persistent connection/DNS TransporterException toward the config breaker', function (): void {
+    $clientException = new class ('could not resolve host') extends RuntimeException implements ClientExceptionInterface {};
+
+    expect(fn () => callerWithResponses([new TransporterException($clientException)])
+        ->call('briefing', 'sys', [], 'schema', ['headline']))
+        ->toThrow(TransientUpstreamException::class);
+
+    expect(configBreakerSnapshot()['failures'])->toBe(1);
+});
+
+it('trips the config breaker open after three consecutive auth failures', function (): void {
+    $error = fn (): ErrorException => new ErrorException(['message' => 'unauthorized', 'type' => 'invalid_api_key'], new Psr7Response(401));
+
+    for ($i = 0; $i < 3; $i++) {
+        expect(fn () => callerWithResponses([$error()])->call('briefing', 'sys', [], 'schema', ['headline']))
+            ->toThrow(UnavailableException::class);
+    }
+
+    expect(configBreakerSnapshot()['state'])->toBe(AzureConfigCircuitBreaker::STATE_OPEN);
+});
+
+it('does not count a 429 rate-limit toward the config breaker', function (): void {
+    expect(fn () => callerWithResponses([new RateLimitException(new Psr7Response(429))])
+        ->call('briefing', 'sys', [], 'schema', ['headline']))
+        ->toThrow(TransientUpstreamException::class);
+
+    expect(configBreakerSnapshot())
+        ->toMatchArray(['state' => AzureConfigCircuitBreaker::STATE_CLOSED, 'failures' => 0]);
+});
+
+it('resets the config-breaker streak on a successful call', function (): void {
+    // Two auth failures build a streak, then a healthy call clears it.
+    $error = fn (): ErrorException => new ErrorException(['message' => 'unauthorized', 'type' => 'invalid_api_key'], new Psr7Response(401));
+    for ($i = 0; $i < 2; $i++) {
+        expect(fn () => callerWithResponses([$error()])->call('briefing', 'sys', [], 'schema', ['headline']))
+            ->toThrow(UnavailableException::class);
+    }
+    expect(configBreakerSnapshot()['failures'])->toBe(2);
+
+    structuredCaller(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))
+        ->call('briefing', 'sys', [], 'schema', ['headline']);
+
+    expect(configBreakerSnapshot()['failures'])->toBe(0);
 });
 
 // ── B3: single higher-token retry on truncation ───────────────────────

@@ -14,11 +14,10 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     #[Override]
     protected function gate(): void
     {
-        // Edge basicauth (docker/Caddyfile) is the sole gate on /horizon; this stays
-        // open so Horizon's dashboard authorization always passes through. The
-        // closure must accept a nullable user: Gate treats a zero-parameter closure
-        // as guest-unsafe and denies unauthenticated requests before calling it,
-        // which is exactly how ops hits this page (no Strava session).
-        Gate::define('viewHorizon', fn (?User $user = null): bool => true);
+        // /horizon requires a logged-in maintainer (`is_admin` per Strava
+        // account); edge basicauth (docker/Caddyfile) stays as defense-in-depth.
+        // The closure accepts a nullable user so a guest resolves to false rather
+        // than erroring.
+        Gate::define('viewHorizon', fn (?User $user = null): bool => $user?->is_admin === true);
     }
 }

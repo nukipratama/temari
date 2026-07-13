@@ -33,6 +33,7 @@ final readonly class StructuredChatCaller
     public function __construct(
         private AzureOpenAIClient $azure,
         private TokenUsageRecorder $usageRecorder,
+        private AzureConfigCircuitBreaker $configBreaker,
     ) {
     }
 
@@ -150,7 +151,7 @@ final readonly class StructuredChatCaller
     private function createResponse(string $kind, array $payload, float $startedAt): CreateResponse
     {
         try {
-            return $this->azure->client()->responses()->create($payload);
+            $response = $this->azure->client()->responses()->create($payload);
         } catch (Throwable $e) {
             Log::warning('narrator.ai.call', [
                 'kind' => $kind,
@@ -158,8 +159,39 @@ final readonly class StructuredChatCaller
                 'error' => $e->getMessage(),
                 'latency_ms' => self::latencyMs($startedAt),
             ]);
+
+            // A wrong API key (401/403) or wrong base URL/host (DNS/connection)
+            // is a config/auth failure: count it toward the Azure config breaker
+            // so a persistent misconfig trips and generation pauses cleanly (rows
+            // stay Pending) instead of burning the retry budget on every row.
+            if (self::isConfigAuthFailure($e)) {
+                $this->configBreaker->recordFailure();
+            }
+
             throw self::mapAzureThrowable($e);
         }
+
+        // The call reached Azure and authenticated, so any prior config-failure
+        // streak is stale: reset the breaker (fast no-op when already closed).
+        $this->configBreaker->recordSuccess();
+
+        return $response;
+    }
+
+    /**
+     * Whether $e is an Azure *config/auth* failure: a permanent 401/403 (wrong
+     * API key / deployment access) or a connection/DNS/timeout failure (wrong
+     * base URL/host). These feed the config circuit breaker; a single one is
+     * still transient, the breaker's consecutive-failure streak is what
+     * distinguishes a persistent misconfig from a one-off blip.
+     */
+    private static function isConfigAuthFailure(Throwable $e): bool
+    {
+        if ($e instanceof ErrorException && in_array($e->getStatusCode(), [401, 403], true)) {
+            return true;
+        }
+
+        return $e instanceof TransporterException;
     }
 
     /**

@@ -64,14 +64,12 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ScheduledTaskFinished::class, [RecordScheduledTaskRun::class, 'finished']);
         Event::listen(ScheduledTaskFailed::class, [RecordScheduledTaskRun::class, 'failed']);
 
-        // Edge basicauth (docker/Caddyfile) is the sole gate for the ops dashboards,
-        // covering the pages and the Livewire action endpoint. These app-layer gates
-        // stay open so the framework's dashboard authorization always passes through.
-        // The closures must accept a nullable user: Gate treats a zero-parameter
-        // closure as guest-unsafe and denies unauthenticated requests before ever
-        // calling it, which is exactly how ops hits these pages (no Strava session).
-        Gate::define('viewPulse', fn (?User $user = null): bool => true);
-        Gate::define('viewAiUsage', fn (?User $user = null): bool => true);
+        // The ops dashboards require a logged-in maintainer (`is_admin` per Strava
+        // account); edge basicauth (docker/Caddyfile) stays as defense-in-depth.
+        // The closures accept a nullable user so a guest resolves to false rather
+        // than erroring.
+        Gate::define('viewPulse', fn (?User $user = null): bool => $user?->is_admin === true);
+        Gate::define('viewAiUsage', fn (?User $user = null): bool => $user?->is_admin === true);
 
         RateLimiter::for('analysis-trigger', function (Request $request): Limit {
             $perMinute = max(1, (int) config('ai.rate_limit_per_minute', 8));

@@ -71,6 +71,9 @@
                     @case('cost_ceiling')
                         paused: cost ceiling hit today
                         @break
+                    @case('config')
+                        paused: check API key / base URL
+                        @break
                     @default
                         healthy
                 @endswitch
