@@ -77,6 +77,17 @@ The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on
 9. Healthcheck `/up` (20× retry), smoke-test `/login`, then resume `scheduler`.
 10. Prune SHA-tagged `teman-lari/app` images that aren't `:latest`/`:previous`.
 
+### Migrations must be expand/contract
+
+Steps 5-7 above quiesce the queue but **not** the `app` server: the old Octane image keeps serving live requests through the `migrate --force` (step 6) and only rolls onto the new image at step 7. So for the migrate+roll window the **previous code runs against the new schema**. A destructive migration (drop/rename a column, tighten an enum, add a NOT NULL without a default) will 500 those in-flight requests against columns the old code still reads or writes.
+
+Write schema changes as **expand/contract split across two deploys**:
+
+1. **Expand** (deploy 1): add the new column/table/enum value; backfill; make new code write both old and new. Never remove or narrow anything the currently-live code depends on.
+2. **Contract** (deploy 2, after deploy 1 is fully rolled): drop the now-unused old column / tighten the constraint, once no running code references it.
+
+The heavier alternative is wrapping the migrate step in `artisan down` (a maintenance-mode blip on every deploy); expand/contract keeps deploys zero-downtime, so prefer it. See the deploy order in [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
 ## Rollback
 
 Every successful deploy leaves `teman-lari/app:previous` and `teman-lari/app:<git-sha>` on the host. To roll back the most recent deploy, re-tag `:previous` → `:latest`, `up -d --no-deps app horizon scheduler`, and `horizon:terminate`. For an older commit, re-tag the SHA you want (within retention). The full commands and the `/opt/teman-lari/.env` setup table live in the Deployment section of [README.md](README.md).

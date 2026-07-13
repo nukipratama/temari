@@ -23,8 +23,8 @@ The "Aku" page (`/aku`) is the runner's about-me: who they are, how Temari sees 
 
 - **AI narration** — `profileVoice` (`AkuProfileVoice`) and `personaSummary` (`PersonaSummary`) are `Analysis` rows from the [[ai-pipeline]].
 - **Gamification** — PRs come from [[gamification]]; accessories from `UserUnlock` rows.
-- **Telegram** — the Telegram connection panel links to [[telegram-notifications]].
-- **Data model** — `PersonalRecord`, `UserUnlock`, `TelegramConnection` shapes in [[data-model]].
+- **Settings** — the Telegram toggles, HR-zone entry, and account deletion moved to the [[settings]] hub; Aku links to it.
+- **Data model** — `PersonalRecord`, `UserUnlock` shapes in [[data-model]].
 
 ## Identity + Kata Temari tentang kamu
 
@@ -49,6 +49,10 @@ When present, "Rekor terbaru" shows up to three `RekorMini` cards — each a [Pr
 ## Accessories
 
 The "Aksesori" section (`AksesoriStrip`) shows the full unlock catalog (`config('temari_unlocks')`) with a "{n} / {total} kebuka" chip; unlocked entries are highlighted, locked ones show their criteria behind a lock icon. `unlocks` comes from the user's `UserUnlock` rows. Links to `/aksesori` to equip. See [[targets-accessories]] and [[temari-mascot]].
+
+## Pengaturan
+
+The bottom "Pengaturan" section is a single [SettingsRow](../../resources/js/components/ui/SettingsRow.tsx) linking to the [[settings]] hub (`/pengaturan`). The Telegram notification panel and the Zona HR entry used to live inline here; they now live on the settings page along with the new account-deletion action.
 
 ## Notes / gotchas
 

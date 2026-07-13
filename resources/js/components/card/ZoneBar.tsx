@@ -1,5 +1,5 @@
 import { cn } from '@/lib/cn';
-import { HR_ZONES, HR_ZONE_COLORS } from '@/components/aktivitas/HrZoneCard';
+import { HR_ZONES, HR_ZONE_COLORS } from '@/lib/chartTokens';
 import type { ZonePct } from '@/types/inertia';
 
 interface ZoneBarProps {
@@ -15,8 +15,8 @@ function formatZoneShare(zone: string, pct: number): string {
 
 /**
  * A thin HR-zone effort bar for the card stat block: a stacked Z1..Z5 strip
- * using the shared `HR_ZONE_COLORS`, reading as an "energy gauge". The card-sized
- * sibling of HrZoneCard's bar — bare on `md`, with tiny labels on the full tier.
+ * using the shared `HR_ZONE_COLORS`, reading as an "energy gauge": bare on `md`,
+ * with tiny labels on the full tier.
  * Renders nothing when the run has no zone data.
  */
 export default function ZoneBar({ zonePct, showLegend = false, className }: Readonly<ZoneBarProps>) {

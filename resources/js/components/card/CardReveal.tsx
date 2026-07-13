@@ -108,14 +108,16 @@ export default function CardReveal({
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      // When the share modal is open it owns Escape (closes only itself), so
+      // the keystroke doesn't also dismiss the whole reveal beneath it.
+      if (e.key === "Escape" && !shareOpen) {
         e.preventDefault();
         dismiss();
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [dismiss]);
+  }, [dismiss, shareOpen]);
 
   useFocusTrap(!dismissed, panelRef);
 

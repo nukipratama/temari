@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\ActivityDetail;
-use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\AnalysisType;
-use App\Services\Gamification\WeeklyRecapBuilder;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\BriefingComposer;
@@ -29,7 +26,6 @@ class DashboardController extends Controller
         Temari $temari,
         TrainingLoad $trainingLoad,
         BriefingComposer $briefingComposer,
-        WeeklyRecapBuilder $weeklyRecapBuilder,
         PostRunNoteReader $noteReader,
     ): Response {
         /** @var User $user */
@@ -76,32 +72,7 @@ class DashboardController extends Controller
             // Persisted post-run mood per recent run, so the featured card and
             // last-run mascot match the backend mood without a frontend heuristic.
             'recentMoods' => $noteReader->moodsFor($recentRuns->pluck('activity_id')->all()),
-            'trendAnalysis' => $this->resolveTrendCaption($user, $today),
-            'weeklyRecap' => $weeklyRecapBuilder->forUser($user, $today),
         ]);
-    }
-
-    /**
-     * @return array{
-     *     id: int|null,
-     *     status: string,
-     *     content: string|null,
-     *     type: string,
-     *     subject_type: string,
-     *     subject_id: int,
-     *     discriminator: string|null,
-     * }
-     */
-    private function resolveTrendCaption(User $user, Carbon $today): array
-    {
-        $discriminator = $today->toDateString();
-        $subjectType = AnalysisType::TREND_CAPTION_SUBJECT_TYPE;
-
-        $row = Analysis::query()
-            ->forSubject($subjectType, $user->id, AnalysisType::TrendCaption, $discriminator)
-            ->first();
-
-        return Analysis::toPayload($row, AnalysisType::TrendCaption, $subjectType, $user->id, $discriminator);
     }
 
     private function resolveGreeting(User $user, Temari $temari, string $vibeState, Carbon $today): StoryLine

@@ -103,7 +103,7 @@ export default function AnalysisStatus({
     chained = false,
     isChainHead = false,
 }: Readonly<Props>) {
-    const { status, pending, error, retryAfterSeconds, trigger } = useAnalysisTrigger(analysis, inertiaReloadProps);
+    const { status, pending, error, retryAfterSeconds, pollingRetired, trigger } = useAnalysisTrigger(analysis, inertiaReloadProps);
     const canTrigger = allowReanalyze && !awaitingSchedule;
     // A Done block may regenerate ("Baca ulang") in standalone mode, but in a
     // chain only the head may, so regenerating mid-history can't desync later
@@ -148,6 +148,18 @@ export default function AnalysisStatus({
     }
 
     if (effectiveStatus === 'queued' || effectiveStatus === 'processing') {
+        // Polling gave up without the block settling: drop the fake "working"
+        // skeleton for an honest, quiet reload affordance.
+        if (pollingRetired && !pending) {
+            return (
+                <div className="flex flex-col gap-1.5">
+                    <span className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}>
+                        <Icon icon="mdi:clock-outline" aria-hidden />
+                        <span>Masih diproses, muat ulang nanti ya.</span>
+                    </span>
+                </div>
+            );
+        }
         const skeletonBg = onSky ? 'bg-cream/15' : 'bg-surface-sunken';
         return (
             <div className={`flex flex-col gap-3 ${TEXT_SIZE[size]}`} role="status" aria-live="polite">

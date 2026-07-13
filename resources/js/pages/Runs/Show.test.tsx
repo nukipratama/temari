@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
 import RunsShow from './Show';
@@ -206,6 +206,40 @@ describe('Runs/Show', () => {
         renderShow({ card: null });
         expect(screen.queryByText('Paru-paru Baja')).not.toBeInTheDocument();
         expect(screen.queryByText('Bagikan')).not.toBeInTheDocument();
+    });
+
+    it('surfaces an error and does not reveal when the replay POST fails (419/429/500)', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 419 });
+        const original = globalThis.fetch;
+        globalThis.fetch = fetchMock as unknown as typeof fetch;
+        vi.mocked(router.reload).mockReset();
+        try {
+            renderShow();
+            await act(async () => {
+                fireEvent.click(screen.getByText('Buka ulang kartu'));
+            });
+            expect(await screen.findByText(/Gagal buka ulang kartu/)).toBeInTheDocument();
+            expect(router.reload).not.toHaveBeenCalledWith({ only: ['pendingReveal'] });
+        } finally {
+            globalThis.fetch = original;
+        }
+    });
+
+    it('reloads the pendingReveal prop on a successful replay POST', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+        const original = globalThis.fetch;
+        globalThis.fetch = fetchMock as unknown as typeof fetch;
+        vi.mocked(router.reload).mockReset();
+        try {
+            renderShow();
+            await act(async () => {
+                fireEvent.click(screen.getByText('Buka ulang kartu'));
+            });
+            await waitFor(() => expect(router.reload).toHaveBeenCalledWith({ only: ['pendingReveal'] }));
+            expect(screen.queryByText(/Gagal buka ulang kartu/)).not.toBeInTheDocument();
+        } finally {
+            globalThis.fetch = original;
+        }
     });
 
     it('renders the map+weather panel with temp + location when present', () => {

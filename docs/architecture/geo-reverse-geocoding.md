@@ -54,5 +54,5 @@ The three columns hang off [`ActivityDetail`](app/Models/ActivityDetail.php#L42)
 Consumers select `location_name` (the display string) — never re-deriving place:
 
 - [`DashboardController`](app/Http/Controllers/DashboardController.php#L56) → the last-run card ([`LastLariCard`](resources/js/components/dashboard/LastLariCard.tsx#L23), shortened for the chip).
-- [`RunController`](app/Http/Controllers/RunController.php#L299) → run detail's weather/place hero ([`WeatherHero`](resources/js/components/aktivitas/WeatherHero.tsx#L39), [`Show`](resources/js/pages/Runs/Show.tsx#L248)).
+- [`RunController`](app/Http/Controllers/RunController.php#L299) → run detail's weather/place block ([`Show`](resources/js/pages/Runs/Show.tsx#L320)).
 - [`PrScoreboardBuilder`](app/Services/Run/PrScoreboardBuilder.php#L59) + [`RekorController`](app/Http/Controllers/RekorController.php#L50) → "where this PR was set" on the records page ([`Rekor`](resources/js/pages/Koleksi/Rekor.tsx#L130)). See [[records]].

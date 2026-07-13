@@ -145,14 +145,17 @@ export default function RunsShow({
 
     const [shareOpen, setShareOpen] = useState(false);
     const [replaying, setReplaying] = useState(false);
+    const [replayError, setReplayError] = useState(false);
 
     // Re-arm the reveal for this card, then reload the pendingReveal prop so the
-    // CardReveal modal (mounted in AppShell) plays again.
+    // CardReveal modal (mounted in AppShell) plays again. A non-ok response
+    // (419/429/500) surfaces a transient error instead of faking success.
     const replayReveal = () => {
         if (replaying || card === null) {
             return;
         }
         setReplaying(true);
+        setReplayError(false);
         void fetch(`/api/kartu/${card.id}/replay`, {
             method: 'POST',
             credentials: 'same-origin',
@@ -164,7 +167,13 @@ export default function RunsShow({
             },
             body: '{}',
         })
-            .then(() => router.reload({ only: ['pendingReveal'] }))
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`Replay failed (${response.status})`);
+                }
+                router.reload({ only: ['pendingReveal'] });
+            })
+            .catch(() => setReplayError(true))
             .finally(() => setReplaying(false));
     };
 
@@ -373,6 +382,11 @@ export default function RunsShow({
                                         {replaying ? 'Menyiapkan…' : 'Buka ulang kartu'}
                                     </PillButton>
                                 </div>
+                                {replayError && (
+                                    <p role="status" aria-live="polite" className="mt-2 font-sans text-xs text-ember-deep">
+                                        Gagal buka ulang kartu. Coba lagi sebentar ya.
+                                    </p>
+                                )}
                             </div>
 
                             {/* Kenapa [rarity] — always shown (even with no badges):

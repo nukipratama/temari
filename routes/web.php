@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AksesoriController;
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Api\CardReplayController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\Strava\ResyncActivityController;
 use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Http\Controllers\Strava\SyncController;
@@ -109,6 +111,10 @@ Route::middleware(['auth'])->group(function (): void {
     Route::delete('/profil/telegram', [TelegramConnectionController::class, 'destroy'])->middleware('block-demo-telegram')->name('telegram.disconnect');
     Route::post('/profil/telegram/test', [TelegramConnectionController::class, 'test'])->middleware('block-demo-telegram')->name('telegram.test');
 
+    Route::get('/pengaturan', SettingsController::class)->name('pengaturan');
+
+    Route::delete('/akun', [AccountController::class, 'destroy'])->name('akun.destroy');
+
     Route::get('/pengaturan/zona', [RunnerZonesController::class, 'index'])->name('pengaturan.zona');
     Route::patch('/pengaturan/zona', [RunnerZonesController::class, 'update'])->name('pengaturan.zona.update');
     Route::delete('/pengaturan/zona', [RunnerZonesController::class, 'resetToDefault'])->name('pengaturan.zona.reset');
@@ -126,8 +132,7 @@ Route::middleware(['auth'])->group(function (): void {
     Route::redirect('/runs/{activity}', '/aktivitas/{activity}', 301);
     Route::permanentRedirect('/cards', '/kartu');
     Route::permanentRedirect('/progress', '/aktivitas');
-    Route::permanentRedirect('/settings', '/profil');
-    Route::permanentRedirect('/pengaturan', '/profil');
+    Route::permanentRedirect('/settings', '/pengaturan');
     Route::permanentRedirect('/profile', '/profil');
 
     Route::post('/api/kartu/{card}/seen', CardSeenController::class)

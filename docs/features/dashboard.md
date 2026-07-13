@@ -25,7 +25,7 @@ The app's home (`/`). It greets the runner by name, hands them Temari's read on 
 ## System dependencies
 
 - **AI narration** — every voice block (greeting, briefing, suggestion, featured-kartu voice) is an `Analysis` row from the [[ai-pipeline]].
-- **Training metrics** — `load` comes from `TrainingLoad::summary`; `trendAnalysis` / `weeklyRecap` are computed by the training-load engine. See [[training-load-metrics]].
+- **Training metrics** — `load` comes from `TrainingLoad::summary`. See [[training-load-metrics]].
 - **Gamification** — the featured kartu is picked by rarity rank. See [[gamification]].
 - **Dawn-shift** — surface tints drift by time of day via `useDawnShift`. See [[frontend-architecture]].
 
@@ -61,5 +61,5 @@ When `recentRuns.length === 0`, the page swaps everything below the headline for
 
 ## Notes / gotchas
 
-- `DashboardController` also passes `trendAnalysis` and `weeklyRecap` props, but `HariIni.tsx` does **not** consume them today — the weekly recap narrative lives on [[run-history]]/Jejak and [[recaps]], not the dashboard.
+- The weekly recap narrative lives on [[run-history]]/Jejak and [[recaps]], not the dashboard.
 - Greeting + every Temari voice block route through the [[ai-pipeline]]; see [[data-model]] for `Analysis`, `WeeklySnapshot`, and `StoryLine`.

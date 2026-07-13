@@ -39,3 +39,9 @@ export const hrZone = {
 } as const;
 
 export type HrZoneKey = keyof typeof hrZone;
+
+/** Ordered Z1..Z5 tuple for iterating zones in ramp order. */
+export const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
+
+/** Alias of {@link hrZone}, named for the "zone fill colour" reading at call sites. */
+export const HR_ZONE_COLORS: Record<HrZoneKey, string> = hrZone;

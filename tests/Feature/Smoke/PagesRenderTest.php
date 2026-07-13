@@ -27,4 +27,5 @@ it('renders every authenticated page for a fresh user', function (string $route,
     'rekor' => ['rekor', 'Koleksi/Rekor'],
     'aksesori' => ['aksesori', 'Koleksi/Aksesori'],
     'profil' => ['profil', 'Aku'],
+    'pengaturan' => ['pengaturan', 'Pengaturan/Index'],
 ]);

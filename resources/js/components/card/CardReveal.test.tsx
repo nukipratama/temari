@@ -259,6 +259,23 @@ describe("CardReveal", () => {
     await u.click(screen.getByLabelText("Tutup"));
   });
 
+  it("Escape inside the share modal closes only the modal, not the whole reveal", async () => {
+    const u = userEvent.setup();
+    render(<CardReveal pending={epicReveal} />);
+    await u.click(screen.getByTestId("pack-wrapper"));
+    await u.click(await screen.findByRole("button", { name: /Bagikan/ }));
+    expect(screen.getByText(/Bagikan kartu/)).toBeInTheDocument();
+
+    // Escape closes the topmost layer (the share modal) only — the reveal
+    // beneath it stays open and is NOT marked seen.
+    await u.keyboard("{Escape}");
+    expect(screen.getByText(/★ Istimewa/)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/kartu/42/seen",
+      expect.anything(),
+    );
+  });
+
   it("keeps the card wrapped until torn, then reveals the actions on tap", async () => {
     const u = userEvent.setup();
     render(<CardReveal pending={commonReveal} />);
