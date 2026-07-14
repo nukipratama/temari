@@ -51,15 +51,6 @@
         ]
       },
       {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/no-emdash.sh"
-          }
-        ]
-      },
-      {
         "matcher": "Read|Bash",
         "hooks": [
           {
