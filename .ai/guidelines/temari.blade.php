@@ -49,6 +49,10 @@ Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-ph
 
 - `DEMO_LOGIN_ENABLED` (default `false`): renders the "Coba versi demo" button on `/login` that signs in as the seeded demo user. Plumbed via [config/demo.php](config/demo.php) to Inertia shared `demoLoginEnabled`. Loaded in prod from the host `.env` via [compose.prod.yaml](compose.prod.yaml) `env_file:` ([ci.yml](.github/workflows/ci.yml) rolls the services, it does not inject these values).
 
+## Secrets
+
+- **Never read `.env` or other secret files directly** (`.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.json`, `*.p12`, ...). Their values would leak into the session context, which persists. A `PreToolUse` hook ([.claude/hooks/secret-read-guard.sh](.claude/hooks/secret-read-guard.sh)) hard-denies it. **`config:show`/`config:get` on a secret key** (`app.key`, `*.password`, `*.secret`, `*_client_secret`, ...) resolves and prints the real value, so it is denied too. Use `./vendor/bin/sail artisan config:show <key>` only for **non-secret** config; for a secret value, find the key NAME in `.env.example` and ask the user. **This overrides the Boost Artisan note about reading `.env` directly.**
+
 ## Debugging
 
 When a bug or error is reported, ground the investigation in real state via Boost MCP before hypothesizing: `last-error` + `read-log-entries` for server errors, `browser-logs` for React/Inertia console errors, `database-query` for data. Full tool list in the `temari` skill.

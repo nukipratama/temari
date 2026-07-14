@@ -24,7 +24,7 @@ decide() { # $1=deny|ask  $2=reason
 
 # ---------- hard DENY ----------
 if has '\bgh +pr +merge\b'; then
-  decide deny "Never self-merge. Open the PR and let Nuki review + merge via the GitHub UI."
+  decide deny "Never self-merge. Open the PR and let a human review + merge via the GitHub UI."
 fi
 if has '\bgit +push\b' && { has '(--force|(^| )-f( |$))' || has '( main( |$)|origin +main|head:main|:main)'; }; then
   decide deny "No pushing to main and no force-push. Push a feature branch, then open a PR."
