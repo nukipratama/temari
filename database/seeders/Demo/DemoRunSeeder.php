@@ -162,11 +162,13 @@ class DemoRunSeeder
             $this->stagePendingAnalyses($user);
 
             $this->queueBestRevealFor($user);
-        });
 
-        $user = User::query()->where('email', self::DEMO_USER_EMAIL)->firstOrFail();
-        $filled = $this->backfillWithFiller($user);
-        $log(sprintf('  %d AI analyses backfilled with rule-based content (klik "Baca ulang" buat narasi LLM beneran).', $filled));
+            // Backfill inside withoutDispatching so markDone's Telegram fan-out
+            // stays suppressed: the demo never has a real connection, so an
+            // enqueued (no-op) notification job per row would just be waste.
+            $filled = $this->backfillWithFiller($user);
+            $log(sprintf('  %d AI analyses backfilled with rule-based content (klik "Baca ulang" buat narasi LLM beneran).', $filled));
+        });
 
         return $count;
     }

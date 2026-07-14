@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\Gamification\EquippedAccessories;
+use App\Jobs\Telegram\SendTelegramNotificationJob;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -19,6 +20,7 @@ use App\Services\AI\RecapPeriod;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -31,8 +33,16 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     // suite's single slowest unit of work, so this file runs it as few times as
     // possible: ONE seed feeds every completeness assertion below, then a SECOND
     // bare seed proves idempotency — two seeds total, not the original five.
+    // A configured bot token would let markDone fan out a Telegram push per
+    // notifiable row; the whole seed (backfill included) must stay under
+    // withoutDispatching so the demo never enqueues a no-op notification (#regression).
+    config()->set('services.telegram.bot_token', 'test-token');
+    Queue::fake();
+
     $exitCode = $this->artisan('demo:seed')->run();
     expect($exitCode)->toBe(0);
+
+    Queue::assertNotPushed(SendTelegramNotificationJob::class);
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 
