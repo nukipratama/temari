@@ -85,7 +85,7 @@
         <h1 class="title">@yield('title')</h1>
         <p class="message">@yield('message')</p>
         <a class="cta" href="{{ url('/') }}">@yield('cta', 'Kembali ke Hari Ini')</a>
-        <p class="foot">Temari · teman lari kamu di setiap langkah.</p>
+        <p class="foot">Temari · menemani larimu di setiap langkah.</p>
     </div>
 </body>
 </html>

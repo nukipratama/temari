@@ -29,10 +29,10 @@ it('exposes the full persona system message', function (): void {
     expect($this->prompt)->toBeString()->not->toBe('');
 });
 
-it('introduces Temari in first person and as a teman lari', function (): void {
+it('introduces Temari in first person as the companion for every run', function (): void {
     expect($this->prompt)
         ->toContain('Aku adalah Temari')
-        ->toContain('teman lari');
+        ->toContain('menemani setiap larimu');
 });
 
 it('locks the address forms — aku for Temari, kamu for the user', function (): void {
