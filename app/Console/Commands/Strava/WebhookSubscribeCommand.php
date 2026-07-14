@@ -158,10 +158,13 @@ class WebhookSubscribeCommand extends Command
             return self::FAILURE;
         }
 
-        $response = Http::asForm()->delete(self::SUBSCRIPTIONS_URL.'/'.$id, [
+        // Strava reads the credentials from the query string on DELETE (as it
+        // does for the GET list); sending them in the form body leaves the
+        // client unidentified and Strava answers 404 for an existing id.
+        $response = Http::withQueryParameters([
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
-        ]);
+        ])->delete(self::SUBSCRIPTIONS_URL.'/'.$id);
 
         if ($response->failed()) {
             $this->error("Could not delete subscription {$id} ({$response->status()}): {$response->body()}");

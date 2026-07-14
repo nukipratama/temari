@@ -184,18 +184,21 @@ it('warns when there is no active subscription', function (): void {
         ->assertSuccessful();
 });
 
-it('deletes a subscription by id', function (): void {
+it('deletes a subscription by id, sending credentials in the query string', function (): void {
     Http::fake([
-        'www.strava.com/api/v3/push_subscriptions/555' => Http::response('', 204),
+        'www.strava.com/api/v3/push_subscriptions/555*' => Http::response('', 204),
     ]);
 
     $this->artisan('strava:webhook-subscribe', ['--action' => 'delete', '--id' => '555'])
         ->expectsOutputToContain('Subscription 555 deleted.')
         ->assertSuccessful();
 
+    // Strava reads client creds from the query string on DELETE; sending them
+    // in the form body leaves the client unidentified and Strava 404s.
     Http::assertSent(fn ($request): bool => $request->method() === 'DELETE'
-        && $request->url() === 'https://www.strava.com/api/v3/push_subscriptions/555'
-        && $request['client_id'] === 'cid');
+        && str_starts_with((string) $request->url(), 'https://www.strava.com/api/v3/push_subscriptions/555?')
+        && str_contains((string) $request->url(), 'client_id=cid')
+        && str_contains((string) $request->url(), 'client_secret=secret'));
 });
 
 it('fails to delete without an id', function (): void {
