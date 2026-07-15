@@ -139,8 +139,6 @@ it('marks row Failed without rethrowing for UnavailableException', function (): 
 });
 
 it('falls back to rule-based content (row Done) when generation content-filters', function (): void {
-    // The row (a DailyGreeting) content-filters even after the caller strips
-    // continuity. Instead of dead-lettering, the job degrades to rule-based copy.
     $row = makeRowForRowJobTest();
 
     fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class));

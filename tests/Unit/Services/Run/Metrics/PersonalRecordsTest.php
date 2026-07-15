@@ -205,9 +205,6 @@ it('respects per-user scoping (PR break for user A does not affect user B)', fun
 });
 
 it('requests pr_context with invalidate:false so a backfill does not re-bill each beat', function (): void {
-    // invalidate:false lets the AnalysisService idempotency guard skip a Done
-    // row, so a chronological backfill (many beats of the same category) narrates
-    // pr_context once instead of re-billing on every faster split.
     $mock = $this->mock(AnalysisService::class);
     $mock->shouldReceive('request')
         ->atLeast()->once()

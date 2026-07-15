@@ -398,13 +398,11 @@ it('does not downgrade a PR-minted card when a later run beats that PR on resync
     expect($card->rarity)->toBe(Rarity::Epic)
         ->and($card->fresh()->pr_set)->toBeTrue();
 
-    // A later, faster run steals the 10km PR: PersonalRecords::updateIfFaster
-    // reassigns the record's activity_id, so this card no longer holds a live PR.
+    // A later, faster run reassigns the 10km PR to another activity.
     $faster = Activity::factory()->for($user)->analyzed()->create();
     $pr->update(['activity_id' => $faster->id, 'value_sec' => 3_000]);
 
-    // A resync rebuilds the earlier card. The +3 PR contribution stays sticky, so
-    // the card keeps its earned tier instead of silently dropping to Langka.
+    // Rebuilding the earlier card keeps the sticky +3 PR contribution and its tier.
     $rebuilt = app(RunCardFactory::class)->build($activity->fresh(), $detail->fresh());
 
     expect($rebuilt->rarity)->toBe(Rarity::Epic)

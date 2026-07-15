@@ -77,8 +77,7 @@ it('returns the full goal catalog at zero progress for a fresh user', function (
 });
 
 it('renders goal descriptions as real characters, never raw unicode escapes', function (): void {
-    // Guards against `\u{...}` written in a single-quoted PHP string (never interpolated),
-    // e.g. the aura_gerah "31°C" description regression.
+    // `\u{...}` escapes only render when the source string is double-quoted.
     $user = User::factory()->create();
 
     $byId = goalsById($this->resolver, $user);

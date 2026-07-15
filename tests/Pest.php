@@ -34,12 +34,9 @@ pest()->beforeEach(function (): void {
     // Pest CI skips `npm run build`; neutralize @vite() so Inertia roots render.
     $this->withoutVite();
 
-    // openai-php uses Guzzle directly, so Http::preventStrayRequests can't
-    // catch it. Bind a default ClientFake (no scripted responses) so any
-    // unmocked AzureOpenAIClient::client() call surfaces as a deterministic
-    // mock error instead of a real DNS lookup. Tests that exercise real
-    // narrator output override this via app()->instance() or by constructing
-    // the narrator with their own fake.
+    // openai-php uses Guzzle directly, so Http::preventStrayRequests can't catch it.
+    // Bind a default ClientFake so any unmocked AzureOpenAIClient::client() call
+    // fails deterministically instead of hitting the network.
     $this->app->bind(AzureOpenAIClient::class, function (): AzureOpenAIClient {
         $mock = Mockery::mock(AzureOpenAIClient::class);
         $mock->shouldReceive('client')->andReturnUsing(fn () => new ClientFake([]));

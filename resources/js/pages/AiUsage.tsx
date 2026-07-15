@@ -721,11 +721,9 @@ function DataTable<T>({ icon, title, subtitle, tone, columns, minWidth, rows, ro
                             </tbody>
                         </table>
                     </Card>
-                    {/* Hints the table scrolls horizontally on narrow viewports. Must be a
-                        sibling of the overflow-x-auto card, not a descendant — a descendant
-                        scrolls away with the table content instead of staying pinned to the
-                        visible edge (verified live: an earlier attempt inside the card moved
-                        with scrollLeft). */}
+                    {/* Scroll hint for narrow viewports. Must be a sibling of the
+                        overflow-x-auto card, not a descendant — a descendant scrolls away
+                        with the table content instead of staying pinned to the visible edge. */}
                     <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface-elev to-transparent" />
                 </div>
             )}

@@ -39,8 +39,6 @@ it('registers a ThrottlesExceptions middleware so 429 backoffs do not burn attem
 });
 
 it('does not pin a fixed $tries cap that a rate-limit backoff loop could exhaust', function (): void {
-    // A time bound (retryUntil) governs the job instead of a small $tries count,
-    // so repeated 429 backoffs never trip MaxAttemptsExceeded.
     $job = new IngestActivityJob(1);
 
     expect($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class)
@@ -49,8 +47,6 @@ it('does not pin a fixed $tries cap that a rate-limit backoff loop could exhaust
 });
 
 it('survives many rate-limit backoffs without the throttle middleware failing the job', function (): void {
-    // The throttle middleware absorbs Strava 429s by releasing the job, far
-    // beyond the 3 releases that previously tripped MaxAttemptsExceeded.
     $job = new IngestActivityJob(1);
 
     $next = function () {
@@ -115,9 +111,6 @@ it('lets the throttle middleware re-raise a genuine non rate-limit failure', fun
 });
 
 it('is unique per activity id so a throttled stub is not re-dispatched as a duplicate', function (): void {
-    // ShouldBeUnique keyed on the activity id: while a throttled ingest job is
-    // still in flight (analyzed_at stays null), the hourly drain re-dispatch is
-    // deduped instead of piling on the rate-limit budget.
     $job = new IngestActivityJob(4242);
 
     expect($job)->toBeInstanceOf(ShouldBeUnique::class)

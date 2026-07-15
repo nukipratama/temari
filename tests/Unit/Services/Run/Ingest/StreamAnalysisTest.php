@@ -190,8 +190,8 @@ it('keeps best-effort pace true on sparse 120s sampling (no window overshoot inf
 
 it('keeps best-effort pace true across an 11s mid-run gap (auto-pause)', function (): void {
     // Constant 3.0 m/s (= 5:33/km), 1 Hz, with one 11s time jump mid-run
-    // (a Strava auto-pause gap). The overshooting trailing segment must be
-    // trimmed so the reported pace stays 5:33 instead of inflating to ~5:23.
+    // (a Strava auto-pause gap). The overshooting trailing segment is trimmed
+    // so the reported pace stays 5:33.
     $time = [];
     $velocity = [];
     $cursor = 0;

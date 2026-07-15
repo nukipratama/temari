@@ -8,10 +8,8 @@ use Illuminate\Console\Scheduling\Schedule;
 uses()->group('structure');
 
 /**
- * The Strava drains carry a BOUNDED withoutOverlapping expiry so a lock stranded
- * by a mid-run container restart self-releases instead of dead-locking for the
- * 24h default (a strand once silently halted ingest in prod). Guards against a
- * regression back to the unbounded `->withoutOverlapping()`.
+ * The Strava drains carry a bounded withoutOverlapping expiry so a stranded lock
+ * self-releases instead of holding the default 24h.
  */
 it('bounds the overlap expiry on the Strava drains', function (string $command, int $expiry): void {
     $events = collect(app(Schedule::class)->events());

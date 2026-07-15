@@ -50,8 +50,8 @@ class RunCardFactory
      */
     private const array INDONESIAN_HOLIDAYS_MD = [
         '01-01', // Tahun Baru
-        '01-29', // Tahun Baru Imlek (2025 approx; fixed 01-29 for simplicity)
-        '03-31', // Hari Nyepi (approx; fixed for simplicity)
+        '01-29', // Tahun Baru Imlek
+        '03-31', // Hari Nyepi
         '05-01', // Hari Buruh
         '05-20', // Hari Kebangkitan Nasional
         '06-01', // Hari Lahir Pancasila

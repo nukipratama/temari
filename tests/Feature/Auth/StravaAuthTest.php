@@ -223,9 +223,6 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
 });
 
 it('lets an already-authenticated user start a strava reconnect', function (): void {
-    // Regression: the reconnect banner links here for a logged-in user. If the OAuth
-    // routes sit behind `guest`, an authed user is bounced to the dashboard instead of
-    // being sent to Strava — which looks like the button just reloading the page.
     mockStravaDriver(function ($driver): void {
         $driver->shouldReceive('scopes')->once()->andReturnSelf();
         $driver->shouldReceive('redirect')->once()->andReturn(redirect('https://www.strava.com/oauth/authorize?fake'));

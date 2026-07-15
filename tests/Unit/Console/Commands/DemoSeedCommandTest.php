@@ -29,13 +29,8 @@ beforeEach(fn () => Carbon::setTestNow('2026-05-12 12:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
 it('seeds a complete, login-ready demo dataset and stays idempotent across re-runs', function (): void {
-    // The seed is heavy (~126 runs) and deterministic (frozen clock). It is the
-    // suite's single slowest unit of work, so this file runs it as few times as
-    // possible: ONE seed feeds every completeness assertion below, then a SECOND
-    // bare seed proves idempotency — two seeds total, not the original five.
-    // A configured bot token would let markDone fan out a Telegram push per
-    // notifiable row; the whole seed (backfill included) must stay under
-    // withoutDispatching so the demo never enqueues a no-op notification (#regression).
+    // Token set + queue faked: the whole seed must stay under withoutDispatching,
+    // so a configured token never enqueues a markDone Telegram push.
     config()->set('services.telegram.bot_token', 'test-token');
     Queue::fake();
 
@@ -125,9 +120,7 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         ->where('discriminator', '>', RecapPeriod::lastClosedMonth())
         ->count())->toBe(0);
 
-    // Idempotency: a second *bare* seed (no wipe) converges to the same row counts
-    // instead of duplicating or hitting the (user_id, strava_external_id) unique
-    // constraint. Every row is keyed on a deterministic identity via updateOrCreate.
+    // A second bare seed (no wipe) converges to the same row counts.
     $cardCount = RunCard::query()->whereIn('activity_id', $activityIds)->count();
     $snapshotCount = WeeklySnapshot::query()->where('user_id', $user->id)->count();
     $prCount = PersonalRecord::query()->where('user_id', $user->id)->count();

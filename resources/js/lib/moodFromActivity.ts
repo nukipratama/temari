@@ -1,12 +1,8 @@
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
 // Quick heuristic mood for an activity row when the backend hasn't
-// attached a mood yet (e.g. the `/runs` list). Anchored on TRIMP because
-// that's the single most-correlated number with "how the run felt."
-//
-// Thresholds are eyeballed for a recreational runner — tune via real
-// data once we have it. Returns a `Mood` so the mascot has variety in
-// the list view instead of every row defaulting to `dim`.
+// attached a mood yet (e.g. the `/runs` list). Anchored on TRIMP, the
+// number most correlated with "how the run felt."
 export function moodFromActivity(detail: ActivityDetail): Mood {
     const trimp = detail.trimp_edwards ?? 0;
     const km = (detail.distance ?? 0) / 1000;

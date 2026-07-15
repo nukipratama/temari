@@ -46,8 +46,7 @@ it('leaves resolved_at null on a transient miss so the catch-up retries', functi
 
     $detail->refresh();
     expect($detail->location_name)->toBeNull();
-    // A null Nominatim result is transient: the row stays eligible for the
-    // geo:backfill-locations sweep instead of being permanently marked resolved.
+    // A null Nominatim result leaves the row unresolved for the geo:backfill sweep.
     expect($detail->location_resolved_at)->toBeNull();
 });
 

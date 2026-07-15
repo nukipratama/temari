@@ -16,9 +16,7 @@ use Throwable;
 /**
  * Pushes maintainer-facing alerts to every `is_admin` user's connected Telegram
  * chat, so a solo operator sees a paused pipeline, a dead-lettered block, or a
- * dead scheduler as a push instead of discovering it days later. There is no
- * OWNER_TELEGRAM_CHAT_ID env: the alert target is the set of admins (E0-0), so it
- * is multi-admin ready and grants/revokes with the `is_admin` flag.
+ * dead scheduler as a push instead of discovering it days later.
  *
  * Best-effort and self-contained: a no-op when Telegram is unconfigured, and a
  * per-chat send failure is logged, never thrown, so an alert can never fail the

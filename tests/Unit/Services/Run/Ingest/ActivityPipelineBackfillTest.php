@@ -2,10 +2,6 @@
 
 declare(strict_types=1);
 
-// Backfill stagger now lives in DispatchPostRunAnalysis (the queued listener that
-// owns the post-ingest AI fan-out), so these cases drive the listener directly.
-// Kept here as the backfill-delay regression suite.
-
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Listeners\DispatchPostRunAnalysis;

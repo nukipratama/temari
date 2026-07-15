@@ -31,10 +31,6 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->pipeline = app(ActivityPipeline::class);
-    // ingest() fans out to RunCardFactory -> AnalysisService, which queues a real
-    // AnalyzeCardFlavorJob under the sync test queue connection. That job has its
-    // own dedicated test; faking Bus here keeps this file scoped to the pipeline
-    // itself instead of also exercising (and depending on) that job's behavior.
     Bus::fake();
 });
 
