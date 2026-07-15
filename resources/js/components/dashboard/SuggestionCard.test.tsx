@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import SuggestionCard from './SuggestionCard';
+import { setMockPage } from '@/test/setup';
 import type { ActivityDetail, AnalysisPayload } from '@/types/inertia';
 
 function suggestion(content: string): AnalysisPayload {
@@ -78,6 +79,12 @@ describe('SuggestionCard', () => {
         const button = screen.getByRole('button', { name: 'Tunggu 15:00 sebelum minta saran lain' });
         expect(button).toBeDisabled();
         expect(button).toHaveTextContent('15:00');
+    });
+
+    it('hides the "Saran lain" button when AI is globally paused', () => {
+        setMockPage({ aiPaused: true });
+        render(<SuggestionCard suggestion={suggestion('Tempo ringan.')} lastRun={null} />);
+        expect(screen.queryByRole('button', { name: /Saran lain/ })).not.toBeInTheDocument();
     });
 
     it('toggles a long body with "Baca selengkapnya"', () => {

@@ -140,7 +140,7 @@ function GroupedReanalyzeButton({
     entries,
     inertiaReloadProps,
 }: Readonly<{ entries: ReadonlyArray<ThreadEntry>; inertiaReloadProps: string[] }>) {
-    const { trigger, pending, retryAfterSeconds } = useAnalysisTrigger(entries[0].analysis, inertiaReloadProps);
+    const { trigger, pending, retryAfterSeconds, paused } = useAnalysisTrigger(entries[0].analysis, inertiaReloadProps);
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const cooling = cooldownRemaining > 0;
     // Hide is driven by *prop* status, not the local `pending` flag, so the
@@ -155,7 +155,7 @@ function GroupedReanalyzeButton({
 
     return (
         <AnimatePresence initial={false}>
-            {!anyRowInFlight && (
+            {!anyRowInFlight && !paused && (
                 <motion.div
                     key="grouped-reanalyze"
                     initial={{ opacity: 0 }}

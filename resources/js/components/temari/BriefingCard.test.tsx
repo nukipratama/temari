@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import BriefingCard from './BriefingCard';
+import { setMockPage } from '@/test/setup';
 import type { AnalysisPayload, BriefingResult, Mood } from '@/types/inertia';
 
 function analysisPayload(content: string | null, status: AnalysisPayload['status'] = 'done', type: AnalysisPayload['type'] = 'briefing_headline'): AnalysisPayload {
@@ -129,6 +130,22 @@ describe('BriefingCard', () => {
             />,
         );
         expect(screen.getByText('PR').tagName).toBe('STRONG');
+    });
+
+    it('hides the footer re-analyze button when AI is globally paused', () => {
+        setMockPage({ aiPaused: true });
+        render(<BriefingCard briefing={makeBriefing()} />);
+        expect(screen.queryByText(/Baca ulang/)).not.toBeInTheDocument();
+    });
+
+    it('keeps the footer spinner while paused if the headline is still in flight', () => {
+        setMockPage({ aiPaused: true });
+        render(
+            <BriefingCard
+                briefing={makeBriefing({ headline: analysisPayload(null, 'queued', 'briefing_headline') })}
+            />,
+        );
+        expect(screen.getAllByText(/Lagi dipikirin Temari/).length).toBeGreaterThan(0);
     });
 
     it('ticks down the re-analyze cooldown each second', () => {

@@ -21,6 +21,8 @@ describe('AiOutageBanner', () => {
     it('shows a soft resting message when paused', () => {
         setMockPage({ ...base, aiPaused: true });
         render(<AiOutageBanner />);
-        expect(screen.getByText(/Temari lagi istirahat sebentar/)).toBeInTheDocument();
+        expect(
+            screen.getByText('Temari lagi istirahat sebentar. Narasinya nggak ilang kok, nyusul otomatis pas dia balik.'),
+        ).toBeInTheDocument();
     });
 });

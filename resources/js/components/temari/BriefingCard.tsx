@@ -124,11 +124,17 @@ export default function BriefingCard({
 }
 
 function BriefingFooterButton({ headline }: Readonly<{ headline: AnalysisPayload }>) {
-    const { status, pending, error, retryAfterSeconds, trigger } = useAnalysisTrigger(headline, ['briefing']);
+    const { status, pending, error, retryAfterSeconds, paused, trigger } = useAnalysisTrigger(headline, ['briefing']);
     const remaining = useCooldownCountdown(retryAfterSeconds);
 
     const cooling = remaining > 0;
     const effective = pending ? 'queued' : status;
+
+    // AI globally paused: hide the trigger entirely (the global banner explains).
+    // The queued/processing spinner still shows below so in-flight work stays visible.
+    if (paused && effective !== 'queued' && effective !== 'processing') {
+        return null;
+    }
 
     if (effective === 'queued' || effective === 'processing') {
         return (

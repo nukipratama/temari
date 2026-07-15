@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useCallback, useMemo, useState } from 'react';
 import { Icon } from '@iconify/react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -8,7 +8,7 @@ import { csrfToken } from '@/lib/http';
 import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { cn } from '@/lib/cn';
-import type { AnalysisPayload } from '@/types/inertia';
+import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 interface LensConfig {
     id: 'cerita' | 'terjemahan' | 'split' | 'hr';
@@ -86,6 +86,7 @@ export default function FourLensGrid({
     className,
 }: Readonly<FourLensGridProps>) {
     const [bulkPending, setBulkPending] = useState(false);
+    const paused = usePage<SharedProps>().props.aiPaused ?? false;
 
     const lenses = useMemo<ReadonlyArray<LensConfig>>(() => [
         { id: 'cerita', icon: 'mdi:chat-outline', label: 'Cerita lari ini', analysis: cerita, tone: 'leaf' },
@@ -115,7 +116,7 @@ export default function FourLensGrid({
         <div className={cn('flex flex-col gap-4', className)}>
             {/* Single re-analyze control. Regenerate is head-only (chained kind);
                 historical runs resume per-block instead. */}
-            {isChainHead && (
+            {isChainHead && !paused && (
                 <div className="flex justify-start">
                     <button
                         type="button"

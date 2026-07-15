@@ -103,8 +103,8 @@ export default function AnalysisStatus({
     chained = false,
     isChainHead = false,
 }: Readonly<Props>) {
-    const { status, pending, error, retryAfterSeconds, pollingRetired, trigger } = useAnalysisTrigger(analysis, inertiaReloadProps);
-    const canTrigger = allowReanalyze && !awaitingSchedule;
+    const { status, pending, error, retryAfterSeconds, pollingRetired, paused, trigger } = useAnalysisTrigger(analysis, inertiaReloadProps);
+    const canTrigger = allowReanalyze && !awaitingSchedule && !paused;
     // A Done block may regenerate ("Baca ulang") in standalone mode, but in a
     // chain only the head may, so regenerating mid-history can't desync later
     // links. Resume actions on failed/pending links stay regardless.

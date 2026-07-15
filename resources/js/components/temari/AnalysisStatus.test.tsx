@@ -213,6 +213,27 @@ describe('AnalysisStatus', () => {
         expect(body).not.toBeNull();
     });
 
+    describe('when AI is globally paused', () => {
+        it('hides the "Baca ulang" button on done content but keeps the content', () => {
+            setMockPage({ aiPaused: true });
+            render(<AnalysisStatus analysis={payload({ status: 'done', content: 'Halo' })} />);
+            expect(screen.getByText('Halo')).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
+        });
+
+        it('hides the "Coba lagi" button on a failed block', () => {
+            setMockPage({ aiPaused: true });
+            render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
+            expect(screen.queryByRole('button', { name: /Coba lagi/ })).not.toBeInTheDocument();
+        });
+
+        it('hides the empty-state trigger on a pending block', () => {
+            setMockPage({ aiPaused: true });
+            render(<AnalysisStatus analysis={payload({ status: 'pending' })} />);
+            expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
+        });
+    });
+
     describe('chained behavior', () => {
         it('shows "Baca ulang" on a done block when it is the chain head', () => {
             render(

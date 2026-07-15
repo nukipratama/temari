@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import TemariThread, { type ThreadEntry } from './TemariThread';
+import { setMockPage } from '@/test/setup';
 import type { AnalysisPayload } from '@/types/inertia';
 
 function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
@@ -35,6 +36,18 @@ describe('TemariThread grouped reanalyze button', () => {
         ];
         render(<TemariThread mood="nyala" entries={entries} />);
         expect(screen.getByRole('button', { name: /Baca ulang/ })).toBeInTheDocument();
+    });
+
+    it('hides the grouped button when AI is globally paused', () => {
+        setMockPage({ aiPaused: true });
+        const entries: ThreadEntry[] = [
+            entry('speech'),
+            entry('technical', { type: 'run_insight_technical' }),
+            entry('splits', { type: 'run_insight_splits' }),
+            entry('zones', { type: 'run_insight_zones' }),
+        ];
+        render(<TemariThread mood="nyala" entries={entries} />);
+        expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
     });
 
     it('disables the grouped button and shows a countdown while on cooldown', () => {

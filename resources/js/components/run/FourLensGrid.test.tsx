@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
 import FourLensGrid from './FourLensGrid';
+import { setMockPage } from '@/test/setup';
 import type { AnalysisPayload } from '@/types/inertia';
 
 function makeAnalysis(id: number, type: AnalysisPayload['type'], status: 'done' | 'pending' = 'done', content = 'Hasil analisis.'): AnalysisPayload {
@@ -36,6 +37,12 @@ describe('FourLensGrid', () => {
 
     it('hides the "Baca ulang semua" button on a historical (non-head) run', () => {
         render(<FourLensGrid {...defaultProps} />);
+        expect(screen.queryByText(/Baca ulang semua/i)).not.toBeInTheDocument();
+    });
+
+    it('hides the head "Baca ulang semua" button when AI is globally paused', () => {
+        setMockPage({ aiPaused: true });
+        render(<FourLensGrid {...defaultProps} isChainHead />);
         expect(screen.queryByText(/Baca ulang semua/i)).not.toBeInTheDocument();
     });
 

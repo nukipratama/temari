@@ -516,6 +516,7 @@ function AttentionGroupRow({
     actionable,
 }: Readonly<{ group: DeadLetterGroup; countLabel: string; actionable: boolean }>) {
     const { post, processing } = useForm();
+    const paused = usePage<SharedProps>().props.aiPaused ?? false;
 
     function retry(): void {
         post(`/ai-usage/users/${group.user_id}/retry-failed`, { preserveScroll: true });
@@ -534,7 +535,8 @@ function AttentionGroupRow({
                     <button
                         type="button"
                         onClick={retry}
-                        disabled={processing}
+                        disabled={processing || paused}
+                        title={paused ? 'Temari lagi istirahat, coba lagi nanti' : undefined}
                         className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-leaf-deep px-3 py-1.5 text-xs font-semibold text-cream transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />

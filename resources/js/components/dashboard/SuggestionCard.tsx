@@ -48,7 +48,7 @@ function SuggestionContent({ text }: Readonly<{ text: string }>) {
 }
 
 export default function SuggestionCard({ suggestion, lastRun }: Readonly<{ suggestion: AnalysisPayload; lastRun: ActivityDetail | null }>) {
-    const { trigger, pending, retryAfterSeconds } = useAnalysisTrigger(suggestion, ['briefing']);
+    const { trigger, pending, retryAfterSeconds, paused } = useAnalysisTrigger(suggestion, ['briefing']);
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const cooling = cooldownRemaining > 0;
 
@@ -81,18 +81,20 @@ export default function SuggestionCard({ suggestion, lastRun }: Readonly<{ sugge
                     <Chip>{weatherChipLabel}</Chip>
                 </div>
             )}
-            <div className="mt-auto pt-2">
-                <button
-                    type="button"
-                    onClick={trigger}
-                    disabled={pending || cooling}
-                    aria-label={cooldownAriaLabel(cooldownRemaining, 'minta saran lain')}
-                    className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
-                >
-                    <Icon icon="mdi:auto-awesome" aria-hidden />
-                    <span>{label}</span>
-                </button>
-            </div>
+            {!paused && (
+                <div className="mt-auto pt-2">
+                    <button
+                        type="button"
+                        onClick={trigger}
+                        disabled={pending || cooling}
+                        aria-label={cooldownAriaLabel(cooldownRemaining, 'minta saran lain')}
+                        className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
+                    >
+                        <Icon icon="mdi:auto-awesome" aria-hidden />
+                        <span>{label}</span>
+                    </button>
+                </div>
+            )}
         </Card>
     );
 }

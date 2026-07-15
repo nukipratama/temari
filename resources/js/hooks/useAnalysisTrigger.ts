@@ -1,7 +1,7 @@
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { csrfToken } from '@/lib/http';
-import type { AnalysisPayload, AnalysisStatus } from '@/types/inertia';
+import type { AnalysisPayload, AnalysisStatus, SharedProps } from '@/types/inertia';
 
 const POLL_INITIAL_MS = 3000;
 const POLL_MAX_MS = 15000;
@@ -51,6 +51,13 @@ interface TriggerResult {
      * quiet "reload later" affordance instead of spinning forever.
      */
     pollingRetired: boolean;
+    /**
+     * LLM narration is globally paused (`aiPaused`). Consumers hide their
+     * trigger affordance while this is true — a POST would be refused server-side
+     * and the row would just stay pending, so the button is a dead action. The
+     * global {@link AiOutageBanner} carries the explanation instead.
+     */
+    paused: boolean;
     trigger: () => Promise<void>;
 }
 
@@ -161,6 +168,7 @@ export function useAnalysisTrigger(
     options: TriggerOptions = {},
 ): TriggerResult {
     const { onUpdate } = options;
+    const paused = usePage<SharedProps>().props.aiPaused ?? false;
     const [status, setStatus] = useState<AnalysisStatus>(payload.status);
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -233,5 +241,5 @@ export function useAnalysisTrigger(
         return subscribePoll(reloadKey.split('|'), () => setPollingRetired(true));
     }, [isInFlight, reloadKey]);
 
-    return { status, pending, error, retryAfterSeconds, pollingRetired, trigger };
+    return { status, pending, error, retryAfterSeconds, pollingRetired, paused, trigger };
 }

@@ -99,6 +99,13 @@ describe('AiUsage page', () => {
         expect(screen.queryByRole('button', { name: /Coba lagi semua/ })).not.toBeInTheDocument();
     });
 
+    it('disables the retry button (but keeps it visible) when AI is globally paused', () => {
+        setMockPage({ aiPaused: true });
+        render(<AiUsage {...baseProps} deadLettered={[deadLetteredGroup]} />);
+        const button = screen.getByRole('button', { name: /Coba lagi semua/ });
+        expect(button).toBeDisabled();
+    });
+
     it('renders the failed-under-budget bucket with a per-user re-arm button', () => {
         render(<AiUsage {...baseProps} failedUnderBudget={[deadLetteredGroup]} />);
         expect(screen.getByText('Failed, belum menyerah')).toBeInTheDocument();
