@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # PreToolUse(Bash) guard.
-# DENY the never-do actions (self-merge, push-to-main, force-push, secret dumps,
-# prod volume deletion) and ASK before anything that touches prod (homelab) or
-# discards uncommitted working-tree changes. Non-matching commands defer to the
+# DENY the never-do actions (push-to-main, force-push, secret dumps, prod volume
+# deletion) and ASK before anything that needs explicit sign-off: merging a PR,
+# touching prod (homelab), or discarding uncommitted working-tree changes.
+# Non-matching commands defer to the
 # normal permission flow (exit 0, no output). See the CC-feature plan.
 set -uo pipefail
 
@@ -23,9 +24,6 @@ decide() { # $1=deny|ask  $2=reason
 }
 
 # ---------- hard DENY ----------
-if has '\bgh +pr +merge\b'; then
-  decide deny "Never self-merge. Open the PR and let a human review + merge via the GitHub UI."
-fi
 # Scope the check to the `git push` invocation's own args (up to the next
 # segment separator), so a chained `git commit -F ...` or an echo mentioning
 # "main" elsewhere on the line cannot trip it. Force is matched case-sensitively:
@@ -45,6 +43,9 @@ if { has 'printenv' || has '(^| )env( |$)'; } && has 'grep.*(pass|secret|token|k
 fi
 
 # ---------- ASK (explicit per-use confirmation) ----------
+if has '\bgh +pr +merge\b'; then
+  decide ask "Merging a PR needs your explicit OK. Confirm this merge?"
+fi
 if has '\bssh +homelab\b'; then
   decide ask "Prod (homelab) access is never pre-authorized. Confirm this exact command?"
 fi
