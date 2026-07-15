@@ -36,7 +36,7 @@ export const METRIC_GLOSSARY = {
     trimp: {
         acronym: 'TRIMP',
         label: 'TRIMP',
-        body: 'Skor usaha satu sesi lari. Gabungan durasi dan detak jantung. Semakin lama atau semakin keras, semakin tinggi skornya.',
+        body: 'Skor usaha satu sesi lari. Gabungan durasi dan detak jantung. Semakin lama atau semakin keras, semakin tinggi skornya. Baris di bawahnya ngebandingin sesi ini sama rata-rata effort kamu 28 hari terakhir, jadi kamu tau ini lebih berat atau lebih enteng dari biasanya.',
     },
     monotony: {
         label: 'Monotony',

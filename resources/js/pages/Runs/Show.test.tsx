@@ -143,6 +143,7 @@ function renderShow(
             isChainHead
             telegramRetryAfterSeconds={null}
             pastYou={null}
+            relativeEffort={null}
             {...overrides}
         />,
     );
@@ -157,6 +158,16 @@ describe('Runs/Show', () => {
     it('uses the backend moodFallback when there is no post-run story line', () => {
         renderShow({ storyLine: null, moodFallback: 'oleng' });
         expect(screen.getAllByText('Oleng').length).toBeGreaterThan(0);
+    });
+
+    it('shows the relative-effort sub-line under the TRIMP tile when banded', () => {
+        renderShow({ relativeEffort: { trimp: 98, baseline: 70, ratio: 1.4, band: 'well_above' } });
+        expect(screen.getByText('lebih berat dari biasanya')).toBeInTheDocument();
+    });
+
+    it('shows no relative-effort sub-line when the baseline is too thin (null band)', () => {
+        renderShow({ relativeEffort: { trimp: 98, baseline: null, ratio: null, band: null } });
+        expect(screen.queryByText(/dari biasanya/)).not.toBeInTheDocument();
     });
 
     it('renders the DURASI hero tile with the HMS-formatted moving_time', () => {

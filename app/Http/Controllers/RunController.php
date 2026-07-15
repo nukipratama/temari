@@ -13,6 +13,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
@@ -286,7 +287,7 @@ class RunController extends Controller
         );
     }
 
-    public function show(Request $request, Activity $activity, PastYouMatcher $matcher): Response
+    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, RelativeEffort $relativeEffort): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -343,6 +344,7 @@ class RunController extends Controller
             'insightSplits' => $payloadFor(AnalysisType::RunInsightSplits),
             'insightZones' => $payloadFor(AnalysisType::RunInsightZones),
             'pastYou' => $matcher->findMatch($activity, $detail),
+            'relativeEffort' => $relativeEffort->forRun($activity, $detail),
         ]);
     }
 

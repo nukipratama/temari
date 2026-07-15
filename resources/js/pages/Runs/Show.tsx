@@ -78,6 +78,22 @@ interface PastYouMatch {
     days_ago: number;
 }
 
+/** Effort of this run vs the runner's own 28-day TRIMP baseline (see RelativeEffort). */
+interface RelativeEffortPayload {
+    trimp: number;
+    baseline: number | null;
+    ratio: number | null;
+    band: 'well_above' | 'above' | 'typical' | 'below' | null;
+}
+
+/** Human "vs biasanya" line per band. Null band (thin baseline) shows nothing. */
+const EFFORT_SUB: Record<NonNullable<RelativeEffortPayload['band']>, string> = {
+    well_above: 'lebih berat dari biasanya',
+    above: 'agak lebih berat dari biasanya',
+    typical: 'kayak biasanya',
+    below: 'lebih enteng dari biasanya',
+};
+
 interface PerKmRow {
     km?: number | string;
     pace?: string;
@@ -110,6 +126,8 @@ interface ShowProps {
     /** Remaining Telegram-send cooldown for this run's speech, or null. */
     telegramRetryAfterSeconds: number | null;
     pastYou: PastYouMatch | null;
+    /** This run's effort vs the runner's own 28-day baseline, or null (no HR). */
+    relativeEffort: RelativeEffortPayload | null;
 }
 
 export default function RunsShow({
@@ -125,6 +143,7 @@ export default function RunsShow({
     isChainHead,
     telegramRetryAfterSeconds,
     pastYou,
+    relativeEffort,
 }: Readonly<ShowProps>) {
     const telegramConnected = usePage<SharedProps>().props.telegramConnected ?? false;
     const summary = (detail.stream_summary ?? {}) as Record<string, unknown>;
@@ -138,6 +157,7 @@ export default function RunsShow({
     const pace = paceSec != null ? formatPace(paceSec) : '—';
     const hr = detail.average_heartrate != null ? Math.round(detail.average_heartrate) : null;
     const trimp = detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
+    const effortSub = relativeEffort?.band != null ? EFFORT_SUB[relativeEffort.band] : undefined;
 
     const kartuProps = useMemo(() => kartuPropsFromDetail(detail), [detail]);
 
@@ -283,7 +303,7 @@ export default function RunsShow({
                                     <StatTile tone="plainSky" size="md" align="center" label="DURASI" value={kartuProps.durasi} />
                                     <StatTile tone="plainSky" size="md" align="center" label="PACE" value={pace} unit="/km" />
                                     <StatTile tone="plainSky" size="md" align="center" label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
-                                    <StatTile tone="plainSky" size="md" align="center" label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" explainerKey="trimp" className="col-span-2 sm:col-span-1" />
+                                    <StatTile tone="plainSky" size="md" align="center" label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" sub={effortSub} explainerKey="trimp" className="col-span-2 sm:col-span-1" />
                                 </div>
 
                                 {/* KAMU VS KAMU DULU — inline in hero */}
