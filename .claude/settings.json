@@ -18,8 +18,6 @@
       "Bash(./vendor/bin/sail artisan list)"
     ],
     "deny": [
-      "Bash(gh pr merge)",
-      "Bash(gh pr merge *)",
       "Bash(git push --force *)",
       "Bash(git push -f *)",
       "Bash(docker volume rm *)"
