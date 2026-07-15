@@ -353,6 +353,8 @@ it('RunInsightNarrator feeds training-load + pace-variability + zone-minutes int
             'time_in_zone_min' => ['Z2' => 32, 'Z3' => 14],
             'pace_variability_sec' => 11.3,
             'ascent_m' => 48,
+            'max_grade_pct' => 9.5,
+            'gap_pace' => '5:40',
         ],
     ]);
 
@@ -363,6 +365,8 @@ it('RunInsightNarrator feeds training-load + pace-variability + zone-minutes int
         ->and($context['pace_variability_sec'])->toBe(11.3)
         ->and($context['time_in_zone_min'])->toBe(['Z2' => 32, 'Z3' => 14])
         ->and($context['ascent_m'])->toBe(48)
+        ->and($context['max_grade_pct'])->toBe(9.5)
+        ->and($context['gap_pace'])->toBe('5:40')
         // Single-run fixture: relative_effort carries the raw TRIMP with no
         // comparison (baseline too thin).
         ->and($context['relative_effort'])->toBe([

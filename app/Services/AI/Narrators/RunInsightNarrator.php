@@ -70,6 +70,11 @@ class RunInsightNarrator
           (negative split, even pacing, fade at the end). Kalau ascent_m
           menonjol, kaitkan perlambatan ke tanjakan secara eksplisit, jangan
           tebak "mungkin capek" kalau elevasi yang jelas penyebabnya.
+          max_grade_pct = tanjakan tercuram (persen); kalau tinggi (>8%) sebut
+          sebagai medan yang berat. gap_pace = pace seandainya jalurnya datar;
+          pakai buat bilang usaha sebenernya lebih kencang dari pace mentah di
+          lari nanjak, tapi jelasin maksudnya, jangan lempar singkatan "GAP"
+          mentah. Lewati keduanya kalau null atau jalurnya datar.
           Contoh:
           * "Km 3-5 paling stabil, 6:20-6:25 per km. Km 7 melambat ke 6:50,
             wajar, ada 40 m tanjakan di situ."
@@ -196,6 +201,8 @@ class RunInsightNarrator
             'trimp' => $detail->trimp_edwards,
             'per_km' => $summary['per_km'] ?? null,
             'ascent_m' => $summary['ascent_m'] ?? null,
+            'max_grade_pct' => $summary['max_grade_pct'] ?? null,
+            'gap_pace' => $summary['gap_pace'] ?? null,
             'weather_temp_c' => $shared->weatherTempC,
             'weather_humidity_pct' => $detail->weather_humidity_pct,
             'weather_rain' => $shared->weatherRain,
