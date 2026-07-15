@@ -58,6 +58,11 @@ export const METRIC_GLOSSARY = {
         label: 'Cadence',
         body: 'Langkah per menit (spm). Rentang 170 sampai 180 lazim untuk distance runner, biasanya naik 5 sampai 10 saat sprint.',
     },
+    gap: {
+        acronym: 'GAP',
+        label: 'Grade Adjusted Pace',
+        body: 'Pace yang udah dihitung ulang seolah jalurnya datar, biar effort di tanjakan keliatan jujur. Lari nanjak yang berat bakal keluar lebih kencang dari pace mentahnya.',
+    },
     edwards_trimp: {
         acronym: 'Edwards',
         label: 'Edwards TRIMP',

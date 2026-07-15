@@ -605,6 +605,14 @@ function DetailTiles({
     if (summary.ascent_m != null && Number.isFinite(ascent)) {
         tiles.push({ label: 'ASCENT', value: `${ascent}`, sub: 'm', metricKey: 'ascent' });
     }
+    // Only when the run actually climbed, so a flat GPS run doesn't show a noisy 0%.
+    const maxGrade = Number(summary.max_grade_pct);
+    if (summary.max_grade_pct != null && Number.isFinite(maxGrade) && maxGrade >= 3) {
+        tiles.push({ label: 'TANJAKAN', value: `${maxGrade}%`, sub: 'tanjakan tercuram' });
+        if (typeof summary.gap_pace === 'string') {
+            tiles.push({ label: 'GAP', value: summary.gap_pace, sub: '/km setara datar', metricKey: 'gap' });
+        }
+    }
     const decoupling = Number(summary.decoupling_pct);
     if (summary.decoupling_pct != null && Number.isFinite(decoupling)) {
         const decouplingHigh = Math.abs(decoupling) > 8;

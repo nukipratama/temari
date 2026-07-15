@@ -170,6 +170,24 @@ describe('Runs/Show', () => {
         expect(screen.queryByText(/dari biasanya/)).not.toBeInTheDocument();
     });
 
+    it('shows TANJAKAN and GAP detail tiles on a hilly run', () => {
+        renderShow({
+            detail: { ...detail, stream_summary: { ...detail.stream_summary, max_grade_pct: 11, gap_pace: '5:20' } },
+        });
+        expect(screen.getByText('TANJAKAN')).toBeInTheDocument();
+        expect(screen.getByText('11%')).toBeInTheDocument();
+        expect(screen.getByText('GAP')).toBeInTheDocument();
+        expect(screen.getByText('5:20')).toBeInTheDocument();
+    });
+
+    it('hides the grade tiles on a flat run', () => {
+        renderShow({
+            detail: { ...detail, stream_summary: { ...detail.stream_summary, max_grade_pct: 1, gap_pace: '5:20' } },
+        });
+        expect(screen.queryByText('TANJAKAN')).not.toBeInTheDocument();
+        expect(screen.queryByText('GAP')).not.toBeInTheDocument();
+    });
+
     it('renders the DURASI hero tile with the HMS-formatted moving_time', () => {
         renderShow();
         // moving_time 3600s → 1:00:00 in the digital H:MM:SS form (hero tile + the
