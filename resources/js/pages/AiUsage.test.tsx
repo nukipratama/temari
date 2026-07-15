@@ -76,12 +76,30 @@ describe('AiUsage page', () => {
         expect(screen.queryByText('Perlu perhatian')).not.toBeInTheDocument();
     });
 
-    it('renders a per-user dead-letter group with its stuck-block count', () => {
+    it('renders a per-user dead-letter group with its stuck-block count and type chips', () => {
         render(<AiUsage {...baseProps} deadLettered={[deadLetteredGroup]} />);
         expect(screen.getByText('Perlu perhatian')).toBeInTheDocument();
         expect(screen.getByText('Charlie')).toBeInTheDocument();
         expect(screen.getByText('2 blok berhenti dicoba otomatis')).toBeInTheDocument();
+        // One chip per block type (no error text).
         expect(screen.getByText('weekly_recap')).toBeInTheDocument();
+        expect(screen.getByText('pr_context')).toBeInTheDocument();
+    });
+
+    it('collapses repeated block types into one "type ×N" chip', () => {
+        const group = {
+            ...deadLetteredGroup,
+            count: 3,
+            blocks: [
+                { type: 'weekly_recap', error: null, failed_at: '2026-05-19T10:00:00+00:00' },
+                { type: 'weekly_recap', error: null, failed_at: '2026-05-19T09:00:00+00:00' },
+                { type: 'pr_context', error: null, failed_at: '2026-05-19T08:00:00+00:00' },
+            ],
+        };
+        render(<AiUsage {...baseProps} deadLettered={[group]} />);
+        const chip = screen.getByText('weekly_recap').closest('li');
+        expect(chip?.textContent).toBe('weekly_recap×2');
+        expect(screen.getByText('pr_context').closest('li')?.textContent).toBe('pr_context');
     });
 
     it('posts to the per-user retry route on "Coba lagi semua"', () => {

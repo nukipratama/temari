@@ -522,37 +522,44 @@ function AttentionGroupRow({
         post(`/ai-usage/users/${group.user_id}/retry-failed`, { preserveScroll: true });
     }
 
-    return (
-        <div className="rounded-2xl border border-line bg-surface-elev p-4">
-            <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                    <p className="truncate font-medium text-ink">{group.user_name}</p>
-                    <p className="text-xs text-ink-3">
-                        {group.count} {countLabel}
-                    </p>
-                </div>
-                {actionable && (
-                    <button
-                        type="button"
-                        onClick={retry}
-                        disabled={processing || paused}
-                        title={paused ? 'Temari lagi istirahat, coba lagi nanti' : undefined}
-                        className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-leaf-deep px-3 py-1.5 text-xs font-semibold text-cream transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
-                    >
-                        <Icon icon="mdi:auto-awesome" aria-hidden />
-                        <span>{processing ? 'Mengirim…' : 'Coba lagi semua'}</span>
-                    </button>
-                )}
-            </div>
+    // Collapse the block list into "type ×N" chips so a user with many stuck
+    // blocks of the same kind reads as one chip, not a repeated wall.
+    const byType = group.blocks.reduce<Record<string, number>>((acc, block) => {
+        acc[block.type] = (acc[block.type] ?? 0) + 1;
+        return acc;
+    }, {});
 
-            <ul className="mt-3 space-y-1 border-t border-line pt-3">
-                {group.blocks.map((block, i) => (
-                    <li key={`${block.type}-${i}`} className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-ink-3">{block.type}</span>
-                        {block.error && <span className="min-w-0 truncate text-xs text-ink-2">{block.error}</span>}
-                    </li>
-                ))}
-            </ul>
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev p-4">
+            <div className="min-w-0">
+                <p className="truncate font-medium text-ink">{group.user_name}</p>
+                <p className="text-xs text-ink-3">
+                    {group.count} {countLabel}
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                    {Object.entries(byType).map(([type, count]) => (
+                        <li
+                            key={type}
+                            className="rounded-md bg-surface-sunken px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-ink-3"
+                        >
+                            {type}
+                            {count > 1 && <span className="ml-1 text-ink-2">×{count}</span>}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+            {actionable && (
+                <button
+                    type="button"
+                    onClick={retry}
+                    disabled={processing || paused}
+                    title={paused ? 'Temari lagi istirahat, coba lagi nanti' : undefined}
+                    className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-leaf-deep px-3 py-1.5 text-xs font-semibold text-cream transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+                >
+                    <Icon icon="mdi:auto-awesome" aria-hidden />
+                    <span>{processing ? 'Mengirim…' : 'Coba lagi semua'}</span>
+                </button>
+            )}
         </div>
     );
 }
