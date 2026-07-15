@@ -2,6 +2,14 @@ name: temari-prod
 
 x-app-image: &app-image temari/app:latest
 
+# Bound every container's json-file sink so a runaway stderr stream can't fill
+# the host disk. Shared by app-tier, mysql, and both redis instances.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 # Secrets and per-host config (APP_KEY, DB creds, STRAVA creds, feature flags)
 # live in /opt/temari/.env on the host — root-owned, 640, runner-readable.
 # Compose loads them via env_file: on each service. Nothing flows through GitHub
@@ -72,6 +80,7 @@ x-redis-prod-base: &redis-prod-base
   image: redis:8-alpine
   restart: unless-stopped
   networks: [internal]
+  logging: *logging
   healthcheck:
     # SET (not ping) so `up --wait` blocks until AOF replay finishes: Redis
     # answers PONG while still LOADING the dataset into memory but rejects
@@ -102,12 +111,7 @@ x-app-base: &app-base
   volumes:
     # Persist rotated daily logs across container recreation (deploys).
     - app_logs:/var/www/html/storage/logs
-  logging:
-    # Bound the json-file sink so the stderr stream can't fill the disk.
-    driver: json-file
-    options:
-      max-size: "10m"
-      max-file: "3"
+  logging: *logging
 
 services:
   app:
@@ -135,9 +139,15 @@ services:
     <<: *app-base
     command: ["php", "artisan", "horizon"]
     stop_grace_period: 60s
-    # Image healthcheck is HTTP — disable on the queue worker.
+    # Override the image's HTTP healthcheck: a wedged supervisor keeps the
+    # container alive but stops processing. horizon:status exits 0 running,
+    # 1 paused, 2 inactive — so paused/dead both surface as `unhealthy`.
     healthcheck:
-      disable: true
+      test: ["CMD", "php", "artisan", "horizon:status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -217,6 +227,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     networks: [internal]
+    logging: *logging
     healthcheck:
       # CMD-SHELL form + $$ defers interpolation to runtime inside the container
       # so MYSQL_ROOT_PASSWORD doesn't leak into `docker inspect` plaintext.
