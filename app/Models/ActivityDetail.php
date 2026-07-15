@@ -33,6 +33,13 @@ use Override;
  * @property array<int, array<string, mixed>>|null $splits_metric
  * @property string|null $summary_polyline
  * @property float|null $trimp_edwards
+ * @property int|null $suffer_score
+ * @property int|null $workout_type
+ * @property float|null $elev_high
+ * @property float|null $elev_low
+ * @property string|null $device_name
+ * @property float|null $average_watts
+ * @property float|null $max_speed
  * @property array<string, mixed>|null $stream_summary
  * @property int|null $weather_temp_c
  * @property int|null $weather_humidity_pct
@@ -66,6 +73,13 @@ use Override;
     'splits_metric',
     'summary_polyline',
     'trimp_edwards',
+    'suffer_score',
+    'workout_type',
+    'elev_high',
+    'elev_low',
+    'device_name',
+    'average_watts',
+    'max_speed',
     'stream_summary',
     'weather_temp_c',
     'weather_humidity_pct',
@@ -145,6 +159,12 @@ class ActivityDetail extends Model
             'calories' => 'float',
             'splits_metric' => 'array',
             'trimp_edwards' => 'float',
+            'suffer_score' => 'integer',
+            'workout_type' => 'integer',
+            'elev_high' => 'float',
+            'elev_low' => 'float',
+            'average_watts' => 'float',
+            'max_speed' => 'float',
             'stream_summary' => 'array',
             'weather_temp_c' => 'integer',
             'weather_humidity_pct' => 'integer',

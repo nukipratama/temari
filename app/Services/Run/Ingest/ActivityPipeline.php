@@ -201,6 +201,14 @@ class ActivityPipeline
                 'summary_polyline' => $detail['map']['summary_polyline'] ?? null,
                 'start_lat' => $latlng === null ? null : (float) $latlng[0],
                 'start_lng' => $latlng === null ? null : (float) $latlng[1],
+                // Capture-only enrichment (see the add-enrichment-columns migration).
+                'suffer_score' => $detail['suffer_score'] ?? null,
+                'workout_type' => $detail['workout_type'] ?? null,
+                'elev_high' => $detail['elev_high'] ?? null,
+                'elev_low' => $detail['elev_low'] ?? null,
+                'device_name' => $detail['device_name'] ?? null,
+                'average_watts' => $detail['average_watts'] ?? null,
+                'max_speed' => $detail['max_speed'] ?? null,
             ],
         );
     }

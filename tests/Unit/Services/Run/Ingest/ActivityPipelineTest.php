@@ -92,6 +92,66 @@ it('stores detail and streams on successful fetch', function (): void {
         ->and($activity->fresh()->detail_fail_count)->toBe(0);
 });
 
+it('captures enrichment fields from the detail payload', function (): void {
+    $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Race 10K',
+            'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 10000.0,
+            'moving_time' => 3600,
+            'elapsed_time' => 3600,
+            'splits_metric' => [],
+            'suffer_score' => 142,
+            'workout_type' => 1,
+            'elev_high' => 88.4,
+            'elev_low' => 12.1,
+            'device_name' => 'Garmin Forerunner 265',
+            'average_watts' => 310.5,
+            'max_speed' => 5.2,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    expect($detail->suffer_score)->toBe(142)
+        ->and($detail->workout_type)->toBe(1)
+        ->and($detail->elev_high)->toEqualWithDelta(88.4, 0.01)
+        ->and($detail->elev_low)->toEqualWithDelta(12.1, 0.01)
+        ->and($detail->device_name)->toBe('Garmin Forerunner 265')
+        ->and($detail->average_watts)->toEqualWithDelta(310.5, 0.01)
+        ->and($detail->max_speed)->toEqualWithDelta(5.2, 0.01);
+});
+
+it('leaves enrichment fields null when the detail payload omits them', function (): void {
+    $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Treadmill Run',
+            'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000.0,
+            'moving_time' => 1800,
+            'elapsed_time' => 1800,
+            'splits_metric' => [],
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    expect($detail->suffer_score)->toBeNull()
+        ->and($detail->workout_type)->toBeNull()
+        ->and($detail->elev_high)->toBeNull()
+        ->and($detail->device_name)->toBeNull()
+        ->and($detail->average_watts)->toBeNull()
+        ->and($detail->max_speed)->toBeNull();
+});
+
 it('increments detail_fail_count on detail fetch failure', function (): void {
     $activity = makeActivityWithConnection();
     $activity->update(['detail_fail_count' => 2]);
