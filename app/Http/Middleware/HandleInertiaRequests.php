@@ -53,6 +53,13 @@ class HandleInertiaRequests extends Middleware
     private const int AI_PAUSED_CACHE_SECONDS = 60;
 
     /**
+     * Cache key for the global AI-paused signal. Public so the /pulse kill-switch
+     * toggle can bust it on flip for an immediate reflection instead of waiting
+     * out the {@see self::AI_PAUSED_CACHE_SECONDS} window.
+     */
+    public const string AI_PAUSED_CACHE_KEY = 'ai-paused';
+
+    /**
      * @return array<string, mixed>
      */
     #[Override]
@@ -108,7 +115,7 @@ class HandleInertiaRequests extends Middleware
         }
 
         return Cache::remember(
-            'ai-paused',
+            self::AI_PAUSED_CACHE_KEY,
             self::AI_PAUSED_CACHE_SECONDS,
             fn (): bool => app(AnalysisService::class)->generationPaused(),
         );
