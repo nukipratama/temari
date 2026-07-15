@@ -238,6 +238,53 @@ it('re-kicks the earliest stalled CardFlavor per user with invalidate:false', fu
         ->and($captured[0]['invalidate'])->toBeFalse();
 });
 
+it('batches multiple stalled CardFlavor rows per user, capped at the drain batch', function (): void {
+    $user = User::factory()->create();
+    // 12 stalled cards; the non-cascading drain batch is 10.
+    for ($i = 0; $i < 12; $i++) {
+        $activity = Activity::factory()->for($user)->create();
+        $card = RunCard::factory()->for($activity)->create();
+        Analysis::factory()->create([
+            'subject_type' => RunCard::class,
+            'subject_id' => $card->id,
+            'analysis_type' => AnalysisType::CardFlavor,
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureResumeRequests($captured));
+
+    $this->artisan('ai:self-heal')
+        ->expectsOutputToContain('Resumed 10 blocks.')
+        ->assertSuccessful();
+
+    expect($captured)->toHaveCount(10)
+        ->and(collect($captured)->pluck('type')->unique()->all())->toBe([AnalysisType::CardFlavor]);
+});
+
+it('batches multiple stalled PrContext rows per user', function (): void {
+    $user = User::factory()->create();
+    for ($i = 0; $i < 3; $i++) {
+        $pr = PersonalRecord::factory()->for($user)->create(['set_at' => Carbon::parse('2026-05-0'.($i + 1))]);
+        Analysis::factory()->create([
+            'subject_type' => PersonalRecord::class,
+            'subject_id' => $pr->id,
+            'analysis_type' => AnalysisType::PrContext,
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureResumeRequests($captured));
+
+    $this->artisan('ai:self-heal')
+        ->expectsOutputToContain('Resumed 3 blocks.')
+        ->assertSuccessful();
+
+    expect($captured)->toHaveCount(3);
+});
+
 it('recovers a Failed PrContext under the retry budget', function (): void {
     $user = User::factory()->create();
     $pr = PersonalRecord::factory()->for($user)->create(['set_at' => Carbon::parse('2026-05-01')]);

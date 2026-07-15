@@ -27,6 +27,17 @@ use Illuminate\Support\Carbon;
 class SelfHealCommand extends Command
 {
     /**
+     * Per-run drain cap for the non-cascading families (card flavor, PR context).
+     * Re-kicking one of these narrates exactly one subject, so at 1/run a large
+     * backfill would take one hour per card/PR; a bounded batch drains it in a few
+     * runs. Billing stays capped regardless of this number: each dispatched job
+     * re-checks the cost ceiling before calling the LLM (see
+     * AnalyzeBaseJob::haltForPausedGeneration), so actual spend is bounded by the
+     * ceiling, not by the batch size.
+     */
+    private const int NONCASCADING_DRAIN_BATCH = 10;
+
+    /**
      * Re-dispatches the earliest still-stalled block of each recovery family so a
      * block stranded by a cost-ceiling pause resumes once the ceiling resets at
      * midnight, and a block stranded by a transient failure gets a bounded retry.
@@ -209,14 +220,17 @@ class SelfHealCommand extends Command
     }
 
     /**
-     * Card-flavor narration: the earliest stalled CardFlavor per user. Unlike the
-     * daily/weekly-kickoff types, CardFlavor is dispatched only at ingest and has
-     * no other scheduled recovery, so a capped-Pending or transiently-Failed card
-     * would sit stuck without this sweep. Stalled + budget-bounded; demo excluded.
+     * Card-flavor narration: the earliest stalled CardFlavor rows per user, up to
+     * {@see self::NONCASCADING_DRAIN_BATCH}. Unlike the daily/weekly-kickoff types,
+     * CardFlavor is dispatched only at ingest and has no other scheduled recovery,
+     * so a capped-Pending or transiently-Failed card would sit stuck without this
+     * sweep. It does not cascade (one kick narrates one card), so a backfill of N
+     * cards drains in ceil(N / batch) runs rather than N. Stalled + budget-bounded;
+     * demo excluded.
      */
     private function resumeCardFlavor(AnalysisService $service): int
     {
-        $earliestPerUser = Analysis::query()
+        $toResume = Analysis::query()
             ->stalled()
             ->where('ai_analyses.subject_type', RunCard::class)
             ->where('ai_analyses.analysis_type', AnalysisType::CardFlavor)
@@ -225,9 +239,10 @@ class SelfHealCommand extends Command
             ->whereIn('activities.user_id', User::query()->notDemo()->select('id'))
             ->orderBy('ai_analyses.subject_id')
             ->get(['ai_analyses.subject_id', 'activities.user_id'])
-            ->unique('user_id');
+            ->groupBy('user_id')
+            ->flatMap(fn ($rows) => $rows->take(self::NONCASCADING_DRAIN_BATCH));
 
-        foreach ($earliestPerUser as $row) {
+        foreach ($toResume as $row) {
             $service->request(
                 subjectOrType: RunCard::class,
                 subjectId: (int) $row->subject_id,
@@ -236,17 +251,18 @@ class SelfHealCommand extends Command
             );
         }
 
-        return $earliestPerUser->count();
+        return $toResume->count();
     }
 
     /**
-     * PR-context narration: the earliest stalled PrContext per user. Like
-     * CardFlavor, dispatched only at ingest with no other scheduled recovery.
-     * Stalled + budget-bounded; ordered oldest-PR-first; demo excluded.
+     * PR-context narration: the earliest stalled PrContext rows per user, up to
+     * {@see self::NONCASCADING_DRAIN_BATCH}. Like CardFlavor, dispatched only at
+     * ingest with no other scheduled recovery and non-cascading, so it drains in
+     * batches. Stalled + budget-bounded; ordered oldest-PR-first; demo excluded.
      */
     private function resumePrContext(AnalysisService $service): int
     {
-        $earliestPerUser = Analysis::query()
+        $toResume = Analysis::query()
             ->stalled()
             ->where('ai_analyses.subject_type', PersonalRecord::class)
             ->where('ai_analyses.analysis_type', AnalysisType::PrContext)
@@ -254,9 +270,10 @@ class SelfHealCommand extends Command
             ->whereIn('personal_records.user_id', User::query()->notDemo()->select('id'))
             ->orderBy('personal_records.set_at')
             ->get(['ai_analyses.subject_id', 'personal_records.user_id'])
-            ->unique('user_id');
+            ->groupBy('user_id')
+            ->flatMap(fn ($rows) => $rows->take(self::NONCASCADING_DRAIN_BATCH));
 
-        foreach ($earliestPerUser as $row) {
+        foreach ($toResume as $row) {
             $service->request(
                 subjectOrType: PersonalRecord::class,
                 subjectId: (int) $row->subject_id,
@@ -265,7 +282,7 @@ class SelfHealCommand extends Command
             );
         }
 
-        return $earliestPerUser->count();
+        return $toResume->count();
     }
 
     /**
