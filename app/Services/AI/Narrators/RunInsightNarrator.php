@@ -11,6 +11,7 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Context\ActivityNarrationContext;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -113,6 +114,12 @@ class RunInsightNarrator
           Bandingkan sesi ini dengan baseline-nya: lebih cepat/lambat, HR lebih
           tinggi/rendah, decoupling membaik/memburuk. Sebut angkanya kalau bantu,
           mis. "pace 5:30, lebih kencang dari rata-rata 5:48 sebulan terakhir".
+        - relative_effort: beban sesi ini (TRIMP) dibanding rata-rata usaha 28
+          hari terakhir. band well_above/above = lebih ngoyo dari biasanya kamu,
+          typical = kayak biasa, below = lebih enteng. Pakai buat bingkai rasa
+          ("hari ini kerasa lebih berat dari biasanya, wajar butuh recovery"),
+          JANGAN sebut angka ratio mentah. Null kalau HR gak ada atau histori
+          masih tipis, ya lewati saja.
         - training_load: acute_7d (beban 7 hari), chronic_42d (kebugaran 42
           hari), form (chronic - acute), form_status (fresh/optimal/fatigued/
           overreaching). Pakai buat saran recovery yang spesifik di bagian zones:
@@ -135,6 +142,7 @@ class RunInsightNarrator
         private readonly RunBaseline $baseline,
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $trainingPaceCalculator,
+        private readonly RelativeEffort $relativeEffort,
     ) {
     }
 
@@ -197,6 +205,7 @@ class RunInsightNarrator
             'weather_wind_direction_deg' => $shared->weatherWindDirectionDeg,
             'training_load' => $this->trainingLoadContext($activity, $asOf),
             'recent_baseline_28d' => $this->baseline->forUserAsOf($activity->user_id, $asOf, $activity->id),
+            'relative_effort' => $this->relativeEffort->forRun($activity, $detail),
             'easy_pace_sec' => $paces['easy'] ?? null,
             'threshold_pace_sec' => $paces['threshold'] ?? null,
             ...NarratorContinuity::fields($prevNarrative),

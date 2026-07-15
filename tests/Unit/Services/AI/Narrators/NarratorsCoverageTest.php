@@ -27,6 +27,7 @@ use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendCaptionNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use App\Services\Run\LifetimeStats;
+use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -311,7 +312,7 @@ it('RunInsightNarrator returns 3-string payload on valid JSON', function (): voi
         'splits' => 'splits text',
         'zones' => 'zones text',
     ], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $payload = $narrator->generate($a, $d);
     expect($payload['technical'])->toBe('tech text')
         ->and($payload['splits'])->toBe('splits text')
@@ -321,14 +322,14 @@ it('RunInsightNarrator returns 3-string payload on valid JSON', function (): voi
 it('RunInsightNarrator throws on missing keys', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['technical' => 'only one'], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $narrator->generate($a, $d);
 })->throws(UnavailableException::class);
 
 it('RunInsightNarrator throws on non-JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller('not json');
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $narrator->generate($a, $d);
 })->throws(UnavailableException::class, 'non-JSON');
 
@@ -338,7 +339,7 @@ it('RunInsightNarrator does not fatal when the stream summary is null', function
     $caller = fakeCaller(json_encode([
         'technical' => 't', 'splits' => 's', 'zones' => 'z',
     ], JSON_THROW_ON_ERROR));
-    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator($caller, new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $payload = $narrator->generate($a, $d->fresh());
     expect($payload['zones'])->toBe('z');
 });
@@ -355,20 +356,25 @@ it('RunInsightNarrator feeds training-load + pace-variability + zone-minutes int
         ],
     ]);
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['trimp'])->toBe(92.4)
         ->and($context['pace_variability_sec'])->toBe(11.3)
         ->and($context['time_in_zone_min'])->toBe(['Z2' => 32, 'Z3' => 14])
-        ->and($context['ascent_m'])->toBe(48);
+        ->and($context['ascent_m'])->toBe(48)
+        // Single-run fixture: relative_effort carries the raw TRIMP with no
+        // comparison (baseline too thin).
+        ->and($context['relative_effort'])->toBe([
+            'trimp' => 92.4, 'baseline' => null, 'ratio' => null, 'band' => null,
+        ]);
 });
 
 it('RunInsightNarrator leaves the new context fields null when no stream summary', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => null, 'trimp_edwards' => null]);
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['trimp'])->toBeNull()
@@ -389,7 +395,7 @@ it('RunInsightNarrator feeds the 28-day baseline + training load into the contex
         'stream_summary' => ['decoupling_pct' => 6.0, 'time_in_zone_min' => ['Z2' => 40]],
     ]);
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['recent_baseline_28d'])->toMatchArray([
@@ -406,7 +412,7 @@ it('RunInsightNarrator feeds prev_narrative from the prior activity technical in
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     priorActivityWithDoneAnalysis($a->user, AnalysisType::RunInsightTechnical, 'Cadence kemarin 168, mulai membaik.');
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['prev_narrative'])->toBe('Cadence kemarin 168, mulai membaik.');
@@ -415,7 +421,7 @@ it('RunInsightNarrator feeds prev_narrative from the prior activity technical in
 it('RunInsightNarrator leaves prev_narrative null when no prior technical insight is Done', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['prev_narrative'])->toBeNull();
@@ -425,7 +431,7 @@ it('RunInsightNarrator feeds easy and threshold training paces derived from the 
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     PersonalRecord::factory()->for($a->user)->create(['category' => '5km', 'value_sec' => 1200]);
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['easy_pace_sec'])->toBeInt()
@@ -436,7 +442,7 @@ it('RunInsightNarrator feeds easy and threshold training paces derived from the 
 it('RunInsightNarrator leaves training paces null when the runner has no VDOT-eligible PR', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['easy_pace_sec'])->toBeNull()
