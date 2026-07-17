@@ -38,7 +38,7 @@ import {
 } from '@/lib/pace';
 import { districtFromLocation } from '@/pages/HariIni/helpers';
 import { BADGE_ABILITY, RARITY_LABELS, avgCadenceFromDetail, badgeEmblem, badgeName, fastestKmFromDetail, kartuPropsFromDetail } from '@/lib/runcard';
-import { renderBold } from '@/lib/richText';
+import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type {
     Activity,
@@ -383,7 +383,7 @@ export default function RunsShow({
                                         showTimestamp={false}
                                         renderContent={(text) => (
                                             <p className="font-display text-quote-md italic leading-relaxed text-ink-2">
-                                                &ldquo;{renderBold(text)}&rdquo;
+                                                &ldquo;{renderBold(stripEdgeQuotes(text))}&rdquo;
                                             </p>
                                         )}
                                     />

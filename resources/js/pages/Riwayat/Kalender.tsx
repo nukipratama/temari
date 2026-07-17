@@ -11,7 +11,7 @@ import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import { MOOD_FILL, MOOD_HINT, MOOD_LABEL, MOOD_ORDER, MOOD_SOFT_FILL, moodSigilColor } from '@/lib/mood';
 import { formatPace, formatShortDateId } from '@/lib/pace';
-import { renderBold } from '@/lib/richText';
+import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { aktivitasUrl } from '@/lib/routes';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
@@ -459,7 +459,7 @@ function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string
     let body: ReactNode = null;
     if (quote) {
         body = (
-            <p className="mt-auto hidden font-display text-xs italic leading-snug text-cream/90 lg:block lg:text-sm">“{quote}”</p>
+            <p className="mt-auto hidden font-display text-xs italic leading-snug text-cream/90 lg:block lg:text-sm">“{stripEdgeQuotes(quote)}”</p>
         );
     } else if (hasRun) {
         body = (

@@ -14,7 +14,7 @@ import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import PageContainer from '@/components/ui/PageContainer';
 import { formatNaiveIdDate } from '@/lib/pace';
-import { renderBold } from '@/lib/richText';
+import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
 import GradientText from '@/components/ui/GradientText';
 import type { AnalysisPayload, PersonalRecord } from '@/types/inertia';
@@ -143,7 +143,7 @@ function HeroScoreboard({
                                 showTimestamp={false}
                                 renderContent={(text) => (
                                     <p className="font-display text-quote-lg italic text-cream">
-                                        “{renderBold(text)}”
+                                        “{renderBold(stripEdgeQuotes(text))}”
                                     </p>
                                 )}
                             />

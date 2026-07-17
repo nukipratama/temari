@@ -15,7 +15,7 @@ import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import ProgressionChart from '@/components/koleksi/ProgressionChart';
 import { formatDurationHMS, formatPace, formatShortDateId, monthsSinceId } from '@/lib/pace';
-import { renderBold } from '@/lib/richText';
+import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
@@ -185,7 +185,7 @@ export default function Aku({
                                 inertiaReloadProps={['personaSummary']}
                                 renderContent={(text) => (
                                     <p className="font-display text-quote-md italic text-ink-2">
-                                        “{renderBold(text)}”
+                                        “{renderBold(stripEdgeQuotes(text))}”
                                     </p>
                                 )}
                             />
