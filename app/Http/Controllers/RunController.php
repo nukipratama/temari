@@ -78,7 +78,7 @@ class RunController extends Controller
         $runs = Activity::query()
             ->where('user_id', $user->id)
             ->whereHas('detail', fn ($q) => $rangeStart === null ? $q : $q->where('start_date_local', '>=', $rangeStart))
-            ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards'])])
+            ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards', 'workout_type'])])
             ->orderByDesc('id')
             ->limit(self::MAX_RUNS + 1)
             ->get();

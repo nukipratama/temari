@@ -374,6 +374,39 @@ it('RunInsightNarrator feeds training-load + pace-variability + zone-minutes int
         ]);
 });
 
+it('RunInsightNarrator feeds a tagged workout_type into session_intent as workout/tagged', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update([
+        'workout_type' => 3, // Strava "Workout"
+        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10]],
+    ]);
+
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $context = $narrator->context($a, $d->fresh());
+
+    expect($context['session_intent'])->toBe(['intent' => 'workout', 'source' => 'tagged']);
+});
+
+it('RunInsightNarrator infers session_intent workout from a Z3-Z4 heavy untagged run', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update([
+        'workout_type' => null,
+        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 15, 'Z3' => 47, 'Z4' => 34, 'Z5' => 4]],
+    ]);
+
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $context = $narrator->context($a, $d->fresh());
+
+    expect($context['session_intent'])->toBe(['intent' => 'workout', 'source' => 'inferred']);
+});
+
+it('RunInsightNarrator prompt carries the quality-session framing so it stops assuming easy', function (): void {
+    $prompt = narratorPrompt(RunInsightNarrator::class);
+
+    expect($prompt)->toContain('session_intent')
+        ->and($prompt)->toContain('SESI KUALITAS');
+});
+
 it('RunInsightNarrator leaves the new context fields null when no stream summary', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => null, 'trimp_edwards' => null]);
