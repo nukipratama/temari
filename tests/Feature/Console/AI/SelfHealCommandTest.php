@@ -265,8 +265,14 @@ it('batches multiple stalled CardFlavor rows per user, capped at the drain batch
 
 it('batches multiple stalled PrContext rows per user', function (): void {
     $user = User::factory()->create();
+    // Pin distinct categories: the factory picks one at random, so three PRs for
+    // one user would otherwise sometimes collide on the (user_id, category) unique.
+    $categories = ['5km', '10km', 'half_marathon'];
     for ($i = 0; $i < 3; $i++) {
-        $pr = PersonalRecord::factory()->for($user)->create(['set_at' => Carbon::parse('2026-05-0'.($i + 1))]);
+        $pr = PersonalRecord::factory()->for($user)->create([
+            'category' => $categories[$i],
+            'set_at' => Carbon::parse('2026-05-0'.($i + 1)),
+        ]);
         Analysis::factory()->create([
             'subject_type' => PersonalRecord::class,
             'subject_id' => $pr->id,
