@@ -689,6 +689,13 @@ function SplitsTable({
     const fastestKm = fastest != null ? rows.find((r) => paceSecOf(r) === fastest)?.km ?? null : null;
     const slowestSec = paces.length > 0 ? Math.max(...paces) : null;
 
+    // Stable, collision-proof keys baked here — km for full splits, positional for
+    // the trailing partial — so the render map keys off a data field, not its index.
+    const keyedRows = rows.map((row, i) => ({
+        row,
+        key: row.km != null ? `km-${row.km}` : `partial-${i}`,
+    }));
+
     return (
         <Card as="section" padding="lg" className={className}>
             <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
@@ -707,14 +714,14 @@ function SplitsTable({
             </p>
 
             <div className="flex flex-col gap-1">
-                {rows.map((row, idx) => {
+                {keyedRows.map(({ row, key }, idx) => {
                     const sec = paceSecOf(row);
                     const isFast = sec != null && sec === fastest;
                     const pctWidth = computeBarWidth(sec, fastest, slowestSec);
                     const rowFill = splitRowFill(isFast, idx);
                     return (
                         <div
-                            key={row.km ?? 'sisa'}
+                            key={key}
                             className={cn(
                                 'grid grid-cols-[34px_1fr_56px] items-center gap-2.5 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3',
                                 // Every row gets the same rounded background box + -mx-3/px-3
