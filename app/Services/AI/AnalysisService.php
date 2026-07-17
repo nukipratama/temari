@@ -140,13 +140,17 @@ class AnalysisService
         ]);
     }
 
-    public function markDone(Analysis $row, string $content, ?Carbon $generatedAt = null): void
+    public function markDone(Analysis $row, string $content, ?Carbon $generatedAt = null, ?string $fingerprint = null): void
     {
         $row->update([
             'status' => AnalysisStatus::Done,
             'content' => $content,
             'error' => null,
             'generated_at' => $generatedAt ?? Carbon::now(),
+            // Only per-run activity groups pass a fingerprint; write the existing
+            // value back for other narration types (they don't drive a resync
+            // refresh) so the column is simply untouched.
+            'content_fingerprint' => $fingerprint ?? $row->content_fingerprint,
         ]);
 
         // Start the re-trigger cooldown so a "Baca ulang" can't re-fire the LLM

@@ -29,6 +29,7 @@ use Override;
  * @property string|null $discriminator
  * @property AnalysisStatus $status
  * @property string|null $content
+ * @property string|null $content_fingerprint
  * @property string|null $error
  * @property Carbon|null $generated_at
  * @property Carbon|null $queued_at
@@ -43,6 +44,7 @@ use Override;
     'discriminator',
     'status',
     'content',
+    'content_fingerprint',
     'error',
     'generated_at',
     'queued_at',

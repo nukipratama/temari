@@ -428,6 +428,27 @@ it('markDone records content and generated_at', function (): void {
         ->and($fresh->cooldownRemaining())->toBeGreaterThanOrEqual(0);
 });
 
+it('markDone stores a content fingerprint when given, and leaves it null otherwise', function (): void {
+    $withFingerprint = Analysis::factory()->queued()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+    $without = Analysis::factory()->queued()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::BriefingHeadline,
+        'discriminator' => '2026-05-18',
+    ]);
+
+    $this->service->markDone($withFingerprint, 'cerita', fingerprint: 'abc123');
+    $this->service->markDone($without, 'headline');
+
+    expect($withFingerprint->fresh()->content_fingerprint)->toBe('abc123')
+        ->and($without->fresh()->content_fingerprint)->toBeNull();
+});
+
 it('markDone uses supplied generatedAt when given', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,

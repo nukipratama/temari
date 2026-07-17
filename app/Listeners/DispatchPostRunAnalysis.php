@@ -8,9 +8,12 @@ use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -138,7 +141,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
     private function dispatchActivityGroup(Activity $activity, bool $isBackfill, int $delaySec): void
     {
         if (! $isBackfill) {
-            $this->analysisService->requestActivityGroup($activity);
+            $this->maybeRefreshActivityGroup($activity);
 
             return;
         }
@@ -149,6 +152,54 @@ class DispatchPostRunAnalysis implements ShouldQueue
         if ($earliest !== null) {
             $this->analysisService->requestActivityGroup($earliest, invalidate: false, delaySeconds: $delaySec);
         }
+    }
+
+    /**
+     * Steady-state (fresh or re-synced) dispatch. A first ingest just dispatches
+     * the group as normal (Pending rows narrate). On a re-sync of the user's
+     * LATEST run, if the material run data actually changed since it was last
+     * narrated — and its re-narrate cooldown has elapsed — invalidate the Done
+     * group so it re-narrates the corrected data; otherwise it's a no-op, never
+     * re-billing on Strava's byte-level jitter. Older runs are left to the manual
+     * "Baca ulang" so the connected story that quotes them doesn't desync.
+     */
+    private function maybeRefreshActivityGroup(Activity $activity): void
+    {
+        if (Activity::latestIdForUser($activity->user_id) !== $activity->id) {
+            $this->analysisService->requestActivityGroup($activity);
+
+            return;
+        }
+
+        $this->analysisService->requestActivityGroup(
+            $activity,
+            invalidate: $this->materialRefreshDue($activity),
+        );
+    }
+
+    /**
+     * Whether the latest run's material data changed since its narration was
+     * generated and its cooldown has elapsed. A null stored fingerprint (a
+     * pre-feature run, never stamped) counts as unchanged, so shipping this never
+     * mass-invalidates history — only forward, on a genuine change.
+     */
+    private function materialRefreshDue(Activity $activity): bool
+    {
+        $speech = Analysis::query()
+            ->forSubject(Activity::class, $activity->id, AnalysisType::PostRunSpeech)
+            ->first();
+
+        if ($speech === null
+            || $speech->status !== AnalysisStatus::Done
+            || $speech->content_fingerprint === null) {
+            return false;
+        }
+
+        if ($speech->content_fingerprint === MaterialFingerprint::forActivity($activity)) {
+            return false;
+        }
+
+        return ($speech->cooldownRemaining() ?? 0) <= 0;
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Models\StoryLine;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
@@ -151,6 +152,13 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             ->orderBy('activity_details.start_date_local')
             ->select('activities.*')
             ->first();
+    }
+
+    #[Override]
+    protected function fingerprintFor(mixed $subject): ?string
+    {
+        /** @var Activity $subject */
+        return MaterialFingerprint::forActivity($subject);
     }
 
     #[Override]

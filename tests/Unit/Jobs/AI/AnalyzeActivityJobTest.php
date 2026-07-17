@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,6 +83,26 @@ it('writes speech + 3 insight rows Done from one job run', function (): void {
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Done);
     }
+});
+
+it('stamps every group row with the activity material fingerprint at generation', function (): void {
+    $activity = seedActivityForJob();
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldReceive('generate')->andReturn('nice run');
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+    mockInsightNarrator(['technical' => 't', 'splits' => 's', 'zones' => 'z']);
+
+    (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
+
+    $expected = MaterialFingerprint::forActivity($activity->fresh(['detail']));
+    $rows = Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $activity->id)
+        ->get();
+
+    expect($rows)->toHaveCount(4)
+        ->and($rows->pluck('content_fingerprint')->unique()->all())->toBe([$expected]);
 });
 
 it('reverts group rows to Pending without billing when generation is paused', function (): void {

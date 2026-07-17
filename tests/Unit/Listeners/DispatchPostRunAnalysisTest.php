@@ -18,6 +18,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -270,6 +271,100 @@ it('steady-state (fresh run) dispatches the activity group immediately', functio
         AnalyzeActivityJob::class,
         fn (AnalyzeActivityJob $job): bool => $job->subjectId === $fresh->id,
     );
+    Carbon::setTestNow();
+});
+
+/** Seed a fully-narrated (Done) per-run analysis group with a given stored fingerprint. */
+function narratedGroup(Activity $activity, ?string $fingerprint): void
+{
+    foreach (AnalyzeActivityJob::groupedTypes() as $type) {
+        Analysis::query()->create([
+            'subject_type' => Activity::class,
+            'subject_id' => $activity->id,
+            'analysis_type' => $type,
+            'discriminator' => null,
+            'status' => AnalysisStatus::Done,
+            'content' => 'narasi lama',
+            'content_fingerprint' => $fingerprint,
+            'generated_at' => Carbon::now(),
+        ]);
+    }
+}
+
+function postRunSpeechRow(Activity $activity): Analysis
+{
+    return Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $activity->id)
+        ->where('analysis_type', AnalysisType::PostRunSpeech)
+        ->firstOrFail();
+}
+
+it('re-narrates the latest run when its material data changed since narration', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $activity = analyzedActivity('2026-06-10 06:00:00');
+    narratedGroup($activity, 'stale-fingerprint');
+
+    fire($activity);
+
+    // Invalidated out of Done and re-queued for a fresh narration.
+    expect(postRunSpeechRow($activity)->status)->toBe(AnalysisStatus::Queued);
+    Bus::assertDispatched(
+        AnalyzeActivityJob::class,
+        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id,
+    );
+    Carbon::setTestNow();
+});
+
+it('leaves the latest run Done when the material fingerprint is unchanged (jitter-safe)', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $activity = analyzedActivity('2026-06-10 06:00:00');
+    $current = MaterialFingerprint::forActivity(Activity::with('detail')->findOrFail($activity->id));
+    narratedGroup($activity, $current);
+
+    fire($activity);
+
+    expect(postRunSpeechRow($activity)->status)->toBe(AnalysisStatus::Done)
+        ->and(postRunSpeechRow($activity)->content)->toBe('narasi lama');
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+    Carbon::setTestNow();
+});
+
+it('does not force-refresh a pre-feature run with no stored fingerprint', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $activity = analyzedActivity('2026-06-10 06:00:00');
+    narratedGroup($activity, null);
+
+    fire($activity);
+
+    expect(postRunSpeechRow($activity)->status)->toBe(AnalysisStatus::Done);
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+    Carbon::setTestNow();
+});
+
+it('does not auto-refresh an older, non-latest run even when its data changed', function (): void {
+    Carbon::setTestNow('2026-06-10 12:00:00');
+    $older = analyzedActivity('2026-06-10 06:00:00');
+    analyzedActivity('2026-06-10 10:00:00', $older->user_id); // the latest run
+    narratedGroup($older, 'stale-fingerprint');
+
+    fire($older);
+
+    expect(postRunSpeechRow($older)->status)->toBe(AnalysisStatus::Done);
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+    Carbon::setTestNow();
+});
+
+it('holds off re-narrating while the run is still in its cooldown window', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $activity = analyzedActivity('2026-06-10 06:00:00');
+    narratedGroup($activity, 'stale-fingerprint');
+    postRunSpeechRow($activity)->startCooldown();
+
+    fire($activity);
+
+    expect(postRunSpeechRow($activity)->status)->toBe(AnalysisStatus::Done);
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
     Carbon::setTestNow();
 });
 

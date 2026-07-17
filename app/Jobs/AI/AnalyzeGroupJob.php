@@ -62,14 +62,21 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             $service->markProcessing($row);
         }
 
+        // Computed inside the try so a failure here (DB blip, a future bug in a
+        // fingerprintFor() override) goes through the same settleFailure()
+        // handling as a generation failure, instead of throwing uncaught and
+        // leaving pending rows stuck Processing until the raw queue retry gives up.
+        $fingerprint = null;
+
         try {
-            $this->finalizePending($pending, $service, $this->generateAll($subject));
+            $fingerprint = $this->fingerprintFor($subject);
+            $this->finalizePending($pending, $service, $this->generateAll($subject), $fingerprint);
             $this->afterGroupDone($service);
         } catch (ContentFilterException) {
             // Even the continuity-stripped retry content-filtered. Fill every
             // pending row from the rule-based narrator so the group settles Done
             // with benign content instead of dead-lettering the whole briefing.
-            $this->finalizePending($pending, $service, $this->ruleBasedPayload($pending));
+            $this->finalizePending($pending, $service, $this->ruleBasedPayload($pending), $fingerprint);
             Log::info('narrator.ai.content_filter_fallback', [
                 'kind' => static::subjectType(),
                 'subject' => $this->subjectId,
@@ -130,13 +137,24 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
      * @param Collection<string, Analysis> $pending
      * @param array<string, string> $payload
      */
-    private function finalizePending(Collection $pending, AnalysisService $service, array $payload): void
+    private function finalizePending(Collection $pending, AnalysisService $service, array $payload, ?string $fingerprint = null): void
     {
-        DB::transaction(function () use ($pending, $payload, $service): void {
+        DB::transaction(function () use ($pending, $payload, $service, $fingerprint): void {
             foreach ($pending as $key => $row) {
-                $service->markDone($row, $payload[$key]);
+                $service->markDone($row, $payload[$key], fingerprint: $fingerprint);
             }
         });
+    }
+
+    /**
+     * A digest of the subject data that materially drives this group's narration,
+     * stamped on each row at generation so a later re-sync can tell a real change
+     * from noise. Null by default (most groups don't drive a resync refresh);
+     * per-run groups override to fingerprint their activity.
+     */
+    protected function fingerprintFor(mixed $subject): ?string
+    {
+        return null;
     }
 
     /**
