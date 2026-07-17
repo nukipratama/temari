@@ -24,8 +24,8 @@ class RunInsightNarrator
     use ReadsPreviousActivityNarrative;
 
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 3 catatan interpretasi sesi lari, masing-masing 2-3 kalimat,
-        maksimal 55 kata per catatan:
+        Tugas: 3 catatan interpretasi sesi lari, masing-masing 3-4 kalimat.
+        Kasih ruang buat bercerita, tapi tetap padat, jangan bertele-tele:
 
         - technical: terjemahkan cadence, decoupling, dan HR ke bahasa awam.
           JANGAN cuma sebut angka tanpa konteks. Jelaskan APA artinya dan,
