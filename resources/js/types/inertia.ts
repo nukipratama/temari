@@ -196,6 +196,7 @@ export interface ActivityDetail {
     total_elevation_gain?: number | null;
     average_heartrate: number | null;
     trimp_edwards: number | null;
+    workout_type?: number | null;
     location_name?: string | null;
     location_country?: string | null;
     weather_temp_c?: number | null;

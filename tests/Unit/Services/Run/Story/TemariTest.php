@@ -127,6 +127,41 @@ it('flags decoupling at 12.01% as lemes', function (): void {
         ->toBe(Temari::MOOD_LEMES);
 });
 
+it('reads an inferred tempo (Z3-Z4 heavy, untagged) with high decoupling + neg split as nyala, not lemes', function (): void {
+    // The activity 276 shape: 81.7% Z3-Z4, decoupling 14, negative split, untagged.
+    // Decoupling on an intended-hard session is the work, not weakness.
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z1' => 4.7, 'Z2' => 13.5, 'Z3' => 47.1, 'Z4' => 34, 'Z5' => 0.6],
+            'decoupling_pct' => 14.0,
+            'negative_split' => true,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_NYALA);
+});
+
+it('reads a tagged workout with high decoupling and no controlled finish as mumet, not lemes', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8_000,
+        'workout_type' => 3, // Strava "Workout" anchor is authoritative
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10],
+            'decoupling_pct' => 15.0,
+            'negative_split' => false,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_MUMET);
+});
+
 it('picks nyala for a hard session finished under control (neg split, low decoupling)', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([

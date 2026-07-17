@@ -41,4 +41,9 @@ describe('moodFromActivity', () => {
     it('returns wobble for crushing efforts', () => {
         expect(moodFromActivity(detail({ trimp_edwards: 220 }))).toBe('lemes');
     });
+
+    it('reads a crushing effort as a quality win when the run is a tagged race/workout', () => {
+        expect(moodFromActivity(detail({ trimp_edwards: 220, workout_type: 3 }))).toBe('nyala');
+        expect(moodFromActivity(detail({ trimp_edwards: 220, workout_type: 1 }))).toBe('nyala');
+    });
 });

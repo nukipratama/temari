@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
 use Illuminate\Support\Carbon;
 
@@ -120,13 +121,19 @@ class Temari
         $hotWeather = (int) ($detail->weather_temp_c ?? 0) >= 31;
         $negativeSplit = ($summary['negative_split'] ?? false) === true;
         $hardSession = $hardShare >= 80.0;
+        $intendedHard = SessionIntent::isIntendedHard($detail);
 
         return match (true) {
             $hasPr => self::MOOD_NYALA,
             // A hard session finished under control (strong negative split, HR held
             // together): a genuine win, not a grind.
             $hardSession && $negativeSplit && $decoupling <= 5.0 => self::MOOD_NYALA,
-            // HR drifted well past pace: the body was working hard.
+            // An intended-hard session (tagged race/workout, or inferred tempo) runs
+            // HR/decoupling hot on purpose — that's the work, not weakness. A strong
+            // finish is a quality win (nyala); an uncontrolled grind is honest overreach
+            // (mumet), never the tired 'lemes'.
+            $intendedHard && $decoupling > 12.0 => $negativeSplit ? self::MOOD_NYALA : self::MOOD_MUMET,
+            // HR drifted well past pace on a run that wasn't meant to be hard.
             $decoupling > 12.0 => self::MOOD_LEMES,
             $hotWeather => self::MOOD_OLENG,
             // A hard grind that never settled into a controlled finish.

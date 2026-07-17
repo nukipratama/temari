@@ -13,6 +13,7 @@ use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\RunBaseline;
+use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -96,8 +97,9 @@ class RunInsightNarrator
           waktunya nyangkut di Z3 ke atas, dan easy_pace_sec ada di konteks,
           boleh selipkan saran lembut buat turunin ke pace easy-nya (konversi
           easy_pace_sec ke menit:detik per km). Ini cuma opsi, bukan tegoran.
-          Sebut sekali, jangan diulang-ulang, dan jangan pakai kalau sesinya
-          memang niat tempo/threshold (bukan easy).
+          Sebut sekali, jangan diulang-ulang. LEWATI TOTAL kalau
+          session_intent.intent = workout atau race: itu sesi kualitas, bukan
+          easy yang kelebihan.
           * "Ini kerasa kayak easy run tapi banyak nyangkut di Z3. Kalau mau,
             coba turunin ke sekitar 7:15/km biar aerobiknya lebih kebangun."
 
@@ -125,6 +127,15 @@ class RunInsightNarrator
           ("hari ini kerasa lebih berat dari biasanya, wajar butuh recovery"),
           JANGAN sebut angka ratio mentah. Null kalau HR gak ada atau histori
           masih tipis, ya lewati saja.
+        - session_intent: niat sesi ini. intent = workout/race artinya sesi
+          MEMANG diniatkan keras (tempo/threshold/lomba); intent = easy artinya
+          santai/recovery; unknown = gak ketebak. SESI KUALITAS: kalau intent =
+          workout atau race, HR tinggi, banyak Z3-Z4, TRIMP gede, dan decoupling
+          naik itu WAJAR dan justru tujuannya. Bingkai sebagai sesi kualitas yang
+          jalan ("tempo-nya kena", "threshold-nya nendang"), JANGAN nebak ini
+          "kelihatannya easy", JANGAN bilang lemah/fitness turun/aerobik mundur,
+          dan JANGAN dorong recovery seolah salah pace. source = tagged kalau
+          user nandain di Strava, inferred kalau ketebak dari bentuk zone.
         - training_load: acute_7d (beban 7 hari), chronic_42d (kebugaran 42
           hari), form (chronic - acute), form_status (fresh/optimal/fatigued/
           overreaching). Pakai buat saran recovery yang spesifik di bagian zones:
@@ -213,6 +224,7 @@ class RunInsightNarrator
             'training_load' => $this->trainingLoadContext($activity, $asOf),
             'recent_baseline_28d' => $this->baseline->forUserAsOf($activity->user_id, $asOf, $activity->id),
             'relative_effort' => $this->relativeEffort->forRun($activity, $detail),
+            'session_intent' => SessionIntent::forDetail($detail),
             'easy_pace_sec' => $paces['easy'] ?? null,
             'threshold_pace_sec' => $paces['threshold'] ?? null,
             ...NarratorContinuity::fields($prevNarrative),
