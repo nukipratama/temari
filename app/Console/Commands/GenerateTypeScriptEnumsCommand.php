@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use Override;
 use App\Enums\PrCategory;
 use App\Enums\Rarity;
 use App\Services\AI\AnalysisStatus;
@@ -18,8 +19,10 @@ use Illuminate\Console\Command;
  */
 final class GenerateTypeScriptEnumsCommand extends Command
 {
+    #[Override]
     protected $signature = 'typescript:enums {--check : Fail if the generated file is stale instead of rewriting it} {--path= : Override the output path (for tests only)}';
 
+    #[Override]
     protected $description = 'Generate TypeScript unions from backed PHP enums into resources/js/types/generated.ts';
 
     /**

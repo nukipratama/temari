@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use NoDiscard;
+
 /**
  * The hardest session intensity a runner should be encouraged toward today.
  * Computed deterministically by {@see Readiness} from load + recovery signals;
@@ -34,6 +36,7 @@ enum ReadinessCeiling: string
      * The more restrictive of two ceilings (lower rank wins). Used to fold each
      * guardrail's cap into a single ceiling.
      */
+    #[NoDiscard]
     public function capTo(self $other): self
     {
         return $other->rank() < $this->rank() ? $other : $this;

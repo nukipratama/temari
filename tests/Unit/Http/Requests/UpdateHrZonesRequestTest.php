@@ -36,7 +36,7 @@ function validateHrZones(array $payload): Illuminate\Validation\Validator
 }
 
 it('authorizes the request', function (): void {
-    expect((new UpdateHrZonesRequest())->authorize())->toBeTrue();
+    expect(new UpdateHrZonesRequest()->authorize())->toBeTrue();
 });
 
 it('passes valid ascending gapless zones within bounds', function (): void {

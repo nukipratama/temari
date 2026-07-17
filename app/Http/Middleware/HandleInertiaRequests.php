@@ -18,6 +18,7 @@ use Override;
 
 class HandleInertiaRequests extends Middleware
 {
+    #[Override]
     protected $rootView = 'app';
 
     /**

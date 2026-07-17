@@ -24,7 +24,7 @@ beforeEach(function (): void {
         'monthEnd' => $monthEnd,
     ];
 
-    $this->buildCells = fn (User $user): array => (new CalendarBuilder())->buildCells(
+    $this->buildCells = fn (User $user): array => new CalendarBuilder()->buildCells(
         $user,
         $this->grid['gridStart'],
         $this->grid['gridEnd'],

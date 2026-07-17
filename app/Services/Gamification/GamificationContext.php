@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
+use NoDiscard;
 use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\PersonalRecord;
@@ -51,6 +52,7 @@ readonly class GamificationContext
         return round($this->totalDistanceM / 1000, 1);
     }
 
+    #[NoDiscard]
     public static function forUser(User $user): self
     {
         $prCount = PersonalRecord::query()->where('user_id', $user->id)->count();

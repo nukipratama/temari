@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use NoDiscard;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -30,6 +31,7 @@ final readonly class RecoveryWindow
     ) {
     }
 
+    #[NoDiscard]
     public static function forUser(User $user, Carbon $asOf): self
     {
         // Runs after $asOf must not count: a self-heal / dead-letter retry

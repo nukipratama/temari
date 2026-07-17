@@ -74,7 +74,7 @@ it('toggleAi flips the AI kill-switch in app_config', function (): void {
 
     Livewire::test(SystemControl::class)->call('toggleAi');
 
-    expect((new AppConfig())->boolean(AppConfigKey::AiEnabled))->toBeFalse();
+    expect(new AppConfig()->boolean(AppConfigKey::AiEnabled))->toBeFalse();
 });
 
 it('toggleAi busts the cached ai-paused signal so the banner reflects the flip immediately', function (): void {
@@ -88,7 +88,7 @@ it('toggleAi busts the cached ai-paused signal so the banner reflects the flip i
 it('toggleStrava flips the Strava kill-switch in app_config', function (): void {
     Livewire::test(SystemControl::class)->call('toggleStrava');
 
-    expect((new AppConfig())->boolean(AppConfigKey::StravaEnabled))->toBeFalse();
+    expect(new AppConfig()->boolean(AppConfigKey::StravaEnabled))->toBeFalse();
 });
 
 it('resetBreaker force-closes an open breaker', function (): void {
@@ -100,6 +100,6 @@ it('resetBreaker force-closes an open breaker', function (): void {
 
     Livewire::test(SystemControl::class)->call('resetBreaker');
 
-    expect((new StravaCircuitBreaker(new AppConfig()))->state())
+    expect(new StravaCircuitBreaker(new AppConfig())->state())
         ->toBe(StravaCircuitBreaker::STATE_CLOSED);
 });

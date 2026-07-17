@@ -45,7 +45,7 @@ it('forwards to the SyncOrchestrator for the resolved user', function (): void {
         ->withArgs(fn (User $arg): bool => $arg->is($user))
         ->andReturn(3);
 
-    (new SyncActivitiesJob($user->id))->handle($orchestrator);
+    new SyncActivitiesJob($user->id)->handle($orchestrator);
 });
 
 it('scopes to a single activity when a Strava activity id is given', function (): void {
@@ -58,7 +58,7 @@ it('scopes to a single activity when a Strava activity id is given', function ()
         ->andReturn(true);
     $orchestrator->shouldNotReceive('syncUser');
 
-    (new SyncActivitiesJob($user->id, 9_001))->handle($orchestrator);
+    new SyncActivitiesJob($user->id, 9_001)->handle($orchestrator);
 });
 
 it('revokes the connection and purges stubs when the token refresh permanently fails (400)', function (): void {
@@ -71,7 +71,7 @@ it('revokes the connection and purges stubs when the token refresh permanently f
         ->once()
         ->andThrow(new StravaTokenRefreshFailedException('refresh rejected'));
 
-    (new SyncActivitiesJob($user->id))->handle($orchestrator);
+    new SyncActivitiesJob($user->id)->handle($orchestrator);
 
     expect($connection->fresh()->isRevoked())->toBeTrue()
         ->and(Activity::withStubs()->whereKey($stub->id)->exists())->toBeFalse();
@@ -145,7 +145,7 @@ it('revokes the connection when the API rejects the token with a 401', function 
         ->once()
         ->andThrow(new StravaConnectionRevokedException('401 unauthorized'));
 
-    (new SyncActivitiesJob($user->id))->handle($orchestrator);
+    new SyncActivitiesJob($user->id)->handle($orchestrator);
 
     expect($connection->fresh()->isRevoked())->toBeTrue();
 });
@@ -154,7 +154,7 @@ it('no-ops on a deleted user', function (): void {
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldNotReceive('syncUser');
 
-    (new SyncActivitiesJob(999_999))->handle($orchestrator);
+    new SyncActivitiesJob(999_999)->handle($orchestrator);
 });
 
 it('retries with backoff so a transient Strava blip does not lose the sync', function (): void {

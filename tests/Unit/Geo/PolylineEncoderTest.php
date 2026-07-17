@@ -30,7 +30,7 @@ it('round-trips through the decoder for the first point', function (): void {
 });
 
 it('returns an empty string for an empty point list', function (): void {
-    expect((new PolylineEncoder())->encode([]))->toBe('');
+    expect(new PolylineEncoder()->encode([]))->toBe('');
 });
 
 it('round-trips a single-point list exactly', function (): void {

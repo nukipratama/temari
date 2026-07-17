@@ -93,15 +93,7 @@ it('has a test class for every concrete app class', function (): void {
             return 'App\\'.$relative;
         })
         ->filter(fn (string $class): bool => class_exists($class) || interface_exists($class) || trait_exists($class))
-        ->reject(function (string $class) use ($exemptNamespaces): bool {
-            foreach ($exemptNamespaces as $prefix) {
-                if (str_starts_with($class, $prefix)) {
-                    return true;
-                }
-            }
-
-            return false;
-        })
+        ->reject(fn (string $class): bool => array_any($exemptNamespaces, fn ($prefix) => str_starts_with($class, (string) $prefix)))
         ->reject(fn (string $class): bool => in_array($class, $exemptClasses, true))
         ->reject(function (string $class): bool {
             $reflection = new ReflectionClass($class);

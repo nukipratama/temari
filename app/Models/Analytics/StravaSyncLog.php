@@ -23,10 +23,13 @@ use Illuminate\Support\Carbon;
 #[Fillable(['user_id', 'status', 'activities_synced', 'api_calls_used', 'rate_limit_15min_remaining', 'rate_limit_daily_remaining', 'error_message', 'synced_at'])]
 class StravaSyncLog extends Model
 {
+    #[Override]
     public $timestamps = false;
 
+    #[Override]
     protected $connection = 'analytics';
 
+    #[Override]
     protected $table = 'strava_sync_logs';
 
     /**

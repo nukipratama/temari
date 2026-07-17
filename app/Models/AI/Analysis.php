@@ -72,6 +72,7 @@ class Analysis extends Model
      */
     public const int STALE_IN_FLIGHT_HOURS = 2;
 
+    #[Override]
     protected $table = 'ai_analyses';
 
     /** @return array<string, string> */
@@ -333,6 +334,6 @@ class Analysis extends Model
             return null;
         }
 
-        return (new Cooldown(Cooldown::telegramKey($id)))->remaining();
+        return new Cooldown(Cooldown::telegramKey($id))->remaining();
     }
 }

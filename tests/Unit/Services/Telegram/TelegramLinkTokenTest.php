@@ -13,7 +13,7 @@ it('round-trips a minted token back to the user id', function (): void {
 
 it('fits within Telegram\'s deep-link start payload limits', function (): void {
     // Telegram allows at most 64 chars and only [A-Za-z0-9_-] in the start param.
-    $minted = (new TelegramLinkToken())->mint(2_000_000_000);
+    $minted = new TelegramLinkToken()->mint(2_000_000_000);
 
     expect(strlen($minted))->toBeLessThanOrEqual(64)
         ->and($minted)->toMatch('/^[A-Za-z0-9_-]+$/');

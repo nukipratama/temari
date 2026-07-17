@@ -45,7 +45,7 @@ it('returns null when the API call fails (non-200)', function (): void {
         'nominatim.openstreetmap.org/*' => Http::response('rate limited', 429),
     ]);
 
-    expect((new NominatimResolver())->reverse(-6.2, 106.8))->toBeNull();
+    expect(new NominatimResolver()->reverse(-6.2, 106.8))->toBeNull();
 });
 
 it('returns null when the API throws', function (): void {
@@ -53,7 +53,7 @@ it('returns null when the API throws', function (): void {
         'nominatim.openstreetmap.org/*' => fn () => throw new RuntimeException('connect timeout'),
     ]);
 
-    expect((new NominatimResolver())->reverse(-6.2, 106.8))->toBeNull();
+    expect(new NominatimResolver()->reverse(-6.2, 106.8))->toBeNull();
 });
 
 it('caches consecutive calls for the same coords (rounded to ~110m)', function (): void {
@@ -87,5 +87,5 @@ it('returns null when there are no usable address fields', function (): void {
         'nominatim.openstreetmap.org/*' => Http::response(['address' => []]),
     ]);
 
-    expect((new NominatimResolver())->reverse(0.0, 0.0))->toBeNull();
+    expect(new NominatimResolver()->reverse(0.0, 0.0))->toBeNull();
 });

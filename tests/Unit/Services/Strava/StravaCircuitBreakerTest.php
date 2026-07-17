@@ -88,7 +88,7 @@ it('closes again when a half-open probe succeeds', function (): void {
     $breaker->recordSuccess();
 
     expect($breaker->state())->toBe(StravaCircuitBreaker::STATE_CLOSED)
-        ->and((new AppConfig())->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
+        ->and(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
 });
 
 it('re-opens when a half-open probe fails', function (): void {
@@ -114,7 +114,7 @@ it('a success in the closed state resets the failure streak', function (): void 
     $breaker->recordFailure();
     $breaker->recordSuccess();
 
-    expect((new AppConfig())->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
+    expect(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
 
     // ...so it now takes a full threshold of fresh failures to open.
     for ($i = 0; $i < 4; $i++) {
@@ -138,7 +138,7 @@ it('reset() force-closes an open breaker', function (): void {
 });
 
 it('honors a runtime-tuned threshold', function (): void {
-    (new AppConfig())->set(AppConfigKey::StravaBreakerThreshold, 2);
+    new AppConfig()->set(AppConfigKey::StravaBreakerThreshold, 2);
     $breaker = breaker();
 
     $breaker->recordFailure();

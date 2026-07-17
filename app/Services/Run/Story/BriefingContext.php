@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use NoDiscard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\Readiness;
@@ -54,6 +55,7 @@ final readonly class BriefingContext
      * @param  array<string, mixed>|null  $load  Live TrainingLoad summary (form_status/monotony);
      *                                            when null, readiness falls back to the weekly snapshot.
      */
+    #[NoDiscard]
     public static function forUser(User $user, Carbon $asOf, ?array $load = null): self
     {
         $thisWeekEnd = $asOf->copy()->endOfWeek(Carbon::SUNDAY);

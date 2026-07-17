@@ -33,7 +33,7 @@ it('inserts oldest-first so DB ids are chronological', function (): void {
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewExternalIds')->andReturn([10, 20, 30]);
 
-    $inserted = (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
+    $inserted = new SyncOrchestrator($fetcher, $this->client)->syncUser($user);
 
     expect($inserted)->toBe(3);
     $ids = Activity::query()->withStubs()->orderBy('id')->pluck('strava_external_id')->all();
@@ -47,7 +47,7 @@ it('inserts activity stubs but dispatches no per-activity ingest jobs', function
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewExternalIds')->andReturn([10, 20]);
 
-    $inserted = (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
+    $inserted = new SyncOrchestrator($fetcher, $this->client)->syncUser($user);
 
     expect($inserted)->toBe(2)
         ->and(Activity::query()->withStubs()->where('user_id', $user->id)->count())->toBe(2);
@@ -60,7 +60,7 @@ it('returns 0 and does not query Strava when user has no connection', function (
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewExternalIds');
 
-    $inserted = (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
+    $inserted = new SyncOrchestrator($fetcher, $this->client)->syncUser($user);
 
     expect($inserted)->toBe(0);
     Queue::assertNothingPushed();
@@ -73,7 +73,7 @@ it('logs an error and rethrows on an unexpected exception during syncUser', func
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewExternalIds')->andThrow(new RuntimeException('boom'));
 
-    expect(fn () => (new SyncOrchestrator($fetcher, $this->client))->syncUser($user))
+    expect(fn () => new SyncOrchestrator($fetcher, $this->client)->syncUser($user))
         ->toThrow(RuntimeException::class, 'boom');
 
     expect(StravaSyncLog::query()->where('user_id', $user->id)->where('status', 'error')->value('error_message'))
@@ -91,7 +91,7 @@ it('returns 0 when another sync holds the lock', function (): void {
     $fetcher->shouldNotReceive('fetchNewExternalIds');
 
     try {
-        $inserted = (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
+        $inserted = new SyncOrchestrator($fetcher, $this->client)->syncUser($user);
         expect($inserted)->toBe(0);
         Queue::assertNothingPushed();
     } finally {
@@ -106,7 +106,7 @@ it('returns 0 when fetcher finds no new activities', function (): void {
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewExternalIds')->andReturn([]);
 
-    expect((new SyncOrchestrator($fetcher, $this->client))->syncUser($user))->toBe(0);
+    expect(new SyncOrchestrator($fetcher, $this->client)->syncUser($user))->toBe(0);
     Queue::assertNothingPushed();
 });
 
@@ -117,7 +117,7 @@ it('skips a revoked connection without querying Strava', function (): void {
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewExternalIds');
 
-    expect((new SyncOrchestrator($fetcher, $this->client))->syncUser($user))->toBe(0);
+    expect(new SyncOrchestrator($fetcher, $this->client)->syncUser($user))->toBe(0);
     Queue::assertNothingPushed();
 });
 
@@ -129,7 +129,7 @@ it('revokes the connection and returns 0 (no rethrow) when the API rejects the t
     $fetcher->shouldReceive('fetchNewExternalIds')
         ->andThrow(new StravaConnectionRevokedException('Strava rejected the access token with 401'));
 
-    $inserted = (new SyncOrchestrator($fetcher, $this->client))->syncUser($user);
+    $inserted = new SyncOrchestrator($fetcher, $this->client)->syncUser($user);
 
     expect($inserted)->toBe(0)
         ->and($connection->fresh()->revoked_at)->not->toBeNull();
@@ -144,7 +144,7 @@ it('syncUser no-ops when the Strava kill-switch is off', function (): void {
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewExternalIds');
 
-    expect((new SyncOrchestrator($fetcher, $this->client))->syncUser($user))->toBe(0);
+    expect(new SyncOrchestrator($fetcher, $this->client)->syncUser($user))->toBe(0);
     Queue::assertNothingPushed();
 });
 
@@ -155,7 +155,7 @@ it('syncSingleActivity no-ops when the Strava kill-switch is off', function (): 
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
 
-    expect((new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_001))->toBeFalse();
+    expect(new SyncOrchestrator($fetcher, $this->client)->syncSingleActivity($user, 9_001))->toBeFalse();
     Queue::assertNothingPushed();
 });
 
@@ -170,7 +170,7 @@ it('passes the --since lower bound through to the fetcher', function (): void {
         ->withArgs(fn ($connection, $arg): bool => $arg instanceof CarbonImmutable && $arg->equalTo($since))
         ->andReturn([]);
 
-    (new SyncOrchestrator($fetcher, $this->client))->syncUser($user, $since);
+    new SyncOrchestrator($fetcher, $this->client)->syncUser($user, $since);
 });
 
 it('inserts and queues exactly one IngestActivityJob for a single webhook activity', function (): void {
@@ -180,7 +180,7 @@ it('inserts and queues exactly one IngestActivityJob for a single webhook activi
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewExternalIds');
 
-    $result = (new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_001);
+    $result = new SyncOrchestrator($fetcher, $this->client)->syncSingleActivity($user, 9_001);
 
     expect($result)->toBeTrue()
         ->and(Activity::query()->withStubs()->where('user_id', $user->id)->where('strava_external_id', 9_001)->exists())->toBeTrue();
@@ -194,7 +194,7 @@ it('re-uses the existing row when a webhook update arrives for a known activity'
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
 
-    (new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_002);
+    new SyncOrchestrator($fetcher, $this->client)->syncSingleActivity($user, 9_002);
 
     expect(Activity::query()->withStubs()->where('user_id', $user->id)->where('strava_external_id', 9_002)->count())->toBe(1);
     Queue::assertPushed(IngestActivityJob::class, 1);
@@ -208,7 +208,7 @@ it('skips re-ingest on a duplicate webhook delivery for an already-analyzed acti
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewExternalIds');
 
-    $result = (new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_010);
+    $result = new SyncOrchestrator($fetcher, $this->client)->syncSingleActivity($user, 9_010);
 
     expect($result)->toBeFalse()
         ->and(Activity::query()->where('user_id', $user->id)->where('strava_external_id', 9_010)->count())->toBe(1);
@@ -223,7 +223,7 @@ it('still dispatches re-ingest for a stub (un-analyzed) activity on a webhook de
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewExternalIds');
 
-    $result = (new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_011);
+    $result = new SyncOrchestrator($fetcher, $this->client)->syncSingleActivity($user, 9_011);
 
     expect($result)->toBeTrue();
     Queue::assertPushed(IngestActivityJob::class, 1);
@@ -235,6 +235,6 @@ it('does not sync a single activity for a revoked connection', function (): void
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
 
-    expect((new SyncOrchestrator($fetcher, $this->client))->syncSingleActivity($user, 9_003))->toBeFalse();
+    expect(new SyncOrchestrator($fetcher, $this->client)->syncSingleActivity($user, 9_003))->toBeFalse();
     Queue::assertNothingPushed();
 });

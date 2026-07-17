@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
-  PHP_VERSION: '8.4'
+  PHP_VERSION: '8.5'
 
 jobs:
   changes:

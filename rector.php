@@ -13,7 +13,7 @@ return RectorConfig::configure()
         __DIR__.'/tests',
     ])
     ->withSets([
-        LevelSetList::UP_TO_PHP_84,
+        LevelSetList::UP_TO_PHP_85,
         LaravelSetList::LARAVEL_120,
     ])
     ->withSkip([

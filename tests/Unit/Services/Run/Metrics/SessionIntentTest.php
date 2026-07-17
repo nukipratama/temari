@@ -10,7 +10,7 @@ use App\Services\Run\Metrics\SessionIntent;
  */
 function intentDetail(array $attrs): ActivityDetail
 {
-    return (new ActivityDetail())->forceFill($attrs);
+    return new ActivityDetail()->forceFill($attrs);
 }
 
 /** @param array<string, float> $zonePct */

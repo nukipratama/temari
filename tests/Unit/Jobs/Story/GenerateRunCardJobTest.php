@@ -19,14 +19,14 @@ it('forwards to RunCardFactory for the resolved activity', function (): void {
         ->once()
         ->withArgs(fn (Activity $a, ActivityDetail $d): bool => $a->is($activity));
 
-    (new GenerateRunCardJob($activity->id))->handle($factory);
+    new GenerateRunCardJob($activity->id)->handle($factory);
 });
 
 it('no-ops when the activity is missing', function (): void {
     $factory = Mockery::mock(RunCardFactory::class);
     $factory->shouldNotReceive('build');
 
-    (new GenerateRunCardJob(999_999))->handle($factory);
+    new GenerateRunCardJob(999_999)->handle($factory);
 });
 
 it('no-ops when detail has not been ingested yet', function (): void {
@@ -35,5 +35,5 @@ it('no-ops when detail has not been ingested yet', function (): void {
     $factory = Mockery::mock(RunCardFactory::class);
     $factory->shouldNotReceive('build');
 
-    (new GenerateRunCardJob($activity->id))->handle($factory);
+    new GenerateRunCardJob($activity->id)->handle($factory);
 });

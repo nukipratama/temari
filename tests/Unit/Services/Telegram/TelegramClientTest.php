@@ -29,7 +29,7 @@ it('sends a message to the bot API for the given chat', function (): void {
         'api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]]),
     ]);
 
-    (new TelegramClient())->sendMessage(99887766, 'Halo!');
+    new TelegramClient()->sendMessage(99887766, 'Halo!');
 
     Http::assertSent(fn ($request): bool => $request->url() === 'https://api.telegram.org/bottest-bot-token/sendMessage'
         && $request['chat_id'] === 99887766
@@ -41,7 +41,7 @@ it('uploads a photo as multipart with the caption for the given chat', function 
         'api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 2]]),
     ]);
 
-    (new TelegramClient())->sendPhoto(4242, 'PNG-BYTES', 'Lari mantap!');
+    new TelegramClient()->sendPhoto(4242, 'PNG-BYTES', 'Lari mantap!');
 
     Http::assertSent(function ($request): bool {
         $names = array_column($request->data(), 'name');
@@ -57,7 +57,7 @@ it('uploads a photo as multipart with the caption for the given chat', function 
 it('omits the caption field when none is given', function (): void {
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);
 
-    (new TelegramClient())->sendPhoto(1, 'PNG-BYTES', null);
+    new TelegramClient()->sendPhoto(1, 'PNG-BYTES', null);
 
     Http::assertSent(fn ($request): bool => ! in_array('caption', array_column($request->data(), 'name'), true));
 });
@@ -65,7 +65,7 @@ it('omits the caption field when none is given', function (): void {
 it('truncates a caption longer than the 1024-character cap', function (): void {
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);
 
-    (new TelegramClient())->sendPhoto(1, 'PNG-BYTES', str_repeat('a', 2000));
+    new TelegramClient()->sendPhoto(1, 'PNG-BYTES', str_repeat('a', 2000));
 
     Http::assertSent(function ($request): bool {
         $caption = multipartField($request, 'caption');
@@ -77,7 +77,7 @@ it('truncates a caption longer than the 1024-character cap', function (): void {
 it('throws a TelegramApiException when a photo upload fails', function (): void {
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'chat not found'], 400)]);
 
-    expect(fn () => (new TelegramClient())->sendPhoto(1, 'PNG-BYTES', 'hi'))
+    expect(fn () => new TelegramClient()->sendPhoto(1, 'PNG-BYTES', 'hi'))
         ->toThrow(TelegramApiException::class, 'chat not found');
 });
 
@@ -86,7 +86,7 @@ it('registers the webhook url and secret token', function (): void {
         'api.telegram.org/*' => Http::response(['ok' => true, 'result' => true]),
     ]);
 
-    (new TelegramClient())->setWebhook('https://example.test/telegram/webhook', 'shh-secret');
+    new TelegramClient()->setWebhook('https://example.test/telegram/webhook', 'shh-secret');
 
     Http::assertSent(fn ($request): bool => $request->url() === 'https://api.telegram.org/bottest-bot-token/setWebhook'
         && $request['url'] === 'https://example.test/telegram/webhook'
@@ -103,7 +103,7 @@ it('returns the queued updates array from getUpdates', function (): void {
         'api.telegram.org/*' => Http::response(['ok' => true, 'result' => $updates]),
     ]);
 
-    $result = (new TelegramClient())->getUpdates(offset: 10, timeout: 30);
+    $result = new TelegramClient()->getUpdates(offset: 10, timeout: 30);
 
     expect($result)->toBe($updates);
 
@@ -117,7 +117,7 @@ it('throws a TelegramApiException carrying the status on an HTTP error', functio
         'api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Bad Request: chat not found'], 400),
     ]);
 
-    expect(fn () => (new TelegramClient())->sendMessage(1, 'hi'))
+    expect(fn () => new TelegramClient()->sendMessage(1, 'hi'))
         ->toThrow(TelegramApiException::class, 'Bad Request: chat not found');
 });
 
@@ -127,7 +127,7 @@ it('throws when Telegram answers 200 but ok is false', function (): void {
     ]);
 
     try {
-        (new TelegramClient())->sendMessage(1, 'hi');
+        new TelegramClient()->sendMessage(1, 'hi');
         $this->fail('Expected TelegramApiException was not thrown.');
     } catch (TelegramApiException $e) {
         expect($e->status)->toBe(200)
@@ -139,7 +139,7 @@ it('wraps a transport failure in a TelegramApiException with no status', functio
     Http::fake(fn () => throw new ConnectionException('timed out'));
 
     try {
-        (new TelegramClient())->sendMessage(1, 'hi');
+        new TelegramClient()->sendMessage(1, 'hi');
         $this->fail('Expected TelegramApiException was not thrown.');
     } catch (TelegramApiException $e) {
         expect($e->status)->toBeNull()

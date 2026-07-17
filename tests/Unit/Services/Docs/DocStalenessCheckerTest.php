@@ -48,7 +48,7 @@ it('flags a note whose cited code changed after the reviewed date', function ():
         ? CarbonImmutable::parse('2026-02-01')
         : CarbonImmutable::parse('2025-12-01');
 
-    $stale = (new DocStalenessChecker())->findStale($this->dir, $resolver);
+    $stale = new DocStalenessChecker()->findStale($this->dir, $resolver);
 
     expect($stale)->toHaveCount(1)
         ->and($stale[0]['doc'])->toBe('sub/a.md')
@@ -62,7 +62,7 @@ it('does not flag a note reviewed on the same day the code changed', function ()
 
     $resolver = fn (string $path): ?CarbonImmutable => CarbonImmutable::parse('2026-03-01T18:00:00+07:00');
 
-    expect((new DocStalenessChecker())->findStale($this->dir, $resolver))->toBe([]);
+    expect(new DocStalenessChecker()->findStale($this->dir, $resolver))->toBe([]);
 });
 
 it('skips notes that declare no code_refs', function (): void {
@@ -70,7 +70,7 @@ it('skips notes that declare no code_refs', function (): void {
 
     $resolver = fn (string $path): ?CarbonImmutable => CarbonImmutable::parse('2030-01-01');
 
-    expect((new DocStalenessChecker())->findStale($this->dir, $resolver))->toBe([]);
+    expect(new DocStalenessChecker()->findStale($this->dir, $resolver))->toBe([]);
 });
 
 it('skips a note with malformed YAML frontmatter instead of throwing', function (): void {
@@ -81,7 +81,7 @@ it('skips a note with malformed YAML frontmatter instead of throwing', function 
 
     $resolver = fn (string $path): ?CarbonImmutable => CarbonImmutable::parse('2030-01-01');
 
-    expect((new DocStalenessChecker())->findStale($this->dir, $resolver))->toBe([]);
+    expect(new DocStalenessChecker()->findStale($this->dir, $resolver))->toBe([]);
 });
 
 it('ignores underscore-prefixed scaffolding and .obsidian files', function (): void {
@@ -91,7 +91,7 @@ it('ignores underscore-prefixed scaffolding and .obsidian files', function (): v
 
     $resolver = fn (string $path): ?CarbonImmutable => CarbonImmutable::parse('2030-01-01');
 
-    expect((new DocStalenessChecker())->findStale($this->dir, $resolver))->toBe([]);
+    expect(new DocStalenessChecker()->findStale($this->dir, $resolver))->toBe([]);
 });
 
 it('ignores code_refs with no known commit time', function (): void {
@@ -99,11 +99,11 @@ it('ignores code_refs with no known commit time', function (): void {
 
     $resolver = fn (string $path): ?CarbonImmutable => null;
 
-    expect((new DocStalenessChecker())->findStale($this->dir, $resolver))->toBe([]);
+    expect(new DocStalenessChecker()->findStale($this->dir, $resolver))->toBe([]);
 });
 
 it('returns an empty list when the docs directory does not exist', function (): void {
     $resolver = fn (string $path): ?CarbonImmutable => CarbonImmutable::parse('2030-01-01');
 
-    expect((new DocStalenessChecker())->findStale($this->dir.'/missing', $resolver))->toBe([]);
+    expect(new DocStalenessChecker()->findStale($this->dir.'/missing', $resolver))->toBe([]);
 });

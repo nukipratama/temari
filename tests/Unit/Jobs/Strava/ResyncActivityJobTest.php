@@ -31,7 +31,7 @@ it('re-ingests and re-narrates the chain head when renarrate is requested', func
         ->once()
         ->withArgs(fn (Activity $arg, bool $invalidate): bool => $arg->is($activity) && $invalidate === true);
 
-    (new ResyncActivityJob($activity->id, renarrate: true))->handle($pipeline, $service);
+    new ResyncActivityJob($activity->id, renarrate: true)->handle($pipeline, $service);
 });
 
 it('refreshes data only (no re-narration) when renarrate is false, even for the head', function (): void {
@@ -48,7 +48,7 @@ it('refreshes data only (no re-narration) when renarrate is false, even for the 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('requestActivityGroup');
 
-    (new ResyncActivityJob($activity->id))->handle($pipeline, $service);
+    new ResyncActivityJob($activity->id)->handle($pipeline, $service);
 });
 
 it('never re-narrates a mid-history activity even when renarrate is requested', function (): void {
@@ -72,7 +72,7 @@ it('never re-narrates a mid-history activity even when renarrate is requested', 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('requestActivityGroup');
 
-    (new ResyncActivityJob($old->id, renarrate: true))->handle($pipeline, $service);
+    new ResyncActivityJob($old->id, renarrate: true)->handle($pipeline, $service);
 });
 
 it('quietly no-ops if the activity was deleted before the job runs', function (): void {
@@ -81,11 +81,11 @@ it('quietly no-ops if the activity was deleted before the job runs', function ()
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('requestActivityGroup');
 
-    (new ResyncActivityJob(999_999))->handle($pipeline, $service);
+    new ResyncActivityJob(999_999)->handle($pipeline, $service);
 });
 
 it('registers the same ThrottlesExceptions middleware as the ingest job', function (): void {
-    $middleware = (new ResyncActivityJob(1))->middleware();
+    $middleware = new ResyncActivityJob(1)->middleware();
 
     expect($middleware)->toHaveCount(1)
         ->and($middleware[0])->toBeInstanceOf(ThrottlesExceptions::class);

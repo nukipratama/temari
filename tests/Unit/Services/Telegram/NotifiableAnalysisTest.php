@@ -40,7 +40,7 @@ it('resolves the user behind a post-run speech via its activity', function (): v
         'subject_id' => $activity->id,
     ]);
 
-    expect((new NotifiableAnalysis())->resolveUser($analysis)?->id)->toBe($user->id);
+    expect(new NotifiableAnalysis()->resolveUser($analysis)?->id)->toBe($user->id);
 });
 
 it('resolves the user behind a weekly recap via its snapshot', function (): void {
@@ -52,7 +52,7 @@ it('resolves the user behind a weekly recap via its snapshot', function (): void
         'subject_id' => $snapshot->id,
     ]);
 
-    expect((new NotifiableAnalysis())->resolveUser($analysis)?->id)->toBe($user->id);
+    expect(new NotifiableAnalysis()->resolveUser($analysis)?->id)->toBe($user->id);
 });
 
 it('resolves the user behind a monthly recap directly via its subject_id', function (): void {
@@ -64,7 +64,7 @@ it('resolves the user behind a monthly recap directly via its subject_id', funct
         'discriminator' => '2026-06',
     ]);
 
-    expect((new NotifiableAnalysis())->resolveUser($analysis)?->id)->toBe($user->id);
+    expect(new NotifiableAnalysis()->resolveUser($analysis)?->id)->toBe($user->id);
 });
 
 it('resolves the user behind a daily briefing directly via its subject_id', function (): void {
@@ -76,42 +76,42 @@ it('resolves the user behind a daily briefing directly via its subject_id', func
         'discriminator' => '2026-07-04',
     ]);
 
-    expect((new NotifiableAnalysis())->resolveUser($analysis)?->id)->toBe($user->id);
+    expect(new NotifiableAnalysis()->resolveUser($analysis)?->id)->toBe($user->id);
 });
 
 it('isOptedIn returns true when the connection preference flag is on', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
     $connection = TelegramConnection::factory()->make(['notify_post_run' => true]);
 
-    expect((new NotifiableAnalysis())->isOptedIn($analysis, $connection))->toBeTrue();
+    expect(new NotifiableAnalysis()->isOptedIn($analysis, $connection))->toBeTrue();
 });
 
 it('isOptedIn returns false when the connection preference flag is off', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
     $connection = TelegramConnection::factory()->make(['notify_post_run' => false]);
 
-    expect((new NotifiableAnalysis())->isOptedIn($analysis, $connection))->toBeFalse();
+    expect(new NotifiableAnalysis()->isOptedIn($analysis, $connection))->toBeFalse();
 });
 
 it('isOptedIn returns true for a daily briefing when the connection has opted in', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingHeadline]);
     $connection = TelegramConnection::factory()->make(['notify_daily_briefing' => true]);
 
-    expect((new NotifiableAnalysis())->isOptedIn($analysis, $connection))->toBeTrue();
+    expect(new NotifiableAnalysis()->isOptedIn($analysis, $connection))->toBeTrue();
 });
 
 it('isOptedIn returns false for a daily briefing by default (opt-in only)', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingHeadline]);
     $connection = TelegramConnection::factory()->make(['notify_daily_briefing' => false]);
 
-    expect((new NotifiableAnalysis())->isOptedIn($analysis, $connection))->toBeFalse();
+    expect(new NotifiableAnalysis()->isOptedIn($analysis, $connection))->toBeFalse();
 });
 
 it('isOptedIn returns false for a non-notifiable type', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::DailyGreeting]);
     $connection = TelegramConnection::factory()->make();
 
-    expect((new NotifiableAnalysis())->isOptedIn($analysis, $connection))->toBeFalse();
+    expect(new NotifiableAnalysis()->isOptedIn($analysis, $connection))->toBeFalse();
 });
 
 it('formats a post-run message with an emoji label, the content, and a deep link to the activity', function (): void {
@@ -121,7 +121,7 @@ it('formats a post-run message with an emoji label, the content, and a deep link
         'content' => 'Pace kamu konsisten banget.',
     ]);
 
-    $message = (new NotifiableAnalysis())->format($analysis);
+    $message = new NotifiableAnalysis()->format($analysis);
 
     expect($message)->toStartWith('🏃 Pace kamu konsisten banget.')
         ->and($message)->toContain('Lihat detail lari: ' . route('aktivitas.show', 123));
@@ -140,7 +140,7 @@ it('includes a metrics line for a post-run notification', function (): void {
         'content' => 'Mantap!',
     ]);
 
-    $message = (new NotifiableAnalysis())->format($analysis);
+    $message = new NotifiableAnalysis()->format($analysis);
 
     expect($message)->toContain('5.20 km · 34:14 · 6:35/km · 159 bpm');
 });
@@ -158,7 +158,7 @@ it('omits HR from the metrics line on a strap-less run', function (): void {
         'content' => 'Mantap!',
     ]);
 
-    $message = (new NotifiableAnalysis())->format($analysis);
+    $message = new NotifiableAnalysis()->format($analysis);
 
     expect($message)->toContain('5.20 km · 34:14 · 6:35/km')
         ->and($message)->not->toContain('bpm');
@@ -172,7 +172,7 @@ it('is recent enough to auto-notify when the activity started within the max age
         'subject_id' => $activity->id,
     ]);
 
-    expect((new NotifiableAnalysis())->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
+    expect(new NotifiableAnalysis()->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
 });
 
 it('is not recent enough to auto-notify when the activity is older than the max age', function (): void {
@@ -184,7 +184,7 @@ it('is not recent enough to auto-notify when the activity is older than the max 
         'subject_id' => $activity->id,
     ]);
 
-    expect((new NotifiableAnalysis())->isRecentEnoughToAutoNotify($analysis))->toBeFalse();
+    expect(new NotifiableAnalysis()->isRecentEnoughToAutoNotify($analysis))->toBeFalse();
 });
 
 it('treats a missing activity detail as recent enough (nothing to gate on)', function (): void {
@@ -193,7 +193,7 @@ it('treats a missing activity detail as recent enough (nothing to gate on)', fun
         'subject_id' => 999999,
     ]);
 
-    expect((new NotifiableAnalysis())->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
+    expect(new NotifiableAnalysis()->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
 });
 
 it('auto-notifies a weekly recap whose week ended within the max age', function (): void {
@@ -204,7 +204,7 @@ it('auto-notifies a weekly recap whose week ended within the max age', function 
         'subject_id' => $snapshot->id,
     ]);
 
-    expect((new NotifiableAnalysis())->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
+    expect(new NotifiableAnalysis()->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
 });
 
 it('does not auto-notify a weekly recap whose week ended before the max age', function (): void {
@@ -216,7 +216,7 @@ it('does not auto-notify a weekly recap whose week ended before the max age', fu
         'subject_id' => $snapshot->id,
     ]);
 
-    expect((new NotifiableAnalysis())->isRecentEnoughToAutoNotify($analysis))->toBeFalse();
+    expect(new NotifiableAnalysis()->isRecentEnoughToAutoNotify($analysis))->toBeFalse();
 });
 
 it('auto-notifies a monthly recap whose month ended within the max age', function (): void {
@@ -229,7 +229,7 @@ it('auto-notifies a monthly recap whose month ended within the max age', functio
         'discriminator' => '2026-06',
     ]);
 
-    expect((new NotifiableAnalysis())->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
+    expect(new NotifiableAnalysis()->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
 });
 
 it('does not auto-notify a monthly recap whose month ended before the max age', function (): void {
@@ -240,7 +240,7 @@ it('does not auto-notify a monthly recap whose month ended before the max age', 
         'discriminator' => now()->subMonths(6)->format('Y-m'),
     ]);
 
-    expect((new NotifiableAnalysis())->isRecentEnoughToAutoNotify($analysis))->toBeFalse();
+    expect(new NotifiableAnalysis()->isRecentEnoughToAutoNotify($analysis))->toBeFalse();
 });
 
 it('treats a missing weekly snapshot as recent enough (nothing to gate on)', function (): void {
@@ -250,7 +250,7 @@ it('treats a missing weekly snapshot as recent enough (nothing to gate on)', fun
         'subject_id' => 999999,
     ]);
 
-    expect((new NotifiableAnalysis())->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
+    expect(new NotifiableAnalysis()->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
 });
 
 it('never gates a daily briefing by age (no reference date)', function (): void {
@@ -259,7 +259,7 @@ it('never gates a daily briefing by age (no reference date)', function (): void 
         'discriminator' => now()->subYear()->toDateString(),
     ]);
 
-    expect((new NotifiableAnalysis())->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
+    expect(new NotifiableAnalysis()->isRecentEnoughToAutoNotify($analysis))->toBeTrue();
 });
 
 it('links a weekly recap to the run history page', function (): void {
@@ -268,7 +268,7 @@ it('links a weekly recap to the run history page', function (): void {
         'content' => 'Minggu ini 28 km.',
     ]);
 
-    $message = (new NotifiableAnalysis())->format($analysis);
+    $message = new NotifiableAnalysis()->format($analysis);
 
     expect($message)->toStartWith('📊 Minggu ini 28 km.')
         ->and($message)->toContain('Lihat riwayat: ' . route('aktivitas.index'));
@@ -281,7 +281,7 @@ it('links a monthly recap to its month on the calendar', function (): void {
         'content' => 'Bulan ini 120 km.',
     ]);
 
-    $message = (new NotifiableAnalysis())->format($analysis);
+    $message = new NotifiableAnalysis()->format($analysis);
 
     expect($message)->toStartWith('🗓️ Bulan ini 120 km.')
         ->and($message)->toContain('Lihat kalender: ' . route('kalender', ['month' => '2026-06']));
@@ -293,7 +293,7 @@ it('links a daily briefing to the dashboard', function (): void {
         'content' => 'Pagi ini enak buat lari santai.',
     ]);
 
-    $message = (new NotifiableAnalysis())->format($analysis);
+    $message = new NotifiableAnalysis()->format($analysis);
 
     expect($message)->toStartWith('☀️ Pagi ini enak buat lari santai.')
         ->and($message)->toContain('Lihat ringkasan hari ini: ' . route('dashboard'));

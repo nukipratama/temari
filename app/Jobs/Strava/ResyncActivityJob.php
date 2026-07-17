@@ -53,7 +53,7 @@ class ResyncActivityJob implements ShouldQueue
     public function middleware(): array
     {
         return [
-            (new ThrottlesExceptions(self::RATE_LIMIT_MAX_ATTEMPTS, self::RATE_LIMIT_DECAY_SECONDS))
+            new ThrottlesExceptions(self::RATE_LIMIT_MAX_ATTEMPTS, self::RATE_LIMIT_DECAY_SECONDS)
                 ->when(fn (Throwable $e): bool => $e instanceof StravaRateLimitedException
                     || $e instanceof StravaCircuitOpenException)
                 ->backoff(self::RATE_LIMIT_BACKOFF_MINUTES)

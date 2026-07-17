@@ -19,15 +19,15 @@ it('forwards to Temari for the resolved activity', function (): void {
         ->once()
         ->withArgs(fn (Activity $a, ActivityDetail $d): bool => $a->is($activity));
 
-    (new GenerateStoryLineJob($activity->id))->handle($temari);
+    new GenerateStoryLineJob($activity->id)->handle($temari);
 });
 
 it('no-ops on a missing activity or missing detail', function (): void {
     $temari = Mockery::mock(Temari::class);
     $temari->shouldNotReceive('postRunLine');
 
-    (new GenerateStoryLineJob(999_999))->handle($temari);
+    new GenerateStoryLineJob(999_999)->handle($temari);
 
     $activityWithoutDetail = Activity::factory()->create();
-    (new GenerateStoryLineJob($activityWithoutDetail->id))->handle($temari);
+    new GenerateStoryLineJob($activityWithoutDetail->id)->handle($temari);
 });

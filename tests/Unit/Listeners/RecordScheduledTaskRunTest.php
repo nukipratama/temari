@@ -14,7 +14,7 @@ uses(RefreshDatabase::class);
 it('records a finished command as ok with its cadence and runtime', function (): void {
     $task = app(Schedule::class)->command('strava:sync')->hourly();
 
-    (new RecordScheduledTaskRun())->finished(new ScheduledTaskFinished($task, 1.5));
+    new RecordScheduledTaskRun()->finished(new ScheduledTaskFinished($task, 1.5));
 
     $row = ScheduledTaskRun::query()->sole();
     expect($row->command)->toBe('strava:sync')
@@ -27,7 +27,7 @@ it('records a finished command as ok with its cadence and runtime', function ():
 it('records a failed command with its exception message', function (): void {
     $task = app(Schedule::class)->command('ai:weekly-recap')->weeklyOn(1, '05:30');
 
-    (new RecordScheduledTaskRun())->failed(new ScheduledTaskFailed($task, new RuntimeException('kaboom')));
+    new RecordScheduledTaskRun()->failed(new ScheduledTaskFailed($task, new RuntimeException('kaboom')));
 
     $row = ScheduledTaskRun::query()->sole();
     expect($row->command)->toBe('ai:weekly-recap')
@@ -39,7 +39,7 @@ it('records a failed command with its exception message', function (): void {
 it('falls back to getSummaryForDisplay for a closure-based scheduled event (no artisan command to regex-match)', function (): void {
     $task = app(Schedule::class)->call(fn () => null)->hourly();
 
-    (new RecordScheduledTaskRun())->finished(new ScheduledTaskFinished($task, 1.0));
+    new RecordScheduledTaskRun()->finished(new ScheduledTaskFinished($task, 1.0));
 
     $row = ScheduledTaskRun::query()->sole();
     expect($row->command)->toBe($task->getSummaryForDisplay());

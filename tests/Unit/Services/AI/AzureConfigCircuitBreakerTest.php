@@ -88,7 +88,7 @@ it('closes again when a half-open probe succeeds (env fixed, auto-resume)', func
     $breaker->recordSuccess();
 
     expect($breaker->state())->toBe(AzureConfigCircuitBreaker::STATE_CLOSED)
-        ->and((new AppConfig())->integer(AppConfigKey::AiConfigBreakerFailures))->toBe(0);
+        ->and(new AppConfig()->integer(AppConfigKey::AiConfigBreakerFailures))->toBe(0);
 });
 
 it('re-opens when a half-open probe fails again', function (): void {
@@ -114,7 +114,7 @@ it('a success in the closed state resets the failure streak', function (): void 
     $breaker->recordFailure();
     $breaker->recordSuccess();
 
-    expect((new AppConfig())->integer(AppConfigKey::AiConfigBreakerFailures))->toBe(0);
+    expect(new AppConfig()->integer(AppConfigKey::AiConfigBreakerFailures))->toBe(0);
 });
 
 it('reset() force-closes an open breaker', function (): void {
@@ -132,7 +132,7 @@ it('reset() force-closes an open breaker', function (): void {
 });
 
 it('honors a runtime-tuned threshold', function (): void {
-    (new AppConfig())->set(AppConfigKey::AiConfigBreakerThreshold, 2);
+    new AppConfig()->set(AppConfigKey::AiConfigBreakerThreshold, 2);
     $breaker = configBreaker();
 
     $breaker->recordFailure();

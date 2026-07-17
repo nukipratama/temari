@@ -24,12 +24,15 @@ use Override;
 #[Fillable(['user_id', 'kind', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'model', 'latency_ms', 'truncated', 'created_at'])]
 class TokenUsage extends Model
 {
+    #[Override]
     public $timestamps = false;
 
     // Lives in the dedicated analytics schema so `migrate:fresh` of the app DB
     // can't wipe cost history. See config/database.php `analytics` connection.
+    #[Override]
     protected $connection = 'analytics';
 
+    #[Override]
     protected $table = 'ai_token_usages';
 
     /** @return array<string, string> */

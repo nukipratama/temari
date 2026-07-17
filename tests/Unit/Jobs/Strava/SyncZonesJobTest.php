@@ -31,7 +31,7 @@ it('writes a strava-sourced profile, setting source and strava_zones_synced_at w
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturn($newZones);
 
-    (new SyncZonesJob($user->id))->handle($fetcher);
+    new SyncZonesJob($user->id)->handle($fetcher);
 
     $profile = RunnerProfile::query()->where('user_id', $user->id)->firstOrFail();
 
@@ -50,7 +50,7 @@ it('skips a user whose profile source is manual', function (): void {
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldNotReceive('fetch');
 
-    (new SyncZonesJob($user->id))->handle($fetcher);
+    new SyncZonesJob($user->id)->handle($fetcher);
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->value('max_hr'))->toBe(200);
 });
@@ -71,7 +71,7 @@ it('overwrites a manual profile when forced (explicit user re-sync)', function (
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturn($newZones);
 
-    (new SyncZonesJob($user->id, force: true))->handle($fetcher);
+    new SyncZonesJob($user->id, force: true)->handle($fetcher);
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->value('source'))->toBe('strava');
 });
@@ -83,7 +83,7 @@ it('no-ops when Strava returns no zones', function (): void {
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturn(null);
 
-    (new SyncZonesJob($user->id))->handle($fetcher);
+    new SyncZonesJob($user->id)->handle($fetcher);
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
@@ -95,7 +95,7 @@ it('no-ops when Strava zones are already the effective (default) zones', functio
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturn(config('runner.hr_zones'));
 
-    (new SyncZonesJob($user->id))->handle($fetcher);
+    new SyncZonesJob($user->id)->handle($fetcher);
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
@@ -104,7 +104,7 @@ it('no-ops on a deleted user', function (): void {
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldNotReceive('fetch');
 
-    (new SyncZonesJob(999_999))->handle($fetcher);
+    new SyncZonesJob(999_999)->handle($fetcher);
 });
 
 it('no-ops when the user has no Strava connection', function (): void {
@@ -113,5 +113,5 @@ it('no-ops when the user has no Strava connection', function (): void {
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldNotReceive('fetch');
 
-    (new SyncZonesJob($user->id))->handle($fetcher);
+    new SyncZonesJob($user->id)->handle($fetcher);
 });

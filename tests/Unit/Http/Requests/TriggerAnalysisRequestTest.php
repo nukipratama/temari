@@ -7,7 +7,7 @@ use App\Services\AI\AnalysisType;
 use Illuminate\Support\Facades\Validator;
 
 it('authorizes the request (ownership is enforced in the controller)', function (): void {
-    expect((new TriggerAnalysisRequest())->authorize())->toBeTrue();
+    expect(new TriggerAnalysisRequest()->authorize())->toBeTrue();
 });
 
 it('folds the route segments into the validation payload', function (): void {
@@ -33,14 +33,14 @@ it('accepts every known analysis type against its enum rule', function (): void 
     foreach (AnalysisType::cases() as $case) {
         $validator = Validator::make(
             ['type' => $case->value, 'subjectId' => 1],
-            (new TriggerAnalysisRequest())->rules(),
+            new TriggerAnalysisRequest()->rules(),
         );
         expect($validator->passes())->toBeTrue();
     }
 });
 
 it('rejects an unknown type, a non-positive subjectId and an over-long discriminator', function (): void {
-    $rules = (new TriggerAnalysisRequest())->rules();
+    $rules = new TriggerAnalysisRequest()->rules();
 
     expect(Validator::make(['type' => 'nonsense', 'subjectId' => 1], $rules)->passes())->toBeFalse()
         ->and(Validator::make(['type' => 'briefing_headline', 'subjectId' => 0], $rules)->passes())->toBeFalse()
@@ -54,7 +54,7 @@ it('rejects an unknown type, a non-positive subjectId and an over-long discrimin
 it('allows a null / absent discriminator', function (): void {
     $validator = Validator::make(
         ['type' => 'briefing_headline', 'subjectId' => 1],
-        (new TriggerAnalysisRequest())->rules(),
+        new TriggerAnalysisRequest()->rules(),
     );
 
     expect($validator->passes())->toBeTrue();

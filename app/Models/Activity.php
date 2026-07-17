@@ -184,6 +184,7 @@ class Activity extends Model
      *
      * @var list<string>
      */
+    #[Override]
     protected $hidden = ['milestone_payload'];
 
     /**

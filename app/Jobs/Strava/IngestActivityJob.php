@@ -76,7 +76,7 @@ class IngestActivityJob implements ShouldBeUnique, ShouldQueue
             // Both a 429 and an open circuit mean "back off and retry later"
             // rather than burn the failure budget — the throttle re-queues with a
             // delay that comfortably outlasts the breaker cooldown.
-            (new ThrottlesExceptions(self::RATE_LIMIT_MAX_ATTEMPTS, self::RATE_LIMIT_DECAY_SECONDS))
+            new ThrottlesExceptions(self::RATE_LIMIT_MAX_ATTEMPTS, self::RATE_LIMIT_DECAY_SECONDS)
                 ->when(fn (Throwable $e): bool => $e instanceof StravaRateLimitedException
                     || $e instanceof StravaCircuitOpenException)
                 ->backoff(self::RATE_LIMIT_BACKOFF_MINUTES)

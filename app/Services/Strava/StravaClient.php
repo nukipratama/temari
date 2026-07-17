@@ -214,7 +214,7 @@ class StravaClient
         $connection->update([
             'access_token' => $accessToken,
             'refresh_token' => $refreshToken,
-            'token_expires_at' => (new Carbon('@' . $expiresAt))->setTimezone(config('app.timezone')),
+            'token_expires_at' => new Carbon('@' . $expiresAt)->setTimezone(config('app.timezone')),
         ]);
 
         return $connection;

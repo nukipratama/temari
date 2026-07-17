@@ -23,7 +23,7 @@ it('aggregates run count, total km and the first-run timestamp', function (): vo
         ]);
     }
 
-    $stats = (new LifetimeStats())->forUser($user);
+    $stats = new LifetimeStats()->forUser($user);
 
     expect($stats['total_runs'])->toBe(2)
         ->and($stats['total_km'])->toBe(13.0)
@@ -41,7 +41,7 @@ it('counts only analyzed runs belonging to the user', function (): void {
     $otherActivity = Activity::factory()->for($other)->analyzed()->create();
     ActivityDetail::factory()->for($otherActivity)->create(['distance' => 9_000]);
 
-    $stats = (new LifetimeStats())->forUser($user);
+    $stats = new LifetimeStats()->forUser($user);
 
     expect($stats['total_runs'])->toBe(0)
         ->and($stats['total_km'])->toBe(0.0)

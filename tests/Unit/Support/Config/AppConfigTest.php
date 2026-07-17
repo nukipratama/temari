@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\DB;
 uses(RefreshDatabase::class);
 
 it('returns the code default when no row exists', function (): void {
-    expect((new AppConfig())->get(AppConfigKey::AiEnabled))->toBeTrue()
-        ->and((new AppConfig())->get(AppConfigKey::StravaBreakerThreshold))->toBe(5);
+    expect(new AppConfig()->get(AppConfigKey::AiEnabled))->toBeTrue()
+        ->and(new AppConfig()->get(AppConfigKey::StravaBreakerThreshold))->toBe(5);
 });
 
 it('lets a stored row override the default', function (): void {
@@ -19,7 +19,7 @@ it('lets a stored row override the default', function (): void {
     $config->set(AppConfigKey::AiEnabled, false);
 
     // Fresh instance proves it round-tripped through the DB, not just the memo.
-    expect((new AppConfig())->get(AppConfigKey::AiEnabled))->toBeFalse();
+    expect(new AppConfig()->get(AppConfigKey::AiEnabled))->toBeFalse();
 });
 
 it('upserts in place rather than inserting duplicate rows', function (): void {
@@ -28,7 +28,7 @@ it('upserts in place rather than inserting duplicate rows', function (): void {
     $config->set(AppConfigKey::StravaBreakerThreshold, 8);
 
     expect(DB::table('app_config')->where('key', 'strava.breaker.threshold')->count())->toBe(1)
-        ->and((new AppConfig())->integer(AppConfigKey::StravaBreakerThreshold))->toBe(8);
+        ->and(new AppConfig()->integer(AppConfigKey::StravaBreakerThreshold))->toBe(8);
 });
 
 it('forget drops the memo so the next get re-reads from the DB', function (): void {
@@ -69,6 +69,6 @@ it('casts stored values back to their canonical type', function (): void {
     $config = new AppConfig();
     $config->set(AppConfigKey::StravaBreakerOpenedAt, '2026-06-09T10:00:00+00:00');
 
-    expect((new AppConfig())->get(AppConfigKey::StravaBreakerOpenedAt))
+    expect(new AppConfig()->get(AppConfigKey::StravaBreakerOpenedAt))
         ->toBe('2026-06-09T10:00:00+00:00');
 });

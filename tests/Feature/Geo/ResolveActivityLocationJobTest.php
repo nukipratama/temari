@@ -25,7 +25,7 @@ it('writes resolved location + stamps resolved_at on success', function (): void
             ->andReturn(new ResolvedLocation('Jakarta Selatan, DKI Jakarta, Indonesia', 'ID'));
     });
 
-    (new ResolveActivityLocationJob($detail->id))->handle(app(NominatimResolver::class));
+    new ResolveActivityLocationJob($detail->id)->handle(app(NominatimResolver::class));
 
     $detail->refresh();
     expect($detail->location_name)->toBe('Jakarta Selatan, DKI Jakarta, Indonesia');
@@ -42,7 +42,7 @@ it('leaves resolved_at null on a transient miss so the catch-up retries', functi
 
     $this->mock(NominatimResolver::class, fn ($m) => $m->shouldReceive('reverse')->once()->andReturn(null));
 
-    (new ResolveActivityLocationJob($detail->id))->handle(app(NominatimResolver::class));
+    new ResolveActivityLocationJob($detail->id)->handle(app(NominatimResolver::class));
 
     $detail->refresh();
     expect($detail->location_name)->toBeNull();
@@ -60,7 +60,7 @@ it('skips already-resolved details', function (): void {
 
     $this->mock(NominatimResolver::class, fn ($m) => $m->shouldNotReceive('reverse'));
 
-    (new ResolveActivityLocationJob($detail->id))->handle(app(NominatimResolver::class));
+    new ResolveActivityLocationJob($detail->id)->handle(app(NominatimResolver::class));
 
     expect($detail->fresh()->location_name)->toBe('cached');
 });
@@ -74,7 +74,7 @@ it('stamps and exits when the detail has no coords', function (): void {
 
     $this->mock(NominatimResolver::class, fn ($m) => $m->shouldNotReceive('reverse'));
 
-    (new ResolveActivityLocationJob($detail->id))->handle(app(NominatimResolver::class));
+    new ResolveActivityLocationJob($detail->id)->handle(app(NominatimResolver::class));
 
     $detail->refresh();
     expect($detail->location_resolved_at)->not->toBeNull();
@@ -84,7 +84,7 @@ it('stamps and exits when the detail has no coords', function (): void {
 it('is a no-op when the detail row was deleted before the job ran', function (): void {
     $this->mock(NominatimResolver::class, fn ($m) => $m->shouldNotReceive('reverse'));
 
-    (new ResolveActivityLocationJob(999_999))->handle(app(NominatimResolver::class));
+    new ResolveActivityLocationJob(999_999)->handle(app(NominatimResolver::class));
 
     expect(true)->toBeTrue();
 });

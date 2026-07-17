@@ -29,12 +29,17 @@ class PolylineEncoder
 
     private function encodeSigned(int $value): string
     {
-        // ZigZag: positives stay even, negatives become odd magnitudes.
-        $shifted = ($value < 0) ? ~($value << 1) : ($value << 1);
+        // ZigZag: positives stay even, negatives become odd magnitudes. Written as
+        // arithmetic (not bitwise) so the always-≥0 result is provable: for v<0,
+        // ~(v<<1) === -v*2 - 1; for v>=0, v<<1 === v*2.
+        $shifted = ($value < 0) ? ((-$value) * 2 - 1) : ($value * 2);
 
         return $this->encodeUnsigned($shifted);
     }
 
+    /**
+     * @param  int<0, max>  $value  Non-negative by contract (zigzag output is always ≥ 0).
+     */
     private function encodeUnsigned(int $value): string
     {
         $out = '';

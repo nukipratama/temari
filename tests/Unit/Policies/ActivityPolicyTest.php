@@ -10,14 +10,14 @@ it('allows the owner to view their activity', function (): void {
     $user = User::factory()->make(['id' => 1]);
     $activity = Activity::factory()->make(['user_id' => 1]);
 
-    expect((new ActivityPolicy())->view($user, $activity))->toBeTrue();
+    expect(new ActivityPolicy()->view($user, $activity))->toBeTrue();
 });
 
 it('denies a non-owner', function (): void {
     $activity = Activity::factory()->make(['user_id' => 1]);
     $other = User::factory()->make(['id' => 2]);
 
-    expect((new ActivityPolicy())->view($other, $activity))->toBeFalse();
+    expect(new ActivityPolicy()->view($other, $activity))->toBeFalse();
 });
 
 it('is resolved by Gate via can()', function (): void {

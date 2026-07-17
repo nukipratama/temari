@@ -19,7 +19,7 @@ beforeEach(function (): void {
 
 function runUpdate(array $update): void
 {
-    (new HandleTelegramUpdateJob($update))->handle(
+    new HandleTelegramUpdateJob($update)->handle(
         app(TelegramClient::class),
         app(TelegramLinkToken::class),
     );

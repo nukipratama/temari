@@ -66,7 +66,7 @@ it('writes speech + 3 insight rows Done from one job run', function (): void {
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
     mockInsightNarrator($insights);
 
-    (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
     $rows = Analysis::query()
         ->where('subject_type', Activity::class)
@@ -93,7 +93,7 @@ it('stamps every group row with the activity material fingerprint at generation'
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
     mockInsightNarrator(['technical' => 't', 'splits' => 's', 'zones' => 'z']);
 
-    (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
     $expected = MaterialFingerprint::forActivity($activity->fresh(['detail']));
     $rows = Analysis::query()
@@ -119,7 +119,7 @@ it('reverts group rows to Pending without billing when generation is paused', fu
         ]);
     }
 
-    (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     expect($rows)->toHaveCount(4)
@@ -140,7 +140,7 @@ it('degrades run-insight to rule-based content when the LLM is unavailable', fun
     $insightMock->shouldReceive('generate')->andThrow(new UnavailableException('llm down'));
     app()->instance(RunInsightNarrator::class, $insightMock);
 
-    (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
     $rows = Analysis::query()
         ->where('subject_id', $activity->id)
@@ -188,7 +188,7 @@ it('reuses Done insight rows instead of re-billing RunInsightNarrator on a cerit
     $insightMock->shouldNotReceive('generate');
     app()->instance(RunInsightNarrator::class, $insightMock);
 
-    (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
     $rows = Analysis::query()
         ->where('subject_id', $activity->id)
@@ -202,7 +202,7 @@ it('reuses Done insight rows instead of re-billing RunInsightNarrator on a cerit
 });
 
 it('marks all 4 rows failed when the activity is missing', function (): void {
-    (new AnalyzeActivityJob(99999))->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob(99999)->handle(app(AnalysisService::class));
 
     $rows = Analysis::query()->where('subject_id', 99999)->get();
     expect($rows)->toHaveCount(4);
@@ -217,7 +217,7 @@ it('marks all rows failed when the story line is missing', function (): void {
     ActivityDetail::factory()->for($activity)->create();
     // No StoryLine created — speech narrator can't run.
 
-    (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     foreach ($rows as $row) {
@@ -246,7 +246,7 @@ it('no-ops when all rows already Done (idempotent)', function (): void {
     $speechMock->shouldNotReceive('generate');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
-    (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     foreach ($rows as $row) {
@@ -261,7 +261,7 @@ it('rethrows non-UnavailableException so Laravel can retry the whole group', fun
     $speechMock->shouldReceive('generate')->andThrow(new RuntimeException('boom'));
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
-    expect(fn () => (new AnalyzeActivityJob($activity->id))->handle(app(AnalysisService::class)))
+    expect(fn () => new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class)))
         ->toThrow(RuntimeException::class, 'boom');
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
@@ -322,7 +322,7 @@ it('advances the chain to the next chronological Pending activity group on compl
     mockInsightNarrator(['technical' => 't', 'splits' => 's', 'zones' => 'z']);
 
     Bus::fake();
-    (new AnalyzeActivityJob($first->id))->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($first->id)->handle(app(AnalysisService::class));
 
     // The next chronological activity's group is dispatched as the chain link.
     Bus::assertDispatched(
@@ -344,7 +344,7 @@ it('does not advance the chain when no later activity group is Pending', functio
     mockInsightNarrator(['technical' => 't', 'splits' => 's', 'zones' => 'z']);
 
     Bus::fake();
-    (new AnalyzeActivityJob($only->id))->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($only->id)->handle(app(AnalysisService::class));
 
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });

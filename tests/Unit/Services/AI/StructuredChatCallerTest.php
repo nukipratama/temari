@@ -158,7 +158,7 @@ it('routes the per-kind client and records the resolved deployment', function ()
     $azure->shouldReceive('deploymentFor')->with('briefing')->andReturn('gpt-4o-briefing');
     $azure->shouldReceive('client')->andReturn($client);
 
-    (new StructuredChatCaller($azure, app(TokenUsageRecorder::class), app(AzureConfigCircuitBreaker::class)))
+    new StructuredChatCaller($azure, app(TokenUsageRecorder::class), app(AzureConfigCircuitBreaker::class))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
     expect(TokenUsage::query()->first()->model)->toBe('gpt-4o-briefing');
@@ -256,7 +256,7 @@ it('keeps a schema/JSON failure terminal even though the HTTP call succeeded', f
 
 function configBreakerSnapshot(): array
 {
-    return (new AzureConfigCircuitBreaker(new AppConfig()))->snapshot();
+    return new AzureConfigCircuitBreaker(new AppConfig())->snapshot();
 }
 
 it('counts a 401 auth failure toward the config circuit breaker', function (): void {

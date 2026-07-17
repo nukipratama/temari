@@ -108,7 +108,7 @@ class PrScoreboardBuilder
         if ($splits === null || $splits === []) {
             return null;
         }
-        $last = end($splits);
+        $last = array_last($splits);
         $distance = isset($last['distance']) ? (float) $last['distance'] : 0.0;
         if ($distance >= 950 || $distance < 100) {
             return null;

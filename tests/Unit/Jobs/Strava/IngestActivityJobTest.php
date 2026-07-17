@@ -21,18 +21,18 @@ it('forwards to the ActivityPipeline for the resolved activity', function (): vo
         ->once()
         ->withArgs(fn (Activity $arg): bool => $arg->is($activity));
 
-    (new IngestActivityJob($activity->id))->handle($pipeline);
+    new IngestActivityJob($activity->id)->handle($pipeline);
 });
 
 it('quietly no-ops if the activity has been deleted before the job runs', function (): void {
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldNotReceive('ingest');
 
-    (new IngestActivityJob(999_999))->handle($pipeline);
+    new IngestActivityJob(999_999)->handle($pipeline);
 });
 
 it('registers a ThrottlesExceptions middleware so 429 backoffs do not burn attempts', function (): void {
-    $middleware = (new IngestActivityJob(1))->middleware();
+    $middleware = new IngestActivityJob(1)->middleware();
 
     expect($middleware)->toHaveCount(1)
         ->and($middleware[0])->toBeInstanceOf(ThrottlesExceptions::class);
@@ -121,7 +121,7 @@ it('is unique per activity id so a throttled stub is not re-dispatched as a dupl
 it('logs the stuck activity when the job is finally marked failed', function (): void {
     Log::spy();
 
-    (new IngestActivityJob(123))->failed(new RuntimeException('boom'));
+    new IngestActivityJob(123)->failed(new RuntimeException('boom'));
 
     Log::shouldHaveReceived('warning')->once()->withArgs(
         fn (string $message, array $context): bool => $message === 'strava.ingest.failed'

@@ -15,7 +15,7 @@ uses(RefreshDatabase::class);
 
 function runVerifyJob(StravaConnection $connection, string $source = 'webhook_deauth'): void
 {
-    (new VerifyStravaRevocationJob($connection->id, $source))->handle(app(StravaClient::class));
+    new VerifyStravaRevocationJob($connection->id, $source)->handle(app(StravaClient::class));
 }
 
 function freshConnection(): StravaConnection
@@ -59,7 +59,7 @@ it('does NOT revoke when the grant is still live (forged deauth event)', functio
 it('no-ops when the connection is missing', function (): void {
     Http::fake();
 
-    (new VerifyStravaRevocationJob(999_999, 'webhook_deauth'))->handle(app(StravaClient::class));
+    new VerifyStravaRevocationJob(999_999, 'webhook_deauth')->handle(app(StravaClient::class));
 
     Http::assertNothingSent();
 });

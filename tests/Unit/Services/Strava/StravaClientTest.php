@@ -35,7 +35,7 @@ it('returns the connection unchanged when token is comfortably valid', function 
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    $result = (new StravaClient())->refreshIfExpired($connection);
+    $result = new StravaClient()->refreshIfExpired($connection);
 
     expect($result->access_token)->toBe('valid-access');
     Http::assertNothingSent();
@@ -60,7 +60,7 @@ it('refreshes the token when it has already expired', function (): void {
         'token_expires_at' => Carbon::now()->subMinute(),
     ]);
 
-    $result = (new StravaClient())->refreshIfExpired($connection);
+    $result = new StravaClient()->refreshIfExpired($connection);
 
     expect($result->access_token)->toBe('fresh-access')
         ->and($result->refresh_token)->toBe('fresh-refresh')
@@ -86,7 +86,7 @@ it('refreshes when the token is within the 60-second buffer', function (): void 
         'token_expires_at' => Carbon::now()->addSeconds(30),
     ]);
 
-    (new StravaClient())->refreshIfExpired($connection);
+    new StravaClient()->refreshIfExpired($connection);
 
     Http::assertSentCount(1);
     expect($connection->refresh()->access_token)->toBe('fresh-access');
@@ -108,7 +108,7 @@ it('skips the refresh POST when another worker already refreshed under the lock'
         'token_expires_at' => Carbon::now()->addHours(6),
     ]);
 
-    $result = (new StravaClient())->refreshIfExpired($connection);
+    $result = new StravaClient()->refreshIfExpired($connection);
 
     expect($result->access_token)->toBe('refreshed-by-other-worker');
     Http::assertNothingSent();
@@ -123,7 +123,7 @@ it('throws a permanent refresh exception only on a 400 invalid_grant', function 
         'token_expires_at' => Carbon::now()->subMinute(),
     ]);
 
-    expect(fn () => (new StravaClient())->refreshIfExpired($connection))
+    expect(fn () => new StravaClient()->refreshIfExpired($connection))
         ->toThrow(StravaTokenRefreshFailedException::class);
 });
 
@@ -136,7 +136,7 @@ it('throws a transient refresh exception on a non-400 refresh failure', function
         'token_expires_at' => Carbon::now()->subMinute(),
     ]);
 
-    expect(fn () => (new StravaClient())->refreshIfExpired($connection))
+    expect(fn () => new StravaClient()->refreshIfExpired($connection))
         ->toThrow(StravaTokenRefreshTransientException::class);
 })->with([
     '401 unauthorized' => [401],
@@ -154,7 +154,7 @@ it('throws a transient refresh exception when the token endpoint times out', fun
         'token_expires_at' => Carbon::now()->subMinute(),
     ]);
 
-    expect(fn () => (new StravaClient())->refreshIfExpired($connection))
+    expect(fn () => new StravaClient()->refreshIfExpired($connection))
         ->toThrow(StravaTokenRefreshTransientException::class);
 });
 
@@ -168,7 +168,7 @@ it('makes authenticated GET requests to the Strava API', function (): void {
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    $response = (new StravaClient())->get($connection, 'athlete');
+    $response = new StravaClient()->get($connection, 'athlete');
 
     expect($response->json('id'))->toBe(12345);
 
@@ -191,7 +191,7 @@ it('refreshes the token before making a GET when it is expired', function (): vo
         'token_expires_at' => Carbon::now()->subMinute(),
     ]);
 
-    (new StravaClient())->get($connection, 'athlete');
+    new StravaClient()->get($connection, 'athlete');
 
     Http::assertSent(fn ($request) => $request->url() === 'https://www.strava.com/api/v3/athlete'
         && $request->hasHeader('Authorization', 'Bearer fresh-access'));
@@ -210,7 +210,7 @@ it('throws StravaConnectionRevokedException when the API rejects the token with 
         'token_expires_at' => Carbon::now()->addHours(5), // clock-fresh, so no refresh
     ]);
 
-    expect(fn () => (new StravaClient())->get($connection, 'athlete'))
+    expect(fn () => new StravaClient()->get($connection, 'athlete'))
         ->toThrow(StravaConnectionRevokedException::class);
 });
 
@@ -224,7 +224,7 @@ it('throws StravaRateLimitedException carrying the Retry-After delay on a real 4
     ]);
 
     try {
-        (new StravaClient())->get($connection, 'athlete');
+        new StravaClient()->get($connection, 'athlete');
         $this->fail('Expected StravaRateLimitedException to be thrown.');
     } catch (StravaRateLimitedException $e) {
         expect($e->availableIn)->toBe(42);
@@ -241,7 +241,7 @@ it('falls back to a null retry delay when a 429 omits Retry-After', function ():
     ]);
 
     try {
-        (new StravaClient())->get($connection, 'athlete');
+        new StravaClient()->get($connection, 'athlete');
         $this->fail('Expected StravaRateLimitedException to be thrown.');
     } catch (StravaRateLimitedException $e) {
         expect($e->availableIn)->toBeNull();
@@ -257,9 +257,9 @@ it('does NOT move the breaker on a 429 (Strava is up, just busy)', function (): 
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    expect(fn () => (new StravaClient())->get($connection, 'athlete'))
+    expect(fn () => new StravaClient()->get($connection, 'athlete'))
         ->toThrow(StravaRateLimitedException::class);
-    expect((new AppConfig())->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
+    expect(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
 });
 
 it('throws StravaRateLimitedException naming the exhausted bucket and retry-after seconds', function (): void {
@@ -274,7 +274,7 @@ it('throws StravaRateLimitedException naming the exhausted bucket and retry-afte
     }
 
     try {
-        (new StravaClient())->get($connection, 'athlete');
+        new StravaClient()->get($connection, 'athlete');
         $this->fail('Expected StravaRateLimitedException to be thrown.');
     } catch (StravaRateLimitedException $e) {
         expect($e->getMessage())
@@ -293,7 +293,7 @@ it('records hits against both rate limit buckets per request', function (): void
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    (new StravaClient())->get($connection, 'athlete');
+    new StravaClient()->get($connection, 'athlete');
 
     expect(RateLimiter::attempts('strava-api:15min'))->toBe(1)
         ->and(RateLimiter::attempts('strava-api:daily'))->toBe(1);
@@ -307,8 +307,8 @@ it('shares one rate-limit budget across all athletes (per client, not per athlet
     $athleteA = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
     $athleteB = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
 
-    (new StravaClient())->get($athleteA, 'athlete');
-    (new StravaClient())->get($athleteB, 'athlete');
+    new StravaClient()->get($athleteA, 'athlete');
+    new StravaClient()->get($athleteB, 'athlete');
 
     // Both athletes' calls land in the same shared bucket: Strava's limit is
     // per client, so two athletes consume two of the app's 200/15min, not one each.
@@ -325,9 +325,9 @@ it('counts a 5xx toward the circuit breaker, then surfaces the request exception
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    expect(fn () => (new StravaClient())->get($connection, 'athlete'))
+    expect(fn () => new StravaClient()->get($connection, 'athlete'))
         ->toThrow(RequestException::class);
-    expect((new AppConfig())->integer(AppConfigKey::StravaBreakerFailures))->toBe(1);
+    expect(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(1);
 });
 
 it('short-circuits with StravaCircuitOpenException and makes no HTTP call when the breaker is open', function (): void {
@@ -340,7 +340,7 @@ it('short-circuits with StravaCircuitOpenException and makes no HTTP call when t
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    expect(fn () => (new StravaClient())->get($connection, 'athlete'))
+    expect(fn () => new StravaClient()->get($connection, 'athlete'))
         ->toThrow(StravaCircuitOpenException::class);
     Http::assertNothingSent();
 });
@@ -354,13 +354,13 @@ it('does NOT move the breaker on a 401 (auth, not an outage)', function (): void
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    expect(fn () => (new StravaClient())->get($connection, 'athlete'))
+    expect(fn () => new StravaClient()->get($connection, 'athlete'))
         ->toThrow(StravaConnectionRevokedException::class);
-    expect((new AppConfig())->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
+    expect(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
 });
 
 it('resets the breaker failure streak on a successful 2xx', function (): void {
-    (new AppConfig())->set(AppConfigKey::StravaBreakerFailures, 3);
+    new AppConfig()->set(AppConfigKey::StravaBreakerFailures, 3);
 
     Http::fake([
         'www.strava.com/api/v3/*' => Http::response(['ok' => true]),
@@ -370,7 +370,7 @@ it('resets the breaker failure streak on a successful 2xx', function (): void {
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    (new StravaClient())->get($connection, 'athlete');
+    new StravaClient()->get($connection, 'athlete');
 
-    expect((new AppConfig())->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
+    expect(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
 });

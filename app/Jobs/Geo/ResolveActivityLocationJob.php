@@ -37,7 +37,7 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
     public function middleware(): array
     {
         return [
-            (new WithoutOverlapping('geo:nominatim:reverse'))
+            new WithoutOverlapping('geo:nominatim:reverse')
                 ->releaseAfter(2)
                 ->expireAfter(20),
         ];

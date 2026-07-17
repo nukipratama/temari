@@ -7,7 +7,7 @@ use App\Services\Geo\PolylineProjector;
 
 function project(?string $polyline, float $w = 320, float $h = 320, float $pad = 24): ?string
 {
-    return (new PolylineProjector(new PolylineDecoder()))->project($polyline, $w, $h, $pad);
+    return new PolylineProjector(new PolylineDecoder())->project($polyline, $w, $h, $pad);
 }
 
 /**
@@ -62,7 +62,7 @@ it('handles a perfectly horizontal route (constant latitude) without dividing by
     $decoder = Mockery::mock(PolylineDecoder::class);
     $decoder->shouldReceive('decode')->andReturn([[1.0, 2.0], [1.0, 3.0]]);
 
-    $points = (new PolylineProjector($decoder))->project('irrelevant', 320, 320, 24);
+    $points = new PolylineProjector($decoder)->project('irrelevant', 320, 320, 24);
 
     expect($points)->not->toBeNull();
     $coords = parseProjectedCoords($points);
@@ -78,7 +78,7 @@ it('handles a perfectly vertical route (constant longitude) without dividing by 
     $decoder = Mockery::mock(PolylineDecoder::class);
     $decoder->shouldReceive('decode')->andReturn([[1.0, 2.0], [2.0, 2.0]]);
 
-    $points = (new PolylineProjector($decoder))->project('irrelevant', 320, 320, 24);
+    $points = new PolylineProjector($decoder)->project('irrelevant', 320, 320, 24);
 
     expect($points)->not->toBeNull();
     $coords = parseProjectedCoords($points);

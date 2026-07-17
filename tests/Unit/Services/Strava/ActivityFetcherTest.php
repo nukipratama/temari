@@ -56,7 +56,7 @@ it('returns new run ids sorted ascending', function (): void {
             ->push([]),
     ]);
 
-    $ids = (new ActivityFetcher(new StravaClient()))->fetchNewExternalIds($connection);
+    $ids = new ActivityFetcher(new StravaClient())->fetchNewExternalIds($connection);
 
     expect($ids)->toBe([10, 20, 30]);
 });
@@ -75,7 +75,7 @@ it('stops paginating as soon as it hits an existing activity', function (): void
             ]),
     ]);
 
-    $ids = (new ActivityFetcher(new StravaClient()))->fetchNewExternalIds($connection);
+    $ids = new ActivityFetcher(new StravaClient())->fetchNewExternalIds($connection);
 
     expect($ids)->toBe([150, 200]);
     Http::assertSentCount(1);
@@ -95,7 +95,7 @@ it('filters non-run sport types out', function (): void {
             ->push([]),
     ]);
 
-    $ids = (new ActivityFetcher(new StravaClient()))->fetchNewExternalIds($connection);
+    $ids = new ActivityFetcher(new StravaClient())->fetchNewExternalIds($connection);
 
     expect($ids)->toBe([2, 4, 5]);
 });
@@ -111,7 +111,7 @@ it('falls back to the legacy type field when sport_type is absent', function ():
             ->push([]),
     ]);
 
-    $ids = (new ActivityFetcher(new StravaClient()))->fetchNewExternalIds($connection);
+    $ids = new ActivityFetcher(new StravaClient())->fetchNewExternalIds($connection);
 
     expect($ids)->toBe([2]);
 });
@@ -139,7 +139,7 @@ it('respects per-user scoping (other users\' activities do not act as stop marke
             ->push([]),
     ]);
 
-    $ids = (new ActivityFetcher(new StravaClient()))->fetchNewExternalIds($connectionB);
+    $ids = new ActivityFetcher(new StravaClient())->fetchNewExternalIds($connectionB);
 
     expect($ids)->toBe([99, 100]);
 });
@@ -150,7 +150,7 @@ it('returns empty list when athlete has no activities', function (): void {
         'strava.com/api/v3/athlete/activities*' => Http::response([]),
     ]);
 
-    $ids = (new ActivityFetcher(new StravaClient()))->fetchNewExternalIds($connection);
+    $ids = new ActivityFetcher(new StravaClient())->fetchNewExternalIds($connection);
 
     expect($ids)->toBe([]);
 });
@@ -167,7 +167,7 @@ it('skips items with missing or zero ids', function (): void {
             ->push([]),
     ]);
 
-    expect((new ActivityFetcher(new StravaClient()))->fetchNewExternalIds($connection))->toBe([42]);
+    expect(new ActivityFetcher(new StravaClient())->fetchNewExternalIds($connection))->toBe([42]);
 });
 
 it('stops at the first activity started on or before the --since bound', function (): void {
@@ -181,7 +181,7 @@ it('stops at the first activity started on or before the --since bound', functio
             ]),
     ]);
 
-    $ids = (new ActivityFetcher(new StravaClient()))
+    $ids = new ActivityFetcher(new StravaClient())
         ->fetchNewExternalIds($connection, CarbonImmutable::parse('2026-05-01T00:00:00Z'));
 
     // id 10 (2026-04-20) is on/before the bound → walk stops, it is excluded.
@@ -210,7 +210,7 @@ it('discovers a backdated upload nested below already-synced runs within the tra
             ]),
     ]);
 
-    $ids = (new ActivityFetcher(new StravaClient()))->fetchNewExternalIds($connection);
+    $ids = new ActivityFetcher(new StravaClient())->fetchNewExternalIds($connection);
 
     // 250 is found even though 300 (newer, known) precedes it; the walk stops at
     // 100 which is outside the 14-day window.
@@ -235,7 +235,7 @@ it('paginates beyond page 1 when a full page returns', function (): void {
             ->push([]),
     ]);
 
-    $ids = (new ActivityFetcher(new StravaClient()))->fetchNewExternalIds($connection);
+    $ids = new ActivityFetcher(new StravaClient())->fetchNewExternalIds($connection);
 
     expect($ids)->toContain(500)
         ->and(count($ids))->toBe(201);

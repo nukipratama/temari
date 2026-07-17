@@ -78,7 +78,7 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
         'analysis_type' => AnalysisType::CardFlavor,
     ]);
 
-    (new CleanupDeletedActivityJob($user->id, 7_001))->handle(
+    new CleanupDeletedActivityJob($user->id, 7_001)->handle(
         app(WeeklyAggregator::class),
         app(PersonalRecords::class),
         app(StravaClient::class),
@@ -114,7 +114,7 @@ it('prunes a now-empty weekly snapshot when the deleted run was the last one', f
     $personalRecords = Mockery::mock(PersonalRecords::class);
     $personalRecords->shouldReceive('rebuildForUser')->once();
 
-    (new CleanupDeletedActivityJob($user->id, 7_003))->handle($weekly, $personalRecords, app(StravaClient::class));
+    new CleanupDeletedActivityJob($user->id, 7_003)->handle($weekly, $personalRecords, app(StravaClient::class));
 
     expect(Activity::query()->withStubs()->whereKey($sole->id)->exists())->toBeFalse()
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
@@ -123,7 +123,7 @@ it('prunes a now-empty weekly snapshot when the deleted run was the last one', f
 it('no-ops when the activity is already gone', function (): void {
     $user = User::factory()->create();
 
-    (new CleanupDeletedActivityJob($user->id, 999_999))->handle(
+    new CleanupDeletedActivityJob($user->id, 999_999)->handle(
         app(WeeklyAggregator::class),
         app(PersonalRecords::class),
         app(StravaClient::class),
@@ -140,7 +140,7 @@ it('does NOT delete when Strava still returns the activity (forged delete event)
     // Strava confirms the activity still exists: the delete webhook was forged.
     Http::fake(['strava.com/api/v3/activities/7010' => Http::response(['id' => 7_010], 200)]);
 
-    (new CleanupDeletedActivityJob($user->id, 7_010))->handle(
+    new CleanupDeletedActivityJob($user->id, 7_010)->handle(
         app(WeeklyAggregator::class),
         app(PersonalRecords::class),
         app(StravaClient::class),
@@ -155,7 +155,7 @@ it('does NOT delete when there is no live connection to verify against', functio
     $activity = makeCleanupRun($user, 7_011, 5_000, now()->startOfWeek()->addDay());
     Http::fake();
 
-    (new CleanupDeletedActivityJob($user->id, 7_011))->handle(
+    new CleanupDeletedActivityJob($user->id, 7_011)->handle(
         app(WeeklyAggregator::class),
         app(PersonalRecords::class),
         app(StravaClient::class),

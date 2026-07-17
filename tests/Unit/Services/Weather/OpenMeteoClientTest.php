@@ -35,7 +35,7 @@ it('hits the forecast endpoint for recent activities', function (): void {
         ]),
     ]);
 
-    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+    $snap = new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt);
 
     expect($snap)->toBeInstanceOf(WeatherSnapshot::class)
         ->and($snap->tempC)->toBe(27)
@@ -67,7 +67,7 @@ it('hits the archive endpoint for activities older than 7 days', function (): vo
         ]),
     ]);
 
-    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+    $snap = new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt);
 
     expect($snap)->toBeInstanceOf(WeatherSnapshot::class)
         ->and($snap->tempC)->toBe(30)
@@ -95,7 +95,7 @@ it('hits the forecast endpoint at exactly the 7-day boundary', function (): void
         ]),
     ]);
 
-    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+    $snap = new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt);
 
     expect($snap)->toBeInstanceOf(WeatherSnapshot::class);
     Http::assertSent(fn ($req): bool => str_contains((string) $req->url(), 'api.open-meteo.com/v1/forecast'));
@@ -117,7 +117,7 @@ it('hits the archive endpoint just past the 7-day boundary (8 days)', function (
         ]),
     ]);
 
-    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+    $snap = new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt);
 
     expect($snap)->toBeInstanceOf(WeatherSnapshot::class);
     Http::assertSent(fn ($req): bool => str_contains((string) $req->url(), 'archive-api.open-meteo.com/v1/archive'));
@@ -139,7 +139,7 @@ it('fetchArchive forces the archive endpoint and returns an observed (non-foreca
         ]),
     ]);
 
-    $snap = (new OpenMeteoClient())->fetchArchive(-6.2, 106.8, $startedAt);
+    $snap = new OpenMeteoClient()->fetchArchive(-6.2, 106.8, $startedAt);
 
     expect($snap)->toBeInstanceOf(WeatherSnapshot::class)
         ->and($snap->tempC)->toBe(26)
@@ -161,7 +161,7 @@ it('buckets the start time down to the containing hour', function (): void {
         ]),
     ]);
 
-    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+    $snap = new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt);
 
     // Should pick 14:00 bucket, not 15:00
     expect($snap?->tempC)->toBe(28);
@@ -180,7 +180,7 @@ it('detects rain when precipitation exceeds 0.1mm', function (): void {
         ]),
     ]);
 
-    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+    $snap = new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt);
 
     expect($snap?->rainDetected)->toBeTrue();
 });
@@ -198,7 +198,7 @@ it('does NOT flag rain at exactly the 0.1 threshold', function (): void {
         ]),
     ]);
 
-    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+    $snap = new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt);
 
     expect($snap?->rainDetected)->toBeFalse();
 });
@@ -209,7 +209,7 @@ it('returns null on HTTP failure (pipeline keeps moving)', function (): void {
         'api.open-meteo.com/*' => Http::response(['error' => 'down'], 500),
     ]);
 
-    expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+    expect(new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
 });
 
 it('logs a warning with status + coords + hour when the response fails', function (): void {
@@ -217,7 +217,7 @@ it('logs a warning with status + coords + hour when the response fails', functio
     $startedAt = CarbonImmutable::parse('2026-05-10 06:00:00');
     Http::fake(['api.open-meteo.com/*' => Http::response(['error' => 'rate limited'], 429)]);
 
-    expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+    expect(new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
 
     Log::shouldHaveReceived('warning')
         ->once()
@@ -234,7 +234,7 @@ it('returns null when the response shape is missing hourly', function (): void {
         'api.open-meteo.com/*' => Http::response(['something' => 'else']),
     ]);
 
-    expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+    expect(new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
 });
 
 it('returns null when the activity hour is not in the response', function (): void {
@@ -250,7 +250,7 @@ it('returns null when the activity hour is not in the response', function (): vo
         ]),
     ]);
 
-    expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+    expect(new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
 });
 
 it('caches and short-circuits the second call', function (): void {
@@ -280,7 +280,7 @@ it('returns null when the http client throws (timeout / connection failure)', fu
         throw new ConnectionException('connection refused');
     });
 
-    expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+    expect(new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
 });
 
 it('returns null when the matched hour bucket has null temp or humidity', function (): void {
@@ -296,7 +296,7 @@ it('returns null when the matched hour bucket has null temp or humidity', functi
         ]),
     ]);
 
-    expect((new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+    expect(new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
 });
 
 it('refetches when the cached value is a legacy non-array (self-heals poisoned keys)', function (): void {
@@ -317,7 +317,7 @@ it('refetches when the cached value is a legacy non-array (self-heals poisoned k
         ]),
     ]);
 
-    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+    $snap = new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt);
 
     expect($snap)->toBeInstanceOf(WeatherSnapshot::class)->and($snap->tempC)->toBe(27);
     Http::assertSentCount(1);
@@ -330,7 +330,7 @@ it('round-trips the cached array shape back into a WeatherSnapshot', function ()
 
     Http::fake(); // any HTTP call would fail the assertion below
 
-    $snap = (new OpenMeteoClient())->fetchForActivity(-6.2, 106.8, $startedAt);
+    $snap = new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt);
 
     expect($snap)->toBeInstanceOf(WeatherSnapshot::class)
         ->and($snap->tempC)->toBe(21)

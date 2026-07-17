@@ -138,7 +138,7 @@ it('PostRunSpeechNarrator carries the insight triplet into context', function ()
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $insights = postRunInsightsFixture();
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))->context($a, $d->fresh(), 'nyala', $insights);
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala', $insights);
 
     expect($context['insights'])->toBe($insights);
 });
@@ -169,7 +169,7 @@ it('PostRunSpeechNarrator feeds prev_narrative from the prior activity post-run 
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'Lari kemarin enteng banget.');
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
     expect($context['prev_narrative'])->toBe('Lari kemarin enteng banget.')
         // prev_opener is the first few words, so the model can steer away from it.
@@ -189,7 +189,7 @@ it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
     expect($context['prev_narrative'])->toBeNull()
         ->and($context['prev_opener'])->toBeNull();
@@ -203,7 +203,7 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
         'Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup dan pace makin rapi di akhir.',
     );
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
     expect($context['prev_opener'])->toBe('Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup')
         ->and(str_word_count((string) $context['prev_opener']))->toBeLessThanOrEqual(10);
@@ -222,7 +222,7 @@ it('PostRunSpeechNarrator feeds a past-you comparison when a comparable past run
         'weather_temp_c' => null,
     ]);
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))
         ->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
     expect($context['past_you'])->not->toBeNull()
@@ -234,7 +234,7 @@ it('PostRunSpeechNarrator feeds a past-you comparison when a comparable past run
 it('PostRunSpeechNarrator leaves past_you null when no comparable past run exists', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $context = (new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class)))
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))
         ->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
     expect($context['past_you'])->toBeNull();
@@ -272,7 +272,7 @@ it('DailyGreetingNarrator feeds prev_narrative from the prior day greeting when 
         'discriminator' => '2026-05-17',
     ]);
 
-    $context = (new DailyGreetingNarrator(fakeCaller('{"speech":"x"}')))
+    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'))
         ->context($user, 'membara', Carbon::parse('2026-05-18'));
 
     expect($context['prev_narrative'])->toBe('Halo, kemarin kamu fresh banget.');
@@ -288,7 +288,7 @@ it('DailyGreetingNarrator omits prev_narrative when the prior day greeting is no
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = (new DailyGreetingNarrator(fakeCaller('{"speech":"x"}')))
+    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'))
         ->context($user, 'membara', Carbon::parse('2026-05-18'));
 
     expect($context['prev_narrative'])->toBeNull();
@@ -297,7 +297,7 @@ it('DailyGreetingNarrator omits prev_narrative when the prior day greeting is no
 it('DailyGreetingNarrator leaves prev_narrative null on the first day', function (): void {
     $user = User::factory()->create();
 
-    $context = (new DailyGreetingNarrator(fakeCaller('{"speech":"x"}')))
+    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'))
         ->context($user, 'membara', Carbon::parse('2026-05-18'));
 
     expect($context['prev_narrative'])->toBeNull();
@@ -564,7 +564,7 @@ it('WeeklyRecapNarrator feeds the previous week deltas when a prior snapshot exi
         'week_ending' => '2026-05-17', 'distance_km' => 28.0, 'runs' => 4, 'moving_time_sec' => 9600,
     ]);
 
-    $context = (new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($current);
+    $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
 
     expect($context['prev_distance_km'])->toBe(20.0)
         ->and($context['prev_runs'])->toBe(3)
@@ -575,7 +575,7 @@ it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', fun
     $user = User::factory()->create();
     $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
 
-    $context = (new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($current);
+    $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
 
     expect($context['prev_distance_km'])->toBeNull()
         ->and($context['prev_runs'])->toBeNull()
@@ -594,7 +594,7 @@ it('WeeklyRecapNarrator feeds prev_narrative when the prior week recap is Done',
     ]);
     $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
 
-    $context = (new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($current);
+    $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
 
     expect($context['prev_narrative'])->toBe('Minggu lalu kamu solid.');
 });
@@ -611,7 +611,7 @@ it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not ye
     ]);
     $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
 
-    $context = (new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($current);
+    $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
 
     expect($context['prev_narrative'])->toBeNull();
 });
@@ -622,7 +622,7 @@ it('WeeklyRecapNarrator feeds avg_decoupling into the context', function (): voi
         'week_ending' => '2026-05-17', 'avg_decoupling' => 6.4,
     ]);
 
-    $context = (new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($snap);
+    $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($snap);
 
     expect($context['avg_decoupling'])->toBe(6.4);
 });
@@ -661,7 +661,7 @@ it('PrContextNarrator flags the PR category as the strongest event when it drive
     // A single 5km PR is, by construction, the user's best-VDOT source category.
     $pr = PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
 
-    $context = (new PrContextNarrator(fakeCaller('{"flavor":"x"}'), app(VdotEstimator::class)))->context($pr);
+    $context = new PrContextNarrator(fakeCaller('{"flavor":"x"}'), app(VdotEstimator::class))->context($pr);
 
     expect($context['is_strongest_event'])->toBeTrue()
         ->and($context['vdot'])->not->toBeNull();
@@ -675,7 +675,7 @@ it('PrContextNarrator feeds the PR run conditions into the context', function ()
         'category' => '5km', 'value_sec' => 1500, 'activity_id' => $activity->id,
     ]);
 
-    $context = (new PrContextNarrator(fakeCaller('{"flavor":"x"}'), app(VdotEstimator::class)))->context($pr);
+    $context = new PrContextNarrator(fakeCaller('{"flavor":"x"}'), app(VdotEstimator::class))->context($pr);
 
     expect($context['weather_temp_c'])->toBe(33);
 });
@@ -721,7 +721,7 @@ it('TrendCaptionNarrator derives the 4-week CTL + volume deltas', function (): v
         ]);
     }
 
-    $context = (new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class)))
+    $context = new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class))
         ->context($user, Carbon::parse('2026-05-01'));
 
     // CTL: latest 44 minus the one 4 weeks earlier (36) = 8.0.
@@ -737,7 +737,7 @@ it('TrendCaptionNarrator flags weeks that contain a personal record', function (
     // A PR set on Thu 2026-05-14 falls in the week ending Sun 2026-05-17.
     PersonalRecord::factory()->for($user)->create(['set_at' => Carbon::parse('2026-05-14T06:00')]);
 
-    $context = (new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class)))
+    $context = new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class))
         ->context($user, Carbon::parse('2026-05-18'));
 
     $weeks = collect($context['weeks']);
@@ -751,7 +751,7 @@ it('TrendCaptionNarrator leaves the 4-week deltas null without enough history', 
         'week_ending' => '2026-05-03', 'distance_km' => 12, 'ctl_42d' => 30,
     ]);
 
-    $context = (new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class)))
+    $context = new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class))
         ->context($user, Carbon::parse('2026-05-04'));
 
     expect($context['ctl_delta_4w'])->toBeNull()
@@ -805,7 +805,7 @@ it('CardFlavorNarrator humanizes badge slugs so no raw code reaches the prompt',
     $card->update(['badges' => ['long_slow_distance', 'pejuang_hujan', 'not_a_real_badge']]);
 
     [$caller, $client] = capturingCaller(json_encode(['flavor' => 'ok'], JSON_THROW_ON_ERROR));
-    (new CardFlavorNarrator($caller))->generate($card->fresh());
+    new CardFlavorNarrator($caller)->generate($card->fresh());
 
     $client->assertSent(Responses::class, function (string $method, array $params): bool {
         $payload = json_encode($params, JSON_THROW_ON_ERROR);
@@ -824,7 +824,7 @@ it('CardFlavorNarrator feeds decoupling + negative split pacing into the payload
     $card->activity->detail->update(['stream_summary' => ['decoupling_pct' => 4.5, 'negative_split' => true]]);
 
     [$caller, $client] = capturingCaller(json_encode(['flavor' => 'ok'], JSON_THROW_ON_ERROR));
-    (new CardFlavorNarrator($caller))->generate($card->fresh());
+    new CardFlavorNarrator($caller)->generate($card->fresh());
 
     $client->assertSent(Responses::class, function (string $method, array $params): bool {
         $payload = json_encode($params, JSON_THROW_ON_ERROR);
@@ -865,7 +865,7 @@ it('PersonaSummaryNarrator feeds the latest form_status as the consistency spine
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'form_status' => 'fatigued']);
 
-    $context = (new PersonaSummaryNarrator(fakeCaller('{"narrative":"x"}')))->context($user->fresh());
+    $context = new PersonaSummaryNarrator(fakeCaller('{"narrative":"x"}'))->context($user->fresh());
 
     expect($context['form_status'])->toBe('fatigued');
 });
@@ -892,7 +892,7 @@ it('PersonaSummaryNarrator splits the persona mix into recent vs earlier halves'
     $seed('adem', 8);
     $seed('nyala', 1);
 
-    $context = (new PersonaSummaryNarrator(fakeCaller('{"narrative":"x"}')))->context($user->fresh());
+    $context = new PersonaSummaryNarrator(fakeCaller('{"narrative":"x"}'))->context($user->fresh());
 
     expect($context['persona_mix_earlier'][0]['mood'])->toBe('adem')
         ->and($context['persona_mix_recent'][0]['mood'])->toBe('nyala')
@@ -946,7 +946,7 @@ it('MonthlyRecapNarrator counts PRs and buckets distance by week within the mont
         'category' => '5km', 'set_at' => Carbon::parse('2026-05-19T06:30'),
     ]);
 
-    $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, $month);
+    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, $month);
 
     expect($context['pr_count'])->toBe(1)
         ->and($context['weekly_distance_km'][0])->toBe(6.0)
@@ -962,7 +962,7 @@ it('MonthlyRecapNarrator reads the CTL fitness arc from the month snapshots', fu
         'week_ending' => '2026-05-31', 'ctl_42d' => 38.0, 'form_status' => 'fresh',
     ]);
 
-    $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, '2026-05');
+    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
     expect($context['fitness'])->toMatchArray([
         'ctl_start' => 30.0,
@@ -974,7 +974,7 @@ it('MonthlyRecapNarrator reads the CTL fitness arc from the month snapshots', fu
 it('MonthlyRecapNarrator leaves fitness null when the month has no snapshots', function (): void {
     $user = User::factory()->create();
 
-    $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, '2026-05');
+    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
     expect($context['fitness'])->toBeNull();
 });
@@ -988,7 +988,7 @@ it('MonthlyRecapNarrator feeds prev_narrative when the prior month recap is Done
         'discriminator' => '2026-04',
     ]);
 
-    $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, '2026-05');
+    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
     expect($context['prev_narrative'])->toBe('Bulan lalu kamu konsisten.');
 });
@@ -1003,7 +1003,7 @@ it('MonthlyRecapNarrator omits prev_narrative when the prior month recap is not 
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, '2026-05');
+    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
     expect($context['prev_narrative'])->toBeNull();
 });
@@ -1011,7 +1011,7 @@ it('MonthlyRecapNarrator omits prev_narrative when the prior month recap is not 
 it('MonthlyRecapNarrator leaves prev_narrative null on the first month', function (): void {
     $user = User::factory()->create();
 
-    $context = (new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}')))->context($user, '2026-05');
+    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
     expect($context['prev_narrative'])->toBeNull();
 });
@@ -1063,7 +1063,7 @@ it('AkuProfileVoiceNarrator reads the weekly streak and the most common run time
         ]);
     }
 
-    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class)))->context($user->fresh());
+    $context = new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class))->context($user->fresh());
 
     expect($context['weekly_streak'])->toBe(2)
         ->and($context['favorite_time'])->toBe('malam');
@@ -1076,7 +1076,7 @@ it('AkuProfileVoiceNarrator feeds the latest form_status as the consistency spin
         'runs' => 3, 'form_status' => 'overreaching',
     ]);
 
-    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class)))
+    $context = new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class))
         ->context($user->fresh());
 
     expect($context['form_status'])->toBe('overreaching');
@@ -1100,7 +1100,7 @@ it('AkuProfileVoiceNarrator feeds the four training paces derived from the runne
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
 
-    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class)))
+    $context = new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class))
         ->context($user->fresh());
 
     expect($context['easy_pace_sec'])->toBeInt()
@@ -1112,7 +1112,7 @@ it('AkuProfileVoiceNarrator feeds the four training paces derived from the runne
 it('AkuProfileVoiceNarrator leaves training paces null when the user has no VDOT-eligible PR', function (): void {
     $user = User::factory()->create();
 
-    $context = (new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class)))
+    $context = new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class))
         ->context($user->fresh());
 
     expect($context['easy_pace_sec'])->toBeNull()
@@ -1231,7 +1231,7 @@ it('BriefingMascotVoiceNarrator leaves past_you null without a comparable past r
 /** Read a narrator's private SYSTEM_PROMPT constant for wording assertions. */
 function narratorPrompt(string $class): string
 {
-    return (string) (new ReflectionClass($class))->getConstant('SYSTEM_PROMPT');
+    return (string) new ReflectionClass($class)->getConstant('SYSTEM_PROMPT');
 }
 
 it('MonthlyRecapNarrator prompt makes the mood step conditional on mood_mix', function (): void {

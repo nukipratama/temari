@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Context;
 
+use NoDiscard;
 use App\Models\ActivityDetail;
 use App\Services\Run\Metrics\StreamSummary;
 
@@ -34,6 +35,7 @@ final readonly class ActivityNarrationContext
     ) {
     }
 
+    #[NoDiscard]
     public static function fromDetail(?ActivityDetail $detail): self
     {
         $summary = $detail?->streamSummary() ?? [];

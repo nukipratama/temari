@@ -60,7 +60,7 @@ function fakeImageRenderer(?Throwable $throws = null): RunCardImageRenderer
 
 function runSend(int $analysisId, ?RunCardImageRenderer $imageRenderer = null): void
 {
-    (new SendTelegramNotificationJob($analysisId))->handle(
+    new SendTelegramNotificationJob($analysisId)->handle(
         app(NotifiableAnalysis::class),
         app(TelegramClient::class),
         $imageRenderer ?? fakeImageRenderer(),
@@ -240,7 +240,7 @@ it('skips the automatic push for a backfilled activity older than the max age', 
 
 function runForceSend(int $analysisId): void
 {
-    (new SendTelegramNotificationJob($analysisId, force: true))->handle(
+    new SendTelegramNotificationJob($analysisId, force: true)->handle(
         app(NotifiableAnalysis::class),
         app(TelegramClient::class),
         fakeImageRenderer(),

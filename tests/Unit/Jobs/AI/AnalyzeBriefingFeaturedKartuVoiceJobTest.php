@@ -52,7 +52,7 @@ it('loads the card named by the discriminator and passes it to the narrator', fu
     app()->instance(BriefingFeaturedKartuVoiceNarrator::class, $mock);
 
     $row = featuredKartuRow($user->id, (string) $card->id);
-    (new AnalyzeBriefingFeaturedKartuVoiceJob($row->id))->handle(app(AnalysisService::class));
+    new AnalyzeBriefingFeaturedKartuVoiceJob($row->id)->handle(app(AnalysisService::class));
 
     $fresh = $row->fresh();
     expect($fresh->content)->toBe('kartu voice line')
@@ -69,7 +69,7 @@ it('passes a null card when the discriminator names no card', function (): void 
     app()->instance(BriefingFeaturedKartuVoiceNarrator::class, $mock);
 
     $row = featuredKartuRow($user->id, null);
-    (new AnalyzeBriefingFeaturedKartuVoiceJob($row->id))->handle(app(AnalysisService::class));
+    new AnalyzeBriefingFeaturedKartuVoiceJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->content)->toBe('no card line')
         ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
@@ -78,7 +78,7 @@ it('passes a null card when the discriminator names no card', function (): void 
 it('marks the row Failed and rethrows when the user is missing', function (): void {
     $row = featuredKartuRow(99999);
 
-    expect(fn () => (new AnalyzeBriefingFeaturedKartuVoiceJob($row->id))->handle(app(AnalysisService::class)))
+    expect(fn () => new AnalyzeBriefingFeaturedKartuVoiceJob($row->id)->handle(app(AnalysisService::class)))
         ->toThrow(ModelNotFoundException::class);
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
@@ -93,7 +93,7 @@ it('swallows a terminal UnavailableException so the worker does not retry', func
     $row = featuredKartuRow($user->id);
 
     // No throw: terminal failures stay marked Failed and do not bubble to the queue.
-    (new AnalyzeBriefingFeaturedKartuVoiceJob($row->id))->handle(app(AnalysisService::class));
+    new AnalyzeBriefingFeaturedKartuVoiceJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed)
         ->and($row->fresh()->error)->toBe('bad schema');

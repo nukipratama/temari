@@ -16,7 +16,7 @@ function runAdminMiddleware(?User $user): string
     $request = Request::create('/ai-usage', 'GET');
     $request->setUserResolver(fn () => $user);
 
-    return (new EnsureUserIsAdmin())->handle($request, fn (): Response => response('ok'))->getContent();
+    return new EnsureUserIsAdmin()->handle($request, fn (): Response => response('ok'))->getContent();
 }
 
 it('lets an admin through', function (): void {
