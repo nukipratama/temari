@@ -256,15 +256,21 @@ final readonly class RuleBasedInsightBuilder
         $summary = $detail->streamSummary();
         /** @var array<int, array{km: int, pace: string}>|null $perKm */
         $perKm = $summary['per_km'] ?? null;
-        if (! is_array($perKm) || count($perKm) < 2) {
-            return 'Data split belum cukup buat dianalisis.';
-        }
 
         /** @var list<string> $parts */
         $parts = [];
-        $consistencyStated = $this->appendSplitDirectionPart($summary, $perKm, $parts);
-        $this->appendKmRangePart($perKm, $parts);
-        $this->appendVariabilityCommentPart($summary, $parts, $consistencyStated);
+        if (is_array($perKm) && count($perKm) >= 2) {
+            $consistencyStated = $this->appendSplitDirectionPart($summary, $perKm, $parts);
+            $this->appendKmRangePart($perKm, $parts);
+            $this->appendVariabilityCommentPart($summary, $parts, $consistencyStated);
+        }
+        // Finish "sisa" segment stands on its own, so it survives runs too short
+        // for a full-km split analysis (1.x km, or a sub-km run).
+        $this->appendFinishPart($summary, $parts);
+
+        if ($parts === []) {
+            return 'Data split belum cukup buat dianalisis.';
+        }
 
         return $this->joinSentences($parts);
     }
@@ -278,6 +284,24 @@ final readonly class RuleBasedInsightBuilder
     private function joinSentences(array $parts): string
     {
         return implode(' ', array_map(fn (string $part): string => ucfirst($part) . '.', $parts));
+    }
+
+    /**
+     * Note the trailing "sisa" segment (e.g. the last 0.7 km of a 5.7 km run) as
+     * a finish, without treating it as a full km. Skipped when the run ends on a
+     * whole km.
+     *
+     * @param  array<string, mixed>  $summary
+     * @param  list<string>  $parts
+     */
+    private function appendFinishPart(array $summary, array &$parts): void
+    {
+        $partial = $summary['partial_split'] ?? null;
+        if (! is_array($partial) || ! isset($partial['distance_m'], $partial['pace'])) {
+            return;
+        }
+        $km = number_format((float) $partial['distance_m'] / 1000, 1);
+        $parts[] = "sisa {$km} km ditutup di {$partial['pace']}";
     }
 
     /**

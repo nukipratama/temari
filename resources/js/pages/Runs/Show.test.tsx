@@ -333,6 +333,34 @@ describe('Runs/Show', () => {
         expect(screen.getAllByText('5:45/km').length).toBeGreaterThan(0);
     });
 
+    it('renders a marked "sisa" partial row without crowning it fastest', () => {
+        renderShow({
+            detail: {
+                ...detail,
+                stream_summary: {
+                    ...detail.stream_summary,
+                    // A fast sisa (4:00) must not steal the "fastest km" crown from km 2 (5:45).
+                    partial_split: { distance_m: 700, pace: '4:00', avg_hr: 158, avg_cadence_spm: 168 },
+                },
+            },
+        });
+        expect(screen.getByText('0.7 KM')).toBeInTheDocument();
+        expect(screen.getByText(/putus-putus = sisa/)).toBeInTheDocument();
+        // Crown stays on the full km, not the faster partial.
+        expect(screen.getByText(/Paling kenceng di km 2/)).toBeInTheDocument();
+    });
+
+    it('still renders the splits table for a sub-1km run that has only a partial', () => {
+        renderShow({
+            detail: {
+                ...detail,
+                stream_summary: { partial_split: { distance_m: 800, pace: '5:00' } },
+            },
+        });
+        expect(screen.getByText('Splits per km')).toBeInTheDocument();
+        expect(screen.getByText('0.8 KM')).toBeInTheDocument();
+    });
+
     it('renders the past-you strip when journeyMatch is present', () => {
         renderShow({
             pastYou: {

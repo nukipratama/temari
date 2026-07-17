@@ -8,7 +8,9 @@ vi.mock('@/components/koleksi/MilestoneStrip', () => ({
 }));
 
 vi.mock('@/components/run/SplitsSparkline', () => ({
-    default: () => <div data-testid="splits-sparkline" />,
+    default: ({ partialPaceSec }: { partialPaceSec?: number | null }) => (
+        <div data-testid="splits-sparkline" data-partial={partialPaceSec ?? ''} />
+    ),
 }));
 
 function pr(category: string, valueSec: number, id = 1, activityId: number | null = 99) {
@@ -27,6 +29,7 @@ function pr(category: string, valueSec: number, id = 1, activityId: number | nul
 const featuredExtras = {
     pr_id: 1,
     splits_pace_sec: [360, 350, 345, 350, 346],
+    splits_partial_pace_sec: null,
     location_name: 'Senayan',
     weather_temp_c: 28,
     weather_humidity_pct: 75,
@@ -94,5 +97,13 @@ describe('Koleksi/Rekor', () => {
         expect(screen.getByText(/Tempo terbaru kamu konsisten/)).toBeInTheDocument();
     });
 
-
+    it('threads the trailing partial pace through to the sparkline', () => {
+        render(
+            <KoleksiRekor
+                personalRecords={[pr('5km', 1751)]}
+                featuredExtras={{ ...featuredExtras, splits_partial_pace_sec: 300 }}
+            />,
+        );
+        expect(screen.getByTestId('splits-sparkline')).toHaveAttribute('data-partial', '300');
+    });
 });

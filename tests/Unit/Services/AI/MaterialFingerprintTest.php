@@ -75,6 +75,18 @@ it('changes when decoupling shifts materially (6% to 14%)', function (): void {
     expect(fingerprint($activity->id))->not->toBe($before);
 });
 
+it('changes when a trailing partial split appears (so a resync re-narrates the finish)', function (): void {
+    $activity = fingerprintActivity(['stream_summary' => ['decoupling_pct' => 6.0]]);
+    $before = fingerprint($activity->id);
+
+    $activity->detail->update(['stream_summary' => [
+        'decoupling_pct' => 6.0,
+        'partial_split' => ['distance_m' => 700, 'pace' => '5:30'],
+    ]]);
+
+    expect(fingerprint($activity->id))->not->toBe($before);
+});
+
 it('changes when the mood flips', function (): void {
     $activity = fingerprintActivity([], 'adem');
     $before = fingerprint($activity->id);

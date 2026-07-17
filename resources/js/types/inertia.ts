@@ -179,8 +179,19 @@ export interface StreamSummaryPerKm {
 /** % of moving time spent in each HR zone, keyed Z1..Z5. Absent for no-HR runs. */
 export type ZonePct = Partial<Record<'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5', number>>;
 
+/** The trailing sub-km "sisa" segment. Display/narrative-only — never a full km
+ *  and never in per_km (which stays full-km for card stats & AI). Absent for
+ *  runs that end on a whole km. */
+export interface StreamSummaryPartial {
+    distance_m: number;
+    pace: string; // "M:SS" normalized per km
+    avg_hr?: number | null;
+    avg_cadence_spm?: number | null;
+}
+
 export interface StreamSummary {
     per_km?: StreamSummaryPerKm[];
+    partial_split?: StreamSummaryPartial | null;
     negative_split?: boolean;
     time_in_zone_pct?: ZonePct;
     [key: string]: unknown;

@@ -130,6 +130,44 @@ describe('splitsPaceSec', function (): void {
 
         expect($this->builder->splitsPaceSec($splits))->toBe([360]);
     });
+
+    it('excludes the trailing sub-km partial so the sparkline scale stays full-km', function (): void {
+        $splits = [
+            ['distance' => 1000, 'moving_time' => 360],
+            ['distance' => 1000, 'moving_time' => 350],
+            ['distance' => 700, 'moving_time' => 252],   // partial → excluded here
+        ];
+
+        expect($this->builder->splitsPaceSec($splits))->toBe([360, 350]);
+    });
+});
+
+describe('splitsPartialPaceSec', function (): void {
+    it('returns null for null, empty, or full-km-ending splits', function (): void {
+        expect($this->builder->splitsPartialPaceSec(null))->toBeNull()
+            ->and($this->builder->splitsPartialPaceSec([]))->toBeNull()
+            ->and($this->builder->splitsPartialPaceSec([
+                ['distance' => 1000, 'moving_time' => 360],
+            ]))->toBeNull();
+    });
+
+    it('returns the normalized pace of a trailing partial (100m..950m)', function (): void {
+        $splits = [
+            ['distance' => 1000, 'moving_time' => 360],
+            ['distance' => 700, 'moving_time' => 252],   // 252 / 0.7 = 360 s/km
+        ];
+
+        expect($this->builder->splitsPartialPaceSec($splits))->toBe(360);
+    });
+
+    it('ignores a sub-100m trailing sliver', function (): void {
+        $splits = [
+            ['distance' => 1000, 'moving_time' => 360],
+            ['distance' => 40, 'moving_time' => 14],
+        ];
+
+        expect($this->builder->splitsPartialPaceSec($splits))->toBeNull();
+    });
 });
 
 describe('featuredExtras', function (): void {
@@ -163,11 +201,39 @@ describe('featuredExtras', function (): void {
         expect($this->builder->featuredExtras($pr))->toBe([
             'pr_id' => $pr->id,
             'splits_pace_sec' => [360, 350],
+            'splits_partial_pace_sec' => null,
             'location_name' => 'Senayan',
             'weather_temp_c' => 28,
             'weather_humidity_pct' => 75,
             'target_sec' => 1740,
             'delta_sec' => 11,
         ]);
+    });
+
+    it('exposes the trailing partial pace alongside the full-km splits', function (): void {
+        $detail = ActivityDetail::factory()->make([
+            'activity_id' => 1,
+            'splits_metric' => [
+                ['distance' => 1000, 'moving_time' => 360],
+                ['distance' => 1000, 'moving_time' => 350],
+                ['distance' => 700, 'moving_time' => 252],
+            ],
+        ]);
+        $activity = Activity::factory()->make(['id' => 1, 'user_id' => 1]);
+        $activity->setRelation('detail', $detail);
+
+        $pr = PersonalRecord::factory()->make([
+            'id' => 1,
+            'user_id' => 1,
+            'activity_id' => 1,
+            'category' => '5km',
+            'value_sec' => 1751,
+        ]);
+        $pr->setRelation('activity', $activity);
+
+        $extras = $this->builder->featuredExtras($pr);
+
+        expect($extras['splits_pace_sec'])->toBe([360, 350])
+            ->and($extras['splits_partial_pace_sec'])->toBe(360);
     });
 });

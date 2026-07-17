@@ -33,4 +33,23 @@ describe('SplitsSparkline', () => {
         // No single-km label like "Km 5:" should exist once bucketed.
         expect(screen.queryByLabelText(/Km 5:/)).not.toBeInTheDocument();
     });
+
+    it('renders a de-emphasized "sisa" ghost bar for a trailing partial', () => {
+        render(<SplitsSparkline paceSec={[360, 350]} partialPaceSec={300} />);
+        expect(screen.getByText('sisa')).toBeInTheDocument();
+        expect(screen.getByLabelText(/Sisa:/)).toBeInTheDocument();
+    });
+
+    it('keeps the partial out of the verdict and crown (a fast sisa never flips it)', () => {
+        // Full km are stable (last not faster than first); a very fast partial
+        // must not turn the verdict negative or steal the "best" bar.
+        render(<SplitsSparkline paceSec={[350, 360]} partialPaceSec={200} />);
+        expect(screen.getByText(/splits stabil/)).toBeInTheDocument();
+        expect(screen.queryByText(/negatif-split/)).not.toBeInTheDocument();
+    });
+
+    it('shows no ghost bar when there is no partial', () => {
+        render(<SplitsSparkline paceSec={[360, 350]} partialPaceSec={null} />);
+        expect(screen.queryByText('sisa')).not.toBeInTheDocument();
+    });
 });

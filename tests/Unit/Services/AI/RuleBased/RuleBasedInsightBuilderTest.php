@@ -350,6 +350,46 @@ it('returns the not-enough-data message for splits without enough per-km entries
     'per_km not array' => [['per_km' => 'nope']],
 ]);
 
+it('notes the trailing sisa segment as a finish alongside the full-km read', function (): void {
+    $detail = makeDetail([
+        'stream_summary' => [
+            'per_km' => [
+                ['km' => 1, 'pace' => '6:00'],
+                ['km' => 2, 'pace' => '6:00'],
+            ],
+            'partial_split' => ['distance_m' => 700, 'pace' => '5:30'],
+        ],
+    ]);
+
+    expect(builder()->runInsightSplits($detail))->toContain('Sisa 0.7 km ditutup di 5:30');
+});
+
+it('surfaces the finish even on a run too short for a full-km split read', function (): void {
+    $detail = makeDetail([
+        'stream_summary' => [
+            'per_km' => [['km' => 1, 'pace' => '6:00']], // < 2 full km
+            'partial_split' => ['distance_m' => 300, 'pace' => '5:45'],
+        ],
+    ]);
+
+    expect(builder()->runInsightSplits($detail))
+        ->toContain('Sisa 0.3 km ditutup di 5:45')
+        ->not->toBe('Data split belum cukup buat dianalisis.');
+});
+
+it('omits the finish clause when the run ends on a whole km', function (): void {
+    $detail = makeDetail([
+        'stream_summary' => [
+            'per_km' => [
+                ['km' => 1, 'pace' => '6:00'],
+                ['km' => 2, 'pace' => '6:00'],
+            ],
+        ],
+    ]);
+
+    expect(builder()->runInsightSplits($detail))->not->toContain('sisa');
+});
+
 it('labels a genuine negative split as negative when flagged upstream', function (): void {
     $detail = makeDetail([
         'stream_summary' => [

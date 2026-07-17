@@ -42,7 +42,7 @@ class PrScoreboardBuilder
     /**
      * Splits + location + milestone target for the hero scoreboard.
      *
-     * @return array{pr_id:int,splits_pace_sec:array<int,int>,location_name:string|null,weather_temp_c:int|null,weather_humidity_pct:int|null,target_sec:int|null,delta_sec:int|null}|null
+     * @return array{pr_id:int,splits_pace_sec:array<int,int>,splits_partial_pace_sec:int|null,location_name:string|null,weather_temp_c:int|null,weather_humidity_pct:int|null,target_sec:int|null,delta_sec:int|null}|null
      */
     public function featuredExtras(?PersonalRecord $pr): ?array
     {
@@ -56,6 +56,7 @@ class PrScoreboardBuilder
         return [
             'pr_id' => $pr->id,
             'splits_pace_sec' => $this->splitsPaceSec($detail?->splits_metric),
+            'splits_partial_pace_sec' => $this->splitsPartialPaceSec($detail?->splits_metric),
             'location_name' => $detail?->location_name,
             'weather_temp_c' => $detail?->weather_temp_c,
             'weather_humidity_pct' => $detail?->weather_humidity_pct,
@@ -65,7 +66,9 @@ class PrScoreboardBuilder
 
     /**
      * Convert Strava-shaped splits_metric (per-km segments with distance +
-     * moving_time) into a list of pace-seconds-per-km.
+     * moving_time) into a list of full-km pace-seconds-per-km. The trailing
+     * sub-km "sisa" segment is excluded here (see splitsPartialPaceSec) so the
+     * sparkline's verdict, crown, and bucketing only ever weigh full kms.
      *
      * @param  array<int, array<string, mixed>>|null  $splits
      * @return array<int, int>
@@ -79,6 +82,9 @@ class PrScoreboardBuilder
         $out = [];
         foreach ($splits as $row) {
             $distance = isset($row['distance']) ? (float) $row['distance'] : 0.0;
+            if ($distance < 950) {
+                continue;
+            }
             $time = isset($row['moving_time']) ? (float) $row['moving_time'] : 0.0;
             $paceSecPerKm = PaceCalculator::secPerKm($distance, $time);
             if ($paceSecPerKm === null) {
@@ -88,6 +94,29 @@ class PrScoreboardBuilder
         }
 
         return $out;
+    }
+
+    /**
+     * Normalized per-km pace of the trailing "sisa" segment (100 m <= distance
+     * < 950 m), or null when the run ends on a full km. Rendered as a de-emphasized,
+     * non-crownable ghost bar; kept out of splitsPaceSec so it never skews the scale.
+     *
+     * @param  array<int, array<string, mixed>>|null  $splits
+     */
+    public function splitsPartialPaceSec(?array $splits): ?int
+    {
+        if ($splits === null || $splits === []) {
+            return null;
+        }
+        $last = end($splits);
+        $distance = isset($last['distance']) ? (float) $last['distance'] : 0.0;
+        if ($distance >= 950 || $distance < 100) {
+            return null;
+        }
+        $time = isset($last['moving_time']) ? (float) $last['moving_time'] : 0.0;
+        $paceSecPerKm = PaceCalculator::secPerKm($distance, $time);
+
+        return $paceSecPerKm === null ? null : (int) round($paceSecPerKm);
     }
 
     /**

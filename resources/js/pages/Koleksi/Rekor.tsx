@@ -29,6 +29,7 @@ interface ExtendedPR extends Omit<PersonalRecord, 'activity'> {
 interface FeaturedExtras {
     pr_id: number;
     splits_pace_sec: number[];
+    splits_partial_pace_sec: number | null;
     location_name: string | null;
     weather_temp_c: number | null;
     weather_humidity_pct: number | null;
@@ -101,6 +102,7 @@ function HeroScoreboard({
     const time = formatPrValue(pr.category, pr.value_sec);
     const runName = pr.activity?.detail?.name ?? 'Lari';
     const splits = extras?.splits_pace_sec ?? [];
+    const partialPace = extras?.splits_partial_pace_sec ?? null;
     const tempo = extras?.weather_temp_c;
     const humidity = extras?.weather_humidity_pct;
     const location = extras?.location_name;
@@ -174,7 +176,7 @@ function HeroScoreboard({
                     />
                 )}
             </div>
-            <SplitsSparkline paceSec={splits} className="relative mt-5" />
+            <SplitsSparkline paceSec={splits} partialPaceSec={partialPace} className="relative mt-5" />
             {targetSec != null && deltaSec != null && deltaSec > 0 && (
                 <MilestoneStrip
                     targetSec={targetSec}

@@ -49,6 +49,7 @@ import type {
     RunCard,
     SharedProps,
     StoryLine,
+    StreamSummaryPartial,
 } from '@/types/inertia';
 
 const RouteMap = lazy(() => import('@/components/run/RouteMap'));
@@ -148,6 +149,7 @@ export default function RunsShow({
     const telegramConnected = usePage<SharedProps>().props.telegramConnected ?? false;
     const summary = (detail.stream_summary ?? {}) as Record<string, unknown>;
     const perKm = (summary.per_km as PerKmRow[] | undefined) ?? [];
+    const partialSplit = (summary.partial_split as StreamSummaryPartial | null | undefined) ?? null;
 
     const mood: Mood = storyLine?.mood ?? moodFallback;
     const pose: TemariPose = MOOD_TO_POSE[mood];
@@ -467,7 +469,7 @@ export default function RunsShow({
                 </section>
 
                 {/* SPLITS */}
-                {perKm.length > 0 && <SplitsTable rows={perKm} className="mt-10" />}
+                {(perKm.length > 0 || partialSplit) && <SplitsTable rows={perKm} partial={partialSplit} className="mt-10" />}
 
                 <footer className="mt-8 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-3">
                     Tersambung otomatis dari Strava · {formatIdDate(activity.analyzed_at ?? null, 'long')}
@@ -675,7 +677,11 @@ function DetailTiles({
     );
 }
 
-function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className?: string }>) {
+function SplitsTable({
+    rows,
+    partial,
+    className,
+}: Readonly<{ rows: PerKmRow[]; partial?: StreamSummaryPartial | null; className?: string }>) {
     const paces = rows
         .map((r) => paceSecOf(r))
         .filter((s): s is number => s != null && Number.isFinite(s));
@@ -696,7 +702,9 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
             </header>
             {/* One dense chart at every width (HR + cadence columns fold away on phones);
                 the binary bar color needs a one-line key once the card affordance is gone. */}
-            <p className="mb-3 text-label-micro text-ink-3">Batang oranye = km tercepat, gelap = lainnya.</p>
+            <p className="mb-3 text-label-micro text-ink-3">
+                Batang oranye = km tercepat, gelap = lainnya{partial ? ', putus-putus = sisa' : ''}.
+            </p>
 
             <div className="flex flex-col gap-1">
                 {rows.map((row, idx) => {
@@ -737,8 +745,33 @@ function SplitsTable({ rows, className }: Readonly<{ rows: PerKmRow[]; className
                         </div>
                     );
                 })}
+                {partial && <SplitPartialRow partial={partial} />}
             </div>
         </Card>
+    );
+}
+
+// The trailing "sisa" segment (e.g. the last 0.7 km of a 5.7 km run). Rendered
+// muted with a dashed, empty (non-comparative) bar and detached by a hairline so
+// a glance reads "outside the scale, not ranked against the full kms" — its
+// normalized pace must never be compared head-to-head with a full km.
+function SplitPartialRow({ partial }: Readonly<{ partial: StreamSummaryPartial }>) {
+    return (
+        <div className="-mx-3 mt-1 grid grid-cols-[34px_1fr_56px] items-center gap-2.5 rounded-lg border-t border-cream-deep px-3 py-2 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3 lg:py-2.5">
+            <div className="font-mono text-[11px] uppercase tracking-[0.02em] text-ink-3">
+                {formatKm(partial.distance_m, 1)} KM
+            </div>
+            <div className="h-2.5 rounded border border-dashed border-sky/20 bg-sky/[0.06] lg:h-3" />
+            <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink-3">
+                {partial.pace ?? '—'}
+            </div>
+            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-3 lg:block">
+                ♡ {partial.avg_hr ?? '—'}
+            </div>
+            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-3 lg:block">
+                ↻ {partial.avg_cadence_spm ?? '—'}
+            </div>
+        </div>
     );
 }
 

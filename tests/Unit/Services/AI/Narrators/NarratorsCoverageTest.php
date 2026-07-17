@@ -374,6 +374,33 @@ it('RunInsightNarrator feeds training-load + pace-variability + zone-minutes int
         ]);
 });
 
+it('RunInsightNarrator carries the trailing partial_split into context as finish_partial', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update([
+        'stream_summary' => [
+            'per_km' => [['km' => 1, 'pace' => '6:00'], ['km' => 2, 'pace' => '6:00']],
+            'partial_split' => ['distance_m' => 700, 'pace' => '5:30', 'avg_hr' => 158],
+        ],
+    ]);
+
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+    $context = $narrator->context($a, $d->fresh());
+
+    // per_km stays full-km; the partial rides on its own key so the prompt can be
+    // told to treat it as a finish, never as a km.
+    expect($context['finish_partial'])->toMatchArray(['distance_m' => 700, 'pace' => '5:30', 'avg_hr' => 158])
+        ->and($context['per_km'])->toHaveCount(2);
+});
+
+it('RunInsightNarrator leaves finish_partial null when the run ends on a whole km', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00']]]]);
+
+    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
+
+    expect($narrator->context($a, $d->fresh())['finish_partial'])->toBeNull();
+});
+
 it('RunInsightNarrator feeds a tagged workout_type into session_intent as workout/tagged', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update([

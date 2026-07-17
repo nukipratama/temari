@@ -55,14 +55,13 @@ class StreamAnalysis
             + $this->grade($grade, $time, $velocity);
 
         if (is_array($splitsMetric) && $splitsMetric !== []) {
+            $cadenceByKm = $this->perKmCadenceFromStream($time, $distance, $cadence);
             $perKm = $this->perKm($splitsMetric);
             if (isset($perKm['per_km'])) {
-                $perKm['per_km'] = $this->attachStreamCadenceToRows(
-                    $perKm['per_km'],
-                    $this->perKmCadenceFromStream($time, $distance, $cadence),
-                );
+                $perKm['per_km'] = $this->attachStreamCadenceToRows($perKm['per_km'], $cadenceByKm);
             }
             $summary += $perKm
+                + $this->partialSplit($splitsMetric, $cadenceByKm)
                 + $this->hrDriftFromSplits($splitsMetric)
                 + $this->cadenceDropFromSplits($splitsMetric)
                 + $this->negativeSplit($splitsMetric);
@@ -513,11 +512,11 @@ class StreamAnalysis
         $perKm = [];
         foreach ($splits as $split) {
             $distance = (float) ($split['distance'] ?? 0);
-            $elapsed = (float) ($split['elapsed_time'] ?? 0);
-            if ($distance < 950 || $elapsed <= 0) {
+            $moving = (float) ($split['moving_time'] ?? 0);
+            if ($distance < 950 || $moving <= 0) {
                 continue;
             }
-            $paceSec = $elapsed / ($distance / 1000);
+            $paceSec = $moving / ($distance / 1000);
             $row = [
                 'km' => (int) ($split['split'] ?? 0),
                 'pace' => PaceFormatter::format($paceSec),
@@ -532,6 +531,51 @@ class StreamAnalysis
         }
 
         return $perKm === [] ? [] : ['per_km' => $perKm];
+    }
+
+    /**
+     * The trailing sub-km "sisa" segment as its own row, pace-normalized per km
+     * from moving_time (same basis as full-km rows). Display/narrative-only: it
+     * is never a full km, never crowned fastest, and never enters the aggregate
+     * metrics. Carries no `km` field by design so the AI payload can't be nudged
+     * into naming it "km N".
+     *
+     * Only the final split qualifies (Strava emits at most one leftover), and
+     * only when 100 m <= distance < 950 m (slivers under 100 m are noise, matching
+     * the demo seeder threshold).
+     *
+     * @param  array<int, array<string, mixed>>  $splits
+     * @param  array<int, int>  $cadenceByKm  km index (1-based) → average spm
+     * @return array{partial_split?: array<string, int|string>}
+     */
+    private function partialSplit(array $splits, array $cadenceByKm): array
+    {
+        $last = end($splits);
+        if (! is_array($last)) {
+            return [];
+        }
+        $distance = (float) ($last['distance'] ?? 0);
+        $moving = (float) ($last['moving_time'] ?? 0);
+        if ($distance >= 950 || $distance < 100 || $moving <= 0) {
+            return [];
+        }
+        $paceSec = $moving / ($distance / 1000);
+        $row = [
+            'distance_m' => (int) round($distance),
+            'pace' => PaceFormatter::format($paceSec),
+        ];
+        if (isset($last['average_heartrate'])) {
+            $row['avg_hr'] = (int) round((float) $last['average_heartrate']);
+        }
+        if (isset($last['average_cadence'])) {
+            $row['avg_cadence_spm'] = (int) round((float) $last['average_cadence'] * 2);
+        }
+        $km = (int) ($last['split'] ?? 0);
+        if (! isset($row['avg_cadence_spm']) && isset($cadenceByKm[$km])) {
+            $row['avg_cadence_spm'] = $cadenceByKm[$km];
+        }
+
+        return ['partial_split' => $row];
     }
 
     /**

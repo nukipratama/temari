@@ -2,13 +2,17 @@ import { cn } from '@/lib/cn';
 import { formatPace } from '@/lib/pace';
 
 interface SplitsSparklineProps {
-    /** Pace per km, in seconds. Lower = faster. */
+    /** Pace per km, in seconds (full km only). Lower = faster. */
     paceSec: ReadonlyArray<number>;
+    /** Normalized pace of the trailing "sisa" segment, or null. Rendered as a
+     *  de-emphasized, non-crownable ghost bar — kept out of the scored bars so it
+     *  never enters the verdict, crown, or scale. */
+    partialPaceSec?: number | null;
     /** Optional className for the wrapper card. */
     className?: string;
 }
 
-export default function SplitsSparkline({ paceSec, className }: Readonly<SplitsSparklineProps>) {
+export default function SplitsSparkline({ paceSec, partialPaceSec, className }: Readonly<SplitsSparklineProps>) {
     if (paceSec.length === 0) {
         return (
             <div
@@ -91,6 +95,21 @@ export default function SplitsSparkline({ paceSec, className }: Readonly<SplitsS
                         </div>
                     );
                 })}
+                {partialPaceSec != null && (
+                    // Rendered OUTSIDE the bars array on purpose: it must never enter
+                    // fastest/slowest/fastestIdx or it re-poisons the verdict + crown.
+                    // Fixed height (out of scale), dashed cream ghost, visible "sisa" key
+                    // since the sparkline has no legend.
+                    <div className="ml-1 flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                        <div
+                            className="min-h-[8px] w-full rounded-sm border border-dashed border-cream/30 bg-cream/12"
+                            style={{ height: '38%' }}
+                            aria-label={`Sisa: ${formatPace(partialPaceSec)}/km`}
+                            title={`Sisa · ${formatPace(partialPaceSec)}/km`}
+                        />
+                        <div className="font-mono text-[11px] italic text-ink-on-sky">sisa</div>
+                    </div>
+                )}
             </div>
         </div>
     );

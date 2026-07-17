@@ -62,6 +62,7 @@ final class MaterialFingerprint
             'ascent_m' => self::bucket(self::summaryFloat($summary, 'ascent_m')),
             'max_grade_pct' => self::half(self::summaryFloat($summary, 'max_grade_pct')),
             'gap_pace' => $summary['gap_pace'] ?? null,
+            'partial_pace' => $summary['partial_split']['pace'] ?? null,
             'mood' => self::mood($activity),
             'session_intent' => SessionIntent::forDetail($detail)['intent'],
             'has_pr' => PersonalRecord::query()->where('activity_id', $activity->id)->exists(),

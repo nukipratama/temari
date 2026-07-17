@@ -235,19 +235,57 @@ it('emits the best_30min_pace window from compute()', function (): void {
 
 it('computes per-km splits + negative_split + hr drift + cadence drop from splits', function (): void {
     $splits = [
-        ['split' => 1, 'distance' => 1000, 'elapsed_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 140, 'average_cadence' => 82],
-        ['split' => 2, 'distance' => 1000, 'elapsed_time' => 410, 'average_speed' => 2.44, 'average_heartrate' => 145, 'average_cadence' => 82],
-        ['split' => 3, 'distance' => 1000, 'elapsed_time' => 400, 'average_speed' => 2.50, 'average_heartrate' => 150, 'average_cadence' => 80],
-        ['split' => 4, 'distance' => 1000, 'elapsed_time' => 390, 'average_speed' => 2.56, 'average_heartrate' => 155, 'average_cadence' => 80],
+        ['split' => 1, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 140, 'average_cadence' => 82],
+        ['split' => 2, 'distance' => 1000, 'moving_time' => 410, 'average_speed' => 2.44, 'average_heartrate' => 145, 'average_cadence' => 82],
+        ['split' => 3, 'distance' => 1000, 'moving_time' => 400, 'average_speed' => 2.50, 'average_heartrate' => 150, 'average_cadence' => 80],
+        ['split' => 4, 'distance' => 1000, 'moving_time' => 390, 'average_speed' => 2.56, 'average_heartrate' => 155, 'average_cadence' => 80],
     ];
 
     $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
 
     expect($summary['per_km'])->toHaveCount(4)
         ->and($summary['per_km'][0])->toMatchArray(['km' => 1, 'pace' => '7:00', 'avg_hr' => 140])
+        ->and($summary)->not->toHaveKey('partial_split')
         ->and($summary['negative_split'])->toBeTrue()
         ->and($summary['hr_drift_bpm'])->toBeFloat()->toEqualWithDelta(15.0, 0.01)
         ->and($summary['cadence_drop_spm'])->toBeFloat()->toEqualWithDelta(4.0, 0.01);
+});
+
+it('emits the trailing sub-km segment as partial_split without touching per_km or aggregates', function (): void {
+    $splits = [
+        ['split' => 1, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 140, 'average_cadence' => 82],
+        ['split' => 2, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 145, 'average_cadence' => 82],
+        ['split' => 3, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 150, 'average_cadence' => 81],
+        ['split' => 4, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 152, 'average_cadence' => 81],
+        ['split' => 5, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 155, 'average_cadence' => 80],
+        ['split' => 6, 'distance' => 700, 'moving_time' => 252, 'average_speed' => 2.78, 'average_heartrate' => 158, 'average_cadence' => 80],
+    ];
+
+    $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
+
+    // per_km stays full-km only; the partial rides on its own key.
+    expect($summary['per_km'])->toHaveCount(5)
+        ->and($summary['partial_split'])->toBe([
+            'distance_m' => 700,
+            'pace' => '6:00',
+            'avg_hr' => 158,
+            'avg_cadence_spm' => 160,
+        ])
+        // hr_drift is first→last FULL km (140→155 = 15), unaffected by the partial's 158.
+        ->and($summary['hr_drift_bpm'])->toEqualWithDelta(15.0, 0.01);
+});
+
+it('drops a sub-100m trailing sliver rather than emitting a partial_split', function (): void {
+    $splits = [
+        ['split' => 1, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78],
+        ['split' => 2, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78],
+        ['split' => 3, 'distance' => 40, 'moving_time' => 14, 'average_speed' => 2.78],
+    ];
+
+    $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
+
+    expect($summary['per_km'])->toHaveCount(2)
+        ->and($summary)->not->toHaveKey('partial_split');
 });
 
 it('classifies cadence into <165, 165-175, >175 buckets and optimal pct', function (): void {

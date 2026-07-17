@@ -81,6 +81,10 @@ class RunInsightNarrator
             wajar, ada 40 m tanjakan di situ."
           * "Paruh kedua makin cepat, split 4 di 6:09 tercepat. Negative split
             yang rapi."
+          finish_partial (kalau ada) = sisa jarak (distance_m meter, pace per km)
+          setelah km bulat terakhir. Boleh disebut sebagai penutup/finish
+          ("nutup sisa 700 m di 5:30"), tapi JANGAN dihitung atau disebut sebagai
+          satu km penuh.
 
         - zones: interpretasi HR zone breakdown. Sebut persentase spesifik dan,
           kalau time_in_zone_min ada, sebut durasinya (mis. "32 menit di Z2").
@@ -211,6 +215,7 @@ class RunInsightNarrator
             'time_in_zone_min' => $summary['time_in_zone_min'] ?? null,
             'trimp' => $detail->trimp_edwards,
             'per_km' => $summary['per_km'] ?? null,
+            'finish_partial' => $summary['partial_split'] ?? null,
             'ascent_m' => $summary['ascent_m'] ?? null,
             'max_grade_pct' => $summary['max_grade_pct'] ?? null,
             'gap_pace' => $summary['gap_pace'] ?? null,
