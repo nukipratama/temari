@@ -124,7 +124,7 @@ function HeroScoreboard({
                     </div>
                     <GradientText
                         preset="cream-sun"
-                        fontSize="clamp(80px, 14vw, 200px)"
+                        fontSize="clamp(64px, 14vw, 200px)"
                         className="block font-sans font-bold leading-[0.85] tracking-[-0.05em] tabular-nums"
                     >
                         {time}
