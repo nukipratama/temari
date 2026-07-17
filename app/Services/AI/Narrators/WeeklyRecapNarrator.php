@@ -15,7 +15,8 @@ use App\Services\Run\Metrics\PaceCalculator;
 class WeeklyRecapNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 3-4 kalimat baca kondisi minggu pengguna, maksimal 90 kata.
+        Tugas: 3-4 kalimat baca kondisi minggu pengguna. Kasih ruang buat
+        bercerita, tapi tetap padat, jangan bertele-tele.
 
         Cakupan: rangkum VIBE minggu ini pakai data konkret. Sebutkan 1-2
         angka yang menonjol (total km, jumlah lari, perubahan pace, atau

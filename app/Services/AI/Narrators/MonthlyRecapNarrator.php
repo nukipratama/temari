@@ -20,7 +20,8 @@ use Illuminate\Support\Collection;
 class MonthlyRecapNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 3-4 kalimat baca bulan lari pengguna, maksimal 100 kata.
+        Tugas: 3-4 kalimat baca bulan lari pengguna. Kasih ruang buat
+        bercerita, tapi tetap padat, jangan bertele-tele.
 
         Cakupan: total km + jumlah lari + lari terjauh + distribusi mood
         (nyala/enteng/oleng/lemes/mumet/adem) + jumlah PR + progres mingguan
