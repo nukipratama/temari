@@ -6,6 +6,8 @@
     "allow": [
       "Bash(./vendor/bin/sail bin pest)",
       "Bash(./vendor/bin/sail bin pest *)",
+      "Bash(./vendor/bin/sail pest)",
+      "Bash(./vendor/bin/sail pest *)",
       "Bash(./vendor/bin/sail bin phpstan)",
       "Bash(./vendor/bin/sail bin phpstan *)",
       "Bash(./vendor/bin/sail npm run test)",
