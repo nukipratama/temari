@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use App\Jobs\Telegram\SendStreakReminderJob;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Notifications\StreakReminderNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -19,7 +19,7 @@ beforeEach(fn () => Carbon::setTestNow('2026-05-23 18:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
 it('nudges a user with a live streak and no run yet this week', function (): void {
-    Queue::fake();
+    Notification::fake();
 
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => true]);
@@ -29,11 +29,11 @@ it('nudges a user with a live streak and no run yet this week', function (): voi
         ->expectsOutputToContain('Dispatched streak-at-risk reminder to 1 users.')
         ->assertSuccessful();
 
-    Queue::assertPushed(SendStreakReminderJob::class, fn (SendStreakReminderJob $job): bool => $job->userId === $user->id && $job->streakWeeks === 1);
+    Notification::assertSentTo($user, StreakReminderNotification::class, fn (StreakReminderNotification $notification): bool => $notification->streakWeeks === 1);
 });
 
 it('skips a user who already ran this week', function (): void {
-    Queue::fake();
+    Notification::fake();
 
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => true]);
@@ -42,11 +42,11 @@ it('skips a user who already ran this week', function (): void {
 
     $this->artisan('streak:remind')->assertSuccessful();
 
-    Queue::assertNotPushed(SendStreakReminderJob::class);
+    Notification::assertNothingSent();
 });
 
 it('skips the demo user', function (): void {
-    Queue::fake();
+    Notification::fake();
 
     $demo = User::factory()->demo()->create();
     TelegramConnection::factory()->for($demo)->create(['notify_weekly_recap' => true]);
@@ -56,11 +56,11 @@ it('skips the demo user', function (): void {
         ->expectsOutputToContain('Dispatched streak-at-risk reminder to 0 users.')
         ->assertSuccessful();
 
-    Queue::assertNotPushed(SendStreakReminderJob::class);
+    Notification::assertNothingSent();
 });
 
 it('skips a user with no live streak', function (): void {
-    Queue::fake();
+    Notification::fake();
 
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => true]);
@@ -70,11 +70,11 @@ it('skips a user with no live streak', function (): void {
 
     $this->artisan('streak:remind')->assertSuccessful();
 
-    Queue::assertNotPushed(SendStreakReminderJob::class);
+    Notification::assertNothingSent();
 });
 
 it('does not double-send within the same at-risk week', function (): void {
-    Queue::fake();
+    Notification::fake();
 
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => true]);
@@ -85,5 +85,5 @@ it('does not double-send within the same at-risk week', function (): void {
         ->expectsOutputToContain('Dispatched streak-at-risk reminder to 0 users.')
         ->assertSuccessful();
 
-    Queue::assertPushed(SendStreakReminderJob::class, 1);
+    Notification::assertSentToTimes($user, StreakReminderNotification::class, 1);
 });

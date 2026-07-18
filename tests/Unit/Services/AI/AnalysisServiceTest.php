@@ -7,13 +7,14 @@ use Illuminate\Database\QueryException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
-use App\Jobs\Telegram\SendTelegramNotificationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
+use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Notifications\AnalysisReadyNotification;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -23,6 +24,7 @@ use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -645,40 +647,49 @@ it('upsertGroupRows with NULL discriminators collapses repeat requests to one ro
         ->count())->toBe(4);
 });
 
-it('markDone fans out a Telegram notification for a notifiable type', function (): void {
-    config(['services.telegram.bot_token' => 'test-bot-token']);
-    $snap = WeeklySnapshot::factory()->create();
+it('markDone fans out a notification for a notifiable, wired type', function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.notify_max_age_days' => 14]);
+    Notification::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
     $row = Analysis::factory()->create([
-        'subject_type' => WeeklySnapshot::class,
-        'subject_id' => $snap->id,
-        'analysis_type' => AnalysisType::WeeklyRecap,
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'Rekap minggu ini.');
+    $this->service->markDone($row, 'Cerita lari.');
 
-    Bus::assertDispatched(
-        SendTelegramNotificationJob::class,
-        fn (SendTelegramNotificationJob $job): bool => $job->analysisId === $row->id,
+    Notification::assertSentTo(
+        $user,
+        AnalysisReadyNotification::class,
+        fn (AnalysisReadyNotification $notification): bool => $notification->analysis->id === $row->id,
     );
 });
 
 it('markDone does not notify for a non-notifiable type', function (): void {
-    config(['services.telegram.bot_token' => 'test-bot-token']);
+    Notification::fake();
     $row = Analysis::factory()->create(['analysis_type' => AnalysisType::DailyGreeting]);
 
     $this->service->markDone($row, 'Halo!');
 
-    Bus::assertNotDispatched(SendTelegramNotificationJob::class);
+    Notification::assertNothingSent();
 });
 
 it('markDone does not notify under withoutDispatching (demo seed)', function (): void {
-    config(['services.telegram.bot_token' => 'test-bot-token']);
-    $snap = WeeklySnapshot::factory()->create();
+    config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.notify_max_age_days' => 14]);
+    Notification::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
     $row = Analysis::factory()->create([
-        'subject_type' => WeeklySnapshot::class,
-        'subject_id' => $snap->id,
-        'analysis_type' => AnalysisType::WeeklyRecap,
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
         'discriminator' => null,
     ]);
 
@@ -686,7 +697,7 @@ it('markDone does not notify under withoutDispatching (demo seed)', function ():
         $this->service->markDone($row, 'Rekap seed.');
     });
 
-    Bus::assertNotDispatched(SendTelegramNotificationJob::class);
+    Notification::assertNothingSent();
 });
 
 it('markDone does not start the re-trigger cooldown under withoutDispatching (demo seed)', function (): void {
@@ -738,16 +749,20 @@ it('resumes generation for free once the config breaker resets (env fixed)', fun
 });
 
 it('markDone does not notify when Telegram is unconfigured', function (): void {
-    config(['services.telegram.bot_token' => null]);
-    $snap = WeeklySnapshot::factory()->create();
+    config(['services.telegram.bot_token' => null, 'services.telegram.notify_max_age_days' => 14]);
+    Notification::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
     $row = Analysis::factory()->create([
-        'subject_type' => WeeklySnapshot::class,
-        'subject_id' => $snap->id,
-        'analysis_type' => AnalysisType::WeeklyRecap,
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
         'discriminator' => null,
     ]);
 
     $this->service->markDone($row, 'Rekap.');
 
-    Bus::assertNotDispatched(SendTelegramNotificationJob::class);
+    Notification::assertNothingSent();
 });

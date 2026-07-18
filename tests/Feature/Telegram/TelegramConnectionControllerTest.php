@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-use App\Jobs\Telegram\SendTelegramTestJob;
 use App\Models\TelegramConnection;
 use App\Models\User;
+use App\Notifications\TestNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
-it('dispatches a test notification for an active connection', function (): void {
-    Bus::fake();
+it('sends a test notification for an active connection', function (): void {
+    Notification::fake();
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
 
@@ -20,14 +20,11 @@ it('dispatches a test notification for an active connection', function (): void 
         ->assertRedirect()
         ->assertSessionHas('success');
 
-    Bus::assertDispatched(
-        SendTelegramTestJob::class,
-        fn (SendTelegramTestJob $job): bool => $job->userId === $user->id,
-    );
+    Notification::assertSentTo($user, TestNotification::class);
 });
 
-it('does not dispatch a test notification without an active connection', function (): void {
-    Bus::fake();
+it('does not send a test notification without an active connection', function (): void {
+    Notification::fake();
     $user = User::factory()->create();
 
     $this->actingAs($user)
@@ -35,11 +32,11 @@ it('does not dispatch a test notification without an active connection', functio
         ->assertRedirect()
         ->assertSessionHas('info');
 
-    Bus::assertNotDispatched(SendTelegramTestJob::class);
+    Notification::assertNothingSent();
 });
 
-it('does not dispatch a test notification for a revoked connection', function (): void {
-    Bus::fake();
+it('does not send a test notification for a revoked connection', function (): void {
+    Notification::fake();
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->revoked()->create();
 
@@ -48,7 +45,7 @@ it('does not dispatch a test notification for a revoked connection', function ()
         ->assertRedirect()
         ->assertSessionHas('info');
 
-    Bus::assertNotDispatched(SendTelegramTestJob::class);
+    Notification::assertNothingSent();
 });
 
 it('requires authentication to send a test notification', function (): void {

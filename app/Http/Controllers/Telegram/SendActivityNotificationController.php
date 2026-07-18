@@ -35,6 +35,7 @@ class SendActivityNotificationController extends Controller
             ->first();
 
         return $this->pushOrDeferred(
+            $user,
             $analysis,
             'Ceritanya belum siap, coba lagi sebentar ya.',
             'Aku kirim cerita lari ini ke Telegram kamu ya.',

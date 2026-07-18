@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Services\Gamification\EquippedAccessories;
-use App\Jobs\Telegram\SendTelegramNotificationJob;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -20,6 +19,7 @@ use App\Services\AI\RecapPeriod;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -29,15 +29,16 @@ beforeEach(fn () => Carbon::setTestNow('2026-05-12 12:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
 it('seeds a complete, login-ready demo dataset and stays idempotent across re-runs', function (): void {
-    // Token set + queue faked: the whole seed must stay under withoutDispatching,
-    // so a configured token never enqueues a markDone Telegram push.
+    // Token set + queue/notifications faked: the whole seed must stay under
+    // withoutDispatching, so a configured token never sends a markDone notification.
     config()->set('services.telegram.bot_token', 'test-token');
     Queue::fake();
+    Notification::fake();
 
     $exitCode = $this->artisan('demo:seed')->run();
     expect($exitCode)->toBe(0);
 
-    Queue::assertNotPushed(SendTelegramNotificationJob::class);
+    Notification::assertNothingSent();
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 

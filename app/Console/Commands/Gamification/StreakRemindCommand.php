@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Gamification;
 
-use App\Jobs\Telegram\SendStreakReminderJob;
 use App\Models\TelegramConnection;
+use App\Notifications\StreakReminderNotification;
 use App\Models\WeeklySnapshot;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -53,7 +53,7 @@ class StreakRemindCommand extends Command
                 continue;
             }
 
-            SendStreakReminderJob::dispatch($user->id, $streak);
+            $user->notify(new StreakReminderNotification($streak));
             $sent++;
         }
 

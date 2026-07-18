@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Telegram;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\Telegram\SendTelegramTestJob;
 use App\Models\User;
+use App\Notifications\TestNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -51,7 +51,7 @@ class TelegramConnectionController extends Controller
             return back()->with('info', 'Sambungin Telegram dulu ya.');
         }
 
-        SendTelegramTestJob::dispatch($user->id);
+        $user->notify(new TestNotification());
 
         return back()->with('success', 'Aku kirim notifikasi tes ke Telegram kamu ya.');
     }

@@ -2,16 +2,21 @@
 
 declare(strict_types=1);
 
-use App\Jobs\Telegram\SendTelegramNotificationJob;
+use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Notifications\AnalysisReadyNotification;
 use App\Services\AI\AnalysisType;
 use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+});
 
 it('requires authentication', function (): void {
     $snapshot = WeeklySnapshot::factory()->create();
@@ -19,9 +24,10 @@ it('requires authentication', function (): void {
     $this->post(route('rekap.mingguan.telegram', $snapshot))->assertRedirect(route('login'));
 });
 
-it('force-dispatches the push when the weekly recap is done', function (): void {
-    Bus::fake();
+it('force-sends the push when the weekly recap is done', function (): void {
+    Notification::fake();
     $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => false]);
     $snapshot = WeeklySnapshot::factory()->for($user)->create();
     $analysis = doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, content: 'Minggu ini 28 km.');
 
@@ -30,14 +36,15 @@ it('force-dispatches the push when the weekly recap is done', function (): void 
         ->assertRedirect()
         ->assertSessionHas('success');
 
-    Bus::assertDispatched(
-        SendTelegramNotificationJob::class,
-        fn (SendTelegramNotificationJob $job): bool => $job->analysisId === $analysis->id && $job->force === true,
+    Notification::assertSentTo(
+        $user,
+        AnalysisReadyNotification::class,
+        fn (AnalysisReadyNotification $notification): bool => $notification->analysis->id === $analysis->id && $notification->force === true,
     );
 });
 
-it('does not re-dispatch and flashes info while the send cooldown is active', function (): void {
-    Bus::fake();
+it('does not re-send and flashes info while the send cooldown is active', function (): void {
+    Notification::fake();
     $user = User::factory()->create();
     $snapshot = WeeklySnapshot::factory()->for($user)->create();
     $analysis = doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, content: 'Minggu ini 28 km.');
@@ -48,11 +55,11 @@ it('does not re-dispatch and flashes info while the send cooldown is active', fu
         ->assertRedirect()
         ->assertSessionHas('info');
 
-    Bus::assertNotDispatched(SendTelegramNotificationJob::class);
+    Notification::assertNothingSent();
 });
 
-it('does not dispatch and flashes info when the recap is not ready', function (): void {
-    Bus::fake();
+it('does not send and flashes info when the recap is not ready', function (): void {
+    Notification::fake();
     $user = User::factory()->create();
     $snapshot = WeeklySnapshot::factory()->for($user)->create();
     doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, done: false, content: 'Minggu ini 28 km.');
@@ -62,11 +69,11 @@ it('does not dispatch and flashes info when the recap is not ready', function ()
         ->assertRedirect()
         ->assertSessionHas('info');
 
-    Bus::assertNotDispatched(SendTelegramNotificationJob::class);
+    Notification::assertNothingSent();
 });
 
 it('404s when the snapshot belongs to another user', function (): void {
-    Bus::fake();
+    Notification::fake();
     $owner = User::factory()->create();
     $other = User::factory()->create();
     $snapshot = WeeklySnapshot::factory()->for($owner)->create();
@@ -75,5 +82,5 @@ it('404s when the snapshot belongs to another user', function (): void {
         ->post(route('rekap.mingguan.telegram', $snapshot))
         ->assertNotFound();
 
-    Bus::assertNotDispatched(SendTelegramNotificationJob::class);
+    Notification::assertNothingSent();
 });

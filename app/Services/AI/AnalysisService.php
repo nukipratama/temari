@@ -9,10 +9,10 @@ use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeRowJob;
-use App\Jobs\Telegram\SendTelegramNotificationJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
+use App\Notifications\AnalysisReadyNotification;
 use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Telegram\NotifiableAnalysis;
@@ -164,14 +164,16 @@ class AnalysisService
             DB::afterCommit(fn () => $row->startCooldown());
         }
 
-        // Fan out a Telegram push for the notifiable types. Suppressed under
-        // withoutDispatching (demo seed) and a no-op when Telegram is unconfigured;
-        // the job itself enforces the demo / opt-in / connection / idempotency
-        // guards. afterCommit so it can't run before the row it reads is committed.
-        if (! $this->dispatchSuppressed
-            && filled(config('services.telegram.bot_token'))
-            && $this->notifiableAnalysis->isNotifiable($row)) {
-            SendTelegramNotificationJob::dispatch($row->id)->afterCommit();
+        // Fan out a notification for the notifiable types. Suppressed under
+        // withoutDispatching (demo seed); the notification's via() owns every guard
+        // (demo / recency / opt-in / channel wired) and the channel owns idempotency,
+        // so an unwired or opted-out user resolves to no channels and nothing is
+        // enqueued. afterCommit so the queued send can't run before the row it reads
+        // is committed.
+        if (! $this->dispatchSuppressed && $this->notifiableAnalysis->isNotifiable($row)) {
+            $this->notifiableAnalysis->resolveUser($row)?->notify(
+                new AnalysisReadyNotification($row)->afterCommit(),
+            );
         }
     }
 

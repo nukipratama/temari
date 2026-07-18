@@ -40,6 +40,7 @@ class SendMonthlyRecapNotificationController extends Controller
             ->first();
 
         return $this->pushOrDeferred(
+            $user,
             $analysis,
             'Rekapnya belum siap, coba lagi sebentar ya.',
             'Aku kirim rekap bulanan ini ke Telegram kamu ya.',

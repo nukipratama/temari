@@ -76,7 +76,7 @@ it('has a test class for every concrete app class', function (): void {
         ReadsPreviousActivityNarrative::class, // trait, exercised via PostRunSpeechNarratorTest + RunInsightNarratorTest
         ReadsPreviousDailyNarrative::class, // trait, exercised via DailyGreeting + BriefingMascotVoice cases in NarratorsCoverageTest
         PushesAnalysisToTelegram::class, // trait, exercised via the three Send*NotificationControllerTest suites
-        RevokesConnectionOnPermanentFailure::class, // trait, exercised via the three Telegram Send*JobTest suites
+        RevokesConnectionOnPermanentFailure::class, // trait, exercised via TelegramChannelTest
     ];
 
     $testedBasenames = collect(File::allFiles(base_path('tests')))
