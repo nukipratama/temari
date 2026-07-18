@@ -585,7 +585,6 @@ interface DetailTile {
     value: string;
     sub?: string;
     warn?: boolean;
-    wide?: boolean;
     metricKey?: MetricKey;
 }
 
@@ -630,7 +629,6 @@ function DetailTiles({
                 ? `wajar, tadi panas ${Math.round(detail.weather_temp_c as number)}°C`
                 : 'napas melar di paruh kedua',
             warn: decouplingHigh && !heatExplainsIt,
-            wide: true,
             metricKey: 'decoupling',
         });
     }
@@ -648,10 +646,7 @@ function DetailTiles({
             {tiles.map((t) => (
                 <div
                     key={t.label}
-                    className={cn(
-                        'rounded-xl border border-cream-deep bg-cream px-4 py-3.5',
-                        t.wide && 'col-span-2',
-                    )}
+                    className="rounded-xl border border-cream-deep bg-cream px-4 py-3.5"
                 >
                     <div className="mb-1.5 inline-flex items-center gap-1 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
                         {t.label}
@@ -659,8 +654,7 @@ function DetailTiles({
                     </div>
                     <div
                         className={cn(
-                            'font-sans font-bold leading-none tabular-nums tracking-[-0.01em]',
-                            t.wide ? 'text-[28px]' : 'text-[22px]',
+                            'font-sans font-bold leading-none tabular-nums tracking-[-0.01em] text-[22px]',
                             t.warn ? 'text-ember' : 'text-ink',
                         )}
                     >
