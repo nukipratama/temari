@@ -126,14 +126,6 @@ export default function ProgressionChart({
     }), [weeks, timesSec, goalSec, xOffsets]);
 
     const options = useMemo(() => {
-        // Thin the x-axis to ~6 evenly-spaced date labels, pinned to the real point
-        // positions, so labels stay legible while the points keep their true spacing.
-        const tickStep = Math.max(1, Math.ceil(weeks.length / 6));
-        const tickIndices = weeks
-            .map((_, i) => i)
-            .filter((i) => i % tickStep === 0 || i === weeks.length - 1);
-        const tickXs = tickIndices.map((i) => xOffsets[i]);
-        const tickLabels = tickIndices.map((i) => formatNaiveIdDate(weeks[i], 'short'));
         const xMin = xOffsets.length > 0 ? xOffsets[0] : 0;
         const lastX = xOffsets.length > 0 ? xOffsets.at(-1)! : 0;
         const xMax = lastX > xMin ? lastX : xMin + 1;
@@ -162,16 +154,8 @@ export default function ProgressionChart({
                 min: xMin,
                 max: xMax,
                 grid: { display: false },
-                ticks: {
-                    color: CHART_TOKENS.ink2,
-                    font: { size: 12 },
-                    autoSkip: false,
-                    maxRotation: 0,
-                    callback: (_val: number | string, index: number) => tickLabels[index] ?? '',
-                },
-                afterBuildTicks: (axis: { ticks: { value: number }[] }) => {
-                    axis.ticks = tickXs.map((value) => ({ value }));
-                },
+                // Date labels collide on narrow phones; the date lives in the tooltip instead.
+                ticks: { display: false },
             },
             y: {
                 reverse: true,

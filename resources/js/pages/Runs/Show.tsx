@@ -300,12 +300,13 @@ export default function RunsShow({
                                         </h1>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-5 sm:grid-cols-5 justify-items-center">
+                                <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 justify-items-center">
                                     <StatTile tone="plainSky" size="md" align="center" label="JARAK" value={km} unit="km" />
                                     <StatTile tone="plainSky" size="md" align="center" label="DURASI" value={kartuProps.durasi} />
                                     <StatTile tone="plainSky" size="md" align="center" label="PACE" value={pace} unit="/km" />
                                     <StatTile tone="plainSky" size="md" align="center" label="HR" value={hr != null ? `${hr}` : '—'} unit="bpm" />
-                                    <StatTile tone="plainSky" size="md" align="center" label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" sub={effortSub} explainerKey="trimp" className="col-span-2 sm:col-span-1" />
+                                    <StatTile tone="plainSky" size="md" align="center" label="TRIMP" value={trimp != null ? `${trimp}` : '—'} unit="Edwards" sub={effortSub} explainerKey="trimp" />
+                                    <StatTile tone="plainSky" size="md" align="center" label="ELEVASI" value={detail.total_elevation_gain != null ? `${Math.round(detail.total_elevation_gain)}` : '—'} unit="m" explainerKey="ascent" />
                                 </div>
 
                                 {/* KAMU VS KAMU DULU — inline in hero */}
@@ -603,10 +604,7 @@ function DetailTiles({
     if (detail.average_cadence != null) {
         tiles.push({ label: 'CADENCE', value: `${Math.round(detail.average_cadence * 2)}`, sub: 'spm avg', metricKey: 'cadence' });
     }
-    const ascent = Number(summary.ascent_m);
-    if (summary.ascent_m != null && Number.isFinite(ascent)) {
-        tiles.push({ label: 'ASCENT', value: `${ascent}`, sub: 'm', metricKey: 'ascent' });
-    }
+    // Elevation gain (ASCENT) now lives in the hero stat row; only max-grade stays here.
     // Only when the run actually climbed, so a flat GPS run doesn't show a noisy 0%.
     const maxGrade = Number(summary.max_grade_pct);
     if (summary.max_grade_pct != null && Number.isFinite(maxGrade) && maxGrade >= 3) {

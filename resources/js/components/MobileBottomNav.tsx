@@ -35,7 +35,7 @@ export default function MobileBottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-30 flex justify-around rounded-t-[18px] bg-sky px-2 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2.5 lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 flex justify-around rounded-t-[18px] bg-sky px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden"
     >
       {ITEMS.map((item) => {
         const isActive = active === item.id;
@@ -44,7 +44,7 @@ export default function MobileBottomNav() {
             key={item.id}
             href={item.href}
             className={cn(
-              "focus-ring-on-sky flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition",
+              "focus-ring-on-sky flex flex-col items-center gap-1 rounded-lg px-4 py-1.5 transition",
               isActive ? "text-horizon" : "text-cream/[0.55]",
             )}
             aria-current={isActive ? "page" : undefined}

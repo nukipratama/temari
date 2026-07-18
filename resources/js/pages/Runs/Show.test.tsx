@@ -37,6 +37,7 @@ const detail: ActivityDetail & {
     name: 'Morning Run',
     start_date_local: '2026-05-10T07:00:00',
     distance: 10000,
+    total_elevation_gain: 120,
     moving_time: 3600,
     average_heartrate: 150,
     trimp_edwards: 70,
@@ -436,18 +437,23 @@ describe('Runs/Show', () => {
         expect(screen.queryByText(/wajar, tadi panas/)).not.toBeInTheDocument();
     });
 
-    it('skips the decoupling + ascent tiles when their values are non-numeric (no "NaN%")', () => {
+    it('skips the decoupling tile when its value is non-numeric (no "NaN%")', () => {
         const garbled = {
             ...detail,
             stream_summary: {
                 ...(detail.stream_summary ?? {}),
                 decoupling_pct: 'oops',
-                ascent_m: 'n/a',
             },
         };
         renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: garbled }, detail: garbled });
         expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
         expect(screen.queryByText('DECOUPLING')).not.toBeInTheDocument();
+    });
+
+    it('shows elevation gain as the ELEVASI hero tile, not a secondary ASCENT tile', () => {
+        renderShow();
+        expect(screen.getByText('ELEVASI')).toBeInTheDocument();
+        expect(screen.getByText('120')).toBeInTheDocument();
         expect(screen.queryByText('ASCENT')).not.toBeInTheDocument();
     });
 

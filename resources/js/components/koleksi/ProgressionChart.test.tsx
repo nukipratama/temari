@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { createElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ProgressionChart from './ProgressionChart';
+import { formatNaiveIdDate } from '@/lib/pace';
 
 // Capture the props handed to the (lazy) Line chart so we can assert on the
 // derived `data`/`options` and invoke the inline tooltip/tick callbacks, which
@@ -19,11 +20,13 @@ type ChartOptions = {
     plugins: {
         tooltip: {
             callbacks: {
+                title: (items: Array<{ dataIndex: number }>) => string;
                 label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => string;
             };
         };
     };
     scales: {
+        x: { ticks: { display: boolean } };
         y: { ticks: { callback: (val: number | string) => string } };
     };
 };
@@ -150,6 +153,19 @@ describe('ProgressionChart', () => {
         it('returns an empty string for a null value (gap point)', () => {
             const label = renderChart();
             expect(label({ dataset: { label: 'Best time' }, parsed: { y: null } })).toBe('');
+        });
+    });
+
+    describe('x-axis dates', () => {
+        it('hides the x-axis tick labels (dates live in the tooltip)', () => {
+            render(<ProgressionChart weeks={['2026-01-05', '2026-01-12']} timesSec={[1500, 1440]} goalSec={null} />);
+            expect(lastOptions!.scales.x.ticks.display).toBe(false);
+        });
+
+        it('surfaces the point date via the tooltip title callback', () => {
+            render(<ProgressionChart weeks={['2026-01-05', '2026-01-12']} timesSec={[1500, 1440]} goalSec={null} />);
+            const title = lastOptions!.plugins.tooltip.callbacks.title;
+            expect(title([{ dataIndex: 1 }])).toBe(formatNaiveIdDate('2026-01-12', 'short'));
         });
     });
 
