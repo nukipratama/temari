@@ -8,7 +8,6 @@ use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
-use App\Services\Telegram\TelegramClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +42,7 @@ function channelSend(User $user, TelegramMessage $message): void
         }
     };
 
-    new TelegramChannel(app(TelegramClient::class))->send($user, $notification);
+    app(TelegramChannel::class)->send($user, $notification);
 }
 
 function connectedUser(array $attributes = []): User
@@ -106,7 +105,7 @@ it('claims a keyed delivery and is idempotent across repeats', function (): void
     channelSend($user, new TelegramMessage(text: 'Sekali saja', deliveryKey: $analysisId));
 
     Http::assertSentCount(1);
-    $this->assertDatabaseHas('telegram_deliveries', ['analysis_id' => $analysisId]);
+    $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
 });
 
 it('releases the keyed claim when the send fails so a retry can resend', function (): void {
@@ -117,7 +116,7 @@ it('releases the keyed claim when the send fails so a retry can resend', functio
     expect(fn () => channelSend($user, new TelegramMessage(text: 'Gagal', deliveryKey: $analysisId)))
         ->toThrow(TelegramApiException::class);
 
-    $this->assertDatabaseMissing('telegram_deliveries', ['analysis_id' => $analysisId]);
+    $this->assertDatabaseMissing('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
 });
 
 it('revokes the connection and does not retry when the bot is blocked (403)', function (): void {
@@ -134,12 +133,12 @@ it('force-sends even when the delivery row already exists, and records the claim
     fakeTelegramOk();
     $user = connectedUser();
     $analysisId = Analysis::factory()->create()->id;
-    DB::table('telegram_deliveries')->insert(['analysis_id' => $analysisId, 'created_at' => now()]);
+    DB::table('notification_deliveries')->insert(['analysis_id' => $analysisId, 'channel' => 'telegram', 'created_at' => now()]);
 
     channelSend($user, new TelegramMessage(text: 'Kirim ulang', deliveryKey: $analysisId, force: true));
 
     Http::assertSentCount(1);
-    $this->assertDatabaseHas('telegram_deliveries', ['analysis_id' => $analysisId]);
+    $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
 });
 
 it('force-send swallows a failure (one-shot) and never claims a delivery', function (): void {
@@ -149,7 +148,7 @@ it('force-send swallows a failure (one-shot) and never claims a delivery', funct
 
     channelSend($user, new TelegramMessage(text: 'Gagal manual', deliveryKey: $analysisId, force: true));
 
-    $this->assertDatabaseMissing('telegram_deliveries', ['analysis_id' => $analysisId]);
+    $this->assertDatabaseMissing('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
 });
 
 it('sends a keyless message (streak / test) without touching the deliveries table', function (): void {
@@ -159,7 +158,7 @@ it('sends a keyless message (streak / test) without touching the deliveries tabl
     channelSend($user, new TelegramMessage(text: 'Nudge'));
 
     Http::assertSentCount(1);
-    expect(DB::table('telegram_deliveries')->count())->toBe(0);
+    expect(DB::table('notification_deliveries')->count())->toBe(0);
 });
 
 it('still revokes on a permanent failure for a keyless message', function (): void {

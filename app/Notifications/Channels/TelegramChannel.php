@@ -8,17 +8,18 @@ use Throwable;
 use App\Jobs\Telegram\Concerns\RevokesConnectionOnPermanentFailure;
 use App\Models\User;
 use App\Notifications\Messages\TelegramMessage;
+use App\Services\Notifications\NotificationDeliveryClaim;
 use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Services\Telegram\TelegramClient;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Delivers a {@see TelegramMessage} for any notification that implements
  * `toTelegram()`. Lifted from the retired SendTelegramNotificationJob: it keeps
- * the once-only `telegram_deliveries` claim (so a queued retry is idempotent),
- * the photo-vs-text send, and the revoke-on-permanent-failure behaviour.
+ * the once-only delivery claim (so a queued retry is idempotent), the
+ * photo-vs-text send, and the revoke-on-permanent-failure behaviour. The claim is
+ * held on the shared {@see NotificationDeliveryClaim} keyed by (analysis, channel).
  *
  * A message with a null `deliveryKey` (streak / test) skips the claim entirely.
  * A `force` message (manual push) skips the claim CHECK — so a resend always
@@ -29,8 +30,12 @@ class TelegramChannel
 {
     use RevokesConnectionOnPermanentFailure;
 
-    public function __construct(private readonly TelegramClient $client)
-    {
+    private const string CHANNEL = 'telegram';
+
+    public function __construct(
+        private readonly TelegramClient $client,
+        private readonly NotificationDeliveryClaim $claim,
+    ) {
     }
 
     public function send(User $notifiable, Notification $notification): void
@@ -48,10 +53,10 @@ class TelegramChannel
             return;
         }
 
-        // Automatic (keyed, non-force) sends claim before delivering; insertOrIgnore
-        // is atomic on the unique analysis_id, so a racing retry that already claimed
-        // it gets 0 rows and bails before re-sending.
-        if ($message->deliveryKey !== null && ! $message->force && ! $this->claimDelivery($message->deliveryKey)) {
+        // Automatic (keyed, non-force) sends claim before delivering; the claim is
+        // atomic on the unique (analysis_id, channel) pair, so a racing retry that
+        // already claimed it bails before re-sending.
+        if ($message->deliveryKey !== null && ! $message->force && ! $this->claim->claim($message->deliveryKey, self::CHANNEL)) {
             return;
         }
 
@@ -101,30 +106,16 @@ class TelegramChannel
         }
 
         if ($message->deliveryKey !== null) {
-            DB::table('telegram_deliveries')->where('analysis_id', $message->deliveryKey)->delete();
+            $this->claim->release($message->deliveryKey, self::CHANNEL);
         }
 
         throw $e;
     }
 
-    /**
-     * Claim the delivery before sending. Returns false when the row was already
-     * claimed (a racing retry), so the caller bails instead of re-sending.
-     */
-    private function claimDelivery(int $deliveryKey): bool
-    {
-        $claimed = DB::table('telegram_deliveries')->insertOrIgnore([
-            'analysis_id' => $deliveryKey,
-            'created_at' => now(),
-        ]);
-
-        return $claimed !== 0;
-    }
-
     private function recordForcedClaim(int $deliveryKey): void
     {
         try {
-            $this->claimDelivery($deliveryKey);
+            $this->claim->claim($deliveryKey, self::CHANNEL);
         } catch (Throwable $e) {
             Log::warning('telegram.force_send.claim_failed', [
                 'delivery_key' => $deliveryKey,
