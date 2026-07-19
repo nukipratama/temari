@@ -95,10 +95,12 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
         $registry = app(NotifiableAnalysis::class);
 
         return new WebPushMessage()
-            ->title($registry->pushTitle($this->analysis))
+            ->title($registry->title($this->analysis))
             ->body(trim((string) $this->analysis->content))
             ->icon('/icon-192.png')
-            ->data(['url' => $registry->url($this->analysis)]);
+            ->data(['url' => $registry->url($this->analysis)])
+            // High urgency so the push isn't deferred by the OS in Low Power Mode.
+            ->options(['urgency' => 'high']);
     }
 
     /** The idempotency key shared by every channel: the analysis id. */

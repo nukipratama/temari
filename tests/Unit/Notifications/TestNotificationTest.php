@@ -51,10 +51,13 @@ it('builds the keyless test-reply message', function (): void {
         ->and($message->deliveryKey)->toBeNull();
 });
 
-it('builds a web push test message', function (): void {
+it('builds a titled, high-urgency web push test message', function (): void {
     $notification = new TestNotification();
 
-    $payload = $notification->toWebPush(User::factory()->create(), $notification)->toArray();
+    $message = $notification->toWebPush(User::factory()->create(), $notification);
+    $payload = $message->toArray();
 
-    expect($payload['body'])->toBe(TelegramReplies::test());
+    expect($payload['title'])->toBe('🔔 Tes notifikasi')
+        ->and($payload['body'])->toBe(TelegramReplies::test())
+        ->and($message->getOptions())->toBe(['urgency' => 'high']);
 });
