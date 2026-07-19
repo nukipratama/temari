@@ -14,6 +14,13 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class WeeklySnapshotFactory extends Factory
 {
     /**
+     * Monotonic week offset so each snapshot gets a distinct week_ending. The table
+     * is unique on (user_id, week_ending); a random date collides across two
+     * snapshots for the same user (birthday paradox → a flaky unique violation).
+     */
+    private static int $weekSequence = 0;
+
+    /**
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -24,7 +31,7 @@ class WeeklySnapshotFactory extends Factory
 
         return [
             'user_id' => User::factory(),
-            'week_ending' => fake()->dateTimeBetween('-3 months', 'now')->format('Y-m-d'),
+            'week_ending' => now()->endOfWeek()->subWeeks(self::$weekSequence++)->format('Y-m-d'),
             'distance_km' => $distanceKm,
             'runs' => fake()->numberBetween(2, 6),
             // ~5:00-7:00 /km worth of moving time for the week's distance.
