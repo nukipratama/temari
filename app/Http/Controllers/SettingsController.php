@@ -19,11 +19,12 @@ class SettingsController extends Controller
 
         return Inertia::render('Pengaturan/Index', [
             'telegram' => $this->resolveTelegram($user, $telegramLinkToken),
+            'notificationPrefs' => $this->resolveNotificationPrefs($user),
         ]);
     }
 
     /**
-     * @return array{connected: bool, username: string|null, connect_url: string|null, notify_post_run: bool, notify_weekly_recap: bool, notify_monthly_recap: bool}
+     * @return array{connected: bool, username: string|null, connect_url: string|null}
      */
     private function resolveTelegram(User $user, TelegramLinkToken $linkToken): array
     {
@@ -36,14 +37,7 @@ class SettingsController extends Controller
 
         $connection = $user->telegramConnection;
         if ($connection === null) {
-            return [
-                'connected' => false,
-                'username' => null,
-                'connect_url' => $connectUrl,
-                'notify_post_run' => true,
-                'notify_weekly_recap' => true,
-                'notify_monthly_recap' => true,
-            ];
+            return ['connected' => false, 'username' => null, 'connect_url' => $connectUrl];
         }
 
         $connected = ! $connection->isRevoked();
@@ -52,9 +46,26 @@ class SettingsController extends Controller
             'connected' => $connected,
             'username' => $connected ? $connection->username : null,
             'connect_url' => $connectUrl,
-            'notify_post_run' => $connection->notify_post_run,
-            'notify_weekly_recap' => $connection->notify_weekly_recap,
-            'notify_monthly_recap' => $connection->notify_monthly_recap,
+        ];
+    }
+
+    /**
+     * The channel-neutral per-type opt-ins (govern Telegram + web push alike). A
+     * missing preference row means all-on, so an untouched account defaults to true.
+     *
+     * @return array{post_run: bool, weekly_recap: bool, monthly_recap: bool}
+     */
+    private function resolveNotificationPrefs(User $user): array
+    {
+        $preference = $user->notificationPreference;
+        if ($preference === null) {
+            return ['post_run' => true, 'weekly_recap' => true, 'monthly_recap' => true];
+        }
+
+        return [
+            'post_run' => $preference->post_run,
+            'weekly_recap' => $preference->weekly_recap,
+            'monthly_recap' => $preference->monthly_recap,
         ];
     }
 }

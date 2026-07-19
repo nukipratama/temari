@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\NotificationPreference;
 use App\Models\RunCard;
 use App\Models\TelegramConnection;
 use App\Models\User;
@@ -47,21 +48,22 @@ function viaFor(Analysis $analysis, User $user, bool $force = false): array
 
 it('routes to the Telegram channel for a connected, opted-in, recent run', function (): void {
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    TelegramConnection::factory()->for($user)->create();
 
     expect(viaFor(postRunAnalysis($user), $user))->toBe([TelegramChannel::class]);
 });
 
 it('routes nowhere for the demo user', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    TelegramConnection::factory()->for($user)->create();
 
     expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
 });
 
 it('routes nowhere when opted out of the type', function (): void {
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => false]);
+    TelegramConnection::factory()->for($user)->create();
+    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
 
     expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
 });
@@ -74,7 +76,7 @@ it('routes nowhere without a connection', function (): void {
 
 it('routes nowhere over a revoked connection', function (): void {
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->revoked()->create(['notify_post_run' => true]);
+    TelegramConnection::factory()->for($user)->revoked()->create();
 
     expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
 });
@@ -82,7 +84,7 @@ it('routes nowhere over a revoked connection', function (): void {
 it('routes nowhere when the bot token is unconfigured', function (): void {
     config(['services.telegram.bot_token' => '']);
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    TelegramConnection::factory()->for($user)->create();
 
     expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
 });
@@ -90,7 +92,7 @@ it('routes nowhere when the bot token is unconfigured', function (): void {
 it('routes nowhere for an automatic push older than the max age', function (): void {
     config(['services.telegram.notify_max_age_days' => 3]);
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    TelegramConnection::factory()->for($user)->create();
 
     expect(viaFor(postRunAnalysis($user, daysAgo: 10), $user))->toBe([]);
 });
@@ -99,7 +101,8 @@ it('routes nowhere for an automatic push older than the max age', function (): v
 
 it('force routes to Telegram even when opted out', function (): void {
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => false]);
+    TelegramConnection::factory()->for($user)->create();
+    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
 
     expect(viaFor(postRunAnalysis($user), $user, force: true))->toBe([TelegramChannel::class]);
 });
@@ -107,7 +110,8 @@ it('force routes to Telegram even when opted out', function (): void {
 it('force bypasses the recency gate for an old run', function (): void {
     config(['services.telegram.notify_max_age_days' => 3]);
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => false]);
+    TelegramConnection::factory()->for($user)->create();
+    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
 
     expect(viaFor(postRunAnalysis($user, daysAgo: 10), $user, force: true))->toBe([TelegramChannel::class]);
 });
@@ -121,7 +125,7 @@ it('routes to web push for a subscribed user with a recent analysis', function (
 
 it('routes to both channels when Telegram and web push are both wired', function (): void {
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    TelegramConnection::factory()->for($user)->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
 
     expect(viaFor(postRunAnalysis($user), $user))->toBe([TelegramChannel::class, IdempotentWebPushChannel::class]);

@@ -27,7 +27,7 @@ it('requires authentication', function (): void {
 it('force-sends the push when the weekly recap is done', function (): void {
     Notification::fake();
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => false]);
+    TelegramConnection::factory()->for($user)->create();
     $snapshot = WeeklySnapshot::factory()->for($user)->create();
     $analysis = doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, content: 'Minggu ini 28 km.');
 

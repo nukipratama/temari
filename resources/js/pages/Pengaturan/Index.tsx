@@ -22,25 +22,35 @@ interface TelegramPayload {
     connected: boolean;
     username: string | null;
     connect_url: string | null;
-    notify_post_run: boolean;
-    notify_weekly_recap: boolean;
-    notify_monthly_recap: boolean;
+}
+
+interface NotificationPrefs {
+    post_run: boolean;
+    weekly_recap: boolean;
+    monthly_recap: boolean;
 }
 
 interface PengaturanProps {
     telegram?: TelegramPayload;
+    notificationPrefs?: NotificationPrefs;
 }
 
 const TELEGRAM_DEFAULT: TelegramPayload = {
     connected: false,
     username: null,
     connect_url: null,
-    notify_post_run: true,
-    notify_weekly_recap: true,
-    notify_monthly_recap: true,
 };
 
-export default function Pengaturan({ telegram = TELEGRAM_DEFAULT }: Readonly<PengaturanProps>) {
+const PREFS_DEFAULT: NotificationPrefs = {
+    post_run: true,
+    weekly_recap: true,
+    monthly_recap: true,
+};
+
+export default function Pengaturan({
+    telegram = TELEGRAM_DEFAULT,
+    notificationPrefs = PREFS_DEFAULT,
+}: Readonly<PengaturanProps>) {
     return (
         <AppShell>
             <Head title="Pengaturan" />
@@ -53,15 +63,24 @@ export default function Pengaturan({ telegram = TELEGRAM_DEFAULT }: Readonly<Pen
                 </header>
 
                 <section>
-                    <SectionLabel>Notifikasi Telegram</SectionLabel>
+                    <SectionLabel>Notifikasi</SectionLabel>
+                    <div className="mt-3">
+                        <Card padding="lg">
+                            <NotificationPrefsPanel prefs={notificationPrefs} />
+                        </Card>
+                    </div>
+                </section>
+
+                <PushNotificationToggle />
+
+                <section className="mt-10">
+                    <SectionLabel>Telegram</SectionLabel>
                     <div className="mt-3">
                         <Card padding="lg">
                             <TelegramPanel telegram={telegram} />
                         </Card>
                     </div>
                 </section>
-
-                <PushNotificationToggle />
 
                 <section className="mt-10">
                     <SectionLabel>Lari</SectionLabel>
@@ -120,14 +139,14 @@ function DeleteAccountPanel() {
     );
 }
 
-function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
-    // Local state prevents a rapid-click race: if the user flips both toggles before
+function NotificationPrefsPanel({ prefs }: Readonly<{ prefs: NotificationPrefs }>) {
+    // Local state prevents a rapid-click race: if the user flips two toggles before
     // Inertia refreshes props, the second PATCH would read stale props for the first
     // toggle's value and silently revert it. Local state sees the latest flipped value.
-    const [postRun, setPostRun] = useState(telegram.notify_post_run);
-    const [weeklyRecap, setWeeklyRecap] = useState(telegram.notify_weekly_recap);
-    const [monthlyRecap, setMonthlyRecap] = useState(telegram.notify_monthly_recap);
-    const { isDemo, open, setOpen, guard } = useDemoGuard();
+    const [postRun, setPostRun] = useState(prefs.post_run);
+    const [weeklyRecap, setWeeklyRecap] = useState(prefs.weekly_recap);
+    const [monthlyRecap, setMonthlyRecap] = useState(prefs.monthly_recap);
+    const { open, setOpen, guard } = useDemoGuard();
 
     const latestRef = useRef({ postRun, weeklyRecap, monthlyRecap });
     latestRef.current = { postRun, weeklyRecap, monthlyRecap };
@@ -135,61 +154,15 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
     const savePrefs = useCallback(() => {
         const { postRun: pr, weeklyRecap: wr, monthlyRecap: mr } = latestRef.current;
         router.patch(
-            '/profil/telegram',
-            {
-                notify_post_run: pr,
-                notify_weekly_recap: wr,
-                notify_monthly_recap: mr,
-            },
+            '/profil/notifikasi',
+            { post_run: pr, weekly_recap: wr, monthly_recap: mr },
             { preserveScroll: true },
         );
     }, []);
 
-    if (!telegram.connected) {
-        if (telegram.connect_url === null) {
-            return <p className="font-sans text-[12px] text-ink-3">Bot Telegram belum dikonfigurasi.</p>;
-        }
-
-        if (isDemo) {
-            return (
-                <SettingsRow
-                    icon="mdi:telegram"
-                    label="Telegram"
-                    description="Sambungin biar Temari bisa kabarin kamu."
-                    onClick={() => setOpen(true)}
-                >
-                    <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
-                </SettingsRow>
-            );
-        }
-
-        return (
-            <SettingsRow
-                icon="mdi:telegram"
-                label="Telegram"
-                description="Sambungin biar Temari bisa kabarin kamu."
-                externalHref={telegram.connect_url}
-            />
-        );
-    }
-
     return (
         <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between gap-3">
-                <span className="min-w-0 overflow-hidden">
-                    <Chip tone="horizon" className="truncate">
-                        Telegram aktif{telegram.username ? ` · @${telegram.username}` : ''}
-                    </Chip>
-                </span>
-                <button
-                    type="button"
-                    onClick={() => guard(() => router.delete('/profil/telegram', { preserveScroll: true }))}
-                    className="focus-ring inline-flex items-center gap-1 rounded font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3 transition hover:text-ember-deep"
-                >
-                    <Icon icon="mdi:link-off" width={13} height={13} aria-hidden />
-                    Putuskan
-                </button>
-            </div>
+            <p className="font-sans text-[12px] text-ink-3">Berlaku buat Telegram sama notifikasi HP.</p>
             <div className="flex flex-col gap-3">
                 <NotifyToggle
                     label="Cerita abis lari"
@@ -234,6 +207,59 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
             </PillButton>
             <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
         </div>
+    );
+}
+
+function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
+    const { isDemo, open, setOpen, guard } = useDemoGuard();
+
+    if (!telegram.connected) {
+        if (telegram.connect_url === null) {
+            return <p className="font-sans text-[12px] text-ink-3">Bot Telegram belum dikonfigurasi.</p>;
+        }
+
+        if (isDemo) {
+            return (
+                <SettingsRow
+                    icon="mdi:telegram"
+                    label="Telegram"
+                    description="Sambungin biar Temari bisa kabarin kamu."
+                    onClick={() => setOpen(true)}
+                >
+                    <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
+                </SettingsRow>
+            );
+        }
+
+        return (
+            <SettingsRow
+                icon="mdi:telegram"
+                label="Telegram"
+                description="Sambungin biar Temari bisa kabarin kamu."
+                externalHref={telegram.connect_url}
+            />
+        );
+    }
+
+    return (
+        <>
+            <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0 overflow-hidden">
+                    <Chip tone="horizon" className="truncate">
+                        Telegram aktif{telegram.username ? ` · @${telegram.username}` : ''}
+                    </Chip>
+                </span>
+                <button
+                    type="button"
+                    onClick={() => guard(() => router.delete('/profil/telegram', { preserveScroll: true }))}
+                    className="focus-ring inline-flex items-center gap-1 rounded font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3 transition hover:text-ember-deep"
+                >
+                    <Icon icon="mdi:link-off" width={13} height={13} aria-hidden />
+                    Putuskan
+                </button>
+            </div>
+            <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
+        </>
     );
 }
 

@@ -104,6 +104,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasOne<NotificationPreference, $this>
+     */
+    public function notificationPreference(): HasOne
+    {
+        return $this->hasOne(NotificationPreference::class);
+    }
+
+    /**
      * Fixed public contract for heart-rate and cadence settings. Returns the
      * stored runner_profiles row when present, otherwise the config('runner.*')
      * defaults in the identical shape so callers cannot tell the difference.

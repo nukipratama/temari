@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 /**
  * Manual "Kirim ke Telegram" for a week's recap: pushes that week's recap
  * narration to the owner's Telegram on demand. Like the activity push, it forces
- * (force: true), so it ignores the notify_weekly_recap toggle and the once-only
+ * (force: true), so it ignores the weekly-recap opt-in and the once-only
  * delivery guard and can be re-sent, but still requires a Done recap and a live
  * connection (the job enforces the connection / demo guards).
  */

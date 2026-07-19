@@ -41,7 +41,13 @@ class StreakReminderNotification extends Notification implements ShouldQueue
         }
 
         $connection = $notifiable->telegramConnection;
-        if ($connection === null || $connection->isRevoked() || ! $connection->notify_weekly_recap) {
+        if ($connection === null || $connection->isRevoked()) {
+            return [];
+        }
+
+        // Shares the channel-neutral weekly-recap opt-in; a missing row = all-on.
+        $preference = $notifiable->notificationPreference;
+        if ($preference !== null && ! $preference->weekly_recap) {
             return [];
         }
 

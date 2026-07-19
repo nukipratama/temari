@@ -70,9 +70,11 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             ]));
         }
 
+        $optedIn = $registry->isOptedIn($this->analysis, $notifiable);
+
         return array_values(array_filter([
-            $telegramWired && $recent && $registry->isOptedIn($this->analysis, $connection) ? TelegramChannel::class : null,
-            $webPushWired && $recent ? IdempotentWebPushChannel::class : null,
+            $telegramWired && $recent && $optedIn ? TelegramChannel::class : null,
+            $webPushWired && $recent && $optedIn ? IdempotentWebPushChannel::class : null,
         ]));
     }
 

@@ -70,9 +70,9 @@ it('shows the OS-settings hint when permission is denied', async () => {
     expect(await screen.findByText(/diblokir/i)).toBeInTheDocument();
 });
 
-it('offers test + off when already subscribed', async () => {
+it('offers only the off switch when already subscribed', async () => {
     vi.mocked(webPush.currentSubscription).mockResolvedValue({} as PushSubscription);
     render(<PushNotificationToggle />);
-    expect(await screen.findByRole('button', { name: /Kirim tes/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Matikan/ })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Matikan/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Kirim tes/ })).not.toBeInTheDocument();
 });

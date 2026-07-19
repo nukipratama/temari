@@ -12,22 +12,20 @@ use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
-it('blocks a demo user from an Inertia Telegram write with an Indonesian flash error', function (): void {
+it('blocks a demo user from an Inertia notification-preference write with an Indonesian flash error', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
-    TelegramConnection::factory()->for($user)->create();
 
     $this->actingAs($user)
         ->withHeader('X-Inertia', 'true')
-        ->patch('/profil/telegram', [
-            'notify_post_run' => false,
-            'notify_weekly_recap' => true,
-            'notify_monthly_recap' => true,
-            'notify_daily_briefing' => false,
+        ->patch('/profil/notifikasi', [
+            'post_run' => false,
+            'weekly_recap' => true,
+            'monthly_recap' => true,
         ])
         ->assertRedirect()
         ->assertSessionHasErrors(['demo' => 'Akun demo cuma bisa dilihat, gak bisa diubah.']);
 
-    expect($user->telegramConnection->refresh()->notify_post_run)->toBeTrue();
+    expect($user->notificationPreference()->exists())->toBeFalse();
 });
 
 it('returns a JSON 403 to a plain fetch on the notification test endpoint from the demo user', function (): void {
@@ -40,21 +38,19 @@ it('returns a JSON 403 to a plain fetch on the notification test endpoint from t
         ->assertJson(['message' => 'Akun demo cuma bisa dilihat, gak bisa diubah.']);
 });
 
-it('does not block a normal user from the same Telegram write', function (): void {
+it('does not block a normal user from the same notification-preference write', function (): void {
     $user = User::factory()->create(['is_demo' => false]);
-    TelegramConnection::factory()->for($user)->create();
 
     $this->actingAs($user)
-        ->patch('/profil/telegram', [
-            'notify_post_run' => false,
-            'notify_weekly_recap' => true,
-            'notify_monthly_recap' => true,
-            'notify_daily_briefing' => false,
+        ->patch('/profil/notifikasi', [
+            'post_run' => false,
+            'weekly_recap' => true,
+            'monthly_recap' => true,
         ])
         ->assertRedirect()
         ->assertSessionDoesntHaveErrors();
 
-    expect($user->telegramConnection->refresh()->notify_post_run)->toBeFalse();
+    expect($user->notificationPreference->post_run)->toBeFalse();
 });
 
 it('does not block a demo user from equipping an accessory (interactive sandbox)', function (): void {

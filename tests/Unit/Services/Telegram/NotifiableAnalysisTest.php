@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\TelegramConnection;
+use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
@@ -67,25 +67,34 @@ it('resolves the user behind a monthly recap directly via its subject_id', funct
     expect(new NotifiableAnalysis()->resolveUser($analysis)?->id)->toBe($user->id);
 });
 
-it('isOptedIn returns true when the connection preference flag is on', function (): void {
+it('isOptedIn returns true when the preference flag is on', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
-    $connection = TelegramConnection::factory()->make(['notify_post_run' => true]);
+    $user = User::factory()->create();
+    NotificationPreference::factory()->for($user)->create(['post_run' => true]);
 
-    expect(new NotifiableAnalysis()->isOptedIn($analysis, $connection))->toBeTrue();
+    expect(new NotifiableAnalysis()->isOptedIn($analysis, $user))->toBeTrue();
 });
 
-it('isOptedIn returns false when the connection preference flag is off', function (): void {
+it('isOptedIn returns false when the preference flag is off', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
-    $connection = TelegramConnection::factory()->make(['notify_post_run' => false]);
+    $user = User::factory()->create();
+    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
 
-    expect(new NotifiableAnalysis()->isOptedIn($analysis, $connection))->toBeFalse();
+    expect(new NotifiableAnalysis()->isOptedIn($analysis, $user))->toBeFalse();
+});
+
+it('isOptedIn defaults to opted-in when the user has no preference row', function (): void {
+    $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
+    $user = User::factory()->create();
+
+    expect(new NotifiableAnalysis()->isOptedIn($analysis, $user))->toBeTrue();
 });
 
 it('isOptedIn returns false for a non-notifiable type', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::DailyGreeting]);
-    $connection = TelegramConnection::factory()->make();
+    $user = User::factory()->create();
 
-    expect(new NotifiableAnalysis()->isOptedIn($analysis, $connection))->toBeFalse();
+    expect(new NotifiableAnalysis()->isOptedIn($analysis, $user))->toBeFalse();
 });
 
 it('formats a post-run message with an emoji label, the content, and a deep link to the activity', function (): void {

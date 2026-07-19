@@ -651,7 +651,7 @@ it('markDone fans out a notification for a notifiable, wired type', function ():
     config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.notify_max_age_days' => 14]);
     Notification::fake();
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    TelegramConnection::factory()->for($user)->create();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
     $row = Analysis::factory()->create([
@@ -683,7 +683,7 @@ it('markDone does not notify under withoutDispatching (demo seed)', function ():
     config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.notify_max_age_days' => 14]);
     Notification::fake();
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    TelegramConnection::factory()->for($user)->create();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
     $row = Analysis::factory()->create([
@@ -752,7 +752,7 @@ it('markDone does not notify when Telegram is unconfigured', function (): void {
     config(['services.telegram.bot_token' => null, 'services.telegram.notify_max_age_days' => 14]);
     Notification::fake();
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => true]);
+    TelegramConnection::factory()->for($user)->create();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
     $row = Analysis::factory()->create([

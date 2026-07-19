@@ -15,6 +15,7 @@ use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GoalController;
+use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekorController;
@@ -106,10 +107,11 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/profil', ProfileController::class)->name('profil');
 
     // The demo is otherwise a fully-interactive shared sandbox (drift resets on
-    // demo:seed). Telegram is the one write worth guarding: a visitor could disconnect
-    // the shared bot or spam real messages via the send/test endpoints. So the demo
-    // write-guard is applied to Telegram routes only, not blanket.
-    Route::patch('/profil/telegram', [TelegramConnectionController::class, 'update'])->middleware('block-demo-telegram')->name('telegram.preferences.update');
+    // demo:seed). Notifications are the one area worth guarding: a visitor could
+    // disconnect the shared bot or spam real messages via the send/test endpoints.
+    // The block-demo-telegram guard is behaviourally generic (it blocks any demo
+    // mutation), so it also covers the channel-neutral preference + test writes.
+    Route::patch('/profil/notifikasi', NotificationPreferenceController::class)->middleware('block-demo-telegram')->name('notifikasi.preferences.update');
     Route::delete('/profil/telegram', [TelegramConnectionController::class, 'destroy'])->middleware('block-demo-telegram')->name('telegram.disconnect');
     Route::post('/profil/notifikasi/test', NotificationTestController::class)->middleware(['throttle:6,1', 'block-demo-telegram'])->name('notifikasi.test');
 

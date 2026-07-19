@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -22,7 +23,7 @@ it('nudges a user with a live streak and no run yet this week', function (): voi
     Notification::fake();
 
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => true]);
+    TelegramConnection::factory()->for($user)->create();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
 
     $this->artisan('streak:remind')
@@ -36,7 +37,7 @@ it('skips a user who already ran this week', function (): void {
     Notification::fake();
 
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => true]);
+    TelegramConnection::factory()->for($user)->create();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-24', 'runs' => 1]);
 
@@ -49,7 +50,7 @@ it('skips the demo user', function (): void {
     Notification::fake();
 
     $demo = User::factory()->demo()->create();
-    TelegramConnection::factory()->for($demo)->create(['notify_weekly_recap' => true]);
+    TelegramConnection::factory()->for($demo)->create();
     WeeklySnapshot::factory()->for($demo)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
 
     $this->artisan('streak:remind')
@@ -63,7 +64,7 @@ it('skips a user with no live streak', function (): void {
     Notification::fake();
 
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => true]);
+    TelegramConnection::factory()->for($user)->create();
     // Last run two weeks back: a full week has closed since, so the streak is
     // already broken (consecutiveWeekStreak returns 0).
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 2]);
@@ -73,11 +74,26 @@ it('skips a user with no live streak', function (): void {
     Notification::assertNothingSent();
 });
 
+it('skips a user opted out of the weekly recap', function (): void {
+    Notification::fake();
+
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
+    NotificationPreference::factory()->for($user)->create(['weekly_recap' => false]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    $this->artisan('streak:remind')
+        ->expectsOutputToContain('Dispatched streak-at-risk reminder to 0 users.')
+        ->assertSuccessful();
+
+    Notification::assertNothingSent();
+});
+
 it('does not double-send within the same at-risk week', function (): void {
     Notification::fake();
 
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => true]);
+    TelegramConnection::factory()->for($user)->create();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
 
     $this->artisan('streak:remind')->assertSuccessful();

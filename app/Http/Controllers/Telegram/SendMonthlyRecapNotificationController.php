@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
  * the user (subject_id = user id, discriminator = 'Y-m'), so scoping the lookup
  * to the caller's own id is the authorization: another user's month simply finds
  * no row. Forces (force: true) like the other manual pushes, so it bypasses the
- * notify_monthly_recap toggle and the once-only guard and can be re-sent.
+ * monthly-recap opt-in and the once-only guard and can be re-sent.
  */
 class SendMonthlyRecapNotificationController extends Controller
 {

@@ -8,9 +8,12 @@ const connectedTelegram = {
     connected: true,
     username: 'ada_runs',
     connect_url: null,
-    notify_post_run: true,
-    notify_weekly_recap: false,
-    notify_monthly_recap: true,
+};
+
+const prefs = {
+    post_run: true,
+    weekly_recap: false,
+    monthly_recap: true,
 };
 
 beforeEach(() => {
@@ -25,7 +28,8 @@ describe('Pengaturan', () => {
     it('renders the settings sections', () => {
         render(<Pengaturan />);
         expect(screen.getByText('Pengaturan')).toBeInTheDocument();
-        expect(screen.getByText('Notifikasi Telegram')).toBeInTheDocument();
+        expect(screen.getByText('Notifikasi')).toBeInTheDocument();
+        expect(screen.getByText('Telegram')).toBeInTheDocument();
         expect(screen.getByText('Zona HR')).toBeInTheDocument();
         expect(screen.getByText('Hapus akun')).toBeInTheDocument();
     });
@@ -40,47 +44,34 @@ describe('Pengaturan', () => {
             connected: false,
             username: null,
             connect_url: 'https://t.me/temari_bot?start=tok',
-            notify_post_run: true,
-            notify_weekly_recap: true,
-            notify_monthly_recap: true,
         };
         render(<Pengaturan telegram={telegram} />);
-        expect(screen.getByText('Telegram').closest('a')).toHaveAttribute('href', 'https://t.me/temari_bot?start=tok');
+        expect(screen.getByRole('link', { name: /Telegram/ })).toHaveAttribute('href', 'https://t.me/temari_bot?start=tok');
     });
 
-    it('shows the preference toggles when Telegram is connected', () => {
-        render(<Pengaturan telegram={connectedTelegram} />);
-        expect(screen.getByText(/Telegram aktif/)).toBeInTheDocument();
+    it('shows the channel-neutral preference toggles from notificationPrefs', () => {
+        render(<Pengaturan notificationPrefs={prefs} />);
         expect(screen.getByRole('switch', { name: 'Cerita abis lari' })).toHaveAttribute('aria-checked', 'true');
         expect(screen.getByRole('switch', { name: 'Rekap mingguan' })).toHaveAttribute('aria-checked', 'false');
         expect(screen.getByRole('switch', { name: 'Rekap bulanan' })).toHaveAttribute('aria-checked', 'true');
     });
 
-    it('patches preferences when a toggle is flipped, carrying all current values', () => {
+    it('patches the channel-neutral preferences when a toggle is flipped, carrying all current values', () => {
         vi.mocked(router.patch).mockReset();
-        render(<Pengaturan telegram={connectedTelegram} />);
+        render(<Pengaturan notificationPrefs={prefs} />);
 
         fireEvent.click(screen.getByRole('switch', { name: 'Rekap mingguan' }));
 
         expect(router.patch).toHaveBeenCalledWith(
-            '/profil/telegram',
-            { notify_post_run: true, notify_weekly_recap: true, notify_monthly_recap: true },
+            '/profil/notifikasi',
+            { post_run: true, weekly_recap: true, monthly_recap: true },
             { preserveScroll: true },
         );
     });
 
-    it('disconnects via DELETE when Putuskan is clicked', () => {
-        vi.mocked(router.delete).mockReset();
-        render(<Pengaturan telegram={connectedTelegram} />);
-
-        fireEvent.click(screen.getByText('Putuskan'));
-
-        expect(router.delete).toHaveBeenCalledWith('/profil/telegram', { preserveScroll: true });
-    });
-
     it('posts a test notification when "Kirim notifikasi tes" is clicked', () => {
         vi.mocked(router.post).mockReset();
-        render(<Pengaturan telegram={connectedTelegram} />);
+        render(<Pengaturan />);
 
         fireEvent.click(screen.getByText('Kirim notifikasi tes'));
 
@@ -90,7 +81,7 @@ describe('Pengaturan', () => {
     it('opens the demo-blocked modal instead of patching when a demo user flips a toggle', () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) }, flash: {}, demoLoginEnabled: false });
         vi.mocked(router.patch).mockReset();
-        render(<Pengaturan telegram={connectedTelegram} />);
+        render(<Pengaturan notificationPrefs={prefs} />);
 
         const toggle = screen.getByRole('switch', { name: 'Rekap mingguan' });
         fireEvent.click(toggle);
@@ -98,6 +89,15 @@ describe('Pengaturan', () => {
         expect(router.patch).not.toHaveBeenCalled();
         expect(toggle).toHaveAttribute('aria-checked', 'false');
         expect(screen.getByText('Telegram-nya lagi istirahat dulu')).toBeInTheDocument();
+    });
+
+    it('disconnects via DELETE when Putuskan is clicked', () => {
+        vi.mocked(router.delete).mockReset();
+        render(<Pengaturan telegram={connectedTelegram} />);
+
+        fireEvent.click(screen.getByText('Putuskan'));
+
+        expect(router.delete).toHaveBeenCalledWith('/profil/telegram', { preserveScroll: true });
     });
 
     it('opens a confirmation before deleting the account', () => {

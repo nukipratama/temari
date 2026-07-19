@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import PillButton from '@/components/ui/PillButton';
@@ -97,16 +97,6 @@ export default function PushNotificationToggle() {
             }
         });
 
-    const runTest = () =>
-        guard(() => {
-            setStatus('Notifikasi tes lagi dikirim…');
-            router.post('/profil/notifikasi/test', {}, {
-                preserveScroll: true,
-                onSuccess: () => setStatus('Kalau nggak muncul, cek Setelan HP > Notifikasi > Temari.'),
-                onError: () => setStatus('Gagal kirim tes, coba lagi ya.'),
-            });
-        });
-
     if (publicKey === '') {
         return null;
     }
@@ -115,7 +105,7 @@ export default function PushNotificationToggle() {
         <section className="mt-10">
             <SectionLabel>Notifikasi HP</SectionLabel>
             <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-cream-deep bg-cream p-4">
-                <PushBody state={state} busy={busy} onSubscribe={runSubscribe} onUnsubscribe={runUnsubscribe} onTest={runTest} />
+                <PushBody state={state} busy={busy} onSubscribe={runSubscribe} onUnsubscribe={runUnsubscribe} />
 
                 <p role="status" aria-live="polite" className="min-h-[1rem] text-sm text-ink-3">
                     {status}
@@ -132,13 +122,11 @@ function PushBody({
     busy,
     onSubscribe,
     onUnsubscribe,
-    onTest,
 }: Readonly<{
     state: PushState;
     busy: boolean;
     onSubscribe: () => void;
     onUnsubscribe: () => void;
-    onTest: () => void;
 }>) {
     switch (state) {
         case 'loading':
@@ -163,11 +151,8 @@ function PushBody({
             );
         case 'subscribed':
             return (
-                <div className="flex flex-wrap gap-2">
-                    <PillButton tone="outline" disabled={busy} onClick={onTest}>
-                        <Icon icon="mdi:send-outline" width={14} height={14} aria-hidden />
-                        Kirim tes
-                    </PillButton>
+                <div className="flex flex-col gap-2">
+                    <Hint>Notifikasi HP aktif. Tes kirimannya lewat "Kirim notifikasi tes" di atas.</Hint>
                     <PillButton tone="outline" disabled={busy} onClick={onUnsubscribe}>
                         <Icon icon="mdi:bell-off-outline" width={14} height={14} aria-hidden />
                         Matikan

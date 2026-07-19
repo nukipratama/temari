@@ -8,6 +8,7 @@ use App\Models\TelegramConnection;
 use App\Notifications\StreakReminderNotification;
 use App\Models\WeeklySnapshot;
 use Illuminate\Console\Attributes\Description;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -21,9 +22,11 @@ class StreakRemindCommand extends Command
     {
         $weekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
+        // Active connections whose user hasn't opted out of the weekly-recap
+        // notification (a missing preference row means all-on). via() re-checks.
         $connections = TelegramConnection::query()
             ->active()
-            ->where('notify_weekly_recap', true)
+            ->whereDoesntHave('user.notificationPreference', fn (Builder $query): Builder => $query->where('weekly_recap', false))
             ->with('user')
             ->get();
 

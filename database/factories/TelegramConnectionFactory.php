@@ -22,10 +22,6 @@ class TelegramConnectionFactory extends Factory
             'user_id' => User::factory(),
             'chat_id' => fake()->unique()->numberBetween(1_000_000, 9_999_999),
             'username' => fake()->optional()->userName(),
-            'notify_post_run' => true,
-            'notify_weekly_recap' => true,
-            'notify_monthly_recap' => true,
-            'notify_daily_briefing' => false,
         ];
     }
 

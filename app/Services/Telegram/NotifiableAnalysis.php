@@ -6,7 +6,6 @@ namespace App\Services\Telegram;
 
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
@@ -23,16 +22,17 @@ use Illuminate\Support\Carbon;
 class NotifiableAnalysis
 {
     /**
-     * Map of notifiable type to the TelegramConnection boolean column that gates
-     * it, the emoji prefixed to the narration content (a glanceable label without
-     * a redundant text header), and the tap-through CTA appended before the link.
+     * Map of notifiable type to the NotificationPreference boolean column that
+     * gates it (channel-neutral: the same opt-in governs Telegram + web push), the
+     * emoji prefixed to the narration content (a glanceable label without a
+     * redundant text header), and the tap-through CTA appended before the link.
      *
      * @var array<string, array{pref: string, emoji: string, title: string, cta: string}>
      */
     private const array TYPES = [
-        AnalysisType::PostRunSpeech->value => ['pref' => 'notify_post_run', 'emoji' => '🏃', 'title' => 'Cerita lari', 'cta' => 'Lihat detail lari'],
-        AnalysisType::WeeklyRecap->value => ['pref' => 'notify_weekly_recap', 'emoji' => '📊', 'title' => 'Rekap mingguan', 'cta' => 'Lihat riwayat'],
-        AnalysisType::MonthlyRecap->value => ['pref' => 'notify_monthly_recap', 'emoji' => '🗓️', 'title' => 'Rekap bulanan', 'cta' => 'Lihat kalender'],
+        AnalysisType::PostRunSpeech->value => ['pref' => 'post_run', 'emoji' => '🏃', 'title' => 'Cerita lari', 'cta' => 'Lihat detail lari'],
+        AnalysisType::WeeklyRecap->value => ['pref' => 'weekly_recap', 'emoji' => '📊', 'title' => 'Rekap mingguan', 'cta' => 'Lihat riwayat'],
+        AnalysisType::MonthlyRecap->value => ['pref' => 'monthly_recap', 'emoji' => '🗓️', 'title' => 'Rekap bulanan', 'cta' => 'Lihat kalender'],
     ];
 
     /**
@@ -92,12 +92,20 @@ class NotifiableAnalysis
         return $date === null ? null : Carbon::parse($date);
     }
 
-    /** Whether the connection has opted in to notifications for this analysis type. */
-    public function isOptedIn(Analysis $analysis, TelegramConnection $connection): bool
+    /**
+     * Whether the user has opted in to notifications for this analysis type. The
+     * opt-in is channel-neutral; a missing preference row means all-on (default).
+     */
+    public function isOptedIn(Analysis $analysis, User $user): bool
     {
         $column = self::TYPES[$analysis->analysis_type->value]['pref'] ?? null;
+        if ($column === null) {
+            return false;
+        }
 
-        return $column !== null && (bool) $connection->{$column};
+        $preference = $user->notificationPreference;
+
+        return $preference === null || (bool) $preference->{$column};
     }
 
     /** The user this analysis belongs to, or null when it can't be resolved. */
