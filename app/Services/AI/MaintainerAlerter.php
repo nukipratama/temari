@@ -73,6 +73,12 @@ class MaintainerAlerter
         $this->broadcast("Scheduler gagal jalanin `{$command}`. Cek Horizon sama log-nya ya.");
     }
 
+    /** A prod deploy failed its gate; pushed best-effort via the `deploy:alert` command. */
+    public function deployFailed(string $reason): void
+    {
+        $this->broadcast("Deploy prod gagal: {$reason}. Cek CI sama log deploy-nya ya.");
+    }
+
     private function pauseMessage(?string $reason): string
     {
         return match ($reason) {
