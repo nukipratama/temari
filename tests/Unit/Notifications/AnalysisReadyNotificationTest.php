@@ -123,6 +123,14 @@ it('routes to web push for a subscribed user with a recent analysis', function (
     expect(viaFor(postRunAnalysis($user), $user))->toBe([IdempotentWebPushChannel::class]);
 });
 
+it('routes nowhere to web push when opted out of the type', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
+    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
+
+    expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
+});
+
 it('routes to both channels when Telegram and web push are both wired', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();

@@ -61,8 +61,8 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
         $recent = $registry->isRecentEnoughToAutoNotify($this->analysis);
 
         // A manual push bypasses the recency + opt-in gates and reaches every wired
-        // channel; the automatic path keeps the recency gate + per-type opt-in
-        // (web push opt-in is subscription existence until per-type prefs land).
+        // channel; the automatic path keeps the recency gate + the channel-neutral
+        // per-type opt-in, which now gates Telegram and web push alike.
         if ($this->force) {
             return array_values(array_filter([
                 $telegramWired ? TelegramChannel::class : null,
