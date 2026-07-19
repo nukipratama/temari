@@ -315,7 +315,10 @@ jobs:
         run: $COMPOSE build app
 
       - name: Bring up the data + cache layer
-        run: $COMPOSE up -d --remove-orphans --wait --wait-timeout 300 mysql redis
+        # redis-cache is named explicitly (not just pulled in via app's depends_on)
+        # so a compose change to its command/healthcheck — e.g. adding requirepass —
+        # actually recreates it here, before the app rolls and starts authing to it.
+        run: $COMPOSE up -d --remove-orphans --wait --wait-timeout 300 mysql redis redis-cache
 
       - name: Tag new image with git SHA
         run: docker tag temari/app:latest temari/app:${{ github.sha }}

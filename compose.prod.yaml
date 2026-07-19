@@ -81,12 +81,22 @@ x-redis-prod-base: &redis-prod-base
   restart: unless-stopped
   networks: [internal]
   logging: *logging
+  # env_file so the container has REDIS_PASSWORD for `--requirepass` (see each
+  # service's command) and the authed healthcheck below — loaded from the host
+  # /opt/temari/.env, same as mysql/app. Absolute path, so it resolves the same
+  # regardless of the directory the deploy runs `docker compose` from.
+  env_file: *app-env-file
   healthcheck:
     # SET (not ping) so `up --wait` blocks until AOF replay finishes: Redis
     # answers PONG while still LOADING the dataset into memory but rejects
     # writes, so a write probe is what actually proves the keyspace is ready.
     # Without this, app/horizon can connect mid-replay and read empty sessions.
-    test: ["CMD", "redis-cli", "SET", "__hc__", "1", "EX", "5"]
+    # REDISCLI_AUTH authenticates the probe now that the server requires a
+    # password; $$ escapes Compose interpolation so the container shell expands
+    # REDIS_PASSWORD. Only export it when non-empty — a bare `REDISCLI_AUTH=""`
+    # still sends `AUTH ""`, which a passwordless server rejects, so the guard is
+    # what makes this degrade gracefully if the password is ever unset.
+    test: ["CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then export REDISCLI_AUTH=\"$$REDIS_PASSWORD\"; fi; redis-cli SET __hc__ 1 EX 5"]
     interval: 10s
     timeout: 3s
     retries: 10
@@ -255,16 +265,19 @@ services:
   # AOF everysec provides queue durability without the fsync overhead of always.
   redis:
     <<: *redis-prod-base
+    # /bin/sh -c so the container shell expands REDIS_PASSWORD from env_file into
+    # --requirepass. $$ escapes Compose interpolation (same convention as pulse);
+    # exec keeps redis-server as PID 1 so it receives Docker's stop signal.
     command:
-      - "redis-server"
-      - "--appendonly"
-      - "yes"
-      - "--appendfsync"
-      - "everysec"
-      - "--maxmemory"
-      - "512mb"
-      - "--maxmemory-policy"
-      - "noeviction"
+      - "/bin/sh"
+      - "-c"
+      - >-
+        exec redis-server
+        --requirepass "$$REDIS_PASSWORD"
+        --appendonly yes
+        --appendfsync everysec
+        --maxmemory 512mb
+        --maxmemory-policy noeviction
     volumes:
       - redis_data:/data
     deploy:
@@ -284,14 +297,17 @@ services:
   # healthcheck (no AOF replay here, but the probe still proves writes are live).
   redis-cache:
     <<: *redis-prod-base
+    # Same --requirepass wiring as `redis` above (uses REDIS_PASSWORD too — the
+    # app's `cache` connection authenticates with REDIS_PASSWORD).
     command:
-      - "redis-server"
-      - "--appendonly"
-      - "no"
-      - "--maxmemory"
-      - "256mb"
-      - "--maxmemory-policy"
-      - "allkeys-lru"
+      - "/bin/sh"
+      - "-c"
+      - >-
+        exec redis-server
+        --requirepass "$$REDIS_PASSWORD"
+        --appendonly no
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
     deploy:
       resources:
         limits:
