@@ -69,11 +69,11 @@
 		header X-Frame-Options "DENY"
 		header X-Content-Type-Options "nosniff"
 		header Referrer-Policy "strict-origin-when-cross-origin"
-		# Report-Only until the runtime origins it doesn't yet cover are handled:
-		# Iconify fetches icon data from api.iconify.design / simplesvg.com / unisvg.com
-		# (connect-src), and Cloudflare injects its analytics beacon + inline script
-		# (script-src). Fix those, re-verify the console across pages, then enforce.
-		header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		# Enforced. The two runtime origins report-only surfaced are gone: mdi icons
+		# are bundled offline (no api.iconify.design fetch) and Cloudflare Web
+		# Analytics is disabled (no injected beacon/inline script). unsafe-inline is
+		# for lib-injected <style>; fonts via Google Fonts; img https: for OSM tiles.
+		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		php_server
 	}
 }
