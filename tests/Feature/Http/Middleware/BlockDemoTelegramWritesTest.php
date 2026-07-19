@@ -30,12 +30,12 @@ it('blocks a demo user from an Inertia Telegram write with an Indonesian flash e
     expect($user->telegramConnection->refresh()->notify_post_run)->toBeTrue();
 });
 
-it('returns a JSON 403 to a plain fetch on the Telegram test endpoint from the demo user', function (): void {
+it('returns a JSON 403 to a plain fetch on the notification test endpoint from the demo user', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
     TelegramConnection::factory()->for($user)->create();
 
     $this->actingAs($user)
-        ->postJson('/profil/telegram/test')
+        ->postJson('/profil/notifikasi/test')
         ->assertStatus(403)
         ->assertJson(['message' => 'Akun demo cuma bisa dilihat, gak bisa diubah.']);
 });

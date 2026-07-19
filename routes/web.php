@@ -15,6 +15,7 @@ use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GoalController;
+use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
@@ -110,7 +111,7 @@ Route::middleware(['auth'])->group(function (): void {
     // write-guard is applied to Telegram routes only, not blanket.
     Route::patch('/profil/telegram', [TelegramConnectionController::class, 'update'])->middleware('block-demo-telegram')->name('telegram.preferences.update');
     Route::delete('/profil/telegram', [TelegramConnectionController::class, 'destroy'])->middleware('block-demo-telegram')->name('telegram.disconnect');
-    Route::post('/profil/telegram/test', [TelegramConnectionController::class, 'test'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('telegram.test');
+    Route::post('/profil/notifikasi/test', NotificationTestController::class)->middleware(['throttle:6,1', 'block-demo-telegram'])->name('notifikasi.test');
 
     // Browser push subscription, managed via fetch from the installed PWA. The
     // block-demo-telegram guard is behaviourally generic (it blocks any demo
