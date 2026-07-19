@@ -69,9 +69,11 @@
 		header X-Frame-Options "DENY"
 		header X-Content-Type-Options "nosniff"
 		header Referrer-Policy "strict-origin-when-cross-origin"
-		# Enforced CSP: unsafe-inline for lib-injected <style>, Google Fonts, and
-		# img https: for OSM map tiles + Strava avatars; no external script/connect origins.
-		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		# Report-Only until the runtime origins it doesn't yet cover are handled:
+		# Iconify fetches icon data from api.iconify.design / simplesvg.com / unisvg.com
+		# (connect-src), and Cloudflare injects its analytics beacon + inline script
+		# (script-src). Fix those, re-verify the console across pages, then enforce.
+		header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		php_server
 	}
 }
