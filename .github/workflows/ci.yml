@@ -374,6 +374,15 @@ jobs:
       - name: Quiesce scheduler + horizon before the roll
         run: $COMPOSE stop scheduler horizon || true
 
+      # migrate:status --pending=1 exits non-zero when a schema has pending migrations.
+      - name: Detect pending migrations (auto-rollback safety gate)
+        run: |
+          applied=false
+          $COMPOSE run --rm app php artisan migrate:status --pending=1 >/dev/null 2>&1 || applied=true
+          $COMPOSE run --rm app php artisan migrate:status --database=analytics --path=database/migrations/analytics --pending=1 >/dev/null 2>&1 || applied=true
+          echo "MIGRATIONS_APPLIED=$applied" >> "$GITHUB_ENV"
+          echo "Migrations pending this deploy: $applied"
+
       - name: Migrate (one-shot, on the new image)
         run: $COMPOSE run --rm app php artisan migrate --force
 
@@ -424,16 +433,40 @@ jobs:
       - name: Resume scheduler (deploy green)
         run: $COMPOSE up -d --no-deps scheduler
 
-      - name: Restart background processing if the deploy failed
-        # In this ordering horizon/scheduler are quiesced before the roll and only
-        # moved to the new image AFTER the app passes its healthcheck, so any pre-gate
-        # failure leaves them merely stopped on the OLD image — `start` (not `up -d`)
-        # resumes them there. A broken new image therefore never reaches the workers.
-        # pulse is included too: if it's the "Roll workers + Pulse" step itself that
-        # fails, `start` is a harmless no-op on an already-running pulse and a real
-        # recovery attempt if that step left it down.
+      - name: Roll back on failure
         if: failure()
-        run: $COMPOSE start scheduler horizon pulse || true
+        run: |
+          $COMPOSE start scheduler horizon pulse || true
+
+          # App rollback is safe only when no migration ran this deploy.
+          if [ "${MIGRATIONS_APPLIED:-true}" = "true" ]; then
+            echo "::error::Deploy failed with migrations applied — not auto-rolling back. Recover with the 'Rollback prod' workflow, plus ./scripts/restore-db.sh <backup> if a migration was destructive."
+          elif docker image inspect temari/app:previous >/dev/null 2>&1; then
+            docker tag temari/app:previous temari/app:latest
+            $COMPOSE up -d --no-deps app horizon pulse scheduler
+            $COMPOSE exec -T app php artisan horizon:terminate || true
+            rolled_ok=false
+            for i in $(seq 1 20); do
+              if curl -fsS http://127.0.0.1:7001/up; then rolled_ok=true; break; fi
+              sleep 3
+            done
+            [ "$rolled_ok" = true ] && echo "Rolled back to :previous and healthy." \
+              || echo "::warning::Rolled back to :previous but /up still failing — likely an infra fault, not the image."
+          else
+            echo "::warning::No :previous image to roll back to. App left on the failed image."
+          fi
+
+      # Best-effort push; run --rm boots on :latest (the good :previous after a rollback).
+      - name: Alert on deploy failure
+        if: failure()
+        continue-on-error: true
+        run: |
+          if [ "${MIGRATIONS_APPLIED:-true}" = "true" ]; then
+            note="migrations ran, manual recovery needed"
+          else
+            note="auto-rolled-back to :previous"
+          fi
+          $COMPOSE run --rm app php artisan deploy:alert "deploy ${{ github.sha }} failed ($note)" || true
 
       - name: Prune old temari images
         # Prune by TAG reference, never by image id: after a deploy the old image
