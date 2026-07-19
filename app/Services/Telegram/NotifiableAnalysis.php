@@ -24,15 +24,29 @@ class NotifiableAnalysis
     /**
      * Map of notifiable type to the NotificationPreference boolean column that
      * gates it (channel-neutral: the same opt-in governs Telegram + web push), the
-     * emoji prefixed to the narration content (a glanceable label without a
-     * redundant text header), and the tap-through CTA appended before the link.
+     * emoji leading the title line, a data-less fallback `title` used when the
+     * type's dynamic data can't be resolved, and the tap-through CTA appended
+     * before the link.
      *
      * @var array<string, array{pref: string, emoji: string, title: string, cta: string}>
      */
     private const array TYPES = [
-        AnalysisType::PostRunSpeech->value => ['pref' => 'post_run', 'emoji' => '🏃', 'title' => 'Cerita lari', 'cta' => 'Lihat detail lari'],
-        AnalysisType::WeeklyRecap->value => ['pref' => 'weekly_recap', 'emoji' => '📊', 'title' => 'Rekap mingguan', 'cta' => 'Lihat riwayat'],
-        AnalysisType::MonthlyRecap->value => ['pref' => 'monthly_recap', 'emoji' => '🗓️', 'title' => 'Rekap bulanan', 'cta' => 'Lihat kalender'],
+        AnalysisType::PostRunSpeech->value => ['pref' => 'post_run', 'emoji' => '🏃', 'title' => 'Lari kamu udah masuk! 🏁', 'cta' => 'Lihat detail lari'],
+        AnalysisType::WeeklyRecap->value => ['pref' => 'weekly_recap', 'emoji' => '📊', 'title' => 'Rekap minggu lalu udah siap', 'cta' => 'Lihat riwayat'],
+        AnalysisType::MonthlyRecap->value => ['pref' => 'monthly_recap', 'emoji' => '🗓️', 'title' => 'Rekap bulanan udah siap', 'cta' => 'Lihat kalender'],
+    ];
+
+    /**
+     * Indonesian month names by month number, for the monthly-recap title.
+     * Hardcoded rather than leaning on Carbon's `id` locale data, which isn't
+     * guaranteed loaded in every runtime (it would silently fall back to English).
+     *
+     * @var array<int, string>
+     */
+    private const array MONTHS = [
+        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
     ];
 
     /**
@@ -117,20 +131,25 @@ class NotifiableAnalysis
     }
 
     /**
-     * The Telegram message body: a short header, the narration content, and a
-     * tap-through link to the relevant page (Telegram auto-links the bare URL).
+     * The Telegram message body, mirroring the web-push title→body hierarchy: the
+     * same dynamic title line, a blank line, the narration content, then (post-run)
+     * a metrics line and the tap-through link (Telegram auto-links the bare URL).
      */
     public function format(Analysis $analysis): string
     {
-        $meta = self::TYPES[$analysis->analysis_type->value] ?? null;
+        $message = $this->title($analysis);
 
-        $message = trim(($meta['emoji'] ?? '') . ' ' . (string) $analysis->content);
+        $content = trim((string) $analysis->content);
+        if ($content !== '') {
+            $message .= "\n\n" . $content;
+        }
 
         $metrics = $this->metricsLine($analysis);
         if ($metrics !== null) {
             $message .= "\n\n" . $metrics;
         }
 
+        $meta = self::TYPES[$analysis->analysis_type->value] ?? null;
         $url = $this->url($analysis);
         if ($meta !== null && $url !== null) {
             $message .= "\n\n" . $meta['cta'] . ': ' . $url;
@@ -206,11 +225,60 @@ class NotifiableAnalysis
         };
     }
 
-    /** The web-push notification title: emoji + a short type label. */
-    public function pushTitle(Analysis $analysis): string
+    /**
+     * The notification title shared by web push and the Telegram body's first
+     * line: an emoji plus a short, data-aware phrase (run distance, recap month).
+     * Falls back to the type's data-less label when that data can't be resolved,
+     * and to the app name for an unregistered type.
+     */
+    public function title(Analysis $analysis): string
     {
         $meta = self::TYPES[$analysis->analysis_type->value] ?? null;
+        if ($meta === null) {
+            return 'Temari';
+        }
 
-        return $meta === null ? 'Temari' : trim($meta['emoji'] . ' ' . $meta['title']);
+        $phrase = match ($analysis->analysis_type) {
+            AnalysisType::PostRunSpeech => $this->postRunTitle($analysis),
+            AnalysisType::MonthlyRecap => $this->monthlyRecapTitle($analysis),
+            default => $meta['title'],
+        };
+
+        return trim($meta['emoji'] . ' ' . $phrase);
+    }
+
+    /** "Lari 8,2K kamu udah masuk! 🏁", dropping the distance when it's unknown. */
+    private function postRunTitle(Analysis $analysis): string
+    {
+        $distance = $this->activityDetail($analysis->subject_id)?->distance;
+        $prefix = $distance !== null ? $this->shortDistance((int) $distance) . ' ' : '';
+
+        return 'Lari ' . $prefix . 'kamu udah masuk! 🏁';
+    }
+
+    /** "Rekap Juli udah siap", falling back to the label when the month is unknown. */
+    private function monthlyRecapTitle(Analysis $analysis): string
+    {
+        $month = $this->monthName($analysis->discriminator);
+
+        return $month === null ? self::TYPES[AnalysisType::MonthlyRecap->value]['title'] : "Rekap {$month} udah siap";
+    }
+
+    /** The Indonesian month name for a "YYYY-MM" discriminator, or null when blank. */
+    private function monthName(?string $discriminator): ?string
+    {
+        if ($discriminator === null || $discriminator === '') {
+            return null;
+        }
+
+        return self::MONTHS[Carbon::parse($discriminator . '-01')->month] ?? null;
+    }
+
+    /** Metres to a short "8,2K" label: km at 1 decimal, id comma, trailing ",0" dropped (5000 → "5K"). */
+    private function shortDistance(int $meters): string
+    {
+        $rounded = number_format(round($meters / 1000, 1), 1, ',', '.');
+
+        return rtrim(rtrim($rounded, '0'), ',') . 'K';
     }
 }

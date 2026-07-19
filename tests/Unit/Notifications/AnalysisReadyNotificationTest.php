@@ -202,16 +202,18 @@ it('sends as text when the post-run activity has no card', function (): void {
     expect(new AnalysisReadyNotification(postRunAnalysis($user))->toTelegram($user)->photoPng)->toBeNull();
 });
 
-it('builds a web push message with title, body, and the tap-through url', function (): void {
+it('builds a web push message with the dynamic title, body, tap-through url, and high urgency', function (): void {
     $user = User::factory()->create();
     $analysis = postRunAnalysis($user, 'Pace konsisten.');
     $notification = new AnalysisReadyNotification($analysis);
 
-    $payload = $notification->toWebPush($user, $notification)->toArray();
+    $message = $notification->toWebPush($user, $notification);
+    $payload = $message->toArray();
 
-    expect($payload['title'])->toContain('Cerita lari')
+    expect($payload['title'])->toContain('udah masuk!')
         ->and($payload['body'])->toContain('Pace konsisten.')
-        ->and($payload['data'])->toBe(['url' => route('aktivitas.show', $analysis->subject_id)]);
+        ->and($payload['data'])->toBe(['url' => route('aktivitas.show', $analysis->subject_id)])
+        ->and($message->getOptions())->toBe(['urgency' => 'high']);
 });
 
 /**
