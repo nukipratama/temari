@@ -4,53 +4,9 @@ declare(strict_types=1);
 
 use App\Models\TelegramConnection;
 use App\Models\User;
-use App\Notifications\TestNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
-
-it('sends a test notification for an active connection', function (): void {
-    Notification::fake();
-    $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create();
-
-    $this->actingAs($user)
-        ->post('/profil/telegram/test')
-        ->assertRedirect()
-        ->assertSessionHas('success');
-
-    Notification::assertSentTo($user, TestNotification::class);
-});
-
-it('does not send a test notification without an active connection', function (): void {
-    Notification::fake();
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->post('/profil/telegram/test')
-        ->assertRedirect()
-        ->assertSessionHas('info');
-
-    Notification::assertNothingSent();
-});
-
-it('does not send a test notification for a revoked connection', function (): void {
-    Notification::fake();
-    $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->revoked()->create();
-
-    $this->actingAs($user)
-        ->post('/profil/telegram/test')
-        ->assertRedirect()
-        ->assertSessionHas('info');
-
-    Notification::assertNothingSent();
-});
-
-it('requires authentication to send a test notification', function (): void {
-    $this->post('/profil/telegram/test')->assertRedirect(route('login'));
-});
 
 it('updates the notification preferences', function (): void {
     $user = User::factory()->create();

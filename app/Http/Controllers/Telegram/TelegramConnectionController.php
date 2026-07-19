@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Telegram;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Notifications\TestNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -39,19 +38,5 @@ class TelegramConnectionController extends Controller
         $user->telegramConnection?->markRevoked();
 
         return back();
-    }
-
-    public function test(Request $request): RedirectResponse
-    {
-        /** @var User $user */
-        $user = $request->user();
-        $connection = $user->telegramConnection;
-        if ($connection === null || $connection->isRevoked()) {
-            return back()->with('info', 'Sambungin Telegram dulu ya.');
-        }
-
-        $user->notify(new TestNotification());
-
-        return back()->with('success', 'Aku kirim notifikasi tes ke Telegram kamu ya.');
     }
 }

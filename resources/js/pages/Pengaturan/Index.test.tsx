@@ -84,7 +84,7 @@ describe('Pengaturan', () => {
 
         fireEvent.click(screen.getByText('Kirim notifikasi tes'));
 
-        expect(router.post).toHaveBeenCalledWith('/profil/telegram/test', {}, { preserveScroll: true });
+        expect(router.post).toHaveBeenCalledWith('/profil/notifikasi/test', {}, { preserveScroll: true });
     });
 
     it('opens the demo-blocked modal instead of patching when a demo user flips a toggle', () => {

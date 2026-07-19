@@ -34,9 +34,27 @@
 		file_server
 	}
 
-	@static path /favicon.ico /favicon.svg /robots.txt /apple-touch-icon.png
+	@static path /favicon.ico /favicon.svg /robots.txt /apple-touch-icon.png /icon-192.png /icon-512.png /icon-maskable-512.png
 	handle @static {
 		header Cache-Control "public, max-age=604800"
+		file_server
+	}
+
+	# Service worker: never long-cache it, or an updated sw.js serves stale and the
+	# push handler never refreshes. At the site root so its scope is the whole app.
+	@sw path /sw.js
+	handle @sw {
+		header Cache-Control "no-cache"
+		header Content-Type "text/javascript"
+		file_server
+	}
+
+	# Web app manifest: Caddy has no .webmanifest MIME entry, so set it explicitly
+	# (iOS rejects a mis-typed manifest).
+	@manifest path /manifest.webmanifest
+	handle @manifest {
+		header Cache-Control "public, max-age=604800"
+		header Content-Type "application/manifest+json"
 		file_server
 	}
 

@@ -10,6 +10,7 @@ import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import SettingsRow from '@/components/ui/SettingsRow';
 import DemoBlockedModal from '@/components/DemoBlockedModal';
+import PushNotificationToggle from '@/components/PushNotificationToggle';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cn } from '@/lib/cn';
@@ -59,6 +60,8 @@ export default function Pengaturan({ telegram = TELEGRAM_DEFAULT }: Readonly<Pen
                         </Card>
                     </div>
                 </section>
+
+                <PushNotificationToggle />
 
                 <section className="mt-10">
                     <SectionLabel>Lari</SectionLabel>
@@ -224,7 +227,7 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
             </div>
             <PillButton
                 tone="outline"
-                onClick={() => guard(() => router.post('/profil/telegram/test', {}, { preserveScroll: true }))}
+                onClick={() => guard(() => router.post('/profil/notifikasi/test', {}, { preserveScroll: true }))}
             >
                 <Icon icon="mdi:send-outline" width={14} height={14} aria-hidden />
                 Kirim notifikasi tes
