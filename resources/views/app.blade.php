@@ -39,11 +39,6 @@
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])
     @inertiaHead
-    {{-- Cloudflare Web Analytics (manual beacon; only when the token is configured). --}}
-    @if (config('services.cloudflare.web_analytics_token'))
-        <script defer src="https://static.cloudflareinsights.com/beacon.min.js"
-            data-cf-beacon="{{ json_encode(['token' => config('services.cloudflare.web_analytics_token')]) }}"></script>
-    @endif
 </head>
 <body class="bg-surface text-ink antialiased">
     @inertia

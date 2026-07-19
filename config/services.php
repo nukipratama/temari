@@ -60,9 +60,4 @@ return [
         'notify_max_age_days' => (int) env('TELEGRAM_NOTIFY_MAX_AGE_DAYS', 3),
     ],
 
-    'cloudflare' => [
-        // Public Web Analytics beacon token (empty = no beacon rendered).
-        'web_analytics_token' => env('CF_WEB_ANALYTICS_TOKEN'),
-    ],
-
 ];

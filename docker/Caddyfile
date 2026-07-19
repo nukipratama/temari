@@ -69,11 +69,12 @@
 		header X-Frame-Options "DENY"
 		header X-Content-Type-Options "nosniff"
 		header Referrer-Policy "strict-origin-when-cross-origin"
-		# Enforced. script-src stays strict ('self' + Cloudflare's Web Analytics
-		# beacon, added manually as an external script — no unsafe-inline). connect-src
-		# allows the beacon's telemetry POST. mdi icons are bundled offline; fonts via
-		# Google Fonts; style unsafe-inline for lib-injected <style>; img https: for OSM tiles.
-		header Content-Security-Policy "default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		# Enforced. script-src allows inline (Cloudflare's automatic Web Analytics /
+		# Rocket Loader inject inline scripts whose hash changes per page, so they can't
+		# be pinned) plus CF's external beacon host; connect-src allows the beacon POST.
+		# mdi icons are bundled offline; fonts via Google Fonts; style unsafe-inline for
+		# lib-injected <style>; img https: for OSM tiles. All other directives stay strict.
+		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		php_server
 	}
 }
