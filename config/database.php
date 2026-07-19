@@ -209,7 +209,10 @@ return [
             'url' => env('PULSE_REDIS_URL'),
             'host' => env('PULSE_REDIS_HOST', env('REDIS_HOST', '127.0.0.1')),
             'username' => env('PULSE_REDIS_USERNAME'),
-            'password' => env('PULSE_REDIS_PASSWORD'),
+            // Pulse shares the durable `redis` instance (PULSE_REDIS_HOST defaults
+            // to REDIS_HOST), which has a single requirepass = REDIS_PASSWORD. Fall
+            // back to REDIS_PASSWORD so the two can't drift and NOAUTH the daemon.
+            'password' => env('PULSE_REDIS_PASSWORD', env('REDIS_PASSWORD')),
             'port' => env('PULSE_REDIS_PORT', env('REDIS_PORT', '6379')),
             'database' => env('PULSE_REDIS_DB', '2'),
             'max_retries' => env('REDIS_MAX_RETRIES', 3),
