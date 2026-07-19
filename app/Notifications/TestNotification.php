@@ -63,8 +63,10 @@ class TestNotification extends Notification implements ShouldQueue
     public function toWebPush(User $notifiable, Notification $notification): WebPushMessage
     {
         return new WebPushMessage()
-            ->title('Temari')
+            ->title('🔔 Tes notifikasi')
             ->body(TelegramReplies::test())
-            ->icon('/icon-192.png');
+            ->icon('/icon-192.png')
+            // Mirror the real push: high urgency so the test is a truthful delivery signal.
+            ->options(['urgency' => 'high']);
     }
 }

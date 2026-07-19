@@ -97,16 +97,16 @@ it('isOptedIn returns false for a non-notifiable type', function (): void {
     expect(new NotifiableAnalysis()->isOptedIn($analysis, $user))->toBeFalse();
 });
 
-it('formats a post-run message with an emoji label, the content, and a deep link to the activity', function (): void {
+it('formats a post-run message with the title line, a blank line, the content, and a deep link to the activity', function (): void {
     $analysis = Analysis::factory()->make([
         'analysis_type' => AnalysisType::PostRunSpeech,
-        'subject_id' => 123,
+        'subject_id' => 123, // no ActivityDetail → distance-less title
         'content' => 'Pace kamu konsisten banget.',
     ]);
 
     $message = new NotifiableAnalysis()->format($analysis);
 
-    expect($message)->toStartWith('🏃 Pace kamu konsisten banget.')
+    expect($message)->toStartWith("🏃 Lari kamu udah masuk! 🏁\n\nPace kamu konsisten banget.")
         ->and($message)->toContain('Lihat detail lari: ' . route('aktivitas.show', 123));
 });
 
@@ -244,7 +244,7 @@ it('links a weekly recap to the run history page', function (): void {
 
     $message = new NotifiableAnalysis()->format($analysis);
 
-    expect($message)->toStartWith('📊 Minggu ini 28 km.')
+    expect($message)->toStartWith("📊 Rekap minggu lalu udah siap\n\nMinggu ini 28 km.")
         ->and($message)->toContain('Lihat riwayat: ' . route('aktivitas.index'));
 });
 
@@ -257,6 +257,69 @@ it('links a monthly recap to its month on the calendar', function (): void {
 
     $message = new NotifiableAnalysis()->format($analysis);
 
-    expect($message)->toStartWith('🗓️ Bulan ini 120 km.')
+    expect($message)->toStartWith("🗓️ Rekap Juni udah siap\n\nBulan ini 120 km.")
         ->and($message)->toContain('Lihat kalender: ' . route('kalender', ['month' => '2026-06']));
+});
+
+// --- title() ---------------------------------------------------------------
+
+it('builds a post-run title carrying the run distance', function (): void {
+    $activity = Activity::factory()->create();
+    ActivityDetail::factory()->for($activity)->create(['distance' => 8230]); // 8.23 km → 8,2K
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_id' => $activity->id,
+    ]);
+
+    expect(new NotifiableAnalysis()->title($analysis))->toBe('🏃 Lari 8,2K kamu udah masuk! 🏁');
+});
+
+it('drops the ",0" so a whole-kilometre run reads as "5K"', function (): void {
+    $activity = Activity::factory()->create();
+    ActivityDetail::factory()->for($activity)->create(['distance' => 5000]);
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_id' => $activity->id,
+    ]);
+
+    expect(new NotifiableAnalysis()->title($analysis))->toBe('🏃 Lari 5K kamu udah masuk! 🏁');
+});
+
+it('falls back to a distance-less post-run title when the activity has no detail', function (): void {
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_id' => 999999,
+    ]);
+
+    expect(new NotifiableAnalysis()->title($analysis))->toBe('🏃 Lari kamu udah masuk! 🏁');
+});
+
+it('builds a monthly-recap title naming the Indonesian month', function (): void {
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-07',
+    ]);
+
+    expect(new NotifiableAnalysis()->title($analysis))->toBe('🗓️ Rekap Juli udah siap');
+});
+
+it('falls back to the label when the monthly-recap discriminator is missing', function (): void {
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => null,
+    ]);
+
+    expect(new NotifiableAnalysis()->title($analysis))->toBe('🗓️ Rekap bulanan udah siap');
+});
+
+it('uses the static label for the weekly recap title', function (): void {
+    $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
+
+    expect(new NotifiableAnalysis()->title($analysis))->toBe('📊 Rekap minggu lalu udah siap');
+});
+
+it('falls back to the app name for a non-notifiable type', function (): void {
+    $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::DailyGreeting]);
+
+    expect(new NotifiableAnalysis()->title($analysis))->toBe('Temari');
 });
