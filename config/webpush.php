@@ -9,7 +9,10 @@ return [
      * These keys must be safely stored and should not change.
      */
     'vapid' => [
-        'subject' => env('VAPID_SUBJECT'),
+        // The VAPID subject identifies the sender to the push service; the spec
+        // wants a mailto: or https: URI, so it defaults to the app URL when
+        // VAPID_SUBJECT isn't set (or is left blank).
+        'subject' => env('VAPID_SUBJECT') ?: env('APP_URL'),
         'public_key' => env('VAPID_PUBLIC_KEY'),
         'private_key' => env('VAPID_PRIVATE_KEY'),
         'pem_file' => env('VAPID_PEM_FILE'),
