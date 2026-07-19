@@ -24,7 +24,7 @@ it('requires authentication', function (): void {
 it('force-sends the push when the monthly recap is done', function (): void {
     Notification::fake();
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_monthly_recap' => false]);
+    TelegramConnection::factory()->for($user)->create();
     $analysis = doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'Bulan ini 120 km.');
 
     $this->actingAs($user)

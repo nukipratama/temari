@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\Channels\TelegramChannel;
@@ -17,14 +18,14 @@ function streakVia(User $user): array
 
 it('routes to Telegram for a connected, weekly-opted-in user', function (): void {
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => true]);
+    TelegramConnection::factory()->for($user)->create();
 
     expect(streakVia($user))->toBe([TelegramChannel::class]);
 });
 
 it('routes nowhere for the demo user', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
-    TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => true]);
+    TelegramConnection::factory()->for($user)->create();
 
     expect(streakVia($user))->toBe([]);
 });
@@ -35,14 +36,15 @@ it('routes nowhere without a connection', function (): void {
 
 it('routes nowhere over a revoked connection', function (): void {
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->revoked()->create(['notify_weekly_recap' => true]);
+    TelegramConnection::factory()->for($user)->revoked()->create();
 
     expect(streakVia($user))->toBe([]);
 });
 
 it('routes nowhere when weekly recap is opted out', function (): void {
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_weekly_recap' => false]);
+    TelegramConnection::factory()->for($user)->create();
+    NotificationPreference::factory()->for($user)->create(['weekly_recap' => false]);
 
     expect(streakVia($user))->toBe([]);
 });

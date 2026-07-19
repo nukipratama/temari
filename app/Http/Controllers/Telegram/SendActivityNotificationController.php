@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 /**
  * Manual "Kirim ke Telegram" on a run's detail page: pushes that run's post-run
  * narration to the owner's Telegram on demand. A manual override -- it ignores
- * the notify_post_run toggle and the once-only delivery guard (force: true), so
+ * the post-run opt-in and the once-only delivery guard (force: true), so
  * it can be re-sent, but still requires a Done narration and a connection (the
  * job enforces the connection / demo guards).
  */

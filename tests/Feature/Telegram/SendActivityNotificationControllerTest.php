@@ -27,7 +27,7 @@ it('requires authentication', function (): void {
 it('force-sends the push when the post-run speech is done', function (): void {
     Notification::fake();
     $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['notify_post_run' => false]);
+    TelegramConnection::factory()->for($user)->create();
     $activity = Activity::factory()->for($user)->create();
     $analysis = doneAnalysisFor(Activity::class, $activity->id, AnalysisType::PostRunSpeech, content: 'Mantap!');
 
