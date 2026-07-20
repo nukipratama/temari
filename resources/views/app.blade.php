@@ -2,7 +2,10 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{-- viewport-fit=cover is what makes env(safe-area-inset-*) resolve to real
+         values on a notched iOS device; without it they are all 0 and the
+         safe-area padding on the bottom nav / top bar is silently inert. --}}
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title inertia>{{ config('app.name', 'Temari') }}</title>
 

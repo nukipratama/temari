@@ -174,14 +174,36 @@
     --container-page-2xl: 1680px;
 }
 
-/* Mobile horizontal-overflow safety net. Cards or decorative elements
-   that nudge past the viewport (rings, gradients, abs-positioned blobs)
-   would otherwise trigger horizontal page scroll on iPhone-SE-sized
-   devices. `overflow-x: clip` blocks the scroll without breaking
-   sticky/fixed descendants the way `overflow-x: hidden` would. */
+/* `-webkit-tap-highlight-color: transparent` drops the grey flash Safari
+   paints over a tapped element — one of the loudest "this is a webview"
+   tells. Safe only because tappables carry their own press feedback (the
+   `pressShrink` scale, see lib/motion.ts); do not remove that without
+   restoring a highlight here. */
+html {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Two document-level guards:
+
+   - `overflow-x: clip` is the mobile horizontal-overflow safety net. Cards
+     or decorative elements that nudge past the viewport (rings, gradients,
+     abs-positioned blobs) would otherwise trigger horizontal page scroll on
+     iPhone-SE-sized devices. `clip` blocks the scroll without breaking
+     sticky/fixed descendants the way `hidden` would.
+   - `overscroll-behavior-y: none` kills the iOS rubber-band bounce past the
+     top/bottom of the document, and with it the accidental browser
+     pull-to-refresh. That reload is especially jarring here: the app is
+     all-dynamic and deliberately uncached, so an accidental pull re-runs
+     every controller.
+
+   Deliberately NOT global: `touch-action` (kills double-tap zoom, an a11y
+   regression — scoped to controls instead), `scroll-behavior: smooth`
+   (fights Inertia's scroll-to-top and reduced-motion), and
+   `user-select: none` (would break copying run stats). */
 html,
 body {
     overflow-x: clip;
+    overscroll-behavior-y: none;
 }
 
 /* Hide native scrollbar — used on horizontal strips where explicit

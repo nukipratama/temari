@@ -26,4 +26,11 @@ describe('MobileTopBar', () => {
         render(<MobileTopBar />);
         expect(screen.getByLabelText('Strava belum nyambung')).toBeInTheDocument();
     });
+
+    // Installed as a PWA the page runs edge-to-edge, so this bar has to pad
+    // itself past the notch or content slides under the status bar.
+    it('pads the top by the safe-area inset so content clears the notch', () => {
+        const { container } = render(<MobileTopBar />);
+        expect(container.querySelector('header')).toHaveClass('pt-[max(0.75rem,env(safe-area-inset-top))]');
+    });
 });
