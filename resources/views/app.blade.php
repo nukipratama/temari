@@ -25,7 +25,13 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
-    <meta name="theme-color" content="#1F2747">
+    {{-- Under `apple-mobile-web-app-status-bar-style: default` iOS owns the
+         status-bar strip around the notch and fills it with theme-color, so
+         this must track MobileTopBar's cream-deep. It stays a fixed cream
+         rather than following the dawn-shift, because the header it butts
+         against is cream-deep at every hour; drifting one and not the other
+         would put a visible seam under the notch. --}}
+    <meta name="theme-color" content="#EEE7D6">
 
     {{-- PWA: installable + standalone; push works once added to the Home Screen via Safari. --}}
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
@@ -33,6 +39,27 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Temari">
+
+    {{-- Launch images for a cold standalone start. Without these iOS holds a
+         white screen until first paint, which on a cream app reads as a flash.
+         Keyed by CSS device size + DPR; regenerate the PNGs with
+         `scripts/build-splash-screens.php`. --}}
+    @foreach ([
+        ['w' => 390, 'h' => 844, 'dpr' => 3],
+        ['w' => 393, 'h' => 852, 'dpr' => 3],
+        ['w' => 430, 'h' => 932, 'dpr' => 3],
+        ['w' => 428, 'h' => 926, 'dpr' => 3],
+        ['w' => 375, 'h' => 812, 'dpr' => 3],
+        ['w' => 414, 'h' => 896, 'dpr' => 2],
+        ['w' => 375, 'h' => 667, 'dpr' => 2],
+    ] as $s)
+        <link
+            rel="apple-touch-startup-image"
+            media="screen and (device-width: {{ $s['w'] }}px) and (device-height: {{ $s['h'] }}px) and (-webkit-device-pixel-ratio: {{ $s['dpr'] }}) and (orientation: portrait)"
+            href="{{ asset('splash/splash-'.($s['w'] * $s['dpr']).'x'.($s['h'] * $s['dpr']).'.png') }}"
+        >
+    @endforeach
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link

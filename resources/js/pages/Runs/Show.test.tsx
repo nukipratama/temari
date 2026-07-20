@@ -316,13 +316,13 @@ describe('Runs/Show', () => {
     it('hides the map area when no polyline is present', () => {
         const noPolyline = { ...detail, summary_polyline: null };
         const { container } = renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noPolyline }, detail: noPolyline });
-        expect(container.querySelector('.animate-pulse')).toBeNull();
+        expect(container.querySelector('.skeleton, .skeleton-on-sky')).toBeNull();
     });
 
     it('shows the map suspense fallback when a polyline IS present', () => {
         const withPolyline = { ...detail, summary_polyline: 'abc123' };
         const { container } = renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withPolyline }, detail: withPolyline });
-        expect(container.querySelector('.animate-pulse')).not.toBeNull();
+        expect(container.querySelector('.skeleton, .skeleton-on-sky')).not.toBeNull();
     });
 
     it('renders the splits per-km section + highlights the fastest km', () => {

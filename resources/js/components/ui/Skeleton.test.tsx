@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import Skeleton from './Skeleton';
 
 describe('Skeleton', () => {
-    it('renders a decorative pulsing block', () => {
+    it('renders a decorative shimmering block', () => {
         const { container } = render(<Skeleton />);
         const el = container.firstElementChild;
-        expect(el).toHaveClass('animate-pulse');
+        expect(el).toHaveClass('skeleton');
         expect(el).toHaveAttribute('aria-hidden');
     });
 

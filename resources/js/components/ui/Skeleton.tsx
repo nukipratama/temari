@@ -6,9 +6,10 @@ interface SkeletonProps {
 }
 
 /**
- * A single pulsing placeholder block for loading states. Compose several to
+ * A single shimmering placeholder block for loading states. Compose several to
  * mock a shape; pass sizing via className. Decorative, so it's aria-hidden.
+ * The sweep itself lives in the `.skeleton` class in app.css.
  */
 export default function Skeleton({ className }: Readonly<SkeletonProps>) {
-    return <div aria-hidden className={cn('animate-pulse rounded bg-cream-deep/40', className)} />;
+    return <div aria-hidden className={cn('skeleton rounded', className)} />;
 }

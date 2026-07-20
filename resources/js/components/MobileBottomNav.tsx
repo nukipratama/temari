@@ -1,6 +1,8 @@
 import { Link, usePage } from "@inertiajs/react";
 import { Icon } from "@iconify/react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
+import { tabIconPop } from "@/lib/motion";
 import { activeTabFromUrl } from "./TopNav";
 import type { SharedProps } from "@/types/inertia";
 
@@ -44,12 +46,18 @@ export default function MobileBottomNav() {
             key={item.id}
             href={item.href}
             className={cn(
-              "pressable focus-ring-on-sky flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition",
-              isActive ? "text-horizon" : "text-cream/[0.55]",
+              "pressable focus-ring-on-sky flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors",
+              isActive ? "text-horizon" : "text-ink-on-sky",
             )}
             aria-current={isActive ? "page" : undefined}
           >
-            <Icon icon={item.icon} width={20} height={20} aria-hidden />
+            <motion.span
+              variants={tabIconPop}
+              animate={isActive ? "active" : "idle"}
+              className="block"
+            >
+              <Icon icon={item.icon} width={20} height={20} aria-hidden />
+            </motion.span>
             <span
               className={cn(
                 "text-[11px]",

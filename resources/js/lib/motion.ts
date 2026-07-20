@@ -128,3 +128,16 @@ export const FIDGET_PATTERNS: ReadonlyArray<FidgetPattern> = [
 ];
 
 export const pressShrink = { scale: 0.97 };
+
+// Bottom-nav tab icon. iOS tab bars carry the active state with tint alone and
+// no travelling indicator, so the only motion here is a short pop on the icon
+// that just became active — enough to confirm the tap landed, not a slider.
+// The keyframe array replays whenever the variant flips, so it fires on each
+// tab change rather than only on mount.
+export const tabIconPop: Variants = {
+    idle: { scale: 1 },
+    active: {
+        scale: [1, 1.18, 1],
+        transition: { duration: 0.34, ease: LIVELY_EASE, times: [0, 0.4, 1] },
+    },
+};

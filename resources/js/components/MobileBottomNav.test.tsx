@@ -25,4 +25,13 @@ describe('MobileBottomNav', () => {
         expect(screen.getByText('Riwayat').closest('a')).toHaveAttribute('href', '/aktivitas');
         expect(screen.getByText('Aku').closest('a')).toHaveAttribute('href', '/profil');
     });
+
+    // ink-on-sky is the design system's muted tone for dark sky panels; the
+    // old text-cream/55 it replaced sat at roughly 2.2:1 against the bar.
+    it('tints inactive tabs with the readable on-sky muted tone', () => {
+        setMockPage({}, '/kartu');
+        render(<MobileBottomNav />);
+        expect(screen.getByText('Koleksi').closest('a')).toHaveClass('text-horizon');
+        expect(screen.getByText('Aku').closest('a')).toHaveClass('text-ink-on-sky');
+    });
 });
