@@ -43,10 +43,13 @@ export default function SettingsRow({
     );
 
     const baseClasses = 'focus-ring -mx-2 flex items-center justify-between gap-3 rounded-xl p-2 text-left transition hover:bg-cream-deep/40';
+    // Only the interactive branches get press feedback; the plain-<div> row
+    // below is a static readout and must not pretend to be tappable.
+    const tappableClasses = cn(baseClasses, 'pressable cursor-pointer');
 
     if (href) {
         return (
-            <Link href={href} className={cn(baseClasses, 'cursor-pointer')}>
+            <Link href={href} className={tappableClasses}>
                 {content}
             </Link>
         );
@@ -54,7 +57,7 @@ export default function SettingsRow({
 
     if (externalHref) {
         return (
-            <a href={externalHref} className={cn(baseClasses, 'cursor-pointer')}>
+            <a href={externalHref} className={tappableClasses}>
                 {content}
             </a>
         );
@@ -63,7 +66,7 @@ export default function SettingsRow({
     if (onClick) {
         return (
             <>
-                <button type="button" onClick={onClick} className={cn(baseClasses, 'w-full text-left')}>
+                <button type="button" onClick={onClick} className={cn(tappableClasses, 'w-full text-left')}>
                     {content}
                 </button>
                 {children}

@@ -231,6 +231,20 @@ body {
     .focus-ring-on-sky {
         @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-sky;
     }
+    /* Tactile press feedback for any tappable control — the local, instant
+       "I felt that" a native app gives. Carries the whole weight of touch
+       confirmation now that the global tap highlight is off (see the
+       -webkit-tap-highlight-color rule above), so removing it from a control
+       leaves that control feeling dead on touch.
+
+       `touch-action: manipulation` is scoped here rather than set globally:
+       it drops the ~300ms double-tap-zoom wait on controls while leaving
+       double-tap zoom intact on content, which a global rule would kill.
+       `motion-safe:` keeps the scale out of reduced-motion, matching the
+       app-wide <MotionConfig reducedMotion="user">. */
+    .pressable {
+        @apply touch-manipulation motion-safe:transition-transform motion-safe:duration-100 motion-safe:ease-out motion-safe:active:scale-[0.97];
+    }
     /* ─── Typography role utilities ──────────────────────────────────
        Each role bundles font + size + color so call sites name a role
        instead of hardcoding. The rule they encode: mono = numbers +
