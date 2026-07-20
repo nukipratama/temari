@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#1F2747">
+    <title>Lagi offline · Temari</title>
+    <!--
+        Served by the service worker when a navigation fails with no network.
+        Deliberately standalone: no Vite assets, no fonts, no JS bundle — it has
+        to render when nothing else can be fetched. Colours are the Daybreak
+        tokens inlined, since the stylesheet is exactly what is unavailable.
+    -->
+    <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 2rem max(1.5rem, env(safe-area-inset-left)) max(2rem, env(safe-area-inset-bottom));
+            background: #F1ECDF;
+            color: #1F2747;
+            text-align: center;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        img { width: 96px; height: 96px; }
+        h1 { margin: 0.5rem 0 0; font-size: 1.4rem; font-weight: 600; }
+        p { margin: 0; max-width: 26rem; font-size: 0.9rem; line-height: 1.55; color: #4A4F63; }
+        button {
+            margin-top: 0.75rem;
+            padding: 0.7rem 1.4rem;
+            border: 0;
+            border-radius: 999px;
+            background: #1F2747;
+            color: #FAF6EC;
+            font: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:active { transform: scale(0.97); }
+    </style>
+</head>
+<body>
+    <img src="/icon-192.png" alt="" width="96" height="96">
+    <h1>Lagi gak ada sinyal</h1>
+    <p>Aku belum bisa narik data larimu tanpa koneksi. Coba cek sinyal atau wifi kamu, terus muat ulang ya.</p>
+    <button type="button" onclick="location.reload()">Coba lagi</button>
+</body>
+</html>

@@ -34,7 +34,10 @@
 		file_server
 	}
 
-	@static path /favicon.ico /favicon.svg /robots.txt /apple-touch-icon.png /icon-192.png /icon-512.png /icon-maskable-512.png
+	# /offline.html is the service worker's navigation fallback. It is standalone
+	# (no Vite assets) precisely so it renders when nothing else can be fetched,
+	# so it must be served as a plain file and never routed through PHP.
+	@static path /favicon.ico /favicon.svg /robots.txt /apple-touch-icon.png /icon-192.png /icon-512.png /icon-maskable-512.png /offline.html
 	handle @static {
 		header Cache-Control "public, max-age=604800"
 		file_server
