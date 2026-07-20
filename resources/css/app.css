@@ -181,6 +181,23 @@
    restoring a highlight here. */
 html {
     -webkit-tap-highlight-color: transparent;
+    /* Stop iOS inflating text when a page ends up in landscape. The fluid
+       clamp() type scale already handles sizing; Safari's own bump fights it. */
+    -webkit-text-size-adjust: 100%;
+}
+
+/* Long-pressing app chrome on iOS pops the copy / share callout and starts a
+   text selection, which is the loudest remaining "this is a web page" tell on
+   a tab bar or an icon button. Scoped to chrome only: run stats, narration and
+   prose stay selectable and copyable (see the user-select note below). */
+nav,
+header,
+button,
+[role='button'],
+.pressable {
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 /* Two document-level guards:

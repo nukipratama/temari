@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import MobileTopBar from './MobileTopBar';
 import { makeUser, setMockPage } from '@/test/setup';
@@ -32,5 +32,23 @@ describe('MobileTopBar', () => {
     it('pads the top by the safe-area inset so content clears the notch', () => {
         const { container } = render(<MobileTopBar />);
         expect(container.querySelector('header')).toHaveClass('pt-[max(0.75rem,env(safe-area-inset-top))]');
+    });
+
+    it('sticks to the top so content scrolls underneath it', () => {
+        const { container } = render(<MobileTopBar />);
+        expect(container.querySelector('header')).toHaveClass('sticky', 'top-0');
+    });
+
+    it('hides the hairline at rest and shows it once scrolled', () => {
+        const { container } = render(<MobileTopBar />);
+        expect(container.querySelector('header')).toHaveClass('border-transparent');
+
+        act(() => {
+            window.scrollY = 120;
+            window.dispatchEvent(new Event('scroll'));
+        });
+
+        expect(container.querySelector('header')).toHaveClass('border-line');
+        window.scrollY = 0;
     });
 });
