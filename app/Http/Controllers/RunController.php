@@ -17,6 +17,7 @@ use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -123,12 +124,28 @@ class RunController extends Controller
         $distanceFilter = $this->resolveDistanceBand($request->query('dist'));
         $searchFilter = $this->resolveSearch($request->query('q'));
         $sort = $this->resolveSort($request->query('sort'));
+        $weekFilter = $this->resolveWeek($request->query('week'));
+
+        // A deep link to one week (the weekly-recap notification) has to reach
+        // that week regardless of how far back it is, so it overrides both the
+        // requested range and the auto-widen.
+        if ($weekFilter !== null) {
+            $rangeStart = $weekFilter->copy()->subDays(6);
+            $rangeAutoWidened = false;
+        }
 
         $runsQuery = Activity::query()
             ->where('user_id', $user->id)
-            ->whereHas('detail', function ($q) use ($rangeStart, $distanceFilter, $searchFilter) {
+            ->whereHas('detail', function ($q) use ($rangeStart, $weekFilter, $distanceFilter, $searchFilter) {
                 if ($rangeStart !== null) {
                     $q->where('start_date_local', '>=', $rangeStart);
+                }
+
+                // Upper bound for a single-week deep link (the lower bound comes
+                // from $rangeStart above). `<` the next day so the whole Sunday
+                // is included whatever time the run started.
+                if ($weekFilter !== null) {
+                    $q->where('start_date_local', '<', $weekFilter->copy()->addDay());
                 }
 
                 if ($distanceFilter !== null) {
@@ -175,6 +192,9 @@ class RunController extends Controller
         $weeklySnapshots = WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->when($rangeStart !== null, fn ($q) => $q->where('week_ending', '>=', $rangeStart))
+            // A week deep link shows exactly that week's recap, not every recap
+            // since it.
+            ->when($weekFilter !== null, fn ($q) => $q->where('week_ending', '=', $weekFilter))
             ->orderByDesc('week_ending')
             ->limit(self::MAX_WEEKS)
             ->get();
@@ -205,6 +225,7 @@ class RunController extends Controller
             'distanceFilter' => $distanceFilter,
             'searchFilter' => $searchFilter,
             'sortMode' => $sort,
+            'weekFilter' => $weekFilter?->toDateString(),
             'rangeStart' => $rangeStart?->toDateString(),
             'rangeAutoWidened' => $rangeAutoWidened,
             'runsTruncated' => $runsTruncated,
@@ -381,6 +402,25 @@ class RunController extends Controller
             array_unique(explode(',', $raw)),
             self::MOODS,
         ));
+    }
+
+    /**
+     * The `?week=YYYY-MM-DD` deep-link target, normalised to that week's Sunday
+     * (WeeklySnapshot.week_ending), or null when absent/malformed. Any date in
+     * the week resolves to the same Sunday, so a link built from a run date
+     * still lands on the right recap.
+     */
+    private function resolveWeek(mixed $raw): ?Carbon
+    {
+        if (! is_string($raw) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) !== 1) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($raw)->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        } catch (InvalidFormatException) {
+            return null;
+        }
     }
 
     /** The requested sort mode, falling back to newest for anything unknown. */

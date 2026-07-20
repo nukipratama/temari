@@ -705,6 +705,50 @@ describe('Riwayat/Jejak', () => {
         });
     });
 
+    // Reached from the weekly-recap notification. Without the note the view
+    // looks like a history that mysteriously lost most of its runs.
+    it('explains the week scope and offers a way back to the full list', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-13T06:00:00')]}
+                rangeFilter="8w"
+                weekFilter="2026-05-17"
+                rangeStart="2026-05-11"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText(/Lagi lihat minggu/)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Lihat semua lari/ })).toHaveAttribute('href', '/aktivitas');
+    });
+
+    it('counts a week-scoped view as filtered', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-13T06:00:00')]}
+                rangeFilter="8w"
+                weekFilter="2026-05-17"
+                rangeStart="2026-05-11"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText(/1 hasil/)).toBeInTheDocument();
+    });
+
+    it('shows no week note on the normal list', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-13T06:00:00')]}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.queryByText(/Lagi lihat minggu/)).not.toBeInTheDocument();
+    });
+
     it('keeps the onboarding empty state when there is no filter and no runs', () => {
         render(
             <RunsIndex

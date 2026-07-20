@@ -60,6 +60,8 @@ interface RunsIndexProps {
     searchFilter?: string | null;
     /** Ordering the server applied. Anything but 'newest' renders a flat list. */
     sortMode?: SortMode;
+    /** Week deep link (that week's Sunday, YYYY-MM-DD), or null. */
+    weekFilter?: string | null;
     rangeStart: string | null;
     /** Server widened the requested range to reach an older run. */
     rangeAutoWidened?: boolean;
@@ -179,6 +181,7 @@ export default function RunsIndex({
     distanceFilter = null,
     searchFilter = null,
     sortMode = DEFAULT_SORT,
+    weekFilter = null,
     rangeAutoWidened = false,
     runsTruncated = false,
     maxRuns = 0,
@@ -294,7 +297,10 @@ export default function RunsIndex({
 
     const hasRuns = runs.length > 0;
     const anyFilterActive =
-        selectedMoods.size > 0 || distanceFilter !== null || (searchFilter ?? '') !== '';
+        selectedMoods.size > 0 ||
+        distanceFilter !== null ||
+        (searchFilter ?? '') !== '' ||
+        weekFilter !== null;
     // Ranking globally is incompatible with week buckets (a weekly recap card
     // only means anything in date order), so a non-default sort switches the
     // page to a flat list.
@@ -329,6 +335,8 @@ export default function RunsIndex({
                 </header>
 
                 <JourneyStrip match={journeyMatch} className="mt-6 mb-6" />
+
+                {weekFilter !== null && <WeekFocusNote weekEnding={weekFilter} />}
 
                 {hasRuns && (
                     <div className="space-y-8">
@@ -612,6 +620,30 @@ function RangeWidenedNote({ rangeFilter }: Readonly<{ rangeFilter: RangeFilterVa
         <Card tone="cream-deep" padding="sm" className="flex items-center gap-2.5">
             <Icon icon="mdi:arrow-expand-horizontal" width={16} height={16} className="shrink-0 text-ink-3" aria-hidden />
             <p className="font-sans text-sm text-ink-2">{message}</p>
+        </Card>
+    );
+}
+
+/**
+ * Shown when the page is scoped to one week, which only happens via a deep link
+ * (the weekly-recap notification). Without it the view would look like a history
+ * that mysteriously lost most of its runs, so it names the week and offers the
+ * way back to the full list.
+ */
+function WeekFocusNote({ weekEnding }: Readonly<{ weekEnding: string }>) {
+    const sunday = new Date(`${weekEnding}T00:00:00`);
+    const monday = new Date(sunday);
+    monday.setDate(monday.getDate() - 6);
+
+    return (
+        <Card tone="cream-deep" padding="sm" className="mb-6 flex flex-wrap items-center gap-2.5">
+            <Icon icon="mdi:calendar-week" width={16} height={16} className="shrink-0 text-ink-3" aria-hidden />
+            <p className="font-sans text-sm text-ink-2">
+                Lagi lihat minggu {formatIdDate(monday.toISOString())} - {formatIdDate(sunday.toISOString())}.
+            </p>
+            <BackLink href="/aktivitas" tone="accent">
+                Lihat semua lari
+            </BackLink>
         </Card>
     );
 }

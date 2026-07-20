@@ -386,6 +386,91 @@ it('applies filters and sort together', function (): void {
             ->where('runs.0.detail.name', 'Sedang'));
 });
 
+describe('week deep link', function (): void {
+    it('narrows to exactly that week and reports it', function (): void {
+        $user = User::factory()->create();
+        // Week ending Sunday 2026-05-17 runs Mon 11th - Sun 17th.
+        foreach ([['In week', '2026-05-13'], ['Also in week', '2026-05-17'], ['Next week', '2026-05-18'], ['Week before', '2026-05-10']] as [$name, $date]) {
+            $activity = Activity::factory()->for($user)->analyzed()->create();
+            ActivityDetail::factory()->for($activity)->create(['name' => $name, 'start_date_local' => "{$date} 06:00:00"]);
+        }
+
+        $this->actingAs($user)->get('/aktivitas?week=2026-05-17')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('weekFilter', '2026-05-17')
+                ->has('runs', 2));
+    });
+
+    // The link is built from a week_ending date, but any day in that week should
+    // resolve to the same Sunday so a hand-edited link still lands correctly.
+    it('normalises any date in the week to that week Sunday', function (): void {
+        $user = User::factory()->create();
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => '2026-05-13 06:00:00']);
+
+        $this->actingAs($user)->get('/aktivitas?week=2026-05-13')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('weekFilter', '2026-05-17')
+                ->has('runs', 1));
+    });
+
+    // A recap can be months old; the deep link must reach it regardless of the
+    // default range window.
+    it('reaches a week far outside the default range window', function (): void {
+        $user = User::factory()->create();
+        $old = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($old)->create([
+            'name' => 'Ancient',
+            'start_date_local' => Carbon::now()->subDays(300)->toDateTimeString(),
+        ]);
+        $weekEnding = Carbon::now()->subDays(300)->endOfWeek(Carbon::SUNDAY)->toDateString();
+
+        $this->actingAs($user)->get("/aktivitas?week={$weekEnding}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('runs', 1)
+                ->where('runs.0.detail.name', 'Ancient')
+                // The deep link is explicit, so it isn't an auto-widen.
+                ->where('rangeAutoWidened', false));
+    });
+
+    it('shows only that week recap snapshot', function (): void {
+        $user = User::factory()->create();
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-24']);
+
+        $this->actingAs($user)->get('/aktivitas?week=2026-05-17')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('weeklySnapshots', 1)
+                ->where('weeklySnapshots.0.week_ending', fn (string $w): bool => str_starts_with($w, '2026-05-17')));
+    });
+
+    it('ignores a malformed week rather than erroring', function (): void {
+        $user = User::factory()->create();
+        distanceFixtures($user);
+
+        foreach (['not-a-date', '2026-13-45', ''] as $bad) {
+            $this->actingAs($user)->get('/aktivitas?week='.urlencode($bad))
+                ->assertSuccessful()
+                ->assertInertia(fn (Assert $page) => $page->where('weekFilter', null));
+        }
+    });
+
+    it('still applies the other filters inside the week', function (): void {
+        $user = User::factory()->create();
+        foreach ([['Short', 3_000], ['Long', 25_000]] as [$name, $metres]) {
+            $activity = Activity::factory()->for($user)->analyzed()->create();
+            ActivityDetail::factory()->for($activity)->create([
+                'name' => $name, 'distance' => $metres, 'start_date_local' => '2026-05-13 06:00:00',
+            ]);
+        }
+
+        $this->actingAs($user)->get('/aktivitas?week=2026-05-17&dist=21up')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('runs', 1)
+                ->where('runs.0.detail.name', 'Long'));
+    });
+});
+
 it('auto-widens the range and flags it when the newest run is outside the default window', function (): void {
     $user = User::factory()->create();
     $ancient = Activity::factory()->for($user)->analyzed()->create();

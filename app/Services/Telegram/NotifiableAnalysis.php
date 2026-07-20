@@ -219,10 +219,28 @@ class NotifiableAnalysis
     {
         return match ($analysis->analysis_type) {
             AnalysisType::PostRunSpeech => route('aktivitas.show', $analysis->subject_id),
-            AnalysisType::WeeklyRecap => route('aktivitas.index'),
+            AnalysisType::WeeklyRecap => $this->weeklyRecapUrl($analysis),
             AnalysisType::MonthlyRecap => route('kalender', ['month' => $analysis->discriminator]),
             default => null,
         };
+    }
+
+    /**
+     * Deep link straight to the week the recap is about, rather than the bare
+     * run history: tapping "your weekly recap is ready" should land on *that*
+     * week, the way the monthly recap already lands on its month. Falls back to
+     * the unfiltered list when the snapshot has gone (a deleted week shouldn't
+     * make the notification a dead end).
+     */
+    private function weeklyRecapUrl(Analysis $analysis): string
+    {
+        $weekEnding = WeeklySnapshot::query()
+            ->whereKey($analysis->subject_id)
+            ->value('week_ending');
+
+        return $weekEnding === null
+            ? route('aktivitas.index')
+            : route('aktivitas.index', ['week' => Carbon::parse($weekEnding)->toDateString()]);
     }
 
     /**
