@@ -9,6 +9,7 @@ import Card from '@/components/ui/Card';
 import PillButton from '@/components/ui/PillButton';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
+import { useLastFilter } from '@/hooks/useLastFilter';
 import PageHero from '@/components/ui/PageHero';
 import RiwayatFilter, { type MoodOption, type RangeOption } from '@/components/riwayat/RiwayatFilter';
 import ActiveFilterChips, { type ActiveChip } from '@/components/riwayat/ActiveFilterChips';
@@ -349,6 +350,13 @@ export default function RunsIndex({
         return list;
     }, [weekFilter, rangeFilter, sortMode, distanceFilter, selectedMoods, searchFilter, visitWithFilters]);
 
+    // Remembered, but never applied behind the user's back — see useLastFilter.
+    const { resumable, forget } = useLastFilter(filterQuery(current));
+    const resumeSummary = useMemo(
+        () => (resumable === null ? null : summariseQuery(resumable)),
+        [resumable],
+    );
+
     const hasRuns = runs.length > 0;
     const anyFilterActive =
         selectedMoods.size > 0 ||
@@ -387,6 +395,19 @@ export default function RunsIndex({
                         />
                     </div>
                     <ActiveFilterChips chips={chips} onClearAll={resetFilters} />
+                    {resumable !== null && resumeSummary !== null && (
+                        <ResumeFilterChip
+                            summary={resumeSummary}
+                            onResume={() =>
+                                router.get('/aktivitas', resumable, {
+                                    preserveScroll: true,
+                                    preserveState: true,
+                                    only: RANGE_RELOAD_PROPS,
+                                })
+                            }
+                            onDismiss={forget}
+                        />
+                    )}
                 </header>
 
                 <JourneyStrip match={journeyMatch} className="mt-6 mb-6" />
@@ -695,6 +716,64 @@ function RangeWidenedNote({ rangeFilter }: Readonly<{ rangeFilter: RangeFilterVa
             <Icon icon="mdi:arrow-expand-horizontal" width={16} height={16} className="shrink-0 text-ink-3" aria-hidden />
             <p className="font-sans text-sm text-ink-2">{message}</p>
         </Card>
+    );
+}
+
+/**
+ * Human summary of a saved filter query, so the resume offer says what it would
+ * apply rather than "your last filter". Order matches the popover's sections.
+ */
+function summariseQuery(query: Record<string, string>): string | null {
+    const parts: string[] = [];
+
+    if (query.week) parts.push('satu minggu');
+    if (query.range) {
+        parts.push(RANGE_FILTER_OPTIONS.find((o) => o.value === query.range)?.label ?? query.range);
+    }
+    if (query.sort) {
+        parts.push(SORT_OPTIONS.find((o) => o.value === query.sort)?.label ?? query.sort);
+    }
+    if (query.dist) {
+        parts.push(DISTANCE_OPTIONS.find((o) => o.value === query.dist)?.label ?? query.dist);
+    }
+    if (query.mood) {
+        const moods = query.mood.split(',').filter((m): m is Mood => MOOD_ORDER.includes(m as Mood));
+        if (moods.length > 0) parts.push(moods.map((m) => MOOD_LABEL[m]).join(', '));
+    }
+    if (query.q) parts.push(`"${query.q}"`);
+
+    return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+/**
+ * One-tap offer to pick up the filter the user last used. Deliberately an offer
+ * rather than an auto-apply: landing on a silently pre-filtered list reads as a
+ * history that lost runs. Dismissing forgets it, so the row can't nag.
+ */
+function ResumeFilterChip({
+    summary,
+    onResume,
+    onDismiss,
+}: Readonly<{ summary: string; onResume: () => void; onDismiss: () => void }>) {
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <button
+                type="button"
+                onClick={onResume}
+                className="pressable focus-ring inline-flex items-center gap-1.5 rounded-full border border-line/60 bg-surface-warm py-1 pl-3 pr-3.5 text-xs font-medium text-ink-2"
+            >
+                <Icon icon="mdi:history" width={13} height={13} aria-hidden />
+                Lanjutkan: {summary}
+            </button>
+            <button
+                type="button"
+                onClick={onDismiss}
+                aria-label="Lupakan filter terakhir"
+                className="focus-ring rounded px-1 text-xs font-medium text-ink-3 hover:text-ink-2"
+            >
+                <Icon icon="mdi:close" width={13} height={13} aria-hidden />
+            </button>
+        </div>
     );
 }
 

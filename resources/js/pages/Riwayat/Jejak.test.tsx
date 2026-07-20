@@ -855,6 +855,78 @@ describe('Riwayat/Jejak', () => {
         });
     });
 
+    // Remembered, but never applied behind the user's back: landing on a
+    // silently pre-filtered list reads as a history that lost runs.
+    describe('resume last filter', () => {
+        const KEY = 'temari:riwayat:last-filter';
+
+        afterEach(() => window.localStorage.clear());
+
+        it('offers to resume a saved filter, naming what it would apply', () => {
+            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala', dist: '21up' }));
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            expect(screen.getByText(/Lanjutkan: Half ke atas · Nyala/)).toBeInTheDocument();
+        });
+
+        it('does not apply it until the user taps', () => {
+            vi.mocked(router.get).mockReset();
+            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            expect(router.get).not.toHaveBeenCalled();
+
+            fireEvent.click(screen.getByText(/Lanjutkan:/));
+            expect(router.get).toHaveBeenCalledWith('/aktivitas', { mood: 'nyala' }, expect.anything());
+        });
+
+        it('hides the offer once a filter is active', () => {
+            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    moodFilter={['enteng']}
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            expect(screen.queryByText(/Lanjutkan:/)).not.toBeInTheDocument();
+        });
+
+        it('can be dismissed so it cannot nag', () => {
+            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            fireEvent.click(screen.getByLabelText('Lupakan filter terakhir'));
+
+            expect(screen.queryByText(/Lanjutkan:/)).not.toBeInTheDocument();
+            expect(window.localStorage.getItem(KEY)).toBeNull();
+        });
+    });
+
     it('keeps the onboarding empty state when there is no filter and no runs', () => {
         render(
             <RunsIndex
