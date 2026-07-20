@@ -167,7 +167,7 @@ describe('Riwayat/Jejak', () => {
                     subject_id: 1,
                     discriminator: null,
                 },
-                telegram_retry_after_seconds: null,
+                notification_retry_after_seconds: null,
             },
         ];
         render(
@@ -213,7 +213,7 @@ describe('Riwayat/Jejak', () => {
                     subject_id: 1,
                     discriminator: null,
                 },
-                telegram_retry_after_seconds: null,
+                notification_retry_after_seconds: null,
             },
         ];
         render(
@@ -261,7 +261,7 @@ describe('Riwayat/Jejak', () => {
                     subject_id: 1,
                     discriminator: null,
                 },
-                telegram_retry_after_seconds: null,
+                notification_retry_after_seconds: null,
             },
         ];
         render(
@@ -300,7 +300,7 @@ describe('Riwayat/Jejak', () => {
             subject_id: 7,
             discriminator: null,
         },
-        telegram_retry_after_seconds: null,
+        notification_retry_after_seconds: null,
     };
 
     it('shows a muted weekly recap Telegram button that nudges (no send) when not connected', () => {
@@ -314,11 +314,11 @@ describe('Riwayat/Jejak', () => {
                 weeklySnapshots={[doneWeekSnapshot]}
             />,
         );
-        fireEvent.click(screen.getByText('Kirim ke Telegram'));
+        fireEvent.click(screen.getByText('Kirim notifikasi'));
         expect(router.post).not.toHaveBeenCalled();
     });
 
-    it('force-sends the weekly recap to Telegram when connected and the button is clicked', () => {
+    it('force-sends the weekly recap when a channel is wired and the button is clicked', () => {
         vi.mocked(router.post).mockReset();
         setMockPage({
             auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
@@ -335,9 +335,9 @@ describe('Riwayat/Jejak', () => {
                 weeklySnapshots={[doneWeekSnapshot]}
             />,
         );
-        fireEvent.click(screen.getByText('Kirim ke Telegram'));
+        fireEvent.click(screen.getByText('Kirim notifikasi'));
         expect(router.post).toHaveBeenCalledWith(
-            '/rekap-mingguan/7/telegram',
+            '/rekap-mingguan/7/kirim',
             {},
             expect.objectContaining({ preserveScroll: true }),
         );
@@ -365,7 +365,7 @@ describe('Riwayat/Jejak', () => {
                 subject_id: 1,
                 discriminator: null,
             },
-            telegram_retry_after_seconds: null,
+            notification_retry_after_seconds: null,
         };
         // Four weekly buckets, one run + one matching snapshot per bucket, each
         // snapshot using a different FormStatus value so every branch in
@@ -425,24 +425,9 @@ describe('Riwayat/Jejak', () => {
         expect(screen.getByTestId('journey-strip')).toBeInTheDocument();
     });
 
-    it('toggles a mood filter and dims runs that do not match it', () => {
-        const runs = [run(101, 'Pagi santai', '2026-05-19T06:00:00')];
-        render(
-            <RunsIndex
-                runs={runs}
-                rangeFilter="8w"
-                rangeStart="2026-04-13"
-                weeklySnapshots={[]}
-            />,
-        );
-
-        fireEvent.click(screen.getByLabelText('Buka filter'));
-        fireEvent.click(screen.getByRole('button', { name: /Enteng/i }));
-
-        expect(screen.getByRole('button', { name: /Enteng/i })).toHaveAttribute('aria-pressed', 'true');
-    });
-
-    it('resets range + mood filters and re-fetches the default range', () => {
+    // The mood filter is server-side and lives in the URL, so toggling one is a
+    // partial reload rather than local state.
+    it('toggles a mood filter by visiting the url with it', () => {
         vi.mocked(router.get).mockReset();
         const runs = [run(101, 'Pagi santai', '2026-05-19T06:00:00')];
         render(
@@ -455,13 +440,503 @@ describe('Riwayat/Jejak', () => {
         );
 
         fireEvent.click(screen.getByLabelText('Buka filter'));
-        fireEvent.click(screen.getByRole('button', { name: /Enteng/i }));
-        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+        // Anchored: the removable chip for the same mood is also a button, but
+        // it is named "Hapus filter Enteng".
+        fireEvent.click(screen.getByRole('button', { name: /^Enteng$/ }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/aktivitas',
-            { range: '12w' },
+            // '8w' is the default range, so it is omitted from the URL.
+            { mood: 'enteng' },
             expect.objectContaining({ preserveScroll: true, preserveState: true }),
         );
+    });
+
+    it('reflects the server-applied mood filter as the pressed state', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                moodFilter={['enteng']}
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        expect(screen.getByRole('button', { name: /^Enteng$/ })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('drops an already-selected mood from the url when toggled off', () => {
+        vi.mocked(router.get).mockReset();
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                moodFilter={['enteng']}
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByRole('button', { name: /^Enteng$/ }));
+
+        expect(router.get).toHaveBeenCalledWith(
+            '/aktivitas',
+            {},
+            expect.objectContaining({ preserveScroll: true, preserveState: true }),
+        );
+    });
+
+    it('resets range + mood filters back to a bare /aktivitas', () => {
+        vi.mocked(router.get).mockReset();
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                moodFilter={['enteng']}
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+        // Defaults are omitted, so the unfiltered view is a clean URL.
+        expect(router.get).toHaveBeenCalledWith(
+            '/aktivitas',
+            {},
+            expect.objectContaining({ preserveScroll: true, preserveState: true }),
+        );
+    });
+
+    it('counts results rather than activities while a mood filter is on', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                moodFilter={['enteng']}
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText(/1 hasil/)).toBeInTheDocument();
+    });
+
+    // A filtered view that matched nothing is a different story from an empty
+    // history: the user has runs, they just narrowed past them.
+    it('shows a no-match state with a way out when a filter matches nothing', () => {
+        vi.mocked(router.get).mockReset();
+        render(
+            <RunsIndex
+                runs={[]}
+                rangeFilter="8w"
+                moodFilter={['enteng']}
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText('Gak ada lari yang cocok.')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /Reset filter/ }));
+        expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+    });
+
+    it('carries every active filter forward when one of them changes', () => {
+        vi.mocked(router.get).mockReset();
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="1y"
+                moodFilter={['enteng']}
+                distanceFilter="21up"
+                searchFilter="tempo"
+                rangeStart="2025-05-19"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByRole('button', { name: /^Di bawah 5K/ }));
+
+        expect(router.get).toHaveBeenCalledWith(
+            '/aktivitas',
+            { range: '1y', mood: 'enteng', dist: '0-5', q: 'tempo' },
+            expect.anything(),
+        );
+    });
+
+    it('clears the distance band when the active one is tapped again', () => {
+        vi.mocked(router.get).mockReset();
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                distanceFilter="21up"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByRole('button', { name: /^Half ke atas/ }));
+
+        expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+    });
+
+    it('submits a search term into the url', () => {
+        vi.mocked(router.get).mockReset();
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        const input = screen.getByLabelText('Cari nama lari');
+        fireEvent.change(input, { target: { value: '  tempo  ' } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+
+        // Trimmed, so a stray space can't produce a different shareable URL.
+        expect(router.get).toHaveBeenCalledWith('/aktivitas', { q: 'tempo' }, expect.anything());
+    });
+
+    it('treats a distance or search filter as active for the result count', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                distanceFilter="21up"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText(/1 hasil/)).toBeInTheDocument();
+    });
+
+    describe('sort', () => {
+        it('puts a non-default sort in the url', () => {
+            vi.mocked(router.get).mockReset();
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            fireEvent.click(screen.getByLabelText('Buka filter'));
+            fireEvent.click(screen.getByRole('button', { name: /^Paling jauh/ }));
+
+            expect(router.get).toHaveBeenCalledWith('/aktivitas', { sort: 'longest' }, expect.anything());
+        });
+
+        it('omits the default sort from the url', () => {
+            vi.mocked(router.get).mockReset();
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    sortMode="longest"
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            fireEvent.click(screen.getByLabelText('Buka filter'));
+            fireEvent.click(screen.getByRole('button', { name: /^Terbaru dulu/ }));
+
+            expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+        });
+
+        // Ranking globally is a mode switch: weekly recap cards only mean
+        // something in date order, so they are absent from the ranked view.
+        it('drops the week grouping for a ranked sort', () => {
+            const runs = [
+                run(101, 'Pagi santai', '2026-05-19T06:00:00'),
+                run(102, 'Sore panjang', '2026-05-12T17:00:00'),
+            ];
+            const { rerender } = render(
+                <RunsIndex runs={runs} rangeFilter="8w" rangeStart="2026-04-13" weeklySnapshots={[]} />,
+            );
+            // Grouped view labels each week.
+            expect(screen.queryByText('Paling jauh')).not.toBeInTheDocument();
+
+            rerender(
+                <RunsIndex
+                    runs={runs}
+                    rangeFilter="8w"
+                    sortMode="longest"
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            // "Paling jauh" now labels both the ranked header and its removable
+            // chip, so assert on the header's own unique text.
+            expect(screen.getByText(/2 lari · diurutkan/)).toBeInTheDocument();
+            // Both runs still render, just without week cards.
+            expect(screen.getByText('Pagi santai')).toBeInTheDocument();
+            expect(screen.getByText('Sore panjang')).toBeInTheDocument();
+        });
+
+        it('resets the sort back to newest along with the filters', () => {
+            vi.mocked(router.get).mockReset();
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    sortMode="fastest"
+                    moodFilter={['enteng']}
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            fireEvent.click(screen.getByLabelText('Buka filter'));
+            fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+            expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+        });
+    });
+
+    // Reached from the weekly-recap notification. Without the note the view
+    // looks like a history that mysteriously lost most of its runs.
+    it('explains the week scope and offers a way back to the full list', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-13T06:00:00')]}
+                rangeFilter="8w"
+                weekFilter="2026-05-17"
+                rangeStart="2026-05-11"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText(/Lagi lihat minggu/)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Lihat semua lari/ })).toHaveAttribute('href', '/aktivitas');
+    });
+
+    it('counts a week-scoped view as filtered', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-13T06:00:00')]}
+                rangeFilter="8w"
+                weekFilter="2026-05-17"
+                rangeStart="2026-05-11"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText(/1 hasil/)).toBeInTheDocument();
+    });
+
+    it('shows no week note on the normal list', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-13T06:00:00')]}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.queryByText(/Lagi lihat minggu/)).not.toBeInTheDocument();
+    });
+
+    // Real filtering removes non-matching runs, so a week loses the context the
+    // old dimmed rows conveyed. The snapshot's own total names the gap.
+    describe('hidden-run count', () => {
+        const weekSnapshot = (runs: number | null, isCurrent = false) => [{
+            id: 1,
+            week_ending: '2026-05-24',
+            distance_km: 35.5,
+            runs,
+            weekly_trimp: 320,
+            atl_7d: 44.5,
+            ctl_42d: 42,
+            form: -2.5,
+            form_status: 'optimal' as const,
+            avg_decoupling: 3.2,
+            monotony: 1.2,
+            strain: 384,
+            is_current_week: isCurrent,
+            is_chain_head: true,
+            recap_analysis: {
+                id: 1,
+                status: 'done' as const,
+                content: 'Minggu konsisten.',
+                type: 'weekly_recap' as const,
+                subject_type: 'weekly_snapshot',
+                subject_id: 1,
+                discriminator: null,
+            },
+            notification_retry_after_seconds: null,
+        }];
+
+        it('names how many runs the filter hid in that week', () => {
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="1y"
+                    moodFilter={['enteng']}
+                    rangeStart="2025-05-19"
+                    weeklySnapshots={weekSnapshot(4)}
+                />,
+            );
+
+            expect(screen.getByText(/3 lari lain di minggu ini gak cocok/)).toBeInTheDocument();
+            expect(screen.getByText('1 dari 4 run')).toBeInTheDocument();
+        });
+
+        it('says nothing when the filter hid nothing', () => {
+            render(
+                <RunsIndex
+                    runs={[run(101, 'A', '2026-05-19T06:00:00'), run(102, 'B', '2026-05-20T06:00:00')]}
+                    rangeFilter="1y"
+                    moodFilter={['enteng']}
+                    rangeStart="2025-05-19"
+                    weeklySnapshots={weekSnapshot(2)}
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+
+        it('says nothing when no filter is active', () => {
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="1y"
+                    rangeStart="2025-05-19"
+                    weeklySnapshots={weekSnapshot(4)}
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+
+        // The in-progress week's snapshot is recomputed by a queued worker, so it
+        // can lag the live bucket and would report a bogus gap.
+        it('stays quiet for the in-progress week', () => {
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="1y"
+                    moodFilter={['enteng']}
+                    rangeStart="2025-05-19"
+                    weeklySnapshots={weekSnapshot(4, true)}
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+
+        it('stays quiet when the snapshot has no run count', () => {
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="1y"
+                    moodFilter={['enteng']}
+                    rangeStart="2025-05-19"
+                    weeklySnapshots={weekSnapshot(null)}
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+    });
+
+    // Remembered, but never applied behind the user's back: landing on a
+    // silently pre-filtered list reads as a history that lost runs.
+    describe('resume last filter', () => {
+        const KEY = 'temari:riwayat:last-filter';
+
+        afterEach(() => window.localStorage.clear());
+
+        it('offers to resume a saved filter, naming what it would apply', () => {
+            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala', dist: '21up' }));
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            expect(screen.getByText(/Lanjutkan: Half ke atas · Nyala/)).toBeInTheDocument();
+        });
+
+        it('does not apply it until the user taps', () => {
+            vi.mocked(router.get).mockReset();
+            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            expect(router.get).not.toHaveBeenCalled();
+
+            fireEvent.click(screen.getByText(/Lanjutkan:/));
+            expect(router.get).toHaveBeenCalledWith('/aktivitas', { mood: 'nyala' }, expect.anything());
+        });
+
+        it('hides the offer once a filter is active', () => {
+            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    moodFilter={['enteng']}
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            expect(screen.queryByText(/Lanjutkan:/)).not.toBeInTheDocument();
+        });
+
+        it('can be dismissed so it cannot nag', () => {
+            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="8w"
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
+            );
+
+            fireEvent.click(screen.getByLabelText('Lupakan filter terakhir'));
+
+            expect(screen.queryByText(/Lanjutkan:/)).not.toBeInTheDocument();
+            expect(window.localStorage.getItem(KEY)).toBeNull();
+        });
+    });
+
+    it('keeps the onboarding empty state when there is no filter and no runs', () => {
+        render(
+            <RunsIndex
+                runs={[]}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.queryByText('Gak ada lari yang cocok.')).not.toBeInTheDocument();
     });
 });

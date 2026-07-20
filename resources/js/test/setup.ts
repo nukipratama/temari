@@ -17,16 +17,24 @@ const DEFAULT_PAGE_PROPS: Record<string, unknown> = {
     demoLoginEnabled: false,
 };
 const DEFAULT_URL = '/';
+const DEFAULT_COMPONENT = 'HariIni';
 
 // Global Inertia mock — real Link/Head/usePage need an app context that
 // unit tests don't bootstrap. Tests override usePage props via
 // `setMockPage()`; state resets between tests so files don't bleed.
 let mockPageProps: Record<string, unknown> = { ...DEFAULT_PAGE_PROPS };
 let mockUrl = DEFAULT_URL;
+let mockComponent = DEFAULT_COMPONENT;
 
-export function setMockPage(props: Record<string, unknown>, url = DEFAULT_URL) {
+/**
+ * `component` is the Inertia page name. AppShell keys its content region on it
+ * to replay the page-enter animation on a real navigation while staying still
+ * on a partial reload, so a test that exercises that needs to vary it.
+ */
+export function setMockPage(props: Record<string, unknown>, url = DEFAULT_URL, component = DEFAULT_COMPONENT) {
     mockPageProps = { ...DEFAULT_PAGE_PROPS, ...props };
     mockUrl = url;
+    mockComponent = component;
 }
 
 // Global useForm() mock — a stable object (not a fresh literal per call) so a
@@ -142,7 +150,7 @@ vi.mock('@inertiajs/react', async () => {
     return {
         Head: ({ children }: { children?: ReactNode }) => children ?? null,
         Link: linkComponent,
-        usePage: () => ({ props: mockPageProps, url: mockUrl }),
+        usePage: () => ({ props: mockPageProps, url: mockUrl, component: mockComponent }),
         useForm: () => formMock,
         router: { post: vi.fn(), get: vi.fn(), patch: vi.fn(), delete: vi.fn(), reload: vi.fn(), visit: vi.fn() },
         usePoll: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),

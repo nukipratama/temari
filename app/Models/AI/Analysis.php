@@ -320,20 +320,20 @@ class Analysis extends Model
     }
 
     /**
-     * Remaining Telegram-send cooldown for a {@see self::toPayload()} array, or
+     * Remaining manual-send cooldown for a {@see self::toPayload()} array, or
      * null when there is no row or it is not Done (only a Done row is ever
-     * pushed, so only it can cool). Surfaced next to the manual "Kirim ke
-     * Telegram" button so it renders a disabled countdown.
+     * pushed, so only it can cool). Surfaced next to the manual "Kirim
+     * notifikasi" button so it renders a disabled countdown.
      *
      * @param  array<string, mixed>  $payload
      */
-    public static function telegramCooldownRemaining(array $payload): ?int
+    public static function notificationCooldownRemaining(array $payload): ?int
     {
         $id = $payload['id'] ?? null;
         if (! is_int($id) || ($payload['status'] ?? null) !== AnalysisStatus::Done->value) {
             return null;
         }
 
-        return new Cooldown(Cooldown::telegramKey($id))->remaining();
+        return new Cooldown(Cooldown::notificationKey($id))->remaining();
     }
 }

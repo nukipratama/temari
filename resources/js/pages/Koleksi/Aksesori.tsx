@@ -1,7 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useState } from 'react';
-import AppShell from '@/layouts/AppShell';
+import { appLayout } from '@/layouts/appLayout';
 import Chip from '@/components/ui/Chip';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import HeroPanel from '@/components/ui/HeroPanel';
@@ -88,7 +88,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
     };
 
     return (
-        <AppShell>
+        <>
             <Head title="Koleksi · Aksesori" />
             <PageContainer>
                 <CollectionHeader
@@ -141,7 +141,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                     ) : null,
                 )}
             </PageContainer>
-        </AppShell>
+        </>
     );
 }
 
@@ -263,3 +263,5 @@ function AksesoriCard({
         </article>
     );
 }
+
+KoleksiAksesori.layout = appLayout;

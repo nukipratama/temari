@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Gamification;
 
 use App\Models\TelegramConnection;
+use App\Models\User;
 use App\Notifications\StreakReminderNotification;
 use App\Models\WeeklySnapshot;
 use Illuminate\Console\Attributes\Description;
@@ -22,22 +23,19 @@ class StreakRemindCommand extends Command
     {
         $weekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
-        // Active connections whose user hasn't opted out of the weekly-recap
-        // notification (a missing preference row means all-on). via() re-checks.
-        $connections = TelegramConnection::query()
-            ->active()
-            ->whereDoesntHave('user.notificationPreference', fn (Builder $query): Builder => $query->where('weekly_recap', false))
-            ->with('user')
+        // Users reachable on *any* channel who haven't opted out of the
+        // weekly-recap notification (a missing preference row means all-on).
+        // Iterating users rather than Telegram connections is what lets a
+        // push-only user be nudged at all; via() re-checks per notifiable.
+        $users = User::query()
+            ->where('is_demo', false)
+            ->whereDoesntHave('notificationPreference', fn (Builder $query): Builder => $query->where('weekly_recap', false))
+            ->where($this->reachableOnAnyChannel(...))
             ->get();
 
         $sent = 0;
 
-        foreach ($connections as $connection) {
-            $user = $connection->user;
-            if ($user === null || $user->is_demo) {
-                continue;
-            }
-
+        foreach ($users as $user) {
             $streak = WeeklySnapshot::consecutiveWeekStreak($user->id);
             if ($streak < 1) {
                 continue;
@@ -63,6 +61,19 @@ class StreakRemindCommand extends Command
         $this->info("Dispatched streak-at-risk reminder to {$sent} users.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Reachable on at least one notification channel: a live Telegram connection
+     * or any web push subscription.
+     *
+     * @param  Builder<User>  $query
+     */
+    private function reachableOnAnyChannel(Builder $query): void
+    {
+        $query
+            ->whereIn('id', TelegramConnection::query()->active()->select('user_id'))
+            ->orWhereHas('pushSubscriptions');
     }
 
     /**

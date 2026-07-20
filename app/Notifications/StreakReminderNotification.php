@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\User;
+use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushMessage;
 
 /**
  * The "streak at risk" nudge dispatched by {@see \App\Console\Commands\Gamification\StreakRemindCommand}.
- * Re-checks the demo flag, the connection, and the weekly-recap opt-in at send
- * time (the command already checked, but `via()` runs again per notifiable).
+ * Re-checks the demo flag and the weekly-recap opt-in at send time (the command
+ * already checked, but `via()` runs again per notifiable). Channel-neutral like
+ * the rest: it reaches every wired channel, so a user on phone push alone still
+ * gets nudged.
  */
 class StreakReminderNotification extends Notification implements ShouldQueue
 {
@@ -40,18 +44,24 @@ class StreakReminderNotification extends Notification implements ShouldQueue
             return [];
         }
 
-        $connection = $notifiable->telegramConnection;
-        if ($connection === null || $connection->isRevoked()) {
-            return [];
-        }
-
         // Shares the channel-neutral weekly-recap opt-in; a missing row = all-on.
         $preference = $notifiable->notificationPreference;
         if ($preference !== null && ! $preference->weekly_recap) {
             return [];
         }
 
-        return [TelegramChannel::class];
+        $channels = [];
+
+        $connection = $notifiable->telegramConnection;
+        if ($connection !== null && ! $connection->isRevoked()) {
+            $channels[] = TelegramChannel::class;
+        }
+
+        if ($notifiable->pushSubscriptions()->exists()) {
+            $channels[] = IdempotentWebPushChannel::class;
+        }
+
+        return $channels;
     }
 
     public function toTelegram(User $notifiable): TelegramMessage
@@ -59,7 +69,29 @@ class StreakReminderNotification extends Notification implements ShouldQueue
         $url = route('dashboard');
 
         return new TelegramMessage(
-            text: "🔥 Streak lari {$this->streakWeeks} minggu kamu belum ada progres minggu ini. Sempatkan lari sebelum minggu ini berakhir, biar streak-nya nggak putus.\n\nBuka Temari: {$url}",
+            text: "{$this->title()}\n\n{$this->body()}\n\nBuka Temari: {$url}",
         );
+    }
+
+    public function toWebPush(User $notifiable, Notification $notification): WebPushMessage
+    {
+        return new WebPushMessage()
+            ->title($this->title())
+            ->body($this->body())
+            ->icon('/icon-192.png')
+            ->data(['url' => route('dashboard')])
+            // High urgency: the nudge is time-boxed to the rest of the week, so
+            // the OS deferring it under Low Power Mode would defeat the point.
+            ->options(['urgency' => 'high']);
+    }
+
+    private function title(): string
+    {
+        return "🔥 Streak lari {$this->streakWeeks} minggu kamu lagi di ujung";
+    }
+
+    private function body(): string
+    {
+        return 'Minggu ini belum ada progres. Sempatkan lari sebelum minggu ini berakhir, biar streak-nya nggak putus.';
     }
 }

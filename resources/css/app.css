@@ -174,14 +174,73 @@
     --container-page-2xl: 1680px;
 }
 
-/* Mobile horizontal-overflow safety net. Cards or decorative elements
-   that nudge past the viewport (rings, gradients, abs-positioned blobs)
-   would otherwise trigger horizontal page scroll on iPhone-SE-sized
-   devices. `overflow-x: clip` blocks the scroll without breaking
-   sticky/fixed descendants the way `overflow-x: hidden` would. */
+/* `-webkit-tap-highlight-color: transparent` drops the grey flash Safari
+   paints over a tapped element — one of the loudest "this is a webview"
+   tells. Safe only because tappables carry their own press feedback (the
+   `pressShrink` scale, see lib/motion.ts); do not remove that without
+   restoring a highlight here. */
+html {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Two document-level guards:
+
+   - `overflow-x: clip` is the mobile horizontal-overflow safety net. Cards
+     or decorative elements that nudge past the viewport (rings, gradients,
+     abs-positioned blobs) would otherwise trigger horizontal page scroll on
+     iPhone-SE-sized devices. `clip` blocks the scroll without breaking
+     sticky/fixed descendants the way `hidden` would.
+   - `overscroll-behavior-y: none` kills the iOS rubber-band bounce past the
+     top/bottom of the document, and with it the accidental browser
+     pull-to-refresh. That reload is especially jarring here: the app is
+     all-dynamic and deliberately uncached, so an accidental pull re-runs
+     every controller.
+
+   Deliberately NOT global: `touch-action` (kills double-tap zoom, an a11y
+   regression — scoped to controls instead), `scroll-behavior: smooth`
+   (fights Inertia's scroll-to-top and reduced-motion), and
+   `user-select: none` (would break copying run stats). */
 html,
 body {
     overflow-x: clip;
+    overscroll-behavior-y: none;
+}
+
+/* Page-enter animation. The content region is keyed on the Inertia component
+   name in AppShell, so this replays on a real navigation and is skipped on a
+   partial reload (the key is unchanged, nothing remounts).
+
+   Why an enter animation and NOT the View Transitions API: the persistent shell
+   makes `document.startViewTransition` tempting, but Inertia's DOM swap only
+   happens *after* the network round trip. Wrapping the swap means calling
+   startViewTransition before the request and resolving its callback after the
+   response, which leaves the browser holding a frozen snapshot — the whole UI
+   locked and unresponsive — for the entire request. On a constrained homelab
+   behind a tunnel that is a visible regression, and strictly worse than the
+   current thin progress bar. An enter-only animation keeps the outgoing page
+   live and interactive until the new one is actually ready, then brings it in.
+
+   Short and small on purpose (160ms, 6px): enough to read as motion, not enough
+   to delay a user who navigates quickly. */
+@keyframes page-enter {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.page-enter {
+    animation: page-enter 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-enter {
+        animation: none;
+    }
 }
 
 /* Hide native scrollbar — used on horizontal strips where explicit
@@ -208,6 +267,20 @@ body {
     /* Focus ring on dark sky panels (offset color flips to sky). */
     .focus-ring-on-sky {
         @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-sky;
+    }
+    /* Tactile press feedback for any tappable control — the local, instant
+       "I felt that" a native app gives. Carries the whole weight of touch
+       confirmation now that the global tap highlight is off (see the
+       -webkit-tap-highlight-color rule above), so removing it from a control
+       leaves that control feeling dead on touch.
+
+       `touch-action: manipulation` is scoped here rather than set globally:
+       it drops the ~300ms double-tap-zoom wait on controls while leaving
+       double-tap zoom intact on content, which a global rule would kill.
+       `motion-safe:` keeps the scale out of reduced-motion, matching the
+       app-wide <MotionConfig reducedMotion="user">. */
+    .pressable {
+        @apply touch-manipulation motion-safe:transition-transform motion-safe:duration-100 motion-safe:ease-out motion-safe:active:scale-[0.97];
     }
     /* ─── Typography role utilities ──────────────────────────────────
        Each role bundles font + size + color so call sites name a role

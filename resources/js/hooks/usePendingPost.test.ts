@@ -56,4 +56,39 @@ describe('usePendingPost', () => {
         act(() => storedFinish?.());
         expect(result.current[0]).toBe(false);
     });
+
+    it('buzzes on success and still runs a caller-supplied onSuccess', () => {
+        const vibrate = vi.fn(() => true);
+        Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true, writable: true });
+        const onSuccess = vi.fn();
+        vi.mocked(router.post).mockReset();
+        vi.mocked(router.post).mockImplementation((_url, _data, options) => {
+            options?.onSuccess?.({} as never);
+        });
+
+        const { result } = renderHook(() => usePendingPost('/foo', { onSuccess }));
+        act(() => result.current[1]());
+
+        expect(vibrate).toHaveBeenCalledOnce();
+        expect(onSuccess).toHaveBeenCalledOnce();
+        Reflect.deleteProperty(navigator, 'vibrate');
+    });
+
+    // A failed post must not buzz — the haptic is a commit signal, so it hangs
+    // off onSuccess rather than onFinish.
+    it('does not buzz when the request finishes without succeeding', () => {
+        const vibrate = vi.fn(() => true);
+        Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true, writable: true });
+        vi.mocked(router.post).mockReset();
+        vi.mocked(router.post).mockImplementation((_url, _data, options) => {
+            options?.onStart?.({} as never);
+            options?.onFinish?.({} as never);
+        });
+
+        const { result } = renderHook(() => usePendingPost('/foo'));
+        act(() => result.current[1]());
+
+        expect(vibrate).not.toHaveBeenCalled();
+        Reflect.deleteProperty(navigator, 'vibrate');
+    });
 });

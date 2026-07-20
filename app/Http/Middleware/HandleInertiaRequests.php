@@ -98,6 +98,7 @@ class HandleInertiaRequests extends Middleware
             'goalsSummary' => fn () => $this->goalsSummaryFor($user),
             'hrZonesChangedAt' => fn () => $this->hrZonesChangedAtFor($user),
             'telegramConnected' => fn (): bool => $this->telegramConnectedFor($user),
+            'webPushSubscribed' => fn (): bool => $this->webPushSubscribedFor($user),
             'stravaZoneScopeMissing' => fn (): bool => $this->stravaZoneScopeMissingFor($user),
             'aiPaused' => fn (): bool => $this->aiPausedFor($user),
         ];
@@ -148,14 +149,24 @@ class HandleInertiaRequests extends Middleware
 
     /**
      * Whether the auth user has a live (non-revoked) Telegram connection, so any
-     * page can gate a "Kirim ke Telegram" affordance without each controller
-     * re-deriving it.
+     * page can gate a channel-neutral "Kirim notifikasi" affordance without each
+     * controller re-deriving it.
      */
     private function telegramConnectedFor(?User $user): bool
     {
         $connection = $user?->telegramConnection;
 
         return $connection !== null && ! $connection->isRevoked();
+    }
+
+    /**
+     * Whether the auth user has at least one browser push subscription. Paired
+     * with {@see self::telegramConnectedFor()} so the UI can enable the manual
+     * send whenever *any* channel is wired, not just Telegram.
+     */
+    private function webPushSubscribedFor(?User $user): bool
+    {
+        return $user !== null && $user->pushSubscriptions()->exists();
     }
 
     /**

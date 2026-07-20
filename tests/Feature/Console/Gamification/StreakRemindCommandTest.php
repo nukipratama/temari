@@ -33,6 +33,50 @@ it('nudges a user with a live streak and no run yet this week', function (): voi
     Notification::assertSentTo($user, StreakReminderNotification::class, fn (StreakReminderNotification $notification): bool => $notification->streakWeeks === 1);
 });
 
+// The command used to iterate TelegramConnection rows, so a push-only user was
+// never even a candidate. It iterates reachable users now.
+it('nudges a push-only user who has never linked Telegram', function (): void {
+    Notification::fake();
+
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    $this->artisan('streak:remind')
+        ->expectsOutputToContain('Dispatched streak-at-risk reminder to 1 users.')
+        ->assertSuccessful();
+
+    Notification::assertSentTo($user, StreakReminderNotification::class);
+});
+
+it('skips a user with no channel wired at all', function (): void {
+    Notification::fake();
+
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    $this->artisan('streak:remind')
+        ->expectsOutputToContain('Dispatched streak-at-risk reminder to 0 users.')
+        ->assertSuccessful();
+
+    Notification::assertNothingSent();
+});
+
+it('counts a user wired on both channels only once', function (): void {
+    Notification::fake();
+
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
+    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    $this->artisan('streak:remind')
+        ->expectsOutputToContain('Dispatched streak-at-risk reminder to 1 users.')
+        ->assertSuccessful();
+
+    Notification::assertSentToTimes($user, StreakReminderNotification::class, 1);
+});
+
 it('skips a user who already ran this week', function (): void {
     Notification::fake();
 

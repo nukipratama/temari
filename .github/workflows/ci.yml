@@ -423,7 +423,13 @@ jobs:
           man=$(curl -fsS -D- -o /dev/null http://127.0.0.1:7001/manifest.webmanifest)
           printf '%s' "$man" | grep -qi '^content-type: *application/manifest+json' \
             || { echo "::error::/manifest.webmanifest missing Content-Type application/manifest+json"; exit 1; }
-          echo "PWA assets OK: /sw.js + /manifest.webmanifest"
+          # The service worker's offline fallback. It must be a real static file:
+          # if it ever 404s or gets routed through PHP, an offline user sees the
+          # browser error page instead, and nothing else would surface that.
+          off=$(curl -fsS -D- -o /dev/null http://127.0.0.1:7001/offline.html)
+          printf '%s' "$off" | grep -qi '^content-type: *text/html' \
+            || { echo "::error::/offline.html missing Content-Type text/html"; exit 1; }
+          echo "PWA assets OK: /sw.js + /manifest.webmanifest + /offline.html"
 
       - name: Resume scheduler (deploy green)
         run: $COMPOSE up -d --no-deps scheduler

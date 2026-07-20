@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\RateLimiter;
  * Redis RateLimiter (cache connection, isolated from the queue). One `start()`
  * makes the key active for the whole window; `remaining()` reports the countdown
  * so a caller can surface a "wait Xm" disabled state. Used to throttle manual AI
- * re-triggers and manual Telegram sends without re-firing an LLM call or a push.
+ * re-triggers and manual notification sends without re-firing an LLM call or a push.
  */
 final readonly class Cooldown
 {
@@ -55,8 +55,8 @@ final readonly class Cooldown
         RateLimiter::hit($this->key, self::WINDOW_SECONDS);
     }
 
-    public static function telegramKey(int $analysisId): string
+    public static function notificationKey(int $analysisId): string
     {
-        return "telegram-send:{$analysisId}";
+        return "notification-send:{$analysisId}";
     }
 }

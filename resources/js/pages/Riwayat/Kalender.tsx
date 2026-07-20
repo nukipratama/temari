@@ -1,12 +1,13 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
-import AppShell from '@/layouts/AppShell';
+import { appLayout } from '@/layouts/appLayout';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
 import RiwayatFilter, { type MoodOption } from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
-import SendToTelegramButton from '@/components/SendToTelegramButton';
+import SendNotificationButton from '@/components/SendNotificationButton';
+import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import { MOOD_FILL, MOOD_HINT, MOOD_LABEL, MOOD_ORDER, MOOD_SOFT_FILL, moodSigilColor } from '@/lib/mood';
@@ -14,13 +15,13 @@ import { formatPace, formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { aktivitasUrl } from '@/lib/routes';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
-import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
+import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 /** The monthly recap payload plus the chain-head flag the controller adds. */
 export type MonthlyRecap = AnalysisPayload & {
     is_chain_head: boolean;
     /** Remaining Telegram-send cooldown for this month's recap, or null. */
-    telegram_retry_after_seconds: number | null;
+    notification_retry_after_seconds: number | null;
 };
 
 export interface CalendarCell {
@@ -97,7 +98,7 @@ export default function Kalender({
     const resetFilter = useCallback(() => setMoodFilter(new Set()), []);
 
     return (
-        <AppShell>
+        <>
             <Head title={`Riwayat · Kalender · ${monthLabel}`} />
             <PageContainer>
                 <header className="mb-8 min-w-0">
@@ -155,7 +156,7 @@ export default function Kalender({
                     ))}
                 </div>
             </PageContainer>
-        </AppShell>
+        </>
     );
 }
 
@@ -220,7 +221,7 @@ function MonthlyRecapCard({
     mood,
     awaitingSchedule,
 }: Readonly<{ recap: MonthlyRecap; month: string; monthLabel: string; mood: Mood | null; awaitingSchedule: boolean }>) {
-    const telegramConnected = usePage<SharedProps>().props.telegramConnected ?? false;
+    const notificationsReachable = useNotificationsReachable();
     return (
         <section
             className="mb-4 rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5"
@@ -251,10 +252,10 @@ function MonthlyRecapCard({
                     />
                     {recap.status === 'done' && (
                         <div className="mt-3">
-                            <SendToTelegramButton
-                                url={`/rekap-bulanan/${month}/telegram`}
-                                retryAfterSeconds={recap.telegram_retry_after_seconds}
-                                connected={telegramConnected}
+                            <SendNotificationButton
+                                url={`/rekap-bulanan/${month}/kirim`}
+                                retryAfterSeconds={recap.notification_retry_after_seconds}
+                                reachable={notificationsReachable}
                             />
                         </div>
                     )}
@@ -556,3 +557,4 @@ function groupByWeek(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
     return weeks;
 }
 
+Kalender.layout = appLayout;

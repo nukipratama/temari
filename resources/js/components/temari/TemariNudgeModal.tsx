@@ -31,7 +31,7 @@ interface TemariNudgeModalProps {
 /**
  * The shared shell for Temari's soft "front door" modals: a calm mascot nudge
  * (not a celebration) with a title, a short body, and a primary + dismiss CTA.
- * Backs {@see DemoBlockedModal} and {@see ConnectTelegramModal} so the framer
+ * Backs {@see DemoBlockedModal} and {@see EnableNotificationsModal} so the framer
  * shell, focus trap and equipped-mascot read live in one place.
  */
 export default function TemariNudgeModal({

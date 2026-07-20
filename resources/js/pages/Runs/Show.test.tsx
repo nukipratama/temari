@@ -142,7 +142,7 @@ function renderShow(
             {...insightDefaults}
             moodFallback="adem"
             isChainHead
-            telegramRetryAfterSeconds={null}
+            notificationRetryAfterSeconds={null}
             pastYou={null}
             relativeEffort={null}
             {...overrides}
@@ -506,19 +506,19 @@ describe('Runs/Show', () => {
         expect(button).toHaveTextContent('Lagi narik…');
     });
 
-    it('shows a muted Telegram button that nudges (no send) when not connected', () => {
+    it('shows a muted send button that nudges (no send) when no channel is wired', () => {
         vi.mocked(router.post).mockReset();
         renderShow();
-        fireEvent.click(screen.getByText('Kirim ke Telegram'));
+        fireEvent.click(screen.getByText('Kirim notifikasi'));
         expect(router.post).not.toHaveBeenCalled();
     });
 
     it('pushes the run to Telegram when connected and the button is clicked', () => {
         vi.mocked(router.post).mockReset();
         renderShow({}, { telegramConnected: true });
-        fireEvent.click(screen.getByText('Kirim ke Telegram'));
+        fireEvent.click(screen.getByText('Kirim notifikasi'));
         expect(router.post).toHaveBeenCalledWith(
-            '/aktivitas/99/telegram',
+            '/aktivitas/99/kirim',
             {},
             expect.objectContaining({ preserveScroll: true, onStart: expect.any(Function), onFinish: expect.any(Function) }),
         );
@@ -530,7 +530,7 @@ describe('Runs/Show', () => {
             options?.onStart?.({} as never);
         });
         renderShow({}, { telegramConnected: true });
-        const button = screen.getByText('Kirim ke Telegram').closest('button')!;
+        const button = screen.getByText('Kirim notifikasi').closest('button')!;
         fireEvent.click(button);
         expect(button).toBeDisabled();
         expect(button).toHaveTextContent('Lagi ngirim…');

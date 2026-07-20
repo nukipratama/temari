@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { aktivitasUrl } from '@/lib/routes';
-import AppShell from '@/layouts/AppShell';
+import { appLayout } from '@/layouts/appLayout';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
@@ -68,7 +68,7 @@ export default function KoleksiRekor({
     const eyebrow = `Koleksi · ${personalRecords.length} rekor · ${distancePRs.length} jarak · ${pacePRs.length} pace`;
 
     return (
-        <AppShell>
+        <>
             <Head title="Koleksi · Rekor" />
             <PageContainer>
                 <CollectionHeader
@@ -90,7 +90,7 @@ export default function KoleksiRekor({
                 {pacePRs.length > 0 && <PaceTicker records={pacePRs} />}
 
             </PageContainer>
-        </AppShell>
+        </>
     );
 }
 
@@ -304,3 +304,5 @@ function EmptyState() {
         </Card>
     );
 }
+
+KoleksiRekor.layout = appLayout;

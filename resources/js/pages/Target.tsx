@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import AppShell from '@/layouts/AppShell';
+import { appLayout } from '@/layouts/appLayout';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import Card from '@/components/ui/Card';
 import ProgressBar from '@/components/ui/ProgressBar';
@@ -62,7 +62,7 @@ export default function Target({ goals, completedCount, totalCount }: Readonly<T
     }
 
     return (
-        <AppShell>
+        <>
             <Head title="Koleksi · Target" />
             <PageContainer>
                 <CollectionHeader
@@ -91,7 +91,7 @@ export default function Target({ goals, completedCount, totalCount }: Readonly<T
                     ) : null,
                 )}
             </PageContainer>
-        </AppShell>
+        </>
     );
 }
 
@@ -154,3 +154,5 @@ function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
         </Card>
     );
 }
+
+Target.layout = appLayout;

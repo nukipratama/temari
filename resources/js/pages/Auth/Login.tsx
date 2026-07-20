@@ -1,7 +1,7 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useRef, useState } from 'react';
-import AppShell from '@/layouts/AppShell';
+import { bareLayout } from '@/layouts/appLayout';
 import BrandMark from '@/components/BrandMark';
 import KartuMini from '@/components/card/KartuMini';
 import PillButton from '@/components/ui/PillButton';
@@ -39,7 +39,7 @@ export default function Login({ authStravaUrl, from = null }: Readonly<LoginProp
     const stravaUrl = from ? `${authStravaUrl}?from=${encodeURIComponent(from)}` : authStravaUrl;
 
     return (
-        <AppShell withNav={false}>
+        <>
             <Head title="Masuk · Temari" />
             <div className="grid grid-cols-1 min-h-screen lg:grid-cols-[1.05fr_1fr]">
                 <HeroSide />
@@ -51,7 +51,7 @@ export default function Login({ authStravaUrl, from = null }: Readonly<LoginProp
                     info={flash?.info ?? null}
                 />
             </div>
-        </AppShell>
+        </>
     );
 }
 
@@ -243,3 +243,5 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending, 
         </div>
     );
 }
+
+Login.layout = bareLayout;

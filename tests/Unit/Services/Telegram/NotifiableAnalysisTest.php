@@ -318,6 +318,30 @@ it('uses the static label for the weekly recap title', function (): void {
     expect(new NotifiableAnalysis()->title($analysis))->toBe('📊 Rekap minggu lalu udah siap');
 });
 
+// Tapping "your weekly recap is ready" should land on *that* week, the way the
+// monthly recap already lands on its month — not on the bare run history.
+it('deep-links the weekly recap to its own week', function (): void {
+    $user = User::factory()->create();
+    $snapshot = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'subject_id' => $snapshot->id,
+    ]);
+
+    expect(new NotifiableAnalysis()->url($analysis))
+        ->toBe(route('aktivitas.index', ['week' => '2026-05-17']));
+});
+
+// A deleted week must not turn the notification into a dead end.
+it('falls back to the bare run history when the recap snapshot is gone', function (): void {
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'subject_id' => 99_999,
+    ]);
+
+    expect(new NotifiableAnalysis()->url($analysis))->toBe(route('aktivitas.index'));
+});
+
 it('falls back to the app name for a non-notifiable type', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::DailyGreeting]);
 

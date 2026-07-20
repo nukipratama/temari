@@ -48,6 +48,32 @@ it('shares telegramConnected false when there is no connection', function (): vo
         ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
 });
 
+it('shares webPushSubscribed true once the user has a push subscription', function (): void {
+    $subscribed = User::factory()->create();
+    $subscribed->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
+
+    $this->actingAs($subscribed)->get('/kalender')
+        ->assertInertia(fn (Assert $page) => $page->where('webPushSubscribed', true));
+});
+
+it('shares webPushSubscribed false when the user has no push subscription', function (): void {
+    $none = User::factory()->create();
+    $this->actingAs($none)->get('/kalender')
+        ->assertInertia(fn (Assert $page) => $page->where('webPushSubscribed', false));
+});
+
+// The pair that makes the manual send channel-neutral: a push-only user is
+// reachable even with Telegram absent, so the UI must not gate on Telegram.
+it('shares a push-only user as webPushSubscribed without a Telegram connection', function (): void {
+    $pushOnly = User::factory()->create();
+    $pushOnly->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
+
+    $this->actingAs($pushOnly)->get('/kalender')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('telegramConnected', false)
+            ->where('webPushSubscribed', true));
+});
+
 it('honors ?month=YYYY-MM when valid', function (): void {
     $user = User::factory()->create();
 
@@ -138,7 +164,7 @@ it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap pr
             ->where('monthlyRecap.content', 'Bulan Mei kamu padat, ritmenya kejaga.')
             ->where('monthlyRecap.type', AnalysisType::MonthlyRecap->value)
             ->where('monthlyRecap.discriminator', '2026-05')
-            ->where('monthlyRecap.telegram_retry_after_seconds', null));
+            ->where('monthlyRecap.notification_retry_after_seconds', null));
 });
 
 it('surfaces the monthly recap Telegram cooldown when a send is on cooldown', function (): void {
@@ -149,11 +175,11 @@ it('surfaces the monthly recap Telegram cooldown when a send is on cooldown', fu
         'analysis_type' => AnalysisType::MonthlyRecap,
         'discriminator' => '2026-05',
     ]);
-    RateLimiter::hit(Cooldown::telegramKey($recap->id), Cooldown::WINDOW_SECONDS);
+    RateLimiter::hit(Cooldown::notificationKey($recap->id), Cooldown::WINDOW_SECONDS);
 
     $this->actingAs($user)->get('/kalender?month=2026-05')
         ->assertInertia(fn (Assert $page) => $page
-            ->where('monthlyRecap.telegram_retry_after_seconds', fn (?int $s): bool => $s !== null && $s > 0)
+            ->where('monthlyRecap.notification_retry_after_seconds', fn (?int $s): bool => $s !== null && $s > 0)
             ->etc());
 });
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
-import AppShell from '@/layouts/AppShell';
+import { appLayout } from '@/layouts/appLayout';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import PageContainer from '@/components/ui/PageContainer';
@@ -54,7 +54,7 @@ export default function HariIni({
     const vibeSubtitle = vibeSubtitleFor(briefing.vibeLabel);
 
     return (
-        <AppShell>
+        <>
             <Head title="Hari Ini" />
             <PageContainer>
                 {/* HEADLINE */}
@@ -97,6 +97,8 @@ export default function HariIni({
                     </>
                 )}
             </PageContainer>
-        </AppShell>
+        </>
     );
 }
+
+HariIni.layout = appLayout;

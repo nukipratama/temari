@@ -17,6 +17,8 @@ use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
+use Carbon\Exceptions\InvalidFormatException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -57,6 +59,49 @@ class RunController extends Controller
     /** Safety cap on weekly snapshots loaded into memory (10 years ≈ 520 weeks). */
     private const int MAX_WEEKS = 520;
 
+    /**
+     * Selectable moods for the Jejak filter. Mirrors the `Mood` union in
+     * resources/js/types/inertia.ts; anything else in `?mood=` is dropped rather
+     * than 404ing, so a stale or hand-edited URL degrades to a wider view.
+     */
+    private const array MOODS = [
+        Temari::MOOD_NYALA,
+        Temari::MOOD_ENTENG,
+        Temari::MOOD_OLENG,
+        Temari::MOOD_LEMES,
+        Temari::MOOD_MUMET,
+        Temari::MOOD_ADEM,
+    ];
+
+    /**
+     * Distance bands in metres as `[min inclusive, max exclusive|null]`. Cut at
+     * the distances runners actually think in (5K, 10K, half marathon) rather
+     * than at even numbers. `21up` is open-ended so an ultra still lands
+     * somewhere.
+     */
+    private const array DISTANCE_BANDS = [
+        '0-5' => [0, 5000],
+        '5-10' => [5000, 10000],
+        '10-21' => [10000, 21097],
+        '21up' => [21097, null],
+    ];
+
+    /** Longest accepted `?q=` term; anything beyond is truncated, not rejected. */
+    private const int MAX_SEARCH_LENGTH = 60;
+
+    /**
+     * Sort modes. `newest` is the default chronological view the week grouping
+     * depends on; the other two rank runs globally, which the page renders as a
+     * flat list instead (weekly recap cards only make sense in date order).
+     */
+    private const string SORT_NEWEST = 'newest';
+
+    private const string SORT_LONGEST = 'longest';
+
+    private const string SORT_FASTEST = 'fastest';
+
+    private const array SORTS = [self::SORT_NEWEST, self::SORT_LONGEST, self::SORT_FASTEST];
+
     public function index(Request $request, PostRunNoteReader $noteReader): Response
     {
         /** @var User $user */
@@ -75,11 +120,66 @@ class RunController extends Controller
         $rangeAutoWidened = $effectiveRange !== $requestedRange;
         $rangeStart = $this->rangeStartFor($effectiveRange);
 
-        $runs = Activity::query()
+        $moodFilter = $this->resolveMoods($request->query('mood'));
+        $distanceFilter = $this->resolveDistanceBand($request->query('dist'));
+        $searchFilter = $this->resolveSearch($request->query('q'));
+        $sort = $this->resolveSort($request->query('sort'));
+        $weekFilter = $this->resolveWeek($request->query('week'));
+
+        // A deep link to one week (the weekly-recap notification) has to reach
+        // that week regardless of how far back it is, so it overrides both the
+        // requested range and the auto-widen.
+        if ($weekFilter !== null) {
+            $rangeStart = $weekFilter->copy()->subDays(6);
+            $rangeAutoWidened = false;
+        }
+
+        $runsQuery = Activity::query()
             ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($q) => $rangeStart === null ? $q : $q->where('start_date_local', '>=', $rangeStart))
-            ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards', 'workout_type'])])
-            ->orderByDesc('id')
+            ->whereHas('detail', function ($q) use ($rangeStart, $weekFilter, $distanceFilter, $searchFilter) {
+                if ($rangeStart !== null) {
+                    $q->where('start_date_local', '>=', $rangeStart);
+                }
+
+                // Upper bound for a single-week deep link (the lower bound comes
+                // from $rangeStart above). `<` the next day so the whole Sunday
+                // is included whatever time the run started.
+                if ($weekFilter !== null) {
+                    $q->where('start_date_local', '<', $weekFilter->copy()->addDay());
+                }
+
+                if ($distanceFilter !== null) {
+                    [$min, $max] = self::DISTANCE_BANDS[$distanceFilter];
+                    $q->where('distance', '>=', $min);
+                    if ($max !== null) {
+                        $q->where('distance', '<', $max);
+                    }
+                }
+
+                if ($searchFilter !== null) {
+                    // Leading wildcard, so this can't use an index. Fine at a few
+                    // hundred runs per user; revisit with a FULLTEXT index if a
+                    // user's history ever makes it measurable.
+                    $q->where('name', 'like', '%'.addcslashes($searchFilter, '%_\\').'%');
+                }
+            })
+            ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards', 'workout_type'])]);
+
+        // Mood lives on the post-run StoryLine, which is also what the list
+        // renders, so filtering there keeps the filter and the displayed mood in
+        // agreement. A run whose story line hasn't been written yet carries no
+        // mood and is therefore not a match for any mood.
+        if ($moodFilter !== []) {
+            $runsQuery->whereIn('id', StoryLine::query()
+                ->select('activity_id')
+                ->where('user_id', $user->id)
+                ->where('kind', StoryLine::KIND_POST_RUN)
+                ->whereIn('mood', $moodFilter));
+        }
+
+        $this->applySort($runsQuery, $sort);
+
+        $runs = $runsQuery
             ->limit(self::MAX_RUNS + 1)
             ->get();
 
@@ -90,6 +190,9 @@ class RunController extends Controller
         $weeklySnapshots = WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->when($rangeStart !== null, fn ($q) => $q->where('week_ending', '>=', $rangeStart))
+            // A week deep link shows exactly that week's recap, not every recap
+            // since it.
+            ->when($weekFilter !== null, fn ($q) => $q->where('week_ending', '=', $weekFilter))
             ->orderByDesc('week_ending')
             ->limit(self::MAX_WEEKS)
             ->get();
@@ -98,14 +201,23 @@ class RunController extends Controller
         $currentWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
         // Chain head = the latest completed week the chain actually narrates
-        // (runs > 0, not the in-progress week). Snapshots are ordered
-        // week_ending desc, so it is the first such row. Matching the chain's
-        // runs>0 definition keeps a zero-run rest week from stealing the head
-        // and hiding "Baca ulang" on the real latest recap. Only the head may
+        // (runs > 0, not the in-progress week). Matching the chain's runs>0
+        // definition keeps a zero-run rest week from stealing the head and
+        // hiding "Baca ulang" on the real latest recap. Only the head may
         // regenerate, so re-narrating mid-history can't desync later links.
-        $chainHeadId = $weeklySnapshots
-            ->first(fn (WeeklySnapshot $row): bool => (int) $row->runs > 0
-                && ! $row->week_ending->equalTo($currentWeekEnding))?->id;
+        //
+        // Queried independently of $weeklySnapshots rather than picked from it:
+        // a `week` deep link (old weekly-recap notification, revisited after
+        // later weeks have closed) narrows that collection to a single, often
+        // stale week, which would otherwise get mislabelled as the head and
+        // expose a "Baca ulang" whose actual server-side effect targets a
+        // different week entirely.
+        $chainHeadId = WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('runs', '>', 0)
+            ->where('week_ending', '!=', $currentWeekEnding->toDateString())
+            ->orderByDesc('week_ending')
+            ->value('id');
 
         $runIds = $runs->pluck('id')->all();
 
@@ -116,6 +228,11 @@ class RunController extends Controller
             // backend mood even before the speech (and its note) is ready.
             'moods' => $noteReader->moodsFor($runIds),
             'rangeFilter' => $effectiveRange,
+            'moodFilter' => $moodFilter,
+            'distanceFilter' => $distanceFilter,
+            'searchFilter' => $searchFilter,
+            'sortMode' => $sort,
+            'weekFilter' => $weekFilter?->toDateString(),
             'rangeStart' => $rangeStart?->toDateString(),
             'rangeAutoWidened' => $rangeAutoWidened,
             'runsTruncated' => $runsTruncated,
@@ -125,7 +242,7 @@ class RunController extends Controller
                 'is_current_week' => $row->week_ending->equalTo($currentWeekEnding),
                 'is_chain_head' => $row->id === $chainHeadId,
                 'recap_analysis' => $recapAnalyses[$row->id],
-                'telegram_retry_after_seconds' => Analysis::telegramCooldownRemaining($recapAnalyses[$row->id]),
+                'notification_retry_after_seconds' => Analysis::notificationCooldownRemaining($recapAnalyses[$row->id]),
             ])->values(),
             'journeyMatch' => $this->buildJourneyMatch($user),
         ]);
@@ -275,6 +392,108 @@ class RunController extends Controller
     }
 
     /**
+     * Selected moods from `?mood=nyala,lemes`, keeping only known values and
+     * dropping duplicates. An empty result means "no mood filter" — an unknown
+     * or malformed value widens the view rather than erroring, so a stale link
+     * still shows runs.
+     *
+     * @return array<int, string>
+     */
+    private function resolveMoods(mixed $raw): array
+    {
+        if (! is_string($raw) || $raw === '') {
+            return [];
+        }
+
+        return array_values(array_intersect(
+            array_unique(explode(',', $raw)),
+            self::MOODS,
+        ));
+    }
+
+    /**
+     * The `?week=YYYY-MM-DD` deep-link target, normalised to that week's Sunday
+     * (WeeklySnapshot.week_ending), or null when absent/malformed. Any date in
+     * the week resolves to the same Sunday, so a link built from a run date
+     * still lands on the right recap.
+     */
+    private function resolveWeek(mixed $raw): ?Carbon
+    {
+        if (! is_string($raw) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) !== 1) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($raw)->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        } catch (InvalidFormatException) {
+            return null;
+        }
+    }
+
+    /** The requested sort mode, falling back to newest for anything unknown. */
+    private function resolveSort(mixed $raw): string
+    {
+        return is_string($raw) && in_array($raw, self::SORTS, true) ? $raw : self::SORT_NEWEST;
+    }
+
+    /**
+     * Ordering for the runs list. `newest` uses the activity id, which tracks
+     * insertion order and needs no join. The ranked modes order by a detail
+     * column, so they join it under an alias (the filter above uses a separate
+     * `whereHas` subquery, so the alias avoids colliding with it).
+     *
+     * @param  Builder<Activity>  $query
+     */
+    private function applySort(Builder $query, string $sort): void
+    {
+        if ($sort === self::SORT_NEWEST) {
+            $query->orderByDesc('id');
+
+            return;
+        }
+
+        $query->join('activity_details as sort_detail', 'sort_detail.activity_id', '=', 'activities.id')
+            ->select('activities.*');
+
+        if ($sort === self::SORT_LONGEST) {
+            $query->orderByDesc('sort_detail.distance');
+
+            return;
+        }
+
+        // Fastest = lowest seconds per metre. Runs missing distance or time have
+        // no pace to rank, so they drop out rather than sorting as infinitely
+        // fast (and the division stays safe).
+        $query->where('sort_detail.distance', '>', 0)
+            ->where('sort_detail.moving_time', '>', 0)
+            ->orderByRaw('sort_detail.moving_time / sort_detail.distance asc');
+    }
+
+    /**
+     * The selected distance band key, or null for "any distance". An unknown
+     * band widens rather than errors, matching {@see self::resolveMoods()}.
+     */
+    private function resolveDistanceBand(mixed $raw): ?string
+    {
+        return is_string($raw) && array_key_exists($raw, self::DISTANCE_BANDS) ? $raw : null;
+    }
+
+    /**
+     * The trimmed `?q=` term, or null when absent/blank. Capped so a pathological
+     * URL can't drive an enormous LIKE.
+     */
+    private function resolveSearch(mixed $raw): ?string
+    {
+        if (! is_string($raw)) {
+            return null;
+        }
+
+        $term = trim($raw);
+
+        return $term === '' ? null : mb_substr($term, 0, self::MAX_SEARCH_LENGTH);
+    }
+
+    /**
      * @param  array<int, WeeklySnapshot>  $snapshots
      * @return array<int, array<string, mixed>>  Keyed by snapshot id.
      */
@@ -339,7 +558,7 @@ class RunController extends Controller
             'moodFallback' => Temari::moodForActivityOrDefault($activity),
             'isChainHead' => $isChainHead,
             'speechAnalysis' => $speechAnalysis,
-            'telegramRetryAfterSeconds' => Analysis::telegramCooldownRemaining($speechAnalysis),
+            'notificationRetryAfterSeconds' => Analysis::notificationCooldownRemaining($speechAnalysis),
             'insightTechnical' => $payloadFor(AnalysisType::RunInsightTechnical),
             'insightSplits' => $payloadFor(AnalysisType::RunInsightSplits),
             'insightZones' => $payloadFor(AnalysisType::RunInsightZones),

@@ -60,6 +60,56 @@ describe('Kartu', () => {
         expect(container.querySelector('[data-variant="glyph"]')).not.toBeNull();
     });
 
+    // `flex-1` is `flex: 1 1 0%`, so inside the fixed aspect-[5/7] frame a tall
+    // stat block could shrink the art window to nothing. That hid the route art
+    // and dropped the window's bottom-left EditionMark onto the card's top-left
+    // RarityChip, rendering as "BERKESAN4" on a 320px grid.
+    it('keeps a floor under the art window so it cannot be squeezed to nothing', () => {
+        const { container } = render(
+            <Kartu name="x" km="1" durasi="1:00" trimp={1} polyline={SAMPLE_POLYLINE} />,
+        );
+        const artWindow = container.querySelector('[data-variant="route"]')?.closest('.relative');
+
+        expect(artWindow?.className).toContain('min-h-[30%]');
+    });
+
+    // Six pips wrap over four rows on a ~140px grid card, which is what pushed
+    // the stat block past the fixed-aspect frame.
+    it('caps a grid thumbnail at a single badge pip', () => {
+        render(
+            <Kartu
+                name="x"
+                km="1"
+                durasi="1:00"
+                trimp={1}
+                badges={['negative_split', 'rajin', 'keras', 'berturut']}
+                size="md"
+                compact
+            />,
+        );
+
+        expect(screen.getByText('Negative Split')).toBeInTheDocument();
+        // The rest are dropped; the detail view still shows every badge.
+        expect(screen.queryByText('Rajin')).not.toBeInTheDocument();
+        expect(screen.queryByText('Keras')).not.toBeInTheDocument();
+        expect(screen.queryByText('Berturut')).not.toBeInTheDocument();
+    });
+
+    it('shows every badge when not a compact thumbnail', () => {
+        render(
+            <Kartu
+                name="x"
+                km="1"
+                durasi="1:00"
+                trimp={1}
+                badges={['negative_split', 'rajin', 'keras', 'berturut']}
+                size="md"
+            />,
+        );
+
+        expect(screen.getByText('Berturut')).toBeInTheDocument();
+    });
+
     it('renders badge pips at the compact (md) size too (same full block as the share card)', () => {
         render(<Kartu name="x" km="1" durasi="1:00" trimp={1} badges={['negative_split']} size="md" />);
         expect(screen.getByText('Negative Split')).toBeInTheDocument();

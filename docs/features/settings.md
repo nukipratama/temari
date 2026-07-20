@@ -21,7 +21,9 @@ Server entry is [SettingsController](../../app/Http/Controllers/SettingsControll
 
 ## Sections
 
-- **Notifikasi Telegram** — the connect / disconnect flow and the three per-type toggles (`notify_post_run`, `notify_weekly_recap`, `notify_monthly_recap`). Full behaviour in [[telegram-notifications]]. The demo account is guarded by the `block-demo-telegram` middleware and the front-door `DemoBlockedModal`.
+- **Notifikasi** — the three channel-neutral per-type toggles (`post_run`, `weekly_recap`, `monthly_recap`) plus a "Kirim notifikasi tes" button. The toggles gate Telegram and phone push alike. Full behaviour in [[telegram-notifications]].
+- **Notifikasi HP** — the web-push subscribe/permission flow (`PushNotificationToggle`), shown once a VAPID key is configured.
+- **Telegram** — the connect / disconnect flow. The demo account is guarded by the `block-demo-telegram` middleware and the front-door `DemoBlockedModal`.
 - **Lari · Zona HR** — a row linking to [[settings-hr-zones]] (`/pengaturan/zona`).
 - **Akun · Hapus akun** — see below.
 

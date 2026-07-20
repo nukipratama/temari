@@ -133,29 +133,11 @@ describe('Aku', () => {
         expect(screen.queryByText(/Latihan/)).not.toBeInTheDocument();
     });
 
-    it('shows the Strava zone reconnect banner when stravaZoneScopeMissing is true', () => {
-        setMockPage({
-            auth: { user: makeUser() },
-            flash: {},
-            demoLoginEnabled: false,
-            stravaZoneScopeMissing: true,
-        });
-        render(<Aku identity={identity} stats={stats} />);
-        expect(screen.getByText(/Sambungin ulang Strava/)).toBeInTheDocument();
-        const link = screen.getByText('Sambungin lagi').closest('a');
-        expect(link).toHaveAttribute('href', '/auth/strava/redirect?from=/profil');
-    });
-
-    it('hides the Strava zone reconnect banner when the scope is present', () => {
-        setMockPage({
-            auth: { user: makeUser() },
-            flash: {},
-            demoLoginEnabled: false,
-            stravaZoneScopeMissing: false,
-        });
-        render(<Aku identity={identity} stats={stats} />);
-        expect(screen.queryByText(/Sambungin ulang Strava/)).not.toBeInTheDocument();
-    });
+    // The Strava zone reconnect banner is shell chrome, not page content: it
+    // lives in AppShell, which is now a persistent layout rather than something
+    // this page renders. Its own behaviour is covered by
+    // StravaZoneReconnectBanner.test.tsx, and AppShell.test.tsx proves the shell
+    // mounts it.
 
     it('does not show a reconnect CTA when Strava is connected', () => {
         setMockPage({

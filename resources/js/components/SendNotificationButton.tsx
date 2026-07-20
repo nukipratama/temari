@@ -2,55 +2,57 @@ import { Icon } from '@iconify/react';
 import { useState } from 'react';
 import PillButton from '@/components/ui/PillButton';
 import DemoBlockedModal from '@/components/DemoBlockedModal';
-import ConnectTelegramModal from '@/components/ConnectTelegramModal';
+import EnableNotificationsModal from '@/components/EnableNotificationsModal';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { formatDurationHMS } from '@/lib/pace';
 
 /**
- * The manual "Kirim ke Telegram" pill shared by run/weekly/monthly recap
+ * The manual "Kirim notifikasi" pill shared by run/weekly/monthly recap
  * surfaces: force-pushes the Done narration at `url` and shows a spinner while
- * in flight. When the server reports a `retryAfterSeconds` cooldown the button
- * disables and shows a bare countdown next to the paper-plane icon, so a
- * re-send can't spam Telegram.
+ * in flight. The push is channel-neutral — the server fans it out to every
+ * channel the user has wired (Telegram if connected, web push if subscribed) —
+ * so this button never names a channel. When the server reports a
+ * `retryAfterSeconds` cooldown the button disables and shows a bare countdown
+ * next to the paper-plane icon, so a re-send can't spam the user.
  *
- * A user who hasn't linked Telegram (`connected={false}`) still sees the pill,
- * muted — so the feature is discoverable instead of hidden. A tap opens the
- * {@see ConnectTelegramModal} nudge pointing at Profil, the same for a real
- * user and the shared demo account (the demo-write modal only guards the actual
- * connect/disconnect writes in Profil, not this discovery surface).
+ * A user with no channel wired (`reachable={false}`) still sees the pill, muted
+ * — so the feature is discoverable instead of hidden. A tap opens the
+ * {@see EnableNotificationsModal} nudge pointing at Pengaturan, the same for a
+ * real user and the shared demo account (the demo-write modal only guards the
+ * actual channel writes in Pengaturan, not this discovery surface).
  */
-export default function SendToTelegramButton({
+export default function SendNotificationButton({
     url,
     retryAfterSeconds,
-    connected = true,
-}: Readonly<{ url: string; retryAfterSeconds?: number | null; connected?: boolean }>) {
+    reachable = true,
+}: Readonly<{ url: string; retryAfterSeconds?: number | null; reachable?: boolean }>) {
     const [sending, send] = usePendingPost(url, { preserveScroll: true });
     const { open, setOpen, guard } = useDemoGuard();
-    const [connectOpen, setConnectOpen] = useState(false);
+    const [enableOpen, setEnableOpen] = useState(false);
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const cooling = cooldownRemaining > 0;
 
-    if (!connected) {
+    if (!reachable) {
         return (
             <>
                 <PillButton
                     tone="outline"
                     size="sm"
                     className="opacity-60"
-                    onClick={() => setConnectOpen(true)}
-                    aria-label="Sambungin Telegram dulu buat kirim ke Telegram"
+                    onClick={() => setEnableOpen(true)}
+                    aria-label="Nyalain notifikasi dulu buat kirim"
                 >
                     <Icon icon="mdi:send" width={15} height={15} aria-hidden />
-                    Kirim ke Telegram
+                    Kirim notifikasi
                 </PillButton>
-                <ConnectTelegramModal open={connectOpen} onClose={() => setConnectOpen(false)} />
+                <EnableNotificationsModal open={enableOpen} onClose={() => setEnableOpen(false)} />
             </>
         );
     }
 
-    let label = 'Kirim ke Telegram';
+    let label = 'Kirim notifikasi';
     if (cooling) {
         label = formatDurationHMS(cooldownRemaining);
     } else if (sending) {
@@ -65,7 +67,7 @@ export default function SendToTelegramButton({
                 disabled={sending || cooling}
                 className="disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={() => guard(send)}
-                aria-label={cooldownAriaLabel(cooldownRemaining, 'kirim ke Telegram')}
+                aria-label={cooldownAriaLabel(cooldownRemaining, 'kirim notifikasi')}
             >
                 <Icon
                     icon={sending ? 'mdi:loading' : 'mdi:send'}

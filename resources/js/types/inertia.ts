@@ -81,6 +81,8 @@ export interface SharedProps {
     hrZonesChangedAt?: string | null;
     /** Whether the auth user has a live (non-revoked) Telegram connection. */
     telegramConnected?: boolean;
+    /** Whether the auth user has at least one browser push subscription. */
+    webPushSubscribed?: boolean;
     /** The public VAPID key the browser needs to subscribe to web push; '' when unconfigured. */
     webPushPublicKey?: string;
     /** True when the auth user's Strava connection is live but lacks the `profile:read_all` scope needed for HR-zone sync. */

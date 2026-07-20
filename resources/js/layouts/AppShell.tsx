@@ -21,6 +21,7 @@ interface AppShellProps {
 
 export default function AppShell({ children, withNav = true }: Readonly<AppShellProps>) {
     useDawnShift();
+    const { component } = usePage<SharedProps>();
     const { pendingReveal, flash } = usePage<SharedProps>().props;
     const pending = pendingReveal ?? null;
     const unlock = flash?.unlock ?? null;
@@ -45,7 +46,9 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
                     <ErrorBanner />
                     <StravaZoneReconnectBanner />
                     <AiOutageBanner />
-                    {children}
+                    <div key={component} className="page-enter">
+                        {children}
+                    </div>
                 </div>
             </MotionConfig>
         );
@@ -68,7 +71,11 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
             <StravaZoneReconnectBanner />
             <AiOutageBanner />
 
-            <main id="main-content" className="pb-28 lg:pb-0">
+            {/* Keyed on the Inertia component name so a real navigation remounts
+                the content and replays the enter animation, while a partial
+                reload (filters, polling, `only:` refreshes) keeps the same key
+                and stays perfectly still. */}
+            <main key={component} id="main-content" className="page-enter pb-28 lg:pb-0">
                 {children}
             </main>
 

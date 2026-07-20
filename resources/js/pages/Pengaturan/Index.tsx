@@ -1,7 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useCallback, useRef, useState } from 'react';
-import AppShell from '@/layouts/AppShell';
+import { appLayout } from '@/layouts/appLayout';
 import BackLink from '@/components/ui/BackLink';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
@@ -52,7 +52,7 @@ export default function Pengaturan({
     notificationPrefs = PREFS_DEFAULT,
 }: Readonly<PengaturanProps>) {
     return (
-        <AppShell>
+        <>
             <Head title="Pengaturan" />
             <PageContainer>
                 <header className="mb-8">
@@ -105,7 +105,7 @@ export default function Pengaturan({
                     </div>
                 </section>
             </PageContainer>
-        </AppShell>
+        </>
     );
 }
 
@@ -292,3 +292,5 @@ function NotifyToggle({
         </label>
     );
 }
+
+Pengaturan.layout = appLayout;

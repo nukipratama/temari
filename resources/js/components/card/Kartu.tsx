@@ -107,6 +107,19 @@ export default function Kartu({
 }: Readonly<KartuProps>) {
     const isFull = size !== 'md';
     const slugs = badges ?? [];
+    // A grid thumbnail (`compact`) shows a single pip. The frame is a fixed
+    // aspect-[5/7], so anything the stat block cannot fit is clipped by the
+    // card's overflow-hidden — and six pips wrapping over four rows on a ~98px
+    // card squeezed the art window to nothing entirely, dropping its
+    // EditionMark onto the RarityChip ("BERKESAN4").
+    //
+    // One rather than two because pip height is not fixed: a long label wraps
+    // to two lines on its own at that width ("Negative Split" does, and
+    // "Long Slow Distance" is longer still), so any count above one clips for
+    // some badge sets. `whitespace-nowrap` is not the answer either — the
+    // longest label is far wider than the card and would reintroduce horizontal
+    // overflow. Tapping through shows the full set.
+    const shownSlugs = compact ? slugs.slice(0, 1) : slugs;
     const rarityHex = RARITY_HEX[rarity];
 
     const moodColor = moodSigilColor(mood);
@@ -137,8 +150,16 @@ export default function Kartu({
                 className,
             )}
         >
-            {/* ── ART WINDOW ── bright, route is hero */}
-            <div className="relative flex-1 overflow-hidden rounded-[11px]" style={artStyle}>
+            {/* ── ART WINDOW ── bright, route is hero.
+                `min-h-[30%]` because `flex-1` alone is `flex: 1 1 0%`, which happily
+                shrinks to zero: inside a fixed `aspect-[5/7]` frame, a tall stat
+                block (badges wrapping over several rows on a ~140px grid card)
+                would starve the window entirely. That hid the route art — the
+                card's whole point — and collapsed the window's bottom-left
+                EditionMark onto the card's top-left RarityChip, rendering as
+                "BERKESAN4". The floor keeps the art visible and the two corner
+                marks apart at any width. */}
+            <div className="relative min-h-[30%] flex-1 overflow-hidden rounded-[11px]" style={artStyle}>
                 {/* Route hero */}
                 <div className="absolute inset-0">
                     <RouteGlyph rarity={rarity} color={rarityHex} polyline={polyline} paceShape={paceShape} distanceKm={Number.parseFloat(km)} />
@@ -190,10 +211,10 @@ export default function Kartu({
                     <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-cream">km</span>
                 </div>
 
-                {/* Badges — centred row below the KM hero */}
-                {slugs.length > 0 && (
+                {/* Badges — centred row below the KM hero. */}
+                {shownSlugs.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap justify-center gap-1">
-                        {slugs.map((slug) => (
+                        {shownSlugs.map((slug) => (
                             <BadgePip key={slug} slug={slug} />
                         ))}
                     </div>

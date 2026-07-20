@@ -8,6 +8,22 @@ describe('ExpandableQuote', () => {
         expect(screen.getByText(/Lari santai aja\./)).toBeInTheDocument();
     });
 
+    // Narration that opens by quoting a card name would otherwise collide with
+    // the decorative frame and render as a doubled opening quote.
+    it('strips an inner opening quote so the decorative frame is the only one', () => {
+        render(<ExpandableQuote text={'"Full Send" sekali seumur progres, rayain.'} />);
+        const paragraph = screen.getByText(/Full Send/);
+
+        expect(paragraph.textContent).toBe('“Full Send sekali seumur progres, rayain.”');
+    });
+
+    it('leaves a mid-string quote alone (e.g. a pace like 5\'30")', () => {
+        render(<ExpandableQuote text={'Pace 5\'30" rapi banget.'} />);
+        const paragraph = screen.getByText(/Pace/);
+
+        expect(paragraph.textContent).toBe('“Pace 5\'30" rapi banget.”');
+    });
+
     it('omits the toggle for a short quote (<= 150 chars)', () => {
         render(<ExpandableQuote text="pendek" />);
         expect(screen.queryByRole('button', { name: 'Baca selengkapnya' })).not.toBeInTheDocument();

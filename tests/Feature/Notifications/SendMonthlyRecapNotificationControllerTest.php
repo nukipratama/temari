@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Models\TelegramConnection;
 use App\Models\User;
-use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
 use App\Services\AI\AnalysisType;
 use App\Support\Cooldown;
@@ -19,20 +18,17 @@ beforeEach(function (): void {
 });
 
 it('requires authentication', function (): void {
-    $snapshot = WeeklySnapshot::factory()->create();
-
-    $this->post(route('rekap.mingguan.telegram', $snapshot))->assertRedirect(route('login'));
+    $this->post(route('rekap.bulanan.kirim', ['month' => '2026-06']))->assertRedirect(route('login'));
 });
 
-it('force-sends the push when the weekly recap is done', function (): void {
+it('force-sends the push when the monthly recap is done', function (): void {
     Notification::fake();
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
-    $snapshot = WeeklySnapshot::factory()->for($user)->create();
-    $analysis = doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, content: 'Minggu ini 28 km.');
+    $analysis = doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'Bulan ini 120 km.');
 
     $this->actingAs($user)
-        ->post(route('rekap.mingguan.telegram', $snapshot))
+        ->post(route('rekap.bulanan.kirim', ['month' => '2026-06']))
         ->assertRedirect()
         ->assertSessionHas('success');
 
@@ -46,12 +42,11 @@ it('force-sends the push when the weekly recap is done', function (): void {
 it('does not re-send and flashes info while the send cooldown is active', function (): void {
     Notification::fake();
     $user = User::factory()->create();
-    $snapshot = WeeklySnapshot::factory()->for($user)->create();
-    $analysis = doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, content: 'Minggu ini 28 km.');
-    RateLimiter::hit(Cooldown::telegramKey($analysis->id), Cooldown::WINDOW_SECONDS);
+    $analysis = doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'Bulan ini 120 km.');
+    RateLimiter::hit(Cooldown::notificationKey($analysis->id), Cooldown::WINDOW_SECONDS);
 
     $this->actingAs($user)
-        ->post(route('rekap.mingguan.telegram', $snapshot))
+        ->post(route('rekap.bulanan.kirim', ['month' => '2026-06']))
         ->assertRedirect()
         ->assertSessionHas('info');
 
@@ -61,25 +56,35 @@ it('does not re-send and flashes info while the send cooldown is active', functi
 it('does not send and flashes info when the recap is not ready', function (): void {
     Notification::fake();
     $user = User::factory()->create();
-    $snapshot = WeeklySnapshot::factory()->for($user)->create();
-    doneAnalysisFor(WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap, done: false, content: 'Minggu ini 28 km.');
+    doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', done: false, content: 'Bulan ini 120 km.');
 
     $this->actingAs($user)
-        ->post(route('rekap.mingguan.telegram', $snapshot))
+        ->post(route('rekap.bulanan.kirim', ['month' => '2026-06']))
         ->assertRedirect()
         ->assertSessionHas('info');
 
     Notification::assertNothingSent();
 });
 
-it('404s when the snapshot belongs to another user', function (): void {
+it('does not send for a month the user has no recap for', function (): void {
     Notification::fake();
-    $owner = User::factory()->create();
-    $other = User::factory()->create();
-    $snapshot = WeeklySnapshot::factory()->for($owner)->create();
+    $user = User::factory()->create();
+    doneAnalysisFor(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-06', content: 'Bulan ini 120 km.');
 
-    $this->actingAs($other)
-        ->post(route('rekap.mingguan.telegram', $snapshot))
+    $this->actingAs($user)
+        ->post(route('rekap.bulanan.kirim', ['month' => '2026-05']))
+        ->assertRedirect()
+        ->assertSessionHas('info');
+
+    Notification::assertNothingSent();
+});
+
+it('404s on a malformed month', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('rekap.bulanan.kirim', ['month' => 'juni-2026']))
         ->assertNotFound();
 
     Notification::assertNothingSent();

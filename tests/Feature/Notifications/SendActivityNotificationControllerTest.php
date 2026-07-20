@@ -21,7 +21,7 @@ beforeEach(function (): void {
 it('requires authentication', function (): void {
     $activity = Activity::factory()->create();
 
-    $this->post(route('aktivitas.telegram', $activity))->assertRedirect(route('login'));
+    $this->post(route('aktivitas.kirim', $activity))->assertRedirect(route('login'));
 });
 
 it('force-sends the push when the post-run speech is done', function (): void {
@@ -32,7 +32,7 @@ it('force-sends the push when the post-run speech is done', function (): void {
     $analysis = doneAnalysisFor(Activity::class, $activity->id, AnalysisType::PostRunSpeech, content: 'Mantap!');
 
     $this->actingAs($user)
-        ->post(route('aktivitas.telegram', $activity))
+        ->post(route('aktivitas.kirim', $activity))
         ->assertRedirect()
         ->assertSessionHas('success');
 
@@ -48,10 +48,10 @@ it('does not re-send and flashes info while the send cooldown is active', functi
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
     $analysis = doneAnalysisFor(Activity::class, $activity->id, AnalysisType::PostRunSpeech, content: 'Mantap!');
-    RateLimiter::hit(Cooldown::telegramKey($analysis->id), Cooldown::WINDOW_SECONDS);
+    RateLimiter::hit(Cooldown::notificationKey($analysis->id), Cooldown::WINDOW_SECONDS);
 
     $this->actingAs($user)
-        ->post(route('aktivitas.telegram', $activity))
+        ->post(route('aktivitas.kirim', $activity))
         ->assertRedirect()
         ->assertSessionHas('info');
 
@@ -65,7 +65,7 @@ it('does not send and flashes info when the narration is not ready', function ()
     doneAnalysisFor(Activity::class, $activity->id, AnalysisType::PostRunSpeech, done: false);
 
     $this->actingAs($user)
-        ->post(route('aktivitas.telegram', $activity))
+        ->post(route('aktivitas.kirim', $activity))
         ->assertRedirect()
         ->assertSessionHas('info');
 
@@ -79,7 +79,7 @@ it('404s when the activity belongs to another user', function (): void {
     $activity = Activity::factory()->for($owner)->create();
 
     $this->actingAs($other)
-        ->post(route('aktivitas.telegram', $activity))
+        ->post(route('aktivitas.kirim', $activity))
         ->assertNotFound();
 
     Notification::assertNothingSent();

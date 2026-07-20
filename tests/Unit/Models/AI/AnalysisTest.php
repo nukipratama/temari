@@ -63,15 +63,15 @@ it('toPayload surfaces retry_after_seconds from the active window', function ():
     expect($payload['retry_after_seconds'])->toBeGreaterThan(0)->toBeLessThanOrEqual(Cooldown::WINDOW_SECONDS);
 });
 
-it('telegramCooldownRemaining is null for a missing or not-Done payload', function (): void {
-    expect(Analysis::telegramCooldownRemaining(['id' => null, 'status' => 'done']))->toBeNull()
-        ->and(Analysis::telegramCooldownRemaining(['id' => 7, 'status' => 'pending']))->toBeNull();
+it('notificationCooldownRemaining is null for a missing or not-Done payload', function (): void {
+    expect(Analysis::notificationCooldownRemaining(['id' => null, 'status' => 'done']))->toBeNull()
+        ->and(Analysis::notificationCooldownRemaining(['id' => 7, 'status' => 'pending']))->toBeNull();
 });
 
-it('telegramCooldownRemaining reflects an active Telegram window for a Done payload', function (): void {
-    RateLimiter::hit(Cooldown::telegramKey(7), Cooldown::WINDOW_SECONDS);
+it('notificationCooldownRemaining reflects an active send window for a Done payload', function (): void {
+    RateLimiter::hit(Cooldown::notificationKey(7), Cooldown::WINDOW_SECONDS);
 
-    expect(Analysis::telegramCooldownRemaining(['id' => 7, 'status' => 'done']))
+    expect(Analysis::notificationCooldownRemaining(['id' => 7, 'status' => 'done']))
         ->toBeGreaterThan(0)
         ->toBeLessThanOrEqual(Cooldown::WINDOW_SECONDS);
 });

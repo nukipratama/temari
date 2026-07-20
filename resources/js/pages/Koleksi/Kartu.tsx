@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import AppShell from '@/layouts/AppShell';
+import { appLayout } from '@/layouts/appLayout';
 import MotionLink from '@/components/MotionLink';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import Card from '@/components/ui/Card';
@@ -127,7 +127,7 @@ export default function KoleksiKartu({
         );
 
     return (
-        <AppShell>
+        <>
             <Head title="Koleksi · Kartu" />
             <ConfettiBurst burstKey={burstKey} />
             <PageContainer>
@@ -154,7 +154,7 @@ export default function KoleksiKartu({
 
                 {rarityCounts.legendary === 0 && <LegendaryTease />}
             </PageContainer>
-        </AppShell>
+        </>
     );
 }
 
@@ -369,3 +369,4 @@ function LegendaryTease() {
     );
 }
 
+KoleksiKartu.layout = appLayout;

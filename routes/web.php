@@ -25,9 +25,9 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\Strava\ResyncActivityController;
 use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Http\Controllers\Strava\SyncController;
-use App\Http\Controllers\Telegram\SendActivityNotificationController;
-use App\Http\Controllers\Telegram\SendMonthlyRecapNotificationController;
-use App\Http\Controllers\Telegram\SendWeeklyRecapNotificationController;
+use App\Http\Controllers\Notifications\SendActivityNotificationController;
+use App\Http\Controllers\Notifications\SendMonthlyRecapNotificationController;
+use App\Http\Controllers\Notifications\SendWeeklyRecapNotificationController;
 use App\Http\Controllers\Telegram\TelegramConnectionController;
 use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\WebPush\PushSubscriptionController;
@@ -83,18 +83,18 @@ Route::middleware(['auth'])->group(function (): void {
     Route::post('/aktivitas/{activity}/resync', ResyncActivityController::class)
         ->middleware('throttle:strava-sync')
         ->name('aktivitas.resync');
-    Route::post('/aktivitas/{activity}/telegram', SendActivityNotificationController::class)
+    Route::post('/aktivitas/{activity}/kirim', SendActivityNotificationController::class)
         ->middleware('block-demo-telegram')
-        ->name('aktivitas.telegram');
+        ->name('aktivitas.kirim');
 
     Route::get('/kalender', CalendarController::class)->name('kalender');
 
-    Route::post('/rekap-mingguan/{snapshot}/telegram', SendWeeklyRecapNotificationController::class)
+    Route::post('/rekap-mingguan/{snapshot}/kirim', SendWeeklyRecapNotificationController::class)
         ->middleware('block-demo-telegram')
-        ->name('rekap.mingguan.telegram');
-    Route::post('/rekap-bulanan/{month}/telegram', SendMonthlyRecapNotificationController::class)
+        ->name('rekap.mingguan.kirim');
+    Route::post('/rekap-bulanan/{month}/kirim', SendMonthlyRecapNotificationController::class)
         ->middleware('block-demo-telegram')
-        ->name('rekap.bulanan.telegram');
+        ->name('rekap.bulanan.kirim');
 
     Route::get('/kartu', [CardController::class, 'index'])->name('kartu.index');
 

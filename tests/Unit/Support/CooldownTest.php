@@ -36,7 +36,7 @@ it('clears once the window is released', function (): void {
 });
 
 it('builds a per-analysis telegram key', function (): void {
-    expect(Cooldown::telegramKey(42))->toBe('telegram-send:42');
+    expect(Cooldown::notificationKey(42))->toBe('notification-send:42');
 });
 
 it('attempt starts the window and returns true when not already active', function (): void {

@@ -1,7 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useState } from 'react';
-import AppShell from '@/layouts/AppShell';
+import { appLayout } from '@/layouts/appLayout';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import HeroPanel from '@/components/ui/HeroPanel';
@@ -85,7 +85,7 @@ export default function Aku({
     if (monthsSinceFirstRun !== null) eyebrowParts.push(`${monthsSinceFirstRun} bulan`);
 
     return (
-        <AppShell>
+        <>
             <Head title="Aku" />
             <PageContainer>
                 <header className="mb-8">
@@ -99,11 +99,16 @@ export default function Aku({
                 </header>
 
                 <HeroPanel className="lg:px-9 lg:py-8">
-                    <div className="mb-5 flex items-start gap-6">
+                    {/* Stacks below sm: the 100px mascot plus the gap leaves only
+                        ~150px of column on a 320px screen, which is too narrow for
+                        the "Minta Temari bacain" CTA — it wrapped one word per line
+                        into a tall, cramped pill. Side-by-side from sm up, where
+                        there is room for both. */}
+                    <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:gap-6">
                         <div className="shrink-0">
                             <Temari pose="proud" size={100} animate={false} />
                         </div>
-                        <div className="min-w-0 flex-1 self-center">
+                        <div className="w-full min-w-0 sm:flex-1 sm:self-center">
                             <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
                                 ★ Kata Temari tentang kamu
                             </div>
@@ -115,7 +120,7 @@ export default function Aku({
                                     onSky
                                     renderContent={(text) => (
                                         <p className="font-display text-base italic leading-relaxed text-cream">
-                                            &ldquo;{renderBold(text)}&rdquo;
+                                            &ldquo;{renderBold(stripEdgeQuotes(text))}&rdquo;
                                         </p>
                                     )}
                                 />
@@ -211,7 +216,7 @@ export default function Aku({
                     </div>
                 </section>
             </PageContainer>
-        </AppShell>
+        </>
     );
 }
 
@@ -292,3 +297,5 @@ function ProgressionSection({
         </Card>
     );
 }
+
+Aku.layout = appLayout;

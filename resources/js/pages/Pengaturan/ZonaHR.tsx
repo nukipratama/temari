@@ -1,7 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useId, useState } from 'react';
-import AppShell from '@/layouts/AppShell';
+import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import BackLink from '@/components/ui/BackLink';
@@ -153,7 +153,7 @@ export default function ZonaHR({
     };
 
     return (
-        <AppShell>
+        <>
             <Head title="Pengaturan · Zona HR" />
             <PageContainer>
                 <header>
@@ -294,7 +294,7 @@ export default function ZonaHR({
                     </PillButton>
                 </div>
             </PageContainer>
-        </AppShell>
+        </>
     );
 }
 
@@ -359,3 +359,5 @@ function BoundaryInput({ label, testId, value, invalid, describedBy, onChange }:
         />
     );
 }
+
+ZonaHR.layout = appLayout;

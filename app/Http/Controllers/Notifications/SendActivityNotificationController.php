@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Telegram;
+namespace App\Http\Controllers\Notifications;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Telegram\Concerns\PushesAnalysisToTelegram;
+use App\Http\Controllers\Notifications\Concerns\PushesAnalysisNotification;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
@@ -14,15 +14,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Manual "Kirim ke Telegram" on a run's detail page: pushes that run's post-run
- * narration to the owner's Telegram on demand. A manual override -- it ignores
+ * Manual "Kirim notifikasi" on a run's detail page: pushes that run's post-run
+ * narration to every channel the owner has wired on demand. A manual override -- it ignores
  * the post-run opt-in and the once-only delivery guard (force: true), so
  * it can be re-sent, but still requires a Done narration and a connection (the
  * job enforces the connection / demo guards).
  */
 class SendActivityNotificationController extends Controller
 {
-    use PushesAnalysisToTelegram;
+    use PushesAnalysisNotification;
 
     public function __invoke(Request $request, Activity $activity): RedirectResponse
     {
@@ -38,7 +38,7 @@ class SendActivityNotificationController extends Controller
             $user,
             $analysis,
             'Ceritanya belum siap, coba lagi sebentar ya.',
-            'Aku kirim cerita lari ini ke Telegram kamu ya.',
+            'Aku kirim cerita lari ini ke kamu ya.',
         );
     }
 }

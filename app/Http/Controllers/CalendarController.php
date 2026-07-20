@@ -76,7 +76,7 @@ class CalendarController extends Controller
             'monthlyRecap' => [
                 ...$recapPayload,
                 'is_chain_head' => $discriminator === $this->latestNarratedMonthFor($user),
-                'telegram_retry_after_seconds' => Analysis::telegramCooldownRemaining($recapPayload),
+                'notification_retry_after_seconds' => Analysis::notificationCooldownRemaining($recapPayload),
             ],
         ]);
     }

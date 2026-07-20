@@ -36,9 +36,44 @@ interface MoodSection {
     onToggle: (mood: Mood) => void;
 }
 
-interface RiwayatFilterProps<V extends string> {
+export interface DistanceOption<B extends string> {
+    value: B;
+    label: string;
+    hint?: string;
+}
+
+interface DistanceSection<B extends string> {
+    /** Active band, or null for any distance. */
+    value: B | null;
+    options: ReadonlyArray<DistanceOption<B>>;
+    /** Selecting the active band again clears it. */
+    onSelect: (band: B) => void;
+}
+
+interface SearchSection {
+    /** The term the server is currently filtering on. */
+    value: string;
+    onSubmit: (term: string) => void;
+}
+
+export interface SortOption<S extends string> {
+    value: S;
+    label: string;
+    hint?: string;
+}
+
+interface SortSection<S extends string> {
+    value: S;
+    options: ReadonlyArray<SortOption<S>>;
+    onSelect: (sort: S) => void;
+}
+
+interface RiwayatFilterProps<V extends string, B extends string = string, S extends string = string> {
     range?: RangeSection<V>;
     mood?: MoodSection;
+    distance?: DistanceSection<B>;
+    search?: SearchSection;
+    sort?: SortSection<S>;
     /** When the user hits Reset — clears every filter set this component owns. */
     onReset?: () => void;
     className?: string;
@@ -52,12 +87,15 @@ interface RiwayatFilterProps<V extends string> {
  * Active-filter count is surfaced as a badge on the button so the user can
  * see at a glance whether they're looking at a filtered slice.
  */
-export default function RiwayatFilter<V extends string>({
+export default function RiwayatFilter<V extends string, B extends string = string, S extends string = string>({
     range,
     mood,
+    distance,
+    search,
+    sort,
     onReset,
     className,
-}: Readonly<RiwayatFilterProps<V>>) {
+}: Readonly<RiwayatFilterProps<V, B, S>>) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const close = useCallback(() => setOpen(false), []);
@@ -69,8 +107,13 @@ export default function RiwayatFilter<V extends string>({
     // the first (most-recent) option — that's the implicit default.
     const rangeActive =
         range && range.options.length > 0 && range.value !== range.options[0].value ? 1 : 0;
-    const totalActive = moodActive + rangeActive;
-    const summary = buildSummary(range, moodActive);
+    const distanceActive = distance?.value != null ? 1 : 0;
+    const searchActive = (search?.value ?? '') !== '' ? 1 : 0;
+    // Like range, the first sort option is the implicit default and isn't counted.
+    const sortActive =
+        sort && sort.options.length > 0 && sort.value !== sort.options[0].value ? 1 : 0;
+    const totalActive = moodActive + rangeActive + distanceActive + searchActive + sortActive;
+    const summary = buildSummary(range, moodActive, distance, searchActive > 0, sort);
 
     return (
         <div ref={containerRef} className={cn('relative', className)}>
@@ -104,8 +147,27 @@ export default function RiwayatFilter<V extends string>({
                     className={cn('transition', open && 'rotate-180')}
                 />
             </button>
+            {/* Scrim behind the mobile sheet: gives the sheet something to sit
+                against and makes tapping away to dismiss an obvious target.
+                Desktop keeps the anchored popover, so it is hidden there. */}
+            {open && <div className="fixed inset-0 z-30 bg-ink/20 lg:hidden" aria-hidden onClick={close} />}
             {open && (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-40 w-72 overflow-hidden rounded-2xl border border-line bg-surface-elev shadow-lg">
+                <div
+                    className={cn(
+                        // Mobile: a bottom sheet — thumb-reachable, full-width, and
+                        // able to grow as filters are added, where a 288px popover
+                        // anchored to a top-right trigger gets cramped and sits at
+                        // the far end of the screen from the thumb.
+                        'fixed inset-x-0 bottom-0 z-40 max-h-[80vh] overflow-y-auto rounded-t-2xl border border-line bg-surface-elev pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg',
+                        // Desktop: the original anchored popover.
+                        'lg:absolute lg:inset-x-auto lg:right-0 lg:bottom-auto lg:top-[calc(100%+8px)] lg:max-h-none lg:w-72 lg:overflow-hidden lg:rounded-2xl lg:pb-0',
+                    )}
+                >
+                    {/* Grab handle: the affordance that says "this sheet is
+                        dismissable", mobile only. */}
+                    <div className="flex justify-center pt-2 lg:hidden" aria-hidden>
+                        <span className="h-1 w-9 rounded-full bg-ink/15" />
+                    </div>
                     {(totalActive > 0 || onReset) && (
                         <div className="flex items-center justify-between border-b border-line/60 px-3 py-2">
                             <span className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
@@ -122,7 +184,12 @@ export default function RiwayatFilter<V extends string>({
                             )}
                         </div>
                     )}
+                    {search && <SearchSectionView section={search} />}
+                    {/* Sitting on anything but the first option switches the page to a
+                        flat ranked list, which the hint spells out. */}
+                    {sort && <OptionListSectionView title="Urutan" section={sort} />}
                     {range && <RangeSectionView section={range} />}
+                    {distance && <OptionListSectionView title="Jarak" section={distance} />}
                     {mood && <MoodSectionView section={mood} />}
                 </div>
             )}
@@ -194,14 +261,119 @@ function MoodSectionView({ section }: Readonly<{ section: MoodSection }>) {
     );
 }
 
-function buildSummary<V extends string>(range: RangeSection<V> | undefined, moodActive: number): string {
+/**
+ * Free-text search over the run name. Submits on Enter or blur rather than per
+ * keystroke: each submit is a server round trip, so debouncing every character
+ * would fire a burst of partial reloads for a term the user is still typing.
+ */
+function SearchSectionView({ section }: Readonly<{ section: SearchSection }>) {
+    const [term, setTerm] = useState(section.value);
+
+    // Re-sync when the server reports a different term (e.g. Reset was hit).
+    const [lastValue, setLastValue] = useState(section.value);
+    if (section.value !== lastValue) {
+        setLastValue(section.value);
+        setTerm(section.value);
+    }
+
+    return (
+        <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
+            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
+                Cari nama lari
+            </div>
+            <div className="relative">
+                <Icon
+                    icon="mdi:magnify"
+                    width={15}
+                    height={15}
+                    aria-hidden
+                    className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3"
+                />
+                <input
+                    type="search"
+                    value={term}
+                    onChange={(e) => setTerm(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            section.onSubmit(term);
+                        }
+                    }}
+                    onBlur={() => term !== section.value && section.onSubmit(term)}
+                    placeholder="Misal: Pagi santai"
+                    aria-label="Cari nama lari"
+                    className="focus-ring min-h-11 w-full rounded-lg border border-line/60 bg-surface-warm py-2 pl-8 pr-2 text-xs text-ink placeholder:text-ink-3 lg:text-sm"
+                />
+            </div>
+        </div>
+    );
+}
+
+/**
+ * A titled list of buttons where at most one option is active. Backs both the
+ * distance and sort sections, which render identically and differ only in
+ * section title and value type.
+ */
+function OptionListSectionView<T extends string>({
+    title,
+    section,
+}: Readonly<{ title: string; section: { value: T | null; options: ReadonlyArray<{ value: T; label: string; hint?: string }>; onSelect: (value: T) => void } }>) {
+    return (
+        <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
+            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
+                {title}
+            </div>
+            <div className="flex flex-col gap-1">
+                {section.options.map((opt) => {
+                    const active = opt.value === section.value;
+                    return (
+                        <button
+                            key={opt.value}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => section.onSelect(opt.value)}
+                            className={cn(
+                                'focus-ring flex min-h-11 w-full items-center justify-between rounded-lg px-2 py-2 text-left text-xs transition lg:text-sm',
+                                active ? 'bg-sky/10 font-semibold text-sky' : 'text-ink hover:bg-surface-warm',
+                            )}
+                        >
+                            <span>{opt.label}</span>
+                            {opt.hint && (
+                                <span className="font-mono text-[11px] text-ink-3">{opt.hint}</span>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function buildSummary<V extends string, B extends string, S extends string>(
+    range: RangeSection<V> | undefined,
+    moodActive: number,
+    distance: DistanceSection<B> | undefined,
+    searchActive: boolean,
+    sort: SortSection<S> | undefined,
+): string {
     const parts: string[] = [];
+    if (sort && sort.options.length > 0 && sort.value !== sort.options[0].value) {
+        const current = sort.options.find((o) => o.value === sort.value);
+        if (current) parts.push(current.label);
+    }
     if (range) {
         const current = range.options.find((o) => o.value === range.value);
         if (current) parts.push(current.label);
     }
+    if (distance?.value != null) {
+        const band = distance.options.find((o) => o.value === distance.value);
+        if (band) parts.push(band.hint ?? band.label);
+    }
     if (moodActive > 0) {
         parts.push(`${moodActive} mood`);
+    }
+    if (searchActive) {
+        parts.push('cari');
     }
     return parts.length > 0 ? parts.join(' · ') : 'Filter';
 }
