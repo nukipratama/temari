@@ -1,11 +1,12 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { appLayout } from '@/layouts/appLayout';
 import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/JourneyStrip';
 import RingkasanCard from '@/components/aktivitas/RingkasanCard';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import Card from '@/components/ui/Card';
+import PillButton from '@/components/ui/PillButton';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import PageHero from '@/components/ui/PageHero';
@@ -20,7 +21,6 @@ import { cn } from '@/lib/cn';
 import { poseForFormStatus } from '@/lib/temariPose';
 import { formStatusLabel } from '@/lib/formStatus';
 import { MOOD_HINT, MOOD_LABEL, MOOD_FILL, MOOD_ORDER } from '@/lib/mood';
-import { moodFromActivity } from '@/lib/moodFromActivity';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
 import PageContainer from '@/components/ui/PageContainer';
 import type { Activity, ActivityDetail, AnalysisPayload, FormStatus, Mood, SharedProps, StravaSyncState } from '@/types/inertia';
@@ -52,6 +52,8 @@ interface RunsIndexProps {
     notes?: Record<number, RunNote>;
     moods?: Record<number, Mood>;
     rangeFilter: RangeFilterValue;
+    /** Moods the server filtered on. Empty = no mood filter. */
+    moodFilter?: ReadonlyArray<Mood>;
     rangeStart: string | null;
     /** Server widened the requested range to reach an older run. */
     rangeAutoWidened?: boolean;
@@ -78,7 +80,21 @@ interface WeekBucket {
 export type RangeFilterValue = '8w' | '12w' | '6m' | '1y' | 'all';
 
 const DEFAULT_RANGE: RangeFilterValue = '12w';
-const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'rangeStart', 'rangeAutoWidened', 'runsTruncated', 'maxRuns', 'weeklySnapshots', 'notes', 'moods'];
+const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'moodFilter', 'rangeStart', 'rangeAutoWidened', 'runsTruncated', 'maxRuns', 'weeklySnapshots', 'notes', 'moods'];
+
+/**
+ * `/aktivitas` URL carrying both filters. Defaults are omitted so the common
+ * unfiltered view stays a clean `/aktivitas`, and moods are serialised in
+ * MOOD_ORDER so the same selection always produces the same shareable link.
+ */
+function hrefWithFilters(range: RangeFilterValue, moods: ReadonlySet<Mood>): string {
+    const params = new URLSearchParams();
+    if (range !== DEFAULT_RANGE) params.set('range', range);
+    if (moods.size > 0) params.set('mood', MOOD_ORDER.filter((m) => moods.has(m)).join(','));
+    const query = params.toString();
+
+    return query === '' ? '/aktivitas' : `/aktivitas?${query}`;
+}
 
 const RANGE_FILTER_OPTIONS: ReadonlyArray<RangeOption<RangeFilterValue>> = [
     { value: '8w', label: '2 bulan terakhir', hint: '8w' },
@@ -107,6 +123,7 @@ export default function RunsIndex({
     notes = {},
     moods = {},
     rangeFilter,
+    moodFilter = [],
     rangeAutoWidened = false,
     runsTruncated = false,
     maxRuns = 0,
@@ -120,34 +137,43 @@ export default function RunsIndex({
         return map;
     }, [weeklySnapshots]);
 
-    const [moodFilter, setMoodFilter] = useState<ReadonlySet<Mood>>(() => new Set());
-    const toggleMood = useCallback((mood: Mood) => {
-        setMoodFilter((prev) => {
-            const next = new Set(prev);
-            if (next.has(mood)) next.delete(mood);
-            else next.add(mood);
-            return next;
-        });
-    }, []);
-    const resetFilters = useCallback(() => {
-        setMoodFilter(new Set());
-        if (rangeFilter !== DEFAULT_RANGE) {
-            router.get('/aktivitas', { range: DEFAULT_RANGE }, {
+    const selectedMoods = useMemo(() => new Set(moodFilter), [moodFilter]);
+
+    // The filter lives in the URL and is applied by the server, so a toggle is a
+    // partial reload rather than local state. That makes a filtered view
+    // shareable and restorable, and — unlike the old client-side pass — it
+    // filters the runs that were *fetched*, not just the ones already on screen
+    // within the current range window.
+    const visitWithFilters = useCallback(
+        (next: { range?: RangeFilterValue; moods?: ReadonlySet<Mood> }) => {
+            const range = next.range ?? rangeFilter;
+            const moodSet = next.moods ?? selectedMoods;
+            const query: Record<string, string> = {};
+            if (range !== DEFAULT_RANGE) query.range = range;
+            if (moodSet.size > 0) query.mood = MOOD_ORDER.filter((m) => moodSet.has(m)).join(',');
+
+            router.get('/aktivitas', query, {
                 preserveScroll: true,
                 preserveState: true,
                 only: RANGE_RELOAD_PROPS,
             });
-        }
-    }, [rangeFilter]);
-    const matchedRunIds = useMemo(() => {
-        if (moodFilter.size === 0) return null;
-        const ids = new Set<number>();
-        for (const run of runs) {
-            const mood = notes[run.id]?.mood ?? moods[run.id] ?? moodFromActivity(run.detail);
-            if (moodFilter.has(mood)) ids.add(run.id);
-        }
-        return ids;
-    }, [runs, notes, moods, moodFilter]);
+        },
+        [rangeFilter, selectedMoods],
+    );
+
+    const toggleMood = useCallback(
+        (mood: Mood) => {
+            const next = new Set(selectedMoods);
+            if (next.has(mood)) next.delete(mood);
+            else next.add(mood);
+            visitWithFilters({ moods: next });
+        },
+        [selectedMoods, visitWithFilters],
+    );
+
+    const resetFilters = useCallback(() => {
+        visitWithFilters({ range: DEFAULT_RANGE, moods: new Set() });
+    }, [visitWithFilters]);
 
     // Stable prop objects so toggling a mood doesn't hand RiwayatFilter a fresh
     // `range` literal (which never changes here) on every keystroke/toggle.
@@ -155,21 +181,22 @@ export default function RunsIndex({
         () => ({
             value: rangeFilter,
             options: RANGE_FILTER_OPTIONS,
-            hrefFor: (r: RangeFilterValue) => `/aktivitas?range=${r}`,
+            hrefFor: (r: RangeFilterValue) => hrefWithFilters(r, selectedMoods),
             only: RANGE_RELOAD_PROPS,
         }),
-        [rangeFilter],
+        [rangeFilter, selectedMoods],
     );
     const moodSection = useMemo(
         () => ({
-            selected: moodFilter,
+            selected: selectedMoods,
             options: MOOD_FILTER_OPTIONS,
             onToggle: toggleMood,
         }),
-        [moodFilter, toggleMood],
+        [selectedMoods, toggleMood],
     );
 
     const hasRuns = runs.length > 0;
+    const moodFiltered = selectedMoods.size > 0;
 
     return (
         <>
@@ -177,7 +204,11 @@ export default function RunsIndex({
             <PageContainer>
                 <header className="flex flex-col gap-5">
                     <PageHero
-                        eyebrow={`Riwayat · ${runs.length} aktivitas`}
+                        eyebrow={
+                            moodFiltered
+                                ? `Riwayat · ${runs.length} hasil`
+                                : `Riwayat · ${runs.length} aktivitas`
+                        }
                         lead="Setiap lari"
                         emph="ada ceritanya."
                         noItalic
@@ -194,7 +225,7 @@ export default function RunsIndex({
 
                 <JourneyStrip match={journeyMatch} className="mt-6 mb-6" />
 
-                {hasRuns ? (
+                {hasRuns && (
                     <div className="space-y-8">
                         {rangeAutoWidened && <RangeWidenedNote rangeFilter={rangeFilter} />}
                         {runsTruncated && <RunsTruncatedNote maxRuns={maxRuns} />}
@@ -205,13 +236,16 @@ export default function RunsIndex({
                                 snapshot={snapshotsByWeek.get(bucket.weekEnding) ?? null}
                                 notes={notes}
                                 moods={moods}
-                                matchedRunIds={matchedRunIds}
+                                filtered={moodFiltered}
                             />
                         ))}
                     </div>
-                ) : (
-                    <EmptyState />
                 )}
+                {/* A filtered view that matched nothing is a different story from
+                    a genuinely empty history, so it gets its own state with a way
+                    back rather than the "connect Strava" onboarding copy. */}
+                {!hasRuns && moodFiltered && <NoFilterMatchState onReset={resetFilters} />}
+                {!hasRuns && !moodFiltered && <EmptyState />}
             </PageContainer>
         </>
     );
@@ -222,27 +256,24 @@ interface WeekSectionProps {
     snapshot: WeeklySnapshotRow | null;
     notes: Record<number, RunNote>;
     moods: Record<number, Mood>;
-    /** When non-null, runs whose id is not in the set are dimmed. Null = no filter. */
-    matchedRunIds: ReadonlySet<number> | null;
+    /** A filter narrowed this week's runs, so its totals describe a subset. */
+    filtered: boolean;
 }
 
-const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, matchedRunIds }: Readonly<WeekSectionProps>) {
+const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, filtered }: Readonly<WeekSectionProps>) {
     const notificationsReachable = useNotificationsReachable();
-    const matchCount = matchedRunIds
-        ? bucket.runs.filter((r) => matchedRunIds.has(r.id)).length
-        : bucket.runs.length;
-    const wholeWeekDimmed = matchedRunIds !== null && matchCount === 0;
 
     // The date-range filter can truncate a week's runs list without truncating
     // the week itself, e.g. the range boundary lands mid-week. bucket.* only
     // sums the runs actually in view, so it can undercount vs. the pre-aggregated
     // WeeklySnapshot the recap text below quotes — prefer the snapshot's totals
     // whenever one exists so the header always agrees with the narration.
-    // Except the in-progress week: WeeklyAggregator recomputes the snapshot from
-    // a queued listener (DispatchPostRunAnalysis), so right after a fresh sync
-    // bucket (live, from this request's own run query) can be more current than
-    // a snapshot the worker hasn't caught up to yet.
-    const useSnapshotTotals = snapshot !== null && matchedRunIds === null && !snapshot.is_current_week;
+    // Except: (a) the in-progress week, since WeeklyAggregator recomputes the
+    // snapshot from a queued listener (DispatchPostRunAnalysis), so right after a
+    // fresh sync bucket can be more current than a snapshot the worker hasn't
+    // caught up to yet; and (b) a filtered view, where the snapshot describes the
+    // whole week but only a subset is on screen.
+    const useSnapshotTotals = snapshot !== null && !filtered && !snapshot.is_current_week;
     const runCount = useSnapshotTotals && snapshot.runs !== null ? snapshot.runs : bucket.runs.length;
     const totalKm = useSnapshotTotals && snapshot.distance_km !== null ? snapshot.distance_km : bucket.totalKm;
     const trimpLabel = Math.round(
@@ -250,25 +281,11 @@ const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, 
     );
 
     return (
-        <Card
-            as="section"
-            padding="none"
-            className={cn(
-                'overflow-hidden shadow-sm transition',
-                wholeWeekDimmed && 'opacity-40',
-            )}
-        >
+        <Card as="section" padding="none" className="overflow-hidden shadow-sm transition">
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
                 <div className="font-display text-lg italic text-ink">{bucket.label}</div>
                 <div className="flex flex-wrap items-center gap-2 text-xs tabular-nums">
-                    <Stat
-                        icon="mdi:run"
-                        label={
-                            matchedRunIds
-                                ? `${matchCount} / ${bucket.runs.length} run`
-                                : `${runCount} run`
-                        }
-                    />
+                    <Stat icon="mdi:run" label={`${runCount} run`} />
                     <Stat icon="mdi:map-marker-distance" label={`${totalKm.toFixed(1)} km`} />
                     <Stat icon="mdi:fire" label={`${trimpLabel} TRIMP`} />
                     {snapshot && <WeeklyStatusChips snapshot={snapshot} />}
@@ -305,14 +322,14 @@ const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, 
             )}
 
             <div>
-                {bucket.runs.map((activity) => {
-                    const dimmed = matchedRunIds !== null && !matchedRunIds.has(activity.id);
-                    return (
-                        <div key={activity.id} className={cn('transition', dimmed && 'opacity-30')}>
-                            <RunListRow detail={activity.detail} note={notes[activity.id] ?? null} mood={moods[activity.id] ?? null} />
-                        </div>
-                    );
-                })}
+                {bucket.runs.map((activity) => (
+                    <RunListRow
+                        key={activity.id}
+                        detail={activity.detail}
+                        note={notes[activity.id] ?? null}
+                        mood={moods[activity.id] ?? null}
+                    />
+                ))}
             </div>
         </Card>
     );
@@ -467,6 +484,27 @@ function EmptyState() {
             <BackLink href="/" tone="accent" className="mt-4">
                 Kembali ke Hari Ini
             </BackLink>
+        </Card>
+    );
+}
+
+/**
+ * Shown when a filter matched nothing. Distinct from {@see EmptyState}: the user
+ * has runs, they just narrowed past them, so the copy says so and the only
+ * action offered is a way back out instead of Strava onboarding.
+ */
+function NoFilterMatchState({ onReset }: Readonly<{ onReset: () => void }>) {
+    return (
+        <Card tone="empty" padding="lg" className="flex flex-col items-center text-center">
+            <Temari pose="observational" size={112} animate={false} />
+            <p className="mt-4 font-display text-2xl italic text-ink-2">Gak ada lari yang cocok.</p>
+            <p className="mt-2 font-sans text-sm text-ink-2">
+                Filternya kesempitan nih. Coba longgarin dikit biar keliatan lagi.
+            </p>
+            <PillButton tone="outline" onClick={onReset} className="mt-4">
+                <Icon icon="mdi:filter-remove-outline" width={15} height={15} aria-hidden />
+                Reset filter
+            </PillButton>
         </Card>
     );
 }

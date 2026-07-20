@@ -93,6 +93,111 @@ it('excludes runs outside the requested range', function (): void {
             ->where('rangeFilter', '1y'));
 });
 
+/**
+ * Two runs a week apart, moods 'lemes' and 'nyala', both inside the default
+ * window. Returns [lemesActivity, nyalaActivity].
+ *
+ * @return array{0: Activity, 1: Activity}
+ */
+function moodFixtures(User $user): array
+{
+    $lemes = Activity::factory()->for($user)->analyzed()->create();
+    $nyala = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($lemes)->create(['name' => 'Lemes run', 'start_date_local' => Carbon::now()->subDays(3)]);
+    ActivityDetail::factory()->for($nyala)->create(['name' => 'Nyala run', 'start_date_local' => Carbon::now()->subDays(10)]);
+    StoryLine::factory()->for($lemes)->create(['mood' => 'lemes']);
+    StoryLine::factory()->for($nyala)->create(['mood' => 'nyala']);
+
+    return [$lemes, $nyala];
+}
+
+it('returns every run when no mood filter is applied', function (): void {
+    $user = User::factory()->create();
+    moodFixtures($user);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('runs', 2)
+            ->where('moodFilter', []));
+});
+
+// The filter used to run client-side and merely dim non-matching runs; it now
+// removes them server-side, so the payload itself is narrowed.
+it('filters runs down to the selected mood', function (): void {
+    $user = User::factory()->create();
+    moodFixtures($user);
+
+    $this->actingAs($user)->get('/aktivitas?mood=lemes')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('runs', 1)
+            ->where('runs.0.detail.name', 'Lemes run')
+            ->where('moodFilter', ['lemes']));
+});
+
+it('treats multiple moods as a union', function (): void {
+    $user = User::factory()->create();
+    moodFixtures($user);
+
+    $this->actingAs($user)->get('/aktivitas?mood=lemes,nyala')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('runs', 2)
+            ->where('moodFilter', ['lemes', 'nyala']));
+});
+
+it('excludes a run whose post-run story line has not been written yet', function (): void {
+    $user = User::factory()->create();
+    $unnarrated = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($unnarrated)->create(['start_date_local' => Carbon::now()->subDays(2)]);
+
+    $this->actingAs($user)->get('/aktivitas?mood=lemes')
+        ->assertInertia(fn (Assert $page) => $page->has('runs', 0));
+});
+
+it('never leaks another user runs through the mood filter', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    moodFixtures($other);
+
+    $this->actingAs($user)->get('/aktivitas?mood=lemes,nyala')
+        ->assertInertia(fn (Assert $page) => $page->has('runs', 0));
+});
+
+// A stale or hand-edited link should widen, not 404.
+it('ignores unknown moods rather than erroring', function (): void {
+    $user = User::factory()->create();
+    moodFixtures($user);
+
+    $this->actingAs($user)->get('/aktivitas?mood=bogus')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('runs', 2)
+            ->where('moodFilter', []));
+
+    $this->actingAs($user)->get('/aktivitas?mood=bogus,lemes')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('runs', 1)
+            ->where('moodFilter', ['lemes']));
+});
+
+it('combines the mood filter with the range window', function (): void {
+    $user = User::factory()->create();
+    $old = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($old)->create(['name' => 'Old lemes', 'start_date_local' => Carbon::now()->subDays(200)]);
+    StoryLine::factory()->for($old)->create(['mood' => 'lemes']);
+    moodFixtures($user);
+
+    // Default window excludes the 200-day-old lemes run.
+    $this->actingAs($user)->get('/aktivitas?mood=lemes')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('runs', 1)
+            ->where('runs.0.detail.name', 'Lemes run'));
+
+    // Widening the window brings it back.
+    $this->actingAs($user)->get('/aktivitas?mood=lemes&range=1y')
+        ->assertInertia(fn (Assert $page) => $page->has('runs', 2));
+});
+
 it('auto-widens the range and flags it when the newest run is outside the default window', function (): void {
     $user = User::factory()->create();
     $ancient = Activity::factory()->for($user)->analyzed()->create();

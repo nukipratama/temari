@@ -425,24 +425,9 @@ describe('Riwayat/Jejak', () => {
         expect(screen.getByTestId('journey-strip')).toBeInTheDocument();
     });
 
-    it('toggles a mood filter and dims runs that do not match it', () => {
-        const runs = [run(101, 'Pagi santai', '2026-05-19T06:00:00')];
-        render(
-            <RunsIndex
-                runs={runs}
-                rangeFilter="8w"
-                rangeStart="2026-04-13"
-                weeklySnapshots={[]}
-            />,
-        );
-
-        fireEvent.click(screen.getByLabelText('Buka filter'));
-        fireEvent.click(screen.getByRole('button', { name: /Enteng/i }));
-
-        expect(screen.getByRole('button', { name: /Enteng/i })).toHaveAttribute('aria-pressed', 'true');
-    });
-
-    it('resets range + mood filters and re-fetches the default range', () => {
+    // The mood filter is server-side and lives in the URL, so toggling one is a
+    // partial reload rather than local state.
+    it('toggles a mood filter by visiting the url with it', () => {
         vi.mocked(router.get).mockReset();
         const runs = [run(101, 'Pagi santai', '2026-05-19T06:00:00')];
         render(
@@ -456,12 +441,117 @@ describe('Riwayat/Jejak', () => {
 
         fireEvent.click(screen.getByLabelText('Buka filter'));
         fireEvent.click(screen.getByRole('button', { name: /Enteng/i }));
-        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/aktivitas',
-            { range: '12w' },
+            { range: '8w', mood: 'enteng' },
             expect.objectContaining({ preserveScroll: true, preserveState: true }),
         );
+    });
+
+    it('reflects the server-applied mood filter as the pressed state', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                moodFilter={['enteng']}
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        expect(screen.getByRole('button', { name: /Enteng/i })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('drops an already-selected mood from the url when toggled off', () => {
+        vi.mocked(router.get).mockReset();
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                moodFilter={['enteng']}
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByRole('button', { name: /Enteng/i }));
+
+        expect(router.get).toHaveBeenCalledWith(
+            '/aktivitas',
+            { range: '8w' },
+            expect.objectContaining({ preserveScroll: true, preserveState: true }),
+        );
+    });
+
+    it('resets range + mood filters back to a bare /aktivitas', () => {
+        vi.mocked(router.get).mockReset();
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                moodFilter={['enteng']}
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+        // Defaults are omitted, so the unfiltered view is a clean URL.
+        expect(router.get).toHaveBeenCalledWith(
+            '/aktivitas',
+            {},
+            expect.objectContaining({ preserveScroll: true, preserveState: true }),
+        );
+    });
+
+    it('counts results rather than activities while a mood filter is on', () => {
+        render(
+            <RunsIndex
+                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                moodFilter={['enteng']}
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText(/1 hasil/)).toBeInTheDocument();
+    });
+
+    // A filtered view that matched nothing is a different story from an empty
+    // history: the user has runs, they just narrowed past them.
+    it('shows a no-match state with a way out when a filter matches nothing', () => {
+        vi.mocked(router.get).mockReset();
+        render(
+            <RunsIndex
+                runs={[]}
+                rangeFilter="8w"
+                moodFilter={['enteng']}
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText('Gak ada lari yang cocok.')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /Reset filter/ }));
+        expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+    });
+
+    it('keeps the onboarding empty state when there is no filter and no runs', () => {
+        render(
+            <RunsIndex
+                runs={[]}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.queryByText('Gak ada lari yang cocok.')).not.toBeInTheDocument();
     });
 });

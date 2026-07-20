@@ -57,6 +57,20 @@ class RunController extends Controller
     /** Safety cap on weekly snapshots loaded into memory (10 years ≈ 520 weeks). */
     private const int MAX_WEEKS = 520;
 
+    /**
+     * Selectable moods for the Jejak filter. Mirrors the `Mood` union in
+     * resources/js/types/inertia.ts; anything else in `?mood=` is dropped rather
+     * than 404ing, so a stale or hand-edited URL degrades to a wider view.
+     */
+    private const array MOODS = [
+        Temari::MOOD_NYALA,
+        Temari::MOOD_ENTENG,
+        Temari::MOOD_OLENG,
+        Temari::MOOD_LEMES,
+        Temari::MOOD_MUMET,
+        Temari::MOOD_ADEM,
+    ];
+
     public function index(Request $request, PostRunNoteReader $noteReader): Response
     {
         /** @var User $user */
@@ -75,10 +89,26 @@ class RunController extends Controller
         $rangeAutoWidened = $effectiveRange !== $requestedRange;
         $rangeStart = $this->rangeStartFor($effectiveRange);
 
-        $runs = Activity::query()
+        $moodFilter = $this->resolveMoods($request->query('mood'));
+
+        $runsQuery = Activity::query()
             ->where('user_id', $user->id)
             ->whereHas('detail', fn ($q) => $rangeStart === null ? $q : $q->where('start_date_local', '>=', $rangeStart))
-            ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards', 'workout_type'])])
+            ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards', 'workout_type'])]);
+
+        // Mood lives on the post-run StoryLine, which is also what the list
+        // renders, so filtering there keeps the filter and the displayed mood in
+        // agreement. A run whose story line hasn't been written yet carries no
+        // mood and is therefore not a match for any mood.
+        if ($moodFilter !== []) {
+            $runsQuery->whereIn('id', StoryLine::query()
+                ->select('activity_id')
+                ->where('user_id', $user->id)
+                ->where('kind', StoryLine::KIND_POST_RUN)
+                ->whereIn('mood', $moodFilter));
+        }
+
+        $runs = $runsQuery
             ->orderByDesc('id')
             ->limit(self::MAX_RUNS + 1)
             ->get();
@@ -116,6 +146,7 @@ class RunController extends Controller
             // backend mood even before the speech (and its note) is ready.
             'moods' => $noteReader->moodsFor($runIds),
             'rangeFilter' => $effectiveRange,
+            'moodFilter' => $moodFilter,
             'rangeStart' => $rangeStart?->toDateString(),
             'rangeAutoWidened' => $rangeAutoWidened,
             'runsTruncated' => $runsTruncated,
@@ -272,6 +303,26 @@ class RunController extends Controller
         }
 
         return '8w';
+    }
+
+    /**
+     * Selected moods from `?mood=nyala,lemes`, keeping only known values and
+     * dropping duplicates. An empty result means "no mood filter" — an unknown
+     * or malformed value widens the view rather than erroring, so a stale link
+     * still shows runs.
+     *
+     * @return array<int, string>
+     */
+    private function resolveMoods(mixed $raw): array
+    {
+        if (! is_string($raw) || $raw === '') {
+            return [];
+        }
+
+        return array_values(array_intersect(
+            array_unique(explode(',', $raw)),
+            self::MOODS,
+        ));
     }
 
     /**
