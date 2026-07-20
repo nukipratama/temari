@@ -160,13 +160,13 @@ export default function AnalysisStatus({
                 </div>
             );
         }
-        const skeletonBg = onSky ? 'bg-cream/15' : 'bg-surface-sunken';
+        const skeletonBg = onSky ? 'skeleton-on-sky' : 'skeleton';
         return (
             <div className={`flex flex-col gap-3 ${TEXT_SIZE[size]}`} role="status" aria-live="polite">
                 <span className="sr-only">Lagi dipikirin Temari…</span>
                 <div className="flex flex-col gap-1.5">
                     {SKELETON_WIDTHS.map((width) => (
-                        <div key={width} className={`animate-pulse h-[1.625em] rounded ${width} ${skeletonBg}`} aria-hidden />
+                        <div key={width} className={`h-[1.625em] rounded ${width} ${skeletonBg}`} aria-hidden />
                     ))}
                 </div>
                 {attempts > 1 && (

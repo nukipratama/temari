@@ -52,13 +52,13 @@ describe('AnalysisStatus', () => {
     it('renders a skeleton placeholder when queued', () => {
         const { container } = render(<AnalysisStatus analysis={payload({ status: 'queued' })} />);
         expect(screen.getByRole('status')).toBeInTheDocument();
-        expect(container.querySelector('.animate-pulse')).not.toBeNull();
+        expect(container.querySelector('.skeleton, .skeleton-on-sky')).not.toBeNull();
     });
 
     it('renders a skeleton placeholder when processing', () => {
         const { container } = render(<AnalysisStatus analysis={payload({ status: 'processing' })} />);
         expect(screen.getByRole('status')).toBeInTheDocument();
-        expect(container.querySelector('.animate-pulse')).not.toBeNull();
+        expect(container.querySelector('.skeleton, .skeleton-on-sky')).not.toBeNull();
     });
 
     it('flips the queued skeleton to a quiet "muat ulang nanti" state after polling gives up', async () => {

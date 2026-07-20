@@ -548,7 +548,7 @@ function MapWeatherPanel({ detail, className }: Readonly<{ detail: DetailedActiv
             )}
             {hasPolyline && (
                 <div className="overflow-hidden rounded-xl bg-cream/[0.04]">
-                    <Suspense fallback={<div className="h-[180px] animate-pulse" />}>
+                    <Suspense fallback={<div className="skeleton-on-sky h-[180px]" aria-hidden />}>
                         <RouteMap polyline={detail.summary_polyline ?? ''} distanceKm={formatKm(detail.distance)} />
                     </Suspense>
                 </div>
