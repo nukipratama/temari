@@ -11,6 +11,23 @@ import { createElement, type ReactNode } from 'react';
 // AnimatePresence exits deterministic (children removed synchronously).
 MotionGlobalConfig.skipAnimations = true;
 
+// jsdom ships no matchMedia. Anything asking the environment about itself
+// (display-mode for the installed-app checks, pointer coarseness, reduced
+// motion) needs it to exist, so default every query to "no match" — a plain
+// desktop browser tab. Tests that care override it per-file.
+if (typeof window !== 'undefined' && !window.matchMedia) {
+    window.matchMedia = ((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+}
+
 const DEFAULT_PAGE_PROPS: Record<string, unknown> = {
     auth: { user: null },
     flash: { success: null, error: null, info: null },

@@ -11,6 +11,7 @@ import ErrorBanner from '@/components/ErrorBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
 import { useDawnShift } from '@/hooks/useDawnShift';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
 import type { SharedProps, UnlockFlash } from '@/types/inertia';
 
 interface AppShellProps {
@@ -21,6 +22,7 @@ interface AppShellProps {
 
 export default function AppShell({ children, withNav = true }: Readonly<AppShellProps>) {
     useDawnShift();
+    useSwipeBack();
     const { component } = usePage<SharedProps>();
     const { pendingReveal, flash } = usePage<SharedProps>().props;
     const pending = pendingReveal ?? null;

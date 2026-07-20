@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { motion, useDragControls } from 'framer-motion';
 import { useCallback, useRef, useState } from 'react';
 import { useDismissable } from '@/hooks/useDismissable';
 import { useFocusReturn } from '@/hooks/useFocusReturn';
@@ -99,6 +100,7 @@ export default function RiwayatFilter<V extends string, B extends string = strin
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const close = useCallback(() => setOpen(false), []);
+    const dragControls = useDragControls();
     useDismissable(open, containerRef, close);
     useFocusReturn(open);
 
@@ -152,7 +154,22 @@ export default function RiwayatFilter<V extends string, B extends string = strin
                 Desktop keeps the anchored popover, so it is hidden there. */}
             {open && <div className="fixed inset-0 z-30 bg-ink/20 lg:hidden" aria-hidden onClick={close} />}
             {open && (
-                <div
+                <motion.div
+                    // Drag is started by the grab handle rather than the sheet
+                    // body: the body scrolls, and a drag that competes with a
+                    // scroll makes both feel broken. The handle is `lg:hidden`,
+                    // so on desktop, where this is an anchored popover and not a
+                    // sheet, there is nothing to start a drag from.
+                    drag="y"
+                    dragListener={false}
+                    dragControls={dragControls}
+                    dragConstraints={{ top: 0, bottom: 0 }}
+                    dragElastic={{ top: 0, bottom: 0.6 }}
+                    onDragEnd={(_, info) => {
+                        if (info.offset.y > 90 || info.velocity.y > 500) {
+                            close();
+                        }
+                    }}
                     className={cn(
                         // Mobile: a bottom sheet — thumb-reachable, full-width, and
                         // able to grow as filters are added, where a 288px popover
@@ -164,8 +181,14 @@ export default function RiwayatFilter<V extends string, B extends string = strin
                     )}
                 >
                     {/* Grab handle: the affordance that says "this sheet is
-                        dismissable", mobile only. */}
-                    <div className="flex justify-center pt-2 lg:hidden" aria-hidden>
+                        dismissable", mobile only. Padded out to a real thumb
+                        target, and `touch-none` so dragging it never doubles as
+                        a page scroll. */}
+                    <div
+                        className="flex touch-none cursor-grab justify-center py-3 active:cursor-grabbing lg:hidden"
+                        aria-hidden
+                        onPointerDown={(event) => dragControls.start(event)}
+                    >
                         <span className="h-1 w-9 rounded-full bg-ink/15" />
                     </div>
                     {(totalActive > 0 || onReset) && (
@@ -191,7 +214,7 @@ export default function RiwayatFilter<V extends string, B extends string = strin
                     {range && <RangeSectionView section={range} />}
                     {distance && <OptionListSectionView title="Jarak" section={distance} />}
                     {mood && <MoodSectionView section={mood} />}
-                </div>
+                </motion.div>
             )}
         </div>
     );
