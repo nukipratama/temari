@@ -11,6 +11,7 @@ import SendNotificationButton from '@/components/SendNotificationButton';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import PageHero from '@/components/ui/PageHero';
 import RiwayatFilter, { type MoodOption, type RangeOption } from '@/components/riwayat/RiwayatFilter';
+import ActiveFilterChips, { type ActiveChip } from '@/components/riwayat/ActiveFilterChips';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import BackLink from '@/components/ui/BackLink';
 import StravaSyncButton from '@/components/StravaSyncButton';
@@ -115,7 +116,7 @@ const DISTANCE_OPTIONS: ReadonlyArray<{ value: DistanceBand; label: string; hint
  * /aktivitas" case never happens.
  */
 const DEFAULT_RANGE: RangeFilterValue = '8w';
-const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'moodFilter', 'distanceFilter', 'searchFilter', 'sortMode', 'rangeStart', 'rangeAutoWidened', 'runsTruncated', 'maxRuns', 'weeklySnapshots', 'notes', 'moods'];
+const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'moodFilter', 'distanceFilter', 'searchFilter', 'sortMode', 'weekFilter', 'rangeStart', 'rangeAutoWidened', 'runsTruncated', 'maxRuns', 'weeklySnapshots', 'notes', 'moods'];
 
 /** Every filter the page owns, in one shape so callers can change one field. */
 interface FilterState {
@@ -124,6 +125,8 @@ interface FilterState {
     distance: DistanceBand | null;
     search: string;
     sort: SortMode;
+    /** Week deep-link scope (that week's Sunday), or null for the full history. */
+    week: string | null;
 }
 
 const DEFAULT_SORT: SortMode = 'newest';
@@ -133,9 +136,12 @@ const DEFAULT_SORT: SortMode = 'newest';
  * unfiltered view stays a clean `/aktivitas`, and moods are serialised in
  * MOOD_ORDER so the same selection always produces the same shareable link.
  */
-function filterQuery({ range, moods, distance, search, sort }: FilterState): Record<string, string> {
+function filterQuery({ range, moods, distance, search, sort, week }: FilterState): Record<string, string> {
     const query: Record<string, string> = {};
-    if (range !== DEFAULT_RANGE) query.range = range;
+    // A week scope pins its own window, so carrying `range` alongside it would
+    // be noise in the URL.
+    if (week !== null) query.week = week;
+    else if (range !== DEFAULT_RANGE) query.range = range;
     if (moods.size > 0) query.mood = MOOD_ORDER.filter((m) => moods.has(m)).join(',');
     if (distance !== null) query.dist = distance;
     if (search !== '') query.q = search;
@@ -203,8 +209,9 @@ export default function RunsIndex({
             distance: distanceFilter,
             search: searchFilter ?? '',
             sort: sortMode,
+            week: weekFilter,
         }),
-        [rangeFilter, selectedMoods, distanceFilter, searchFilter, sortMode],
+        [rangeFilter, selectedMoods, distanceFilter, searchFilter, sortMode, weekFilter],
     );
 
     // The filters live in the URL and are applied by the server, so a change is a
@@ -256,6 +263,7 @@ export default function RunsIndex({
             distance: null,
             search: '',
             sort: DEFAULT_SORT,
+            week: null,
         });
     }, [visitWithFilters]);
 
@@ -295,6 +303,52 @@ export default function RunsIndex({
         [sortMode, selectSort],
     );
 
+    // One chip per active filter, so a narrowed list always says why it is
+    // narrow and each reason can be dropped without reopening the panel.
+    const chips = useMemo<ActiveChip[]>(() => {
+        const list: ActiveChip[] = [];
+
+        if (weekFilter !== null) {
+            list.push({
+                key: `week:${weekFilter}`,
+                label: 'Satu minggu',
+                onRemove: () => visitWithFilters({ week: null }),
+            });
+        }
+        if (rangeFilter !== DEFAULT_RANGE) {
+            const label = RANGE_FILTER_OPTIONS.find((o) => o.value === rangeFilter)?.label ?? rangeFilter;
+            list.push({ key: `range:${rangeFilter}`, label, onRemove: () => visitWithFilters({ range: DEFAULT_RANGE }) });
+        }
+        if (sortMode !== DEFAULT_SORT) {
+            const label = SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? sortMode;
+            list.push({ key: `sort:${sortMode}`, label, onRemove: () => visitWithFilters({ sort: DEFAULT_SORT }) });
+        }
+        if (distanceFilter !== null) {
+            const label = DISTANCE_OPTIONS.find((o) => o.value === distanceFilter)?.label ?? distanceFilter;
+            list.push({ key: `dist:${distanceFilter}`, label, onRemove: () => visitWithFilters({ distance: null }) });
+        }
+        for (const mood of MOOD_ORDER.filter((m) => selectedMoods.has(m))) {
+            list.push({
+                key: `mood:${mood}`,
+                label: MOOD_LABEL[mood],
+                onRemove: () => {
+                    const next = new Set(selectedMoods);
+                    next.delete(mood);
+                    visitWithFilters({ moods: next });
+                },
+            });
+        }
+        if ((searchFilter ?? '') !== '') {
+            list.push({
+                key: 'search',
+                label: `"${searchFilter}"`,
+                onRemove: () => visitWithFilters({ search: '' }),
+            });
+        }
+
+        return list;
+    }, [weekFilter, rangeFilter, sortMode, distanceFilter, selectedMoods, searchFilter, visitWithFilters]);
+
     const hasRuns = runs.length > 0;
     const anyFilterActive =
         selectedMoods.size > 0 ||
@@ -332,6 +386,7 @@ export default function RunsIndex({
                             onReset={resetFilters}
                         />
                     </div>
+                    <ActiveFilterChips chips={chips} onClearAll={resetFilters} />
                 </header>
 
                 <JourneyStrip match={journeyMatch} className="mt-6 mb-6" />
@@ -438,17 +493,36 @@ const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, 
         useSnapshotTotals && snapshot.weekly_trimp !== null ? snapshot.weekly_trimp : bucket.totalTrimp,
     );
 
+    // Filtering removes non-matching runs outright, so a week silently loses the
+    // context the old dimmed-row treatment used to convey. The WeeklySnapshot
+    // already carries the week's true total, computed independently of any
+    // filter, so the gap can be named without a second query. Only shown when
+    // the snapshot is trustworthy for a count: the in-progress week's is still
+    // being recomputed by a queued worker, so it can lag the live bucket.
+    const weekTotal = snapshot !== null && !snapshot.is_current_week ? snapshot.runs : null;
+    const hiddenCount = filtered && weekTotal !== null ? Math.max(0, weekTotal - bucket.runs.length) : 0;
+
     return (
         <Card as="section" padding="none" className="overflow-hidden shadow-sm transition">
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
                 <div className="font-display text-lg italic text-ink">{bucket.label}</div>
                 <div className="flex flex-wrap items-center gap-2 text-xs tabular-nums">
-                    <Stat icon="mdi:run" label={`${runCount} run`} />
+                    <Stat
+                        icon="mdi:run"
+                        label={hiddenCount > 0 ? `${bucket.runs.length} dari ${weekTotal} run` : `${runCount} run`}
+                    />
                     <Stat icon="mdi:map-marker-distance" label={`${totalKm.toFixed(1)} km`} />
                     <Stat icon="mdi:fire" label={`${trimpLabel} TRIMP`} />
                     {snapshot && <WeeklyStatusChips snapshot={snapshot} />}
                 </div>
             </header>
+
+            {hiddenCount > 0 && (
+                <p className="flex items-center gap-2 border-b border-cream-deep bg-cream-deep/10 px-5 py-2.5 font-sans text-[12px] text-ink-3">
+                    <Icon icon="mdi:eye-off-outline" width={14} height={14} className="shrink-0" aria-hidden />
+                    {hiddenCount} lari lain di minggu ini gak cocok sama filternya.
+                </p>
+            )}
 
             {snapshot && (
                 <div className="border-b border-cream-deep bg-cream-deep/20 px-5 py-4">

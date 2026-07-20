@@ -147,8 +147,27 @@ export default function RiwayatFilter<V extends string, B extends string = strin
                     className={cn('transition', open && 'rotate-180')}
                 />
             </button>
+            {/* Scrim behind the mobile sheet: gives the sheet something to sit
+                against and makes tapping away to dismiss an obvious target.
+                Desktop keeps the anchored popover, so it is hidden there. */}
+            {open && <div className="fixed inset-0 z-30 bg-ink/20 lg:hidden" aria-hidden onClick={close} />}
             {open && (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-40 w-72 overflow-hidden rounded-2xl border border-line bg-surface-elev shadow-lg">
+                <div
+                    className={cn(
+                        // Mobile: a bottom sheet — thumb-reachable, full-width, and
+                        // able to grow as filters are added, where a 288px popover
+                        // anchored to a top-right trigger gets cramped and sits at
+                        // the far end of the screen from the thumb.
+                        'fixed inset-x-0 bottom-0 z-40 max-h-[80vh] overflow-y-auto rounded-t-2xl border border-line bg-surface-elev pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg',
+                        // Desktop: the original anchored popover.
+                        'lg:absolute lg:inset-x-auto lg:right-0 lg:bottom-auto lg:top-[calc(100%+8px)] lg:max-h-none lg:w-72 lg:overflow-hidden lg:rounded-2xl lg:pb-0',
+                    )}
+                >
+                    {/* Grab handle: the affordance that says "this sheet is
+                        dismissable", mobile only. */}
+                    <div className="flex justify-center pt-2 lg:hidden" aria-hidden>
+                        <span className="h-1 w-9 rounded-full bg-ink/15" />
+                    </div>
                     {(totalActive > 0 || onReset) && (
                         <div className="flex items-center justify-between border-b border-line/60 px-3 py-2">
                             <span className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">

@@ -440,7 +440,9 @@ describe('Riwayat/Jejak', () => {
         );
 
         fireEvent.click(screen.getByLabelText('Buka filter'));
-        fireEvent.click(screen.getByRole('button', { name: /Enteng/i }));
+        // Anchored: the removable chip for the same mood is also a button, but
+        // it is named "Hapus filter Enteng".
+        fireEvent.click(screen.getByRole('button', { name: /^Enteng$/ }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/aktivitas',
@@ -462,7 +464,7 @@ describe('Riwayat/Jejak', () => {
         );
 
         fireEvent.click(screen.getByLabelText('Buka filter'));
-        expect(screen.getByRole('button', { name: /Enteng/i })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: /^Enteng$/ })).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('drops an already-selected mood from the url when toggled off', () => {
@@ -478,7 +480,7 @@ describe('Riwayat/Jejak', () => {
         );
 
         fireEvent.click(screen.getByLabelText('Buka filter'));
-        fireEvent.click(screen.getByRole('button', { name: /Enteng/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^Enteng$/ }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/aktivitas',
@@ -558,7 +560,7 @@ describe('Riwayat/Jejak', () => {
         );
 
         fireEvent.click(screen.getByLabelText('Buka filter'));
-        fireEvent.click(screen.getByRole('button', { name: /Di bawah 5K/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^Di bawah 5K/ }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/aktivitas',
@@ -580,7 +582,7 @@ describe('Riwayat/Jejak', () => {
         );
 
         fireEvent.click(screen.getByLabelText('Buka filter'));
-        fireEvent.click(screen.getByRole('button', { name: /Half ke atas/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^Half ke atas/ }));
 
         expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
     });
@@ -632,7 +634,7 @@ describe('Riwayat/Jejak', () => {
             );
 
             fireEvent.click(screen.getByLabelText('Buka filter'));
-            fireEvent.click(screen.getByRole('button', { name: /Paling jauh/ }));
+            fireEvent.click(screen.getByRole('button', { name: /^Paling jauh/ }));
 
             expect(router.get).toHaveBeenCalledWith('/aktivitas', { sort: 'longest' }, expect.anything());
         });
@@ -650,7 +652,7 @@ describe('Riwayat/Jejak', () => {
             );
 
             fireEvent.click(screen.getByLabelText('Buka filter'));
-            fireEvent.click(screen.getByRole('button', { name: /Terbaru dulu/ }));
+            fireEvent.click(screen.getByRole('button', { name: /^Terbaru dulu/ }));
 
             expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
         });
@@ -678,7 +680,8 @@ describe('Riwayat/Jejak', () => {
                 />,
             );
 
-            expect(screen.getByText('Paling jauh')).toBeInTheDocument();
+            // "Paling jauh" now labels both the ranked header and its removable
+            // chip, so assert on the header's own unique text.
             expect(screen.getByText(/2 lari · diurutkan/)).toBeInTheDocument();
             // Both runs still render, just without week cards.
             expect(screen.getByText('Pagi santai')).toBeInTheDocument();
@@ -747,6 +750,109 @@ describe('Riwayat/Jejak', () => {
         );
 
         expect(screen.queryByText(/Lagi lihat minggu/)).not.toBeInTheDocument();
+    });
+
+    // Real filtering removes non-matching runs, so a week loses the context the
+    // old dimmed rows conveyed. The snapshot's own total names the gap.
+    describe('hidden-run count', () => {
+        const weekSnapshot = (runs: number | null, isCurrent = false) => [{
+            id: 1,
+            week_ending: '2026-05-24',
+            distance_km: 35.5,
+            runs,
+            weekly_trimp: 320,
+            atl_7d: 44.5,
+            ctl_42d: 42,
+            form: -2.5,
+            form_status: 'optimal' as const,
+            avg_decoupling: 3.2,
+            monotony: 1.2,
+            strain: 384,
+            is_current_week: isCurrent,
+            is_chain_head: true,
+            recap_analysis: {
+                id: 1,
+                status: 'done' as const,
+                content: 'Minggu konsisten.',
+                type: 'weekly_recap' as const,
+                subject_type: 'weekly_snapshot',
+                subject_id: 1,
+                discriminator: null,
+            },
+            notification_retry_after_seconds: null,
+        }];
+
+        it('names how many runs the filter hid in that week', () => {
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="1y"
+                    moodFilter={['enteng']}
+                    rangeStart="2025-05-19"
+                    weeklySnapshots={weekSnapshot(4)}
+                />,
+            );
+
+            expect(screen.getByText(/3 lari lain di minggu ini gak cocok/)).toBeInTheDocument();
+            expect(screen.getByText('1 dari 4 run')).toBeInTheDocument();
+        });
+
+        it('says nothing when the filter hid nothing', () => {
+            render(
+                <RunsIndex
+                    runs={[run(101, 'A', '2026-05-19T06:00:00'), run(102, 'B', '2026-05-20T06:00:00')]}
+                    rangeFilter="1y"
+                    moodFilter={['enteng']}
+                    rangeStart="2025-05-19"
+                    weeklySnapshots={weekSnapshot(2)}
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+
+        it('says nothing when no filter is active', () => {
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="1y"
+                    rangeStart="2025-05-19"
+                    weeklySnapshots={weekSnapshot(4)}
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+
+        // The in-progress week's snapshot is recomputed by a queued worker, so it
+        // can lag the live bucket and would report a bogus gap.
+        it('stays quiet for the in-progress week', () => {
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="1y"
+                    moodFilter={['enteng']}
+                    rangeStart="2025-05-19"
+                    weeklySnapshots={weekSnapshot(4, true)}
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+
+        it('stays quiet when the snapshot has no run count', () => {
+            render(
+                <RunsIndex
+                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
+                    rangeFilter="1y"
+                    moodFilter={['enteng']}
+                    rangeStart="2025-05-19"
+                    weeklySnapshots={weekSnapshot(null)}
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
     });
 
     it('keeps the onboarding empty state when there is no filter and no runs', () => {
