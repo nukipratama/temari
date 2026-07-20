@@ -22,6 +22,12 @@ export function registerServiceWorker(): void {
     globalThis.addEventListener(
         'load',
         () => {
+            // Re-checked rather than relying on the guard above: the handler runs
+            // later, and nothing guarantees the API is still there by then.
+            if (!('serviceWorker' in navigator)) {
+                return;
+            }
+
             void navigator.serviceWorker.register('/sw.js').catch(() => {
                 // Insecure origin, private mode, or a policy block. Nothing to do.
             });
