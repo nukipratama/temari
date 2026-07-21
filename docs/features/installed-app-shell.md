@@ -1,15 +1,18 @@
 ---
 title: Installed app shell
-description: What makes Temari feel native once it is on the iOS Home Screen — notch colour, launch image, sticky header, edge-swipe back
+description: What makes Temari feel native once it is on the iOS Home Screen — status-bar takeover, launch image, sticky header, touch feel, edge-swipe back
 tags: [feature, pwa]
 status: living
-reviewed: 2026-07-20
+reviewed: 2026-07-21
 code_refs:
   - resources/views/app.blade.php
   - public/manifest.webmanifest
   - resources/js/hooks/useSwipeBack.ts
   - resources/js/hooks/useScrolled.ts
   - resources/js/components/MobileTopBar.tsx
+  - resources/js/components/StatusBarScrim.tsx
+  - resources/js/hooks/useBodyScrollLock.ts
+  - resources/css/app.css
   - scripts/build-splash-screens.php
 ---
 
@@ -21,28 +24,49 @@ itself. This note covers the pieces that only matter once installed; the visual
 language they use is in [[design-tokens]], and the shell's structure is in
 [[dashboard]].
 
-## The notch strip is painted by `theme-color`, not by the header
+## We paint the status bar ourselves, and that is why the header is navy
 
-Under `apple-mobile-web-app-status-bar-style: default`
-([app.blade.php#L40](resources/views/app.blade.php#L40)) iOS **reserves** the
-status-bar strip around the notch and fills it with the `theme-color` meta — the
-web view never receives that region. So the notch colour is set at
-[app.blade.php#L34](resources/views/app.blade.php#L34) and has to track
-`MobileTopBar`'s `bg-cream-deep`, not the drifting `--color-surface`.
+The app runs `apple-mobile-web-app-status-bar-style: black-translucent`
+([app.blade.php](resources/views/app.blade.php)). The web view then extends up
+under the status bar, `env(safe-area-inset-top)` resolves to a real value, and
+those pixels are ours.
 
-This is the trap worth knowing: `MobileTopBar` also carries
-`pt-[max(0.75rem,env(safe-area-inset-top))]`
-([MobileTopBar.tsx#L34](resources/js/components/MobileTopBar.tsx#L34)). That
-padding looks like it is what clears the notch, and it is not — it is a fallback
-for browsers that do report an inset. Changing the header background alone will
-not change what appears around the notch.
+The trade is not optional: **iOS forces white status glyphs in this mode**, with
+no way to ask for dark ones. Every surface that can reach the top of the display
+must therefore be dark, or the clock disappears. That is the whole reason
+`MobileTopBar` is `bg-sky/85` rather than cream
+([MobileTopBar.tsx](resources/js/components/MobileTopBar.tsx)) — it bookends
+`MobileBottomNav`, which was already `bg-sky`. Do not revert the header colour
+without also reverting the meta.
 
-The manifest carries the same value at
-[manifest.webmanifest#L11](public/manifest.webmanifest#L11) for the install
-prompt and the app-switcher card.
+Modals are the case that is easy to miss. They are `fixed inset-0` at z-50/51
+and paint their own scrim over the status region; `CardReveal`'s is dark, others
+are not. So [StatusBarScrim](resources/js/components/StatusBarScrim.tsx) sits at
+`z-[70]` above all of them and guarantees the backing, in the same `sky` as the
+bar beneath it so the two never read as two bands. It is zero-height wherever
+the inset is 0, i.e. everywhere but the installed app.
 
-Deliberately **not** wired to the dawn-shift: the header it butts against is
-cream-deep at every hour, so tinting only the strip would open a seam.
+`pt-[max(0.75rem,env(safe-area-inset-top))]` on the header is what keeps the row
+clear of the notch; under `black-translucent` the `max()` now picks the real
+inset rather than the 0.75rem floor.
+
+### What this replaced, and why it is worth recording
+
+Two earlier attempts blamed the wrong thing for the dark band above the header,
+and both shipped without fixing it:
+
+- **#395** pinned `theme-color` to the header's cream. iOS does not use
+  `theme-color` for the standalone status bar at all — only Android/Chrome does,
+  for its toolbar. The meta is still set (now navy, matching the header, in both
+  the blade and [manifest.webmanifest](public/manifest.webmanifest)) but it was
+  never the lever.
+- **#396** declared `color-scheme: light`, on the theory that a Dark Mode device
+  was rendering the UA-owned strip dark. That declaration is correct and worth
+  keeping for form controls and scrollbars, but the band survived a fresh
+  install, so it does not govern the strip either.
+
+The actual cause was that under `default`, the strip is iOS-owned and
+unreachable from CSS. Nothing in the stylesheet could ever have fixed it.
 
 ## Launch image
 
@@ -75,6 +99,29 @@ also bails when the gesture starts inside a horizontally scrollable element
 ([useSwipeBack.ts#L18](resources/js/hooks/useSwipeBack.ts#L18)) — strips, charts
 and maps own their own sideways drags.
 
+## Touch feel
+
+Three things carry it, and all three are invisible on a desktop browser:
+
+- **Press feedback.** `.pressable` ([app.css](resources/css/app.css)) is the only
+  touch confirmation the app has, because the global tap highlight is turned off.
+  It also scopes `touch-action: manipulation`, which drops the ~300ms
+  double-tap-zoom wait on controls while leaving pinch zoom intact on content.
+  A stray comment terminator silently deleted this entire rule from the compiled
+  CSS between #395 and its fix — every control in the app was dead to the touch
+  in production and nothing failed. `resources/js/test/cssIntegrity.test.ts`
+  guards against a repeat, since CI runs vitest but never a bundle build.
+- **16px form controls.** Safari force-zooms the page on focusing any control
+  under 16px and does not zoom back out. Scoped to `(pointer: coarse)` so
+  desktop keeps its denser type. This is load-bearing, not a style choice.
+- **Scroll lock behind overlays.**
+  [useBodyScrollLock](resources/js/hooks/useBodyScrollLock.ts), refcounted so
+  overlapping overlays cannot unlock early. Applied to the modals, and to the
+  Riwayat filter only below `lg`, where it is a sheet rather than a popover.
+
+Tapping the tab you are already on scrolls to top instead of issuing a fresh
+visit ([MobileBottomNav.tsx](resources/js/components/MobileBottomNav.tsx)).
+
 ## Deliberately absent
 
 - **Haptics.** iOS Safari does not implement `navigator.vibrate`, so any haptics
@@ -82,3 +129,6 @@ and maps own their own sideways drags.
 - **Pull-to-refresh.** `overscroll-behavior-y: none` is set on purpose; the app
   is all-dynamic and uncached, so an accidental pull re-runs every controller.
   See the note in `resources/css/app.css`.
+- **Page transition animations.** Removed in #396. A fade on a screen you just
+  asked for costs time and says nothing, and the one shipped here started at
+  opacity 0, so every navigation read as "old page → blank → fade in".

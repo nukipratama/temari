@@ -5,6 +5,7 @@ import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
 import { useDismissable } from '@/hooks/useDismissable';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import PillButton from '@/components/ui/PillButton';
 import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
 import { serverToEquipped } from '@/lib/equippedAccessories';
@@ -53,6 +54,7 @@ export default function TemariNudgeModal({
 
     useDismissable(open, panelRef, onClose);
     useFocusTrap(open, panelRef);
+    useBodyScrollLock(open);
 
     // Keep AnimatePresence mounted and toggle its child, so the coded exit
     // fade/scale actually runs on close (an early `return null` unmounts the

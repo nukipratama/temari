@@ -19,7 +19,9 @@ use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -179,14 +181,80 @@ class RunController extends Controller
 
         $this->applySort($runsQuery, $sort);
 
-        $runs = $runsQuery
-            ->limit(self::MAX_RUNS + 1)
-            ->get();
+        // Resolved lazily, and memoized because four props below need it.
+        //
+        // Every prop on this page used to be computed here in the method body,
+        // which meant `useAnalysisTrigger`'s poll — a `router.reload({ only })`
+        // every 3-15s while any recap analysis is in flight — re-ran this whole
+        // query set on each tick despite asking for one prop. Behind a closure,
+        // Inertia skips it entirely on a partial reload that does not name it.
+        //
+        // Memoizing is what makes that safe: `runs`, `notes`, `moods` and
+        // `runsTruncated` all depend on this, and four separate closures would
+        // run the query four times on a full load.
+        /** @var Collection<int, Activity>|null $loadedRuns */
+        $loadedRuns = null;
+        $runsTruncated = false;
+        $loadRuns = function () use ($runsQuery, &$loadedRuns, &$runsTruncated): Collection {
+            if ($loadedRuns === null) {
+                // Fetch one past the cap to detect truncation, then trim to it.
+                $rows = $runsQuery->limit(self::MAX_RUNS + 1)->get();
+                $runsTruncated = $rows->count() > self::MAX_RUNS;
+                $loadedRuns = $rows->take(self::MAX_RUNS)->values();
+            }
 
-        // Fetch one past the cap to detect truncation, then trim to the cap.
-        $runsTruncated = $runs->count() > self::MAX_RUNS;
-        $runs = $runs->take(self::MAX_RUNS)->values();
+            return $loadedRuns;
+        };
 
+        $currentWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+
+        return Inertia::render('Riwayat/Jejak', [
+            'runs' => fn (): Collection => $loadRuns(),
+            'notes' => fn (): array => $noteReader->forActivities($loadRuns()->pluck('id')->all()),
+            // Persisted post-run mood per run, so the list mascot matches the
+            // backend mood even before the speech (and its note) is ready.
+            'moods' => fn (): array => $noteReader->moodsFor($loadRuns()->pluck('id')->all()),
+            'rangeFilter' => $effectiveRange,
+            'moodFilter' => $moodFilter,
+            'distanceFilter' => $distanceFilter,
+            'searchFilter' => $searchFilter,
+            'sortMode' => $sort,
+            'weekFilter' => $weekFilter?->toDateString(),
+            'rangeStart' => $rangeStart?->toDateString(),
+            'rangeAutoWidened' => $rangeAutoWidened,
+            // Set as a side effect of $loadRuns, so it must resolve the runs
+            // first rather than reading a flag that is still false.
+            'runsTruncated' => function () use ($loadRuns, &$runsTruncated): bool {
+                $loadRuns();
+
+                return $runsTruncated;
+            },
+            'maxRuns' => self::MAX_RUNS,
+            'weeklySnapshots' => fn (): SupportCollection => $this->weeklySnapshotPayload(
+                $user,
+                $rangeStart,
+                $weekFilter,
+                $currentWeekEnding,
+            ),
+            'journeyMatch' => fn (): ?array => $this->buildJourneyMatch($user),
+        ]);
+    }
+
+    /**
+     * Weekly recap rows for the range, decorated with the flags the list needs.
+     *
+     * Extracted so `index()` can hand Inertia a closure: this is the one heavy
+     * prop the analysis poll genuinely does need, and keeping it beside the
+     * queries it depends on avoids a five-argument closure inline.
+     *
+     * @return SupportCollection<int, array<string, mixed>>
+     */
+    private function weeklySnapshotPayload(
+        User $user,
+        ?Carbon $rangeStart,
+        ?Carbon $weekFilter,
+        Carbon $currentWeekEnding,
+    ): SupportCollection {
         $weeklySnapshots = WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->when($rangeStart !== null, fn ($q) => $q->where('week_ending', '>=', $rangeStart))
@@ -198,7 +266,6 @@ class RunController extends Controller
             ->get();
 
         $recapAnalyses = $this->recapAnalysesFor($weeklySnapshots->all());
-        $currentWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
         // Chain head = the latest completed week the chain actually narrates
         // (runs > 0, not the in-progress week). Matching the chain's runs>0
@@ -219,33 +286,35 @@ class RunController extends Controller
             ->orderByDesc('week_ending')
             ->value('id');
 
-        $runIds = $runs->pluck('id')->all();
+        return $weeklySnapshots
+            ->map(fn (WeeklySnapshot $row): array => $this->decorateSnapshot(
+                $row,
+                $recapAnalyses[$row->id],
+                $chainHeadId,
+                $currentWeekEnding,
+            ))
+            ->values();
+    }
 
-        return Inertia::render('Riwayat/Jejak', [
-            'runs' => $runs->values(),
-            'notes' => $noteReader->forActivities($runIds),
-            // Persisted post-run mood per run, so the list mascot matches the
-            // backend mood even before the speech (and its note) is ready.
-            'moods' => $noteReader->moodsFor($runIds),
-            'rangeFilter' => $effectiveRange,
-            'moodFilter' => $moodFilter,
-            'distanceFilter' => $distanceFilter,
-            'searchFilter' => $searchFilter,
-            'sortMode' => $sort,
-            'weekFilter' => $weekFilter?->toDateString(),
-            'rangeStart' => $rangeStart?->toDateString(),
-            'rangeAutoWidened' => $rangeAutoWidened,
-            'runsTruncated' => $runsTruncated,
-            'maxRuns' => self::MAX_RUNS,
-            'weeklySnapshots' => $weeklySnapshots->map(fn (WeeklySnapshot $row): array => [
-                ...$row->toArray(),
-                'is_current_week' => $row->week_ending->equalTo($currentWeekEnding),
-                'is_chain_head' => $row->id === $chainHeadId,
-                'recap_analysis' => $recapAnalyses[$row->id],
-                'notification_retry_after_seconds' => Analysis::notificationCooldownRemaining($recapAnalyses[$row->id]),
-            ])->values(),
-            'journeyMatch' => $this->buildJourneyMatch($user),
-        ]);
+    /**
+     * One weekly-snapshot row plus the flags the list renders it with.
+     *
+     * @param  array<string, mixed>  $recapAnalysis
+     * @return array<string, mixed>
+     */
+    private function decorateSnapshot(
+        WeeklySnapshot $row,
+        array $recapAnalysis,
+        ?int $chainHeadId,
+        Carbon $currentWeekEnding,
+    ): array {
+        return [
+            ...$row->toArray(),
+            'is_current_week' => $row->week_ending->equalTo($currentWeekEnding),
+            'is_chain_head' => $row->id === $chainHeadId,
+            'recap_analysis' => $recapAnalysis,
+            'notification_retry_after_seconds' => Analysis::notificationCooldownRemaining($recapAnalysis),
+        ];
     }
 
     /**

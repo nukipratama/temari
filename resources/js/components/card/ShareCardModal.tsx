@@ -4,6 +4,7 @@ import { Icon } from '@iconify/react';
 import { cn } from '@/lib/cn';
 import { useDismissable } from '@/hooks/useDismissable';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import PillButton from '@/components/ui/PillButton';
 import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 import { RARITY_LABELS } from '@/lib/runcard';
@@ -33,6 +34,7 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
 
     useDismissable(kartu !== null, panelRef, onClose);
     useFocusTrap(kartu !== null, panelRef);
+    useBodyScrollLock(kartu !== null);
 
     // Repaint the fixed-resolution canvas whenever any knob changes. The canvas
     // IS the export, so the on-screen preview can never drift from the shared

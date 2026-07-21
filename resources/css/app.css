@@ -232,6 +232,24 @@ body {
     overscroll-behavior-y: none;
 }
 
+/* iOS Safari force-zooms the whole page whenever a focused control computes to
+   a font-size below 16px, and does not zoom back out afterwards — you are left
+   scrolled sideways in a magnified app until you pinch out by hand. Every input
+   in the app was under that threshold (the Riwayat search and the Koleksi
+   search/sort at text-xs, the HR-zone and AI-usage fields at text-sm), so
+   focusing any of them visibly broke the illusion.
+
+   16px is therefore load-bearing, not a style choice: do not "tidy" these back
+   down to text-sm. Scoped to coarse pointers so desktop keeps its denser type —
+   the zoom behaviour only exists on touch. */
+@media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}
+
 /* Skeleton shimmer. A sweep that travels in one direction reads as "data is
    on its way", where a pulse in place reads as something blinking at you —
    the difference between a native app's loading row and a broken element.
@@ -315,7 +333,8 @@ body {
        it drops the ~300ms double-tap-zoom wait on controls while leaving
        double-tap zoom intact on content, which a global rule would kill.
        `motion-safe:` keeps the scale out of reduced-motion, matching the
-       app-wide <MotionConfig reducedMotion="user">. */
+       app-wide <MotionConfig reducedMotion="user">.
+
        The opacity dip is deliberately NOT motion-safe: it is a brightness
        change rather than movement, so it is the one press confirmation a
        reduced-motion user can still receive once the scale is stripped. The

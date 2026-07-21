@@ -7,6 +7,7 @@ import AksesoriUnlockModal from '@/components/celebrations/AksesoriUnlockModal';
 import TopNav from '@/components/TopNav';
 import MobileTopBar from '@/components/MobileTopBar';
 import MobileBottomNav from '@/components/MobileBottomNav';
+import StatusBarScrim from '@/components/StatusBarScrim';
 import ErrorBanner from '@/components/ErrorBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
@@ -43,7 +44,11 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
     if (!withNav) {
         return (
             <MotionConfig reducedMotion="user">
-                <div className="min-h-screen bg-cream-deep text-ink">
+                {/* No MobileTopBar here, so nothing else pads for the notch or
+                    backs the forced-white status glyphs — this branch has to do
+                    both itself. */}
+                <StatusBarScrim />
+                <div className="min-h-screen bg-cream-deep pt-[env(safe-area-inset-top)] text-ink">
                     <ErrorBanner />
                     <StravaZoneReconnectBanner />
                     <AiOutageBanner />
@@ -55,6 +60,7 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
 
     return (
         <MotionConfig reducedMotion="user">
+        <StatusBarScrim />
         <div className="min-h-screen bg-cream-deep text-ink">
             <a
                 href="#main-content"

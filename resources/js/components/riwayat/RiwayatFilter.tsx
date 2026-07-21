@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion, useDragControls } from 'framer-motion';
 import { useCallback, useRef, useState } from 'react';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useDismissable } from '@/hooks/useDismissable';
 import { useFocusReturn } from '@/hooks/useFocusReturn';
 import { cn } from '@/lib/cn';
@@ -88,6 +89,14 @@ interface RiwayatFilterProps<V extends string, B extends string = string, S exte
  * Active-filter count is surfaced as a badge on the button so the user can
  * see at a glance whether they're looking at a filtered slice.
  */
+/** Below Tailwind's `lg`, where the panel renders as a bottom sheet. */
+function isSheetViewport(): boolean {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+        return false;
+    }
+    return window.matchMedia('(max-width: 1023.98px)').matches;
+}
+
 export default function RiwayatFilter<V extends string, B extends string = string, S extends string = string>({
     range,
     mood,
@@ -103,6 +112,10 @@ export default function RiwayatFilter<V extends string, B extends string = strin
     const dragControls = useDragControls();
     useDismissable(open, containerRef, close);
     useFocusReturn(open);
+    // Only the mobile form is a sheet, and only a sheet should pin the page
+    // behind it. On `lg` this is an anchored popover, where freezing the
+    // document would read as the page having broken rather than as a modal.
+    useBodyScrollLock(open && isSheetViewport());
 
     const moodActive = mood?.selected.size ?? 0;
     // Range counts as "active" only when the user picked something other than

@@ -48,7 +48,15 @@ describe('MobileTopBar', () => {
             window.dispatchEvent(new Event('scroll'));
         });
 
-        expect(container.querySelector('header')).toHaveClass('border-line');
+        expect(container.querySelector('header')).toHaveClass('border-white/10');
         window.scrollY = 0;
+    });
+
+    // The bar is what sits under the forced-white iOS status glyphs once
+    // `black-translucent` is on (app.blade.php). A cream bar leaves the clock
+    // unreadable, so the dark ground is load-bearing, not decorative.
+    it('keeps a dark ground so the white status glyphs stay legible', () => {
+        const { container } = render(<MobileTopBar />);
+        expect(container.querySelector('header')).toHaveClass('bg-sky/85');
     });
 });

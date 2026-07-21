@@ -7,18 +7,24 @@ interface StravaSyncBadgeProps {
     sync: StravaSync | null;
     /** `compact` is for the mobile top bar; `normal` is the desktop TopNav size. */
     density?: 'compact' | 'normal';
+    /**
+     * Flips the chip for a dark ground. The mobile top bar is `sky` (see
+     * MobileTopBar), where the default tint-on-cream treatment is invisible.
+     */
+    onDark?: boolean;
 }
 
-export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<StravaSyncBadgeProps>) {
+export default function StravaSyncBadge({ sync, density = 'normal', onDark = false }: Readonly<StravaSyncBadgeProps>) {
     // Default a missing prop to disconnected so a brief server/client deploy
     // skew never renders a blank badge.
     const state: StravaSyncState = sync?.state ?? 'disconnected';
     const relative = state === 'ready' && sync?.last_synced_at ? formatRelativeId(sync.last_synced_at) : null;
     const isCompact = density === 'compact';
 
-    const { label, ariaLabel, icon, iconClass } = resolveBadge(state, relative, isCompact);
+    const { label, ariaLabel, icon, iconClass } = resolveBadge(state, relative, isCompact, onDark);
     const badgeClass = cn(
-        'inline-flex items-center whitespace-nowrap rounded-full bg-sky/[0.06] font-mono font-bold uppercase tracking-[0.1em] text-ink-2',
+        'inline-flex items-center whitespace-nowrap rounded-full font-mono font-bold uppercase tracking-[0.1em]',
+        onDark ? 'bg-white/10 text-ink-on-sky' : 'bg-sky/[0.06] text-ink-2',
         isCompact ? 'gap-1.5 px-2.5 py-1.5 text-[11px]' : 'gap-2 px-3.5 py-2 text-[11px]',
     );
     const content = (
@@ -37,7 +43,11 @@ export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<S
             <a
                 href="/auth/strava/redirect"
                 aria-label={ariaLabel}
-                className={cn(badgeClass, 'focus-ring transition hover:bg-sky/[0.12]')}
+                className={cn(
+                    badgeClass,
+                    'transition',
+                    onDark ? 'focus-ring-on-sky hover:bg-white/20' : 'focus-ring hover:bg-sky/[0.12]',
+                )}
             >
                 {content}
             </a>
@@ -51,10 +61,15 @@ export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<S
     );
 }
 
+/**
+ * `onDark` picks the base hue over the `-deep` variant for each state: the deep
+ * tones are tuned for contrast against cream and go muddy on the sky ground.
+ */
 function resolveBadge(
     state: StravaSyncState,
     relative: string | null,
     isCompact: boolean,
+    onDark: boolean,
 ): { label: string; ariaLabel: string; icon: string; iconClass: string } {
     switch (state) {
         case 'ready': {
@@ -63,7 +78,7 @@ function resolveBadge(
                 label: isCompact ? (relative ?? 'Synced') : full,
                 ariaLabel: relative ? `Strava synced ${relative}` : 'Strava synced',
                 icon: 'mdi:cloud-check-variant-outline',
-                iconClass: 'text-leaf-deep',
+                iconClass: onDark ? 'text-leaf' : 'text-leaf-deep',
             };
         }
         case 'syncing':
@@ -71,21 +86,21 @@ function resolveBadge(
                 label: isCompact ? 'Sinkron' : 'Lagi sinkron',
                 ariaLabel: 'Strava lagi sinkron',
                 icon: 'mdi:sync',
-                iconClass: 'text-horizon-deep animate-spin',
+                iconClass: onDark ? 'text-horizon animate-spin' : 'text-horizon-deep animate-spin',
             };
         case 'revoked':
             return {
                 label: isCompact ? 'Sambungkan ulang' : 'Strava putus · Sambungkan ulang',
                 ariaLabel: 'Sambungan Strava putus, sambungkan ulang',
                 icon: 'mdi:cloud-alert-outline',
-                iconClass: 'text-ember-deep',
+                iconClass: onDark ? 'text-ember' : 'text-ember-deep',
             };
         default:
             return {
                 label: 'Strava',
                 ariaLabel: 'Strava belum nyambung',
                 icon: 'mdi:cloud-off-outline',
-                iconClass: 'text-ink-3',
+                iconClass: onDark ? 'text-ink-on-sky' : 'text-ink-3',
             };
     }
 }

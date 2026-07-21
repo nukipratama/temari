@@ -10,6 +10,7 @@ import PillButton from "@/components/ui/PillButton";
 import ShareCardModal from "./ShareCardModal";
 import type { ShareKartuData } from "@/lib/shareCard";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import Temari from "@/components/temari/Temari";
 import { type TemariPose } from "@/components/temari/TemariProto";
 import { RARITY_HEX, RARITY_LABELS, badgeEmblem, badgeName, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from "@/lib/runcard";
@@ -120,6 +121,7 @@ export default function CardReveal({
   }, [dismiss, shareOpen]);
 
   useFocusTrap(!dismissed, panelRef);
+  useBodyScrollLock(!dismissed);
 
   const km = formatKm(pending.distance_m);
   const durasi =

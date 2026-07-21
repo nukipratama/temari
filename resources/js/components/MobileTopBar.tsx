@@ -15,12 +15,16 @@ import type { SharedProps } from '@/types/inertia';
  * behaves, with the hairline appearing only once something is actually
  * underneath (see useScrolled).
  *
- * The strip around the notch itself is not painted here: under
- * `apple-mobile-web-app-status-bar-style: default` iOS reserves that region and
- * fills it with the `theme-color` meta, which is pinned to this bar's cream-deep
- * in app.blade.php. The `env(safe-area-inset-top)` padding stays as the fallback
- * for browsers that do hand us the inset, where it keeps the row clear of the
- * notch; it resolves to the 0.75rem floor everywhere else.
+ * Navy rather than cream because the app runs `black-translucent` for the iOS
+ * status bar (see app.blade.php), which forces white clock/battery glyphs. This
+ * bar is what sits beneath them on every app screen, so it has to be dark
+ * enough to read against — a cream bar would leave the clock invisible. It
+ * bookends `MobileBottomNav`, which was already `bg-sky`, and `StatusBarScrim`
+ * carries the same ground up through the inset so the two never seam.
+ *
+ * `pt-[max(0.75rem,env(safe-area-inset-top))]` is what keeps the row clear of
+ * the notch. Under `black-translucent` that inset resolves to a real value and
+ * the max() picks it; in a browser tab it collapses to the 0.75rem floor.
  */
 export default function MobileTopBar() {
     const { props } = usePage<SharedProps>();
@@ -31,17 +35,17 @@ export default function MobileTopBar() {
     return (
         <header
             className={cn(
-                'sticky top-0 z-30 flex items-center justify-between gap-3 border-b bg-cream-deep/85 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl transition-colors lg:hidden',
-                scrolled ? 'border-line' : 'border-transparent',
+                'sticky top-0 z-30 flex items-center justify-between gap-3 border-b bg-sky/85 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl transition-colors lg:hidden',
+                scrolled ? 'border-white/10' : 'border-transparent',
             )}
         >
-            <Link href="/" aria-label="Beranda" className="focus-ring rounded">
-                <BrandMark wordmarkClassName="hidden min-[350px]:inline" />
+            <Link href="/" aria-label="Beranda" className="focus-ring-on-sky rounded">
+                <BrandMark tone="cream" wordmarkClassName="hidden min-[350px]:inline" />
             </Link>
             <div className="flex items-center gap-2">
-                <StravaSyncBadge sync={stravaSync} density="compact" />
+                <StravaSyncBadge sync={stravaSync} density="compact" onDark />
                 {user && (
-                    <UserMenu name={user.name} avatarUrl={user.avatar_url} />
+                    <UserMenu name={user.name} avatarUrl={user.avatar_url} onDark />
                 )}
             </div>
         </header>

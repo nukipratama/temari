@@ -1,6 +1,7 @@
 import { Link, usePage } from "@inertiajs/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
+import type { MouseEvent } from "react";
 import { cn } from "@/lib/cn";
 import { tabIconPop } from "@/lib/motion";
 import { activeTabFromUrl } from "./TopNav";
@@ -30,6 +31,18 @@ const ITEMS: ReadonlyArray<NavItem> = [
   { id: "aku", label: "Aku", icon: "mdi:account-outline", href: "/profil" },
 ];
 
+/**
+ * Tapping the tab you are already on should scroll back to the top, the way
+ * every native tab bar behaves. Without this it falls through to a plain Inertia
+ * visit: a full round trip, a remount, and a scroll reset — the same work as
+ * switching tabs, for a destination you never left.
+ */
+function scrollToTop(event: MouseEvent<Element>) {
+  event.preventDefault();
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+}
+
 export default function MobileBottomNav() {
   const { url } = usePage<SharedProps>();
   const active = activeTabFromUrl(url);
@@ -50,6 +63,7 @@ export default function MobileBottomNav() {
               isActive ? "text-horizon" : "text-ink-on-sky",
             )}
             aria-current={isActive ? "page" : undefined}
+            onClick={isActive ? scrollToTop : undefined}
           >
             <motion.span
               variants={tabIconPop}

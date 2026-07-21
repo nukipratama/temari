@@ -66,6 +66,18 @@ describe('UserMenu', () => {
         expect(screen.getByRole('button', { name: 'Keluar' })).toBeInTheDocument();
     });
 
+    // The mobile top bar is navy, so the trigger's cream ring would vanish
+    // against it. See MobileTopBar / StatusBarScrim.
+    it('flips the trigger ring for a dark host bar', () => {
+        render(<UserMenu name="Ada Lovelace" avatarUrl={null} onDark />);
+        expect(screen.getByLabelText(/Buka menu Ada/)).toHaveClass('ring-white/20');
+    });
+
+    it('keeps the cream ring on a light host bar', () => {
+        render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
+        expect(screen.getByLabelText(/Buka menu Ada/)).toHaveClass('ring-cream-deep');
+    });
+
     it('renders the avatar image when avatar_url is provided', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl="https://example.com/a.jpg" />);
         const avatarButton = screen.getByLabelText(/Buka menu Ada/);

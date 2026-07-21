@@ -14,6 +14,7 @@ use App\Services\AI\AnalysisType;
 use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -846,3 +847,109 @@ it('does not dispatch when the run lacks coords', function (): void {
 
     Queue::assertNotPushed(ResolveActivityLocationJob::class);
 });
+
+/**
+ * The analysis poller reloads `weeklySnapshots` every 3-15s while a recap is
+ * generating. Every prop used to be computed in the method body, so each tick
+ * re-ran the full run query, the note reader and the mood reader for a prop it
+ * never asked for. Behind closures, Inertia skips them entirely.
+ *
+ * Note which of the two tests below actually pins that. Inertia strips
+ * unrequested props from the response whether or not they were computed, so the
+ * prop-surface test passes even with eager props and only documents the
+ * contract. The query test is the one that fails if a prop is un-closured.
+ */
+it('does not resolve the run payload on a partial reload that only wants snapshots', function (): void {
+    $user = User::factory()->create();
+    $run = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($run)->create(['start_date_local' => Carbon::now()]);
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay(),
+    ]);
+
+    $headers = snapshotOnlyHeaders($this->actingAs($user));
+
+    // Asserted against the raw JSON rather than assertInertia(): that helper
+    // reads the page object out of `viewData('page')`, which only exists on the
+    // HTML response. A partial reload returns bare JSON and would always fail
+    // its validity check.
+    $response = $this->actingAs($user)->get('/aktivitas', $headers)->assertSuccessful();
+
+    $response->assertJsonPath('component', 'Riwayat/Jejak');
+    $response->assertJsonCount(1, 'props.weeklySnapshots');
+    foreach (['runs', 'notes', 'moods', 'journeyMatch', 'runsTruncated'] as $skipped) {
+        $response->assertJsonMissingPath("props.{$skipped}");
+    }
+});
+
+it('runs no activity queries when only snapshots are requested', function (): void {
+    $user = User::factory()->create();
+    $run = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($run)->create(['start_date_local' => Carbon::now()]);
+
+    $headers = snapshotOnlyHeaders($this->actingAs($user));
+
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    $this->actingAs($user)->get('/aktivitas', $headers)->assertSuccessful();
+
+    // `latestRunDaysAgo` still runs — it is a single MAX() that drives the
+    // eager range scalars — so the assertion targets the payload queries the
+    // poll used to drag along: the capped run fetch (MAX_RUNS + 1 = 366) and
+    // the story-line reads behind `notes` and `moods`.
+    $runFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'limit 366'));
+    $storyLineReads = array_filter($queries, fn (string $sql): bool => str_contains($sql, '`story_lines`'));
+
+    expect($runFetches)->toBeEmpty()
+        ->and($storyLineReads)->toBeEmpty();
+});
+
+it('still returns every prop on a full page load', function (): void {
+    $user = User::factory()->create();
+    $run = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($run)->create(['start_date_local' => Carbon::now()]);
+
+    $this->actingAs($user)->get('/aktivitas')
+        ->assertSuccessful()
+        ->assertInertia(
+            fn (Assert $page) => $page
+            ->has('runs', 1)
+            ->has('notes')
+            ->has('moods')
+            ->has('weeklySnapshots')
+            ->where('runsTruncated', false)
+        );
+});
+
+/**
+ * Partial-reload headers mimicking the analysis poller's
+ * `router.reload({ only: ['weeklySnapshots'] })`.
+ *
+ * The asset version has to be read off a real response: Inertia 409s a partial
+ * request whose `X-Inertia-Version` does not match, and the middleware only
+ * computes that value while handling a request.
+ *
+ * @param  object  $actingAs  The authenticated test case.
+ * @return array<string, string>
+ */
+function snapshotOnlyHeaders(object $actingAs): array
+{
+    // Read off the HTML page rather than a bare Inertia GET: without a version
+    // header that request 409s too. This adapter renders the page object as the
+    // text content of a <script type="application/json"> block (a CSP measure),
+    // not as a data-page attribute.
+    $html = $actingAs->get('/aktivitas')->getContent();
+    preg_match('/type="application\/json">(.*?)<\/script>/s', (string) $html, $matches);
+    $page = json_decode(html_entity_decode($matches[1] ?? ''), true);
+    $version = is_array($page) ? ($page['version'] ?? '') : '';
+
+    return [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => $version,
+        'X-Inertia-Partial-Component' => 'Riwayat/Jejak',
+        'X-Inertia-Partial-Data' => 'weeklySnapshots',
+    ];
+}

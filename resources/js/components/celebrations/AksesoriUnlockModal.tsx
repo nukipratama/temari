@@ -6,6 +6,7 @@ import TemariProto from '@/components/temari/TemariProto';
 import { keyToPreviewEquipped } from '@/lib/equippedAccessories';
 import { useDismissable } from '@/hooks/useDismissable';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import type { UnlockFlash } from '@/types/inertia';
 
 interface AksesoriUnlockModalProps {
@@ -23,6 +24,7 @@ export default function AksesoriUnlockModal({
 
     useDismissable(isOpen, panelRef, onClose);
     useFocusTrap(isOpen, panelRef);
+    useBodyScrollLock(isOpen);
 
     const handleEquip = () => {
         onClose();

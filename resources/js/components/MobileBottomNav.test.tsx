@@ -34,4 +34,57 @@ describe('MobileBottomNav', () => {
         expect(screen.getByText('Koleksi').closest('a')).toHaveClass('text-horizon');
         expect(screen.getByText('Aku').closest('a')).toHaveClass('text-ink-on-sky');
     });
+
+    // Native tab bars scroll to top when you tap the tab you are already on.
+    // Falling through to the Link would instead issue a full Inertia visit —
+    // a round trip, a remount and a scroll reset — for a page you never left.
+    it('scrolls to top instead of navigating when the active tab is tapped', () => {
+        const scrollTo = vi.fn();
+        vi.stubGlobal('scrollTo', scrollTo);
+        setMockPage({}, '/kartu');
+        render(<MobileBottomNav />);
+
+        const link = screen.getByText('Koleksi').closest('a')!;
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+    });
+
+    it('leaves an inactive tab to navigate normally', () => {
+        const scrollTo = vi.fn();
+        vi.stubGlobal('scrollTo', scrollTo);
+        setMockPage({}, '/kartu');
+        render(<MobileBottomNav />);
+
+        const link = screen.getByText('Aku').closest('a')!;
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(false);
+        expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it('jumps without animating when the user asks for reduced motion', () => {
+        const scrollTo = vi.fn();
+        vi.stubGlobal('scrollTo', scrollTo);
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({
+                matches: query.includes('prefers-reduced-motion'),
+                media: query,
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            })),
+        );
+        setMockPage({}, '/kartu');
+        render(<MobileBottomNav />);
+
+        screen.getByText('Koleksi').closest('a')!.dispatchEvent(
+            new MouseEvent('click', { bubbles: true, cancelable: true }),
+        );
+
+        expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'auto' });
+    });
 });

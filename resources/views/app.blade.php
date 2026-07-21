@@ -25,27 +25,36 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
-    {{-- The app is light-mode only. Declared here as well as on `html` in
-         app.css so it lands before the stylesheet does: on a device set to Dark
-         Mode the UA otherwise renders its own surfaces dark — including, in an
-         installed iOS PWA, the status-bar strip around the notch. That dark
-         slab above the cream header was NOT a theme-color problem, which is why
-         pinning theme-color to cream alone did not fix it. --}}
+    {{-- The app is light-mode only, so tell the UA and stop it rendering the
+         surfaces it owns (form controls, scrollbars) in dark appearance on a
+         device set to Dark Mode. This does NOT govern the iOS standalone
+         status bar — that was tried in #396 and did not move it. --}}
     <meta name="color-scheme" content="light">
 
-    {{-- Kept matching MobileTopBar's cream-deep so the two never seam. iOS is
-         inconsistent about honouring this for the standalone status bar (hence
-         the color-scheme declaration above, which is what actually governs that
-         strip); Android/Chrome does use it for the toolbar tint. Fixed cream
-         rather than following the dawn-shift, since the header it butts against
-         is cream-deep at every hour. --}}
-    <meta name="theme-color" content="#EEE7D6">
+    {{-- Matches MobileTopBar so the two never seam. Android/Chrome uses this to
+         tint its toolbar; iOS does not use it for the standalone status bar at
+         all, which is why two rounds of retinting this value never touched the
+         dark band around the notch. Fixed rather than following the dawn-shift,
+         since the header it butts against is one colour at every hour. --}}
+    <meta name="theme-color" content="#1F2747">
 
     {{-- PWA: installable + standalone; push works once added to the Home Screen via Safari. --}}
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    {{-- `black-translucent` extends the web view up under the status bar, which
+         is what finally makes env(safe-area-inset-top) resolve to a real value
+         and hands us those pixels to paint. Under `default` the strip stayed
+         iOS-owned and unreachable from CSS — the actual cause of the dark band,
+         after theme-color (#395) and color-scheme (#396) both failed to explain
+         it.
+
+         The trade: iOS forces WHITE status glyphs in this mode, with no way to
+         ask for dark ones. Everything that can reach the top of the display
+         must therefore be dark, or the clock becomes unreadable — hence the
+         navy MobileTopBar and the StatusBarScrim that backs it even while a
+         modal is open. Do not revert this meta on its own. --}}
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Temari">
 
     {{-- Launch images for a cold standalone start. Without these iOS holds a
