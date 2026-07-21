@@ -107,6 +107,24 @@ describe('Kalender', () => {
         expect(screen.getByText('WK 2')).toBeInTheDocument();
     });
 
+    // The suffix used to be inline on every row, in a 40px column that could not
+    // hold "25.0km" — it spilled past the column's left edge. Stating the unit
+    // once in the header lets each row carry only the number, and leaves room
+    // for a 100+ km week.
+    it('names the unit once in the column header, not on every row', () => {
+        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+
+        expect(screen.getByText('KM')).toBeInTheDocument();
+        expect(screen.getByText(/10\.7/).textContent).toBe('10.7');
+    });
+
+    // The header cell is the week column's label, so it has to stay announced
+    // even though the visible text is just the unit.
+    it('keeps the week column labelled for screen readers', () => {
+        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        expect(screen.getByText('Pekan, jarak dalam kilometer')).toHaveClass('sr-only');
+    });
+
     it('links the day cell with a single activity to its detail page', () => {
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         const cellLinks = screen.getAllByRole('link');

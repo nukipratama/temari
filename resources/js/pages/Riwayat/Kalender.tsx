@@ -310,9 +310,10 @@ function NavButton({ href, icon, label }: Readonly<{ href: string; icon: string;
 
 function CalendarHeader() {
     return (
-        <div className="grid grid-cols-[2.5rem_repeat(7,minmax(0,1fr))] border-b border-line/60 bg-surface-sunken/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
-            <div className="px-1 py-2.5 lg:px-3">
-                <span className="sr-only">Pekan</span>
+        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-line/60 bg-surface-sunken/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
+            <div className="px-1 py-2.5 text-center font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink-2 lg:px-3 lg:text-left lg:text-xs lg:tracking-[0.14em]">
+                <span className="sr-only">Pekan, jarak dalam kilometer</span>
+                <span aria-hidden>KM</span>
             </div>
             {WEEKDAY_LABELS.map((label) => (
                 <div
@@ -332,7 +333,7 @@ function WeekRowView({
     moodFilter,
 }: Readonly<{ week: WeekRow; todayQuote: string | null; moodFilter: ReadonlySet<Mood> }>) {
     return (
-        <div className="grid grid-cols-[2.5rem_repeat(7,minmax(0,1fr))] border-b border-line/50 last:border-b-0 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
+        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-line/50 last:border-b-0 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
             <WeekSummary week={week} />
             {week.days.map((day) => (
                 <DayCellView
@@ -361,7 +362,6 @@ function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
                 <>
                     <span className="text-xs font-bold tabular-nums leading-none text-ink lg:text-lg">
                         {week.totalKm.toFixed(1)}
-                        <span className="text-[10px] font-medium text-ink-3 lg:ml-0.5 lg:text-sm">km</span>
                     </span>
                     <span className="font-mono font-bold text-[11px] uppercase tracking-[0.06em] text-ink-2 lg:tracking-[0.14em]">
                         WK {week.weekNumber}
