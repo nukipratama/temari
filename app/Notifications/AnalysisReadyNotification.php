@@ -105,6 +105,11 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
         return $this->analysis->id;
     }
 
+    public function forcesDelivery(): bool
+    {
+        return $this->force;
+    }
+
     /**
      * The rendered card PNG for a post-run notification whose activity has a
      * generated card, or null (send as text) for any other type, a card-less

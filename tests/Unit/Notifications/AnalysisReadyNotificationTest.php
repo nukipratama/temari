@@ -178,6 +178,13 @@ it('builds a Telegram message carrying the narration, the delivery key, and the 
         ->and($message->force)->toBeTrue();
 });
 
+it('exposes the force flag so a channel can skip its delivery claim', function (): void {
+    $analysis = postRunAnalysis(User::factory()->create());
+
+    expect(new AnalysisReadyNotification($analysis, force: true)->forcesDelivery())->toBeTrue()
+        ->and(new AnalysisReadyNotification($analysis)->forcesDelivery())->toBeFalse();
+});
+
 it('attaches the card photo for a post-run whose activity has a card', function (): void {
     app()->instance(RunCardImageRenderer::class, fakeRenderer());
     $user = User::factory()->create();

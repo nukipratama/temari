@@ -52,6 +52,43 @@ it('releases the claim when delivery throws so a retry can resend', function ():
     $this->assertDatabaseMissing('notification_deliveries', ['analysis_id' => $analysis->id, 'channel' => 'webpush']);
 });
 
+it('re-delivers a forced send even when the analysis was already claimed', function (): void {
+    $analysis = Analysis::factory()->create();
+    $inner = Mockery::mock(WebPushChannel::class);
+    $inner->shouldReceive('send')->twice();
+    $channel = idempotentChannel($inner);
+    $user = User::factory()->create();
+
+    $channel->send($user, new AnalysisReadyNotification($analysis));
+    $channel->send($user, new AnalysisReadyNotification($analysis, force: true));
+});
+
+it('records the claim after a forced send so a later automatic push is deduped', function (): void {
+    $analysis = Analysis::factory()->create();
+    $inner = Mockery::mock(WebPushChannel::class);
+    $inner->shouldReceive('send')->once();
+    $channel = idempotentChannel($inner);
+    $user = User::factory()->create();
+
+    $channel->send($user, new AnalysisReadyNotification($analysis, force: true));
+
+    $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysis->id, 'channel' => 'webpush']);
+
+    $channel->send($user, new AnalysisReadyNotification($analysis));
+});
+
+it('keeps an existing claim when a forced send throws', function (): void {
+    $analysis = Analysis::factory()->create();
+    app(NotificationDeliveryClaim::class)->claim($analysis->id, 'webpush');
+    $inner = Mockery::mock(WebPushChannel::class);
+    $inner->shouldReceive('send')->andThrow(new RuntimeException('push boom'));
+
+    expect(fn () => idempotentChannel($inner)->send(User::factory()->create(), new AnalysisReadyNotification($analysis, force: true)))
+        ->toThrow(RuntimeException::class);
+
+    $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysis->id, 'channel' => 'webpush']);
+});
+
 it('sends a keyless notification (no deliveryKey) without claiming', function (): void {
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once();
