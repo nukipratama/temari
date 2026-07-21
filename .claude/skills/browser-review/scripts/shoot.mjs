@@ -5,7 +5,7 @@
 // Pages are discovered from `artisan route:list` (see lib.mjs) — nothing hardcoded.
 import { rmSync } from 'node:fs';
 import { chromium } from 'playwright';
-import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes } from './lib.mjs';
+import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes, SHOT, EXT } from './lib.mjs';
 
 // Each run lands in its own dir keyed by date + execution time. Prior batches are
 // cleared first, so only the latest sweep is kept (stale screenshots aren't needed):
@@ -36,7 +36,7 @@ for (const vp of selected) {
   console.log(`\n=== ${vp} (${def.viewport.width}x${def.viewport.height}) ===`);
   // Guest login page first, then authenticate and discover the rest.
   await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
-  await page.screenshot({ path: `${dir}/00-login-full.png`, fullPage: true });
+  await page.screenshot({ path: `${dir}/00-login-full.${EXT}`, fullPage: true, ...SHOT });
   await login(page);
   await dismissReveal(page);
   const routes = await discoverPageRoutes(page);
@@ -52,8 +52,8 @@ for (const vp of selected) {
       seen.add(landed);
       await page.waitForTimeout(800);
       const idx = String(i).padStart(2, '0');
-      await page.screenshot({ path: `${dir}/${idx}-${name}-viewport.png`, fullPage: false });
-      await page.screenshot({ path: `${dir}/${idx}-${name}-full.png`, fullPage: true });
+      await page.screenshot({ path: `${dir}/${idx}-${name}-viewport.${EXT}`, fullPage: false, ...SHOT });
+      await page.screenshot({ path: `${dir}/${idx}-${name}-full.${EXT}`, fullPage: true, ...SHOT });
       console.log(`  shot ${idx}-${name} (${path})`);
       i++;
     } catch (e) {
@@ -66,5 +66,5 @@ for (const vp of selected) {
 }
 
 await browser.close();
-console.log(`\nDone. Screenshots under ${OUT}/<viewport>/ — read the PNGs to inspect.`);
+console.log(`\nDone. Screenshots under ${OUT}/<viewport>/ — read the JPEGs to inspect.`);
 console.log(`BATCH_DIR=${OUT}`);

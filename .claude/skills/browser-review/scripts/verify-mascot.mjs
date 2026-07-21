@@ -7,6 +7,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
+import { SHOT, EXT } from './lib.mjs';
 
 const BASE = 'http://localhost';
 const OUT = 'storage/app/browser-review/verify';
@@ -18,8 +19,8 @@ const browser = await chromium.launch({
 });
 
 async function screenshot(page, name) {
-    const p = path.join(OUT, `${name}.png`);
-    await page.screenshot({ path: p, fullPage: false });
+    const p = path.join(OUT, `${name}.${EXT}`);
+    await page.screenshot({ path: p, fullPage: false, ...SHOT });
     console.log(`  ✓ ${name}`);
     return p;
 }

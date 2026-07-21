@@ -81,15 +81,26 @@ docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.s
 ./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/teardown.sh
 ```
 
+> **Reading screenshots costs more than it looks.** An image read into the main context is re-billed
+> as a cache read on *every* later turn, so cost is `size x remaining turns`, not size. A full-page
+> mobile shot is ~1170x2532 real pixels (deviceScaleFactor 3). Three rules:
+> 1. **Read each image at most once.** If you need it again, re-read your own notes, not the file.
+> 2. **Let a subagent look and report in text** — that is what the Inspect phase below does, and why
+>    it is structured as disjoint per-viewport sets rather than several agents over the same files.
+> 3. **Cropping for a closer look: crop AND downscale in one step, and write `.jpg`.** Never write a
+>    full-resolution intermediate you then read. `sips -Z 900 -s format jpeg -s formatOptions 80 in.jpg
+>    --out crop.jpg` (or one PIL call). Ad-hoc `crops/*.png` have historically been the single largest
+>    source of oversized reads after the sweep itself.
+
 Each run lands in its own batch dir, keyed by date + execution time:
-`storage/app/browser-review/<YYYY-MM-DD>/<HHMMSS>/<viewport>/NN-<page>-{viewport,full}.png`. `shoot.mjs`
+`storage/app/browser-review/<YYYY-MM-DD>/<HHMMSS>/<viewport>/NN-<page>-{viewport,full}.jpg`. `shoot.mjs`
 clears prior batches at the start, so only the latest sweep is on disk, and prints the resolved dir as
 `BATCH_DIR=...` on its last line — **capture that and pass it to the inspect workflow.** The script also
 prints any console/`pageerror` per page. The audit prints a human-readable `HORIZ-OVERFLOW=true/false`
 line per page per viewport (ignoring intentional `overflow-x-auto` scroll containers and decorative
 `pointer-events-none` glow blobs) plus a machine-parseable `AUDIT vp=<viewport> name=<page-slug>
 overflow=<true|false>` line for every page — **capture and parse these too**, they gate the Inspect
-phase below (`name` matches the `-<name>-full.png` slug in `shoot.mjs`'s filenames, so the two scripts'
+phase below (`name` matches the `-<name>-full.jpg` slug in `shoot.mjs`'s filenames, so the two scripts'
 independent page orderings don't need to line up). The overflow flag is `true` if *either* the
 document's `scrollWidth` exceeds the viewport *or* any individual element's box extends past it — the
 latter alone still flags a page, since an `overflow-hidden` ancestor can clip a child without growing
@@ -193,8 +204,8 @@ for (const vp of viewports) {
   if (flagged.length) {
     calls.push(() => agent(
       `Confirm layout bugs on audit-flagged pages of the "${vp}" viewport (${NAV[vp]?.size}, ${NAV[vp]?.nav}) of ` +
-      `the temari app. Read only the *-full.png files in ${dir}/${vp}/ whose filename contains one of these ` +
-      `page names (match by "-<name>-full.png"): ${flagged.join(', ')}. audit.mjs already found horizontal ` +
+      `the temari app. Read only the *-full.jpg files in ${dir}/${vp}/ whose filename contains one of these ` +
+      `page names (match by "-<name>-full.jpg"): ${flagged.join(', ')}. audit.mjs already found horizontal ` +
       `overflow here — describe what's actually broken so it's fixable. Ignore by design: width-capped content ` +
       `(PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page artifact, sparse demo-data grids, and ` +
       `intentional overflow-x-auto. Return only pages with a real, describable issue.`,
@@ -204,8 +215,8 @@ for (const vp of viewports) {
   if (sample.length) {
     calls.push(() => agent(
       `You are a senior product designer and frontend engineer doing a visual QA pass on the "${vp}" viewport ` +
-      `(${NAV[vp]?.size}, ${NAV[vp]?.nav}) of the temari app. Read only the *-full.png files in ${dir}/${vp}/ ` +
-      `whose filename contains one of these page names (match by "-<name>-full.png"): ${sample.join(', ')}. These ` +
+      `(${NAV[vp]?.size}, ${NAV[vp]?.nav}) of the temari app. Read only the *-full.jpg files in ${dir}/${vp}/ ` +
+      `whose filename contains one of these page names (match by "-<name>-full.jpg"): ${sample.join(', ')}. These ` +
       `pages passed the automated overflow check, so hunt for issues code can't detect: overlapping/clipped/` +
       `truncated text, wrong nav chrome for this viewport, off-screen elements, awkward spacing or hierarchy. ` +
       `Ignore by design: width-capped content (PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page ` +

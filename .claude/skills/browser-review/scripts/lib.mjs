@@ -6,6 +6,33 @@ import { devices } from 'playwright';
 
 export const BASE = process.env.BASE ?? 'http://localhost';
 
+// Screenshots are JPEG, not PNG.
+//
+// A mobile shot renders at deviceScaleFactor 3 (iPhone 13: 390x844 logical =
+// 1170x2532 real pixels) and fullPage makes it taller still. As PNG that lands
+// around 666KB -- roughly 167k tokens. Anything read into the main context is
+// re-billed as a cache read on EVERY later turn, so one such image read early in
+// a long session costs far more than the single read suggests.
+//
+// Measured on a real 23-shot sweep of this app (17.58 MB as PNG):
+//
+//   q85  11.48 MB  1.5x     q75  9.57 MB  1.8x     q65  8.16 MB  2.2x
+//   q80  10.11 MB  1.7x     q70  8.95 MB  2.0x     q60  7.40 MB  2.4x
+//
+// So ~2x, not the ~8x you might expect: UI screenshots are mostly flat colour,
+// which PNG already encodes well. The gain is real but modest, and returns
+// diminish below q70 while artefacts start showing on text. q70 it is.
+//
+// Resolution is deliberately NOT reduced. Lowering deviceScaleFactor throws away
+// real detail, and post-hoc width capping backfired in testing -- `sips
+// --resampleWidth` UPSCALES anything narrower than the target, so the iPhone SE
+// shots (640px) got bigger and the batch ended up worse than plain q80.
+//
+// The bigger lever is not the format: it is not reading these into the main
+// context at all. See the Inspect phase, which fans disjoint sets to subagents.
+export const SHOT = { type: 'jpeg', quality: 70 };
+export const EXT = 'jpg';
+
 // Both sides of the Tailwind lg(1024px) breakpoint, where the app swaps nav chrome.
 export const VIEWPORT_DEFS = {
   mobile: { ...devices['iPhone 13'] },

@@ -54,7 +54,7 @@ for (const vp of selected) {
     });
     console.log(`  ${landed.padEnd(22)} vw=${r.vw} docW=${r.docW} ${r.overflow ? 'HORIZ-OVERFLOW=true ⚠' : 'ok'}`);
     // Machine-parseable line: `name` matches the slug shoot.mjs uses in its filenames
-    // (*-<name>-full.png), so the inspect workflow can glob-match flagged pages without
+    // (*-<name>-full.jpg), so the inspect workflow can glob-match flagged pages without
     // needing shoot.mjs's numeric prefix (audit and shoot run independently).
     console.log(`AUDIT vp=${vp} name=${name} overflow=${r.overflow}`);
     for (const o of r.real) console.log(`      right=${o.right} <${o.tag} class="${o.cls}">`);
