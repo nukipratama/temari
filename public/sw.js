@@ -18,7 +18,7 @@
 // cache whose key is not this one — so a new key is what actually evicts the
 // stale copy from installed apps. Left at v1, the status-bar fix below would
 // never reach anyone who already had the app installed.
-const OFFLINE_CACHE = 'temari-offline-v3';
+const OFFLINE_CACHE = 'temari-offline-v4';
 const OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', (event) => {

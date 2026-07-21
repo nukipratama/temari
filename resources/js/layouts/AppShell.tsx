@@ -7,7 +7,6 @@ import AksesoriUnlockModal from '@/components/celebrations/AksesoriUnlockModal';
 import TopNav from '@/components/TopNav';
 import MobileTopBar from '@/components/MobileTopBar';
 import MobileBottomNav from '@/components/MobileBottomNav';
-import StatusBarScrim from '@/components/StatusBarScrim';
 import ErrorBanner from '@/components/ErrorBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
@@ -55,10 +54,8 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
     if (!withNav) {
         return (
             <MotionConfig reducedMotion="user">
-                {/* No MobileTopBar here, so nothing else pads for the notch or
-                    backs the forced-white status glyphs — this branch has to do
-                    both itself. */}
-                <StatusBarScrim />
+                {/* No MobileTopBar here, so this branch pads for the notch
+                    itself. */}
                 <div className="min-h-screen bg-cream-deep pt-[env(safe-area-inset-top)] text-ink">
                     <ErrorBanner />
                     <StravaZoneReconnectBanner />
@@ -71,14 +68,13 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
 
     return (
         <MotionConfig reducedMotion="user">
-        <StatusBarScrim />
         <div
             className={cn(
                 'min-h-screen bg-cream-deep text-ink',
-                // With no top bar on this page, nothing else keeps content clear
-                // of the notch — under `black-translucent` the web view runs
-                // edge to edge. Mobile only: the inset is 0 on desktop anyway,
-                // but TopNav owns the top there regardless.
+                // With no top bar on this page, nothing else keeps content
+                // clear of the notch — under `black-translucent` the web view
+                // runs edge to edge. Mobile only: the inset is 0 on desktop
+                // anyway, but TopNav owns the top there regardless.
                 !showMobileTopBar && 'pt-[env(safe-area-inset-top)] lg:pt-0',
             )}
         >
