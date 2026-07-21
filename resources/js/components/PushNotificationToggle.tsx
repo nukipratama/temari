@@ -134,7 +134,11 @@ export default function PushNotificationToggle({
                 description={description}
                 control={
                     subscribed && onMuteChange !== undefined ? (
-                        <Toggle label="Kirim ke HP" checked={!muted} onChange={(on) => onMuteChange(!on)} />
+                        <Toggle
+                            label="Kirim notifikasi lari ke HP"
+                            checked={!muted}
+                            onChange={(on) => onMuteChange(!on)}
+                        />
                     ) : (
                         <PushAction
                             state={state}
