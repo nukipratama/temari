@@ -52,9 +52,6 @@ describe('MobileTopBar', () => {
         window.scrollY = 0;
     });
 
-    // Back to cream: StatusBarScrim's gradient now supplies the contrast the
-    // forced-white iOS status glyphs need, so this bar no longer has to be the
-    // dark surface underneath them.
     it('keeps the cream ground', () => {
         const { container } = render(<MobileTopBar />);
         expect(container.querySelector('header')).toHaveClass('bg-cream-deep/85');

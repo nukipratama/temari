@@ -34,4 +34,4 @@ _Systems_
 - [[telegram-notifications]] — link a Telegram account, per-type toggles, post-run + weekly-recap push
 - [[streak-reminders]] — Saturday nudges for at-risk weekly streaks, on any wired channel
 - [[temari-mascot]] — poses, accessories, vibes
-- [[installed-app-shell]] — Home-Screen install: status-bar takeover, launch image, Aku-only top bar, touch feel, edge-swipe back
+- [[installed-app-shell]] — Home-Screen install: edge-to-edge status bar, launch image, Aku-only top bar, touch feel, edge-swipe back

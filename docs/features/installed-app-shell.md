@@ -1,6 +1,6 @@
 ---
 title: Installed app shell
-description: What makes Temari feel native once it is on the iOS Home Screen — status-bar takeover, launch image, Aku-only top bar, touch feel, edge-swipe back
+description: What makes Temari feel native once it is on the iOS Home Screen — edge-to-edge status bar, launch image, Aku-only top bar, touch feel, edge-swipe back
 tags: [feature, pwa]
 status: living
 reviewed: 2026-07-21
@@ -10,7 +10,6 @@ code_refs:
   - resources/js/hooks/useSwipeBack.ts
   - resources/js/hooks/useScrolled.ts
   - resources/js/components/MobileTopBar.tsx
-  - resources/js/components/StatusBarScrim.tsx
   - resources/js/hooks/useBodyScrollLock.ts
   - resources/css/app.css
   - scripts/build-splash-screens.php
@@ -24,31 +23,43 @@ itself. This note covers the pieces that only matter once installed; the visual
 language they use is in [[design-tokens]], and the shell's structure is in
 [[dashboard]].
 
-## We paint the status bar ourselves, and that is why the header is navy
+## The status bar is ours, and stays cream
 
 The app runs `apple-mobile-web-app-status-bar-style: black-translucent`
-([app.blade.php](resources/views/app.blade.php)). The web view then extends up
-under the status bar, `env(safe-area-inset-top)` resolves to a real value, and
-those pixels are ours.
+([app.blade.php](resources/views/app.blade.php)). The web view extends up under
+the status bar, `env(safe-area-inset-top)` resolves to a real value, and the
+cream page fills the screen edge to edge — including behind the clock.
 
-The trade is not optional: **iOS forces white status glyphs in this mode**, with
-no way to ask for dark ones. Something dark has to sit under them on every
-screen, or the clock disappears against the cream app.
+Nothing is painted over that region. **iOS renders the status glyphs dark
+against it**, so cream is legible and no backing is needed.
 
-That job belongs to
-[StatusBarScrim](resources/js/components/StatusBarScrim.tsx), and it is a
-**gradient** rather than a solid strip. A solid one is the original bug: a hard
-dark edge above cream content reads as a band stuck to the top of the app.
-Fading `sky` → transparent over a little more than the inset gives the glyphs an
-opaque ground exactly where they sit, then dissolves before meeting page
-content, so there is no edge to notice. That is also what let the top bar stay
-cream — the contrast comes from the scrim, not from the bar.
+### Three wrong turns, recorded so they are not repeated
 
-It sits at `z-[70]`, above the modal layer, because every modal is
-`fixed inset-0` at z-50/51 and paints its own scrim over that region;
-`CardReveal`'s is dark, `TemariNudgeModal`'s is not. Rather than auditing each
-overlay for top-of-screen contrast, this outranks them all. Zero-height wherever
-the inset is 0, i.e. everywhere but the installed app.
+The dark band above the header took four attempts, and the first three were all
+built on a premise that turned out to be false on-device:
+
+- **#395** pinned `theme-color` to the header's cream. iOS does not use
+  `theme-color` for the standalone status bar at all — only Android/Chrome does,
+  for its toolbar.
+- **#396** declared `color-scheme: light`, on the theory that a Dark Mode device
+  made the UA render its own strip dark. Correct and worth keeping for form
+  controls and scrollbars, but the band survived a fresh install.
+- **#397 and #398** switched to `black-translucent` — which *was* the right
+  mechanism, since under `default` the strip is iOS-owned and unreachable from
+  CSS — but then assumed the documented "forced white glyphs" behaviour and
+  painted a dark backing for them: first a navy `MobileTopBar`, then a fading
+  `StatusBarScrim`. On device the glyphs render **dark**, so that backing was
+  never needed, and it was itself the ugly band being reported.
+
+The lesson worth keeping: `black-translucent` is what hands us the pixels, and
+on this app the correct thing to draw there is *nothing*. If a future change
+makes the glyphs turn white (a different iOS version, a dark app surface at the
+top), the fix is a backing behind the glyphs — but confirm that on a device
+first rather than assuming it from the spec.
+
+`pt-[max(0.75rem,env(safe-area-inset-top))]` on the Aku top bar, and
+`pt-[env(safe-area-inset-top)]` on the shell everywhere else, are what keep
+content clear of the notch now that the web view runs edge to edge.
 
 ## The mobile top bar is Aku-only
 

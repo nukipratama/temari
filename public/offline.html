@@ -34,20 +34,6 @@
             font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
-        /* The app runs `apple-mobile-web-app-status-bar-style: black-translucent`,
-           which forces white status glyphs for the whole standalone session —
-           including this page, which the service worker swaps in without a
-           reload. Cream behind white glyphs hides the clock, so back them with
-           the same fading navy StatusBarScrim uses in the app — a gradient
-           rather than a solid strip, so there is no hard edge to read as a band
-           above the cream page. Collapses to near-nothing where the inset is 0. */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0 0 auto;
-            height: calc(env(safe-area-inset-top) + 14px);
-            background: linear-gradient(to bottom, #1F2747, rgba(31, 39, 71, 0.8) 55%, rgba(31, 39, 71, 0));
-        }
         img { width: 96px; height: 96px; }
         h1 { margin: 0.5rem 0 0; font-size: 1.4rem; font-weight: 600; }
         p { margin: 0; max-width: 26rem; font-size: 0.9rem; line-height: 1.55; color: #4A4F63; }

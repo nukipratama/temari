@@ -191,19 +191,6 @@ describe('AppShell', () => {
         expect(container.querySelector('.min-h-screen')).not.toHaveClass('pt-[env(safe-area-inset-top)]');
     });
 
-    // The scrim is what makes `black-translucent` safe: iOS forces white status
-    // glyphs, and modals paint their own scrim over that region. It has to be
-    // in BOTH branches — Login has no MobileTopBar to fall back on.
-    it('mounts the status-bar scrim in the nav branch', () => {
-        render(<AppShell>content</AppShell>);
-        expect(screen.getByTestId('status-bar-scrim')).toBeInTheDocument();
-    });
-
-    it('mounts the status-bar scrim in the no-nav branch too', () => {
-        render(<AppShell withNav={false}>content</AppShell>);
-        expect(screen.getByTestId('status-bar-scrim')).toBeInTheDocument();
-    });
-
     it('pads the no-nav branch past the notch, since it has no top bar to do it', () => {
         const { container } = render(<AppShell withNav={false}>content</AppShell>);
         expect(container.querySelector('.min-h-screen')).toHaveClass('pt-[env(safe-area-inset-top)]');

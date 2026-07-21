@@ -20,10 +20,6 @@ import type { SharedProps } from '@/types/inertia';
  * thing that genuinely needed reaching from anywhere — the account menu —
  * belongs on the profile tab the way it does in a native app.
  *
- * Cream, not dark: `StatusBarScrim`'s gradient now supplies the contrast the
- * forced-white iOS status glyphs need, so this bar no longer has to be the dark
- * surface underneath them.
- *
  * `pt-[max(0.75rem,env(safe-area-inset-top))]` is what keeps the row clear of
  * the notch. Under `black-translucent` that inset resolves to a real value and
  * the max() picks it; in a browser tab it collapses to the 0.75rem floor.
