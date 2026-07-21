@@ -248,6 +248,14 @@ function NotificationPrefsPanel({
 
             <div className="border-t border-line/60 pt-5">
                 <GroupLabel>Ke mana</GroupLabel>
+                {/* Scoped on purpose: these switches govern the run notifications
+                    above them, not everything the app can send. Maintainer alerts
+                    (dead-lettered AI blocks, generation pauses) go straight to
+                    admin Telegram chats without touching preferences, and the bot
+                    still replies to /start and /stop. See MaintainerAlerter. */}
+                <p className="mb-2 px-2 font-sans text-[12px] text-ink-3">
+                    Buat notifikasi lari kamu. Balasan bot sama peringatan sistem tetap masuk.
+                </p>
                 <div className="flex flex-col">
                     <TelegramPanel
                         telegram={telegram}
@@ -385,7 +393,11 @@ function TelegramPanel({
                 icon="mdi:telegram"
                 label="Telegram"
                 description={description}
-                control={<Toggle label="Kirim ke Telegram" checked={!muted} onChange={(on) => onMuteChange(!on)} />}
+                control={<Toggle
+                        label="Kirim notifikasi lari ke Telegram"
+                        checked={!muted}
+                        onChange={(on) => onMuteChange(!on)}
+                    />}
             />
             <div className="-mt-1 pl-11">
                 <button

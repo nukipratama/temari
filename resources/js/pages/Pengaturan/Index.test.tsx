@@ -56,6 +56,16 @@ describe('Pengaturan', () => {
         expect(screen.queryByRole('link', { name: /^Aku$/ })).not.toBeInTheDocument();
     });
 
+    // The mute switches say "Kirim ke Telegram" nowhere near their real scope:
+    // maintainer alerts and bot replies bypass them entirely. The group states
+    // that out loud so the toggle is not writing a cheque the code will not
+    // honour. See MaintainerAlerter.
+    it('scopes the channel mutes to run notifications', () => {
+        render(<Pengaturan />);
+        expect(screen.getByText(/Buat notifikasi lari kamu/)).toBeInTheDocument();
+        expect(screen.getByText(/peringatan sistem tetap masuk/)).toBeInTheDocument();
+    });
+
     it('tints the destructive row so it stops reading as routine', () => {
         render(<Pengaturan />);
         expect(screen.getByText('Hapus akun')).toHaveClass('text-ember-deep');

@@ -78,6 +78,15 @@ A missing preference row still means all-on for both axes.
 
 `force: true` bypasses recency and the per-type opt-in, because the user explicitly asked for that send. It **cannot** bypass a channel mute: a mute is a routing decision ("never deliver here"), not a per-message one. This is the one gate force does not override, and it is pinned by a test.
 
+### What the mute does not cover
+
+Two Telegram paths deliberately bypass `ChannelRouter`, and the Pengaturan copy says so rather than letting the toggle overclaim:
+
+- **Maintainer alerts** ([MaintainerAlerter](../../app/Services/AI/MaintainerAlerter.php)) — dead-lettered AI blocks and generation pause/resume transitions, sent straight to every `is_admin` user's chat. These are operational, not product, and the service is Telegram-only: honouring the mute would not reroute them, it would delete them, and the failure they exist to catch is the one you otherwise notice days late. Pinned by a test.
+- **Bot replies** ([HandleTelegramUpdateJob](../../app/Jobs/Telegram/HandleTelegramUpdateJob.php)) — the responses to `/start` and `/stop`. Replying to a message the user just sent is not a notification, and muting it would make the bot look broken.
+
+Everything else routes through `ChannelRouter`.
+
 ### One router, six former call sites
 
 "Where can this user be reached" used to be answered in six places with three different answers — only `AnalysisReadyNotification` checked that a Telegram bot token was configured, so the other five would route to a channel that could not possibly send. [ChannelRouter](../../app/Services/Notifications/ChannelRouter.php) now owns it, and unifying them applied that check everywhere.

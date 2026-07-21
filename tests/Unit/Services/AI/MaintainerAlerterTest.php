@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\AI\Analysis;
+use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
@@ -137,4 +138,41 @@ it('swallows a send failure so an alert never fails its caller', function (): vo
     $row = Analysis::factory()->failed()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
 
     expect(fn () => app(MaintainerAlerter::class)->deadLettered($row))->not->toThrow(Throwable::class);
+});
+
+/**
+ * Maintainer alerts deliberately bypass the per-channel mute added in #406.
+ *
+ * They are operational, not product: telling a solo operator that the AI
+ * pipeline has stalled. MaintainerAlerter is also Telegram-only, so honouring
+ * the mute would not reroute these alerts, it would delete them — and the
+ * failure they exist to catch is exactly the one you notice days late.
+ *
+ * The Pengaturan copy states this scope out loud ("Balasan bot sama peringatan
+ * sistem tetap masuk"), so the carve-out is documented to the user rather than
+ * being a surprise. Pinned here so it stays a decision, not an accident.
+ */
+it('still alerts an admin who has muted the Telegram channel', function (): void {
+    $admin = adminWithChat(4321);
+    NotificationPreference::factory()->for($admin)->create(['telegram_enabled' => false]);
+
+    $client = fakeTelegram();
+    $client->shouldReceive('sendMessage')->once()->with(4321, Mockery::type('string'));
+
+    app(MaintainerAlerter::class)->deadLettered(
+        Analysis::factory()->create(['analysis_type' => AnalysisType::WeeklyRecap]),
+    );
+});
+
+it('still respects an unconfigured bot token, mute or not', function (): void {
+    Config::set('services.telegram.bot_token', '');
+    $admin = adminWithChat(4321);
+    NotificationPreference::factory()->for($admin)->create(['telegram_enabled' => false]);
+
+    $client = fakeTelegram();
+    $client->shouldNotReceive('sendMessage');
+
+    app(MaintainerAlerter::class)->deadLettered(
+        Analysis::factory()->create(['analysis_type' => AnalysisType::WeeklyRecap]),
+    );
 });
