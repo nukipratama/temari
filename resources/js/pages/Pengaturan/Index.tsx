@@ -2,7 +2,6 @@ import { Head, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { appLayout } from '@/layouts/appLayout';
-import BackLink from '@/components/ui/BackLink';
 import Card from '@/components/ui/Card';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -55,13 +54,11 @@ export default function Pengaturan({
         <>
             <Head title="Pengaturan" />
             <PageContainer>
+                {/* No back affordance: Pengaturan is one tap from the Aku tab
+                    and from the avatar menu on every page, so a breadcrumb here
+                    would be chrome without a job. */}
                 <header className="mb-8">
-                    {/* Desktop only: MobileTopBar carries back on phones, so the
-                        two never both appear. */}
-                    <BackLink href="/profil" className="mb-3.5 hidden lg:inline-flex">
-                        Aku
-                    </BackLink>
-                    <PageHero eyebrow="Aku · Pengaturan" lead="Atur Temari," emph="sesuai kamu." />
+                    <PageHero eyebrow="Pengaturan" lead="Atur Temari," emph="sesuai kamu." />
                 </header>
 
                 {/* One notification section, not three. The user holds a single
@@ -113,6 +110,7 @@ function DeleteAccountPanel() {
                 icon="mdi:account-remove-outline"
                 label="Hapus akun"
                 description="Hapus akun sekaligus lepasin sambungan Strava. Gak bisa dibalikin."
+                tone="danger"
                 onClick={() => setConfirmOpen(true)}
             />
             <TemariNudgeModal

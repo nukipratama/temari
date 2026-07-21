@@ -26,6 +26,12 @@ interface SettingsRowProps {
      * `externalHref` / `onClick` are ignored alongside it.
      */
     control?: ReactNode;
+    /**
+     * `danger` tints the icon and label ember for destructive rows. Deliberately
+     * tint-only rather than a filled red row: a solid red block in a settings
+     * list reads as "something is broken" rather than "be careful".
+     */
+    tone?: 'default' | 'danger';
     /** Extra children rendered after the row (e.g., modals) */
     children?: ReactNode;
 }
@@ -38,14 +44,29 @@ export default function SettingsRow({
     externalHref,
     onClick,
     control,
+    tone = 'default',
     children,
 }: Readonly<SettingsRowProps>) {
+    const isDanger = tone === 'danger';
     const content = (
         <>
             <span className="flex items-center gap-3">
-                <Icon icon={icon} width={20} height={20} className="text-ink-3" aria-hidden />
+                <Icon
+                    icon={icon}
+                    width={20}
+                    height={20}
+                    className={isDanger ? 'text-ember-deep' : 'text-ink-3'}
+                    aria-hidden
+                />
                 <span className="flex flex-col">
-                    <span className="font-sans text-sm font-semibold text-ink">{label}</span>
+                    <span
+                        className={cn(
+                            'font-sans text-sm font-semibold',
+                            isDanger ? 'text-ember-deep' : 'text-ink',
+                        )}
+                    >
+                        {label}
+                    </span>
                     {description !== undefined && (
                         <span className="font-sans text-[12px] text-ink-3">{description}</span>
                     )}

@@ -37,7 +37,7 @@ describe('Pengaturan', () => {
     // the app not using the editorial header every other page shares.
     it('opens with the editorial header rather than a bare title', () => {
         render(<Pengaturan />);
-        expect(screen.getByText('Aku · Pengaturan')).toBeInTheDocument();
+        expect(screen.getByText('Pengaturan')).toBeInTheDocument();
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Atur Temari, sesuai kamu.');
     });
 
@@ -49,19 +49,16 @@ describe('Pengaturan', () => {
         expect(screen.getByText('Ke mana')).toBeInTheDocument();
     });
 
-    // Back lives in MobileTopBar on mobile now, so the in-page breadcrumb is
-    // desktop-only — each viewport gets exactly one back affordance rather than
-    // two stacked or none at all.
-    it('keeps the in-page back link for desktop only', () => {
+    // No back affordance anywhere: Pengaturan is one tap from the Aku tab and
+    // from the avatar menu on every page, so a breadcrumb has no job here.
+    it('has no back link', () => {
         render(<Pengaturan />);
-        const back = screen.getByRole('link', { name: /Aku/ });
-        expect(back).toHaveClass('hidden', 'lg:inline-flex');
-        expect(back).toHaveAttribute('href', '/profil');
+        expect(screen.queryByRole('link', { name: /^Aku$/ })).not.toBeInTheDocument();
     });
 
-    it('links the Zona HR row to the zones page', () => {
+    it('tints the destructive row so it stops reading as routine', () => {
         render(<Pengaturan />);
-        expect(screen.getByText('Zona HR').closest('a')).toHaveAttribute('href', '/pengaturan/zona');
+        expect(screen.getByText('Hapus akun')).toHaveClass('text-ember-deep');
     });
 
     it('shows the Telegram connect link when not connected', () => {

@@ -23,7 +23,8 @@ import type { SharedProps } from '@/types/inertia';
  */
 const BACK_TARGETS: Record<string, { href: string; label: string }> = {
     'Runs/Show': { href: '/aktivitas', label: 'Riwayat' },
-    'Pengaturan/Index': { href: '/profil', label: 'Aku' },
+    // Pengaturan is deliberately absent: it is one tap from the Aku tab and
+    // from the avatar menu on every page, so it reads as a root, not a push.
     'Pengaturan/ZonaHR': { href: '/pengaturan', label: 'Pengaturan' },
 };
 

@@ -29,7 +29,9 @@ Server entry is [SettingsController](../../app/Http/Controllers/SettingsControll
 
 Every line is one primitive. [SettingsRow](../../resources/js/components/ui/SettingsRow.tsx) takes an optional `control` slot that replaces its chevron, so toggle rows and navigation rows share a layout instead of each inventing padding and type; a row carrying a control is never itself tappable, since a row that both navigates and holds a switch gives two different outcomes for taps a few pixels apart. The switch itself is [Toggle](../../resources/js/components/ui/Toggle.tsx), promoted out of this page once more than one place needed it.
 
-The page opens with [PageHero](../../resources/js/components/ui/PageHero.tsx) like every other screen. It previously used a bare `<h1>`, which made it the one page that looked like it belonged to a different product. The in-page back link is `lg`-only — [MobileTopBar](../../resources/js/components/MobileTopBar.tsx) carries back on phones, see [[installed-app-shell]].
+The page opens with [PageHero](../../resources/js/components/ui/PageHero.tsx) like every other screen. It previously used a bare `<h1>`, which made it the one page that looked like it belonged to a different product.
+
+It carries **no back affordance at all** — not in the page and not in the top bar. Pengaturan is one tap from the Aku tab and from the avatar menu on every page, so a breadcrumb would be chrome without a job. `Pengaturan/ZonaHR` is the exception and keeps one, since it is reachable only from here; see [[installed-app-shell]] for how the top bar decides.
 
 ## Account deletion
 

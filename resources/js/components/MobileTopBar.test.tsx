@@ -15,7 +15,6 @@ describe('MobileTopBar', () => {
     // rather than pushes and must keep the brand mark.
     it.each([
         ['Runs/Show', '/aktivitas', 'Riwayat'],
-        ['Pengaturan/Index', '/profil', 'Aku'],
         ['Pengaturan/ZonaHR', '/pengaturan', 'Pengaturan'],
     ])('replaces the brand mark with a back button on %s', (component, href, label) => {
         setMockPage({}, '/x', component);
@@ -26,7 +25,17 @@ describe('MobileTopBar', () => {
         expect(screen.queryByLabelText('Beranda')).not.toBeInTheDocument();
     });
 
-    it.each(['HariIni', 'Koleksi/Kartu', 'Riwayat/Jejak', 'Aku', 'Riwayat/Kalender', 'Koleksi/Rekor'])(
+    // Pengaturan sits in this list, not the pushed one: it is one tap from the
+    // Aku tab and from the avatar menu on every page, so it behaves as a root.
+    it.each([
+        'HariIni',
+        'Koleksi/Kartu',
+        'Riwayat/Jejak',
+        'Aku',
+        'Riwayat/Kalender',
+        'Koleksi/Rekor',
+        'Pengaturan/Index',
+    ])(
         'keeps the brand mark and shows no back button on %s',
         (component) => {
             setMockPage({}, '/x', component);
