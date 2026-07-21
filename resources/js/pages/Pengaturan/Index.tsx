@@ -12,7 +12,10 @@ import Toggle from '@/components/ui/Toggle';
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
+import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { usePendingPost } from '@/hooks/usePendingPost';
+import { formatDurationHMS } from '@/lib/pace';
 
 // The demo account can't be deleted; the backend guard rejects it and the
 // shared ErrorBanner surfaces the reason, so the confirm modal stays generic.
@@ -32,6 +35,8 @@ interface NotificationPrefs {
 interface PengaturanProps {
     telegram?: TelegramPayload;
     notificationPrefs?: NotificationPrefs;
+    /** Seconds left on the test-send cooldown, or null when it is not cooling. */
+    testCooldownSeconds?: number | null;
 }
 
 const TELEGRAM_DEFAULT: TelegramPayload = {
@@ -49,6 +54,7 @@ const PREFS_DEFAULT: NotificationPrefs = {
 export default function Pengaturan({
     telegram = TELEGRAM_DEFAULT,
     notificationPrefs = PREFS_DEFAULT,
+    testCooldownSeconds = null,
 }: Readonly<PengaturanProps>) {
     return (
         <>
@@ -69,7 +75,11 @@ export default function Pengaturan({
                     <SectionLabel>Notifikasi</SectionLabel>
                     <div className="mt-3">
                         <Card padding="lg">
-                            <NotificationPrefsPanel prefs={notificationPrefs} telegram={telegram} />
+                            <NotificationPrefsPanel
+                                prefs={notificationPrefs}
+                                telegram={telegram}
+                                testCooldownSeconds={testCooldownSeconds}
+                            />
                         </Card>
                     </div>
                 </section>
@@ -135,7 +145,12 @@ function DeleteAccountPanel() {
 function NotificationPrefsPanel({
     prefs,
     telegram,
-}: Readonly<{ prefs: NotificationPrefs; telegram: TelegramPayload }>) {
+    testCooldownSeconds,
+}: Readonly<{
+    prefs: NotificationPrefs;
+    telegram: TelegramPayload;
+    testCooldownSeconds: number | null;
+}>) {
     // Local state prevents a rapid-click race: if the user flips two toggles before
     // Inertia refreshes props, the second PATCH would read stale props for the first
     // toggle's value and silently revert it. Local state sees the latest flipped value.
@@ -224,18 +239,52 @@ function NotificationPrefsPanel({
                 {/* Lives with the channels rather than the types: what it proves
                     is that a channel can reach you, not that a type is on. */}
                 <div className="mt-4">
-                    <PillButton
-                        tone="outline"
-                        onClick={() => guard(() => router.post('/profil/notifikasi/test', {}, { preserveScroll: true }))}
-                    >
-                        <Icon icon="mdi:send-outline" width={14} height={14} aria-hidden />
-                        Kirim notifikasi tes
-                    </PillButton>
+                    <TestSendButton cooldownSeconds={testCooldownSeconds} guard={guard} />
                 </div>
             </div>
 
             <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
         </div>
+    );
+}
+
+/**
+ * "Kirim notifikasi tes" with the two states it was missing: in-flight, and
+ * cooling. Without them a tap looked like nothing happened, and a second tap
+ * either sent again or hit the route throttle as a bare 429.
+ */
+function TestSendButton({
+    cooldownSeconds,
+    guard,
+}: Readonly<{ cooldownSeconds: number | null; guard: (run: () => void) => void }>) {
+    const [sending, send] = usePendingPost('/profil/notifikasi/test', { preserveScroll: true });
+    const remaining = useCooldownCountdown(cooldownSeconds);
+    const cooling = remaining > 0;
+
+    let label = 'Kirim notifikasi tes';
+    if (cooling) {
+        label = formatDurationHMS(remaining);
+    } else if (sending) {
+        label = 'Lagi ngirim…';
+    }
+
+    return (
+        <PillButton
+            tone="outline"
+            disabled={sending || cooling}
+            className="disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => guard(send)}
+            aria-label={cooldownAriaLabel(remaining, 'kirim notifikasi tes')}
+        >
+            <Icon
+                icon={sending ? 'mdi:loading' : 'mdi:send-outline'}
+                width={14}
+                height={14}
+                className={sending ? 'animate-spin' : undefined}
+                aria-hidden
+            />
+            {label}
+        </PillButton>
     );
 }
 

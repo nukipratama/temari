@@ -334,6 +334,6 @@ class Analysis extends Model
             return null;
         }
 
-        return new Cooldown(Cooldown::notificationKey($id))->remaining();
+        return new Cooldown(Cooldown::notificationKey($id), Cooldown::NOTIFICATION_WINDOW_SECONDS)->remaining();
     }
 }

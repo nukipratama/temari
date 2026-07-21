@@ -97,7 +97,32 @@ describe('Pengaturan', () => {
 
         fireEvent.click(screen.getByText('Kirim notifikasi tes'));
 
-        expect(router.post).toHaveBeenCalledWith('/profil/notifikasi/test', {}, { preserveScroll: true });
+        // The button routes through usePendingPost now, which adds its own
+        // onStart/onSuccess/onFinish alongside the caller's options.
+        expect(router.post).toHaveBeenCalledWith(
+            '/profil/notifikasi/test',
+            {},
+            expect.objectContaining({ preserveScroll: true }),
+        );
+    });
+
+    // Pressing it used to look like nothing happened, and pressing again either
+    // sent a second time or hit the route throttle as a bare 429 the UI could
+    // not explain.
+    it('disables the test button with a countdown while the send is cooling', () => {
+        vi.mocked(router.post).mockReset();
+        render(<Pengaturan testCooldownSeconds={45} />);
+
+        const button = screen.getByRole('button', { name: /Tunggu .* sebelum kirim notifikasi tes/ });
+        expect(button).toBeDisabled();
+
+        fireEvent.click(button);
+        expect(router.post).not.toHaveBeenCalled();
+    });
+
+    it('leaves the test button live when nothing is cooling', () => {
+        render(<Pengaturan testCooldownSeconds={null} />);
+        expect(screen.getByText('Kirim notifikasi tes').closest('button')).not.toBeDisabled();
     });
 
     it('opens the demo-blocked modal instead of patching when a demo user flips a toggle', () => {

@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Notifications\TestNotification;
+use App\Support\Cooldown;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -13,6 +14,10 @@ use Illuminate\Http\Request;
  * Sends the channel-agnostic {@see TestNotification} to whatever channels the
  * signed-in user has wired — Telegram if connected, web push if subscribed. One
  * "Kirim tes" for every channel; the notification's via() picks the destinations.
+ *
+ * Cooled per user for a short window. The route's `throttle:6,1` still bounds
+ * abuse, but six silent sends a minute is a lot of buzzing for a mis-tap, and a
+ * throttle rejection is a 429 the UI cannot render a countdown from.
  */
 class NotificationTestController extends Controller
 {
@@ -27,6 +32,13 @@ class NotificationTestController extends Controller
 
         if (! $hasChannel) {
             return back()->with('info', 'Nyalakan notifikasi dulu ya.');
+        }
+
+        // attempt() rather than isActive()+start(): the pair leaves a gap where
+        // two concurrent taps both see it inactive and both send.
+        $cooldown = new Cooldown(Cooldown::testNotificationKey($user->id), Cooldown::TEST_WINDOW_SECONDS);
+        if (! $cooldown->attempt()) {
+            return back()->with('info', 'Barusan udah dikirim. Tunggu sebentar ya.');
         }
 
         $user->notify(new TestNotification());

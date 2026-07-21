@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Telegram\TelegramLinkToken;
+use App\Support\Cooldown;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,6 +21,12 @@ class SettingsController extends Controller
         return Inertia::render('Pengaturan/Index', [
             'telegram' => $this->resolveTelegram($user, $telegramLinkToken),
             'notificationPrefs' => $this->resolveNotificationPrefs($user),
+            // Lets the test button render a countdown instead of failing on a
+            // 429 the UI cannot explain.
+            'testCooldownSeconds' => new Cooldown(
+                Cooldown::testNotificationKey($user->id),
+                Cooldown::TEST_WINDOW_SECONDS,
+            )->remaining(),
         ]);
     }
 

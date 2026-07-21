@@ -54,3 +54,38 @@ it('attempt returns false and leaves the window untouched when already active', 
     expect($cooldown->attempt())->toBeFalse();
     expect($cooldown->remaining())->toBe($remainingBefore);
 });
+
+it('builds a per-user key for the test send, since a test has no subject', function (): void {
+    expect(Cooldown::testNotificationKey(7))->toBe('notification-test:7');
+});
+
+/**
+ * The two uses want different lengths for different reasons: a re-send protects
+ * the recipient from being buzzed twice, while the test send protects nobody and
+ * is pressed exactly when someone is setting a channel up and iterating.
+ */
+it('honours a per-instance window rather than the shared default', function (): void {
+    $cooldown = new Cooldown('custom-window', Cooldown::TEST_WINDOW_SECONDS);
+    $cooldown->start();
+
+    expect($cooldown->remaining())
+        ->toBeGreaterThan(0)
+        ->toBeLessThanOrEqual(Cooldown::TEST_WINDOW_SECONDS)
+        ->and(Cooldown::TEST_WINDOW_SECONDS)->toBeLessThan(Cooldown::WINDOW_SECONDS);
+});
+
+/**
+ * These three are separate on purpose and the ordering is the point. The default
+ * window guards a paid LLM re-narration; the notification window guards a
+ * duplicate buzz for a narration that already exists; the test window guards
+ * nothing and exists only so setup-time iteration stays quick. Collapsing them
+ * back into one constant would silently retune whichever guard was not being
+ * thought about.
+ */
+it('keeps the AI re-narration guard longest, since it is the one that costs money', function (): void {
+    expect(Cooldown::WINDOW_SECONDS)->toBe(900)
+        ->and(Cooldown::NOTIFICATION_WINDOW_SECONDS)->toBe(300)
+        ->and(Cooldown::TEST_WINDOW_SECONDS)->toBe(60)
+        ->and(Cooldown::NOTIFICATION_WINDOW_SECONDS)->toBeLessThan(Cooldown::WINDOW_SECONDS)
+        ->and(Cooldown::TEST_WINDOW_SECONDS)->toBeLessThan(Cooldown::NOTIFICATION_WINDOW_SECONDS);
+});

@@ -7,17 +7,39 @@ namespace App\Support;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
- * A single-shot 15-minute cooldown keyed by an arbitrary string, backed by the
- * Redis RateLimiter (cache connection, isolated from the queue). One `start()`
- * makes the key active for the whole window; `remaining()` reports the countdown
- * so a caller can surface a "wait Xm" disabled state. Used to throttle manual AI
- * re-triggers and manual notification sends without re-firing an LLM call or a push.
+ * A single-shot cooldown keyed by an arbitrary string, backed by the Redis
+ * RateLimiter (cache connection, isolated from the queue). One `start()` makes
+ * the key active for the whole window; `remaining()` reports the countdown so a
+ * caller can surface a "wait Xm" disabled state.
+ *
+ * The window is per-instance because the three uses guard different things.
+ * Re-narrating a block spends money, so it holds longest. Re-sending an
+ * existing narration spends nothing and only has to spare the recipient a
+ * duplicate buzz. The test send protects nobody at all — it exists to prove a
+ * channel works, and is pressed exactly when someone is setting one up and
+ * iterating, so a long lock turns a 30-second check into a 15-minute one.
  */
 final readonly class Cooldown
 {
+    /**
+     * Default window: the per-block AI re-narration guard ("Baca ulang"),
+     * started from AnalysisService::markDone(). This one is a **cost** guard —
+     * every re-fire is a paid LLM call — so it stays long. See the
+     * per-block-manual-retry decision note before shortening it.
+     */
     public const int WINDOW_SECONDS = 900;
 
-    public function __construct(private string $key)
+    /**
+     * Manual re-send of an already-generated narration. Costs nothing to run,
+     * so it only has to stop the recipient being buzzed twice about the same
+     * thing.
+     */
+    public const int NOTIFICATION_WINDOW_SECONDS = 300;
+
+    /** "Kirim notifikasi tes" — short, because it is a setup-time debug tool. */
+    public const int TEST_WINDOW_SECONDS = 60;
+
+    public function __construct(private string $key, private int $window = self::WINDOW_SECONDS)
     {
     }
 
@@ -34,7 +56,7 @@ final readonly class Cooldown
      */
     public function attempt(): bool
     {
-        return RateLimiter::attempt($this->key, 1, fn (): bool => true, self::WINDOW_SECONDS);
+        return RateLimiter::attempt($this->key, 1, fn (): bool => true, $this->window);
     }
 
     /**
@@ -52,11 +74,20 @@ final readonly class Cooldown
 
     public function start(): void
     {
-        RateLimiter::hit($this->key, self::WINDOW_SECONDS);
+        RateLimiter::hit($this->key, $this->window);
     }
 
     public static function notificationKey(int $analysisId): string
     {
         return "notification-send:{$analysisId}";
+    }
+
+    /**
+     * Keyed by user, not by analysis: a test send has no subject, so the only
+     * thing worth rate-limiting is the person pressing the button.
+     */
+    public static function testNotificationKey(int $userId): string
+    {
+        return "notification-test:{$userId}";
     }
 }

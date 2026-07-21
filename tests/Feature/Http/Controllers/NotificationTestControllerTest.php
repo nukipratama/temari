@@ -62,3 +62,30 @@ it('blocks the shared demo account', function (): void {
 
     Notification::assertNothingSent();
 });
+
+it('cools down after a send so a second tap does not fire again', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
+
+    $this->actingAs($user)->post('/profil/notifikasi/test')->assertRedirect();
+    Notification::assertSentTimes(TestNotification::class, 1);
+
+    $this->actingAs($user)->post('/profil/notifikasi/test')->assertRedirect();
+
+    // Still one: the second tap is swallowed by the cooldown, not sent twice.
+    Notification::assertSentTimes(TestNotification::class, 1);
+});
+
+it('cools per user, so one account cannot mute another', function (): void {
+    Notification::fake();
+    $first = User::factory()->create();
+    $second = User::factory()->create();
+    TelegramConnection::factory()->for($first)->create(['revoked_at' => null]);
+    TelegramConnection::factory()->for($second)->create(['revoked_at' => null]);
+
+    $this->actingAs($first)->post('/profil/notifikasi/test')->assertRedirect();
+    $this->actingAs($second)->post('/profil/notifikasi/test')->assertRedirect();
+
+    Notification::assertSentTimes(TestNotification::class, 2);
+});
