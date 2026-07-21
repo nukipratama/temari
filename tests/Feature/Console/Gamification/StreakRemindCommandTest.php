@@ -13,6 +13,14 @@ use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
+// Telegram routing now requires a configured bot token, the same precondition
+// AnalysisReadyNotification always enforced. Unifying the six reachability
+// checks into ChannelRouter applied it everywhere, so these tests have to
+// satisfy it rather than route to a channel that could not actually send.
+beforeEach(function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+});
+
 // Saturday of the open week; the open week ends Sunday 2026-05-24, the
 // immediately-prior (last fully-closed) week ends Sunday 2026-05-17.
 beforeEach(fn () => Carbon::setTestNow('2026-05-23 18:00:00'));
@@ -146,4 +154,34 @@ it('does not double-send within the same at-risk week', function (): void {
         ->assertSuccessful();
 
     Notification::assertSentToTimes($user, StreakReminderNotification::class, 1);
+});
+
+/**
+ * Without mute-awareness in the query filter this command enqueues a
+ * notification per candidate whose via() then returns [] — silent no-op work
+ * every Saturday rather than a visible failure.
+ */
+it('does not select a user whose only channel is muted', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
+    NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    $this->artisan('streak:remind')->assertSuccessful();
+
+    Notification::assertNothingSent();
+});
+
+it('still nudges a user muted on one channel but wired on the other', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
+    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+    NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    $this->artisan('streak:remind')->assertSuccessful();
+
+    Notification::assertSentTo($user, StreakReminderNotification::class);
 });

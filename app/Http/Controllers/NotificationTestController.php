@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Notifications\TestNotification;
+use App\Services\Notifications\ChannelRouter;
 use App\Support\Cooldown;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,16 +22,14 @@ use Illuminate\Http\Request;
  */
 class NotificationTestController extends Controller
 {
-    public function __invoke(Request $request): RedirectResponse
+    public function __invoke(Request $request, ChannelRouter $router): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        $connection = $user->telegramConnection;
-        $hasChannel = ($connection !== null && ! $connection->isRevoked())
-            || $user->pushSubscriptions()->exists();
-
-        if (! $hasChannel) {
+        if (! $router->canReach($user)) {
+            // Covers a muted channel too, not just an unwired one: the button
+            // should not claim to have sent anything that will never arrive.
             return back()->with('info', 'Nyalakan notifikasi dulu ya.');
         }
 

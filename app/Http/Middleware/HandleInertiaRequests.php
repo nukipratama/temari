@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Models\Activity;
 use App\Models\RunCard;
 use App\Models\User;
+use App\Services\Notifications\ChannelRouter;
 use App\Services\AI\AnalysisService;
 use App\Services\Gamification\EquippedAccessories;
 use App\Services\Gamification\GoalResolver;
@@ -175,25 +176,25 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Whether the auth user has a live (non-revoked) Telegram connection, so any
-     * page can gate a channel-neutral "Kirim notifikasi" affordance without each
-     * controller re-deriving it.
+     * Whether a "Kirim notifikasi" affordance can actually deliver over Telegram.
+     *
+     * This means wired **and** un-muted, not merely connected. A muted channel
+     * would otherwise leave the button looking live while the send silently goes
+     * nowhere — worse than the disabled state, which at least points at
+     * Pengaturan.
      */
     private function telegramConnectedFor(?User $user): bool
     {
-        $connection = $user?->telegramConnection;
-
-        return $connection !== null && ! $connection->isRevoked();
+        return $user !== null && app(ChannelRouter::class)->telegramReachable($user);
     }
 
     /**
-     * Whether the auth user has at least one browser push subscription. Paired
-     * with {@see self::telegramConnectedFor()} so the UI can enable the manual
-     * send whenever *any* channel is wired, not just Telegram.
+     * Same for web push. Paired with {@see self::telegramConnectedFor()} so the
+     * UI can enable the manual send whenever *any* channel can deliver.
      */
     private function webPushSubscribedFor(?User $user): bool
     {
-        return $user !== null && $user->pushSubscriptions()->exists();
+        return $user !== null && app(ChannelRouter::class)->pushReachable($user);
     }
 
     /**

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Gamification;
 
-use App\Models\TelegramConnection;
 use App\Models\User;
+use App\Services\Notifications\ChannelRouter;
 use App\Notifications\StreakReminderNotification;
 use App\Models\WeeklySnapshot;
 use Illuminate\Console\Attributes\Description;
@@ -27,10 +27,14 @@ class StreakRemindCommand extends Command
         // weekly-recap notification (a missing preference row means all-on).
         // Iterating users rather than Telegram connections is what lets a
         // push-only user be nudged at all; via() re-checks per notifiable.
+        //
+        // The reachability filter has to know about channel mutes, or this
+        // enqueues a notification per candidate whose via() then returns [] —
+        // silent no-op work every Saturday rather than a visible failure.
         $users = User::query()
             ->where('is_demo', false)
             ->whereDoesntHave('notificationPreference', fn (Builder $query): Builder => $query->where('weekly_recap', false))
-            ->where($this->reachableOnAnyChannel(...))
+            ->where(app(ChannelRouter::class)->scopeReachable(...))
             ->get();
 
         $sent = 0;
@@ -61,19 +65,6 @@ class StreakRemindCommand extends Command
         $this->info("Dispatched streak-at-risk reminder to {$sent} users.");
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Reachable on at least one notification channel: a live Telegram connection
-     * or any web push subscription.
-     *
-     * @param  Builder<User>  $query
-     */
-    private function reachableOnAnyChannel(Builder $query): void
-    {
-        $query
-            ->whereIn('id', TelegramConnection::query()->active()->select('user_id'))
-            ->orWhereHas('pushSubscriptions');
     }
 
     /**

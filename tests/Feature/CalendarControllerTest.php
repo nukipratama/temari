@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
@@ -15,6 +16,14 @@ use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
+
+// Telegram routing now requires a configured bot token, the same precondition
+// AnalysisReadyNotification always enforced. Unifying the six reachability
+// checks into ChannelRouter applied it everywhere, so these tests have to
+// satisfy it rather than route to a channel that could not actually send.
+beforeEach(function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+});
 
 it('renders the Kalender page for the current month by default', function (): void {
     $user = User::factory()->create();
@@ -224,4 +233,33 @@ it('never flags the current (in-progress) month as the chain head', function ():
 
     $this->actingAs($user)->get('/kalender?month=2026-06')
         ->assertInertia(fn (Assert $page) => $page->where('monthlyRecap.is_chain_head', false));
+});
+
+/**
+ * The shared props gate the manual "Kirim notifikasi" pill on three pages. They
+ * have to mean "wired AND un-muted": a muted channel would otherwise leave the
+ * button looking live while the send silently goes nowhere, which is worse than
+ * the disabled state that at least points at Pengaturan.
+ */
+it('reports telegramConnected false when the channel is muted but still linked', function (): void {
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
+    NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
+
+    $this->actingAs($user)->get('/kalender')
+        ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
+
+    // Muting must not have revoked anything.
+    expect($user->fresh()->telegramConnection->isRevoked())->toBeFalse();
+});
+
+it('reports webPushSubscribed false when push is muted but still subscribed', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+    NotificationPreference::factory()->for($user)->create(['push_enabled' => false]);
+
+    $this->actingAs($user)->get('/kalender')
+        ->assertInertia(fn (Assert $page) => $page->where('webPushSubscribed', false));
+
+    expect($user->fresh()->pushSubscriptions()->count())->toBe(1);
 });

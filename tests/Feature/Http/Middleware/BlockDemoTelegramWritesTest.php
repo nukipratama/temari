@@ -21,6 +21,8 @@ it('blocks a demo user from an Inertia notification-preference write with an Ind
             'post_run' => false,
             'weekly_recap' => true,
             'monthly_recap' => true,
+            'telegram_enabled' => true,
+            'push_enabled' => true,
         ])
         ->assertRedirect()
         ->assertSessionHasErrors(['demo' => 'Akun demo cuma bisa dilihat, gak bisa diubah.']);
@@ -46,6 +48,8 @@ it('does not block a normal user from the same notification-preference write', f
             'post_run' => false,
             'weekly_recap' => true,
             'monthly_recap' => true,
+            'telegram_enabled' => true,
+            'push_enabled' => true,
         ])
         ->assertRedirect()
         ->assertSessionDoesntHaveErrors();

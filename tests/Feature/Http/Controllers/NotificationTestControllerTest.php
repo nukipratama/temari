@@ -10,6 +10,14 @@ use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
+// Telegram routing now requires a configured bot token, the same precondition
+// AnalysisReadyNotification always enforced. Unifying the six reachability
+// checks into ChannelRouter applied it everywhere, so these tests have to
+// satisfy it rather than route to a channel that could not actually send.
+beforeEach(function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+});
+
 it('requires authentication', function (): void {
     $this->post('/profil/notifikasi/test')->assertRedirect(route('login'));
 });

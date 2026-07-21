@@ -13,7 +13,7 @@ const connectedTelegram = {
 const prefs = {
     post_run: true,
     weekly_recap: false,
-    monthly_recap: true,
+    monthly_recap: true, telegram_enabled: true, push_enabled: true,
 };
 
 beforeEach(() => {
@@ -86,7 +86,13 @@ describe('Pengaturan', () => {
 
         expect(router.patch).toHaveBeenCalledWith(
             '/profil/notifikasi',
-            { post_run: true, weekly_recap: true, monthly_recap: true },
+            {
+                post_run: true,
+                weekly_recap: true,
+                monthly_recap: true,
+                telegram_enabled: true,
+                push_enabled: true,
+            },
             { preserveScroll: true },
         );
     });

@@ -16,6 +16,8 @@ it('creates a preference row on the first write', function (): void {
             'post_run' => false,
             'weekly_recap' => true,
             'monthly_recap' => false,
+            'telegram_enabled' => true,
+            'push_enabled' => true,
         ])
         ->assertRedirect();
 
@@ -32,6 +34,8 @@ it('updates the existing preference row without creating a second', function ():
         'post_run' => true,
         'weekly_recap' => true,
         'monthly_recap' => true,
+            'telegram_enabled' => true,
+            'push_enabled' => true,
     ]);
 
     $this->actingAs($user)
@@ -39,6 +43,8 @@ it('updates the existing preference row without creating a second', function ():
             'post_run' => false,
             'weekly_recap' => false,
             'monthly_recap' => false,
+            'telegram_enabled' => true,
+            'push_enabled' => true,
         ])
         ->assertRedirect();
 
@@ -55,6 +61,44 @@ it('validates that the flags are present and boolean', function (): void {
 });
 
 it('requires authentication', function (): void {
-    $this->patch('/profil/notifikasi', ['post_run' => true, 'weekly_recap' => true, 'monthly_recap' => true])
+    $this->patch('/profil/notifikasi', ['post_run' => true, 'weekly_recap' => true, 'monthly_recap' => true, 'telegram_enabled' => true, 'push_enabled' => true])
         ->assertRedirect('/login');
+});
+
+/**
+ * Every field is required because the client always sends the complete state.
+ * The toggles live in two different groups on the page now, so a partial write
+ * would leave updateOrCreate holding whatever the other group had before —
+ * which reads to the user as a toggle that did not stick.
+ */
+it('rejects a partial write that omits the channel mutes', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch('/profil/notifikasi', [
+            'post_run' => true,
+            'weekly_recap' => true,
+            'monthly_recap' => true,
+        ])
+        ->assertSessionHasErrors(['telegram_enabled', 'push_enabled']);
+});
+
+it('persists the channel mutes alongside the per-type opt-ins', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch('/profil/notifikasi', [
+            'post_run' => true,
+            'weekly_recap' => true,
+            'monthly_recap' => true,
+            'telegram_enabled' => false,
+            'push_enabled' => true,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $preference = $user->fresh()->notificationPreference;
+
+    expect($preference->telegram_enabled)->toBeFalse()
+        ->and($preference->push_enabled)->toBeTrue()
+        ->and($preference->post_run)->toBeTrue();
 });

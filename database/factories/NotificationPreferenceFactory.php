@@ -23,6 +23,8 @@ class NotificationPreferenceFactory extends Factory
             'post_run' => true,
             'weekly_recap' => true,
             'monthly_recap' => true,
+            'telegram_enabled' => true,
+            'push_enabled' => true,
         ];
     }
 }

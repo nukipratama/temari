@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\User;
-use App\Notifications\Channels\IdempotentWebPushChannel;
-use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
+use App\Services\Notifications\ChannelRouter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -50,18 +49,7 @@ class StreakReminderNotification extends Notification implements ShouldQueue
             return [];
         }
 
-        $channels = [];
-
-        $connection = $notifiable->telegramConnection;
-        if ($connection !== null && ! $connection->isRevoked()) {
-            $channels[] = TelegramChannel::class;
-        }
-
-        if ($notifiable->pushSubscriptions()->exists()) {
-            $channels[] = IdempotentWebPushChannel::class;
-        }
-
-        return $channels;
+        return app(ChannelRouter::class)->channelsFor($notifiable);
     }
 
     public function toTelegram(User $notifiable): TelegramMessage

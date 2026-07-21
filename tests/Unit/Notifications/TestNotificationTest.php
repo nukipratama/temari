@@ -12,6 +12,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+// Telegram routing now requires a configured bot token, the same precondition
+// AnalysisReadyNotification always enforced. Unifying the six reachability
+// checks into ChannelRouter applied it everywhere, so these tests have to
+// satisfy it rather than route to a channel that could not actually send.
+beforeEach(function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+});
+
 it('routes to Telegram when a connection is present', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();

@@ -228,3 +228,41 @@ function fakeRenderer(?Throwable $throws = null): RunCardImageRenderer
 
     return $renderer;
 }
+
+/**
+ * The one rule that differs from every other gate: `force: true` skips the
+ * recency and per-type opt-in checks, because the user explicitly asked for this
+ * send. It cannot skip a channel mute, because that is a routing decision — "do
+ * not deliver here, ever" — rather than a per-message one.
+ */
+it('will not force a send to a muted channel, even though force skips the opt-in', function (): void {
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
+    NotificationPreference::factory()->for($user)->create([
+        'post_run' => false,
+        'telegram_enabled' => false,
+    ]);
+
+    // post_run is off too, and force would normally override that.
+    expect(viaFor(postRunAnalysis($user), $user->fresh(), force: true))->toBe([]);
+});
+
+it('forces past the per-type opt-in when the channel is not muted', function (): void {
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
+    NotificationPreference::factory()->for($user)->create([
+        'post_run' => false,
+        'telegram_enabled' => true,
+    ]);
+
+    expect(viaFor(postRunAnalysis($user), $user->fresh(), force: true))->toBe([TelegramChannel::class]);
+});
+
+it('sends on the surviving channel when only one is muted', function (): void {
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
+    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+    NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
+
+    expect(viaFor(postRunAnalysis($user), $user->fresh()))->toBe([IdempotentWebPushChannel::class]);
+});

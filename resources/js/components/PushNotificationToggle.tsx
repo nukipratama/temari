@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react';
 import { useCallback, useEffect, useState } from 'react';
 import PillButton from '@/components/ui/PillButton';
 import SettingsRow from '@/components/ui/SettingsRow';
+import Toggle from '@/components/ui/Toggle';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import {
@@ -37,7 +38,10 @@ type PushState =
  * action; the states that are pure explanation (unsupported, needs-install,
  * denied) simply have no control.
  */
-export default function PushNotificationToggle() {
+export default function PushNotificationToggle({
+    muted = false,
+    onMuteChange,
+}: Readonly<{ muted?: boolean; onMuteChange?: (muted: boolean) => void }> = {}) {
     const publicKey = usePage<SharedProps>().props.webPushPublicKey ?? '';
     const { open, setOpen, guard } = useDemoGuard();
     const [state, setState] = useState<PushState>('loading');
@@ -111,20 +115,48 @@ export default function PushNotificationToggle() {
         return null;
     }
 
+    // Once subscribed, the row's control becomes the mute — the same shape as the
+    // Telegram row beside it — and "Matikan", which actually drops the
+    // subscription, moves below as the heavier, rarer action. Before that point
+    // there is nothing to mute, so the subscribe/repair action keeps the slot.
+    const subscribed = state === 'subscribed';
+
+    let description = PUSH_DESCRIPTION[state];
+    if (subscribed && muted) {
+        description = 'Dibisukan di HP ini.';
+    }
+
     return (
-        <SettingsRow
-            icon="mdi:cellphone-message"
-            label="Notifikasi HP"
-            description={PUSH_DESCRIPTION[state]}
-            control={<PushAction state={state} busy={busy} onSubscribe={runSubscribe} onUnsubscribe={runUnsubscribe} />}
-        >
+        <>
+            <SettingsRow
+                icon="mdi:cellphone-message"
+                label="Notifikasi HP"
+                description={description}
+                control={
+                    subscribed && onMuteChange !== undefined ? (
+                        <Toggle label="Kirim ke HP" checked={!muted} onChange={(on) => onMuteChange(!on)} />
+                    ) : (
+                        <PushAction
+                            state={state}
+                            busy={busy}
+                            onSubscribe={runSubscribe}
+                            onUnsubscribe={runUnsubscribe}
+                        />
+                    )
+                }
+            />
+            {subscribed && onMuteChange !== undefined && (
+                <div className="-mt-1 pl-11">
+                    <PushAction state={state} busy={busy} onSubscribe={runSubscribe} onUnsubscribe={runUnsubscribe} />
+                </div>
+            )}
             {status !== '' && (
                 <p role="status" aria-live="polite" className="px-2 pb-1 text-[12px] text-ink-3">
                     {status}
                 </p>
             )}
             <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
-        </SettingsRow>
+        </>
     );
 }
 

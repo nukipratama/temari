@@ -13,6 +13,7 @@ use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\RunCardImageRenderer;
+use App\Services\Notifications\ChannelRouter;
 use App\Services\Telegram\NotifiableAnalysis;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -53,29 +54,24 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             return [];
         }
 
-        $connection = $notifiable->telegramConnection;
-        $telegramWired = filled(config('services.telegram.bot_token'))
-            && $connection !== null
-            && ! $connection->isRevoked();
-        $webPushWired = $notifiable->pushSubscriptions()->exists();
-        $recent = $registry->isRecentEnoughToAutoNotify($this->analysis);
-
-        // A manual push bypasses the recency + opt-in gates and reaches every wired
-        // channel; the automatic path keeps the recency gate + the channel-neutral
-        // per-type opt-in, which now gates Telegram and web push alike.
-        if ($this->force) {
-            return array_values(array_filter([
-                $telegramWired ? TelegramChannel::class : null,
-                $webPushWired ? IdempotentWebPushChannel::class : null,
-            ]));
+        // Where the user can be reached, including their per-channel mutes. A
+        // forced send may skip the *whether* gates below, but never this one:
+        // muting a channel is a routing decision, not a per-message one.
+        $channels = app(ChannelRouter::class)->channelsFor($notifiable);
+        if ($channels === []) {
+            return [];
         }
 
-        $optedIn = $registry->isOptedIn($this->analysis, $notifiable);
+        // A manual push bypasses the recency + opt-in gates; the automatic path
+        // keeps the recency gate and the channel-neutral per-type opt-in.
+        if ($this->force) {
+            return $channels;
+        }
 
-        return array_values(array_filter([
-            $telegramWired && $recent && $optedIn ? TelegramChannel::class : null,
-            $webPushWired && $recent && $optedIn ? IdempotentWebPushChannel::class : null,
-        ]));
+        $reachableNow = $registry->isRecentEnoughToAutoNotify($this->analysis)
+            && $registry->isOptedIn($this->analysis, $notifiable);
+
+        return $reachableNow ? $channels : [];
     }
 
     public function toTelegram(User $notifiable): TelegramMessage

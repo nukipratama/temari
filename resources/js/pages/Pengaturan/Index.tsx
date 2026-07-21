@@ -30,6 +30,9 @@ interface NotificationPrefs {
     post_run: boolean;
     weekly_recap: boolean;
     monthly_recap: boolean;
+    /** Per-channel mutes: off means wired but silent, not disconnected. */
+    telegram_enabled: boolean;
+    push_enabled: boolean;
 }
 
 interface PengaturanProps {
@@ -49,6 +52,8 @@ const PREFS_DEFAULT: NotificationPrefs = {
     post_run: true,
     weekly_recap: true,
     monthly_recap: true,
+    telegram_enabled: true,
+    push_enabled: true,
 };
 
 export default function Pengaturan({
@@ -157,16 +162,27 @@ function NotificationPrefsPanel({
     const [postRun, setPostRun] = useState(prefs.post_run);
     const [weeklyRecap, setWeeklyRecap] = useState(prefs.weekly_recap);
     const [monthlyRecap, setMonthlyRecap] = useState(prefs.monthly_recap);
+    const [telegramEnabled, setTelegramEnabled] = useState(prefs.telegram_enabled);
+    const [pushEnabled, setPushEnabled] = useState(prefs.push_enabled);
     const { open, setOpen, guard } = useDemoGuard();
 
-    const latestRef = useRef({ postRun, weeklyRecap, monthlyRecap });
-    latestRef.current = { postRun, weeklyRecap, monthlyRecap };
+    const latestRef = useRef({ postRun, weeklyRecap, monthlyRecap, telegramEnabled, pushEnabled });
+    latestRef.current = { postRun, weeklyRecap, monthlyRecap, telegramEnabled, pushEnabled };
 
+    // Always sends the complete state — the server validates all five as
+    // required, and the toggles now live in two different groups, so a partial
+    // write would leave updateOrCreate holding stale values for the other group.
     const savePrefs = useCallback(() => {
-        const { postRun: pr, weeklyRecap: wr, monthlyRecap: mr } = latestRef.current;
+        const current = latestRef.current;
         router.patch(
             '/profil/notifikasi',
-            { post_run: pr, weekly_recap: wr, monthly_recap: mr },
+            {
+                post_run: current.postRun,
+                weekly_recap: current.weeklyRecap,
+                monthly_recap: current.monthlyRecap,
+                telegram_enabled: current.telegramEnabled,
+                push_enabled: current.pushEnabled,
+            },
             { preserveScroll: true },
         );
     }, []);
@@ -233,8 +249,27 @@ function NotificationPrefsPanel({
             <div className="border-t border-line/60 pt-5">
                 <GroupLabel>Ke mana</GroupLabel>
                 <div className="flex flex-col">
-                    <TelegramPanel telegram={telegram} />
-                    <PushNotificationToggle />
+                    <TelegramPanel
+                        telegram={telegram}
+                        muted={!telegramEnabled}
+                        onMuteChange={(value) =>
+                            guard(() => {
+                                setTelegramEnabled(!value);
+                                latestRef.current.telegramEnabled = !value;
+                                savePrefs();
+                            })
+                        }
+                    />
+                    <PushNotificationToggle
+                        muted={!pushEnabled}
+                        onMuteChange={(value) =>
+                            guard(() => {
+                                setPushEnabled(!value);
+                                latestRef.current.pushEnabled = !value;
+                                savePrefs();
+                            })
+                        }
+                    />
                 </div>
                 {/* Lives with the channels rather than the types: what it proves
                     is that a channel can reach you, not that a type is on. */}
@@ -293,7 +328,11 @@ function GroupLabel({ children }: Readonly<{ children: ReactNode }>) {
     return <div className="mb-2 px-2 text-label-micro font-semibold text-ink-3">{children}</div>;
 }
 
-function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
+function TelegramPanel({
+    telegram,
+    muted,
+    onMuteChange,
+}: Readonly<{ telegram: TelegramPayload; muted: boolean; onMuteChange: (muted: boolean) => void }>) {
     const { isDemo, open, setOpen, guard } = useDemoGuard();
 
     if (!telegram.connected) {
@@ -333,12 +372,22 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
         );
     }
 
+    // Mute sits beside the connection it silences, and only exists once there is
+    // a connection — a mute on an unwired channel would mean nothing.
+    let description = telegram.username ? `Aktif · @${telegram.username}` : 'Aktif';
+    if (muted) {
+        description = telegram.username ? `Dibisukan · @${telegram.username}` : 'Dibisukan';
+    }
+
     return (
-        <SettingsRow
-            icon="mdi:telegram"
-            label="Telegram"
-            description={telegram.username ? `Aktif · @${telegram.username}` : 'Aktif'}
-            control={
+        <>
+            <SettingsRow
+                icon="mdi:telegram"
+                label="Telegram"
+                description={description}
+                control={<Toggle label="Kirim ke Telegram" checked={!muted} onChange={(on) => onMuteChange(!on)} />}
+            />
+            <div className="-mt-1 pl-11">
                 <button
                     type="button"
                     onClick={() => guard(() => router.delete('/profil/telegram', { preserveScroll: true }))}
@@ -347,10 +396,9 @@ function TelegramPanel({ telegram }: Readonly<{ telegram: TelegramPayload }>) {
                     <Icon icon="mdi:link-off" width={13} height={13} aria-hidden />
                     Putuskan
                 </button>
-            }
-        >
+            </div>
             <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
-        </SettingsRow>
+        </>
     );
 }
 
