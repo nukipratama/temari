@@ -355,6 +355,38 @@ it('logs the user out, clears session data, and redirects to login', function ()
     $this->assertGuest();
 });
 
+// Inertia keeps every page's props in window.history.state so back/forward can
+// re-render without a round trip. Without clearing, the back button still
+// re-renders the last authenticated page after signing out.
+it('tells Inertia to clear the encrypted history on logout', function (): void {
+    $this->actingAs(User::factory()->create())->startSession();
+
+    $this->post(route('auth.logout'))->assertRedirect(route('login'));
+
+    // The flag must survive session()->invalidate() to reach the redirect,
+    // which is why clearHistory() is called after it.
+    expect(session('inertia.clear_history'))->toBeTrue();
+});
+
+// `encryptHistory` is a top-level key on the page object, not a prop, so
+// assertInertia() cannot see it. Asserted on the serialised page itself, which
+// is literally what the client hands to history.state. Note this Inertia
+// version emits the page as the text content of a
+// `<script type="application/json">` (CSP-friendly), not as a data-page
+// attribute.
+it('encrypts the page object written to history state', function (): void {
+    $html = (string) $this->actingAs(User::factory()->create())
+        ->get(route('dashboard'))
+        ->assertSuccessful()
+        ->getContent();
+
+    preg_match('/type="application\/json">(.*?)<\/script>/s', $html, $matches);
+    $page = json_decode($matches[1] ?? '', true);
+
+    expect($page)->toBeArray()
+        ->and($page['encryptHistory'] ?? false)->toBeTrue();
+});
+
 it('blocks guests from the dashboard', function (): void {
     $this->get(route('dashboard'))->assertRedirect(route('login'));
 });
