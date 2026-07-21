@@ -44,9 +44,8 @@ let mockUrl = DEFAULT_URL;
 let mockComponent = DEFAULT_COMPONENT;
 
 /**
- * `component` is the Inertia page name. AppShell keys its content region on it
- * to replay the page-enter animation on a real navigation while staying still
- * on a partial reload, so a test that exercises that needs to vary it.
+ * `component` is the Inertia page name, exposed because `usePage().component`
+ * is read in app code and tests may need to vary it.
  */
 export function setMockPage(props: Record<string, unknown>, url = DEFAULT_URL, component = DEFAULT_COMPONENT) {
     mockPageProps = { ...DEFAULT_PAGE_PROPS, ...props };

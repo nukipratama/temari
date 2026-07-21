@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
 use Laravel\Socialite\Two\InvalidStateException;
@@ -83,6 +84,16 @@ class StravaAuthController extends Controller
     {
         Auth::logout();
         $request->session()->invalidate();
+
+        // Drops the AES key Inertia keeps in sessionStorage, which makes every
+        // page already written to the browser's history state undecryptable.
+        // Without it the back button re-renders the last authenticated page
+        // straight from history with no request to us at all.
+        //
+        // Deliberately AFTER invalidate(): clearHistory() sets a session flag
+        // that the next Inertia response pulls, so invalidating afterwards
+        // would throw it away before the redirect to /login could carry it.
+        Inertia::clearHistory();
 
         return redirect()->route('login');
     }

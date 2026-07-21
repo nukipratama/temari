@@ -23,7 +23,6 @@ interface AppShellProps {
 export default function AppShell({ children, withNav = true }: Readonly<AppShellProps>) {
     useDawnShift();
     useSwipeBack();
-    const { component } = usePage<SharedProps>();
     const { pendingReveal, flash } = usePage<SharedProps>().props;
     const pending = pendingReveal ?? null;
     const unlock = flash?.unlock ?? null;
@@ -48,9 +47,7 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
                     <ErrorBanner />
                     <StravaZoneReconnectBanner />
                     <AiOutageBanner />
-                    <div key={component} className="page-enter">
-                        {children}
-                    </div>
+                    {children}
                 </div>
             </MotionConfig>
         );
@@ -73,11 +70,14 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
             <StravaZoneReconnectBanner />
             <AiOutageBanner />
 
-            {/* Keyed on the Inertia component name so a real navigation remounts
-                the content and replays the enter animation, while a partial
-                reload (filters, polling, `only:` refreshes) keeps the same key
-                and stays perfectly still. */}
-            <main key={component} id="main-content" className="page-enter pb-28 lg:pb-0">
+            {/* Deliberately unkeyed and unanimated. A `key` here forced React to
+                tear down and rebuild the whole content subtree on every visit
+                (25 card mounts on Koleksi), and the enter animation it existed
+                to replay started at opacity 0 — so a navigation read as
+                "old page → blank → fade in". Inertia already swaps a different
+                component type on a real navigation, so React remounts what it
+                needs to without help. */}
+            <main id="main-content" className="pb-28 lg:pb-0">
                 {children}
             </main>
 

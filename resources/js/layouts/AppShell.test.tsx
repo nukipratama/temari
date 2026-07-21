@@ -106,10 +106,11 @@ describe('AppShell', () => {
         expect(screen.getByText(/Sambungin ulang Strava/)).toBeInTheDocument();
     });
 
-    // The content region is keyed on the Inertia component name: a real
-    // navigation must remount it (replaying the page-enter animation), while a
-    // partial reload must leave it perfectly still.
-    it('remounts the content region when the page component changes', () => {
+    // The content region used to be keyed on the Inertia component name, which
+    // tore down and rebuilt the whole subtree on every visit and replayed an
+    // enter animation starting at opacity 0 — so a navigation read as
+    // "old page -> blank -> fade in". Both are gone; this pins that.
+    it('does not remount the content region when the page component changes', () => {
         setMockPage({ auth: { user: andiUser }, flash: {}, demoLoginEnabled: false }, '/', 'HariIni');
         const { rerender } = render(
             <AppShell>
@@ -125,8 +126,18 @@ describe('AppShell', () => {
             </AppShell>,
         );
 
-        expect(document.getElementById('main-content')).not.toBe(before);
-        expect(document.getElementById('main-content')?.className).toContain('page-enter');
+        expect(document.getElementById('main-content')).toBe(before);
+    });
+
+    it('carries no enter animation that would blank the content first', () => {
+        setMockPage({ auth: { user: andiUser }, flash: {}, demoLoginEnabled: false });
+        render(
+            <AppShell>
+                <p>body</p>
+            </AppShell>,
+        );
+
+        expect(document.getElementById('main-content')?.className).not.toContain('page-enter');
     });
 
     it('keeps the content region mounted across a partial reload of the same page', () => {

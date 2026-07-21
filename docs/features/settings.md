@@ -13,9 +13,9 @@ code_refs:
 
 # Settings (Pengaturan)
 
-`/pengaturan` is the one home for user settings. Before, they were scattered on Aku (`/profil`); now Aku carries a single "Pengaturan" row that links here, and the legacy `/settings` + `/pengaturan` redirects point at the real page ([routes/web.php](../../routes/web.php)).
+`/pengaturan` is the one home for user settings. They were once scattered on Aku (`/profil`), then reached via a single row at the bottom of that page; the legacy `/settings` redirect still points at the real page ([routes/web.php](../../routes/web.php)).
 
-**Navigation:** `route('pengaturan')` → `/pengaturan` (GET). Named route: `pengaturan`.
+**Navigation:** the entry point is the **avatar menu** ([UserMenu](../../resources/js/components/UserMenu.tsx)), directly above "Keluar". Because that menu is shared by [TopNav](../../resources/js/components/TopNav.tsx) and [MobileTopBar](../../resources/js/components/MobileTopBar.tsx), settings is one tap from every page on both mobile and desktop — rather than requiring a detour through Aku. `route('pengaturan')` → `/pengaturan` (GET). Named route: `pengaturan`.
 
 Server entry is [SettingsController](../../app/Http/Controllers/SettingsController.php) (`__invoke`), rendering [Pengaturan/Index](../../resources/js/pages/Pengaturan/Index.tsx). It resolves the same Telegram payload the profile page used to (`resolveTelegram()`), including a fresh signed deep-link token per render.
 

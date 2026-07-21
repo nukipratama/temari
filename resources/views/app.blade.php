@@ -25,12 +25,20 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
-    {{-- Under `apple-mobile-web-app-status-bar-style: default` iOS owns the
-         status-bar strip around the notch and fills it with theme-color, so
-         this must track MobileTopBar's cream-deep. It stays a fixed cream
-         rather than following the dawn-shift, because the header it butts
-         against is cream-deep at every hour; drifting one and not the other
-         would put a visible seam under the notch. --}}
+    {{-- The app is light-mode only. Declared here as well as on `html` in
+         app.css so it lands before the stylesheet does: on a device set to Dark
+         Mode the UA otherwise renders its own surfaces dark — including, in an
+         installed iOS PWA, the status-bar strip around the notch. That dark
+         slab above the cream header was NOT a theme-color problem, which is why
+         pinning theme-color to cream alone did not fix it. --}}
+    <meta name="color-scheme" content="light">
+
+    {{-- Kept matching MobileTopBar's cream-deep so the two never seam. iOS is
+         inconsistent about honouring this for the standalone status bar (hence
+         the color-scheme declaration above, which is what actually governs that
+         strip); Android/Chrome does use it for the toolbar tint. Fixed cream
+         rather than following the dawn-shift, since the header it butts against
+         is cream-deep at every hour. --}}
     <meta name="theme-color" content="#EEE7D6">
 
     {{-- PWA: installable + standalone; push works once added to the Home Screen via Safari. --}}

@@ -7,9 +7,8 @@ import AppShell from '@/layouts/AppShell';
  * top bar, banners, MotionConfig, useDawnShift, the celebration overlays —
  * **mounted across navigations** rather than torn down and rebuilt on every
  * visit. That remount was the single biggest reason navigation read as a page
- * reload instead of an app, and a stable shell is also the prerequisite for
- * animating only the content region (see the View Transitions wiring in
- * app.tsx).
+ * reload instead of an app, and a stable shell is also what lets the content
+ * region alone show a loading state while the shell stays put.
  *
  * Both are module-level constants on purpose: Inertia compares the layout by
  * reference, so an inline `page => <AppShell>{page}</AppShell>` at each call

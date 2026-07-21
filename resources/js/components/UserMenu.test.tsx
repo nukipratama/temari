@@ -16,6 +16,24 @@ describe('UserMenu', () => {
         expect(screen.getByText('Keluar')).toBeInTheDocument();
     });
 
+    // Moved here from Aku: settings used to be a row at the bottom of that
+    // page, so reaching it meant leaving whatever you were doing. It now sits
+    // beside logout, one tap from every page on every layout.
+    it('links to the settings hub alongside logout', () => {
+        render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
+        fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));
+
+        expect(screen.getByRole('link', { name: 'Pengaturan' })).toHaveAttribute('href', '/pengaturan');
+    });
+
+    it('closes the dropdown when the settings link is followed', () => {
+        render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
+        fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));
+        fireEvent.click(screen.getByRole('link', { name: 'Pengaturan' }));
+
+        expect(screen.queryByText('Masuk sebagai')).not.toBeInTheDocument();
+    });
+
     it('posts to /logout when the Keluar button is clicked', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
         fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));

@@ -52,7 +52,7 @@ The "Aksesori" section (`AksesoriStrip`) shows the full unlock catalog (`config(
 
 ## Pengaturan
 
-The bottom "Pengaturan" section is a single [SettingsRow](../../resources/js/components/ui/SettingsRow.tsx) linking to the [[settings]] hub (`/pengaturan`). The Telegram notification panel and the Zona HR entry used to live inline here; they now live on the settings page along with the new account-deletion action.
+Aku no longer carries a settings entry point. The Telegram notification panel and the Zona HR entry once lived inline here, then behind a single row at the bottom of the page; both now live on the [[settings]] hub, reached from the avatar menu ([UserMenu](../../resources/js/components/UserMenu.tsx)) next to "Keluar". Settings is an account action, not a profile section — putting it beside logout makes it reachable from every page instead of only this one.
 
 ## Notes / gotchas
 

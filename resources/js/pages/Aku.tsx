@@ -7,7 +7,6 @@ import Chip from '@/components/ui/Chip';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import SectionLabel from '@/components/ui/SectionLabel';
-import SettingsRow from '@/components/ui/SettingsRow';
 import StatTile from '@/components/ui/StatTile';
 import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -202,19 +201,6 @@ export default function Aku({
                     <ProgressionSection byCategory={progressionByCategory} />
                 )}
 
-                <section className="mt-10">
-                    <SectionLabel>Pengaturan</SectionLabel>
-                    <div className="mt-3">
-                        <Card padding="lg">
-                            <SettingsRow
-                                icon="mdi:cog-outline"
-                                label="Pengaturan"
-                                description="Notifikasi Telegram, zona HR, sama hapus akun."
-                                href="/pengaturan"
-                            />
-                        </Card>
-                    </div>
-                </section>
             </PageContainer>
         </>
     );

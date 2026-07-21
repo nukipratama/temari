@@ -46,9 +46,12 @@ describe('Aku', () => {
         expect(screen.getByText('Lari terjauh')).toBeInTheDocument();
     });
 
-    it('links to the settings hub', () => {
+    // Settings moved out of this page into the avatar menu, next to logout, so
+    // it is reachable from every page rather than only from here. The entry
+    // point is asserted in UserMenu.test.tsx.
+    it('no longer carries a settings row of its own', () => {
         render(<Aku identity={identity} stats={stats} />);
-        expect(screen.getByText(/Notifikasi Telegram, zona HR/).closest('a')).toHaveAttribute('href', '/pengaturan');
+        expect(screen.queryByText(/Notifikasi Telegram, zona HR/)).not.toBeInTheDocument();
     });
 
     it('renders the persona bar + summary when personaMix is provided', () => {

@@ -180,6 +180,15 @@
    `pressShrink` scale, see lib/motion.ts); do not remove that without
    restoring a highlight here. */
 html {
+    /* The app is light-mode only (no `.dark` on <html>, no *-dark tokens), but
+       until this was declared it never told the user agent so. On a device set
+       to Dark Mode the UA then renders everything IT owns in dark appearance —
+       form controls, scrollbars, and, in an installed iOS PWA, the status-bar
+       strip around the notch. That is what painted a dark slab above the cream
+       header, and why pinning `theme-color` to cream could not fix it: the
+       strip was never being painted from theme-color. Mirrored as a <meta> in
+       app.blade.php so it applies before this stylesheet loads. */
+    color-scheme: light;
     -webkit-tap-highlight-color: transparent;
     /* Stop iOS inflating text when a page ends up in landscape. The fluid
        clamp() type scale already handles sizing; Safari's own bump fights it. */
@@ -221,43 +230,6 @@ html,
 body {
     overflow-x: clip;
     overscroll-behavior-y: none;
-}
-
-/* Page-enter animation. The content region is keyed on the Inertia component
-   name in AppShell, so this replays on a real navigation and is skipped on a
-   partial reload (the key is unchanged, nothing remounts).
-
-   Why an enter animation and NOT the View Transitions API: the persistent shell
-   makes `document.startViewTransition` tempting, but Inertia's DOM swap only
-   happens *after* the network round trip. Wrapping the swap means calling
-   startViewTransition before the request and resolving its callback after the
-   response, which leaves the browser holding a frozen snapshot — the whole UI
-   locked and unresponsive — for the entire request. On a constrained homelab
-   behind a tunnel that is a visible regression, and strictly worse than the
-   current thin progress bar. An enter-only animation keeps the outgoing page
-   live and interactive until the new one is actually ready, then brings it in.
-
-   Short and small on purpose (160ms, 6px): enough to read as motion, not enough
-   to delay a user who navigates quickly. */
-@keyframes page-enter {
-    from {
-        opacity: 0;
-        transform: translateY(6px);
-    }
-    to {
-        opacity: 1;
-        transform: none;
-    }
-}
-
-.page-enter {
-    animation: page-enter 160ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .page-enter {
-        animation: none;
-    }
 }
 
 /* Skeleton shimmer. A sweep that travels in one direction reads as "data is
