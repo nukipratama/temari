@@ -5,6 +5,7 @@ import { addCollection } from '@iconify/react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
+import { syncAppBadgeOnVisible } from '@/lib/appBadge';
 import { mdiBundle } from '@/lib/iconBundle';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'Temari';
@@ -16,6 +17,7 @@ addCollection(mdiBundle);
 // Every visitor, not just push subscribers: the worker also serves the offline
 // fallback page. See lib/registerServiceWorker.ts.
 registerServiceWorker();
+syncAppBadgeOnVisible();
 
 installGlobalErrorReporting();
 

@@ -18,8 +18,26 @@
 // cache whose key is not this one — so a new key is what actually evicts the
 // stale copy from installed apps. Left at v1, the status-bar fix below would
 // never reach anyone who already had the app installed.
-const OFFLINE_CACHE = 'temari-offline-v4';
+const OFFLINE_CACHE = 'temari-offline-v5';
 const OFFLINE_URL = '/offline.html';
+
+async function syncBadge() {
+    if (!('setAppBadge' in self.navigator)) {
+        return;
+    }
+
+    const count = (await self.registration.getNotifications()).length;
+
+    try {
+        if (count > 0) {
+            await self.navigator.setAppBadge(count);
+        } else {
+            await self.navigator.clearAppBadge();
+        }
+    } catch {
+        // Badging can reject on some platforms; the notification itself is what matters.
+    }
+}
 
 self.addEventListener('install', (event) => {
     // `reload` so an install never re-uses an HTTP-cached copy of the page.
@@ -74,12 +92,14 @@ self.addEventListener('push', (event) => {
     }
 
     event.waitUntil(
-        self.registration.showNotification(payload.title || 'Temari', {
-            body: payload.body || '',
-            icon: payload.icon || '/icon-192.png',
-            badge: '/icon-192.png',
-            data: payload.data || {},
-        }),
+        self.registration
+            .showNotification(payload.title || 'Temari', {
+                body: payload.body || '',
+                icon: payload.icon || '/icon-192.png',
+                badge: '/icon-192.png',
+                data: payload.data || {},
+            })
+            .then(syncBadge),
     );
 });
 
@@ -99,13 +119,20 @@ self.addEventListener('notificationclick', (event) => {
     }
 
     event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            for (const client of windowClients) {
-                if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
-                    return client.navigate(url).then(() => client.focus());
+        self.clients
+            .matchAll({ type: 'window', includeUncontrolled: true })
+            .then((windowClients) => {
+                for (const client of windowClients) {
+                    if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+                        return client.navigate(url).then(() => client.focus());
+                    }
                 }
-            }
-            return self.clients.openWindow(url);
-        }),
+                return self.clients.openWindow(url);
+            })
+            .then(syncBadge),
     );
+});
+
+self.addEventListener('notificationclose', (event) => {
+    event.waitUntil(syncBadge());
 });
