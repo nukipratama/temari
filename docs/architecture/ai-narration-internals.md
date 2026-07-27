@@ -56,7 +56,11 @@ Weekly, monthly and trend-caption narration held its arithmetic *in the narrator
 
 The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string — so a recap can only ever count the period it was asked about. Weekly and monthly send just the continuity line; the trend caption sends **nothing at all**, since the whole caption is a read.
 
-The profile narrators still build a full context up front.
+### The profile narrators
+
+Profile voice, persona summary and PR context complete the set, and all three send an **empty context** — unlike the recaps there was not even a continuity line to keep, since none of them are chained. Their arithmetic moved with them: lifetime stats and the favourite-time bucket, the persona mood mix with its recent-vs-earlier split, and the progression signal were private methods on the narrators and are tools now.
+
+Every narrator now reads rather than receives. What remains in any context is only ever one of three things: a value the *call* carries (post-run speech's `mood`, the daily greeting's `vibe`), output written moments earlier in the same job and not yet persisted (post-run speech's `insights`), or the continuity line.
 
 ### BriefingContext (per-user-day signals)
 
