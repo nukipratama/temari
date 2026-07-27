@@ -16,6 +16,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
+use App\Services\AI\Narrators\BriefingNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\DailyGreetingNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
@@ -246,21 +247,21 @@ it('PostRunSpeechNarrator offers the run reads plus the two its story needs', fu
 it('DailyGreetingNarrator returns speech on valid JSON', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(json_encode(['speech' => 'Halo pagi'], JSON_THROW_ON_ERROR));
-    $narrator = new DailyGreetingNarrator($caller);
+    $narrator = new DailyGreetingNarrator($caller, new TrainingLoad(), app(VerdictNarrator::class));
     expect($narrator->generate($user, 'membara'))->toBe('Halo pagi');
 });
 
 it('DailyGreetingNarrator throws on missing speech key', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new DailyGreetingNarrator($caller);
+    $narrator = new DailyGreetingNarrator($caller, new TrainingLoad(), app(VerdictNarrator::class));
     $narrator->generate($user, 'membara');
 })->throws(UnavailableException::class);
 
 it('DailyGreetingNarrator throws on non-JSON response', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller('not json');
-    $narrator = new DailyGreetingNarrator($caller);
+    $narrator = new DailyGreetingNarrator($caller, new TrainingLoad(), app(VerdictNarrator::class));
     $narrator->generate($user, 'membara');
 })->throws(UnavailableException::class, 'non-JSON');
 
@@ -273,7 +274,7 @@ it('DailyGreetingNarrator feeds prev_narrative from the prior day greeting when 
         'discriminator' => '2026-05-17',
     ]);
 
-    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'))
+    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'), new TrainingLoad(), app(VerdictNarrator::class))
         ->context($user, 'membara', Carbon::parse('2026-05-18'));
 
     expect($context['prev_narrative'])->toBe('Halo, kemarin kamu fresh banget.');
@@ -289,7 +290,7 @@ it('DailyGreetingNarrator omits prev_narrative when the prior day greeting is no
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'))
+    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'), new TrainingLoad(), app(VerdictNarrator::class))
         ->context($user, 'membara', Carbon::parse('2026-05-18'));
 
     expect($context['prev_narrative'])->toBeNull();
@@ -298,7 +299,7 @@ it('DailyGreetingNarrator omits prev_narrative when the prior day greeting is no
 it('DailyGreetingNarrator leaves prev_narrative null on the first day', function (): void {
     $user = User::factory()->create();
 
-    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'))
+    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'), new TrainingLoad(), app(VerdictNarrator::class))
         ->context($user, 'membara', Carbon::parse('2026-05-18'));
 
     expect($context['prev_narrative'])->toBeNull();
@@ -412,6 +413,36 @@ it('RunInsightNarrator prompt tells the model to fetch its own numbers and not i
 
     expect($prompt)->toContain('Ambil sendiri lewat tool')
         ->and($prompt)->toContain('JANGAN dikarang');
+});
+
+it('BriefingNarrator sends only the addressee and the day, and reads the rest', function (): void {
+    $user = User::factory()->create();
+    $narrator = app(BriefingNarrator::class);
+
+    expect(array_keys($narrator->context($user, Carbon::today())))
+        ->toBe(['name', 'vibe', 'date'])
+        ->and(array_column($narrator->toolbox($user, Carbon::today())->definitions(), 'name'))
+        ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_recent_baseline']);
+});
+
+it('BriefingMascotVoiceNarrator reads the day and can compare against the last run', function (): void {
+    $user = User::factory()->create();
+    $narrator = app(BriefingMascotVoiceNarrator::class);
+
+    expect(array_column($narrator->toolbox($user, Carbon::today())->definitions(), 'name'))
+        ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_latest_past_you']);
+});
+
+it('DailyGreetingNarrator gains the gap it could never see from the vibe alone', function (): void {
+    $user = User::factory()->create();
+    $narrator = app(DailyGreetingNarrator::class);
+
+    // The vibe stays in the context because the caller decided it; a tool that
+    // recomputed it would be a second source of truth.
+    expect(array_keys($narrator->context($user, 'membara', Carbon::today())))
+        ->toBe(['name', 'vibe', 'vibe_label', ...NarratorContinuity::CONTEXT_KEYS])
+        ->and(array_column($narrator->toolbox($user, Carbon::today())->definitions(), 'name'))
+        ->toBe(['get_week_state', 'get_recent_runs']);
 });
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
@@ -1078,40 +1109,6 @@ it('BriefingMascotVoiceNarrator leaves prev_narrative null on the first day', fu
     $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-18'));
 
     expect($context['prev_narrative'])->toBeNull();
-});
-
-it('BriefingMascotVoiceNarrator feeds a past-you comparison for the latest run', function (): void {
-    $user = User::factory()->create();
-    // Latest run: 5km in 1500s (5:00/km, threshold band), today.
-    $recent = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($recent)->create([
-        'start_date_local' => Carbon::today(),
-        'distance' => 5000.0, 'moving_time' => 1500, 'weather_temp_c' => null,
-    ]);
-    // A comparable run 30 days earlier, slower.
-    $past = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($past)->create([
-        'start_date_local' => Carbon::today()->subDays(30),
-        'distance' => 5000.0, 'moving_time' => 1560, 'weather_temp_c' => null,
-    ]);
-
-    $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::today());
-
-    expect($context['past_you'])->not->toBeNull()
-        ->and($context['past_you']['days_ago'])->toBe(30)
-        ->and($context['past_you']['pace_diff_sec'])->toBeGreaterThan(0.0);
-});
-
-it('BriefingMascotVoiceNarrator leaves past_you null without a comparable past run', function (): void {
-    $user = User::factory()->create();
-    $only = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($only)->create([
-        'start_date_local' => Carbon::today(), 'distance' => 5000.0, 'moving_time' => 1500,
-    ]);
-
-    $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::today());
-
-    expect($context['past_you'])->toBeNull();
 });
 
 // ── Prompt wording guards (slice 8 polish) ────────────────────────────

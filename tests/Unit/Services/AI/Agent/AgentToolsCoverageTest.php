@@ -6,11 +6,16 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
+use App\Models\AI\Analysis;
 use App\Models\RunCard;
+use App\Models\StoryLine;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\EffortContextTool;
+use App\Services\AI\Agent\Tools\FeaturedCardTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
+use App\Services\AI\Agent\Tools\LatestPastYouTool;
+use App\Services\AI\Agent\Tools\RecentRunsTool;
 use App\Services\AI\Agent\Tools\PastYouTool;
 use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
@@ -19,7 +24,11 @@ use App\Services\AI\Agent\Tools\TerrainTool;
 use App\Services\AI\Agent\Tools\TrainingLoadTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
+use App\Services\AI\Agent\Tools\WeekStateTool;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\RelativeEffort;
+use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -69,8 +78,8 @@ it('names every tool in snake_case with a description the model can choose on', 
         new TerrainTool($a, $d),
         new WeatherTool($a, $d),
         new EffortContextTool($a, $d, app(RelativeEffort::class)),
-        new TrainingLoadTool($a, $d, new TrainingLoad()),
-        new RecentBaselineTool($a, $d, new RunBaseline()),
+        new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad()),
+        new RecentBaselineTool($a->user, $d->start_date_local, new RunBaseline()),
         new TrainingPacesTool($a, $d, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
     ];
 
@@ -256,8 +265,8 @@ it('reads the 28-day baseline and the load state from a prior run', function ():
         'stream_summary' => ['decoupling_pct' => 6.0, 'time_in_zone_min' => ['Z2' => 40]],
     ]);
 
-    $baseline = new RecentBaselineTool($a, $d, new RunBaseline())->handle([])['recent_baseline_28d'];
-    $load = new TrainingLoadTool($a, $d, new TrainingLoad())->handle([])['training_load'];
+    $baseline = new RecentBaselineTool($a->user, $d->start_date_local, new RunBaseline())->handle([])['recent_baseline_28d'];
+    $load = new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad())->handle([])['training_load'];
 
     expect($baseline)->toMatchArray([
         'runs' => 1,
@@ -272,14 +281,14 @@ it('reads a null training load rather than inventing one with no TRIMP history',
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['trimp_edwards' => null]);
 
-    expect(new TrainingLoadTool($a, $d->fresh(), new TrainingLoad())->handle([]))->toBe(['training_load' => null]);
+    expect(new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad())->handle([]))->toBe(['training_load' => null]);
 });
 
 it('excludes the run being narrated from its own baseline', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['average_heartrate' => 190.0]);
 
-    expect(new RecentBaselineTool($a, $d->fresh(), new RunBaseline())->handle([])['recent_baseline_28d'])
+    expect(new RecentBaselineTool($a->user, $d->start_date_local, new RunBaseline(), $a->id)->handle([])['recent_baseline_28d'])
         ->toBeNull();
 });
 
@@ -380,4 +389,112 @@ it('reads an empty badge list when the card carries none', function (): void {
     $card = RunCard::factory()->create(['activity_id' => $a->id, 'badges' => []]);
 
     expect(new CardIdentityTool($card)->handle([])['badges'])->toBe([]);
+});
+
+// ── FeaturedCardTool ──────────────────────────────────────────────────
+
+it('reads the featured card with badges humanised and capped at three tags', function (): void {
+    ['activity' => $a] = agentToolFixture();
+    $card = RunCard::factory()->create([
+        'activity_id' => $a->id,
+        'rarity' => 'legendary',
+        'special_move' => 'Langkah Sunyi',
+        'badges' => ['anak_pagi', 'negative_split', 'tahan_diri', 'hari_panas'],
+    ]);
+
+    $reading = new FeaturedCardTool($card->fresh()->load('activity.detail'))->handle([]);
+
+    expect($reading['name'])->toBe('Langkah Sunyi')
+        ->and($reading['rarity_label'])->toBe('Legendaris')
+        ->and($reading['km'])->toBe('5km')
+        ->and($reading['tags'])->toHaveCount(3)
+        ->and($reading['tags'][0])->toBe('Anak Pagi');
+});
+
+it('reads a dash for the distance when the card run has none', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['distance' => null]);
+    $card = RunCard::factory()->create(['activity_id' => $a->id, 'badges' => []]);
+
+    expect(new FeaturedCardTool($card->fresh()->load('activity.detail'))->handle([])['km'])->toBe('-');
+});
+
+// ── WeekStateTool ─────────────────────────────────────────────────────
+
+it('reads the whole week picture in one call, since it is produced in one query pass', function (): void {
+    ['activity' => $a] = agentToolFixture();
+
+    $reading = new WeekStateTool($a->user, Carbon::today(), new TrainingLoad())->handle([]);
+
+    expect($reading)->toHaveKeys([
+        'this_week_runs', 'last_week_runs', 'this_week_km', 'last_week_km',
+        'recovery_hours', 'ran_today', 'days_since_last_run', 'form_status',
+        'time_bucket', 'consecutive_weeks_active', 'fitness_trend',
+        'volume_ramp_pct', 'readiness_ceiling', 'build_nudge',
+    ]);
+});
+
+it('reads a ran_today of true on a day the runner already ran', function (): void {
+    ['activity' => $a] = agentToolFixture();
+
+    expect(new WeekStateTool($a->user, Carbon::today(), new TrainingLoad())->handle([])['ran_today'])
+        ->toBeTrue();
+});
+
+// ── RecentRunsTool ────────────────────────────────────────────────────
+
+it('reads the recent runs as mood, distance, intensity and a one-liner', function (): void {
+    ['activity' => $a] = agentToolFixture();
+    StoryLine::factory()->create([
+        'user_id' => $a->user_id,
+        'activity_id' => $a->id,
+        'kind' => StoryLine::KIND_POST_RUN,
+    ]);
+    // The timeline's one-liner IS the post-run speech, so a run without a Done
+    // speech row is not yet a verdict.
+    Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $a->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'status' => AnalysisStatus::Done,
+        'content' => 'Lari yang rapi.',
+    ]);
+
+    $reading = new RecentRunsTool($a->user, Carbon::today(), app(VerdictNarrator::class))->handle([]);
+
+    expect($reading['recent_runs'])->toBeArray()->toHaveCount(1)
+        ->and($reading['recent_runs'][0])->toHaveKeys(['mood', 'km', 'intensity', 'oneline']);
+});
+
+it('reads an empty recent-runs list for a runner with no history', function (): void {
+    $user = User::factory()->create();
+
+    expect(new RecentRunsTool($user, Carbon::today(), app(VerdictNarrator::class))->handle([])['recent_runs'])
+        ->toBe([]);
+});
+
+// ── LatestPastYouTool ─────────────────────────────────────────────────
+
+it('compares the runner latest run against a similar one of their own', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['weather_temp_c' => null]);
+    $past = Activity::factory()->for($a->user)->analyzed()->create();
+    ActivityDetail::factory()->for($past)->create([
+        'start_date_local' => Carbon::today()->subDays(30),
+        'distance' => 5000.0,
+        'moving_time' => 1560,
+        'weather_temp_c' => null,
+    ]);
+
+    $reading = new LatestPastYouTool($a->user, Carbon::today(), app(PastYouMatcher::class))->handle([]);
+
+    expect($reading['past_you'])->not->toBeNull()
+        ->and($reading['past_you']['days_ago'])->toBe(30);
+});
+
+it('reads a null past you when the runner has never run', function (): void {
+    $user = User::factory()->create();
+
+    expect(new LatestPastYouTool($user, Carbon::today(), app(PastYouMatcher::class))->handle([])['past_you'])
+        ->toBeNull();
 });

@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
-use App\Enums\Badge;
 use App\Models\RunCard;
 use App\Models\User;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\FeaturedCardTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 
@@ -23,8 +24,9 @@ class BriefingFeaturedKartuVoiceNarrator
         nama kartu, rarity-nya, atau kenapa lari itu layak dapat kartu.
         Tone: antusias tapi tetap hangat, bukan lebay. Maksimal 65 kata.
 
-        Fokus ke field `featured_kartu` yang ada di context. Refer ke `name`,
-        `rarity_label`, `km`, atau `tags` kalau relevan.
+        Kartunya gak dikasih di depan: panggil get_card_identity dulu, baru
+        tulis. Refer ke `name`, `rarity_label`, `km`, atau `tags` kalau relevan,
+        dan jangan mengarang detail yang gak ada di situ.
 
         VARIASI:
         - Observasi tentang special_move: kenapa nama itu cocok buat sesi ini.
@@ -55,24 +57,17 @@ class BriefingFeaturedKartuVoiceNarrator
             return 'Belum ada kartu khusus buat kamu minggu ini. Terus lari, aku pantau!';
         }
 
-        $distance = $card->activity->detail?->distance;
-        $featured = [
-            'name' => $card->special_move,
-            'rarity_label' => $card->rarity->label(),
-            'km' => $distance !== null ? round($distance / 1000, 1).'km' : '-',
-            'tags' => \array_slice(Badge::promptLabelsFor((array) ($card->badges ?? [])), 0, 3),
-        ];
-
         $decoded = $this->caller->call(
             kind: 'briefing_featured_kartu_voice',
             systemPrompt: self::SYSTEM_PROMPT,
-            context: [
-                'name' => $user->firstName(),
-                'featured_kartu' => $featured,
-            ],
+            context: ['name' => $user->firstName()],
             schemaName: 'TemariKartuVoice',
             requiredKeys: ['kartu_voice'],
-            options: new ChatCallOptions(userId: $user->id, maxTokens: 500),
+            options: new ChatCallOptions(
+                userId: $user->id,
+                maxTokens: 500,
+                toolbox: new AgentToolbox([new FeaturedCardTool($card)]),
+            ),
         );
 
         return (string) $decoded['kartu_voice'];

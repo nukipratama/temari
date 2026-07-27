@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\User;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\RecentBaselineTool;
+use App\Services\AI\Agent\Tools\RecentRunsTool;
+use App\Services\AI\Agent\Tools\TrainingLoadTool;
+use App\Services\AI\Agent\Tools\WeekStateTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
-use App\Services\Run\Story\BriefingContext;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
-use App\Services\Run\Story\MetricsContext;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Support\Carbon;
 
@@ -21,6 +24,11 @@ class BriefingNarrator
         Tugas: berikan briefing harian. Output DUA bagian: headline + suggestion.
         Mascot voice ("Kata Temari hari ini") di-handle oleh narrator terpisah,
         kamu jangan generate field itu.
+
+        DATA: angkanya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
+        panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
+        giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan null tetap
+        null: lewati, jangan ditebak.
 
         ATURAN TENTANG WAKTU (PENTING):
         Dashboard ini bisa dibuka kapan aja oleh user (pagi, siang, sore, atau
@@ -161,20 +169,18 @@ class BriefingNarrator
     public function generate(User $user, ?Carbon $asOf = null): array
     {
         $asOf ??= Carbon::today();
-        $vibeState = $this->vibe->current($user, $asOf);
-        $load = $this->trainingLoad->summary($user, $asOf) ?? [];
-        $verdicts = $this->verdictNarrator->recent($user, 5);
-        $baseline = $this->runBaseline->forUserAsOf($user->id, $asOf);
-
-        $ctx = new MetricsContext($user, $vibeState, $load, $verdicts, $asOf);
 
         $decoded = $this->caller->call(
             kind: 'briefing',
             systemPrompt: self::SYSTEM_PROMPT,
-            context: $this->buildContext($ctx, $baseline),
+            context: $this->context($user, $asOf),
             schemaName: 'TemariBriefing',
             requiredKeys: ['headline', 'suggestion'],
-            options: new ChatCallOptions(userId: $user->id, maxTokens: 1200),
+            options: new ChatCallOptions(
+                userId: $user->id,
+                maxTokens: 1200,
+                toolbox: $this->toolbox($user, $asOf),
+            ),
         );
 
         return [
@@ -184,24 +190,27 @@ class BriefingNarrator
     }
 
     /**
-     * @param  array{runs:int, avg_pace_sec_per_km:int|null, avg_hr:int|null, avg_decoupling_pct:float|null}|null  $baseline
+     * Who is being spoken to, when, and in what state the day was framed as.
+     * Everything the briefing reasons *about* is a tool call.
+     *
      * @return array<string, mixed>
      */
-    private function buildContext(MetricsContext $ctx, ?array $baseline): array
+    public function context(User $user, Carbon $asOf): array
     {
-        $verdictSummary = array_map(
-            fn ($v): array => ['mood' => $v->mood, 'km' => $v->distanceKm, 'intensity' => $v->intensity, 'oneline' => $v->oneline],
-            array_slice($ctx->recentVerdicts, 0, 5),
-        );
-
         return [
-            'name' => $ctx->user->firstName(),
-            'vibe' => $ctx->vibeState,
-            'load' => $ctx->load,
-            'recent_runs' => $verdictSummary,
-            'recent_baseline_28d' => $baseline,
-            'date' => $ctx->asOf->toDateString(),
-            'context' => BriefingContext::forUser($ctx->user, $ctx->asOf, $ctx->load)->toArray(),
+            'name' => $user->firstName(),
+            'vibe' => $this->vibe->current($user, $asOf),
+            'date' => $asOf->toDateString(),
         ];
+    }
+
+    public function toolbox(User $user, Carbon $asOf): AgentToolbox
+    {
+        return new AgentToolbox([
+            new WeekStateTool($user, $asOf, $this->trainingLoad),
+            new RecentRunsTool($user, $asOf, $this->verdictNarrator),
+            new TrainingLoadTool($user, $asOf, $this->trainingLoad),
+            new RecentBaselineTool($user, $asOf, $this->runBaseline),
+        ]);
     }
 }

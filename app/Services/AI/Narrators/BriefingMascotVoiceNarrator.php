@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
-use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\LatestPastYouTool;
+use App\Services\AI\Agent\Tools\RecentRunsTool;
+use App\Services\AI\Agent\Tools\TrainingLoadTool;
+use App\Services\AI\Agent\Tools\WeekStateTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\TrainingLoad;
-use App\Services\Run\Story\BriefingContext;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
-use App\Services\Run\Story\MetricsContext;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Support\Carbon;
@@ -36,6 +38,11 @@ class BriefingMascotVoiceNarrator
         hours, atau streak kalau relevan. Tone: hangat dan mood-aware.
         Dukungan boleh, tapi lembut dan cuma kalau pas, jangan dipaksa jadi
         penutup tiap hari. Maksimal 90 kata.
+
+        DATA: angkanya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
+        panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
+        giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan null tetap
+        null: lewati, jangan ditebak.
 
         ATURAN WAKTU: dashboard ini bisa dibuka kapan aja, briefing
         cached harian. JANGAN asumsi user lagi mau lari "sekarang" atau
@@ -106,7 +113,11 @@ class BriefingMascotVoiceNarrator
             context: $this->context($user, $asOf),
             schemaName: 'TemariMascotVoice',
             requiredKeys: ['mascot_voice'],
-            options: new ChatCallOptions(userId: $user->id, maxTokens: 1500),
+            options: new ChatCallOptions(
+                userId: $user->id,
+                maxTokens: 1500,
+                toolbox: $this->toolbox($user, $asOf ?? Carbon::today()),
+            ),
         );
 
         return (string) $decoded['mascot_voice'];
@@ -118,64 +129,28 @@ class BriefingMascotVoiceNarrator
     public function context(User $user, ?Carbon $asOf = null): array
     {
         $asOf ??= Carbon::today();
-        $vibeState = $this->vibe->current($user, $asOf);
-        $load = $this->trainingLoad->summary($user, $asOf) ?? [];
-        $verdicts = $this->verdictNarrator->recent($user, 5);
-
-        return $this->buildContext(new MetricsContext($user, $vibeState, $load, $verdicts, $asOf));
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildContext(MetricsContext $ctx): array
-    {
-        $verdictSummary = array_map(
-            fn ($v): array => ['mood' => $v->mood, 'km' => $v->distanceKm, 'intensity' => $v->intensity, 'oneline' => $v->oneline],
-            array_slice($ctx->recentVerdicts, 0, 5),
-        );
-
         $prevNarrative = $this->previousDailyNarrative(
             AnalysisType::BRIEFING_SUBJECT_TYPE,
-            $ctx->user->id,
+            $user->id,
             AnalysisType::BriefingMascotVoice,
-            $ctx->asOf,
+            $asOf,
         );
 
         return [
-            'name' => $ctx->user->firstName(),
-            'vibe' => $ctx->vibeState,
-            'load' => $ctx->load,
-            'recent_runs' => $verdictSummary,
-            'past_you' => $this->latestPastYou($ctx->user, $ctx->asOf),
-            'date' => $ctx->asOf->toDateString(),
-            'context' => BriefingContext::forUser($ctx->user, $ctx->asOf, $ctx->load)->toArray(),
+            'name' => $user->firstName(),
+            'vibe' => $this->vibe->current($user, $asOf),
+            'date' => $asOf->toDateString(),
             ...NarratorContinuity::fields($prevNarrative),
         ];
     }
 
-    /**
-     * A "diri kamu dulu vs sekarang" comparison for the user's most recent run
-     * as of $asOf, or null when there is no comparable past run. Bounded by
-     * $asOf so a backdated recompute reads the run that was latest that day, not
-     * a later one.
-     *
-     * @return array{days_ago: int, pace_diff_sec: float, time_diff_sec: float, hr_diff_bpm: float|null, past_km: float, past_date: string|null}|null
-     */
-    private function latestPastYou(User $user, Carbon $asOf): ?array
+    public function toolbox(User $user, Carbon $asOf): AgentToolbox
     {
-        $detail = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->whereNotNull('start_date_local')
-            ->where('start_date_local', '<=', $asOf->copy()->endOfDay())
-            ->orderByDesc('start_date_local')
-            ->with('activity')
-            ->first();
-
-        if ($detail === null) {
-            return null;
-        }
-
-        return $this->pastYou->findMatchContext($detail->activity, $detail);
+        return new AgentToolbox([
+            new WeekStateTool($user, $asOf, $this->trainingLoad),
+            new RecentRunsTool($user, $asOf, $this->verdictNarrator),
+            new TrainingLoadTool($user, $asOf, $this->trainingLoad),
+            new LatestPastYouTool($user, $asOf, $this->pastYou),
+        ]);
     }
 }

@@ -25,6 +25,7 @@ use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use Illuminate\Support\Carbon;
 
 class RunInsightNarrator
 {
@@ -230,6 +231,8 @@ class RunInsightNarrator
      */
     public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox
     {
+        $asOf = $detail->start_date_local ?? Carbon::now();
+
         return new AgentToolbox([
             new RunSummaryTool($activity, $detail),
             new KmSplitsTool($activity, $detail),
@@ -237,8 +240,8 @@ class RunInsightNarrator
             new TerrainTool($activity, $detail),
             new WeatherTool($activity, $detail),
             new EffortContextTool($activity, $detail, $this->relativeEffort),
-            new TrainingLoadTool($activity, $detail, $this->trainingLoad),
-            new RecentBaselineTool($activity, $detail, $this->baseline),
+            new TrainingLoadTool($activity->user, $asOf, $this->trainingLoad),
+            new RecentBaselineTool($activity->user, $asOf, $this->baseline, $activity->id),
             new TrainingPacesTool($activity, $detail, $this->vdotEstimator, $this->trainingPaceCalculator),
         ]);
     }
