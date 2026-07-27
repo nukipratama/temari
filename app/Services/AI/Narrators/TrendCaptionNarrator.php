@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
-use App\Models\PersonalRecord;
 use App\Models\User;
-use App\Models\WeeklySnapshot;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\WeeklyTrendTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
 class TrendCaptionNarrator
 {
@@ -64,100 +63,26 @@ class TrendCaptionNarrator
             context: $this->context($user, $asOf),
             schemaName: 'TemariTrendCaption',
             requiredKeys: ['caption'],
-            options: new ChatCallOptions(temperature: 0.7, userId: $user->id, maxTokens: 600),
+            options: new ChatCallOptions(
+                temperature: 0.7,
+                userId: $user->id,
+                maxTokens: 600,
+                toolbox: new AgentToolbox([new WeeklyTrendTool($user, $asOf, $this->trainingLoad)]),
+            ),
         );
 
         return (string) $decoded['caption'];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Nothing: the whole caption is a read of the trend.
+     *
+     * @return array<string, mixed>
+     */
     public function context(User $user, Carbon $asOf): array
     {
-        $weeks = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->orderByDesc('week_ending')
-            ->limit(12)
-            ->get()
-            ->reverse()
-            ->values();
-
-        [$ctlDelta4w, $volumeRecent, $volumePrev] = $this->fourWeekDeltas($weeks);
-        $prWeekEndings = $this->prWeekEndings($user, $weeks);
-
-        return [
-            'as_of' => $asOf->toDateString(),
-            'load_today' => $this->trainingLoad->summary($user, $asOf),
-            'ctl_delta_4w' => $ctlDelta4w,
-            'volume_recent_4w_km' => $volumeRecent,
-            'volume_prev_4w_km' => $volumePrev,
-            'weeks' => $weeks->map(fn (WeeklySnapshot $w): array => [
-                'ending' => $w->week_ending->toDateString(),
-                'distance_km' => $w->distance_km,
-                'trimp' => $w->weekly_trimp,
-                'ctl_42d' => $w->ctl_42d,
-                'atl_7d' => $w->atl_7d,
-                'form' => $w->form,
-                'status' => $w->form_status,
-                'pr' => in_array($w->week_ending->toDateString(), $prWeekEndings, true),
-            ])->all(),
-        ];
+        return [];
     }
 
-    /**
-     * Week-ending dates (Sunday) in which the user set a personal record, so the
-     * caption can honestly cite a "PR week" as its prompt asks. A PR is bucketed
-     * into the week its `set_at` falls in.
-     *
-     * @param  Collection<int, WeeklySnapshot>  $weeks  oldest-first
-     * @return list<string>
-     */
-    private function prWeekEndings(User $user, Collection $weeks): array
-    {
-        if ($weeks->isEmpty()) {
-            return [];
-        }
 
-        $endings = PersonalRecord::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('set_at')
-            ->whereBetween('set_at', [
-                $weeks->first()->week_ending->copy()->subDays(6)->startOfDay(),
-                $weeks->last()->week_ending->copy()->endOfDay(),
-            ])
-            ->get()
-            ->map(fn (PersonalRecord $pr): string => $pr->set_at->copy()->endOfWeek(Carbon::SUNDAY)->toDateString())
-            ->unique()
-            ->all();
-
-        return array_values($endings);
-    }
-
-    /**
-     * Derived 4-week signals so the caption can cite a concrete number: the
-     * CTL swing over the last 4 weeks, and the recent-vs-prior 4-week volume
-     * totals. Null when there isn't enough history (fewer than 5 weeks for CTL,
-     * fewer than 8 for the volume comparison).
-     *
-     * @param  Collection<int, WeeklySnapshot>  $weeks  oldest-first
-     * @return array{0: float|null, 1: float|null, 2: float|null}
-     */
-    private function fourWeekDeltas(Collection $weeks): array
-    {
-        $ctlDelta = null;
-        if ($weeks->count() >= 5) {
-            $latestCtl = $weeks->last()?->ctl_42d;
-            $priorCtl = $weeks->get($weeks->count() - 5)?->ctl_42d;
-            if ($latestCtl !== null && $priorCtl !== null) {
-                $ctlDelta = round($latestCtl - $priorCtl, 1);
-            }
-        }
-
-        $recent = $prev = null;
-        if ($weeks->count() >= 8) {
-            $recent = round((float) $weeks->slice($weeks->count() - 4, 4)->sum('distance_km'), 1);
-            $prev = round((float) $weeks->slice($weeks->count() - 8, 4)->sum('distance_km'), 1);
-        }
-
-        return [$ctlDelta, $recent, $prev];
-    }
 }
