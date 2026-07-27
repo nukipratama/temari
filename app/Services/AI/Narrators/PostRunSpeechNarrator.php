@@ -7,8 +7,6 @@ namespace App\Services\AI\Narrators;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Services\AI\Agent\AgentToolbox;
-use App\Services\AI\Agent\Tools\HrZonesTool;
-use App\Services\AI\Agent\Tools\KmSplitsTool;
 use App\Services\AI\Agent\Tools\PastYouTool;
 use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
@@ -34,6 +32,10 @@ class PostRunSpeechNarrator
         ada, panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
         giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan null tetap
         null: lewati, jangan ditebak.
+
+        Split per km dan breakdown zone SENGAJA gak dikasih sebagai tool: ketiga
+        analisis di bawah udah menafsirkannya buat kamu. Pakai hasil tafsirnya,
+        jangan bikin pembacaan km-per-km versi kamu sendiri.
 
         Kamu menerima tiga analisis teknis yang sudah jadi di field insights:
         - technical: terjemahan teknis (cadence, decoupling, HR).
@@ -120,13 +122,17 @@ class PostRunSpeechNarrator
 
     /**
      * The reads this speech may pull, each bound to this activity.
+     *
+     * Deliberately narrower than run insight's. The splits and the zone
+     * breakdown reach this narrator already interpreted, as the `insights`
+     * prose it is asked to build a story on; handing it the raw per-km table
+     * as well just invited a fourth recitation of "km 3 slowed, km 5 closed
+     * fastest" alongside the three blocks that had already said it.
      */
     public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox
     {
         return new AgentToolbox([
             new RunSummaryTool($activity, $detail),
-            new KmSplitsTool($activity, $detail),
-            new HrZonesTool($activity, $detail),
             new TerrainTool($activity, $detail),
             new WeatherTool($activity, $detail),
             new PersonalRecordsTool($activity, $detail),

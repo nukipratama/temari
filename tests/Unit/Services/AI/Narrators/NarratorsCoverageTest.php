@@ -225,7 +225,7 @@ it('PostRunSpeechNarrator keeps only what no tool can serve in the context', fun
         ->toBe(['mood', 'insights', ...NarratorContinuity::CONTEXT_KEYS]);
 });
 
-it('PostRunSpeechNarrator offers the run reads plus the two its story needs', function (): void {
+it('PostRunSpeechNarrator is not offered the splits or zones its insights already interpret', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $names = array_column(
@@ -234,10 +234,10 @@ it('PostRunSpeechNarrator offers the run reads plus the two its story needs', fu
         'name',
     );
 
+    // Handing it the raw per-km table produced a fourth recitation of the same
+    // "km 3 slowed, km 5 closed fastest" the three insight blocks already gave.
     expect($names)->toBe([
         'get_run_summary',
-        'get_km_splits',
-        'get_hr_zones',
         'get_terrain',
         'get_weather',
         'get_personal_records',
