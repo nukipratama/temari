@@ -433,7 +433,6 @@ class AnalysisService
 
     private function dispatchPending(PendingDispatch $pending, ?int $delaySeconds): void
     {
-        $pending->onQueue($this->queueName());
         if ($delaySeconds !== null && $delaySeconds > 0) {
             $pending->delay($delaySeconds);
         }
@@ -523,10 +522,5 @@ class AnalysisService
         ]);
 
         return true;
-    }
-
-    private function queueName(): string
-    {
-        return (string) config('ai.queue', 'default');
     }
 }

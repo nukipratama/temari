@@ -5,11 +5,6 @@ declare(strict_types=1);
 return [
     'auto_dispatch' => filter_var(env('AI_AUTO_DISPATCH', true), FILTER_VALIDATE_BOOLEAN),
 
-    // AI jobs run on their own queue with its own Horizon supervisor and a
-    // longer timeout: a tool-calling narration takes several round trips, and
-    // sharing `default` would starve Strava ingest behind it.
-    'queue' => (string) env('AI_QUEUE', 'ai'),
-
     // Per-block ceiling on an agent run. The daily cost ceiling only gates
     // dispatch, so this is what stops one runaway tool loop from spending the
     // day's budget inside a single job.

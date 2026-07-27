@@ -17,10 +17,23 @@ abstract class AnalyzeBaseJob implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * Narration runs on its own queue under its own Horizon supervisor: a
+     * tool-calling agent takes several Azure round trips, which does not fit
+     * the timeout the rest of the queue lives by, and holding a shared worker
+     * that long would stall Strava ingest behind it.
+     */
+    public const string QUEUE = 'ai';
+
     public int $tries = 3;
 
     /** @var array<int, int> */
     public array $backoff = [10, 60];
+
+    public function __construct()
+    {
+        $this->onQueue(self::QUEUE);
+    }
 
     /**
      * Upper bound on a `Retry-After` release delay (seconds), so an oversized
