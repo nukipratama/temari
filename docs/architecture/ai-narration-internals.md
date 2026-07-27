@@ -42,7 +42,15 @@ Each tool is bound to its subject at construction and declares an argument-free 
 
 A toolbox is built per call, so it can be shorter when the subject is thinner — a card whose activity has no detail row is offered only `get_card_identity`, rather than four tools that would answer null to everything.
 
-The briefing, recap and profile narrators still build a full context up front; they are converted family by family.
+### The briefing family
+
+The four narrators that speak about a *day* rather than a run take the same shape. Their reads are bound to a user as of a date ([UserTool](app/Services/AI/Agent/Tools/UserTool.php)) rather than to an activity, and the per-activity narrators use the same classes for training load and the 28-day baseline: "the runner's load on the day of this run" is the same question as "the runner's load today", asked from a different day.
+
+[WeekStateTool](app/Services/AI/Agent/Tools/WeekStateTool.php) is deliberately **one** tool returning all fifteen `BriefingContext` fields rather than several themed ones. Those fields are produced together by a single query pass, so splitting them would buy nothing but round trips.
+
+The daily greeting keeps its `vibe` in the context, because the *caller* decides which vibe the greeting is for — a tool that recomputed it would be a second source of truth that could disagree. It gains `get_week_state`, so a "you haven't run in a while" greeting can finally tell three days from three weeks.
+
+The recap and profile narrators still build a full context up front; they are converted family by family.
 
 ### BriefingContext (per-user-day signals)
 

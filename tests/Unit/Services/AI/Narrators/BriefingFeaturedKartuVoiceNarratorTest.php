@@ -63,15 +63,10 @@ it('returns the kartu voice for the resolved card from a valid LLM response', fu
 
     expect($narrator->generate($user, $card))->toBe('Aku kasih kartu ini karena 12 km tadi solid.');
 
-    // Badge slugs are humanized before the prompt, capped at 3 tags.
-    $client->assertSent(Responses::class, function (string $method, array $params): bool {
-        $payload = json_encode($params, JSON_THROW_ON_ERROR);
-
-        return str_contains($payload, 'Anak Pagi')
-            && ! str_contains($payload, 'anak_pagi')
-            && ! str_contains($payload, 'negative_split')
-            && ! str_contains($payload, 'tahan_diri');
-    });
+    // The card itself is a tool call now, so the outgoing prompt carries the
+    // addressee and nothing else to fabricate from.
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => $params['input'][1]['content'] === json_encode(['name' => 'Ada'], JSON_UNESCAPED_UNICODE)
+        && $params['tools'][0]['name'] === 'get_featured_card');
 });
 
 it('returns a fallback line and skips the LLM when there is no featured card', function (): void {

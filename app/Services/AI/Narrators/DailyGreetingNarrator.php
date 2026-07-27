@@ -6,9 +6,14 @@ namespace App\Services\AI\Narrators;
 
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\RecentRunsTool;
+use App\Services\AI\Agent\Tools\WeekStateTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Support\Carbon;
 
@@ -18,6 +23,11 @@ class DailyGreetingNarrator
 
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Tugas: 1-2 kalimat greeting, maksimal 30 kata.
+
+        DATA: angkanya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
+        panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
+        giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan null tetap
+        null: lewati, jangan ditebak.
 
         Sesuaikan tone dengan vibe state pengguna:
         - pumped/fresh/bouncy: energik, antusias, mengajak. "Halo! Kamu lagi
@@ -40,8 +50,11 @@ class DailyGreetingNarrator
         - Time-locked greeting ("Selamat pagi").
         PROMPT;
 
-    public function __construct(private readonly StructuredChatCaller $caller)
-    {
+    public function __construct(
+        private readonly StructuredChatCaller $caller,
+        private readonly TrainingLoad $trainingLoad,
+        private readonly VerdictNarrator $verdictNarrator,
+    ) {
     }
 
     public function generate(User $user, string $vibeState, ?Carbon $asOf = null): string
@@ -52,7 +65,11 @@ class DailyGreetingNarrator
             context: $this->context($user, $vibeState, $asOf ?? Carbon::today()),
             schemaName: 'TemariDailyGreeting',
             requiredKeys: ['speech'],
-            options: new ChatCallOptions(userId: $user->id, maxTokens: 400),
+            options: new ChatCallOptions(
+                userId: $user->id,
+                maxTokens: 400,
+                toolbox: $this->toolbox($user, $asOf ?? Carbon::today()),
+            ),
         );
 
         return (string) $decoded['speech'];
@@ -76,5 +93,17 @@ class DailyGreetingNarrator
             'vibe_label' => Vibe::label($vibeState),
             ...NarratorContinuity::fields($prevNarrative),
         ];
+    }
+
+    /**
+     * The greeting knows the vibe because the caller decided it, but until now
+     * it could not tell a three-day gap from a three-week one.
+     */
+    public function toolbox(User $user, Carbon $asOf): AgentToolbox
+    {
+        return new AgentToolbox([
+            new WeekStateTool($user, $asOf, $this->trainingLoad),
+            new RecentRunsTool($user, $asOf, $this->verdictNarrator),
+        ]);
     }
 }

@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Agent\Tools;
 
-use App\Models\Activity;
-use App\Models\ActivityDetail;
+use App\Models\User;
 use App\Services\Run\Metrics\RunBaseline;
+use Illuminate\Support\Carbon;
 
-final class RecentBaselineTool extends ActivityTool
+final class RecentBaselineTool extends UserTool
 {
     public function __construct(
-        Activity $activity,
-        ActivityDetail $detail,
+        User $user,
+        Carbon $asOf,
         private readonly RunBaseline $baseline,
+        /** Excluded from its own baseline when the caller is narrating that run. */
+        private readonly ?int $excludeActivityId = null,
     ) {
-        parent::__construct($activity, $detail);
+        parent::__construct($user, $asOf);
     }
 
     public function name(): string
@@ -25,9 +27,8 @@ final class RecentBaselineTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Rata-rata 28 hari terakhir milik pengguna sampai sebelum lari ini (pace, HR, decoupling), '
-            .'lari ini sendiri tidak ikut dihitung. Panggil kalau mau bilang sesi ini lebih '
-            .'cepat/lambat/berat dari biasanya. Null kalau riwayatnya masih tipis.';
+        return 'Rata-rata 28 hari terakhir milik pengguna (pace, HR, decoupling). Panggil kalau mau '
+            .'bilang sesuatu lebih cepat/lambat/berat dari biasanya. Null kalau riwayatnya masih tipis.';
     }
 
     /** @return array<string, mixed> */
@@ -35,9 +36,9 @@ final class RecentBaselineTool extends ActivityTool
     {
         return [
             'recent_baseline_28d' => $this->baseline->forUserAsOf(
-                $this->activity->user_id,
-                $this->asOf(),
-                $this->activity->id,
+                $this->user->id,
+                $this->asOf,
+                $this->excludeActivityId,
             ),
         ];
     }

@@ -6,14 +6,13 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Enums\Badge;
 use App\Models\RunCard;
-use App\Services\AI\Agent\AgentTool;
 
 /**
  * What the card *is* — the one read a card-flavor run cannot write without.
  */
-final readonly class CardIdentityTool implements AgentTool
+final class CardIdentityTool extends NoArgumentTool
 {
-    public function __construct(private RunCard $card)
+    public function __construct(private readonly RunCard $card)
     {
     }
 
@@ -26,17 +25,6 @@ final readonly class CardIdentityTool implements AgentTool
     {
         return 'Kartu yang lagi kamu tulis flavour-nya: rarity (pakai rarity_label kalau menyebutnya '
             .'dalam kalimat), special move, dan badge-nya. Mulai dari sini.';
-    }
-
-    /** @return array<string, mixed> */
-    public function parameters(): array
-    {
-        return [
-            'type' => 'object',
-            'properties' => (object) [],
-            'required' => [],
-            'additionalProperties' => false,
-        ];
     }
 
     /** @return array<string, mixed> */
