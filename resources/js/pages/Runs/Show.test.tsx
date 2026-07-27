@@ -48,7 +48,6 @@ const detail: ActivityDetail & {
             { km: 2, pace: '5:45', avg_hr: 155, avg_cadence_spm: 173 },
         ],
         decoupling_pct: 4.5,
-        ascent_m: 50,
         stopped_time_sec: 30,
         stop_count: 2,
     },

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use Override;
+use App\Services\Run\Metrics\HeartRateZones;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -18,26 +19,6 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class UpdateHrZonesRequest extends FormRequest
 {
-    /**
-     * Breakpoints (as a fraction of heart-rate reserve, Karvonen %HRR) at which
-     * each zone begins. These reproduce the {@see config('runner.hr_zones')}
-     * defaults at max 180 / rest 55 (Z1 lo 116, Z2 138, Z3 154, Z4 168, Z5 176).
-     *
-     * @var array<int, float>
-     */
-    private const array ZONE_BREAKPOINTS = [0.488, 0.664, 0.792, 0.904, 0.968];
-
-    /**
-     * High sentinel for Z5's open-ended upper bound, matching the Z5 `hi` in
-     * {@see config('runner.hr_zones')}.
-     */
-    private const int Z5_SENTINEL_HI = 999;
-
-    /**
-     * @var array<int, string>
-     */
-    private const array ZONE_KEYS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
-
     public function authorize(): bool
     {
         return true;
@@ -49,7 +30,7 @@ class UpdateHrZonesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'max_hr' => ['required', 'integer', 'between:120,220'],
+            'max_hr' => ['required', 'integer', 'between:' . HeartRateZones::MIN_MAX_HR . ',' . HeartRateZones::MAX_MAX_HR],
             'resting_hr' => ['required', 'integer', 'between:30,90', 'lt:max_hr'],
             'zones' => ['required', 'array', 'size:5'],
             'zones.*.lo' => ['required', 'integer'],
@@ -150,31 +131,10 @@ class UpdateHrZonesRequest extends FormRequest
     }
 
     /**
-     * Derive Z1-Z5 bands from max/resting HR using the Karvonen %HRR
-     * breakpoints. Each zone's `lo` is `round(resting + pct * (max - resting))`;
-     * its `hi` is the next zone's `lo`, with Z5's `hi` fixed at the open-ended
-     * sentinel. Reusable for the live preview and for seeding defaults.
-     *
      * @return array<string, array{lo:int, hi:int}>
      */
     public static function deriveZones(int $maxHr, int $restingHr): array
     {
-        $reserve = $maxHr - $restingHr;
-
-        $los = array_map(
-            static fn (float $pct): int => (int) round($restingHr + $pct * $reserve),
-            self::ZONE_BREAKPOINTS,
-        );
-
-        $zones = [];
-        foreach (self::ZONE_KEYS as $index => $key) {
-            $isLast = $index === \count(self::ZONE_KEYS) - 1;
-            $zones[$key] = [
-                'lo' => $los[$index],
-                'hi' => $isLast ? self::Z5_SENTINEL_HI : $los[$index + 1],
-            ];
-        }
-
-        return $zones;
+        return HeartRateZones::derive($maxHr, $restingHr);
     }
 }

@@ -168,8 +168,10 @@ it('softens high decoupling when the run was hot, keeps the alarm when cool', fu
 
 it('appends elevation gain when ascent exceeds 50m and skips otherwise', function (float $ascent, bool $present): void {
     $user = User::factory()->create();
+    // Strava's own figure, not a stream-derived one: the two disagreed and only
+    // this one is shown in the UI beside the narration that quotes it.
     [$activity, $detail] = makeRun($user, [
-        'stream_summary' => ['ascent_m' => $ascent],
+        'total_elevation_gain' => $ascent,
     ]);
 
     $out = builder()->runInsightTechnical($activity, $detail);
@@ -323,9 +325,9 @@ it('combines multiple technical parts into one sentence', function (): void {
         'average_cadence' => 92.0,
         'average_heartrate' => 150.0,
         'max_heartrate' => 200,
+        'total_elevation_gain' => 120.0,
         'stream_summary' => [
             'decoupling_pct' => 8.0,
-            'ascent_m' => 120.0,
             'pace_variability_sec' => 25.0,
         ],
     ]);

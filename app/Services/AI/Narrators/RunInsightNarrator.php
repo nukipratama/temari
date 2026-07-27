@@ -11,6 +11,7 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Context\ActivityNarrationContext;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\SessionIntent;
@@ -29,9 +30,11 @@ class RunInsightNarrator
 
         - technical: terjemahkan cadence, decoupling, dan HR ke bahasa awam.
           JANGAN cuma sebut angka tanpa konteks. Jelaskan APA artinya dan,
-          kalau relevan, arah perbaikannya. Kalau pace_variability_sec ada,
-          baca konsistensi effort: kecil = pace rata dan terkontrol, besar =
-          naik-turun (medan, angin, atau effort belum stabil).
+          kalau relevan, arah perbaikannya. pace_consistency udah berupa
+          penilaian ("sangat rata" sampai "naik-turun"), jadi pakai itu apa
+          adanya buat baca konsistensi effort dan kaitkan ke penyebabnya
+          (medan, angin, atau effort belum stabil). JANGAN mengarang angka
+          variability, dan jangan sebut istilah "pace variability" ke user.
           Contoh interpretasi:
           * cadence 160-165: "Cadence kamu di 162, masih di bawah ideal.
             Coba tingkatkan pelan-pelan ke 170+, langkah lebih pendek tapi
@@ -68,7 +71,7 @@ class RunInsightNarrator
 
         - splits: highlight 1-2 km paling menarik atau pola pacing keseluruhan.
           Sebut km spesifik dan waktunya kalau data ada. Bicara soal pola
-          (negative split, even pacing, fade at the end). Kalau ascent_m
+          (negative split, even pacing, fade at the end). Kalau elevation_gain_m
           menonjol, kaitkan perlambatan ke tanjakan secara eksplisit, jangan
           tebak "mungkin capek" kalau elevasi yang jelas penyebabnya.
           max_grade_pct = tanjakan tercuram (persen); kalau tinggi (>8%) sebut
@@ -210,13 +213,13 @@ class RunInsightNarrator
                 : null,
             'decoupling_pct' => $shared->decouplingPct,
             'negative_split' => $shared->negativeSplit,
-            'pace_variability_sec' => $summary['pace_variability_sec'] ?? null,
+            'pace_consistency' => PaceConsistency::label($summary['pace_variability_sec'] ?? null),
             'zone_pct' => $shared->zonePct,
             'time_in_zone_min' => $summary['time_in_zone_min'] ?? null,
             'trimp' => $detail->trimp_edwards,
             'per_km' => $summary['per_km'] ?? null,
             'finish_partial' => $summary['partial_split'] ?? null,
-            'ascent_m' => $summary['ascent_m'] ?? null,
+            'elevation_gain_m' => $detail->total_elevation_gain,
             'max_grade_pct' => $summary['max_grade_pct'] ?? null,
             'gap_pace' => $summary['gap_pace'] ?? null,
             'weather_temp_c' => $shared->weatherTempC,

@@ -25,6 +25,14 @@ class PastYouMatcher
 
     private const int MIN_GAP_DAYS = 21;
 
+    /**
+     * Oldest a comparison run may be. Without a ceiling the oldest-first pick
+     * below reaches as far back as the account goes, and "14 seconds faster than
+     * five years ago" compares the runner to a different person. A year keeps the
+     * contrast wide enough to feel like progress and close enough to be theirs.
+     */
+    private const int MAX_GAP_DAYS = 365;
+
     /** Pace-band edges in sec/km. */
     private const int RECOVERY_PACE_FLOOR_SEC = 450; // > 7:30/km
 
@@ -51,6 +59,7 @@ class PastYouMatcher
 
         $band = $this->paceBand($currentPaceSec);
         $minDate = $startDate->copy()->subDays(self::MIN_GAP_DAYS)->endOfDay();
+        $maxDate = $startDate->copy()->subDays(self::MAX_GAP_DAYS)->startOfDay();
         $distanceLo = $currentDistance - self::DISTANCE_TOLERANCE_M;
         $distanceHi = $currentDistance + self::DISTANCE_TOLERANCE_M;
 
@@ -62,6 +71,7 @@ class PastYouMatcher
             ->where('activities.user_id', $activity->user_id)
             ->where('activities.id', '!=', $activity->id)
             ->where('activity_details.start_date_local', '<=', $minDate)
+            ->where('activity_details.start_date_local', '>=', $maxDate)
             ->whereBetween('activity_details.distance', [$distanceLo, $distanceHi])
             ->whereNotNull('activity_details.start_date_local')
             ->whereNotNull('activity_details.moving_time')

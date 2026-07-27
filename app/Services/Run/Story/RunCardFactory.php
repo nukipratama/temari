@@ -38,6 +38,20 @@ class RunCardFactory
     /** At or below this temperature (Celsius) a run counts as cold. */
     private const int COLD_TEMP_C = 20;
 
+    /**
+     * Ceiling on how much the badge count alone can lift a card's rarity.
+     *
+     * Badges stack with circumstance, not merit: a hot, rainy, early Saturday
+     * long run collects several without the run being remarkable. Uncapped they
+     * dominated the score and made Langka the most common tier of all.
+     */
+    private const int MAX_BADGE_SCORE = 3;
+
+    /**
+     * Average HR below this fraction of max HR counts as an easy effort.
+     */
+    private const float EASY_HR_RATIO = 0.78;
+
     /** Distance brackets (metres) for first-bracket tracking. */
     private const array DISTANCE_BRACKETS = [
         5_000,
@@ -161,7 +175,7 @@ class RunCardFactory
         if ($this->isFirstDistanceBracket($activity, $detail)) {
             $score += 1;
         }
-        $score += count($badges);
+        $score += min(count($badges), self::MAX_BADGE_SCORE);
         if ($this->isAerobicDiscipline($detail, $summary)) {
             $score += 1;
         }
@@ -477,13 +491,17 @@ class RunCardFactory
     }
 
     /**
-     * Easy effort: average HR < 70% of the athlete's max HR.
+     * Easy effort: average HR below EASY_HR_RATIO of the athlete's max HR.
+     *
+     * The textbook figure is 70%, but that describes a recovery jog, not an easy
+     * run: a genuine Z2 session sits nearer 75-80% of max, so 70% awarded the
+     * badge to nobody. The threshold names the effort runners actually call easy.
      */
     private function isEasyEffort(Activity $activity, ActivityDetail $detail): bool
     {
         $ratio = $this->hrRatio($activity, $detail);
 
-        return $ratio !== null && $ratio < 0.70;
+        return $ratio !== null && $ratio < self::EASY_HR_RATIO;
     }
 
     /**
