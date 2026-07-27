@@ -59,7 +59,7 @@ final class MaterialFingerprint
             'negative_split' => (bool) ($summary['negative_split'] ?? false),
             'zone_pct' => self::bucketedZones($summary),
             'pace_variability' => self::bucket(self::summaryFloat($summary, 'pace_variability_sec')),
-            'ascent_m' => self::bucket(self::summaryFloat($summary, 'ascent_m')),
+            'elevation_gain_m' => self::bucket($detail->total_elevation_gain),
             'max_grade_pct' => self::half(self::summaryFloat($summary, 'max_grade_pct')),
             'gap_pace' => $summary['gap_pace'] ?? null,
             'partial_pace' => $summary['partial_split']['pace'] ?? null,

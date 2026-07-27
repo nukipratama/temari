@@ -827,3 +827,127 @@ it('does NOT dispatch ResolveActivityLocationJob when the activity has no coords
 
     Bus::assertNotDispatched(ResolveActivityLocationJob::class);
 });
+
+// Max HR only ever arrived from a Strava sync or a manual edit, so a stale value
+// dragged every zone below it down: real data sat at max_hr 180 while the athlete
+// had already hit 188, pushing easy runs into Z3 and the "keras" badge onto 69%
+// of runs. The athlete's own peak cannot be an underestimate.
+it('raises a stale max HR to the observed peak and re-derives the zones', function (): void {
+    $activity = makeActivityWithConnection();
+    $profile = RunnerProfile::factory()->for($activity->user)->create([
+        'max_hr' => 180,
+        'resting_hr' => 55,
+        'hr_zones' => ['Z5' => ['lo' => 175, 'hi' => 999]],
+    ]);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Hard effort', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'has_heartrate' => true, 'max_heartrate' => 188, 'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => [0, 60, 120]],
+            'heartrate' => ['data' => [170, 180, 188]],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $profile->refresh();
+    expect($profile->max_hr)->toBe(188)
+        ->and($profile->hr_zones['Z5']['lo'])->toBeGreaterThan(175);
+});
+
+it('leaves the profile alone when the run peaks below the stored max', function (): void {
+    $activity = makeActivityWithConnection();
+    $profile = RunnerProfile::factory()->for($activity->user)->create(['max_hr' => 190, 'resting_hr' => 55]);
+    $zonesBefore = $profile->hr_zones;
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Easy', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'has_heartrate' => true, 'max_heartrate' => 150, 'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => [0, 60]],
+            'heartrate' => ['data' => [145, 150]],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $profile->refresh();
+    expect($profile->max_hr)->toBe(190)
+        ->and($profile->hr_zones)->toEqual($zonesBefore);
+});
+
+it('ignores an implausible HR spike so one bad strap reading cannot reshape the zones', function (): void {
+    $activity = makeActivityWithConnection();
+    $profile = RunnerProfile::factory()->for($activity->user)->create(['max_hr' => 180, 'resting_hr' => 55]);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Interference', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'has_heartrate' => true, 'max_heartrate' => 245, 'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => [0, 60]],
+            'heartrate' => ['data' => [150, 245]],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect($profile->refresh()->max_hr)->toBe(180);
+});
+
+// A runner_profiles row only appears on a manual zone edit or a Strava sync that
+// returns custom zones, so most athletes have none and run on the config default
+// max HR. Keying the correction off the row would leave exactly those people --
+// the ones on the least personalised ceiling -- permanently uncorrected.
+it('creates a profile from the observed peak when the athlete has no runner profile', function (): void {
+    $activity = makeActivityWithConnection();
+    expect($activity->user->runnerProfile)->toBeNull();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Race', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'has_heartrate' => true, 'max_heartrate' => 192, 'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => [0, 60, 120]],
+            'heartrate' => ['data' => [175, 185, 192]],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $profile = $activity->user->fresh()->runnerProfile;
+    expect($profile)->not->toBeNull()
+        ->and($profile->max_hr)->toBe(192)
+        ->and($profile->hr_zones['Z2']['lo'])->toBeGreaterThan((int) config('runner.hr_zones.Z2.lo'));
+});
+
+it('leaves the config default alone when a profile-less run stays under it', function (): void {
+    $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Easy', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'has_heartrate' => true, 'max_heartrate' => 150, 'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => [0, 60]],
+            'heartrate' => ['data' => [145, 150]],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect($activity->user->fresh()->runnerProfile)->toBeNull();
+});

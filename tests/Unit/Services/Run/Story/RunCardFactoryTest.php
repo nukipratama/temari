@@ -138,9 +138,9 @@ it('promotes to langka on a negative split with badges pushing score to 4-5', fu
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
-    // Score: +2 negSplit, badges: negSplit(1) -> badgeCount=1
-    // = 0+2+0+0+1+0+0 = 3 -> Uncommon
-    expect($card->rarity)->toBe(Rarity::Uncommon);
+    // Score: +2 negSplit, badges: negSplit + santai (140bpm is 78% of the default
+    // 180 max, an easy effort) -> badgeCount=2, = 2+2 = 4 -> Rare.
+    expect($card->rarity)->toBe(Rarity::Rare);
 });
 
 it('awards the hari_panas badge when temp >= 31C', function (): void {
@@ -1115,4 +1115,56 @@ it('maps score 8+ to Legendaris', function (): void {
     $factory = app(RunCardFactory::class);
     expect($factory->rarityFromScore(8))->toBe(Rarity::Legendary);
     expect($factory->rarityFromScore(20))->toBe(Rarity::Legendary);
+});
+
+// Badges stack with circumstance rather than merit: a hot, rainy, pre-dawn long
+// run collects several without being remarkable. Uncapped they dominated the
+// score and made Langka the most common tier of all, on half of every card.
+it('caps how far the badge count alone can lift rarity', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['max_hr' => 200, 'resting_hr' => 50]);
+
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 6_000,
+        'moving_time' => 2_400,
+        'elapsed_time' => 2_400,
+        // Pre-dawn, hot, wet, windy: five badges from circumstance alone.
+        'start_date_local' => Carbon::parse('2026-05-10 04:30:00'),
+        'weather_temp_c' => 33,
+        'weather_rain_detected' => true,
+        'weather_wind_speed_kmh' => 25,
+        'average_heartrate' => 130,
+        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 95]],
+    ]);
+
+    $card = app(RunCardFactory::class)->build($activity, $detail);
+
+    expect(count($card->badges))->toBeGreaterThan(3)
+        ->and($card->rarity)->not->toBe(Rarity::Legendary)
+        ->and($card->rarity)->not->toBe(Rarity::Epic);
+});
+
+// 70% of max is a recovery jog, not an easy run: on real data it awarded santai
+// to zero runs out of 136 while keras took 69%.
+it('awards santai for a genuine easy effort rather than only a recovery jog', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['max_hr' => 190, 'resting_hr' => 55]);
+
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_000,
+        'moving_time' => 2_400,
+        'elapsed_time' => 2_400,
+        'start_date_local' => Carbon::parse('2026-05-10 10:00:00'),
+        'weather_temp_c' => 25,
+        'weather_rain_detected' => false,
+        // 143bpm is 75% of max: comfortably easy, but well above the old 70% bar.
+        'average_heartrate' => 143,
+    ]);
+
+    $card = app(RunCardFactory::class)->build($activity, $detail);
+
+    expect($card->badges)->toContain('santai')
+        ->and($card->badges)->not->toContain('keras');
 });

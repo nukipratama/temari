@@ -117,6 +117,34 @@ it('detects a stop when velocity drops below 0.5 m/s', function (): void {
 
 it('computes cardiac decoupling as (second-half HR/pace ratio) - 1', function (): void {
     // Half1: 140bpm/400s/km = 0.35. Half2: 150bpm/400s/km = 0.375. Drift +7.1%.
+    // Runs an hour so the effort is long enough for drift to describe physiology.
+    $time = [];
+    $hr = [];
+    $velocity = [];
+    for ($t = 0; $t <= 3600; $t += 30) {
+        $time[] = $t;
+        $hr[] = $t < 1800 ? 140 : 150;
+        $velocity[] = 2.5;
+    }
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary['decoupling_pct'])->toBeFloat()
+        ->toEqualWithDelta(7.1, 0.2);
+});
+
+it('omits decoupling on a run too short to sustain the measurement', function (): void {
+    // Ten minutes. Halving that leaves five-minute windows whose HR/pace ratio
+    // moves on traffic and terrain, which the narrator then reports as drift.
     $time = [];
     $hr = [];
     $velocity = [];
@@ -137,8 +165,33 @@ it('computes cardiac decoupling as (second-half HR/pace ratio) - 1', function ()
         170,
     );
 
-    expect($summary['decoupling_pct'])->toBeFloat()
-        ->toEqualWithDelta(7.1, 0.2);
+    expect($summary)->not->toHaveKey('decoupling_pct');
+});
+
+it('counts only moving time toward the sustained-effort floor', function (): void {
+    // 50 minutes elapsed, but stopped for most of it: a long coffee break must
+    // not qualify a short run for the drift metrics.
+    $time = [];
+    $hr = [];
+    $velocity = [];
+    for ($t = 0; $t <= 3000; $t += 30) {
+        $time[] = $t;
+        $hr[] = 145;
+        $velocity[] = $t < 600 ? 2.5 : 0.0;
+    }
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary)->not->toHaveKey('decoupling_pct');
 });
 
 it('finds the best 5-min pace as fastest sustained window', function (): void {
@@ -234,37 +287,95 @@ it('emits the best_30min_pace window from compute()', function (): void {
 });
 
 it('computes per-km splits + negative_split + hr drift + cadence drop from splits', function (): void {
+    // 53 minutes of moving time, so the sustained-effort metrics stay in play,
+    // and a 9% second-half surge, comfortably over the negative-split margin.
     $splits = [
         ['split' => 1, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 140, 'average_cadence' => 82],
-        ['split' => 2, 'distance' => 1000, 'moving_time' => 410, 'average_speed' => 2.44, 'average_heartrate' => 145, 'average_cadence' => 82],
-        ['split' => 3, 'distance' => 1000, 'moving_time' => 400, 'average_speed' => 2.50, 'average_heartrate' => 150, 'average_cadence' => 80],
-        ['split' => 4, 'distance' => 1000, 'moving_time' => 390, 'average_speed' => 2.56, 'average_heartrate' => 155, 'average_cadence' => 80],
+        ['split' => 2, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 142, 'average_cadence' => 82],
+        ['split' => 3, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 144, 'average_cadence' => 81],
+        ['split' => 4, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 146, 'average_cadence' => 81],
+        ['split' => 5, 'distance' => 1000, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 150, 'average_cadence' => 80],
+        ['split' => 6, 'distance' => 1000, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 152, 'average_cadence' => 80],
+        ['split' => 7, 'distance' => 1000, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 155, 'average_cadence' => 80],
+        ['split' => 8, 'distance' => 1000, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 158, 'average_cadence' => 80],
     ];
 
     $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
 
-    expect($summary['per_km'])->toHaveCount(4)
+    expect($summary['per_km'])->toHaveCount(8)
         ->and($summary['per_km'][0])->toMatchArray(['km' => 1, 'pace' => '7:00', 'avg_hr' => 140])
         ->and($summary)->not->toHaveKey('partial_split')
         ->and($summary['negative_split'])->toBeTrue()
-        ->and($summary['hr_drift_bpm'])->toBeFloat()->toEqualWithDelta(15.0, 0.01)
+        ->and($summary['hr_drift_bpm'])->toBeFloat()->toEqualWithDelta(18.0, 0.01)
         ->and($summary['cadence_drop_spm'])->toBeFloat()->toEqualWithDelta(4.0, 0.01);
+});
+
+it('measures pace variability as the spread of kilometre splits, not of the velocity stream', function (): void {
+    $splits = [
+        ['split' => 1, 'distance' => 1000, 'moving_time' => 473, 'average_speed' => 2.11],
+        ['split' => 2, 'distance' => 1000, 'moving_time' => 463, 'average_speed' => 2.16],
+        ['split' => 3, 'distance' => 1000, 'moving_time' => 484, 'average_speed' => 2.07],
+        ['split' => 4, 'distance' => 1000, 'moving_time' => 477, 'average_speed' => 2.10],
+        ['split' => 5, 'distance' => 1000, 'moving_time' => 458, 'average_speed' => 2.18],
+    ];
+
+    // Splits spanning 26 seconds: a steady run. The old per-second definition
+    // scored this kind of run near 95, far past every "uneven" threshold.
+    $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
+
+    expect($summary['pace_variability_sec'])->toBeFloat()->toBeLessThan(15.0);
+});
+
+it('omits pace variability below two full kilometres', function (): void {
+    $splits = [['split' => 1, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38]];
+
+    expect($this->analysis->compute([], defaultZones(), $splits, 170))
+        ->not->toHaveKey('pace_variability_sec');
+});
+
+it('omits hr drift on a run too short for drift to mean anything', function (): void {
+    // Four kilometres, 27 minutes: the HR gap between the first and last km here
+    // is warm-up and terrain, not cardiac drift.
+    $splits = [
+        ['split' => 1, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 140],
+        ['split' => 2, 'distance' => 1000, 'moving_time' => 410, 'average_speed' => 2.44, 'average_heartrate' => 145],
+        ['split' => 3, 'distance' => 1000, 'moving_time' => 400, 'average_speed' => 2.50, 'average_heartrate' => 150],
+        ['split' => 4, 'distance' => 1000, 'moving_time' => 390, 'average_speed' => 2.56, 'average_heartrate' => 155],
+    ];
+
+    expect($this->analysis->compute([], defaultZones(), $splits, 170))
+        ->not->toHaveKey('hr_drift_bpm');
+});
+
+it('requires a deliberate surge before calling a run a negative split', function (): void {
+    // Second half 5% quicker: real, but inside the band a flat run drifts into.
+    $splits = [
+        ['split' => 1, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38],
+        ['split' => 2, 'distance' => 1000, 'moving_time' => 410, 'average_speed' => 2.44],
+        ['split' => 3, 'distance' => 1000, 'moving_time' => 400, 'average_speed' => 2.50],
+        ['split' => 4, 'distance' => 1000, 'moving_time' => 390, 'average_speed' => 2.56],
+    ];
+
+    expect($this->analysis->compute([], defaultZones(), $splits, 170)['negative_split'])->toBeFalse();
 });
 
 it('emits the trailing sub-km segment as partial_split without touching per_km or aggregates', function (): void {
     $splits = [
         ['split' => 1, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 140, 'average_cadence' => 82],
-        ['split' => 2, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 145, 'average_cadence' => 82],
-        ['split' => 3, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 150, 'average_cadence' => 81],
-        ['split' => 4, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 152, 'average_cadence' => 81],
-        ['split' => 5, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 155, 'average_cadence' => 80],
-        ['split' => 6, 'distance' => 700, 'moving_time' => 252, 'average_speed' => 2.78, 'average_heartrate' => 158, 'average_cadence' => 80],
+        ['split' => 2, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 142, 'average_cadence' => 82],
+        ['split' => 3, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 145, 'average_cadence' => 81],
+        ['split' => 4, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 148, 'average_cadence' => 81],
+        ['split' => 5, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 150, 'average_cadence' => 80],
+        ['split' => 6, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 152, 'average_cadence' => 80],
+        ['split' => 7, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 154, 'average_cadence' => 80],
+        ['split' => 8, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 155, 'average_cadence' => 80],
+        ['split' => 9, 'distance' => 700, 'moving_time' => 252, 'average_speed' => 2.78, 'average_heartrate' => 158, 'average_cadence' => 80],
     ];
 
     $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
 
     // per_km stays full-km only; the partial rides on its own key.
-    expect($summary['per_km'])->toHaveCount(5)
+    expect($summary['per_km'])->toHaveCount(8)
         ->and($summary['partial_split'])->toBe([
             'distance_m' => 700,
             'pace' => '6:00',
@@ -386,7 +497,10 @@ it('omits cadence summary when all dt are zero (degenerate time array)', functio
     expect($summary)->not->toHaveKey('cadence_distribution_pct');
 });
 
-it('integrates altitude into ascent + descent meters', function (): void {
+// Ascent is deliberately absent: Strava's own total_elevation_gain is the one
+// elevation figure the UI and the narration quote, and a second stream-derived
+// number disagreed with it by more than 5 m on 40% of real runs.
+it('integrates altitude into descent meters without recomputing ascent', function (): void {
     $altitude = [100, 105, 110, 108, 115, 113];
     $summary = $this->analysis->compute(
         ['altitude' => ['data' => $altitude]],
@@ -395,10 +509,8 @@ it('integrates altitude into ascent + descent meters', function (): void {
         170,
     );
 
-    expect($summary)->toMatchArray([
-        'ascent_m' => 17,
-        'descent_m' => 4,
-    ]);
+    expect($summary)->toMatchArray(['descent_m' => 4])
+        ->and($summary)->not->toHaveKey('ascent_m');
 });
 
 /**
@@ -573,4 +685,31 @@ it('omits grade metrics when there is no grade stream', function (): void {
     expect($summary)->not->toHaveKey('max_grade_pct')
         ->and($summary)->not->toHaveKey('climb_time_pct')
         ->and($summary)->not->toHaveKey('gap_pace');
+});
+
+// Strava streams do not always arrive the same length. Judging "sustained" from
+// the full time array while decoupling only analyses the covered window would
+// certify 90 minutes and then report a ratio drawn from the first ten.
+it('judges sustained effort over the samples decoupling can actually analyse', function (): void {
+    $time = [];
+    $hr = [];
+    for ($t = 0; $t <= 5400; $t += 30) {
+        $time[] = $t;
+        $hr[] = $t < 2700 ? 140 : 150;
+    }
+    // Velocity cuts out after ten minutes.
+    $velocity = array_fill(0, 21, 2.5);
+
+    $summary = $this->analysis->compute(
+        [
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => $hr],
+            'velocity_smooth' => ['data' => $velocity],
+        ],
+        defaultZones(),
+        null,
+        170,
+    );
+
+    expect($summary)->not->toHaveKey('decoupling_pct');
 });

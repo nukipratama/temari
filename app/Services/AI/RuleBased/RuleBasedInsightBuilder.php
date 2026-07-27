@@ -8,6 +8,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -59,11 +60,6 @@ final readonly class RuleBasedInsightBuilder
     private const int GREY_ZONE_MAX_DISTANCE_M = 15000;
     private const int GREY_ZONE_PACE_MARGIN_SEC = 60; // current pace must be this much slower than threshold pace
 
-    // Pace variability (seconds)
-    private const int VARIABILITY_CONSISTENT = 8;
-    private const int VARIABILITY_MODERATE = 15;
-    private const int VARIABILITY_HIGH = 20;
-
     // Pace diff vs user average (sec/km)
     private const int PACE_DIFF_NOTICEABLE = 15;
     private const int PACE_DIFF_WIDE = 30;
@@ -106,7 +102,7 @@ final readonly class RuleBasedInsightBuilder
         $this->appendCadencePart($detail, $parts);
         $this->appendHrPart($detail, $parts);
         $this->appendDecouplingPart($detail, $summary, $parts);
-        $this->appendElevationPart($summary, $parts);
+        $this->appendElevationPart($detail, $parts);
         $this->appendPaceVariabilityPart($summary, $parts);
         $this->appendPaceComparisonPart($activity, $detail, $parts);
 
@@ -205,12 +201,11 @@ final readonly class RuleBasedInsightBuilder
     }
 
     /**
-     * @param  array<string, mixed>  $summary
      * @param  list<string>  $parts
      */
-    private function appendElevationPart(array $summary, array &$parts): void
+    private function appendElevationPart(ActivityDetail $detail, array &$parts): void
     {
-        $ascent = $summary['ascent_m'] ?? null;
+        $ascent = $detail->total_elevation_gain;
         if ($ascent !== null && (float) $ascent > 50) {
             $parts[] = 'elevation gain ' . ((int) $ascent) . 'm';
         }
@@ -222,8 +217,7 @@ final readonly class RuleBasedInsightBuilder
      */
     private function appendPaceVariabilityPart(array $summary, array &$parts): void
     {
-        $raw = $summary['pace_variability_sec'] ?? null;
-        if ($raw !== null && (float) $raw > self::VARIABILITY_HIGH) {
+        if (PaceConsistency::isNotablyUneven($summary['pace_variability_sec'] ?? null)) {
             $parts[] = 'pace agak bervariasi, coba jaga konsistensi';
         }
     }
@@ -416,16 +410,13 @@ final readonly class RuleBasedInsightBuilder
         }
 
         $raw = $summary['pace_variability_sec'] ?? null;
-        if ($raw === null) {
+        if (! PaceConsistency::isPraiseworthy($raw)) {
             return;
         }
 
-        $variability = (float) $raw;
-        if ($variability <= self::VARIABILITY_CONSISTENT) {
-            $parts[] = 'konsistensi pace sangat bagus';
-        } elseif ($variability <= self::VARIABILITY_MODERATE) {
-            $parts[] = 'konsistensi pace cukup baik';
-        }
+        $parts[] = PaceConsistency::isVeryEven($raw)
+            ? 'konsistensi pace sangat bagus'
+            : 'konsistensi pace cukup baik';
     }
 
     /**

@@ -235,3 +235,36 @@ it('classifies pace bands exactly at the floor boundaries', function (): void {
         ->and($matcher->paceBand(390.0))->toBe(PastYouMatcher::BAND_EASY)
         ->and($matcher->paceBand(389.9))->toBe(PastYouMatcher::BAND_THRESHOLD);
 });
+
+// The matcher takes the OLDEST qualifying run so the contrast reads as progress.
+// With no upper bound that reached the whole account: real narration compared a
+// runner to a session 2005 days earlier, which is a different person.
+it('ignores a comparison run older than a year', function (): void {
+    $user = User::factory()->create();
+    seedRun($user, Carbon::today()->subDays(400), 10_000, 4_500, ['weather_temp_c' => 27]);
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 27]);
+
+    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
+});
+
+it('still matches a run just inside the year boundary', function (): void {
+    $user = User::factory()->create();
+    seedRun($user, Carbon::today()->subDays(360), 10_000, 4_400, ['weather_temp_c' => 27]);
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 27]);
+
+    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+
+    expect($match)->not->toBeNull()
+        ->and($match['days_ago'])->toBe(360);
+});
+
+it('prefers a run inside the window over an older one', function (): void {
+    $user = User::factory()->create();
+    seedRun($user, Carbon::today()->subDays(900), 10_000, 4_440, ['weather_temp_c' => 27]);
+    seedRun($user, Carbon::today()->subDays(300), 10_000, 4_400, ['weather_temp_c' => 27]);
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 27]);
+
+    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+
+    expect($match['days_ago'])->toBe(300);
+});

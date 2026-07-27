@@ -12,6 +12,7 @@ use App\Models\ActivityStream;
 use App\Models\StravaConnection;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Gamification\MilestoneDetector;
+use App\Services\Run\Metrics\HeartRateZones;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\RunCardFactory;
@@ -278,6 +279,69 @@ class ActivityPipeline
     }
 
     /**
+     * Raise the athlete's max HR when a run beats it, and re-derive their zones.
+     *
+     * Max HR only ever arrived from a Strava sync or a manual edit, so a stale
+     * value quietly skewed every zone below it: an under-reported max drags the
+     * Z2/Z3 boundary down until ordinary easy runs read as tempo work, and that
+     * misreading propagates into effort badges, special moves and narration. The
+     * athlete's own peak is the one measurement that cannot be an underestimate.
+     *
+     * Runs oldest-first (as ingest does) and the profile climbs as it goes, so a
+     * backfill re-zones later activities against the corrected ceiling.
+     */
+    private function reconcileMaxHeartRate(Activity $activity, ActivityDetail $detail): void
+    {
+        $observed = $detail->max_heartrate;
+        if ($observed === null) {
+            return;
+        }
+
+        $observed = (int) round((float) $observed);
+        if (! HeartRateZones::isPlausibleMax($observed)) {
+            return;
+        }
+
+        $user = $activity->user;
+        $profile = $user->runnerProfile;
+
+        // Compare against whatever the athlete's zones are actually derived from
+        // today. Most athletes have no profile row at all -- one is only written
+        // by a manual zone edit or a Strava sync that returns custom zones -- so
+        // keying off the row alone would leave exactly the people running on the
+        // config default, the least personalised ceiling, never corrected.
+        $currentMax = $profile !== null ? $profile->max_hr : (int) config('runner.max_hr');
+        if ($observed <= $currentMax) {
+            return;
+        }
+
+        $restingHr = $profile !== null ? $profile->resting_hr : (int) config('runner.resting_hr');
+        $zones = HeartRateZones::derive($observed, $restingHr);
+
+        if ($profile === null) {
+            $user->runnerProfile()->create([
+                'source' => 'observed',
+                'max_hr' => $observed,
+                'resting_hr' => $restingHr,
+                'hr_zones' => $zones,
+                'optimal_cadence_spm' => (int) config('runner.optimal_cadence_spm'),
+            ]);
+
+            // The relation cached a null before the row existed.
+            $user->unsetRelation('runnerProfile');
+
+            return;
+        }
+
+        // Updating in place keeps the loaded relation current, so the zone read
+        // that follows sees the new bands without another query.
+        $profile->update([
+            'max_hr' => $observed,
+            'hr_zones' => $zones,
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>|null  $streams
      */
     private function computeAndStoreSummary(Activity $activity, ActivityDetail $detail, ?array $streams): void
@@ -285,6 +349,8 @@ class ActivityPipeline
         if ($streams === null) {
             return;
         }
+
+        $this->reconcileMaxHeartRate($activity, $detail);
 
         // Take the activity explicitly rather than via $detail->activity: during
         // ingest the row is still a stub, and the AnalyzedScope would resolve the

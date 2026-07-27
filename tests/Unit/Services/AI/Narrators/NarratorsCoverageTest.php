@@ -352,19 +352,22 @@ it('RunInsightNarrator feeds training-load + pace-variability + zone-minutes int
             'time_in_zone_pct' => ['Z2' => 70, 'Z3' => 30],
             'time_in_zone_min' => ['Z2' => 32, 'Z3' => 14],
             'pace_variability_sec' => 11.3,
-            'ascent_m' => 48,
             'max_grade_pct' => 9.5,
             'gap_pace' => '5:40',
         ],
+        'total_elevation_gain' => 48,
     ]);
 
     $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['trimp'])->toBe(92.4)
-        ->and($context['pace_variability_sec'])->toBe(11.3)
+        // Banded, never the raw figure: the model quoted "pace variability 68
+        // detik per km" at users, a number none of them can act on.
+        ->and($context['pace_consistency'])->toBe('cukup rata')
+        ->and($context)->not->toHaveKey('pace_variability_sec')
         ->and($context['time_in_zone_min'])->toBe(['Z2' => 32, 'Z3' => 14])
-        ->and($context['ascent_m'])->toBe(48)
+        ->and($context['elevation_gain_m'])->toBe(48.0)
         ->and($context['max_grade_pct'])->toBe(9.5)
         ->and($context['gap_pace'])->toBe('5:40')
         // Single-run fixture: relative_effort carries the raw TRIMP with no
@@ -450,7 +453,7 @@ it('RunInsightNarrator leaves the new context fields null when no stream summary
     $context = $narrator->context($a, $d->fresh());
 
     expect($context['trimp'])->toBeNull()
-        ->and($context['pace_variability_sec'])->toBeNull()
+        ->and($context['pace_consistency'])->toBeNull()
         ->and($context['time_in_zone_min'])->toBeNull();
 });
 

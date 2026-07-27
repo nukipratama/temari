@@ -35,6 +35,10 @@ Gamification isn't a page — it's an engine that runs as each activity is inges
 
 The rarity isn't a coin flip: [rarityScore](../../app/Services/Run/Story/RunCardFactory.php#L129) folds a handful of run signals (distance, pace, weather, the earned badge set, PRs) into a single number, and [rarityFromScore](../../app/Services/Run/Story/RunCardFactory.php#L168) buckets that number into a tier. Tune the tier boundaries there, not in the callers. The same rarity rank is what the featured-kartu picker ranks on, see [[vibe-and-mood]].
 
+**The badge count's contribution is capped.** Badges stack with circumstance rather than merit — a hot, rainy, pre-dawn long run collects several without being remarkable — so an uncapped count dominated the score and made Langka the single most common tier, covering half of all cards. The ceiling keeps badges as one signal among several rather than the deciding one.
+
+Effort badges are read against the athlete's max HR, so a stale max quietly distorts them: `keras` (hard) landed on 69% of runs while `santai` (easy) fired on none at all, since its 70%-of-max bar describes a recovery jog rather than the easy run a Z2 session actually is. Both thresholds now sit where runners would recognise the effort, and max HR self-corrects during ingest (see [[stream-analysis]]).
+
 The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()` and `badgeCountsForUser()` for the collection views.
 
 [SpecialMoves](../../app/Services/Run/Story/SpecialMoves.php) (`pick(...)`) deterministically chooses a thematic name (e.g. "Closing Kick", "Easy Miles", "Red Line") from buckets keyed on zone distribution and pace — same run, same name, every time.

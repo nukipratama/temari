@@ -33,12 +33,18 @@ Each derivation is independent and best-effort — a missing or too-short stream
 
 - **Time-in-zone** — minutes and percent of moving time per HR zone, time-weighted ([timeInZones](app/Services/Run/Ingest/StreamAnalysis.php#L182)).
 - **Best-effort paces** — fastest pace sustained over a fixed set of windows (30s … 60min), via a two-pointer sliding window that trims the trailing overshoot ([bestEffortPace](app/Services/Run/Ingest/StreamAnalysis.php#L110)).
-- **Aerobic decoupling** — how much the HR/pace ratio drifts up in the run's second half vs its first, ignoring stopped samples ([decoupling](app/Services/Run/Ingest/StreamAnalysis.php#L275)).
+- **Aerobic decoupling** — how much the HR/pace ratio drifts up in the run's second half vs its first, ignoring stopped samples ([decoupling](app/Services/Run/Ingest/StreamAnalysis.php#L275)). Only emitted above a **45-minute moving-time floor** ([isSustainedEffort](app/Services/Run/Ingest/StreamAnalysis.php#L423)): halving a shorter run leaves windows whose ratio moves on traffic and terrain, and narration reported that noise as cardiac drift. Moving time, not elapsed, so a long coffee stop can't qualify a short run.
 - **Cadence distribution** — share of time below / within / above a step-rate band, plus the share inside the runner's optimal window; the stream is single-foot rpm so it is doubled to SPM ([cadenceDistribution](app/Services/Run/Ingest/StreamAnalysis.php#L321)).
-- **Elevation** — total ascent / descent from the altitude stream ([elevation](app/Services/Run/Ingest/StreamAnalysis.php#L156)).
-- **Pace variability** and **stopped time** — pace spread and time/count below the stop-velocity threshold ([paceVariability](app/Services/Run/Ingest/StreamAnalysis.php#L219), [stoppedTime](app/Services/Run/Ingest/StreamAnalysis.php#L241)).
+- **Elevation** — descent only, from the altitude stream ([elevation](app/Services/Run/Ingest/StreamAnalysis.php#L156)). Ascent is **not** recomputed: Strava's own `total_elevation_gain` is the single canonical figure, since it is what the UI shows and what narration quotes. The two disagreed by more than 5 m on 40% of real runs.
+- **Stopped time** — time and count below the stop-velocity threshold ([stoppedTime](app/Services/Run/Ingest/StreamAnalysis.php#L241)).
 
-When Strava's `splits_metric` is present, four more derivations attach ([splits block](app/Services/Run/Ingest/StreamAnalysis.php#L49)): a **per-km table** (pace, avg HR, avg cadence) ([perKm](app/Services/Run/Ingest/StreamAnalysis.php#L365)), **HR drift** and **cadence drop** from first to last full km ([hrDrift](app/Services/Run/Ingest/StreamAnalysis.php#L472), [cadenceDrop](app/Services/Run/Ingest/StreamAnalysis.php#L491)), and a **negative-split** flag requiring a real margin so a flat run can't coin-flip into it ([negativeSplit](app/Services/Run/Ingest/StreamAnalysis.php#L511)). Strava omits cadence from `splits_metric`, so per-km cadence is back-filled by bucketing the cadence stream over cumulative distance ([perKmCadenceFromStream](app/Services/Run/Ingest/StreamAnalysis.php#L405)) and decorating the rows ([attach](app/Services/Run/Ingest/StreamAnalysis.php#L448)).
+When Strava's `splits_metric` is present, five more derivations attach ([splits block](app/Services/Run/Ingest/StreamAnalysis.php#L49)): a **per-km table** (pace, avg HR, avg cadence) ([perKm](app/Services/Run/Ingest/StreamAnalysis.php#L365)), **HR drift** and **cadence drop** from first to last full km ([hrDrift](app/Services/Run/Ingest/StreamAnalysis.php#L472), [cadenceDrop](app/Services/Run/Ingest/StreamAnalysis.php#L491)), a **negative-split** flag, and **pace variability**.
+
+**Pace variability** is the spread of the *per-km split* paces ([paceVariability](app/Services/Run/Ingest/StreamAnalysis.php#L385)), needing two full kilometres. It is deliberately not the spread of the instantaneous velocity stream: that samples every GPS wobble and traffic light, so on real runs it landed an order of magnitude above the thresholds reading it, and every run in the corpus scored as ragged. The bands live in [PaceConsistency](app/Services/Run/Metrics/PaceConsistency.php#L16), which is also the only thing narration sees — the raw figure is never handed to the model, because it quoted it verbatim at users.
+
+The **negative-split** margin ([negativeSplit](app/Services/Run/Ingest/StreamAnalysis.php#L511)) is fitted rather than assumed: the original 1.5% fired on a third of all runs, so it was raised until finishing strong reads as deliberate rather than as the default outcome.
+
+Strava omits cadence from `splits_metric`, so per-km cadence is back-filled by bucketing the cadence stream over cumulative distance ([perKmCadenceFromStream](app/Services/Run/Ingest/StreamAnalysis.php#L405)) and decorating the rows ([attach](app/Services/Run/Ingest/StreamAnalysis.php#L448)).
 
 ## Output shape (the contract)
 
@@ -47,8 +53,8 @@ Downstream consumers key into specific fields, so the shape is a contract. The p
 - `time_in_zone_min` / `time_in_zone_pct` — minutes and percent per zone (keyed `Z1..Z5`).
 - `per_km[]` — rows of `{ km, pace, avg_hr?, avg_cadence_spm? }` ([type](resources/js/types/inertia.ts#L161)).
 - `best_{window}_pace` — e.g. `best_60min_pace`, as `"M:SS"` strings.
-- `decoupling_pct`, `hr_drift_bpm`, `cadence_drop_spm`, `negative_split` (bool).
-- `cadence_distribution_pct`, `optimal_cadence_pct`, `pace_variability_sec`, `stopped_time_sec`, `stop_count`, `ascent_m`, `descent_m`.
+- `decoupling_pct`, `hr_drift_bpm` (both absent below the 45-minute floor), `cadence_drop_spm`, `negative_split` (bool).
+- `cadence_distribution_pct`, `optimal_cadence_pct`, `pace_variability_sec` (absent below two full km), `stopped_time_sec`, `stop_count`, `descent_m`. Ascent comes from `ActivityDetail::$total_elevation_gain`, not from this blob.
 
 Read via the [streamSummary](app/Models/ActivityDetail.php#L115) accessor (null-safe to `[]`).
 
