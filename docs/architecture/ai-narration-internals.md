@@ -50,7 +50,13 @@ The four narrators that speak about a *day* rather than a run take the same shap
 
 The daily greeting keeps its `vibe` in the context, because the *caller* decides which vibe the greeting is for — a tool that recomputed it would be a second source of truth that could disagree. It gains `get_week_state`, so a "you haven't run in a while" greeting can finally tell three days from three weeks.
 
-The recap and profile narrators still build a full context up front; they are converted family by family.
+### The recaps
+
+Weekly, monthly and trend-caption narration held its arithmetic *in the narrator*: month bounds, per-week distance buckets, the mood mix, the fitness arc, the twelve-week series and its four-week deltas. That computation moved wholesale into [MonthTotalsTool](app/Services/AI/Agent/Tools/MonthTotalsTool.php), [WeekTotalsTool](app/Services/AI/Agent/Tools/WeekTotalsTool.php) and [WeeklyTrendTool](app/Services/AI/Agent/Tools/WeeklyTrendTool.php), which is why these three narrators lost more lines than they gained.
+
+The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string — so a recap can only ever count the period it was asked about. Weekly and monthly send just the continuity line; the trend caption sends **nothing at all**, since the whole caption is a read.
+
+The profile narrators still build a full context up front.
 
 ### BriefingContext (per-user-day signals)
 

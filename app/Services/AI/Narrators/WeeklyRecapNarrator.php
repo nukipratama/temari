@@ -8,9 +8,10 @@ use App\Models\AI\Analysis;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
-use App\Services\Run\Metrics\PaceCalculator;
 
 class WeeklyRecapNarrator
 {
@@ -67,38 +68,25 @@ class WeeklyRecapNarrator
             context: $this->context($snapshot),
             schemaName: 'TemariWeeklyRecap',
             requiredKeys: ['narrative'],
-            options: new ChatCallOptions(temperature: 0.7, userId: $snapshot->user_id, maxTokens: 1500),
+            options: new ChatCallOptions(
+                temperature: 0.7,
+                userId: $snapshot->user_id,
+                maxTokens: 1500,
+                toolbox: new AgentToolbox([new WeekTotalsTool($snapshot)]),
+            ),
         );
 
         return (string) $decoded['narrative'];
     }
 
     /**
-     * @return array{week_ending: string, runs: int|null, distance_km: float|null, pace_sec_per_km: float|null, weekly_trimp: float|null, ctl_42d: float|null, atl_7d: float|null, form: float|null, form_status: string|null, monotony: float|null, strain: float|null, avg_decoupling: float|null, prev_runs: int|null, prev_distance_km: float|null, prev_pace_sec_per_km: float|null, prev_narrative: string|null, prev_opener: string|null}
+     * Only the continuity line: the week's own numbers are a tool call.
+     *
+     * @return array<string, mixed>
      */
     public function context(WeeklySnapshot $snapshot): array
     {
-        $previous = $this->previousWeek($snapshot);
-        $prevNarrative = $this->prevNarrative($snapshot);
-
-        return [
-            'week_ending' => $snapshot->week_ending->toDateString(),
-            'runs' => $snapshot->runs,
-            'distance_km' => $snapshot->distance_km,
-            'pace_sec_per_km' => $this->paceFor($snapshot),
-            'weekly_trimp' => $snapshot->weekly_trimp,
-            'ctl_42d' => $snapshot->ctl_42d,
-            'atl_7d' => $snapshot->atl_7d,
-            'form' => $snapshot->form,
-            'form_status' => $snapshot->form_status,
-            'monotony' => $snapshot->monotony,
-            'strain' => $snapshot->strain,
-            'avg_decoupling' => $snapshot->avg_decoupling,
-            'prev_runs' => $previous?->runs,
-            'prev_distance_km' => $previous?->distance_km,
-            'prev_pace_sec_per_km' => $previous === null ? null : $this->paceFor($previous),
-            ...NarratorContinuity::fields($prevNarrative),
-        ];
+        return NarratorContinuity::fields($this->prevNarrative($snapshot));
     }
 
     /**
@@ -134,20 +122,5 @@ class WeeklyRecapNarrator
             ->value('content');
     }
 
-    private function paceFor(WeeklySnapshot $snapshot): ?float
-    {
-        return PaceCalculator::secPerKm(
-            $snapshot->distance_km === null ? null : $snapshot->distance_km * 1000,
-            $snapshot->moving_time_sec,
-        );
-    }
 
-    /** The user's snapshot for the week ending 7 days before this one, if any. */
-    private function previousWeek(WeeklySnapshot $snapshot): ?WeeklySnapshot
-    {
-        return WeeklySnapshot::query()
-            ->where('user_id', $snapshot->user_id)
-            ->whereDate('week_ending', $snapshot->week_ending->copy()->subWeek())
-            ->first();
-    }
 }

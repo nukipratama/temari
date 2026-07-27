@@ -14,6 +14,9 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Agent\Tools\MonthTotalsTool;
+use App\Services\AI\Agent\Tools\WeekTotalsTool;
+use App\Services\AI\Agent\Tools\WeeklyTrendTool;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\BriefingNarrator;
@@ -479,7 +482,7 @@ it('WeeklyRecapNarrator throws on non-JSON', function (): void {
     $narrator->generate($snap);
 })->throws(UnavailableException::class, 'non-JSON');
 
-it('WeeklyRecapNarrator feeds the previous week deltas when a prior snapshot exists', function (): void {
+it('WeekTotalsTool reads the previous week deltas when a prior snapshot exists', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => '2026-05-10', 'distance_km' => 20.0, 'runs' => 3, 'moving_time_sec' => 7200,
@@ -488,7 +491,7 @@ it('WeeklyRecapNarrator feeds the previous week deltas when a prior snapshot exi
         'week_ending' => '2026-05-17', 'distance_km' => 28.0, 'runs' => 4, 'moving_time_sec' => 9600,
     ]);
 
-    $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
+    $context = new WeekTotalsTool($current)->handle([]);
 
     expect($context['prev_distance_km'])->toBe(20.0)
         ->and($context['prev_runs'])->toBe(3)
@@ -499,12 +502,11 @@ it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', fun
     $user = User::factory()->create();
     $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
 
-    $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($current);
+    $context = new WeekTotalsTool($current)->handle([]);
 
     expect($context['prev_distance_km'])->toBeNull()
         ->and($context['prev_runs'])->toBeNull()
-        ->and($context['prev_pace_sec_per_km'])->toBeNull()
-        ->and($context['prev_narrative'])->toBeNull();
+        ->and($context['prev_pace_sec_per_km'])->toBeNull();
 });
 
 it('WeeklyRecapNarrator feeds prev_narrative when the prior week recap is Done', function (): void {
@@ -540,13 +542,13 @@ it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not ye
     expect($context['prev_narrative'])->toBeNull();
 });
 
-it('WeeklyRecapNarrator feeds avg_decoupling into the context', function (): void {
+it('WeekTotalsTool reads avg_decoupling for the week', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => '2026-05-17', 'avg_decoupling' => 6.4,
     ]);
 
-    $context = new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($snap);
+    $context = new WeekTotalsTool($snap)->handle([]);
 
     expect($context['avg_decoupling'])->toBe(6.4);
 });
@@ -632,7 +634,7 @@ it('TrendCaptionNarrator throws on non-JSON', function (): void {
     $narrator->generate($user, Carbon::today());
 })->throws(UnavailableException::class, 'non-JSON');
 
-it('TrendCaptionNarrator derives the 4-week CTL + volume deltas', function (): void {
+it('WeeklyTrendTool derives the 4-week CTL + volume deltas', function (): void {
     $user = User::factory()->create();
     // 8 weeks of data: CTL climbs 30 -> 44, volume recent 4w sum vs prior 4w sum.
     $ctls = [30, 32, 34, 36, 38, 40, 42, 44];
@@ -645,8 +647,7 @@ it('TrendCaptionNarrator derives the 4-week CTL + volume deltas', function (): v
         ]);
     }
 
-    $context = new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class))
-        ->context($user, Carbon::parse('2026-05-01'));
+    $context = new WeeklyTrendTool($user, Carbon::parse('2026-05-01'), app(TrainingLoad::class))->handle([]);
 
     // CTL: latest 44 minus the one 4 weeks earlier (36) = 8.0.
     expect($context['ctl_delta_4w'])->toBe(8.0)
@@ -654,32 +655,52 @@ it('TrendCaptionNarrator derives the 4-week CTL + volume deltas', function (): v
         ->and($context['volume_prev_4w_km'])->toBe(40.0);   // 10*4
 });
 
-it('TrendCaptionNarrator flags weeks that contain a personal record', function (): void {
+it('WeeklyTrendTool flags weeks that contain a personal record', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'distance_km' => 20, 'ctl_42d' => 30]);
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'distance_km' => 25, 'ctl_42d' => 33]);
     // A PR set on Thu 2026-05-14 falls in the week ending Sun 2026-05-17.
     PersonalRecord::factory()->for($user)->create(['set_at' => Carbon::parse('2026-05-14T06:00')]);
 
-    $context = new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class))
-        ->context($user, Carbon::parse('2026-05-18'));
+    $context = new WeeklyTrendTool($user, Carbon::parse('2026-05-18'), app(TrainingLoad::class))->handle([]);
 
     $weeks = collect($context['weeks']);
     expect($weeks->firstWhere('ending', '2026-05-17')['pr'])->toBeTrue()
         ->and($weeks->firstWhere('ending', '2026-05-10')['pr'])->toBeFalse();
 });
 
-it('TrendCaptionNarrator leaves the 4-week deltas null without enough history', function (): void {
+it('WeeklyTrendTool leaves the 4-week deltas null without enough history', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => '2026-05-03', 'distance_km' => 12, 'ctl_42d' => 30,
     ]);
 
-    $context = new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class))
-        ->context($user, Carbon::parse('2026-05-04'));
+    $context = new WeeklyTrendTool($user, Carbon::parse('2026-05-04'), app(TrainingLoad::class))->handle([]);
 
     expect($context['ctl_delta_4w'])->toBeNull()
         ->and($context['volume_recent_4w_km'])->toBeNull();
+});
+
+it('WeeklyRecapNarrator sends only the continuity line and reads the week', function (): void {
+    $user = User::factory()->create();
+    $snapshot = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
+
+    expect(array_keys(new WeeklyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($snapshot)))
+        ->toBe(NarratorContinuity::CONTEXT_KEYS);
+});
+
+it('MonthlyRecapNarrator sends only the continuity line and reads the month', function (): void {
+    $user = User::factory()->create();
+
+    expect(array_keys(new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05')))
+        ->toBe(NarratorContinuity::CONTEXT_KEYS);
+});
+
+it('TrendCaptionNarrator sends nothing at all, since the caption is entirely a read', function (): void {
+    $user = User::factory()->create();
+
+    expect(new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class))
+        ->context($user, Carbon::today()))->toBe([]);
 });
 
 // ── CardFlavorNarrator ────────────────────────────────────────────────
@@ -820,7 +841,7 @@ it('PersonaSummaryNarrator splits the persona mix into recent vs earlier halves'
 
 // ── MonthlyRecapNarrator ──────────────────────────────────────────────
 
-it('MonthlyRecapNarrator pulls month totals + mood mix into the context payload', function (): void {
+it('MonthTotalsTool reads month totals and the mood mix', function (): void {
     $user = User::factory()->create();
     $month = '2026-05';
 
@@ -835,10 +856,7 @@ it('MonthlyRecapNarrator pulls month totals + mood mix into the context payload'
         'created_at' => Carbon::parse('2026-05-12T08:00'),
     ]);
 
-    $caller = fakeCaller(json_encode(['narrative' => 'Bulan ini mostly nyala.'], JSON_THROW_ON_ERROR));
-    $narrator = new MonthlyRecapNarrator($caller);
-
-    $context = $narrator->context($user, $month);
+    $context = new MonthTotalsTool($user, $month)->handle([]);
     expect($context['month'])->toBe('2026-05');
     expect($context['total_runs'])->toBe(1);
     expect($context['total_distance_km'])->toBe(8.0);
@@ -846,10 +864,12 @@ it('MonthlyRecapNarrator pulls month totals + mood mix into the context payload'
     expect($context['mood_mix'][0]['mood'])->toBe('nyala');
     expect($context['pr_count'])->toBe(0);
     expect($context['weekly_distance_km'])->toBeArray();
-    expect($narrator->generate($user, $month))->toBe('Bulan ini mostly nyala.');
+
+    expect(new MonthlyRecapNarrator(fakeCaller('{"narrative":"Bulan ini mostly nyala."}'))->generate($user, $month))
+        ->toBe('Bulan ini mostly nyala.');
 });
 
-it('MonthlyRecapNarrator counts PRs and buckets distance by week within the month', function (): void {
+it('MonthTotalsTool counts PRs and buckets distance by week within the month', function (): void {
     $user = User::factory()->create();
     $month = '2026-05';
 
@@ -865,14 +885,14 @@ it('MonthlyRecapNarrator counts PRs and buckets distance by week within the mont
         'category' => '5km', 'set_at' => Carbon::parse('2026-05-19T06:30'),
     ]);
 
-    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, $month);
+    $context = new MonthTotalsTool($user, $month)->handle([]);
 
     expect($context['pr_count'])->toBe(1)
         ->and($context['weekly_distance_km'][0])->toBe(6.0)
         ->and($context['weekly_distance_km'][2])->toBe(10.0);
 });
 
-it('MonthlyRecapNarrator reads the CTL fitness arc from the month snapshots', function (): void {
+it('MonthTotalsTool reads the CTL fitness arc from the month snapshots', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => '2026-05-03', 'ctl_42d' => 30.0, 'form_status' => 'optimal',
@@ -881,7 +901,7 @@ it('MonthlyRecapNarrator reads the CTL fitness arc from the month snapshots', fu
         'week_ending' => '2026-05-31', 'ctl_42d' => 38.0, 'form_status' => 'fresh',
     ]);
 
-    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
+    $context = new MonthTotalsTool($user, '2026-05')->handle([]);
 
     expect($context['fitness'])->toMatchArray([
         'ctl_start' => 30.0,
@@ -890,10 +910,10 @@ it('MonthlyRecapNarrator reads the CTL fitness arc from the month snapshots', fu
     ]);
 });
 
-it('MonthlyRecapNarrator leaves fitness null when the month has no snapshots', function (): void {
+it('MonthTotalsTool leaves fitness null when the month has no snapshots', function (): void {
     $user = User::factory()->create();
 
-    $context = new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
+    $context = new MonthTotalsTool($user, '2026-05')->handle([]);
 
     expect($context['fitness'])->toBeNull();
 });
