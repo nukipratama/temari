@@ -80,7 +80,7 @@ it('names every tool in snake_case with a description the model can choose on', 
         new EffortContextTool($a, $d, app(RelativeEffort::class)),
         new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad()),
         new RecentBaselineTool($a->user, $d->start_date_local, new RunBaseline()),
-        new TrainingPacesTool($a, $d, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
+        new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
     ];
 
     foreach ($tools as $tool) {
@@ -298,7 +298,7 @@ it('reads easy and threshold paces derived from the runner VDOT', function (): v
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     PersonalRecord::factory()->for($a->user)->create(['category' => '5km', 'value_sec' => 1200]);
 
-    $reading = new TrainingPacesTool($a, $d, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
+    $reading = new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($reading['easy_pace_sec'])->toBeInt()
         ->and($reading['threshold_pace_sec'])->toBeInt()
@@ -308,7 +308,7 @@ it('reads easy and threshold paces derived from the runner VDOT', function (): v
 it('reads null paces when the runner has no VDOT-eligible PR', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
 
-    $reading = new TrainingPacesTool($a, $d, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
+    $reading = new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($reading['easy_pace_sec'])->toBeNull()
         ->and($reading['threshold_pace_sec'])->toBeNull();

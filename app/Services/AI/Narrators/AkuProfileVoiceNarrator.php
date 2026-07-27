@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
-use App\Enums\PrCategory;
-use App\Models\ActivityDetail;
-use App\Models\PersonalRecord;
 use App\Models\User;
-use App\Models\UserUnlock;
-use App\Models\WeeklySnapshot;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\LifetimeStatsTool;
+use App\Services\AI\Agent\Tools\ProgressionSignalTool;
+use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\LifetimeStats;
@@ -73,152 +72,38 @@ class AkuProfileVoiceNarrator
             context: $context,
             schemaName: 'TemariProfileVoice',
             requiredKeys: ['profile_voice'],
-            options: new ChatCallOptions(temperature: 0.75, userId: $user->id, maxTokens: 1500),
+            options: new ChatCallOptions(
+                temperature: 0.75,
+                userId: $user->id,
+                maxTokens: 1500,
+                toolbox: $this->toolbox($user),
+            ),
         );
 
         return (string) $decoded['profile_voice'];
     }
 
     /**
+     * Nothing: every number the profile voice speaks is a read.
+     *
      * @return array<string, mixed>
      */
     public function context(User $user): array
     {
-        // Reuse the cached lifetime aggregate shared with /kalender so the two
-        // surfaces never drift, instead of recomputing SUM/MAX/MIN here.
-        $lifetime = $this->lifetimeStats->forUser($user);
-        $totalRuns = $lifetime['total_runs'];
-        $totalKm = $lifetime['total_km'];
-        $longestKm = $lifetime['longest_km'];
-        $firstRunAt = $lifetime['first_run_at'];
-        $monthsSince = $firstRunAt !== null ? (int) Carbon::parse($firstRunAt)->diffInMonths(now()) : null;
-
-        $prCount = PersonalRecord::query()->where('user_id', $user->id)->count();
-        $unlockCount = UserUnlock::query()->where('user_id', $user->id)->count();
-        $totalAccessories = count(config('temari_unlocks', []));
-
-        $vdot = $this->vdotEstimator->estimate($user);
-        $vdotScore = $vdot['vdot'] ?? null;
-        $paces = $this->trainingPaceCalculator->fromVdotResult($vdot);
-
-        $progressionSignal = $this->buildProgressionSignal($user);
-
-        return [
-            'name' => $user->first_name ?? $user->name,
-            'total_runs' => $totalRuns,
-            'total_km' => $totalKm,
-            'longest_run_km' => $longestKm,
-            'months_running' => $monthsSince,
-            'pr_count' => $prCount,
-            'unlocked_accessories' => $unlockCount,
-            'total_accessories' => $totalAccessories,
-            'weekly_streak' => WeeklySnapshot::consecutiveWeekStreak($user->id),
-            'favorite_time' => $this->favoriteTimeBucket($user),
-            'strava_connected' => $user->stravaConnection !== null,
-            'vdot' => $vdotScore,
-            'easy_pace_sec' => $paces['easy'] ?? null,
-            'marathon_pace_sec' => $paces['marathon'] ?? null,
-            'threshold_pace_sec' => $paces['threshold'] ?? null,
-            'interval_pace_sec' => $paces['interval'] ?? null,
-            'progression_signal' => $progressionSignal,
-            'form_status' => WeeklySnapshot::latestFormStatus($user->id),
-        ];
+        return [];
     }
 
-    /**
-     * The time-of-day bucket (pagi/siang/sore/malam) the user runs in most
-     * often, or null when they have no timestamped runs.
-     */
-    private function favoriteTimeBucket(User $user): ?string
+    public function toolbox(User $user): AgentToolbox
     {
-        $byHour = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->whereNotNull('start_date_local')
-            ->selectRaw('HOUR(start_date_local) AS h, COUNT(*) AS c')
-            ->groupBy('h')
-            ->pluck('c', 'h');
+        $asOf = Carbon::now();
 
-        if ($byHour->isEmpty()) {
-            return null;
-        }
-
-        $buckets = ['pagi' => 0, 'siang' => 0, 'sore' => 0, 'malam' => 0];
-        foreach ($byHour as $hour => $count) {
-            $buckets[$this->timeBucket((int) $hour)] += (int) $count;
-        }
-
-        return array_keys($buckets, max($buckets))[0];
+        return new AgentToolbox([
+            new LifetimeStatsTool($user, $asOf, $this->lifetimeStats),
+            new TrainingPacesTool($user, $asOf, $this->vdotEstimator, $this->trainingPaceCalculator),
+            new ProgressionSignalTool($user, $asOf, $this->progressionSeriesBuilder),
+        ]);
     }
 
-    private function timeBucket(int $hour): string
-    {
-        return match (true) {
-            $hour >= 4 && $hour < 10 => 'pagi',
-            $hour >= 10 && $hour < 15 => 'siang',
-            $hour >= 15 && $hour < 19 => 'sore',
-            default => 'malam',
-        };
-    }
 
-    /**
-     * Pick the distance category with the biggest absolute improvement
-     * and return its label + delta, so Temari can mention it.
-     *
-     * @return array{label: string, delta_sec: int}|null
-     */
-    private function buildProgressionSignal(User $user): ?array
-    {
-        $categories = [
-            PrCategory::Km5,
-            PrCategory::Km10,
-            PrCategory::HalfMarathon,
-            PrCategory::Marathon,
-        ];
 
-        $records = PersonalRecord::query()
-            ->where('user_id', $user->id)
-            ->whereIn('category', $categories)
-            ->orderBy('category')
-            ->get();
-
-        if ($records->isEmpty()) {
-            return null;
-        }
-
-        $best = null;
-        $bestDelta = 0;
-
-        foreach ($categories as $category) {
-            $pr = $records->first(fn (PersonalRecord $r): bool => $r->category === $category);
-            if ($pr === null) {
-                continue;
-            }
-
-            $series = $this->progressionSeriesBuilder->buildMany($user, [$pr], fn () => null);
-            $key = $category->value;
-            $data = $series[$key] ?? null;
-
-            if ($data === null) {
-                continue;
-            }
-
-            if (count($data['times_sec']) < 2) {
-                continue;
-            }
-
-            $worst = max($data['times_sec']);
-            $bestTime = min($data['times_sec']);
-            $delta = (int) ($worst - $bestTime);
-
-            if ($delta > $bestDelta) {
-                $bestDelta = $delta;
-                $best = [
-                    'label' => $pr->category->label(),
-                    'delta_sec' => $delta,
-                ];
-            }
-        }
-
-        return $best;
-    }
 }
