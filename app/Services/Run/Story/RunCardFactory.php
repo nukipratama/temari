@@ -270,10 +270,13 @@ class RunCardFactory
      * Compute all badges for a run. Split into original + expanded badge groups
      * to keep cognitive complexity manageable.
      *
+     * Public so a recalibration comparison can score a run against a summary it
+     * has recomputed in memory, rather than the one stored on the row.
+     *
      * @param  array<string, mixed>  $summary
      * @return list<string>
      */
-    private function badges(Activity $activity, ActivityDetail $detail, array $summary): array
+    public function badges(Activity $activity, ActivityDetail $detail, array $summary): array
     {
         $badges = $this->originalBadges($detail, $summary);
         $streak = $this->consecutiveDaysBefore($activity);
