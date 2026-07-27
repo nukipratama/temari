@@ -3,9 +3,12 @@ title: AI narration internals — context builders & rule-based fallback
 description: How prompt signals are assembled (context builders) and how copy is produced without the LLM (rule-based fallback + demo seed).
 tags: [architecture, ai]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-07-27
 code_refs:
   - app/Services/AI/Context/ActivityNarrationContext.php
+  - app/Services/AI/Agent/AgentToolbox.php
+  - app/Services/AI/Agent/Tools/ActivityTool.php
+  - app/Services/AI/Narrators/RunInsightNarrator.php
   - app/Services/Run/Story/BriefingContext.php
   - app/Services/Run/Story/MetricsContext.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
@@ -27,7 +30,15 @@ A narrator's prompt is two halves: a static system prompt plus a per-subject **c
 
 [ActivityNarrationContext](app/Services/AI/Context/ActivityNarrationContext.php) is built once per narration call from an `ActivityDetail` ([`fromDetail`](app/Services/AI/Context/ActivityNarrationContext.php#L32)) and collects the run-level signals more than one narrator needs: distance, decoupling, negative-split flag, time-in-zone percentages, and the weather (temp / rain). It also exposes the km conversions ([`distanceKm`](app/Services/AI/Context/ActivityNarrationContext.php#L50), [`distanceKmOrNull`](app/Services/AI/Context/ActivityNarrationContext.php#L59)) so every consumer rounds distance the same way. The exact field list is the constructor — read it there, don't trust this prose.
 
-It is shared by the run-insight, post-run-speech, and card-flavor narrators (e.g. [RunInsightNarrator](app/Services/AI/Narrators/RunInsightNarrator.php#L131)). Each narrator still adds its *own* keys (mood, PR flags, cadence, rarity, …) on top; the shared object only owns the cross-narrator signals so those stay identical across prompts. See [[vibe-and-mood]] for the per-narrator mood layer and [[cards-collection]] for card flavor.
+It is shared by the run-insight, post-run-speech, and card-flavor narrators. Each narrator still adds its *own* keys (mood, PR flags, cadence, rarity, …) on top; the shared object only owns the cross-narrator signals so those stay identical across prompts. See [[vibe-and-mood]] for the per-narrator mood layer and [[cards-collection]] for card flavor.
+
+### Agent tools — signals the model fetches instead of receiving
+
+Run insight no longer takes a pre-computed context at all. Its prompt carries only the continuity line, and every number reaches the model through a tool it chose to call ([RunInsightNarrator::toolbox()](app/Services/AI/Narrators/RunInsightNarrator.php)). The tools are thin readers over the same sources the context object used — several of them wrap `ActivityNarrationContext` — so the signals are identical; what changed is that a run with no heart rate or no elevation no longer pays prompt tokens for the nulls.
+
+Each tool is bound to its activity at construction and declares an argument-free schema ([ActivityTool](app/Services/AI/Agent/Tools/ActivityTool.php)), which is how cross-user reads are prevented: there is no id to pass. The loop, its ceilings, and why the model gets an error payload rather than a failed block are in [[narration-agents-on-openai-php]].
+
+The other narrators still build a full context up front; they are converted one at a time.
 
 ### BriefingContext (per-user-day signals)
 

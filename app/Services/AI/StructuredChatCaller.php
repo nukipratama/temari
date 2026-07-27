@@ -7,6 +7,8 @@ namespace App\Services\AI;
 use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
+use App\Services\AI\Agent\AgentBudget;
+use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Narrators\NarratorContinuity;
 use Illuminate\Support\Facades\Log;
 use JsonException;
@@ -15,6 +17,7 @@ use OpenAI\Exceptions\RateLimitException;
 use OpenAI\Exceptions\ServerException;
 use OpenAI\Exceptions\TransporterException;
 use OpenAI\Responses\Responses\CreateResponse;
+use OpenAI\Responses\Responses\Output\OutputFunctionToolCall;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
@@ -23,6 +26,12 @@ use Throwable;
  * request, structured-JSON decoding, logging, and exception mapping that every
  * narrator otherwise duplicates. The Responses surface (vs chat completions) is
  * what serves both chat and reasoning/codex deployments.
+ *
+ * With a toolbox on the options the same call becomes an agent run: the model
+ * is offered reads and keeps its turn until it stops asking for them, bounded
+ * by {@see AgentBudget}. Every guarantee a one-shot call carries — the
+ * content-filter strip-retry, the truncation retry, the exception taxonomy,
+ * metering — holds across the whole run, and the metering row sums it.
  */
 final readonly class StructuredChatCaller
 {
@@ -56,6 +65,8 @@ final readonly class StructuredChatCaller
         $startedAt = microtime(true);
         $effectiveMaxTokens = $options->maxTokens ?? (int) config('azure_openai.max_completion_tokens');
         $deployment = $this->azure->deploymentFor($kind);
+        $toolbox = $options->toolbox !== null && ! $options->toolbox->isEmpty() ? $options->toolbox : null;
+        $budget = AgentBudget::fromConfig();
 
         $payload = [
             'model' => $deployment,
@@ -68,12 +79,19 @@ final readonly class StructuredChatCaller
             'text' => ['format' => self::textFormat($schemaName, $requiredKeys)],
         ];
 
+        if ($toolbox !== null) {
+            $payload['tools'] = $toolbox->definitions();
+        }
+
         try {
-            $response = $this->createResponse($kind, $payload, $startedAt);
+            [$response, $input] = $this->converse($kind, $payload, $toolbox, $budget, $startedAt);
         } catch (ContentFilterException $e) {
             // A stored continuity line fed back as input can trip Azure's filter.
             // Strip the continuity keys and retry once against the clean context;
-            // if the retry still content-filters, let it propagate.
+            // if the retry still content-filters, let it propagate. The retry
+            // restarts the conversation from the two base messages — a filtered
+            // run's tool outputs are not worth replaying — but keeps the budget,
+            // since the tokens it already burned were still billed.
             $strippedKeys = array_values(array_intersect(NarratorContinuity::CONTEXT_KEYS, array_keys($context)));
             if ($strippedKeys === []) {
                 throw $e;
@@ -87,11 +105,13 @@ final readonly class StructuredChatCaller
                 'stripped_keys' => $strippedKeys,
             ]);
 
-            $response = $this->createResponse($kind, $payload, $startedAt);
+            [$response, $input] = $this->converse($kind, $payload, $toolbox, $budget, $startedAt);
         }
 
         // Truncated structured output is unparseable, so retry once at a higher
-        // token cap, bounded by self::MAX_RETRY_OUTPUT_TOKENS.
+        // token cap, bounded by self::MAX_RETRY_OUTPUT_TOKENS. The retry replays
+        // the conversation as it stands and forbids further tools, so the extra
+        // budget buys the answer rather than another read.
         if (self::isTruncated($response)) {
             $retryMaxTokens = min((int) ceil($effectiveMaxTokens * 1.5), self::MAX_RETRY_OUTPUT_TOKENS);
             if ($retryMaxTokens > $effectiveMaxTokens) {
@@ -101,8 +121,9 @@ final readonly class StructuredChatCaller
                     'retry_max_output_tokens' => $retryMaxTokens,
                 ]);
                 $effectiveMaxTokens = $retryMaxTokens;
-                $payload['max_output_tokens'] = $effectiveMaxTokens;
+                $payload = self::forcedAnswerPayload($payload, $input, $effectiveMaxTokens);
                 $response = $this->createResponse($kind, $payload, $startedAt);
+                $budget->recordStep(...self::usageOf($response));
             }
         }
 
@@ -123,9 +144,11 @@ final readonly class StructuredChatCaller
             throw new UnavailableException("Azure OpenAI structured output missing {$missingLabel}");
         }
 
-        $inputTokens = (int) ($response->usage->inputTokens ?? 0);
-        $outputTokens = (int) ($response->usage->outputTokens ?? 0);
-        $totalTokens = (int) ($response->usage->totalTokens ?? 0);
+        // Usage is the whole run's, not the last turn's: a tool loop bills every
+        // step, and so does each retry above.
+        $inputTokens = $budget->inputTokens();
+        $outputTokens = $budget->outputTokens();
+        $totalTokens = $budget->totalTokens();
         $truncated = self::isTruncated($response);
         $latencyMs = self::latencyMs($startedAt);
 
@@ -142,6 +165,7 @@ final readonly class StructuredChatCaller
             'status' => 'ok',
             'latency_ms' => $latencyMs,
             'truncated' => $truncated,
+            'steps' => $budget->steps(),
             'usage' => [
                 'input' => $inputTokens,
                 'output' => $outputTokens,
@@ -162,6 +186,121 @@ final readonly class StructuredChatCaller
         );
 
         return $decoded;
+    }
+
+    /**
+     * Take the model's turn until it stops asking for tools, and return both the
+     * answering response and the conversation that produced it.
+     *
+     * Without a toolbox this is one request, which is every narrator that has
+     * not been given tools yet.
+     *
+     * Termination is guaranteed twice over: the budget forbids tools once a
+     * ceiling is hit, and a turn that was already forbidden them is returned
+     * whatever it says. A capped run answers from what it managed to read
+     * rather than failing — the user gets narration either way.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array{0: CreateResponse, 1: list<array<string, mixed>>}
+     */
+    private function converse(
+        string $kind,
+        array $payload,
+        ?AgentToolbox $toolbox,
+        AgentBudget $budget,
+        float $startedAt,
+    ): array {
+        /** @var list<array<string, mixed>> $input */
+        $input = $payload['input'];
+
+        if ($toolbox === null) {
+            $response = $this->createResponse($kind, $payload, $startedAt);
+            $budget->recordStep(...self::usageOf($response));
+
+            return [$response, $input];
+        }
+
+        while (true) {
+            $toolsAllowed = $budget->allowsToolStep();
+            $payload['input'] = $input;
+            $payload['tool_choice'] = $toolsAllowed ? 'auto' : 'none';
+
+            $response = $this->createResponse($kind, $payload, $startedAt);
+            $budget->recordStep(...self::usageOf($response));
+
+            $calls = self::functionCalls($response);
+            if ($calls === [] || ! $toolsAllowed) {
+                return [$response, $input];
+            }
+
+            foreach ($calls as $call) {
+                $input[] = $call->toArray();
+                $input[] = [
+                    'type' => 'function_call_output',
+                    'call_id' => $call->callId,
+                    'output' => $toolbox->invoke($call->name, $call->arguments),
+                ];
+            }
+
+            Log::info('narrator.ai.tool_step', [
+                'kind' => $kind,
+                'step' => $budget->steps(),
+                'tools' => array_map(fn (OutputFunctionToolCall $call): string => $call->name, $calls),
+            ]);
+
+            if (! $budget->allowsToolStep()) {
+                Log::warning('narrator.ai.agent_capped', [
+                    'kind' => $kind,
+                    'reason' => $budget->exhaustedReason(),
+                    'steps' => $budget->steps(),
+                    'total_tokens' => $budget->totalTokens(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * The function calls the model asked for this turn, if any.
+     *
+     * @return list<OutputFunctionToolCall>
+     */
+    private static function functionCalls(CreateResponse $response): array
+    {
+        return array_values(array_filter(
+            $response->output,
+            fn (object $item): bool => $item instanceof OutputFunctionToolCall,
+        ));
+    }
+
+    /**
+     * @return array{0: int, 1: int, 2: int} input, output, total tokens
+     */
+    private static function usageOf(CreateResponse $response): array
+    {
+        return [
+            (int) ($response->usage->inputTokens ?? 0),
+            (int) ($response->usage->outputTokens ?? 0),
+            (int) ($response->usage->totalTokens ?? 0),
+        ];
+    }
+
+    /**
+     * The payload replayed when the run must answer now: the conversation so
+     * far, a raised token cap, and no further tools.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  list<array<string, mixed>>  $input
+     * @return array<string, mixed>
+     */
+    private static function forcedAnswerPayload(array $payload, array $input, int $maxTokens): array
+    {
+        $payload['input'] = $input;
+        $payload['max_output_tokens'] = $maxTokens;
+        if (isset($payload['tools'])) {
+            $payload['tool_choice'] = 'none';
+        }
+
+        return $payload;
     }
 
     /**

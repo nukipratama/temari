@@ -17,6 +17,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
 {
     public function __construct(public readonly int $analysisId)
     {
+        parent::__construct();
     }
 
     final public function handle(AnalysisService $service): void

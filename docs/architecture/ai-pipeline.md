@@ -3,7 +3,7 @@ title: AI narration pipeline
 description: How AI copy flows from a narrator through a queued job into an Analysis row, with cadence, chaining, idempotency, cost ceiling, manual retry, and the rule-based fallback.
 tags: [architecture, ai]
 status: living
-reviewed: 2026-07-07
+reviewed: 2026-07-27
 code_refs:
   - app/Services/AI/AnalysisService.php
   - app/Services/AI/AnalysisType.php
@@ -18,6 +18,7 @@ code_refs:
   - app/Http/Controllers/Api/AnalysisController.php
   - config/ai.php
   - config/azure_openai.php
+  - config/horizon.php
   - routes/console.php
 ---
 
@@ -63,6 +64,9 @@ There are two job base classes, both extending [AnalyzeBaseJob](app/Jobs/AI/Anal
 - **Idempotency at execution** — `AnalyzeRowJob::handle()` early-exits when the row is already `Done`; `AnalyzeGroupJob::handle()` filters out the Done rows. This makes a UI retry that races a developer's Horizon retry safe — the second run sees `Done` and stops, so the LLM is never double-billed.
 - **`afterCommit()`** — `dispatchPending()` defers the enqueue until the surrounding DB transaction commits, so a job can't run before (or be orphaned by a rollback of) the row it targets.
 - **Daily cost ceiling** — `autoDispatchEnabled()` consults `dailyCostCeilingExceeded()`. When `azure_openai.daily_cost_ceiling` is set and today's spend exceeds it, auto-dispatch is skipped (rows stay `Pending`) until midnight resets the daily cost. A null ceiling never gates.
+- **Per-block agent budget** — the ceiling above is read once, *before* the job is queued, so it cannot stop a tool-calling narration mid-run. `ai.agent.max_steps` / `ai.agent.max_tokens` in [config/ai.php](config/ai.php) bound one block instead; see [[narration-agents-on-openai-php]].
+
+**Queue.** Every analyze job declares `$queue = 'ai'` on [AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php) — not configurable, since there is one right answer. The `supervisor-ai` Horizon supervisor ([config/horizon.php](config/horizon.php)) serves it at a 300 s timeout against the 60 s the rest of the queue lives by, because a tool-calling run takes several Azure round trips. Production splits the container's 4 workers 2/2, so a narration backlog can never occupy every worker and stall Strava ingest behind it.
 
 **Completion side effect (notifications).** `AnalysisService::markDone()` fans out an `AnalysisReadyNotification` for the notifiable types — a queued Laravel notification — gated on registered-type (`NotifiableAnalysis::isNotifiable()`) + not under `withoutDispatching` (so the demo seed never notifies); it resolves the owner and calls `$user->notify(...->afterCommit())`. The notification's `via()` owns the rest of the gating (demo / configured bot token / non-revoked connection / recency / per-type opt-in), and the `TelegramChannel` holds the `telegram_deliveries` unique-`analysis_id` claim, so a Horizon retry of an AI job (which re-runs `markDone`) never double-messages. A second channel (web push) fans out from the same `via()`. See [[telegram-notifications]].
 

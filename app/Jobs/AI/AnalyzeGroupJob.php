@@ -22,6 +22,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         public readonly int $subjectId,
         public readonly ?string $discriminator = null,
     ) {
+        parent::__construct();
     }
 
     final public function handle(AnalysisService $service): void

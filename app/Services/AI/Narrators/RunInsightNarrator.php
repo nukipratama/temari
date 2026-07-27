@@ -6,19 +6,25 @@ namespace App\Services\AI\Narrators;
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\EffortContextTool;
+use App\Services\AI\Agent\Tools\HrZonesTool;
+use App\Services\AI\Agent\Tools\KmSplitsTool;
+use App\Services\AI\Agent\Tools\RecentBaselineTool;
+use App\Services\AI\Agent\Tools\RunSummaryTool;
+use App\Services\AI\Agent\Tools\TerrainTool;
+use App\Services\AI\Agent\Tools\TrainingLoadTool;
+use App\Services\AI\Agent\Tools\TrainingPacesTool;
+use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\ChatCallOptions;
-use App\Services\AI\Context\ActivityNarrationContext;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
-use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\RunBaseline;
-use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
-use Illuminate\Support\Carbon;
 
 class RunInsightNarrator
 {
@@ -27,6 +33,11 @@ class RunInsightNarrator
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Tugas: 3 catatan interpretasi sesi lari, masing-masing 3-4 kalimat.
         Kasih ruang buat bercerita, tapi tetap padat, jangan bertele-tele:
+
+        DATA: angkanya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
+        panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
+        giliran. Minimal ambil ringkasan larinya. Angka yang gak pernah kamu
+        ambil JANGAN dikarang, dan null tetap null: lewati, jangan ditebak.
 
         - technical: terjemahkan cadence, decoupling, dan HR ke bahasa awam.
           JANGAN cuma sebut angka tanpa konteks. Jelaskan APA artinya dan,
@@ -101,7 +112,7 @@ class RunInsightNarrator
             perlambat pace atau tambah run-walk."
 
           GREY ZONE: kalau sesi ini kebaca sebagai easy/recovery tapi banyak
-          waktunya nyangkut di Z3 ke atas, dan easy_pace_sec ada di konteks,
+          waktunya nyangkut di Z3 ke atas, dan easy_pace_sec-nya ada,
           boleh selipkan saran lembut buat turunin ke pace easy-nya (konversi
           easy_pace_sec ke menit:detik per km). Ini cuma opsi, bukan tegoran.
           Sebut sekali, jangan diulang-ulang. LEWATI TOTAL kalau
@@ -123,7 +134,7 @@ class RunInsightNarrator
         Istilah lari boleh tetap English: easy, tempo, pace, cadence, base,
         negative split, long run.
 
-        KONTEKS HISTORIS (pakai kalau ada, jangan dipaksakan kalau null):
+        KONTEKS HISTORIS (ambil lewat tool kalau perlu, jangan dipaksakan kalau null):
         - recent_baseline_28d: rata-rata 28 hari terakhir (pace, HR, decoupling).
           Bandingkan sesi ini dengan baseline-nya: lebih cepat/lambat, HR lebih
           tinggi/rendah, decoupling membaik/memburuk. Sebut angkanya kalau bantu,
@@ -180,7 +191,12 @@ class RunInsightNarrator
             context: $this->context($activity, $detail),
             schemaName: 'TemariRunInsight',
             requiredKeys: ['technical', 'splits', 'zones'],
-            options: new ChatCallOptions(temperature: 0.7, userId: $activity->user_id, maxTokens: 3000),
+            options: new ChatCallOptions(
+                temperature: 0.7,
+                userId: $activity->user_id,
+                maxTokens: 3000,
+                toolbox: $this->toolbox($activity, $detail),
+            ),
         );
 
         return [
@@ -190,84 +206,40 @@ class RunInsightNarrator
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * The run's numbers are not passed in — the model reads them through
+     * {@see self::toolbox()}. What stays here is the one thing a tool must not
+     * serve: the previous run's narrative, which the content-filter retry has
+     * to be able to strip from the prompt.
+     *
+     * @return array<string, mixed>
+     */
     public function context(Activity $activity, ActivityDetail $detail): array
     {
-        $summary = $detail->streamSummary();
-        $shared = ActivityNarrationContext::fromDetail($detail);
-        $asOf = $detail->start_date_local ?? Carbon::now();
         $prevNarrative = $this->previousActivityNarrative(
             $activity,
             $detail,
             AnalysisType::RunInsightTechnical,
         );
-        $paces = $this->trainingPaces($activity);
 
-        return [
-            'distance_km' => $shared->distanceKm(2),
-            'moving_time_sec' => $detail->moving_time,
-            'avg_hr' => $detail->average_heartrate,
-            'max_hr' => $detail->max_heartrate,
-            'avg_cadence_spm' => $detail->average_cadence !== null
-                ? (int) round((float) $detail->average_cadence * 2)
-                : null,
-            'decoupling_pct' => $shared->decouplingPct,
-            'negative_split' => $shared->negativeSplit,
-            'pace_consistency' => PaceConsistency::label($summary['pace_variability_sec'] ?? null),
-            'zone_pct' => $shared->zonePct,
-            'time_in_zone_min' => $summary['time_in_zone_min'] ?? null,
-            'trimp' => $detail->trimp_edwards,
-            'per_km' => $summary['per_km'] ?? null,
-            'finish_partial' => $summary['partial_split'] ?? null,
-            'elevation_gain_m' => $detail->total_elevation_gain,
-            'max_grade_pct' => $summary['max_grade_pct'] ?? null,
-            'gap_pace' => $summary['gap_pace'] ?? null,
-            'weather_temp_c' => $shared->weatherTempC,
-            'weather_humidity_pct' => $detail->weather_humidity_pct,
-            'weather_rain' => $shared->weatherRain,
-            'weather_rain_source' => $shared->weatherRainSource,
-            'weather_wind_speed_kmh' => $shared->weatherWindSpeedKmh,
-            'weather_wind_gust_kmh' => $shared->weatherWindGustKmh,
-            'weather_wind_direction_deg' => $shared->weatherWindDirectionDeg,
-            'training_load' => $this->trainingLoadContext($activity, $asOf),
-            'recent_baseline_28d' => $this->baseline->forUserAsOf($activity->user_id, $asOf, $activity->id),
-            'relative_effort' => $this->relativeEffort->forRun($activity, $detail),
-            'session_intent' => SessionIntent::forDetail($detail),
-            'easy_pace_sec' => $paces['easy'] ?? null,
-            'threshold_pace_sec' => $paces['threshold'] ?? null,
-            ...NarratorContinuity::fields($prevNarrative),
-        ];
+        return NarratorContinuity::fields($prevNarrative);
     }
 
     /**
-     * The runner's Daniels training paces derived from their current VDOT, or
-     * null when there is not yet enough PR history to estimate one.
-     *
-     * @return array{easy: int, marathon: int, threshold: int, interval: int}|null
+     * The reads this run's narration may pull, each bound to this activity.
      */
-    private function trainingPaces(Activity $activity): ?array
+    public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox
     {
-        return $this->trainingPaceCalculator->fromVdotResult($this->vdotEstimator->estimate($activity->user));
-    }
-
-    /**
-     * The user's fitness/fatigue state as of the run, trimmed to the fields the
-     * narrator interprets. Null when there is no TRIMP history to roll.
-     *
-     * @return array{acute_7d: float, chronic_42d: float, form: float, form_status: string}|null
-     */
-    private function trainingLoadContext(Activity $activity, Carbon $asOf): ?array
-    {
-        $load = $this->trainingLoad->summary($activity->user, $asOf);
-        if ($load === null) {
-            return null;
-        }
-
-        return [
-            'acute_7d' => $load['atl_7d'],
-            'chronic_42d' => $load['ctl_42d'],
-            'form' => $load['form'],
-            'form_status' => $load['form_status'],
-        ];
+        return new AgentToolbox([
+            new RunSummaryTool($activity, $detail),
+            new KmSplitsTool($activity, $detail),
+            new HrZonesTool($activity, $detail),
+            new TerrainTool($activity, $detail),
+            new WeatherTool($activity, $detail),
+            new EffortContextTool($activity, $detail, $this->relativeEffort),
+            new TrainingLoadTool($activity, $detail, $this->trainingLoad),
+            new RecentBaselineTool($activity, $detail, $this->baseline),
+            new TrainingPacesTool($activity, $detail, $this->vdotEstimator, $this->trainingPaceCalculator),
+        ]);
     }
 }

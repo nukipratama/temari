@@ -200,13 +200,10 @@ return [
         SlowOutgoingRequests::class => [
             'enabled' => env('PULSE_SLOW_OUTGOING_REQUESTS_ENABLED', true),
             'sample_rate' => env('PULSE_SLOW_OUTGOING_REQUESTS_SAMPLE_RATE', 1),
-            // Azure OpenAI completions take seconds; match on the deployment path
-            // (host-agnostic) and give them slack. Everything else (Strava etc.)
-            // stays at 1s so a genuinely hung call still stands out.
-            'threshold' => [
-                '#/openai/deployments/#' => 20_000,
-                'default' => env('PULSE_SLOW_OUTGOING_REQUESTS_THRESHOLD', 1000),
-            ],
+            // openai-php calls Guzzle directly, so Pulse never records an Azure
+            // request and no threshold here can cover one. See
+            // docs/decisions/narration-agents-on-openai-php.md.
+            'threshold' => env('PULSE_SLOW_OUTGOING_REQUESTS_THRESHOLD', 1000),
             'ignore' => [
                 // '#^http://127\.0\.0\.1:13714#', // Inertia SSR...
             ],

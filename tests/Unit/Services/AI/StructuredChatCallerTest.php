@@ -12,6 +12,7 @@ use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Services\AI\Narrators\NarratorContinuity;
 use App\Models\AI\TokenUsage;
+use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\ChatCallOptions;
@@ -487,4 +488,133 @@ it('does not retry truncation once the bumped cap would hit the ceiling', functi
 
     expect($payload)->toBe(['headline' => 'capped']);
     Log::shouldNotHaveReceived('warning', ['narrator.ai.truncated_retry', Mockery::any()]);
+});
+
+// ── agent loop: tools, and the per-block ceiling on them ──────────────
+
+it('runs a tool the model asks for and feeds the reading back before it answers', function (): void {
+    $client = new ClientFake([
+        fakeAzureToolCallResponse([['name' => 'get_thing']]),
+        fakeAzureResponse(json_encode(['headline' => 'read it'], JSON_THROW_ON_ERROR)),
+    ]);
+    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => ['value' => 42])]);
+
+    $payload = fakeStructuredCaller($client)
+        ->call('run_insight', 'sys', [], 'schema', ['headline'], new ChatCallOptions(toolbox: $toolbox));
+
+    expect($payload)->toBe(['headline' => 'read it']);
+
+    // The answering request replays the call and its output as conversation.
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $last = end($params['input']);
+
+        return $method === 'create'
+            && ($last['type'] ?? null) === 'function_call_output'
+            && $last['output'] === '{"value":42}';
+    });
+});
+
+it('offers the toolbox as tool declarations on the first turn', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
+    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => [])]);
+
+    fakeStructuredCaller($client)
+        ->call('run_insight', 'sys', [], 'schema', ['headline'], new ChatCallOptions(toolbox: $toolbox));
+
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => $method === 'create'
+        && $params['tools'][0]['name'] === 'get_thing'
+        && $params['tool_choice'] === 'auto');
+});
+
+it('sends no tools at all for a narrator that has none', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
+
+    fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline']);
+
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => $method === 'create'
+        && ! isset($params['tools'])
+        && ! isset($params['tool_choice']));
+});
+
+it('sums token usage across every step of an agent run into one metering row', function (): void {
+    $client = new ClientFake([
+        fakeAzureToolCallResponse([['name' => 'get_thing']], inputTokens: 100, outputTokens: 10),
+        fakeAzureResponse(json_encode(['headline' => 'done'], JSON_THROW_ON_ERROR), inputTokens: 200, outputTokens: 20),
+    ]);
+    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => ['value' => 1])]);
+
+    fakeStructuredCaller($client)
+        ->call('run_insight', 'sys', [], 'schema', ['headline'], new ChatCallOptions(toolbox: $toolbox));
+
+    $row = TokenUsage::query()->first();
+    expect($row->prompt_tokens)->toBe(300)
+        ->and($row->completion_tokens)->toBe(30)
+        ->and($row->total_tokens)->toBe(330)
+        ->and($row->kind)->toBe('run_insight');
+});
+
+it('stops offering tools at the step ceiling and still returns narration', function (): void {
+    Log::spy();
+    config()->set('ai.agent.max_steps', 2);
+
+    $client = new ClientFake([
+        fakeAzureToolCallResponse([['name' => 'get_thing']]),
+        fakeAzureToolCallResponse([['name' => 'get_thing']]),
+        fakeAzureResponse(json_encode(['headline' => 'capped but written'], JSON_THROW_ON_ERROR)),
+    ]);
+    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => ['value' => 1])]);
+
+    $payload = fakeStructuredCaller($client)
+        ->call('run_insight', 'sys', [], 'schema', ['headline'], new ChatCallOptions(toolbox: $toolbox));
+
+    expect($payload)->toBe(['headline' => 'capped but written'])
+        ->and(TokenUsage::query()->first()->total_tokens)->toBe(45);
+
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => $method === 'create'
+        && $params['tool_choice'] === 'none');
+
+    Log::shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
+        fn (array $ctx): bool => $ctx['reason'] === 'max_steps' && $ctx['kind'] === 'run_insight',
+    ));
+});
+
+it('stops offering tools at the token ceiling and still returns narration', function (): void {
+    Log::spy();
+    config()->set('ai.agent.max_tokens', 50);
+
+    $client = new ClientFake([
+        fakeAzureToolCallResponse([['name' => 'get_thing']], inputTokens: 100, outputTokens: 10),
+        fakeAzureResponse(json_encode(['headline' => 'capped'], JSON_THROW_ON_ERROR)),
+    ]);
+    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => ['value' => 1])]);
+
+    $payload = fakeStructuredCaller($client)
+        ->call('run_insight', 'sys', [], 'schema', ['headline'], new ChatCallOptions(toolbox: $toolbox));
+
+    expect($payload)->toBe(['headline' => 'capped']);
+    Log::shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
+        fn (array $ctx): bool => $ctx['reason'] === 'max_tokens',
+    ));
+});
+
+it('keeps the budget across a content-filter retry so the strip cannot double the spend', function (): void {
+    config()->set('ai.agent.max_steps', 8);
+
+    $client = new ClientFake([
+        contentFilterError(),
+        fakeAzureResponse(json_encode(['speech' => 'clean'], JSON_THROW_ON_ERROR), inputTokens: 70, outputTokens: 30),
+    ]);
+    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => [])]);
+
+    $payload = fakeStructuredCaller($client)->call(
+        'daily_greeting',
+        'sys',
+        ['prev_narrative' => 'poison', 'prev_opener' => 'poison'],
+        'schema',
+        ['speech'],
+        new ChatCallOptions(toolbox: $toolbox),
+    );
+
+    expect($payload)->toBe(['speech' => 'clean'])
+        ->and(TokenUsage::query()->first()->total_tokens)->toBe(100);
 });

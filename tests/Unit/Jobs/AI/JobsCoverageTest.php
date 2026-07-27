@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
 use App\Exceptions\AI\ContentFilterException;
+use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
@@ -541,4 +543,12 @@ it('AnalyzeMonthlyRecapJob does not advance when no later Pending month exists',
 
     expect($thisRow->fresh()->content)->toBe('tail narrative');
     Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
+});
+
+it('sends every analyze job to the narration queue, whichever base it extends', function (): void {
+    // Not configurable and not the dispatcher's business: a tool-calling run
+    // needs the longer timeout only supervisor-ai gives it.
+    expect(new AnalyzeBriefingJob(1)->queue)->toBe(AnalyzeBaseJob::QUEUE)
+        ->and(new AnalyzeActivityJob(1)->queue)->toBe(AnalyzeBaseJob::QUEUE)
+        ->and(AnalyzeBaseJob::QUEUE)->toBe('ai');
 });

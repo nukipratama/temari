@@ -19,6 +19,7 @@ use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\DailyGreetingNarrator;
+use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PersonaSummaryNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
@@ -344,92 +345,6 @@ it('RunInsightNarrator does not fatal when the stream summary is null', function
     expect($payload['zones'])->toBe('z');
 });
 
-it('RunInsightNarrator feeds training-load + pace-variability + zone-minutes into the context', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update([
-        'trimp_edwards' => 92.4,
-        'stream_summary' => [
-            'time_in_zone_pct' => ['Z2' => 70, 'Z3' => 30],
-            'time_in_zone_min' => ['Z2' => 32, 'Z3' => 14],
-            'pace_variability_sec' => 11.3,
-            'max_grade_pct' => 9.5,
-            'gap_pace' => '5:40',
-        ],
-        'total_elevation_gain' => 48,
-    ]);
-
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
-    $context = $narrator->context($a, $d->fresh());
-
-    expect($context['trimp'])->toBe(92.4)
-        // Banded, never the raw figure: the model quoted "pace variability 68
-        // detik per km" at users, a number none of them can act on.
-        ->and($context['pace_consistency'])->toBe('cukup rata')
-        ->and($context)->not->toHaveKey('pace_variability_sec')
-        ->and($context['time_in_zone_min'])->toBe(['Z2' => 32, 'Z3' => 14])
-        ->and($context['elevation_gain_m'])->toBe(48.0)
-        ->and($context['max_grade_pct'])->toBe(9.5)
-        ->and($context['gap_pace'])->toBe('5:40')
-        // Single-run fixture: relative_effort carries the raw TRIMP with no
-        // comparison (baseline too thin).
-        ->and($context['relative_effort'])->toBe([
-            'trimp' => 92.4, 'baseline' => null, 'ratio' => null, 'band' => null,
-        ]);
-});
-
-it('RunInsightNarrator carries the trailing partial_split into context as finish_partial', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update([
-        'stream_summary' => [
-            'per_km' => [['km' => 1, 'pace' => '6:00'], ['km' => 2, 'pace' => '6:00']],
-            'partial_split' => ['distance_m' => 700, 'pace' => '5:30', 'avg_hr' => 158],
-        ],
-    ]);
-
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
-    $context = $narrator->context($a, $d->fresh());
-
-    // per_km stays full-km; the partial rides on its own key so the prompt can be
-    // told to treat it as a finish, never as a km.
-    expect($context['finish_partial'])->toMatchArray(['distance_m' => 700, 'pace' => '5:30', 'avg_hr' => 158])
-        ->and($context['per_km'])->toHaveCount(2);
-});
-
-it('RunInsightNarrator leaves finish_partial null when the run ends on a whole km', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00']]]]);
-
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
-
-    expect($narrator->context($a, $d->fresh())['finish_partial'])->toBeNull();
-});
-
-it('RunInsightNarrator feeds a tagged workout_type into session_intent as workout/tagged', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update([
-        'workout_type' => 3, // Strava "Workout"
-        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10]],
-    ]);
-
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
-    $context = $narrator->context($a, $d->fresh());
-
-    expect($context['session_intent'])->toBe(['intent' => 'workout', 'source' => 'tagged']);
-});
-
-it('RunInsightNarrator infers session_intent workout from a Z3-Z4 heavy untagged run', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update([
-        'workout_type' => null,
-        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 15, 'Z3' => 47, 'Z4' => 34, 'Z5' => 4]],
-    ]);
-
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
-    $context = $narrator->context($a, $d->fresh());
-
-    expect($context['session_intent'])->toBe(['intent' => 'workout', 'source' => 'inferred']);
-});
-
 it('RunInsightNarrator prompt carries the quality-session framing so it stops assuming easy', function (): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
@@ -443,44 +358,6 @@ it('RunInsightNarrator prompt gives notes storytelling room (3-4 sentences, no r
     expect($prompt)->toContain('3-4 kalimat')
         ->and($prompt)->toContain('jangan bertele-tele')
         ->and($prompt)->not->toContain('maksimal 55 kata');
-});
-
-it('RunInsightNarrator leaves the new context fields null when no stream summary', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => null, 'trimp_edwards' => null]);
-
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
-    $context = $narrator->context($a, $d->fresh());
-
-    expect($context['trimp'])->toBeNull()
-        ->and($context['pace_consistency'])->toBeNull()
-        ->and($context['time_in_zone_min'])->toBeNull();
-});
-
-it('RunInsightNarrator feeds the 28-day baseline + training load into the context', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    // A prior run 5 days earlier seeds the rolling baseline + TRIMP history.
-    $prior = Activity::factory()->for($a->user)->analyzed()->create();
-    ActivityDetail::factory()->for($prior)->create([
-        'start_date_local' => Carbon::today()->subDays(5),
-        'distance' => 10000.0,
-        'moving_time' => 3600, // 6:00/km
-        'average_heartrate' => 150.0,
-        'trimp_edwards' => 80.0,
-        'stream_summary' => ['decoupling_pct' => 6.0, 'time_in_zone_min' => ['Z2' => 40]],
-    ]);
-
-    $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
-    $context = $narrator->context($a, $d->fresh());
-
-    expect($context['recent_baseline_28d'])->toMatchArray([
-        'runs' => 1,
-        'avg_pace_sec_per_km' => 360,
-        'avg_hr' => 150,
-        'avg_decoupling_pct' => 6.0,
-    ])
-        ->and($context['training_load'])->not->toBeNull()
-        ->and($context['training_load'])->toHaveKeys(['acute_7d', 'chronic_42d', 'form', 'form_status']);
 });
 
 it('RunInsightNarrator feeds prev_narrative from the prior activity technical insight when Done', function (): void {
@@ -502,26 +379,39 @@ it('RunInsightNarrator leaves prev_narrative null when no prior technical insigh
     expect($context['prev_narrative'])->toBeNull();
 });
 
-it('RunInsightNarrator feeds easy and threshold training paces derived from the runner VDOT', function (): void {
+it('RunInsightNarrator sends no run data in the context, only the continuity the filter retry must be able to strip', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
-    PersonalRecord::factory()->for($a->user)->create(['category' => '5km', 'value_sec' => 1200]);
 
     $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
-    $context = $narrator->context($a, $d->fresh());
 
-    expect($context['easy_pace_sec'])->toBeInt()
-        ->and($context['threshold_pace_sec'])->toBeInt()
-        ->and($context['easy_pace_sec'])->toBeGreaterThan($context['threshold_pace_sec']);
+    expect(array_keys($narrator->context($a, $d->fresh())))
+        ->toBe(NarratorContinuity::CONTEXT_KEYS);
 });
 
-it('RunInsightNarrator leaves training paces null when the runner has no VDOT-eligible PR', function (): void {
+it('RunInsightNarrator offers every run reading as a tool bound to this activity', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $narrator = new RunInsightNarrator(fakeCaller('{"technical":"t","splits":"s","zones":"z"}'), new TrainingLoad(), new RunBaseline(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class));
-    $context = $narrator->context($a, $d->fresh());
+    $names = array_column($narrator->toolbox($a, $d)->definitions(), 'name');
 
-    expect($context['easy_pace_sec'])->toBeNull()
-        ->and($context['threshold_pace_sec'])->toBeNull();
+    expect($names)->toBe([
+        'get_run_summary',
+        'get_km_splits',
+        'get_hr_zones',
+        'get_terrain',
+        'get_weather',
+        'get_effort_context',
+        'get_training_load',
+        'get_recent_baseline',
+        'get_training_paces',
+    ]);
+});
+
+it('RunInsightNarrator prompt tells the model to fetch its own numbers and not invent the rest', function (): void {
+    $prompt = narratorPrompt(RunInsightNarrator::class);
+
+    expect($prompt)->toContain('Ambil sendiri lewat tool')
+        ->and($prompt)->toContain('JANGAN dikarang');
 });
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
