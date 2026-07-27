@@ -30,7 +30,7 @@ class CardFlavorNarrator
         tersedia: tulis dari kartunya saja.
 
         Rajut kombinasi badge, pacing, dan cuaca jadi 1 kalimat yang
-        nunjukin kenapa kartu ini spesial. Sebut special_move kalau namanya
+        nunjukin kenapa kartu ini spesial. Sebut nama special move-nya kalau
         unik, sebut badge spesifik kalau ada, sebut cuaca kalau ekstrem
         ("cuaca 33 derajat" atau "hujan").
 
