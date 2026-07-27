@@ -6,15 +6,19 @@ namespace App\Services\AI\Narrators;
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\PersonalRecord;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\HrZonesTool;
+use App\Services\AI\Agent\Tools\KmSplitsTool;
+use App\Services\AI\Agent\Tools\PastYouTool;
+use App\Services\AI\Agent\Tools\PersonalRecordsTool;
+use App\Services\AI\Agent\Tools\RunSummaryTool;
+use App\Services\AI\Agent\Tools\TerrainTool;
+use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\ChatCallOptions;
-use App\Services\AI\Context\ActivityNarrationContext;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Story\PastYouMatcher;
-
-use function is_string;
 
 class PostRunSpeechNarrator
 {
@@ -25,6 +29,11 @@ class PostRunSpeechNarrator
         2-4 kalimat (maksimal 75 kata) jadi satu cerita kecil beralur: buka dari
         satu sorotan, tunjukin satu titik menarik di tengah (misalnya pace sempat
         pecah lalu balik, atau finish yang nyala), lalu tutup dengan enak.
+
+        DATA: angka larinya gak dikasih di depan. Ambil sendiri lewat tool yang
+        ada, panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
+        giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan null tetap
+        null: lewati, jangan ditebak.
 
         Kamu menerima tiga analisis teknis yang sudah jadi di field insights:
         - technical: terjemahan teknis (cadence, decoupling, HR).
@@ -44,12 +53,13 @@ class PostRunSpeechNarrator
         tentu benar kejadian, jadi hedge ("prakiraan sempat gerimis", "kayaknya
         sempat rintik"), jangan bilang "hujan deras" atau klaim pasti.
 
-        JANGAN PERNAH menyebut "PR" atau "personal record" kecuali has_pr bernilai
-        true. Kalau has_pr false, rayakan sorotan nyata lain (jarak, konsistensi,
+        JANGAN PERNAH menyebut "PR" atau "personal record" kecuali kamu sudah
+        panggil get_personal_records DAN daftarnya berisi. Kalau daftarnya kosong
+        (atau gak kamu ambil), rayakan sorotan nyata lain (jarak, konsistensi,
         finish, atau cuaca), bukan PR yang tidak ada.
 
-        DIRI KAMU DULU: kalau field `past_you` terisi (ada lari serupa di masa
-        lalu), boleh jadikan hook buka atau tutup yang personal, misal
+        DIRI KAMU DULU: kalau `past_you` dari get_past_you terisi (ada lari serupa
+        di masa lalu), boleh jadikan hook buka atau tutup yang personal, misal
         "dibanding sesi serupa {days_ago} hari lalu, pace-mu {pace_diff_sec}
         detik lebih cepat". pace_diff_sec dan time_diff_sec positif = sekarang
         LEBIH CEPAT, negatif = lebih pelan (akui apa adanya, jangan dipoles jadi
@@ -74,24 +84,27 @@ class PostRunSpeechNarrator
             context: $this->context($activity, $detail, $mood, $insights),
             schemaName: 'TemariPostRunSpeech',
             requiredKeys: ['speech'],
-            options: new ChatCallOptions(userId: $activity->user_id, maxTokens: 1500),
+            options: new ChatCallOptions(
+                userId: $activity->user_id,
+                maxTokens: 1500,
+                toolbox: $this->toolbox($activity, $detail),
+            ),
         );
 
         return (string) $decoded['speech'];
     }
 
     /**
+     * Only what no tool can serve: the mood this speech was asked to carry, the
+     * three insight blocks written moments ago in the same job (they are not
+     * persisted yet, so there is nothing to read), and the continuity line the
+     * content-filter retry has to be able to strip.
+     *
      * @param  array{technical: string, splits: string, zones: string}  $insights
      * @return array<string, mixed>
      */
     public function context(Activity $activity, ActivityDetail $detail, string $mood, array $insights): array
     {
-        $hasPr = PersonalRecord::query()->where('activity_id', $activity->id)->exists();
-        $shared = ActivityNarrationContext::fromDetail($detail);
-        $dominantZone = $shared->zonePct === []
-            ? null
-            : array_search(max($shared->zonePct), $shared->zonePct, strict: true);
-
         $prevNarrative = $this->previousActivityNarrative(
             $activity,
             $detail,
@@ -100,20 +113,24 @@ class PostRunSpeechNarrator
 
         return [
             'mood' => $mood,
-            'has_pr' => $hasPr,
             'insights' => $insights,
-            'distance_km' => $shared->distanceKm(1),
-            'dominant_zone' => is_string($dominantZone) ? $dominantZone : null,
-            'decoupling_pct' => $shared->decouplingPct,
-            'negative_split' => $shared->negativeSplit,
-            'past_you' => $this->pastYou->findMatchContext($activity, $detail),
-            'weather_temp_c' => $shared->weatherTempC,
-            'weather_rain' => $shared->weatherRain,
-            'weather_rain_source' => $shared->weatherRainSource,
-            'weather_wind_speed_kmh' => $shared->weatherWindSpeedKmh,
-            'weather_wind_gust_kmh' => $shared->weatherWindGustKmh,
-            'weather_wind_direction_deg' => $shared->weatherWindDirectionDeg,
             ...NarratorContinuity::fields($prevNarrative),
         ];
+    }
+
+    /**
+     * The reads this speech may pull, each bound to this activity.
+     */
+    public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox
+    {
+        return new AgentToolbox([
+            new RunSummaryTool($activity, $detail),
+            new KmSplitsTool($activity, $detail),
+            new HrZonesTool($activity, $detail),
+            new TerrainTool($activity, $detail),
+            new WeatherTool($activity, $detail),
+            new PersonalRecordsTool($activity, $detail),
+            new PastYouTool($activity, $detail, $this->pastYou),
+        ]);
     }
 }

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Models\AI\Analysis;
-use OpenAI\Resources\Responses;
 use App\Services\AI\StructuredChatCaller;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
@@ -123,7 +122,7 @@ it('PostRunSpeechNarrator does not fatal when the stream summary is null', funct
     expect($narrator->generate($a, $d->fresh(), 'dim', postRunInsightsFixture()))->toBe('Mantap');
 });
 
-it('PostRunSpeechNarrator resolves the dominant zone from a populated stream summary', function (): void {
+it('PostRunSpeechNarrator narrates a run with a populated stream summary', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => [
         'time_in_zone_pct' => ['Z1' => 10, 'Z2' => 70, 'Z3' => 20],
@@ -210,35 +209,36 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
         ->and(str_word_count((string) $context['prev_opener']))->toBeLessThanOrEqual(10);
 });
 
-it('PostRunSpeechNarrator feeds a past-you comparison when a comparable past run exists', function (): void {
-    // Current run: 5km in 1500s (5:00/km, threshold band).
+it('PostRunSpeechNarrator keeps only what no tool can serve in the context', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['weather_temp_c' => null]); // don't let the random factory temp gate the match
-    // A comparable run 30 days earlier: same distance band + threshold pace, but slower.
-    $past = Activity::factory()->for($a->user)->analyzed()->create();
-    ActivityDetail::factory()->for($past)->create([
-        'start_date_local' => Carbon::today()->subDays(30),
-        'distance' => 5000.0,
-        'moving_time' => 1560, // 5:12/km, slower than the current 5:00/km
-        'weather_temp_c' => null,
-    ]);
 
     $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))
         ->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
 
-    expect($context['past_you'])->not->toBeNull()
-        ->and($context['past_you']['days_ago'])->toBe(30)
-        ->and($context['past_you']['pace_diff_sec'])->toBeGreaterThan(0.0) // current is faster
-        ->and($context['past_you']['past_km'])->toBe(5.0);
+    // mood is the call's own argument and the insights were written moments ago
+    // in this same job, so neither is readable from anywhere.
+    expect(array_keys($context))
+        ->toBe(['mood', 'insights', ...NarratorContinuity::CONTEXT_KEYS]);
 });
 
-it('PostRunSpeechNarrator leaves past_you null when no comparable past run exists', function (): void {
+it('PostRunSpeechNarrator offers the run reads plus the two its story needs', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))
-        ->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+    $names = array_column(
+        new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))
+            ->toolbox($a, $d)->definitions(),
+        'name',
+    );
 
-    expect($context['past_you'])->toBeNull();
+    expect($names)->toBe([
+        'get_run_summary',
+        'get_km_splits',
+        'get_hr_zones',
+        'get_terrain',
+        'get_weather',
+        'get_personal_records',
+        'get_past_you',
+    ]);
 });
 
 // ── DailyGreetingNarrator ─────────────────────────────────────────────
@@ -673,60 +673,55 @@ function cardFixture(): RunCard
 it('CardFlavorNarrator returns flavor on valid JSON', function (): void {
     $card = cardFixture();
     $caller = fakeCaller(json_encode(['flavor' => 'Kartu epic!'], JSON_THROW_ON_ERROR));
-    $narrator = new CardFlavorNarrator($caller);
+    $narrator = new CardFlavorNarrator($caller, app(RelativeEffort::class));
     expect($narrator->generate($card))->toBe('Kartu epic!');
+});
+
+it('CardFlavorNarrator sends an empty context and lets the model read the card', function (): void {
+    $card = cardFixture();
+
+    $names = array_column(
+        new CardFlavorNarrator(fakeCaller('{"flavor":"x"}'), app(RelativeEffort::class))
+            ->toolbox($card)->definitions(),
+        'name',
+    );
+
+    expect($names)->toBe([
+        'get_card_identity',
+        'get_run_summary',
+        'get_km_splits',
+        'get_weather',
+        'get_effort_context',
+    ]);
+});
+
+it('CardFlavorNarrator drops the run reads when the activity was never detailed', function (): void {
+    $card = cardFixture();
+    $card->activity->detail->delete();
+
+    $names = array_column(
+        new CardFlavorNarrator(fakeCaller('{"flavor":"x"}'), app(RelativeEffort::class))
+            ->toolbox($card->fresh())->definitions(),
+        'name',
+    );
+
+    // Offering tools that can only answer null teaches the model to distrust them.
+    expect($names)->toBe(['get_card_identity']);
 });
 
 it('CardFlavorNarrator throws on missing flavor key', function (): void {
     $card = cardFixture();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new CardFlavorNarrator($caller);
+    $narrator = new CardFlavorNarrator($caller, app(RelativeEffort::class));
     $narrator->generate($card);
 })->throws(UnavailableException::class);
 
 it('CardFlavorNarrator throws on non-JSON', function (): void {
     $card = cardFixture();
     $caller = fakeCaller('not json');
-    $narrator = new CardFlavorNarrator($caller);
+    $narrator = new CardFlavorNarrator($caller, app(RelativeEffort::class));
     $narrator->generate($card);
 })->throws(UnavailableException::class, 'non-JSON');
-
-it('CardFlavorNarrator humanizes badge slugs so no raw code reaches the prompt', function (): void {
-    $card = cardFixture();
-    // long_slow_distance (not negative_split) as the example slug: negative_split
-    // is now a legitimate pacing context key, so it appears in the payload by design.
-    $card->update(['badges' => ['long_slow_distance', 'pejuang_hujan', 'not_a_real_badge']]);
-
-    [$caller, $client] = capturingCaller(json_encode(['flavor' => 'ok'], JSON_THROW_ON_ERROR));
-    new CardFlavorNarrator($caller)->generate($card->fresh());
-
-    $client->assertSent(Responses::class, function (string $method, array $params): bool {
-        $payload = json_encode($params, JSON_THROW_ON_ERROR);
-
-        return str_contains($payload, 'Long Slow Distance')
-            && str_contains($payload, 'Pejuang Hujan')
-            && ! str_contains($payload, 'long_slow_distance')
-            && ! str_contains($payload, 'pejuang_hujan')
-            && ! str_contains($payload, 'not_a_real_badge');
-    });
-});
-
-it('CardFlavorNarrator feeds decoupling + negative split pacing into the payload', function (): void {
-    $card = cardFixture();
-    $card->loadMissing('activity.detail');
-    $card->activity->detail->update(['stream_summary' => ['decoupling_pct' => 4.5, 'negative_split' => true]]);
-
-    [$caller, $client] = capturingCaller(json_encode(['flavor' => 'ok'], JSON_THROW_ON_ERROR));
-    new CardFlavorNarrator($caller)->generate($card->fresh());
-
-    $client->assertSent(Responses::class, function (string $method, array $params): bool {
-        $payload = json_encode($params, JSON_THROW_ON_ERROR);
-
-        return str_contains($payload, 'decoupling_pct')
-            && str_contains($payload, '4.5')
-            && str_contains($payload, 'negative_split');
-    });
-});
 
 // ── PersonaSummaryNarrator ────────────────────────────────────────────
 
