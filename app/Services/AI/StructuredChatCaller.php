@@ -213,18 +213,23 @@ final readonly class StructuredChatCaller
         /** @var list<array<string, mixed>> $input */
         $input = $payload['input'];
 
+        if ($toolbox === null) {
+            $response = $this->createResponse($kind, $payload, $startedAt);
+            $budget->recordStep(...self::usageOf($response));
+
+            return [$response, $input];
+        }
+
         while (true) {
-            $toolsAllowed = $toolbox !== null && $budget->allowsToolStep();
+            $toolsAllowed = $budget->allowsToolStep();
             $payload['input'] = $input;
-            if ($toolbox !== null) {
-                $payload['tool_choice'] = $toolsAllowed ? 'auto' : 'none';
-            }
+            $payload['tool_choice'] = $toolsAllowed ? 'auto' : 'none';
 
             $response = $this->createResponse($kind, $payload, $startedAt);
             $budget->recordStep(...self::usageOf($response));
 
             $calls = self::functionCalls($response);
-            if ($calls === [] || $toolbox === null || ! $toolsAllowed) {
+            if ($calls === [] || ! $toolsAllowed) {
                 return [$response, $input];
             }
 

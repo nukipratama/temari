@@ -34,15 +34,14 @@ final class TrainingLoadTool extends ActivityTool
     public function handle(array $arguments): array
     {
         $load = $this->trainingLoad->summary($this->activity->user, $this->asOf());
-        if ($load === null) {
-            return ['training_load' => null];
-        }
 
         return [
-            'acute_7d' => $load['atl_7d'],
-            'chronic_42d' => $load['ctl_42d'],
-            'form' => $load['form'],
-            'form_status' => $load['form_status'],
+            'training_load' => $load === null ? null : [
+                'acute_7d' => $load['atl_7d'],
+                'chronic_42d' => $load['ctl_42d'],
+                'form' => $load['form'],
+                'form_status' => $load['form_status'],
+            ],
         ];
     }
 }

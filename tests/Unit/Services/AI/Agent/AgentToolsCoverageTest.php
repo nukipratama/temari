@@ -252,7 +252,7 @@ it('reads the 28-day baseline and the load state from a prior run', function ():
     ]);
 
     $baseline = new RecentBaselineTool($a, $d, new RunBaseline())->handle([])['recent_baseline_28d'];
-    $load = new TrainingLoadTool($a, $d, new TrainingLoad())->handle([]);
+    $load = new TrainingLoadTool($a, $d, new TrainingLoad())->handle([])['training_load'];
 
     expect($baseline)->toMatchArray([
         'runs' => 1,
