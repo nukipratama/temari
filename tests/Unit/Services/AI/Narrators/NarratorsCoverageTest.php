@@ -14,7 +14,12 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Agent\Tools\LifetimeStatsTool;
+use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
+use App\Services\AI\Agent\Tools\PersonaMixTool;
+use App\Services\AI\Agent\Tools\PersonalRecordTool;
+use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Agent\Tools\WeeklyTrendTool;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
@@ -587,7 +592,7 @@ it('PrContextNarrator flags the PR category as the strongest event when it drive
     // A single 5km PR is, by construction, the user's best-VDOT source category.
     $pr = PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
 
-    $context = new PrContextNarrator(fakeCaller('{"flavor":"x"}'), app(VdotEstimator::class))->context($pr);
+    $context = new PersonalRecordTool($pr, app(VdotEstimator::class))->handle([]);
 
     expect($context['is_strongest_event'])->toBeTrue()
         ->and($context['vdot'])->not->toBeNull();
@@ -601,7 +606,7 @@ it('PrContextNarrator feeds the PR run conditions into the context', function ()
         'category' => '5km', 'value_sec' => 1500, 'activity_id' => $activity->id,
     ]);
 
-    $context = new PrContextNarrator(fakeCaller('{"flavor":"x"}'), app(VdotEstimator::class))->context($pr);
+    $context = new WeatherTool($activity, $activity->detail)->handle([]);
 
     expect($context['weather_temp_c'])->toBe(33);
 });
@@ -805,7 +810,7 @@ it('PersonaSummaryNarrator feeds the latest form_status as the consistency spine
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'form_status' => 'fatigued']);
 
-    $context = new PersonaSummaryNarrator(fakeCaller('{"narrative":"x"}'))->context($user->fresh());
+    $context = new PersonaMixTool($user->fresh(), Carbon::now())->handle([]);
 
     expect($context['form_status'])->toBe('fatigued');
 });
@@ -832,7 +837,7 @@ it('PersonaSummaryNarrator splits the persona mix into recent vs earlier halves'
     $seed('adem', 8);
     $seed('nyala', 1);
 
-    $context = new PersonaSummaryNarrator(fakeCaller('{"narrative":"x"}'))->context($user->fresh());
+    $context = new PersonaMixTool($user->fresh(), Carbon::now())->handle([]);
 
     expect($context['persona_mix_earlier'][0]['mood'])->toBe('adem')
         ->and($context['persona_mix_recent'][0]['mood'])->toBe('nyala')
@@ -975,7 +980,7 @@ it('AkuProfileVoiceNarrator builds context from user stats', function (): void {
     $caller = fakeCaller(json_encode(['profile_voice' => 'x'], JSON_THROW_ON_ERROR));
     $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
-    $context = $narrator->context($user->fresh());
+    $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
     expect($context['total_runs'])->toBe(1)
         ->and($context['total_km'])->toBe(5.0)
         ->and($context['longest_run_km'])->toBe(5.0)
@@ -1002,7 +1007,7 @@ it('AkuProfileVoiceNarrator reads the weekly streak and the most common run time
         ]);
     }
 
-    $context = new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class))->context($user->fresh());
+    $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
 
     expect($context['weekly_streak'])->toBe(2)
         ->and($context['favorite_time'])->toBe('malam');
@@ -1015,8 +1020,7 @@ it('AkuProfileVoiceNarrator feeds the latest form_status as the consistency spin
         'runs' => 3, 'form_status' => 'overreaching',
     ]);
 
-    $context = new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class))
-        ->context($user->fresh());
+    $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
 
     expect($context['form_status'])->toBe('overreaching');
 });
@@ -1039,8 +1043,7 @@ it('AkuProfileVoiceNarrator feeds the four training paces derived from the runne
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
 
-    $context = new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class))
-        ->context($user->fresh());
+    $context = new TrainingPacesTool($user->fresh(), Carbon::now(), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($context['easy_pace_sec'])->toBeInt()
         ->and($context['marathon_pace_sec'])->toBeInt()
@@ -1051,8 +1054,7 @@ it('AkuProfileVoiceNarrator feeds the four training paces derived from the runne
 it('AkuProfileVoiceNarrator leaves training paces null when the user has no VDOT-eligible PR', function (): void {
     $user = User::factory()->create();
 
-    $context = new AkuProfileVoiceNarrator(fakeCaller('{"profile_voice":"x"}'), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class))
-        ->context($user->fresh());
+    $context = new TrainingPacesTool($user->fresh(), Carbon::now(), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($context['easy_pace_sec'])->toBeNull()
         ->and($context['marathon_pace_sec'])->toBeNull()

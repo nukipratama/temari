@@ -242,7 +242,7 @@ class RunInsightNarrator
             new EffortContextTool($activity, $detail, $this->relativeEffort),
             new TrainingLoadTool($activity->user, $asOf, $this->trainingLoad),
             new RecentBaselineTool($activity->user, $asOf, $this->baseline, $activity->id),
-            new TrainingPacesTool($activity, $detail, $this->vdotEstimator, $this->trainingPaceCalculator),
+            new TrainingPacesTool($activity->user, $asOf, $this->vdotEstimator, $this->trainingPaceCalculator),
         ]);
     }
 }

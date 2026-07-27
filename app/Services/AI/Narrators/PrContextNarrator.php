@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\PersonalRecord;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\PersonalRecordTool;
+use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\ChatCallOptions;
-use App\Services\AI\Context\ActivityNarrationContext;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\VdotEstimator;
 
@@ -59,44 +61,38 @@ class PrContextNarrator
             context: $this->context($pr),
             schemaName: 'TemariPrContext',
             requiredKeys: ['flavor'],
-            options: new ChatCallOptions(temperature: 0.7, userId: $pr->user_id, maxTokens: 500),
+            options: new ChatCallOptions(
+                temperature: 0.7,
+                userId: $pr->user_id,
+                maxTokens: 500,
+                toolbox: $this->toolbox($pr),
+            ),
         );
 
         return (string) $decoded['flavor'];
     }
 
     /**
+     * Nothing: the record and the conditions it was set in are both reads.
+     *
      * @return array<string, mixed>
      */
     public function context(PersonalRecord $pr): array
     {
-        $previous = PersonalRecord::query()
-            ->where('user_id', $pr->user_id)
-            ->where('category', $pr->category)
-            ->where('id', '<>', $pr->id)
-            ->orderByDesc('set_at')
-            ->first();
+        return [];
+    }
 
+    public function toolbox(PersonalRecord $pr): AgentToolbox
+    {
         $pr->loadMissing('activity.detail');
-        $conditions = ActivityNarrationContext::fromDetail($pr->activity?->detail);
+        $activity = $pr->activity;
+        $detail = $activity?->detail;
 
-        $vdot = $this->vdotEstimator->estimate($pr->user);
-        $isStrongestEvent = $vdot !== null && $vdot['source_category'] === $pr->category->value;
+        $tools = [new PersonalRecordTool($pr, $this->vdotEstimator)];
+        if ($activity !== null && $detail !== null) {
+            $tools[] = new WeatherTool($activity, $detail);
+        }
 
-        return [
-            'category' => $pr->category->value,
-            'value_sec' => $pr->value_sec,
-            'set_at' => $pr->set_at->toDateString(),
-            'previous_value_sec' => $previous?->value_sec,
-            'previous_set_at' => $previous?->set_at?->toDateString(),
-            'delta_sec' => $previous !== null ? ($previous->value_sec - $pr->value_sec) : null,
-            'vdot' => $vdot['vdot'] ?? null,
-            'is_strongest_event' => $isStrongestEvent,
-            'weather_temp_c' => $conditions->weatherTempC,
-            'weather_rain' => $conditions->weatherRain,
-            'weather_rain_source' => $conditions->weatherRainSource,
-            'weather_wind_speed_kmh' => $conditions->weatherWindSpeedKmh,
-            'weather_wind_gust_kmh' => $conditions->weatherWindGustKmh,
-        ];
+        return new AgentToolbox($tools);
     }
 }

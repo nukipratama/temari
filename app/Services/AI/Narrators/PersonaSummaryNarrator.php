@@ -6,7 +6,8 @@ namespace App\Services\AI\Narrators;
 
 use App\Models\StoryLine;
 use App\Models\User;
-use App\Models\WeeklySnapshot;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\PersonaMixTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\TemariPersona;
@@ -69,29 +70,25 @@ class PersonaSummaryNarrator
             context: $this->context($user),
             schemaName: 'TemariPersonaSummary',
             requiredKeys: ['narrative'],
-            options: new ChatCallOptions(temperature: 0.75, userId: $user->id, maxTokens: 1500),
+            options: new ChatCallOptions(
+                temperature: 0.75,
+                userId: $user->id,
+                maxTokens: 1500,
+                toolbox: new AgentToolbox([new PersonaMixTool($user, Carbon::now())]),
+            ),
         );
 
         return (string) $decoded['narrative'];
     }
 
     /**
-     * @return array{lookback_weeks: int, total_runs: int, persona_mix: list<array{mood: string, count: int, percent: float}>, persona_mix_recent: list<array{mood: string, count: int, percent: float}>, persona_mix_earlier: list<array{mood: string, count: int, percent: float}>, form_status: string|null}
+     * Nothing: the persona is entirely a read of how the moods fell.
+     *
+     * @return array<string, mixed>
      */
     public function context(User $user): array
     {
-        $mix = $this->personaMix($user);
-        $sample = array_sum(array_map(static fn (array $row): int => $row['count'], $mix));
-        $halfAgo = Carbon::now()->subWeeks(intdiv(self::LOOKBACK_WEEKS, 2));
-
-        return [
-            'lookback_weeks' => self::LOOKBACK_WEEKS,
-            'total_runs' => $sample,
-            'persona_mix' => $mix,
-            'persona_mix_recent' => $this->moodMixBetween($user, $halfAgo, null),
-            'persona_mix_earlier' => $this->moodMixBetween($user, Carbon::now()->subWeeks(self::LOOKBACK_WEEKS), $halfAgo),
-            'form_status' => WeeklySnapshot::latestFormStatus($user->id),
-        ];
+        return [];
     }
 
     /**
