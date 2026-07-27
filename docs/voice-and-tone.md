@@ -85,6 +85,19 @@ Labels only — the `Rarity` enum cases (`common…legendary`) and `rarity-*` co
 | `Ini layak kartu.` | `Ini pantas dapet kartu.` | "layak" without a verb is English compression |
 | `Tidak ada…` vs `Gak ada…` | `Gak ada…` | Formal negation where casual is natural |
 
+## Numbers
+
+- **Decimals take a comma.** `24,7 detik`, `90,3%`, `TRIMP 80,4`. Data arrives with a period (`90.3`) and must be converted, never copied through — a single output mixing both styles is the tell that it was.
+- **Round to one decimal**, and drop it when the value is whole: `35 menit`, not `35,0 menit`.
+- **Thousands run plain**, no separator: `1200 kalori`. A period there collides with the decimal comma.
+- **Pace and duration stay clock-formatted**, never decimal: `7:38 per km`, not `7,63 menit per km`.
+
+## Field names are not words
+
+Column and payload keys — `session_intent`, `volume_ramp_pct`, `form_status`, `ctl_delta_4w` — are labels for whoever is *reading* the data. They must never reach the user, including tidied up as `session intent-nya` or `volume ramp-nya`.
+
+This matters more since narrators became agents: prompts and tool descriptions both name keys so the model can identify what it fetched, which makes echoing them the path of least resistance. Say what the number means instead — "minggu ini jaraknya turun jauh dibanding 28,5 km minggu lalu", not "volume-ramp-nya turun banget".
+
 ## LLM prompts
 
-The persona source of truth is [TemariPersona.php](../app/Services/AI/TemariPersona.php) — every narrator inherits it. It encodes this same register, the code-switch test, the bold rule, and a natural-vs-`maksa` example bank. Per-narrator prompts add domain instructions only; they should not re-define voice.
+The persona source of truth is [TemariPersona.php](../app/Services/AI/TemariPersona.php) — every narrator inherits it. It encodes this same register, the code-switch test, the number rules, the field-name ban, the bold rule, and a natural-vs-`maksa` example bank. Per-narrator prompts add domain instructions only; they should not re-define voice.

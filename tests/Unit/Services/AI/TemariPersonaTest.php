@@ -89,3 +89,27 @@ it('grounds Temari in Indonesian running context', function (): void {
         ->toContain('31°C')
         ->toContain('hujan');
 });
+
+it('forbids speaking internal field names, tidied or not', function (): void {
+    // Prod output said "volume-ramp-nya turun banget" and "session intent-nya
+    // memang easy": column names read aloud as if they were words.
+    expect($this->prompt)
+        ->toContain('Nama field data')
+        ->toContain('session_intent')
+        ->toContain('volume ramp-nya');
+});
+
+it('pins numbers to Indonesian formatting so blocks stop disagreeing', function (): void {
+    // The same day produced "24,7 detik" and "90.3% waktu": tool payloads carry
+    // periods and were being copied straight through.
+    expect($this->prompt)
+        ->toContain('Desimal pakai KOMA')
+        ->toContain('90,3%')
+        ->toContain('Jangan campur dua gaya');
+});
+
+it('asks for training-load jargon to be translated rather than dropped bare', function (): void {
+    expect($this->prompt)
+        ->toContain('Istilah beban latihan')
+        ->toContain('rata-rata kamu biasanya');
+});
