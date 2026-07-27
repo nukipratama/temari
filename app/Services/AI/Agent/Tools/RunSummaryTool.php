@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Services\AI\Context\ActivityNarrationContext;
+use App\Services\Run\Metrics\PaceCalculator;
 
 final class RunSummaryTool extends ActivityTool
 {
@@ -15,15 +16,21 @@ final class RunSummaryTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Angka pokok sesi ini: jarak, durasi, HR rata-rata dan maksimum, cadence. Mulai dari sini.';
+        return 'Angka pokok sesi ini: kapan larinya, jarak, durasi, pace, HR rata-rata dan maksimum, '
+            .'cadence. Mulai dari sini.';
     }
 
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
+        $shared = ActivityNarrationContext::fromDetail($this->detail);
+        $paceSecPerKm = PaceCalculator::secPerKm($shared->distanceMeters, $this->detail->moving_time);
+
         return [
-            'distance_km' => ActivityNarrationContext::fromDetail($this->detail)->distanceKm(2),
+            'started_at_local' => $this->detail->start_date_local?->toDateTimeString(),
+            'distance_km' => $shared->distanceKm(2),
             'moving_time_sec' => $this->detail->moving_time,
+            'pace_sec_per_km' => $paceSecPerKm !== null ? round($paceSecPerKm, 1) : null,
             'avg_hr' => $this->detail->average_heartrate,
             'max_hr' => $this->detail->max_heartrate,
             'avg_cadence_spm' => $this->detail->average_cadence !== null

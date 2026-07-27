@@ -6,9 +6,13 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
+use App\Models\RunCard;
+use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
+use App\Services\AI\Agent\Tools\PastYouTool;
+use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\TerrainTool;
@@ -16,6 +20,7 @@ use App\Services\AI\Agent\Tools\TrainingLoadTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\Run\Metrics\RelativeEffort;
+use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -298,4 +303,81 @@ it('reads null paces when the runner has no VDOT-eligible PR', function (): void
 
     expect($reading['easy_pace_sec'])->toBeNull()
         ->and($reading['threshold_pace_sec'])->toBeNull();
+});
+
+// ── PastYouTool ───────────────────────────────────────────────────────
+
+it('reads a comparable past run of the same user, signed so faster reads positive', function (): void {
+    // Current run: 5 km in 1500 s (5:00/km, threshold band).
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['weather_temp_c' => null]); // don't let the random factory temp gate the match
+    // A comparable run 30 days earlier: same distance band + threshold pace, but slower.
+    $past = Activity::factory()->for($a->user)->analyzed()->create();
+    ActivityDetail::factory()->for($past)->create([
+        'start_date_local' => Carbon::today()->subDays(30),
+        'distance' => 5000.0,
+        'moving_time' => 1560, // 5:12/km, slower than the current 5:00/km
+        'weather_temp_c' => null,
+    ]);
+
+    $reading = new PastYouTool($a, $d->fresh(), app(PastYouMatcher::class))->handle([])['past_you'];
+
+    expect($reading)->not->toBeNull()
+        ->and($reading['days_ago'])->toBe(30)
+        ->and($reading['pace_diff_sec'])->toBeGreaterThan(0.0) // current is faster
+        ->and($reading['past_km'])->toBe(5.0);
+});
+
+it('reads a null past you rather than reaching for an incomparable run', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+
+    expect(new PastYouTool($a, $d, app(PastYouMatcher::class))->handle([])['past_you'])->toBeNull();
+});
+
+// ── PersonalRecordsTool ───────────────────────────────────────────────
+
+it('reads the records this run broke', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    PersonalRecord::factory()->for($a->user)->create([
+        'activity_id' => $a->id,
+        'category' => '5km',
+        'value_sec' => 1500,
+    ]);
+
+    expect(new PersonalRecordsTool($a, $d)->handle([])['personal_records'])
+        ->toBe([['category' => '5km', 'value_sec' => 1500.0]]);
+});
+
+it('reads an empty record list for a run that broke nothing, so no PR can be invented', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    // A record the user holds from some *other* run must not count as this run's.
+    PersonalRecord::factory()->for($a->user)->create(['category' => '5km', 'value_sec' => 1400]);
+
+    expect(new PersonalRecordsTool($a, $d)->handle([])['personal_records'])->toBe([]);
+});
+
+// ── CardIdentityTool ──────────────────────────────────────────────────
+
+it('reads the card identity with badge slugs humanised, so no raw code reaches the prompt', function (): void {
+    ['activity' => $a] = agentToolFixture();
+    $card = RunCard::factory()->create([
+        'activity_id' => $a->id,
+        'rarity' => 'rare',
+        'special_move' => 'Pembara Sabar',
+        'badges' => ['long_slow_distance', 'pejuang_hujan', 'not_a_real_badge'],
+    ]);
+
+    $reading = new CardIdentityTool($card)->handle([]);
+
+    expect($reading['rarity'])->toBe('rare')
+        ->and($reading['rarity_label'])->toBe('Langka')
+        ->and($reading['special_move'])->toBe('Pembara Sabar')
+        ->and($reading['badges'])->toBe(['Long Slow Distance', 'Pejuang Hujan']);
+});
+
+it('reads an empty badge list when the card carries none', function (): void {
+    ['activity' => $a] = agentToolFixture();
+    $card = RunCard::factory()->create(['activity_id' => $a->id, 'badges' => []]);
+
+    expect(new CardIdentityTool($card)->handle([])['badges'])->toBe([]);
 });

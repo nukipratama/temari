@@ -34,11 +34,15 @@ It is shared by the run-insight, post-run-speech, and card-flavor narrators. Eac
 
 ### Agent tools — signals the model fetches instead of receiving
 
-Run insight no longer takes a pre-computed context at all. Its prompt carries only the continuity line, and every number reaches the model through a tool it chose to call ([RunInsightNarrator::toolbox()](app/Services/AI/Narrators/RunInsightNarrator.php)). The tools are thin readers over the same sources the context object used — several of them wrap `ActivityNarrationContext` — so the signals are identical; what changed is that a run with no heart rate or no elevation no longer pays prompt tokens for the nulls.
+The per-activity narrators no longer take a pre-computed context. Every number reaches the model through a tool it chose to call — see each narrator's `toolbox()` ([RunInsightNarrator](app/Services/AI/Narrators/RunInsightNarrator.php), [PostRunSpeechNarrator](app/Services/AI/Narrators/PostRunSpeechNarrator.php), [CardFlavorNarrator](app/Services/AI/Narrators/CardFlavorNarrator.php)). The tools are thin readers over the same sources the context object used — several wrap `ActivityNarrationContext` — so the signals are the same ones; what changed is that a run with no heart rate or no elevation no longer pays prompt tokens for the nulls.
 
-Each tool is bound to its activity at construction and declares an argument-free schema ([ActivityTool](app/Services/AI/Agent/Tools/ActivityTool.php)), which is how cross-user reads are prevented: there is no id to pass. The loop, its ceilings, and why the model gets an error payload rather than a failed block are in [[narration-agents-on-openai-php]].
+Each tool is bound to its subject at construction and declares an argument-free schema ([ActivityTool](app/Services/AI/Agent/Tools/ActivityTool.php)), which is how cross-user reads are prevented: there is no id to pass. The loop, its ceilings, and why the model gets an error payload rather than a failed block are in [[narration-agents-on-openai-php]].
 
-The other narrators still build a full context up front; they are converted one at a time.
+**What still travels in the context** is whatever no tool could serve: a value the *call itself* carries rather than the database (post-run speech's `mood`, and its three insight blocks, written moments earlier in the same job and not yet persisted), plus the continuity line, which stays in the prompt because the content-filter retry has to be able to strip it.
+
+A toolbox is built per call, so it can be shorter when the subject is thinner — a card whose activity has no detail row is offered only `get_card_identity`, rather than four tools that would answer null to everything.
+
+The briefing, recap and profile narrators still build a full context up front; they are converted family by family.
 
 ### BriefingContext (per-user-day signals)
 

@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
-use App\Enums\Badge;
 use App\Models\RunCard;
+use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\CardIdentityTool;
+use App\Services\AI\Agent\Tools\EffortContextTool;
+use App\Services\AI\Agent\Tools\KmSplitsTool;
+use App\Services\AI\Agent\Tools\RunSummaryTool;
+use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\ChatCallOptions;
-use App\Services\AI\Context\ActivityNarrationContext;
 use App\Services\AI\StructuredChatCaller;
-use App\Services\Run\Metrics\PaceCalculator;
+use App\Services\Run\Metrics\RelativeEffort;
 
 class CardFlavorNarrator
 {
@@ -18,6 +22,12 @@ class CardFlavorNarrator
         Setiap kartu punya rarity (common, uncommon, rare, epic, legendary) +
         special move + badges. Saat menyebut rarity dalam kalimat, gunakan
         label Bahasa Indonesia: Biasa / Berkesan / Langka / Istimewa / Legendaris.
+
+        DATA: kartunya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
+        mulai dari get_card_identity, dan boleh panggil beberapa sekaligus dalam
+        satu giliran. Angka yang gak pernah kamu ambil JANGAN dikarang. Kalau
+        lari di balik kartu ini gak punya data detail, tool-nya memang gak
+        tersedia: tulis dari kartunya saja.
 
         Rajut kombinasi badge, pacing, dan cuaca jadi 1 kalimat yang
         nunjukin kenapa kartu ini spesial. Sebut special_move kalau namanya
@@ -49,43 +59,52 @@ class CardFlavorNarrator
           bikin sesi ini pantas dicatat."
         PROMPT;
 
-    public function __construct(private readonly StructuredChatCaller $caller)
-    {
+    public function __construct(
+        private readonly StructuredChatCaller $caller,
+        private readonly RelativeEffort $relativeEffort,
+    ) {
     }
 
     public function generate(RunCard $card): string
     {
         $card->loadMissing('activity.detail');
-        $detail = $card->activity->detail;
-        $shared = ActivityNarrationContext::fromDetail($detail);
-        $paceSecPerKm = PaceCalculator::secPerKm($shared->distanceMeters, $detail?->moving_time);
-
-        $context = [
-            'rarity' => $card->rarity->value,
-            'rarity_label' => $card->rarity->label(),
-            'special_move' => $card->special_move,
-            'badges' => Badge::promptLabelsFor((array) ($card->badges ?? [])),
-            'distance_km' => $shared->distanceKmOrNull(2),
-            'pace_sec_per_km' => $paceSecPerKm !== null ? round($paceSecPerKm, 1) : null,
-            'decoupling_pct' => $shared->decouplingPct,
-            'negative_split' => $shared->negativeSplit,
-            'weather_temp_c' => $shared->weatherTempC,
-            'weather_rain' => $shared->weatherRain,
-            'weather_rain_source' => $shared->weatherRainSource,
-            'weather_wind_speed_kmh' => $shared->weatherWindSpeedKmh,
-            'weather_wind_gust_kmh' => $shared->weatherWindGustKmh,
-            'weather_wind_direction_deg' => $shared->weatherWindDirectionDeg,
-        ];
 
         $decoded = $this->caller->call(
             kind: 'card_flavor',
             systemPrompt: self::SYSTEM_PROMPT,
-            context: $context,
+            context: [],
             schemaName: 'TemariCardFlavor',
             requiredKeys: ['flavor'],
-            options: new ChatCallOptions(userId: $card->activity->user_id, maxTokens: 400),
+            options: new ChatCallOptions(
+                userId: $card->activity->user_id,
+                maxTokens: 400,
+                toolbox: $this->toolbox($card),
+            ),
         );
 
         return (string) $decoded['flavor'];
+    }
+
+    /**
+     * The card's own identity, plus the run behind it when that run still has
+     * its detail row — a card whose activity was never detailed simply has
+     * fewer reads, rather than tools that answer null to everything.
+     */
+    public function toolbox(RunCard $card): AgentToolbox
+    {
+        $activity = $card->activity;
+        $detail = $activity->detail;
+
+        if ($detail === null) {
+            return new AgentToolbox([new CardIdentityTool($card)]);
+        }
+
+        return new AgentToolbox([
+            new CardIdentityTool($card),
+            new RunSummaryTool($activity, $detail),
+            new KmSplitsTool($activity, $detail),
+            new WeatherTool($activity, $detail),
+            new EffortContextTool($activity, $detail, $this->relativeEffort),
+        ]);
     }
 }
