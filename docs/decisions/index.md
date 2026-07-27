@@ -18,10 +18,10 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 
 | Pattern | ADRs |
 |---|---|
-| **Cost guards** | [[idempotent-dispatch-cost-ceiling]] (dispatch-time + daily ceiling); [[bounded-self-heal-and-dead-letter]] (execution-time + bounded retry); [[per-block-manual-retry]] *(superseded)* |
+| **Cost guards** | [[idempotent-dispatch-cost-ceiling]] (dispatch-time + daily ceiling); [[bounded-self-heal-and-dead-letter]] (execution-time + bounded retry); [[narration-agents-on-openai-php]] (per-block agent budget); [[per-block-manual-retry]] *(superseded)* |
 | **Data isolation** | [[analytics-db-separate-connection]] (metering outlives app resets); [[date-cast-utc-shift]] (UTC off-by-one guard) |
 | **Async / resilience** | [[chained-narration]] (connected narration threads); [[strava-circuit-breaker-rate-limit]] (per-client rate-limit guard); [[trust-all-proxies-cloudflare]] (proxy trust behind tunnel); [[deferred-recap-windowing]] (window-gated generation) |
-| **AI routing** | [[azure-openai-routing]] (per-narrator-kind deployment selection); [[demo-user-billing-exclusion]] (demo user omitted from auto-billing) |
+| **AI routing** | [[azure-openai-routing]] (per-narrator-kind deployment selection); [[narration-agents-on-openai-php]] (SDK seam + tool calling); [[demo-user-billing-exclusion]] (demo user omitted from auto-billing) |
 | **Ops / deploy** | [[fixed-session-cookie]] (stable cookie name); [[defer-config-cache]] (config cache timing); [[telegram-account-linking]] (signed deep-link token) |
 
 ## Timeline
@@ -34,6 +34,7 @@ _AI cost & flow_
 - [[chained-narration]] — connected narration threads via prev_narrative + afterDone + resume sweep
 - [[deferred-recap-windowing]] — recap rows are Pending until the week/month window closes
 - [[demo-user-billing-exclusion]] — demo user excluded from every auto-billing scheduler
+- [[narration-agents-on-openai-php]] — tool-calling narrators stay on openai-php; one block is bounded by steps + tokens
 
 _Data_
 - [[analytics-db-separate-connection]] — metering on a separate connection that survives migrate:fresh

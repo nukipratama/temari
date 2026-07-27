@@ -44,6 +44,7 @@ it('has a test class for every concrete app class', function (): void {
     // Whole namespaces covered by an aggregate suite rather than per-class files.
     $exemptNamespaces = [
         'App\\Services\\AI\\Narrators\\',  // NarratorsCoverageTest
+        'App\\Services\\AI\\Agent\\Tools\\', // AgentToolsCoverageTest
         'App\\Jobs\\AI\\',                  // JobsCoverageTest (+ AnalyzeActivityJobTest, AnalyzeRowJobTest)
     ];
 

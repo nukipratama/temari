@@ -5,7 +5,18 @@ declare(strict_types=1);
 return [
     'auto_dispatch' => filter_var(env('AI_AUTO_DISPATCH', true), FILTER_VALIDATE_BOOLEAN),
 
-    'queue' => (string) env('AI_QUEUE', 'default'),
+    // AI jobs run on their own queue with its own Horizon supervisor and a
+    // longer timeout: a tool-calling narration takes several round trips, and
+    // sharing `default` would starve Strava ingest behind it.
+    'queue' => (string) env('AI_QUEUE', 'ai'),
+
+    // Per-block ceiling on an agent run. The daily cost ceiling only gates
+    // dispatch, so this is what stops one runaway tool loop from spending the
+    // day's budget inside a single job.
+    'agent' => [
+        'max_steps' => (int) env('AI_AGENT_MAX_STEPS', 8),
+        'max_tokens' => (int) env('AI_AGENT_MAX_TOKENS', 30000),
+    ],
 
     // Per-user trigger ceiling (sliding minute). Catches the case where a user
     // clicks Analisis ulang across multiple analyses in rapid succession.

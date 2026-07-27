@@ -5,6 +5,7 @@ use OpenAI\Responses\Meta\MetaInformation;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Agent\AgentTool;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
@@ -66,6 +67,82 @@ function fakeAzureResponse(
             'type' => 'message', 'id' => 'msg_test', 'status' => 'completed', 'role' => 'assistant',
             'content' => [['type' => 'output_text', 'text' => $content, 'annotations' => []]],
         ]],
+        'parallel_tool_calls' => true, 'previous_response_id' => null, 'reasoning' => null, 'store' => true,
+        'temperature' => 1.0, 'text' => ['format' => ['type' => 'text']], 'tool_choice' => 'auto', 'tools' => [],
+        'top_p' => 1.0, 'truncation' => 'disabled',
+        'usage' => [
+            'input_tokens' => $inputTokens, 'output_tokens' => $outputTokens,
+            'total_tokens' => $inputTokens + $outputTokens,
+            'input_tokens_details' => ['cached_tokens' => 0], 'output_tokens_details' => ['reasoning_tokens' => 0],
+        ],
+        'user' => null, 'metadata' => [],
+    ], MetaInformation::from([]));
+}
+
+/**
+ * A stand-in agent tool whose read is whatever $handler returns.
+ *
+ * @param  callable(array<string, mixed>): array<string, mixed>  $handler
+ */
+function fakeAgentTool(string $name, callable $handler): AgentTool
+{
+    return new class ($name, $handler) implements AgentTool {
+        /** @param  callable(array<string, mixed>): array<string, mixed>  $handler */
+        public function __construct(private readonly string $toolName, private $handler)
+        {
+        }
+
+        public function name(): string
+        {
+            return $this->toolName;
+        }
+
+        public function description(): string
+        {
+            return 'a test read';
+        }
+
+        /** @return array<string, mixed> */
+        public function parameters(): array
+        {
+            return ['type' => 'object', 'properties' => (object) [], 'required' => [], 'additionalProperties' => false];
+        }
+
+        /**
+         * @param  array<string, mixed>  $arguments
+         * @return array<string, mixed>
+         */
+        public function handle(array $arguments): array
+        {
+            return ($this->handler)($arguments);
+        }
+    };
+}
+
+/**
+ * A Responses-API turn where the model asks for tools instead of answering.
+ *
+ * @param  list<array{name: string, arguments?: string}>  $calls
+ */
+function fakeAzureToolCallResponse(array $calls, int $inputTokens = 10, int $outputTokens = 5): CreateResponse
+{
+    $output = [];
+    foreach ($calls as $index => $call) {
+        $output[] = [
+            'type' => 'function_call',
+            'id' => 'fc_'.$index,
+            'call_id' => 'call_'.$index,
+            'name' => $call['name'],
+            'arguments' => $call['arguments'] ?? '{}',
+            'status' => 'completed',
+        ];
+    }
+
+    return CreateResponse::from([
+        'id' => 'resp_test', 'object' => 'response', 'created_at' => 0, 'status' => 'completed', 'error' => null,
+        'incomplete_details' => null,
+        'instructions' => null, 'max_output_tokens' => null, 'model' => 'test',
+        'output' => $output,
         'parallel_tool_calls' => true, 'previous_response_id' => null, 'reasoning' => null, 'store' => true,
         'temperature' => 1.0, 'text' => ['format' => ['type' => 'text']], 'tool_choice' => 'auto', 'tools' => [],
         'top_p' => 1.0, 'truncation' => 'disabled',

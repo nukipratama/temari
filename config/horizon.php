@@ -213,15 +213,41 @@ return [
             'nice' => 0,
         ],
 
+        // Narration runs on its own supervisor. A tool-calling agent takes
+        // several Azure round trips, which does not fit the 60 s the rest of
+        // the queue lives by, and holding a shared worker that long would stall
+        // Strava ingest behind it.
+        'supervisor-ai' => [
+            'connection' => 'redis',
+            'queue' => ['ai'],
+            'balance' => 'auto',
+            'minProcesses' => 1,
+            'maxProcesses' => 1,
+            'balanceMaxShift' => 1,
+            'balanceCooldown' => 3,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 1,
+            'timeout' => 300,
+            'nice' => 0,
+        ],
+
     ],
 
     'environments' => [
         'production' => [
+            // Horizon container is capped at 1 vCPU / 1 GB (compose.prod.yaml).
+            // 4 workers (~128 MB each) keep memory + CPU headroom; 8 risked OOM.
+            // Split 2/2 so a narration backlog can never occupy every worker.
             'supervisor-1' => [
                 'minProcesses' => 1,
-                // Horizon container is capped at 1 vCPU / 1 GB (compose.prod.yaml).
-                // 4 workers (~128 MB each) keep memory + CPU headroom; 8 risked OOM.
-                'maxProcesses' => 4,
+                'maxProcesses' => 2,
+                'maxJobs' => 500,
+            ],
+            'supervisor-ai' => [
+                'minProcesses' => 1,
+                'maxProcesses' => 2,
                 'maxJobs' => 500,
             ],
         ],
@@ -230,6 +256,10 @@ return [
             'supervisor-1' => [
                 'minProcesses' => 1,
                 'maxProcesses' => 3,
+            ],
+            'supervisor-ai' => [
+                'minProcesses' => 1,
+                'maxProcesses' => 2,
             ],
         ],
     ],
