@@ -229,6 +229,8 @@ it('renders a byUser breakdown joined to users.name, skipping system-context row
                 ->where('byUser.0', [
                     'user_id' => $alice->id,
                     'user_name' => 'Alice',
+            'strava_athlete_id' => null,
+            'deleted' => false,
                     'prompt' => 300,
                     'completion' => 130,
                     'total' => 430,
@@ -237,6 +239,8 @@ it('renders a byUser breakdown joined to users.name, skipping system-context row
                 ->where('byUser.1', [
                     'user_id' => $bob->id,
                     'user_name' => 'Bob',
+            'strava_athlete_id' => null,
+            'deleted' => false,
                     'prompt' => 50,
                     'completion' => 25,
                     'total' => 75,
@@ -262,6 +266,8 @@ it('keeps the user_id in the breakdown after the user is deleted (no FK cascade)
                 ->where('byUser.0', [
                     'user_id' => $aliceId,
                     'user_name' => null,
+            'strava_athlete_id' => null,
+            'deleted' => true,
                     'prompt' => 300,
                     'completion' => 130,
                     'total' => 430,

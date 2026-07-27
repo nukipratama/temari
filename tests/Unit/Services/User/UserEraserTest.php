@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\AI\TokenUsage;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
@@ -104,4 +106,55 @@ it('leaves another user narration and endpoints alone', function (): void {
     expect(Analysis::query()->count())->toBe(10)
         ->and(DB::table('push_subscriptions')->count())->toBe(1)
         ->and(User::query()->whereKey($bystander->id)->exists())->toBeTrue();
+});
+
+it('stamps the name and Strava id onto cost history before the account goes', function (): void {
+    $user = User::factory()->create(['name' => 'Mantan Pelari']);
+    StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 424242]);
+    TokenUsage::query()->create([
+        'user_id' => $user->id,
+        'kind' => 'briefing',
+        'prompt_tokens' => 10,
+        'completion_tokens' => 5,
+        'total_tokens' => 15,
+    ]);
+
+    app(UserEraser::class)->erase($user);
+
+    $row = TokenUsage::query()->where('user_id', $user->id)->sole();
+    expect($row->user_name)->toBe('Mantan Pelari')
+        ->and($row->strava_athlete_id)->toBe(424242);
+});
+
+it('stamps a null Strava id for an account that never connected one', function (): void {
+    $user = User::factory()->create(['name' => 'Belum Nyambung']);
+    TokenUsage::query()->create([
+        'user_id' => $user->id,
+        'kind' => 'briefing',
+        'prompt_tokens' => 1,
+        'completion_tokens' => 1,
+        'total_tokens' => 2,
+    ]);
+
+    app(UserEraser::class)->erase($user);
+
+    $row = TokenUsage::query()->where('user_id', $user->id)->sole();
+    expect($row->user_name)->toBe('Belum Nyambung')
+        ->and($row->strava_athlete_id)->toBeNull();
+});
+
+it('leaves another user cost history unstamped', function (): void {
+    $user = User::factory()->create();
+    $bystander = User::factory()->create(['name' => 'Masih Lari']);
+    TokenUsage::query()->create([
+        'user_id' => $bystander->id,
+        'kind' => 'briefing',
+        'prompt_tokens' => 1,
+        'completion_tokens' => 1,
+        'total_tokens' => 2,
+    ]);
+
+    app(UserEraser::class)->erase($user);
+
+    expect(TokenUsage::query()->where('user_id', $bystander->id)->sole()->user_name)->toBeNull();
 });

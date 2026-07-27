@@ -6,6 +6,7 @@ namespace App\Services\User;
 
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\AI\TokenUsage;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
@@ -29,7 +30,10 @@ use Illuminate\Support\Facades\DB;
  * `ai_analyses`, so removing those takes it with them.
  *
  * `ai_token_usages` is deliberately kept. It is cost history, not user data,
- * and survives orphaned under the old id.
+ * and lives on its own connection so it survives the account entirely. Before
+ * the user goes, their name and Strava athlete id are stamped onto those rows,
+ * so /ai-usage can still say whose spend it was instead of showing a bare id
+ * pointing at nobody.
  */
 final readonly class UserEraser
 {
@@ -51,6 +55,12 @@ final readonly class UserEraser
     {
         $id = $user->id;
 
+        // Ahead of the transaction on purpose: ai_token_usages is on another
+        // connection, so it would not roll back with the rest. Stamping first
+        // means a failed delete leaves a snapshot on a user who still exists,
+        // which is invisible — the report prefers live identity over it.
+        $this->snapshotIdentityOntoUsage($user);
+
         DB::transaction(function () use ($id, $user): void {
             // Resolved inside the transaction rather than reused from any
             // caller's preview: rows can be created for this user (a Strava
@@ -67,6 +77,21 @@ final readonly class UserEraser
             // lines, snapshots, unlocks, profiles, connections) cascades.
             $user->delete();
         });
+    }
+
+    /**
+     * Record who a usage row belonged to, so the spend stays attributable after
+     * the user and their Strava connection are gone. Live users are left null
+     * and resolved from the source tables, so a rename never goes stale here.
+     */
+    private function snapshotIdentityOntoUsage(User $user): void
+    {
+        TokenUsage::query()
+            ->where('user_id', $user->id)
+            ->update([
+                'user_name' => $user->name,
+                'strava_athlete_id' => $user->stravaConnection?->strava_athlete_id,
+            ]);
     }
 
     /**

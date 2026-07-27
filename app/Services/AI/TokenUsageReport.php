@@ -32,7 +32,7 @@ class TokenUsageReport
      *     previousTotals: array{prompt:int, completion:int, total:int, calls:int, cost:float}|null,
      *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float}>,
      *     byDeployment: list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>,
-     *     byUser: list<array{user_id:int, user_name:string|null, prompt:int, completion:int, total:int, calls:int}>,
+     *     byUser: list<array{user_id:int, user_name:string|null, strava_athlete_id:int|null, deleted:bool, prompt:int, completion:int, total:int, calls:int}>,
      *     daily: list<array{day:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
      *     availableKinds: list<array{value:string, label:string}>,
      *     budget: array{todayCost:float, dailyCeiling:float|null, currency:string},
@@ -237,31 +237,49 @@ class TokenUsageReport
     }
 
     /**
+     * Spend per user.
+     *
+     * Identity is resolved live from `users` / `strava_connections` where the
+     * account still exists. Where it does not, the row's own `user_name` and
+     * `strava_athlete_id` are used: {@see \App\Services\User\UserEraser}
+     * stamps them on the way out, so a deleted account's spend stays
+     * attributable instead of collapsing to a bare id.
+     *
      * @param  Builder  $baseQuery
-     * @return list<array{user_id:int, user_name:string|null, prompt:int, completion:int, total:int, calls:int}>
+     * @return list<array{user_id:int, user_name:string|null, strava_athlete_id:int|null, deleted:bool, prompt:int, completion:int, total:int, calls:int}>
      */
     private function byUser(Builder $baseQuery): array
     {
         $userRows = (clone $baseQuery)
             ->whereNotNull('user_id')
             ->selectRaw(
-                'user_id, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
+                'user_id, MAX(user_name) as snapshot_name, MAX(strava_athlete_id) as snapshot_athlete_id, '.
+                'SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
                 'SUM(total_tokens) as total, COUNT(*) as calls'
             )
             ->groupBy('user_id')
             ->orderByDesc('total')
             ->get();
 
-        $userNames = DB::table('users')
-            ->whereIn('id', $userRows->pluck('user_id')->all())
-            ->pluck('name', 'id');
+        $ids = $userRows->pluck('user_id')->all();
+        // Cross-connection: users and strava_connections are not joinable to the
+        // analytics schema, so they are fetched and matched in PHP.
+        $liveNames = DB::table('users')->whereIn('id', $ids)->pluck('name', 'id');
+        $liveAthleteIds = DB::table('strava_connections')
+            ->whereIn('user_id', $ids)
+            ->pluck('strava_athlete_id', 'user_id');
 
         $byUser = [];
         foreach ($userRows as $row) {
-            $name = $userNames[$row->user_id] ?? null;
+            $userId = (int) $row->user_id;
+            $liveName = $liveNames[$userId] ?? null;
+            $athleteId = $liveAthleteIds[$userId] ?? $row->snapshot_athlete_id;
+
             $byUser[] = [
-                'user_id' => (int) $row->user_id,
-                'user_name' => $name === null ? null : (string) $name,
+                'user_id' => $userId,
+                'user_name' => self::stringOrNull($liveName ?? $row->snapshot_name),
+                'strava_athlete_id' => $athleteId === null ? null : (int) $athleteId,
+                'deleted' => $liveName === null,
                 'prompt' => (int) $row->prompt,
                 'completion' => (int) $row->completion,
                 'total' => (int) $row->total,
@@ -270,6 +288,11 @@ class TokenUsageReport
         }
 
         return $byUser;
+    }
+
+    private static function stringOrNull(mixed $value): ?string
+    {
+        return $value === null || $value === '' ? null : (string) $value;
     }
 
     /**
