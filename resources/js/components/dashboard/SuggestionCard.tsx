@@ -1,13 +1,10 @@
-import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
-import ReadMoreToggle from '@/components/ui/ReadMoreToggle';
 import SectionLabel from '@/components/ui/SectionLabel';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
-import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { formatWeather } from '@/pages/HariIni/helpers';
@@ -21,7 +18,6 @@ import type { ActivityDetail, AnalysisPayload } from '@/types/inertia';
  * Falls back to a single paragraph if the LLM didn't follow the format.
  */
 function SuggestionContent({ text }: Readonly<{ text: string }>) {
-    const [expanded, setExpanded] = useState(false);
     const parts = text.split(/\n\n+/).map((s) => s.trim()).filter(Boolean);
     if (parts.length === 0) {
         return null;
@@ -36,12 +32,9 @@ function SuggestionContent({ text }: Readonly<{ text: string }>) {
                 {renderBold(title)}
             </h3>
             {body !== '' && (
-                <div>
-                    <p className={cn('whitespace-pre-line font-sans text-sm leading-relaxed text-ink-2', !expanded && 'line-clamp-3')}>
-                        {renderBold(body)}
-                    </p>
-                    {body.length > 150 && <ReadMoreToggle expanded={expanded} onToggle={() => setExpanded(!expanded)} />}
-                </div>
+                <p className="whitespace-pre-line font-sans text-sm leading-relaxed text-ink-2">
+                    {renderBold(body)}
+                </p>
             )}
         </div>
     );
