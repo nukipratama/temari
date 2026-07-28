@@ -93,6 +93,14 @@ Labels only — the `Rarity` enum cases (`common…legendary`) and `rarity-*` co
 - **Thousands run plain**, no separator: `1200 kalori`. A period there collides with the decimal comma.
 - **Pace and duration stay clock-formatted**, never decimal: `7:38 per km`, not `7,63 menit per km`.
 
+## Missing data is not news
+
+Two separate rules, and the second is the one that slips. Don't invent a number that isn't there — and **don't announce that it isn't there either**. A gap in the data is the app's problem, not the runner's; they can't act on it, and every sentence spent naming it is a sentence not spent on the run.
+
+This was measured, not assumed. On a run with no heart rate, narration correctly refused to invent one and then said so in three of four blocks: *"Data HR zone-nya nggak kebaca…"*, *"Cadence memang nggak kebaca…"*, *"Sisa 550 m belum ada datanya."*
+
+The same rule covers narrating the *process*: `aku nggak mau nebak-nebak`, `aku baca dari dua split yang ada saja`. The reader is talking to Temari, not to a system explaining its inputs. When one angle has no data, move to another angle — don't explain the move.
+
 ## Field names are not words
 
 Column and payload keys — `session_intent`, `volume_ramp_pct`, `form_status`, `ctl_delta_4w` — are labels for whoever is *reading* the data. They must never reach the user, including tidied up as `session intent-nya` or `volume ramp-nya`.
