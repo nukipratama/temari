@@ -35,6 +35,10 @@ use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\AI\Agent\Tools\ProgressionSignalTool;
+use App\Services\AI\Agent\Tools\PersonaMixTool;
+use App\Services\Run\ProgressionSeriesBuilder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
@@ -497,4 +501,93 @@ it('reads a null past you when the runner has never run', function (): void {
 
     expect(new LatestPastYouTool($user, Carbon::today(), app(PastYouMatcher::class))->handle([])['past_you'])
         ->toBeNull();
+});
+
+// ── ProgressionSignalTool ────────────────────────────────────────────
+
+it('names the distance the runner has improved most, from one series build', function (): void {
+    $user = User::factory()->create();
+
+    // Two categories with two timed efforts each; 10k improved by more.
+    foreach ([['5km', 5000.0, [1500, 1440]], ['10km', 10000.0, [3300, 3000]]] as [$category, $distance, $times]) {
+        PersonalRecord::factory()->for($user)->create([
+            'category' => $category,
+            'value_sec' => min($times),
+        ]);
+        foreach ($times as $index => $seconds) {
+            $activity = Activity::factory()->for($user)->analyzed()->create();
+            ActivityDetail::factory()->for($activity)->create([
+                'start_date_local' => Carbon::today()->subDays(60 - $index * 10),
+                'distance' => $distance,
+                'moving_time' => $seconds,
+            ]);
+        }
+    }
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $reading = new ProgressionSignalTool($user, Carbon::today(), app(ProgressionSeriesBuilder::class))->handle([]);
+
+    expect($reading['progression_signal'])->not->toBeNull()
+        ->and($reading['progression_signal']['delta_sec'])->toBe(300)
+        // One read for the records, one series build for all of them -- not one
+        // full ActivityDetail scan per category.
+        ->and($queries)->toBeLessThanOrEqual(3);
+});
+
+it('reads a null progression signal when no distance has two efforts to compare', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1500]);
+
+    expect(new ProgressionSignalTool($user, Carbon::today(), app(ProgressionSeriesBuilder::class))->handle([])['progression_signal'])
+        ->toBeNull();
+});
+
+// ── PersonaMixTool ───────────────────────────────────────────────────
+
+// The full-window mix is folded from the two halves rather than asked for as a
+// third overlapping group-by, so it has to stay exactly what a third query
+// would have returned.
+it('folds the full mood mix from its two halves', function (): void {
+    $user = User::factory()->create();
+    $asOf = Carbon::parse('2026-06-15 08:00:00');
+
+    // LOOKBACK_WEEKS is 12, so the halfway mark is 6 weeks back.
+    $seed = function (string $mood, Carbon $when) use ($user): void {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        $line = StoryLine::query()->create([
+            'user_id' => $user->id, 'activity_id' => $activity->id,
+            'kind' => StoryLine::KIND_POST_RUN, 'mood' => $mood,
+            'speech' => null, 'sigil_pattern' => 'dddd',
+        ]);
+        // created_at is not fillable, so it has to be set after the insert.
+        $line->created_at = $when;
+        $line->save();
+    };
+
+    $seed('nyala', $asOf->copy()->subWeeks(2));
+    $seed('nyala', $asOf->copy()->subWeeks(3));
+    $seed('adem', $asOf->copy()->subWeeks(8));
+
+    $reading = new PersonaMixTool($user, $asOf)->handle([]);
+
+    expect($reading['total_runs'])->toBe(3)
+        ->and($reading['persona_mix'])->toBe([
+            ['mood' => 'nyala', 'count' => 2, 'percent' => 66.7],
+            ['mood' => 'adem', 'count' => 1, 'percent' => 33.3],
+        ])
+        ->and($reading['persona_mix_recent'])->toBe([['mood' => 'nyala', 'count' => 2, 'percent' => 100.0]])
+        ->and($reading['persona_mix_earlier'])->toBe([['mood' => 'adem', 'count' => 1, 'percent' => 100.0]]);
+});
+
+it('reads an empty mood mix when the runner has no story lines', function (): void {
+    $user = User::factory()->create();
+
+    $reading = new PersonaMixTool($user, Carbon::today())->handle([]);
+
+    expect($reading['persona_mix'])->toBe([])
+        ->and($reading['total_runs'])->toBe(0);
 });

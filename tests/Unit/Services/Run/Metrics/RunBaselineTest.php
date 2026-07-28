@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Run\Metrics\RunBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -115,4 +116,58 @@ it('scopes the baseline to the given user', function () use ($asOf): void {
     baselineRun($other, $asOf()->copy()->subDays(5), 9000.0, 2700, 152.0, 5.0);
 
     expect(new RunBaseline()->forUserAsOf($user->id, $asOf()))->toBeNull();
+});
+
+// ── The per-instance memo ────────────────────────────────────────────
+//
+// The run-insight toolbox asks for the same baseline twice, once through
+// RelativeEffort and once through RecentBaselineTool, and each scan reads
+// stream_summary for every run in the 28-day window. The binding is scoped()
+// so both reach the same instance and the second call is free.
+
+it('reads the window once for repeated identical questions', function () use ($asOf): void {
+    $user = User::factory()->create();
+    baselineRun($user, $asOf()->copy()->subDays(3), 5000.0, 1500, 150.0, 4.0);
+
+    $baseline = new RunBaseline();
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $first = $baseline->forUserAsOf($user->id, $asOf());
+    $second = $baseline->forUserAsOf($user->id, $asOf());
+
+    expect($second)->toBe($first)
+        ->and($queries)->toBe(1);
+});
+
+// The memo key must carry excludeActivityId, or a run gets measured against a
+// baseline that includes itself the moment something asked without the exclusion
+// first. That would be silent: the numbers stay plausible, just wrong.
+it('keeps answers apart when only the excluded activity differs', function () use ($asOf): void {
+    $user = User::factory()->create();
+    $own = baselineRun($user, $asOf()->copy()->subDays(1), 10000.0, 6000, 120.0, null);
+    baselineRun($user, $asOf()->copy()->subDays(3), 5000.0, 1500, 150.0, null);
+
+    $baseline = new RunBaseline();
+
+    $includingSelf = $baseline->forUserAsOf($user->id, $asOf());
+    $excludingSelf = $baseline->forUserAsOf($user->id, $asOf(), $own->id);
+
+    expect($includingSelf['runs'])->toBe(2)
+        ->and($excludingSelf['runs'])->toBe(1);
+});
+
+it('keeps answers apart when only the as-of moment differs', function () use ($asOf): void {
+    $user = User::factory()->create();
+    baselineRun($user, $asOf()->copy()->subDays(3), 5000.0, 1500, 150.0, null);
+
+    $baseline = new RunBaseline();
+
+    $now = $baseline->forUserAsOf($user->id, $asOf());
+    $longBefore = $baseline->forUserAsOf($user->id, $asOf()->copy()->subDays(20));
+
+    expect($now['runs'])->toBe(1)
+        ->and($longBefore)->toBeNull();
 });

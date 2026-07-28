@@ -11,6 +11,7 @@ use App\Listeners\VerifyDependencies;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
+use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Story\VerdictTimeline;
 use App\Support\Config\AppConfig;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -43,6 +44,13 @@ class AppServiceProvider extends ServiceProvider
         // Scoped so its per-request/per-job read memo collapses repeat lookups but
         // stays fresh across requests and queue jobs (DB remains source of truth).
         $this->app->scoped(AppConfig::class);
+
+        // Scoped for the same reason, and specifically so the run-insight toolbox
+        // reads the 28-day baseline once. RelativeEffort and RecentBaselineTool
+        // both ask for it with identical arguments, and the memo can only collapse
+        // that if they are handed the same instance — otherwise the container
+        // builds RelativeEffort its own RunBaseline and the window is scanned twice.
+        $this->app->scoped(RunBaseline::class);
     }
 
     public function boot(): void

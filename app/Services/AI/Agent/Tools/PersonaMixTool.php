@@ -34,16 +34,54 @@ final class PersonaMixTool extends UserTool
         $windowStart = $this->asOf->copy()->subWeeks(self::LOOKBACK_WEEKS);
         $halfway = $this->asOf->copy()->subWeeks(intdiv(self::LOOKBACK_WEEKS, 2));
 
-        $mix = $this->moodMixBetween($windowStart, null);
+        // The full window is the two halves put back together, so it is folded
+        // in PHP rather than asked for as a third overlapping group-by.
+        $recent = $this->moodMixBetween($halfway, null);
+        $earlier = $this->moodMixBetween($windowStart, $halfway);
+        $mix = self::merge($recent, $earlier);
 
         return [
             'lookback_weeks' => self::LOOKBACK_WEEKS,
             'total_runs' => array_sum(array_map(static fn (array $row): int => $row['count'], $mix)),
             'persona_mix' => $mix,
-            'persona_mix_recent' => $this->moodMixBetween($halfway, null),
-            'persona_mix_earlier' => $this->moodMixBetween($windowStart, $halfway),
+            'persona_mix_recent' => $recent,
+            'persona_mix_earlier' => $earlier,
             'form_status' => WeeklySnapshot::latestFormStatus($this->user->id),
         ];
+    }
+
+    /**
+     * Two half-window mixes summed back into one, with percentages recomputed
+     * against the combined total and the same count-descending order.
+     *
+     * @param  list<array{mood: string, count: int, percent: float}>  $recent
+     * @param  list<array{mood: string, count: int, percent: float}>  $earlier
+     * @return list<array{mood: string, count: int, percent: float}>
+     */
+    private static function merge(array $recent, array $earlier): array
+    {
+        $counts = [];
+        foreach ([...$recent, ...$earlier] as $row) {
+            $counts[$row['mood']] = ($counts[$row['mood']] ?? 0) + $row['count'];
+        }
+
+        $total = array_sum($counts);
+        if ($total === 0) {
+            return [];
+        }
+
+        $mix = [];
+        foreach ($counts as $mood => $count) {
+            $mix[] = [
+                'mood' => $mood,
+                'count' => $count,
+                'percent' => round(($count / $total) * 100, 1),
+            ];
+        }
+
+        usort($mix, static fn (array $a, array $b): int => $b['count'] <=> $a['count']);
+
+        return $mix;
     }
 
     /** @return list<array{mood: string, count: int, percent: float}> */
