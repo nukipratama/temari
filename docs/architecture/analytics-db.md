@@ -9,6 +9,7 @@ code_refs:
   - app/Models/AI/TokenUsage.php
   - app/Models/Analytics/StravaSyncLog.php
   - database/migrations/analytics/2026_05_19_132139_create_ai_token_usages_table.php
+  - app/Services/User/UserEraser.php
   - app/Providers/AppServiceProvider.php
   - tests/TestCase.php
   - .github/workflows/ci.yml
@@ -63,6 +64,12 @@ migrations themselves use `Schema::create(...)` (not `Schema::connection('analyt
 so the `--database=analytics` flag is what routes them to the right schema. There is no
 cross-schema foreign key from these tables back to `users` (impossible across schemas),
 so `user_id` is a bare nullable integer.
+
+Because nothing constrains it, a usage row outlives the account it belonged to. `user_name`
+and `strava_athlete_id` are stamped onto those rows by [UserEraser](app/Services/User/UserEraser.php)
+as the user is deleted, so `/ai-usage` can still attribute the spend. They stay **null while
+the account exists** — [TokenUsageReport](app/Services/AI/TokenUsageReport.php) resolves live
+identity from `users` / `strava_connections` instead, so a rename never goes stale here.
 
 ## How tests rebind it to the test DB
 

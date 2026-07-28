@@ -22,8 +22,8 @@ const baseProps = {
         { kind: 'briefing', prompt: 300, completion: 130, total: 430, calls: 2, cost: 0.02, truncated_calls: 0, avg_latency_ms: 1000, max_latency_ms: 1200 },
     ],
     byUser: [
-        { user_id: 1, user_name: 'Alice', prompt: 500, completion: 230, total: 730, calls: 2 },
-        { user_id: 2, user_name: 'Bob', prompt: 100, completion: 50, total: 150, calls: 1 },
+        { user_id: 1, user_name: 'Alice', strava_athlete_id: null, deleted: false, prompt: 500, completion: 230, total: 730, calls: 2 },
+        { user_id: 2, user_name: 'Bob', strava_athlete_id: null, deleted: false, prompt: 100, completion: 50, total: 150, calls: 1 },
     ],
     byDeployment: [
         { deployment: 'nuki-mini', prompt: 600, completion: 280, total: 880, calls: 3, cost: 0.05, inputPer1m: 0.15, outputPer1m: 0.6 },
@@ -248,8 +248,8 @@ describe('AiUsage page', () => {
             <AiUsage
                 {...baseProps}
                 byUser={[
-                    { user_id: 1, user_name: 'Alice', prompt: 500, completion: 230, total: 730, calls: 2 },
-                    { user_id: 2, user_name: 'Bob', prompt: 50, completion: 25, total: 75, calls: 1 },
+                    { user_id: 1, user_name: 'Alice', strava_athlete_id: null, deleted: false, prompt: 500, completion: 230, total: 730, calls: 2 },
+                    { user_id: 2, user_name: 'Bob', strava_athlete_id: null, deleted: false, prompt: 50, completion: 25, total: 75, calls: 1 },
                 ]}
             />,
         );
@@ -266,11 +266,38 @@ describe('AiUsage page', () => {
         render(
             <AiUsage
                 {...baseProps}
-                byUser={[{ user_id: 99, user_name: null, prompt: 10, completion: 5, total: 15, calls: 1 }]}
+                byUser={[{ user_id: 99, user_name: null, strava_athlete_id: null, deleted: false, prompt: 10, completion: 5, total: 15, calls: 1 }]}
             />,
         );
 
         expect(screen.getByText('User #99')).toBeInTheDocument();
+    });
+
+    it('marks a deleted account and still names it from the delete-time snapshot', () => {
+        render(
+            <AiUsage
+                {...baseProps}
+                byUser={[
+                    { user_id: 99, user_name: 'Mantan Pelari', strava_athlete_id: 12345, deleted: true, prompt: 10, completion: 5, total: 15, calls: 1 },
+                ]}
+            />,
+        );
+        expect(screen.getByText('Mantan Pelari')).toBeInTheDocument();
+        expect(screen.getByText('dihapus')).toBeInTheDocument();
+        expect(screen.getByText('Strava 12345')).toBeInTheDocument();
+    });
+
+    it('shows the Strava id for a live account too, with no deleted marker', () => {
+        render(
+            <AiUsage
+                {...baseProps}
+                byUser={[
+                    { user_id: 1, user_name: 'Alice', strava_athlete_id: 777, deleted: false, prompt: 10, completion: 5, total: 15, calls: 1 },
+                ]}
+            />,
+        );
+        expect(screen.getByText('Strava 777')).toBeInTheDocument();
+        expect(screen.queryByText('dihapus')).not.toBeInTheDocument();
     });
 
     it('navigates with form submit', () => {

@@ -36,6 +36,9 @@ interface UsageTotals {
 interface UserRow {
     user_id: number;
     user_name: string | null;
+    strava_athlete_id: number | null;
+    /** The account is gone; name and athlete id are the snapshot taken on delete. */
+    deleted: boolean;
     prompt: number;
     completion: number;
     total: number;
@@ -775,7 +778,17 @@ function UserCells({ row, grandTotal }: Readonly<{ row: UserRow; grandTotal: num
     return (
         <>
             <td className="px-5 py-3 font-medium text-ink">
-                <div>{label}</div>
+                <div className="flex items-center gap-1.5">
+                    <span>{label}</span>
+                    {row.deleted && (
+                        <span className="rounded-full bg-ink/5 px-1.5 py-0.5 text-[10px] font-normal text-ink-3">
+                            dihapus
+                        </span>
+                    )}
+                </div>
+                {row.strava_athlete_id !== null && (
+                    <div className="font-mono text-xs text-ink-3">Strava {row.strava_athlete_id}</div>
+                )}
                 <ProgressBar
                     value={share}
                     size="sm"

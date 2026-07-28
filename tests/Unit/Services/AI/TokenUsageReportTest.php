@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Models\AI\TokenUsage;
+use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\User\UserEraser;
 use App\Services\AI\TokenUsageReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -189,6 +191,8 @@ it('stitches user names from the app schema and skips system (null user_id) rows
         ->and($result['byUser'][0])->toBe([
             'user_id' => $alice->id,
             'user_name' => 'Alice',
+            'strava_athlete_id' => null,
+            'deleted' => false,
             'prompt' => 300,
             'completion' => 130,
             'total' => 430,
@@ -197,16 +201,56 @@ it('stitches user names from the app schema and skips system (null user_id) rows
         ->and($result['byUser'][1]['user_name'])->toBe('Bob');
 });
 
-it('keeps the user_id with a null name when the user no longer exists', function () use ($range): void {
+it('keeps the user_id with a null name when the user vanished without a snapshot', function () use ($range): void {
     $alice = User::factory()->create(['name' => 'Alice']);
     $aliceId = $alice->id;
     seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $aliceId);
+    // Straight $user->delete(), not the eraser: nothing stamped the identity.
     $alice->delete();
 
     [$from, $to] = $range();
     $result = $this->report->build($from, $to, null);
 
-    expect($result['byUser'][0])->toMatchArray(['user_id' => $aliceId, 'user_name' => null]);
+    expect($result['byUser'][0])->toMatchArray([
+        'user_id' => $aliceId,
+        'user_name' => null,
+        'strava_athlete_id' => null,
+        'deleted' => true,
+    ]);
+});
+
+it('names a deleted user from the snapshot the eraser left behind', function () use ($range): void {
+    $alice = User::factory()->create(['name' => 'Alice']);
+    $aliceId = $alice->id;
+    StravaConnection::factory()->for($alice)->create(['strava_athlete_id' => 909090]);
+    seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $aliceId);
+
+    app(UserEraser::class)->erase($alice);
+
+    [$from, $to] = $range();
+    $result = $this->report->build($from, $to, null);
+
+    expect($result['byUser'][0])->toMatchArray([
+        'user_id' => $aliceId,
+        'user_name' => 'Alice',
+        'strava_athlete_id' => 909090,
+        'deleted' => true,
+    ]);
+});
+
+it('reads a live user Strava id from the connection, not from any snapshot', function () use ($range): void {
+    $alice = User::factory()->create(['name' => 'Alice']);
+    StravaConnection::factory()->for($alice)->create(['strava_athlete_id' => 555]);
+    seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $alice->id);
+
+    [$from, $to] = $range();
+    $result = $this->report->build($from, $to, null);
+
+    expect($result['byUser'][0])->toMatchArray([
+        'user_name' => 'Alice',
+        'strava_athlete_id' => 555,
+        'deleted' => false,
+    ]);
 });
 
 it('labels available kinds via AnalysisType, falling back to the raw value', function () use ($range): void {
