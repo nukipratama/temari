@@ -159,17 +159,6 @@ enum AnalysisType: string
         };
     }
 
-    public function isRuleBased(): bool
-    {
-        return match ($this) {
-            self::RunInsightTechnical,
-            self::RunInsightSplits,
-            self::RunInsightZones,
-            self::TrendCaption => true,
-            default => false,
-        };
-    }
-
     /**
      * Whether this narrative is derived from the user's heart-rate zones, so a
      * zone change makes copies generated beforehand stale (the "dihitung dengan

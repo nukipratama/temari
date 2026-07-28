@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs\AI;
 
-use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -17,7 +16,6 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
-use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Override;
@@ -192,19 +190,14 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     /**
      * The three run-insight analyses the post-run speech synthesizes. Reused
      * verbatim from already-Done insight rows when present (so a cerita-only
-     * re-dispatch does not re-bill the insight LLM); otherwise generated fresh
-     * via {@see self::runInsights()}.
+     * re-dispatch does not re-bill the insight LLM); otherwise generated fresh.
      *
      * @return array{technical: string, splits: string, zones: string}
      */
     private function resolveInsights(Activity $activity, ActivityDetail $detail): array
     {
-        $reused = $this->doneInsights($activity);
-        if ($reused !== null) {
-            return $reused;
-        }
-
-        return $this->runInsights($activity, $detail);
+        return $this->doneInsights($activity)
+            ?? app(RunInsightNarrator::class)->generate($activity, $detail);
     }
 
     /**
@@ -236,19 +229,4 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
         return $resolved;
     }
 
-    /**
-     * LLM run-insight (gpt-5.2 with historical context), degrading to the
-     * deterministic rule-based builder if the model is unavailable rather than
-     * failing the whole activity group (which also holds the post-run speech).
-     *
-     * @return array{technical: string, splits: string, zones: string}
-     */
-    private function runInsights(Activity $activity, ActivityDetail $detail): array
-    {
-        try {
-            return app(RunInsightNarrator::class)->generate($activity, $detail);
-        } catch (UnavailableException|TransientUpstreamException) {
-            return app(RuleBasedInsightBuilder::class)->runInsights($activity, $detail);
-        }
-    }
 }

@@ -1,6 +1,6 @@
 ---
-title: AI narration internals — context builders & rule-based fallback
-description: How prompt signals are assembled (context builders) and how copy is produced without the LLM (rule-based fallback + demo seed).
+title: AI narration internals — context builders & the demo filler
+description: How prompt signals are assembled (context builders) and how copy is produced without the LLM (demo seed + unconfigured env).
 tags: [architecture, ai]
 status: living
 reviewed: 2026-07-27
@@ -12,13 +12,13 @@ code_refs:
   - app/Services/Run/Story/BriefingContext.php
   - app/Services/Run/Story/MetricsContext.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
-  - app/Services/AI/RuleBased/RuleBasedInsightBuilder.php
+  - app/Services/AI/RuleBased/RuleBasedRunInsights.php
   - app/Services/AI/AnalysisType.php
   - app/Services/AI/AnalysisService.php
   - database/seeders/Demo/DemoRunSeeder.php
 ---
 
-# AI narration internals — context builders & rule-based fallback
+# AI narration internals — context builders & the demo filler
 
 Two internals sit *under* the [[ai-pipeline]]: how a narrator's LLM prompt gets its **signals**, and how a row gets **content when there's no LLM call**. The pipeline note covers the row lifecycle, dispatch, idempotency, and retry; this note complements it and does not repeat it.
 
@@ -75,22 +75,17 @@ Recovery hours is "hours since the most recent activity start", sharper than day
 
 [MetricsContext](app/Services/Run/Story/MetricsContext.php) is the lighter wrapper the briefing narrators take as input — user, vibe state, training-load summary, recent verdicts, and the as-of timestamp — from which `BriefingContext::forUser` is then derived. It's the call boundary, not a signal collector.
 
-## Rule-based fallback — copy without the LLM
+## The demo filler — copy without the LLM
 
-Two distinct situations produce content with no token spend. Both route through the same deterministic generators, so demo output matches what an unconfigured-env user would see.
+**Every `AnalysisType` is narrated.** There is no longer a class of types that skips the model: the run-insight blocks and the trend caption were the last holdouts, filled inline from threshold arithmetic even with Azure configured, and they now go through [RunInsightNarrator](app/Services/AI/Narrators/RunInsightNarrator.php) and [TrendCaptionNarrator](app/Services/AI/Narrators/TrendCaptionNarrator.php) like the rest. A block that cannot be narrated stays honestly `Pending` or `Failed` rather than being quietly templated — see [[ai-pipeline]].
 
-### Which types are rule-based
+What remains is a **demo** path, not a production fallback.
 
-[`AnalysisType::isRuleBased()`](app/Services/AI/AnalysisType.php#L162) is the source of truth (read it, don't hand-copy): the run-insight blocks and the trend caption are *always* rule-based — they're pure arithmetic over the run's own data, never worth an LLM call. [RuleBasedInsightBuilder](app/Services/AI/RuleBased/RuleBasedInsightBuilder.php) generates these from threshold comparisons against the activity and the user's rolling averages ([`runInsights`](app/Services/AI/RuleBased/RuleBasedInsightBuilder.php#L59), [`trendCaption`](app/Services/AI/RuleBased/RuleBasedInsightBuilder.php#L431)), emitting the same plain-string format the frontend expects.
+[RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php) ([`fillFor`](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php#L28)) covers every `AnalysisType`, picking deterministically (seeded by subject id + discriminator) from Temari-voiced pools and weaving in the subject's real data where available. The run-insight types come from [RuleBasedRunInsights](app/Services/AI/RuleBased/RuleBasedRunInsights.php), which reads the run's own cadence, splits and zones so a seeded demo shows real numbers.
 
-### When the fallback fires
+That class is deliberately shallower than the narrator it stands in for: it answers only what a single `ActivityDetail` can, with no rolling pace average over the user's history and no VDOT-derived easy-pace nudge. It is a demo stand-in, not a second implementation to keep in sync.
 
-In [`AnalysisService::dispatchRow()`](app/Services/AI/AnalysisService.php#L158) the row is filled inline (no queue, no tokens) when the type [`isRuleBased()` or auto-dispatch is off](app/Services/AI/AnalysisService.php#L169):
-
-- **Always-rule-based types** take the builder path via [`ruleBasedContent()`](app/Services/AI/AnalysisService.php#L200), even with Azure configured.
-- **LLM types under unconfigured / off env** — when [`autoDispatchEnabled()`](app/Services/AI/AnalysisService.php#L370) is false (Azure URI/key empty, tripped cost ceiling, or dispatch suppressed), the LLM types are filled by [RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php) ([`fillFor`](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php#L33)) instead. The filler covers every `AnalysisType`, delegating the run-insight types to the same builder so the output matches production, and otherwise picking deterministically (seeded by subject id + discriminator) from Temari-voiced pools, woven with the subject's real data where available.
-
-> Subtlety: when Azure is unconfigured the [[ai-pipeline]] describes LLM rows staying `Pending`. The filler is what turns "pending" into real demo/dev copy — it runs when something explicitly fills the rows (the demo seed below), or inline for a `firstOrCreate` of an LLM type while dispatch is suppressed.
+No *dispatch* path reaches the filler any more: a paused or failing block stays `Pending` / `Failed` instead. It runs in exactly two places — the demo seed below, and the content-filter break in [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php#L39) / [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php#L131), where a continuity-stripped retry that still trips Azure's output filter degrades to a benign line rather than dead-lettering. That benign line becomes the next `prev_narrative`, which is what breaks the poison loop.
 
 ### The demo seed path
 

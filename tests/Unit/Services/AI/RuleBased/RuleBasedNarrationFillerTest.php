@@ -10,7 +10,7 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
+use App\Services\AI\RuleBased\RuleBasedRunInsights;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -170,7 +170,7 @@ it('falls back to a flat post-run speech when the activity detail is missing', f
     expect($speech)->toBe('Selesai juga. Konsisten kayak gini yang aku suka.');
 });
 
-it('delegates the run-insight types to the real builder so demo matches production', function (AnalysisType $type): void {
+it('reads the run-insight types off the run itself, not a seeded variant', function (AnalysisType $type): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->create([
         'activity_id' => $activity->id,
@@ -179,11 +179,11 @@ it('delegates the run-insight types to the real builder so demo matches producti
         'distance' => 5000.0,
     ]);
 
-    $builder = app(RuleBasedInsightBuilder::class);
+    $insights = app(RuleBasedRunInsights::class);
     $expected = match ($type) {
-        AnalysisType::RunInsightTechnical => $builder->runInsightTechnical($activity->fresh(), $detail->fresh()),
-        AnalysisType::RunInsightSplits => $builder->runInsightSplits($detail->fresh()),
-        AnalysisType::RunInsightZones => $builder->runInsightZones($detail->fresh()),
+        AnalysisType::RunInsightTechnical => $insights->technical($detail->fresh()),
+        AnalysisType::RunInsightSplits => $insights->splits($detail->fresh()),
+        AnalysisType::RunInsightZones => $insights->zones($detail->fresh()),
     };
 
     $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow($type, $activity->id));

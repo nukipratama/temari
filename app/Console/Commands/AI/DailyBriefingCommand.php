@@ -52,7 +52,6 @@ class DailyBriefingCommand extends Command
                     subjectId: $user->id,
                     type: $type,
                     discriminator: $today,
-                    invalidate: $type->isRuleBased(),
                 );
             }
 

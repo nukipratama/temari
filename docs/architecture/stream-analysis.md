@@ -62,6 +62,6 @@ Read via the [streamSummary](app/Models/ActivityDetail.php#L115) accessor (null-
 
 - **Training metrics** — `ThresholdEstimator` mines best-effort paces and zone percent across recent runs ([query](app/Services/Run/Metrics/ThresholdEstimator.php#L29)); `RunBaseline` and the `Vibe` form score average `decoupling_pct` ([Vibe](app/Services/Run/Story/Vibe.php#L132)). See [[training-load-metrics]].
 - **Run detail UI** — the [[run-detail]] page reads the blob directly ([Show.tsx](resources/js/pages/Runs/Show.tsx#L94)); helpers in [runcard.ts](resources/js/lib/runcard.ts#L168) derive the pace-shape glyph, mean cadence, fastest km, and zone bar from `per_km` / `time_in_zone_pct`.
-- **Narration** — the rule-based filler frames a run's real cadence / decoupling / HR story from the blob ([filler](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php#L139)) for the [[ai-pipeline]].
+- **Narration** — the narrators read the blob through their tools; the demo stand-in frames the same cadence / decoupling / HR story from it ([RuleBasedRunInsights](app/Services/AI/RuleBased/RuleBasedRunInsights.php#L57)) for the [[ai-pipeline]].
 
 See [[data-model]] for where `ActivityDetail` sits relative to `Activity` and `ActivityStream`.
