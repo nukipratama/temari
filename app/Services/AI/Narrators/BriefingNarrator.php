@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
 class BriefingNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: berikan briefing harian. Output DUA bagian: headline + suggestion.
+        Tugas: berikan briefing harian. Output SATU field: suggestion.
         Mascot voice ("Kata Temari hari ini") di-handle oleh narrator terpisah,
         kamu jangan generate field itu.
 
@@ -39,14 +39,6 @@ class BriefingNarrator
         bisa dieksekusi kapan aja user sempet hari ini. Contoh frasa netral:
         "kalau ada slot lari hari ini...", "untuk sesi berikutnya...",
         "saat sempet, format yang cocok...", "kalau jadi lari hari ini...".
-
-        - headline: 1-2 kalimat verdict factual kondisi user hari ini. Boleh
-          singgung satu metric konkret (kesiapan, recovery, atau weekly load)
-          biar terasa data-driven. Statement tentang KONDISI, bukan rencana.
-          Maksimal 25 kata.
-          Contoh oke: "Kesiapan +12 dan recovery 18 jam, kapasitas kamu hari
-          ini di zona quality session."
-          Contoh JANGAN: "Pagi ini siap buat tempo run."
 
         - suggestion: saran konkret yang time-neutral.
 
@@ -143,11 +135,6 @@ class BriefingNarrator
         JANGAN kering kayak textbook, JANGAN time-locked. Tiga bagian harus
         DISTINCT, jangan saling mengulang isi.
 
-        ANTI-PATTERN HEADLINE:
-        - "Kondisi kamu hari ini stabil." -- muncul terus tiap hari. Harus
-          singgung metric konkret.
-        - "Pagi yang bagus." -- time-locked dan kosong.
-
         ANTI-PATTERN SUGGESTION:
         - "Kondisi kamu hari ini stabil, kapasitas cukup buat sesi ringan
           sampai sedang." -- terlalu generik, tidak ada data konkret.
@@ -164,10 +151,7 @@ class BriefingNarrator
     ) {
     }
 
-    /**
-     * @return array{headline: string, suggestion: string}
-     */
-    public function generate(User $user, ?Carbon $asOf = null): array
+    public function generate(User $user, ?Carbon $asOf = null): string
     {
         $asOf ??= Carbon::today();
 
@@ -176,7 +160,7 @@ class BriefingNarrator
             systemPrompt: self::SYSTEM_PROMPT,
             context: $this->context($user, $asOf),
             schemaName: 'TemariBriefing',
-            requiredKeys: ['headline', 'suggestion'],
+            requiredKeys: ['suggestion'],
             options: new ChatCallOptions(
                 temperature: 0.8,
                 userId: $user->id,
@@ -185,10 +169,7 @@ class BriefingNarrator
             ),
         );
 
-        return [
-            'headline' => (string) $decoded['headline'],
-            'suggestion' => (string) $decoded['suggestion'],
-        ];
+        return (string) $decoded['suggestion'];
     }
 
     /**

@@ -3,7 +3,7 @@ title: Frontend Architecture (Inertia 2 + React 19)
 description: How the SPA is wired — the controller→page→component flow, shared props, the middleware/route gate, the React entry, layout, and frontend conventions
 tags: [architecture, frontend]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-07-28
 code_refs:
   - resources/js/app.tsx
   - resources/views/app.blade.php
@@ -16,12 +16,12 @@ code_refs:
 
 # Frontend Architecture (Inertia 2 + React 19)
 
-There is no client-side router and no REST/JSON API for pages. Every screen is a Laravel controller that returns [`Inertia::render('PageName', $props)`](app/Http/Controllers/DashboardController.php#L70); Inertia ships those props to a React page component, and `<Link>` navigation re-runs the controller and swaps the page in place. This note is the wiring overview — individual screens have their own notes ([[dashboard]], [[run-history]], [[run-detail]], [[profile]], [[cards-collection]], [[targets-accessories]], [[records]]).
+There is no client-side router and no REST/JSON API for pages. Every screen is a Laravel controller that returns [`Inertia::render('PageName', $props)`](app/Http/Controllers/DashboardController.php#L69); Inertia ships those props to a React page component, and `<Link>` navigation re-runs the controller and swaps the page in place. This note is the wiring overview — individual screens have their own notes ([[dashboard]], [[run-history]], [[run-detail]], [[profile]], [[cards-collection]], [[targets-accessories]], [[records]]).
 
 ## The request lifecycle
 
 1. **Blade root.** [app.blade.php](resources/views/app.blade.php) is the single server-rendered shell: `lang="id"`, the CSRF meta tag, Google Fonts, `@vite(['resources/css/app.css', 'resources/js/app.tsx'])`, and `@inertia` (the mount point). `$rootView = 'app'` is set in [HandleInertiaRequests](app/Http/Middleware/HandleInertiaRequests.php#L20).
-2. **Controller.** Renders a page name + page props (see the calls in [routes/web.php](routes/web.php#L50)'s controllers, e.g. [DashboardController](app/Http/Controllers/DashboardController.php#L70)).
+2. **Controller.** Renders a page name + page props (see the calls in [routes/web.php](routes/web.php#L50)'s controllers, e.g. [DashboardController](app/Http/Controllers/DashboardController.php#L69)).
 3. **Middleware merges shared props** (below) into every response.
 4. **React resolves + mounts** the page (below).
 
@@ -42,7 +42,7 @@ Two prop channels reach a React page, both via `usePage().props`:
 - **Page props** — the second arg to `Inertia::render`, scoped to that one controller. A page declares them as its component props interface and destructures them (e.g. [HariIni](resources/js/pages/HariIni.tsx#L33)).
 - **Shared props** — merged into *every* response by [`HandleInertiaRequests::share`](app/Http/Middleware/HandleInertiaRequests.php#L48). This is where cross-cutting state lives: the auth user, flash messages, `demoLoginEnabled`, equipped accessories, `pendingReveal`, `stravaSync`, `goalsSummary`, `hrZonesChangedAt`. See the method for the authoritative list — do not hand-copy it. The TS contract is [`SharedProps`](resources/js/types/inertia.ts#L69).
 
-Most shared props are **lazy closures** (`fn () => ...`), so Inertia only evaluates them when a partial reload actually requests that key. The expensive ones (`stravaSync`, `goalsSummary`, `hrZonesChangedAt`) are additionally **cached with short TTLs** because their two-or-more queries would otherwise run on every page load; the rationale is documented inline ([HandleInertiaRequests.php:22](app/Http/Middleware/HandleInertiaRequests.php#L22) onward). Pages read shared props by typing `usePage<SharedProps & PageProps>()` and reaching for the shared key directly — e.g. `GoalsCard` pulls `goalsSummary` straight from shared props rather than a page prop (see [[dashboard]]).
+Most shared props are **lazy closures** (`fn () => ...`), so Inertia only evaluates them when a partial reload actually requests that key. **Page props on the polled screens use the same idiom** — a partial reload filters the *response*, but a controller that computes its props in the method body still runs every one of them, and [`useAnalysisTrigger`](resources/js/hooks/useAnalysisTrigger.ts#L91) reloads a narrow `only` set every 3-15s for up to 30 ticks while narration generates. [`RunController::index`](app/Http/Controllers/RunController.php#L198), [`RunController::show`](app/Http/Controllers/RunController.php#L603) and [`DashboardController`](app/Http/Controllers/DashboardController.php#L51) therefore hand Inertia closures, each memoizing the one fetch several props share. Plain closures, not `Inertia::optional()` — they must still resolve on a full page load, which is what pages like `HariIni` branch on at first paint. The expensive ones (`stravaSync`, `goalsSummary`, `hrZonesChangedAt`) are additionally **cached with short TTLs** because their two-or-more queries would otherwise run on every page load; the rationale is documented inline ([HandleInertiaRequests.php:22](app/Http/Middleware/HandleInertiaRequests.php#L22) onward). Pages read shared props by typing `usePage<SharedProps & PageProps>()` and reaching for the shared key directly — e.g. `GoalsCard` pulls `goalsSummary` straight from shared props rather than a page prop (see [[dashboard]]).
 
 ## Route protection (the gate)
 

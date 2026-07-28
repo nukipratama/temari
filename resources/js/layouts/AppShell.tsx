@@ -1,8 +1,7 @@
-import { type ReactNode, useState } from 'react';
+import { lazy, type ReactNode, Suspense, useState } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { usePage } from '@inertiajs/react';
 import UnlockToast from '@/components/temari/UnlockToast';
-import CardReveal from '@/components/card/CardReveal';
 import AksesoriUnlockModal from '@/components/celebrations/AksesoriUnlockModal';
 import TopNav from '@/components/TopNav';
 import MobileTopBar from '@/components/MobileTopBar';
@@ -13,6 +12,11 @@ import AiOutageBanner from '@/components/AiOutageBanner';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import type { SharedProps, UnlockFlash } from '@/types/inertia';
+
+// The pack reveal drags the whole share-card canvas engine in behind it, and
+// this layout wraps every page — so it stays off the first-paint path and is
+// fetched only when a reveal is actually pending.
+const CardReveal = lazy(() => import('@/components/card/CardReveal'));
 
 interface AppShellProps {
     children: ReactNode;
@@ -91,7 +95,11 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
                 takes priority over the UnlockToast, so a sync that fires more than
                 one celebration plays them back-to-back instead of all at once. */}
             {!pending && majorUnlock === null && <UnlockToast />}
-            {pending && <CardReveal pending={pending} />}
+            {pending && (
+                <Suspense fallback={null}>
+                    <CardReveal pending={pending} />
+                </Suspense>
+            )}
             <AksesoriUnlockModal unlock={pending ? null : majorUnlock} onClose={() => setMajorUnlock(null)} />
         </div>
         </MotionConfig>

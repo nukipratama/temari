@@ -11,8 +11,10 @@ use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\BriefingComposer;
+use App\Services\Run\Story\BriefingResult;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -32,46 +34,58 @@ class DashboardController extends Controller
         $user = $request->user();
         $today = Carbon::today();
 
+        // Writes today's greeting row on first visit of the day. Kept in the
+        // method body, not behind a prop closure: nothing on this page renders
+        // it, so a closure would silently stop persisting it.
         $this->resolveGreeting($user, $temari, $vibe->current($user, $today), $today);
 
-        $load = $trainingLoad->summary($user, $today);
-        $briefing = $briefingComposer->compose($user, $today);
-
-        $weeks = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->orderByDesc('week_ending')
-            ->limit(12)
-            ->get()
-            ->reverse()
-            ->values();
-
-        $recentRuns = ActivityDetail::query()
-            ->select([
-                'id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time',
-                'average_heartrate', 'trimp_edwards', 'workout_type',
-                'location_name', 'weather_temp_c', 'weather_humidity_pct', 'weather_rain_detected',
-                // Needed so the featured + strip cards draw the route hero and the
-                // featured card's zone bar / pace-shape / cadence / best-km.
-                'summary_polyline', 'stream_summary',
-            ])
-            ->forUser($user->id)
-            ->with(['activity.runCard:id,activity_id,rarity,special_move,badges'])
-            ->orderByDesc('start_date_local')
-            ->limit(8)
-            ->get();
-
-        $lastRunActivityId = $recentRuns->first()?->activity_id;
-        $lastRunNote = $lastRunActivityId === null ? null : $noteReader->forActivity($lastRunActivityId);
+        // Resolved lazily, and memoized because three props below need it.
+        //
+        // `useAnalysisTrigger` polls this page every 3-15s while a briefing
+        // analysis generates, and every consumer asks for `briefing` alone.
+        // Behind closures, Inertia skips the props the poll does not name — the
+        // training load, the weekly snapshots and this run fetch with its
+        // polylines and stream summaries no longer re-run on each tick.
+        /** @var Collection<int, ActivityDetail>|null $loadedRecentRuns */
+        $loadedRecentRuns = null;
+        $loadRecentRuns = function () use ($user, &$loadedRecentRuns): Collection {
+            /** @var Collection<int, ActivityDetail> */
+            return $loadedRecentRuns ??= ActivityDetail::query()
+                ->select([
+                    'id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time',
+                    'average_heartrate', 'trimp_edwards', 'workout_type',
+                    'location_name', 'weather_temp_c', 'weather_humidity_pct', 'weather_rain_detected',
+                    // Needed so the featured + strip cards draw the route hero and the
+                    // featured card's zone bar / pace-shape / cadence / best-km.
+                    'summary_polyline', 'stream_summary',
+                ])
+                ->forUser($user->id)
+                ->with(['activity.runCard:id,activity_id,rarity,special_move,badges'])
+                ->orderByDesc('start_date_local')
+                ->limit(8)
+                ->get();
+        };
 
         return Inertia::render('HariIni', [
-            'briefing' => $briefing,
-            'load' => $load,
-            'snapshot' => $weeks->last(),
-            'recentRuns' => $recentRuns,
-            'lastRunNote' => $lastRunNote,
+            'briefing' => fn (): BriefingResult => $briefingComposer->compose($user, $today),
+            'load' => fn (): ?array => $trainingLoad->summary($user, $today),
+            'snapshot' => fn (): ?WeeklySnapshot => WeeklySnapshot::query()
+                ->where('user_id', $user->id)
+                ->orderByDesc('week_ending')
+                ->limit(12)
+                ->get()
+                ->reverse()
+                ->values()
+                ->last(),
+            'recentRuns' => fn (): Collection => $loadRecentRuns(),
+            'lastRunNote' => function () use ($loadRecentRuns, $noteReader): ?array {
+                $lastRunActivityId = $loadRecentRuns()->first()?->activity_id;
+
+                return $lastRunActivityId === null ? null : $noteReader->forActivity($lastRunActivityId);
+            },
             // Persisted post-run mood per recent run, so the featured card and
             // last-run mascot match the backend mood without a frontend heuristic.
-            'recentMoods' => $noteReader->moodsFor($recentRuns->pluck('activity_id')->all()),
+            'recentMoods' => fn (): array => $noteReader->moodsFor($loadRecentRuns()->pluck('activity_id')->all()),
         ]);
     }
 
