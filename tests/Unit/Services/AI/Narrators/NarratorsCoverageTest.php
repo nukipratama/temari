@@ -1136,6 +1136,71 @@ function narratorPrompt(string $class): string
 }
 
 /**
+ * Absolute path under app/, derived from this file rather than app_path().
+ *
+ * Dataset closures are evaluated at collection time, before the container is
+ * booted, so the helper functions below cannot reach Laravel's path helpers.
+ */
+function appSourcePath(string $relative): string
+{
+    return dirname(__DIR__, 5).'/app/'.$relative;
+}
+
+/**
+ * Tool class basename => the `get_*` name it exposes to the model.
+ *
+ * Read from source rather than by instantiation: every tool is constructed with
+ * a subject (an activity, a user and an as-of date, a card), which a static
+ * check has no reason to build.
+ *
+ * @return array<string, string>
+ */
+function toolNamesByClass(): array
+{
+    $names = [];
+    foreach (glob(appSourcePath('Services/AI/Agent/Tools/*.php')) ?: [] as $file) {
+        $source = (string) file_get_contents($file);
+        if (preg_match("/function name\(\): string\s*\{\s*return '([a-z_]+)';/", $source, $match) === 1) {
+            $names[basename($file, '.php')] = $match[1];
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * Each narrator paired with the tool names it can hand the model.
+ *
+ * Taken from the `new XxxTool(...)` sites in its source, so a conditionally
+ * registered tool (CardFlavor and PrContext both vary theirs by whether the run
+ * has detail) counts as carried.
+ *
+ * @return array<string, array{0: class-string, 1: list<string>}>
+ */
+function narratorToolboxes(): array
+{
+    $byClass = toolNamesByClass();
+    $cases = [];
+
+    foreach (glob(appSourcePath('Services/AI/Narrators/*.php')) ?: [] as $file) {
+        $source = (string) file_get_contents($file);
+        if (! str_contains($source, 'AgentToolbox')) {
+            continue;
+        }
+
+        preg_match_all('/new ([A-Za-z]+Tool)\(/', $source, $matches);
+        $tools = array_values(array_unique(array_filter(
+            array_map(fn (string $class): ?string => $byClass[$class] ?? null, $matches[1]),
+        )));
+
+        $narrator = basename($file, '.php');
+        $cases[$narrator] = ['App\\Services\\AI\\Narrators\\'.$narrator, $tools];
+    }
+
+    return $cases;
+}
+
+/**
  * Every `kind: '...'` a narrator passes to StructuredChatCaller, read from source
  * so this cannot drift as narrators are added or renamed.
  *
@@ -1144,7 +1209,7 @@ function narratorPrompt(string $class): string
 function narratorKinds(): array
 {
     $kinds = [];
-    foreach (glob(app_path('Services/AI/Narrators/*.php')) ?: [] as $file) {
+    foreach (glob(appSourcePath('Services/AI/Narrators/*.php')) ?: [] as $file) {
         preg_match_all("/kind: '([a-z_]+)'/", (string) file_get_contents($file), $matches);
         foreach ($matches[1] as $kind) {
             $kinds[$kind] = true;
@@ -1153,6 +1218,18 @@ function narratorKinds(): array
 
     return array_keys($kinds);
 }
+
+// A prompt naming a tool the narrator does not carry is not a typo: the model
+// asks for it, AgentToolbox answers {"error":"unknown tool: ..."}, and the run
+// burns a whole step plus a round trip recovering -- on every single generation.
+// briefing_featured_kartu_voice did exactly that, telling the model to call
+// get_card_identity while holding only get_featured_card.
+it('no narrator prompt names a tool its own toolbox does not carry', function (string $class, array $tools): void {
+    preg_match_all('/\bget_[a-z_]+/', narratorPrompt($class), $matches);
+
+    $named = array_values(array_unique($matches[0]));
+    expect(array_values(array_diff($named, $tools)))->toBe([]);
+})->with(fn (): array => narratorToolboxes());
 
 // Model routing is env-owned: config/azure_openai.php maps each kind to its own
 // AZURE_OPENAI_*_DEPLOYMENT var, falling back to the default. The map and the

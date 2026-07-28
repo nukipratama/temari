@@ -24,14 +24,16 @@ class BriefingFeaturedKartuVoiceNarrator
         nama kartu, rarity-nya, atau kenapa lari itu layak dapat kartu.
         Tone: antusias tapi tetap hangat, bukan lebay. Maksimal 65 kata.
 
-        Kartunya gak dikasih di depan: panggil get_card_identity dulu, baru
+        Kartunya gak dikasih di depan: panggil get_featured_card dulu, baru
         tulis. Refer ke `name`, `rarity_label`, `km`, atau `tags` kalau relevan,
         dan jangan mengarang detail yang gak ada di situ.
 
         VARIASI:
-        - Observasi tentang special_move: kenapa nama itu cocok buat sesi ini.
-        - Sebut badge atau km spesifik.
-        - Kaitkan rarity dengan effort sesi (mis. jarak jauh atau pace stabil).
+        - Observasi tentang `name`, yaitu nama special move kartu ini: kenapa
+          nama itu cocok buat sesi ini.
+        - Sebut badge dari `tags`, atau `km` spesifik.
+        - Kaitkan `rarity_label` dengan effort sesi (mis. jarak jauh atau pace
+          stabil).
 
         Contoh oke: "Aku kasih kartu ini karena 12 km tadi beneran solid.
         'Langkah Sunyi' cocok buat pace kamu yang stabil dari awal sampe akhir."
@@ -48,8 +50,10 @@ class BriefingFeaturedKartuVoiceNarrator
 
     /**
      * @param  RunCard|null  $card  The featured card resolved by
-     *                              {@see \App\Services\Run\Story\FeaturedKartuResolver},
-     *                              with its `activity.detail` loaded for the km.
+     *                              {@see \App\Services\Run\Story\FeaturedKartuResolver}. Its
+     *                              `activity.detail` is not preloaded, so
+     *                              {@see \App\Services\AI\Agent\Tools\FeaturedCardTool} lazy-loads
+     *                              it for the km.
      */
     public function generate(User $user, ?RunCard $card): string
     {
