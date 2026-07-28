@@ -297,9 +297,16 @@ class Analysis extends Model
             ->get()
             ->keyBy('subject_id');
 
+        $cooldowns = Cooldown::remainingMany(
+            $rows->filter(fn (self $row): bool => $row->status === AnalysisStatus::Done)
+                ->map(fn (self $row): string => self::cooldownKey($row->analysis_type, $row->subject_id, $row->discriminator))
+                ->values()
+                ->all(),
+        );
+
         $payloads = [];
         foreach ($ids as $id) {
-            $payloads[$id] = self::toPayload($rows->get($id), $type, $subjectType, $id);
+            $payloads[$id] = self::toPayload($rows->get($id), $type, $subjectType, $id, cooldowns: $cooldowns);
         }
 
         return $payloads;
@@ -319,6 +326,8 @@ class Analysis extends Model
      *     generated_at: string|null,
      *     retry_after_seconds: int|null,
      * }
+     *
+     * @param  array<string, int|null>|null  $cooldowns  Pre-resolved cooldowns keyed by {@see self::cooldownKey()}, so a list of rows costs one cache round trip instead of one per row.
      */
     public static function toPayload(
         ?self $row,
@@ -326,6 +335,7 @@ class Analysis extends Model
         string $subjectType,
         int $subjectId,
         ?string $discriminator = null,
+        ?array $cooldowns = null,
     ): array {
         return [
             'id' => $row?->id,
@@ -338,8 +348,33 @@ class Analysis extends Model
             'discriminator' => $discriminator,
             'attempts' => $row === null ? 0 : $row->attempts,
             'generated_at' => $row?->generated_at?->toIso8601String(),
-            'retry_after_seconds' => $row?->cooldownRemaining(),
+            'retry_after_seconds' => self::resolveCooldown($row, $cooldowns),
         ];
+    }
+
+    /**
+     * The row's `retry_after_seconds`, taken from a pre-resolved batch when the
+     * caller supplied one (see {@see self::payloadsForSubjects()}) and read
+     * per-row otherwise. Both paths report the same number; only the number of
+     * cache round trips differs.
+     *
+     * @param  array<string, int|null>|null  $cooldowns
+     */
+    private static function resolveCooldown(?self $row, ?array $cooldowns): ?int
+    {
+        if ($row === null) {
+            return null;
+        }
+
+        if ($cooldowns === null) {
+            return $row->cooldownRemaining();
+        }
+
+        if ($row->status !== AnalysisStatus::Done) {
+            return null;
+        }
+
+        return $cooldowns[self::cooldownKey($row->analysis_type, $row->subject_id, $row->discriminator)] ?? null;
     }
 
     /**

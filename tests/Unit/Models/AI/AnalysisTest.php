@@ -11,7 +11,9 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Support\Cooldown;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
@@ -216,4 +218,75 @@ it('ownerIdsForRows maps to null when the subject row no longer exists', functio
     $owners = Analysis::ownerIdsForRows(Analysis::query()->whereKey($row->id)->get());
 
     expect($owners[$row->id])->toBeNull();
+});
+
+it('payloadsForSubjects reports the same retry_after_seconds as a per-row toPayload', function (): void {
+    $snapshots = WeeklySnapshot::factory()->count(3)->create();
+    $rows = [];
+    foreach ($snapshots as $index => $snapshot) {
+        $rows[] = Analysis::query()->create([
+            'subject_type' => WeeklySnapshot::class,
+            'subject_id' => $snapshot->id,
+            'analysis_type' => AnalysisType::WeeklyRecap,
+            // The middle row is still Pending, so it must report null even
+            // though a stale cooldown key exists for it.
+            'status' => $index === 1 ? AnalysisStatus::Pending : AnalysisStatus::Done,
+            'content' => 'x',
+        ]);
+    }
+    foreach ($rows as $row) {
+        $row->startCooldown();
+    }
+
+    $ids = $snapshots->pluck('id')->all();
+    $batched = Analysis::payloadsForSubjects(WeeklySnapshot::class, AnalysisType::WeeklyRecap, $ids);
+
+    foreach ($rows as $row) {
+        $row->refresh();
+        $perRow = Analysis::toPayload($row, AnalysisType::WeeklyRecap, WeeklySnapshot::class, $row->subject_id);
+        expect($batched[$row->subject_id])->toBe($perRow);
+    }
+
+    expect($batched[$rows[0]->subject_id]['retry_after_seconds'])->toBeGreaterThan(0)
+        ->and($batched[$rows[1]->subject_id]['retry_after_seconds'])->toBeNull()
+        ->and($batched[$rows[2]->subject_id]['retry_after_seconds'])->toBeGreaterThan(0);
+});
+
+it('payloadsForSubjects keeps the null-row payload shape for ids with no analysis', function (): void {
+    $snapshot = WeeklySnapshot::factory()->create();
+
+    $payloads = Analysis::payloadsForSubjects(
+        WeeklySnapshot::class,
+        AnalysisType::WeeklyRecap,
+        [$snapshot->id],
+    );
+
+    expect($payloads[$snapshot->id])->toBe(
+        Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, $snapshot->id),
+    );
+});
+
+it('payloadsForSubjects resolves every cooldown in one cache round trip', function (): void {
+    $snapshots = WeeklySnapshot::factory()->count(5)->create();
+    foreach ($snapshots as $snapshot) {
+        Analysis::query()->create([
+            'subject_type' => WeeklySnapshot::class,
+            'subject_id' => $snapshot->id,
+            'analysis_type' => AnalysisType::WeeklyRecap,
+            'status' => AnalysisStatus::Done,
+            'content' => 'x',
+        ])->startCooldown();
+    }
+
+    $repository = Mockery::mock(Repository::class);
+    $repository->shouldReceive('many')->once()->andReturn([]);
+    Cache::shouldReceive('driver')->once()->andReturn($repository);
+
+    $payloads = Analysis::payloadsForSubjects(
+        WeeklySnapshot::class,
+        AnalysisType::WeeklyRecap,
+        $snapshots->pluck('id')->all(),
+    );
+
+    expect($payloads)->toHaveCount(5);
 });
