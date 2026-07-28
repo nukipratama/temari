@@ -1,6 +1,6 @@
 ---
 title: Temari mascot
-description: The character that voices the app — poses from mood/vibe, equipped gear from shared props, and the ambient peek variant
+description: The character that voices the app — poses from mood/vibe and equipped gear from shared props
 tags: [feature, temari]
 status: living
 reviewed: 2026-06-20
@@ -8,7 +8,6 @@ code_refs:
   - resources/js/components/temari/Temari.tsx
   - resources/js/components/temari/TemariProto.tsx
   - resources/js/lib/temariPose.ts
-  - resources/js/components/temari/TemariPeek.tsx
 ---
 
 # Temari mascot
@@ -16,7 +15,7 @@ code_refs:
 Temari is the app's running companion — the same character that narrates every
 recap, speech, and insight. The component family lives in
 `resources/js/components/temari/`. There are two layers: a pure SVG renderer and
-a dressed-up wrapper, plus a few presentational variants.
+a dressed-up wrapper.
 
 **No dedicated route** — Temari is mounted inline across [[dashboard]], [[run-detail]], [[profile]], [[run-history]], and [[cards-collection]].
 
@@ -62,15 +61,9 @@ state to pose:
 - `poseForFormStatus` — weekly training-load `FormStatus` → pose, used on the
   Jejak weekly recap.
 
-## Variants
-
-- [TemariPeek](../../resources/js/components/temari/TemariPeek.tsx) — an ambient
-  tooltip-style peek that pops a random line once per session (sessionStorage
-  guard), respecting `prefers-reduced-motion`; the parent must be `relative`.
-
 ## Size & animation
 
-Every variant takes `size` (px) and `animate` (`false` = static, `true` =
+`Temari` takes `size` (px) and `animate` (`false` = static, `true` =
 pose-driven, or an explicit CSS animation string). Recap cards pass
 `animate={false}` for a calm static portrait; ambient placements animate.
 

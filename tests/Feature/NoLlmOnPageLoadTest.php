@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeBriefingJob;
-use App\Jobs\AI\AnalyzeDailyGreetingJob;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePersonaSummaryJob;
-use App\Jobs\AI\AnalyzeTrendCaptionJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,8 +26,7 @@ it('does not enqueue any LLM job on GET / (Hari Ini)', function (): void {
     $this->actingAs(User::factory()->create())->get('/')->assertSuccessful();
 
     Bus::assertNotDispatched(AnalyzeBriefingJob::class);
-    Bus::assertNotDispatched(AnalyzeDailyGreetingJob::class);
-    Bus::assertNotDispatched(AnalyzeTrendCaptionJob::class);
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 

@@ -20,7 +20,6 @@ function briefingWith(content: string): BriefingResult {
         vibeState: 'pumped',
         vibeLabel: 'Membara',
         vibeEmoji: '💥',
-        headline: payload('Pagi yang oke'),
         suggestion: payload('Tempo ringan.'),
         mascotVoice: payload(content),
         featuredKartuVoice: payload('Kartu keren.'),

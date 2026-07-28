@@ -11,12 +11,10 @@ use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
-use App\Jobs\AI\AnalyzeDailyGreetingJob;
 use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePersonaSummaryJob;
 use App\Jobs\AI\AnalyzePrContextJob;
-use App\Jobs\AI\AnalyzeTrendCaptionJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\PersonalRecord;
@@ -25,26 +23,21 @@ use App\Models\WeeklySnapshot;
 
 enum AnalysisType: string
 {
-    case BriefingHeadline = 'briefing_headline';
     case BriefingSuggestion = 'briefing_suggestion';
     case BriefingMascotVoice = 'briefing_mascot_voice';
     case BriefingFeaturedKartuVoice = 'briefing_featured_kartu_voice';
     case PostRunSpeech = 'post_run_speech';
-    case DailyGreeting = 'daily_greeting';
     case RunInsightTechnical = 'run_insight_technical';
     case RunInsightSplits = 'run_insight_splits';
     case RunInsightZones = 'run_insight_zones';
     case WeeklyRecap = 'weekly_recap';
     case PrContext = 'pr_context';
-    case TrendCaption = 'trend_caption';
     case CardFlavor = 'card_flavor';
     case PersonaSummary = 'persona_summary';
     case AkuProfileVoice = 'aku_profile_voice';
     case MonthlyRecap = 'monthly_recap';
 
     public const string BRIEFING_SUBJECT_TYPE = 'briefing_user_day';
-    public const string DAILY_GREETING_SUBJECT_TYPE = 'daily_greeting_user_day';
-    public const string TREND_CAPTION_SUBJECT_TYPE = 'trend_caption_user_day';
     public const string PERSONA_SUMMARY_SUBJECT_TYPE = 'persona_summary_user';
     public const string AKU_PROFILE_VOICE_SUBJECT_TYPE = 'aku_profile_voice_user';
     public const string MONTHLY_RECAP_SUBJECT_TYPE = 'monthly_recap_user_month';
@@ -68,8 +61,7 @@ enum AnalysisType: string
             // BriefingMascotVoice / BriefingFeaturedKartuVoice are intentionally
             // NOT grouped here — they split into their own jobs so the "Kata
             // Temari" / featured-card surfaces retry without re-billing the
-            // headline + suggestion.
-            self::BriefingHeadline,
+            // suggestion.
             self::BriefingSuggestion => AnalyzeBriefingJob::class,
             default => null,
         };
@@ -99,12 +91,9 @@ enum AnalysisType: string
             self::RunInsightZones,
             self::CardFlavor,
             self::PrContext => AnalysisCadence::PerActivity,
-            self::BriefingHeadline,
             self::BriefingSuggestion,
             self::BriefingMascotVoice,
-            self::BriefingFeaturedKartuVoice,
-            self::DailyGreeting,
-            self::TrendCaption => AnalysisCadence::Daily,
+            self::BriefingFeaturedKartuVoice => AnalysisCadence::Daily,
             self::WeeklyRecap => AnalysisCadence::Weekly,
             self::MonthlyRecap => AnalysisCadence::Monthly,
             self::PersonaSummary,
@@ -116,7 +105,6 @@ enum AnalysisType: string
     public function jobClass(): string
     {
         return match ($this) {
-            self::BriefingHeadline,
             self::BriefingSuggestion => AnalyzeBriefingJob::class,
             self::BriefingMascotVoice => AnalyzeBriefingMascotVoiceJob::class,
             self::BriefingFeaturedKartuVoice => AnalyzeBriefingFeaturedKartuVoiceJob::class,
@@ -124,10 +112,8 @@ enum AnalysisType: string
             self::RunInsightTechnical,
             self::RunInsightSplits,
             self::RunInsightZones => AnalyzeActivityJob::class,
-            self::DailyGreeting => AnalyzeDailyGreetingJob::class,
             self::WeeklyRecap => AnalyzeWeeklyRecapJob::class,
             self::PrContext => AnalyzePrContextJob::class,
-            self::TrendCaption => AnalyzeTrendCaptionJob::class,
             self::CardFlavor => AnalyzeCardFlavorJob::class,
             self::PersonaSummary => AnalyzePersonaSummaryJob::class,
             self::AkuProfileVoice => AnalyzeAkuProfileVoiceJob::class,
@@ -143,8 +129,7 @@ enum AnalysisType: string
      * the chain head may regenerate. See AnalysisController::trigger.
      *
      * WeeklyRecap + MonthlyRecap + the per-activity group (PostRunSpeech +
-     * RunInsight*) are wired so far; later slices flip DailyGreeting and
-     * BriefingMascotVoice on.
+     * RunInsight*) are wired so far; a later slice flips BriefingMascotVoice on.
      */
     public function isChained(): bool
     {
@@ -182,12 +167,9 @@ enum AnalysisType: string
     public function subjectType(): string
     {
         return match ($this) {
-            self::BriefingHeadline,
             self::BriefingSuggestion,
             self::BriefingMascotVoice,
             self::BriefingFeaturedKartuVoice => self::BRIEFING_SUBJECT_TYPE,
-            self::TrendCaption => self::TREND_CAPTION_SUBJECT_TYPE,
-            self::DailyGreeting => self::DAILY_GREETING_SUBJECT_TYPE,
             self::PostRunSpeech,
             self::RunInsightTechnical,
             self::RunInsightSplits,

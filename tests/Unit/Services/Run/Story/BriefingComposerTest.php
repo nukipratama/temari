@@ -29,10 +29,8 @@ it('returns pending payloads on first compose and dispatches NO LLM jobs', funct
 
     $result = app(BriefingComposer::class)->compose($user, $asOf);
 
-    expect($result->headline['status'])->toBe(AnalysisStatus::Pending->value)
-        ->and($result->suggestion['status'])->toBe(AnalysisStatus::Pending->value)
+    expect($result->suggestion['status'])->toBe(AnalysisStatus::Pending->value)
         ->and($result->mascotVoice['status'])->toBe(AnalysisStatus::Pending->value)
-        ->and($result->headline['content'])->toBeNull()
         ->and($result->suggestion['content'])->toBeNull()
         ->and($result->mascotVoice['content'])->toBeNull();
 
@@ -45,7 +43,6 @@ it('returns stored content when analyses are done', function (): void {
     $asOf = Carbon::parse('2026-05-18');
 
     foreach ([
-        AnalysisType::BriefingHeadline->value => 'Pagi yang oke',
         AnalysisType::BriefingSuggestion->value => 'Easy run aja dulu',
         AnalysisType::BriefingMascotVoice->value => 'Aku liat kemarin lo lari santai, easy hari ini ya',
     ] as $typeValue => $content) {
@@ -59,9 +56,7 @@ it('returns stored content when analyses are done', function (): void {
 
     $result = app(BriefingComposer::class)->compose($user, $asOf);
 
-    expect($result->headline['content'])->toBe('Pagi yang oke')
-        ->and($result->headline['status'])->toBe(AnalysisStatus::Done->value)
-        ->and($result->suggestion['content'])->toBe('Easy run aja dulu')
+    expect($result->suggestion['content'])->toBe('Easy run aja dulu')
         ->and($result->suggestion['status'])->toBe(AnalysisStatus::Done->value)
         ->and($result->mascotVoice['content'])->toBe('Aku liat kemarin lo lari santai, easy hari ini ya')
         ->and($result->mascotVoice['status'])->toBe(AnalysisStatus::Done->value);
@@ -108,20 +103,15 @@ it('does not re-dispatch when some pieces are done and others queued', function 
     Analysis::factory()->done('Pagi yang oke')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
     ]);
-    foreach ([
-        AnalysisType::BriefingSuggestion->value,
-        AnalysisType::BriefingMascotVoice->value,
-    ] as $typeValue) {
-        Analysis::factory()->queued()->create([
-            'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-            'subject_id' => $user->id,
-            'analysis_type' => $typeValue,
-            'discriminator' => '2026-05-18',
-        ]);
-    }
+    Analysis::factory()->queued()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-18',
+    ]);
 
     app(BriefingComposer::class)->compose($user, $asOf);
 

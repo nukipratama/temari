@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Jobs\AI\AnalyzeDailyGreetingJob;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
@@ -14,6 +14,7 @@ use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
@@ -323,6 +324,27 @@ it('excludes Done and under-budget Failed blocks from the dead-letter panel', fu
         ->assertInertia(fn (AssertableInertia $page) => $page->has('deadLettered', 0));
 });
 
+it('renders the dashboard past a dead-lettered row of a retired type', function (): void {
+    $user = User::factory()->create();
+    DB::table('ai_analyses')->insert([
+        'subject_type' => 'daily_greeting_user_day',
+        'subject_id' => $user->id,
+        'analysis_type' => 'daily_greeting',
+        'discriminator' => '2026-05-18',
+        'status' => AnalysisStatus::Failed->value,
+        'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
+        'created_at' => Carbon::now(),
+        'updated_at' => Carbon::now(),
+    ]);
+
+    $this->get('/ai-usage')
+        ->assertSuccessful()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('deadLettered', 0)
+            ->has('failedUnderBudget', 0)
+            ->has('nyangkut', 0));
+});
+
 it('re-arms and re-dispatches a user\'s dead-lettered blocks on retry', function (): void {
     Bus::fake();
     $user = User::factory()->create();
@@ -344,9 +366,9 @@ it('retries a dead-lettered group for a hard-deleted user instead of 404ing', fu
     // A user-keyed analysis (subject_id = user id, no FK) survives a hard delete,
     // unlike WeeklyRecap whose WeeklySnapshot subject cascades away.
     $row = Analysis::factory()->failed()->create([
-        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $userId,
-        'analysis_type' => AnalysisType::DailyGreeting,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
     ]);
     $user->delete();
@@ -357,7 +379,7 @@ it('retries a dead-lettered group for a hard-deleted user instead of 404ing', fu
     $fresh = $row->fresh();
     expect($fresh->attempts)->toBe(0)                          // budget re-armed
         ->and($fresh->status)->toBe(AnalysisStatus::Queued);   // re-dispatched
-    Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 it('retry is reachable by a logged-in admin', function (): void {
@@ -431,9 +453,9 @@ it('surfaces the "Nyangkut" bucket for stale Pending/Queued blocks, excluding op
 
     // Stale Pending briefing (queued_at null, created long ago) -> nyangkut.
     $stale(Analysis::factory()->create([
-        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::DailyGreeting,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-01-01',
         'status' => AnalysisStatus::Pending,
         'queued_at' => null,
@@ -451,9 +473,9 @@ it('surfaces the "Nyangkut" bucket for stale Pending/Queued blocks, excluding op
 
     // A fresh Pending (< 2h) is not yet nyangkut.
     Analysis::factory()->create([
-        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::DailyGreeting,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-02-02',
         'status' => AnalysisStatus::Pending,
         'queued_at' => null,

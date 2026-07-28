@@ -37,11 +37,8 @@ function expectDemoDateKeyedNarrationDone(User $user): void
     $week = Carbon::now()->isoFormat('GGGG-[W]WW');
 
     $cases = [
-        [AnalysisType::BRIEFING_SUBJECT_TYPE, AnalysisType::BriefingHeadline, $today],
         [AnalysisType::BRIEFING_SUBJECT_TYPE, AnalysisType::BriefingSuggestion, $today],
         [AnalysisType::BRIEFING_SUBJECT_TYPE, AnalysisType::BriefingMascotVoice, $today],
-        [AnalysisType::DAILY_GREETING_SUBJECT_TYPE, AnalysisType::DailyGreeting, $today],
-        [AnalysisType::TREND_CAPTION_SUBJECT_TYPE, AnalysisType::TrendCaption, $today],
         [AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, AnalysisType::PersonaSummary, $week],
     ];
 

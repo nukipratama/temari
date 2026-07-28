@@ -420,7 +420,7 @@ function contentFilterError(): ErrorException
 it('maps a content_filter ErrorException into a terminal ContentFilterException', function (): void {
     // No continuity keys in context, so there is nothing to strip and it propagates.
     expect(fn () => callerWithResponses([contentFilterError()])
-        ->call('daily_greeting', 'sys', ['name' => 'Nuki'], 'schema', ['speech']))
+        ->call('briefing_mascot_voice', 'sys', ['name' => 'Nuki'], 'schema', ['speech']))
         ->toThrow(ContentFilterException::class, 'Azure OpenAI call failed');
 
     expect(TokenUsage::query()->count())->toBe(0);
@@ -432,7 +432,7 @@ it('detects a content filter from the message when the error code is absent', fu
         new Psr7Response(400),
     );
 
-    expect(fn () => callerWithResponses([$error])->call('daily_greeting', 'sys', [], 'schema', ['speech']))
+    expect(fn () => callerWithResponses([$error])->call('briefing_mascot_voice', 'sys', [], 'schema', ['speech']))
         ->toThrow(ContentFilterException::class);
 });
 
@@ -445,10 +445,10 @@ it('strips continuity context and retries once when the first attempt content-fi
     ]);
 
     $payload = fakeStructuredCaller($client)->call(
-        'daily_greeting',
+        'briefing_mascot_voice',
         'sys',
         ['name' => 'Nuki', 'prev_narrative' => 'poison', 'prev_opener' => 'poison'],
-        'TemariDailyGreeting',
+        'TemariBriefingMascotVoice',
         ['speech'],
     );
 
@@ -464,7 +464,7 @@ it('strips continuity context and retries once when the first attempt content-fi
     });
 
     Log::shouldHaveReceived('info')->with('narrator.ai.content_filter_retry', Mockery::on(
-        fn (array $ctx): bool => $ctx['kind'] === 'daily_greeting'
+        fn (array $ctx): bool => $ctx['kind'] === 'briefing_mascot_voice'
             && $ctx['stripped_keys'] === NarratorContinuity::CONTEXT_KEYS,
     ));
 });
@@ -473,7 +473,7 @@ it('propagates ContentFilterException when the continuity-stripped retry still c
     $client = new ClientFake([contentFilterError(), contentFilterError()]);
 
     expect(fn () => fakeStructuredCaller($client)->call(
-        'daily_greeting',
+        'briefing_mascot_voice',
         'sys',
         ['prev_narrative' => 'poison', 'prev_opener' => 'poison'],
         'schema',
@@ -491,7 +491,7 @@ function outputFilteredResponse(): CreateResponse
 it('maps an output-filtered 200 response into a terminal ContentFilterException', function (): void {
     // No continuity keys to strip, so the mapped exception propagates.
     expect(fn () => callerWithResponses([outputFilteredResponse()])
-        ->call('daily_greeting', 'sys', ['name' => 'Nuki'], 'schema', ['speech']))
+        ->call('briefing_mascot_voice', 'sys', ['name' => 'Nuki'], 'schema', ['speech']))
         ->toThrow(ContentFilterException::class, 'output filtered');
 
     expect(TokenUsage::query()->count())->toBe(0);
@@ -504,10 +504,10 @@ it('strips continuity and retries when the first response is output-filtered', f
         outputFilteredResponse(),
         fakeAzureResponse(json_encode(['speech' => 'clean'], JSON_THROW_ON_ERROR)),
     ])->call(
-        'daily_greeting',
+        'briefing_mascot_voice',
         'sys',
         ['name' => 'Nuki', 'prev_narrative' => 'poison', 'prev_opener' => 'poison'],
-        'TemariDailyGreeting',
+        'TemariBriefingMascotVoice',
         ['speech'],
     );
 
@@ -521,7 +521,7 @@ it('strips continuity and retries when the first response is output-filtered', f
 it('propagates ContentFilterException when the output-filtered retry is still filtered', function (): void {
     // Both responses output-filtered: reaches the job so it can degrade to rule-based.
     expect(fn () => callerWithResponses([outputFilteredResponse(), outputFilteredResponse()])
-        ->call('daily_greeting', 'sys', ['prev_narrative' => 'poison', 'prev_opener' => 'poison'], 'schema', ['speech']))
+        ->call('briefing_mascot_voice', 'sys', ['prev_narrative' => 'poison', 'prev_opener' => 'poison'], 'schema', ['speech']))
         ->toThrow(ContentFilterException::class);
 });
 
@@ -656,7 +656,7 @@ it('keeps the budget across a content-filter retry so the strip cannot double th
     $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => [])]);
 
     $payload = fakeStructuredCaller($client)->call(
-        'daily_greeting',
+        'briefing_mascot_voice',
         'sys',
         ['prev_narrative' => 'poison', 'prev_opener' => 'poison'],
         'schema',
@@ -690,7 +690,7 @@ it('sends the same cache key for two different users of one narrator', function 
     foreach ([7, 99] as $userId) {
         $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
         fakeStructuredCaller($client)
-            ->call('daily_greeting', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(userId: $userId));
+            ->call('briefing_mascot_voice', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(userId: $userId));
         $client->assertSent(Responses::class, function (string $method, array $params) use (&$keys): bool {
             $keys[] = $params['prompt_cache_key'];
 
@@ -698,5 +698,5 @@ it('sends the same cache key for two different users of one narrator', function 
         });
     }
 
-    expect($keys)->toBe(['daily_greeting', 'daily_greeting']);
+    expect($keys)->toBe(['briefing_mascot_voice', 'briefing_mascot_voice']);
 });

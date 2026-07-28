@@ -34,18 +34,15 @@ final readonly class RuleBasedNarrationFiller
         $seed = $this->seedFor($row);
 
         return match ($row->analysis_type) {
-            AnalysisType::BriefingHeadline => $this->briefingHeadline($seed),
             AnalysisType::BriefingSuggestion => $this->briefingSuggestion($seed),
             AnalysisType::BriefingMascotVoice => $this->briefingMascotVoice($seed),
             AnalysisType::BriefingFeaturedKartuVoice => $this->briefingFeaturedKartuVoice($seed),
             AnalysisType::PostRunSpeech => $this->postRunSpeech($seed),
-            AnalysisType::DailyGreeting => $this->dailyGreeting($seed),
             AnalysisType::RunInsightTechnical => $this->runInsightTechnical($seed),
             AnalysisType::RunInsightSplits => $this->runInsightSplits($seed),
             AnalysisType::RunInsightZones => $this->runInsightZones($seed),
             AnalysisType::WeeklyRecap => $this->weeklyRecap($seed),
             AnalysisType::PrContext => $this->prContext($seed),
-            AnalysisType::TrendCaption => $this->trendCaption($seed),
             AnalysisType::CardFlavor => $this->cardFlavor($seed),
             AnalysisType::PersonaSummary => $this->personaSummary($seed),
             AnalysisType::AkuProfileVoice => $this->akuProfileVoice($seed),
@@ -69,18 +66,6 @@ final readonly class RuleBasedNarrationFiller
         return $row->subject_id + (int) crc32($row->discriminator);
     }
 
-    private function briefingHeadline(int $seed): string
-    {
-        return $this->select([
-            'Kondisi kamu hari ini **stabil**, kapasitas cukup buat sesi ringan sampai sedang.',
-            'Form lagi oke, recovery cukup. Bisa lari tapi gak usah ngoyo.',
-            'Kesiapan positif, badan udah recharge. Kalau mau lari, ada tenaga.',
-            'Bebas aja hari ini, kapasitas masih aman buat apa pun yang kamu mau.',
-            'Recovery keurus, form gak jelek. Sesi ringan sampai sedang aman.',
-            'Badan lagi netral, gak lagi tinggi gak juga drop. Lari santai paling pas.',
-            'Kapasitas hari ini cukup buat gerak. Mau easy atau tempo ringan, kamu yang pilih.',
-        ], $seed);
-    }
 
     private function briefingSuggestion(int $seed): string
     {
@@ -161,19 +146,6 @@ final readonly class RuleBasedNarrationFiller
         return $codas === [] ? '' : $codas[abs($seed) % count($codas)];
     }
 
-    private function dailyGreeting(int $seed): string
-    {
-        return $this->select([
-            'Halo. Aku di sini, siap nemenin begitu kamu mulai lari.',
-            'Halo! Aku udah siap kalau kamu mau lari hari ini. Tapi gak buru-buru juga gak apa-apa.',
-            'Pagi. Udara masih seger, tapi kalau belum mood, aku tetap di sini.',
-            'Halo. Hari baru, peluang baru buat lari. Atau istirahat, kamu yang tentuin.',
-            'Pagi. Aku cek data kamu, mungkin ada yang menarik hari ini. Yuk liat.',
-            'Halo. Belum lari juga gak apa-apa, aku tetap nungguin di sini.',
-            'Pagi. Kalau badan lagi enak, sayang kalau gak dipake gerak dikit.',
-            'Halo. Mau lari atau istirahat, dua-duanya sah. Kamu yang paling tahu.',
-        ], $seed);
-    }
 
     private function runInsightTechnical(int $activityId): string
     {
@@ -253,18 +225,6 @@ final readonly class RuleBasedNarrationFiller
         ], $seed);
     }
 
-    private function trendCaption(int $seed): string
-    {
-        return $this->select([
-            'Tren beberapa minggu terakhir relatif rata. Solid base.',
-            'Garis volume relatif stabil, gak naik drastis tapi gak turun juga. Fondasi yang aman.',
-            'Belum ada pergerakan besar di tren, tapi stabil bukan berarti diam. Base lagi dibangun.',
-            'Volume konsisten beberapa minggu terakhir. Makin lama makin solid.',
-            'Beberapa minggu terakhir jalannya rapi. Gak meledak, tapi arahnya sehat.',
-            'Grafiknya adem, naik tipis-tipis. Base yang dibangun sabar biasanya awet.',
-            'Tren kamu stabil. Bukan diam, tapi lagi numpuk fondasi pelan-pelan.',
-        ], $seed);
-    }
 
     /**
      * Card flavor woven from the card's own context (rarity + special move +

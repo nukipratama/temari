@@ -101,6 +101,6 @@ it('still lets the demo user trigger "Baca ulang" (a real on-demand LLM call)', 
     $user = User::factory()->create(['is_demo' => true]);
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_headline/{$user->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful();
 });

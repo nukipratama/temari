@@ -12,7 +12,7 @@ code_refs:
   - app/Services/Run/Story/PastYouMatcher.php
   - app/Services/Run/Story/BriefingComposer.php
   - resources/js/lib/temariPose.ts
-  - app/Services/AI/Narrators/DailyGreetingNarrator.php
+  - app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php
 ---
 
 # Vibe & mood system
@@ -61,7 +61,7 @@ The bridge between the two systems is `moodForVibe` ([Temari.php:113](../../app/
 
 - **Dashboard pose.** The vibe key indexes `VIBE_TO_POSE` ([temariPose.ts:14](../../resources/js/lib/temariPose.ts#L14)) to choose Temari's body pose on [[dashboard|Hari Ini]] (e.g. `pumped` → pumped, `cooked`/`worn_down`/`stretched_thin` → wobble, `hibernating` → reading). This is a separate map from the run-level `MOOD_TO_POSE` in the same file.
 - **Headline subtitle.** The label flows into the italic subtitle "kamu lagi {label}." and the eyebrow date line — see [[dashboard]] for the page wiring.
-- **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe once and hangs the briefing off it. The vibe *key* is then a context field the narrators key their tone to: the daily greeting's system prompt branches its whole register on the vibe band ([DailyGreetingNarrator.php:22](../../app/Services/AI/Narrators/DailyGreetingNarrator.php#L22)) — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The mascot-voice narrator does the same off its `vibe` field. The pipeline itself is documented in [[ai-pipeline]].
+- **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe once and hangs the briefing off it. The vibe *key* is then a context field the narrators key their tone to: the mascot voice keys its register to the vibe band ([BriefingMascotVoiceNarrator.php](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php)) — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
 
 ## Featured kartu
 

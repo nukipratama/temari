@@ -107,6 +107,26 @@ class Analysis extends Model
     }
 
     /**
+     * Rows whose analysis_type still maps to a live {@see AnalysisType} case.
+     * Retired types (narration surfaces that were removed) leave their historical
+     * rows behind, and the enum cast throws a ValueError the moment one is
+     * hydrated, so every read that does not already filter by type must exclude
+     * them. Ops paths want them gone anyway: a block whose narrator no longer
+     * exists can never be re-dispatched or re-armed.
+     *
+     * @param  Builder<Analysis>  $query
+     * @return Builder<Analysis>
+     */
+    #[Scope]
+    protected function knownType(Builder $query): Builder
+    {
+        return $query->whereIn(
+            $this->qualifyColumn('analysis_type'),
+            array_column(AnalysisType::cases(), 'value'),
+        );
+    }
+
+    /**
      * Rows ai:self-heal may re-dispatch: still Pending or Failed and under the
      * retry budget. A Pending row is always attempts=0, so the budget only ever
      * excludes a Failed row that has burned its retries.
@@ -118,6 +138,7 @@ class Analysis extends Model
     protected function stalled(Builder $query): Builder
     {
         return $query
+            ->knownType()
             ->whereIn($this->qualifyColumn('status'), [AnalysisStatus::Pending, AnalysisStatus::Failed])
             ->where($this->qualifyColumn('attempts'), '<', self::MAX_SELF_HEAL_ATTEMPTS);
     }
@@ -133,6 +154,7 @@ class Analysis extends Model
     protected function deadLettered(Builder $query): Builder
     {
         return $query
+            ->knownType()
             ->where($this->qualifyColumn('status'), AnalysisStatus::Failed)
             ->where($this->qualifyColumn('attempts'), '>=', self::MAX_SELF_HEAL_ATTEMPTS);
     }
@@ -151,6 +173,7 @@ class Analysis extends Model
     protected function staleInFlight(Builder $query, Carbon $threshold): Builder
     {
         return $query
+            ->knownType()
             ->whereIn($this->qualifyColumn('status'), [AnalysisStatus::Queued, AnalysisStatus::Processing])
             ->where(function (Builder $inner) use ($threshold): void {
                 $inner

@@ -15,7 +15,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
 #[Signature('ai:daily-briefing')]
-#[Description('Dispatch the daily kickoff (briefing set + trend caption) for each active user (last 7 days)')]
+#[Description('Dispatch the daily briefing set for each active user (last 7 days)')]
 class DailyBriefingCommand extends Command
 {
     public function handle(AnalysisService $service, FeaturedKartuResolver $featuredKartu): int
@@ -30,30 +30,15 @@ class DailyBriefingCommand extends Command
 
         $users = User::query()->whereIn('id', $activeUserIds)->get();
 
-        $dailyRowTypes = [
-            AnalysisType::BriefingMascotVoice,
-            AnalysisType::DailyGreeting,
-        ];
-
         foreach ($users as $user) {
             $service->requestBriefingGroup($user, $today);
 
             $service->request(
-                subjectOrType: AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
+                subjectOrType: AnalysisType::BriefingMascotVoice->subjectType(),
                 subjectId: $user->id,
-                type: AnalysisType::TrendCaption,
+                type: AnalysisType::BriefingMascotVoice,
                 discriminator: $today,
-                invalidate: true,
             );
-
-            foreach ($dailyRowTypes as $type) {
-                $service->request(
-                    subjectOrType: $type->subjectType(),
-                    subjectId: $user->id,
-                    type: $type,
-                    discriminator: $today,
-                );
-            }
 
             // The featured-kartu voice keys off the card id, so it regenerates
             // exactly when the featured pick changes (and never re-bills while it
@@ -69,7 +54,7 @@ class DailyBriefingCommand extends Command
             }
         }
 
-        $this->info("Dispatched daily kickoff (briefing + trend caption) for {$users->count()} active users.");
+        $this->info("Dispatched daily kickoff (briefing) for {$users->count()} active users.");
 
         return self::SUCCESS;
     }

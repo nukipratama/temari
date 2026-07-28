@@ -77,7 +77,7 @@ it('notificationCooldownRemaining reflects an active send window for a Done payl
 });
 
 it('toPayload returns retry_after_seconds null when row is null', function (): void {
-    $payload = Analysis::toPayload(null, AnalysisType::BriefingHeadline, 'briefing_user_day', 1, '2026-05-20');
+    $payload = Analysis::toPayload(null, AnalysisType::BriefingSuggestion, 'briefing_user_day', 1, '2026-05-20');
     expect($payload['retry_after_seconds'])->toBeNull();
 });
 
@@ -112,7 +112,7 @@ it('payloadsForSubjects ignores rows of a different type or subject_type', funct
     Analysis::factory()->done('wrong type')->create([
         'subject_type' => $subjectType,
         'subject_id' => 30,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => null,
     ]);
 

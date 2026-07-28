@@ -52,7 +52,7 @@ The daily greeting keeps its `vibe` in the context, because the *caller* decides
 
 ### The recaps
 
-Weekly, monthly and trend-caption narration held its arithmetic *in the narrator*: month bounds, per-week distance buckets, the mood mix, the fitness arc, the twelve-week series and its four-week deltas. That computation moved wholesale into [MonthTotalsTool](app/Services/AI/Agent/Tools/MonthTotalsTool.php), [WeekTotalsTool](app/Services/AI/Agent/Tools/WeekTotalsTool.php) and [WeeklyTrendTool](app/Services/AI/Agent/Tools/WeeklyTrendTool.php), which is why these three narrators lost more lines than they gained.
+Weekly and monthly narration held its arithmetic *in the narrator*: month bounds, per-week distance buckets, the mood mix and the fitness arc. That computation moved wholesale into [MonthTotalsTool](app/Services/AI/Agent/Tools/MonthTotalsTool.php) and [WeekTotalsTool](app/Services/AI/Agent/Tools/WeekTotalsTool.php), which is why these narrators lost more lines than they gained.
 
 The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string — so a recap can only ever count the period it was asked about. Weekly and monthly send just the continuity line; the trend caption sends **nothing at all**, since the whole caption is a read.
 
@@ -79,7 +79,7 @@ Recovery hours is "hours since the most recent activity start", sharper than day
 
 ## The demo filler — copy without the LLM
 
-**Every `AnalysisType` is narrated.** There is no longer a class of types that skips the model: the run-insight blocks and the trend caption were the last holdouts, filled inline from threshold arithmetic even with Azure configured, and they now go through [RunInsightNarrator](app/Services/AI/Narrators/RunInsightNarrator.php) and [TrendCaptionNarrator](app/Services/AI/Narrators/TrendCaptionNarrator.php) like the rest. A block that cannot be narrated stays honestly `Pending` or `Failed` rather than being quietly templated — see [[ai-pipeline]].
+**Every `AnalysisType` is narrated.** There is no longer a class of types that skips the model: the run-insight blocks were the last holdout, filled inline from threshold arithmetic even with Azure configured, and they now go through [RunInsightNarrator](app/Services/AI/Narrators/RunInsightNarrator.php) like the rest. A block that cannot be narrated stays honestly `Pending` or `Failed` rather than being quietly templated — see [[ai-pipeline]].
 
 What remains is a **demo** path, not a production fallback.
 

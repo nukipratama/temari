@@ -12,18 +12,18 @@ it('authorizes the request (ownership is enforced in the controller)', function 
 
 it('folds the route segments into the validation payload', function (): void {
     $request = TriggerAnalysisRequest::create(
-        '/api/analyses/briefing_headline/7/trigger?discriminator=2026-05-18',
+        '/api/analyses/briefing_suggestion/7/trigger?discriminator=2026-05-18',
         'POST',
     );
     $request->setRouteResolver(fn () => new class () {
         public function parameter(string $key): ?string
         {
-            return ['type' => 'briefing_headline', 'subjectId' => '7'][$key] ?? null;
+            return ['type' => 'briefing_suggestion', 'subjectId' => '7'][$key] ?? null;
         }
     });
 
     expect($request->validationData())->toMatchArray([
-        'type' => 'briefing_headline',
+        'type' => 'briefing_suggestion',
         'subjectId' => '7',
         'discriminator' => '2026-05-18',
     ]);
@@ -43,9 +43,9 @@ it('rejects an unknown type, a non-positive subjectId and an over-long discrimin
     $rules = new TriggerAnalysisRequest()->rules();
 
     expect(Validator::make(['type' => 'nonsense', 'subjectId' => 1], $rules)->passes())->toBeFalse()
-        ->and(Validator::make(['type' => 'briefing_headline', 'subjectId' => 0], $rules)->passes())->toBeFalse()
+        ->and(Validator::make(['type' => 'briefing_suggestion', 'subjectId' => 0], $rules)->passes())->toBeFalse()
         ->and(Validator::make([
-            'type' => 'briefing_headline',
+            'type' => 'briefing_suggestion',
             'subjectId' => 1,
             'discriminator' => str_repeat('x', 65),
         ], $rules)->passes())->toBeFalse();
@@ -53,7 +53,7 @@ it('rejects an unknown type, a non-positive subjectId and an over-long discrimin
 
 it('allows a null / absent discriminator', function (): void {
     $validator = Validator::make(
-        ['type' => 'briefing_headline', 'subjectId' => 1],
+        ['type' => 'briefing_suggestion', 'subjectId' => 1],
         new TriggerAnalysisRequest()->rules(),
     );
 

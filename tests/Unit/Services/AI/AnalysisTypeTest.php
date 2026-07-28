@@ -9,6 +9,29 @@ use App\Jobs\AI\AnalyzePersonaSummaryJob;
 use App\Services\AI\AnalysisCadence;
 use App\Services\AI\AnalysisType;
 
+it('pins the exact case list, so adding or retiring a type is a deliberate edit', function (): void {
+    expect(array_column(AnalysisType::cases(), 'value'))->toBe([
+        'briefing_suggestion',
+        'briefing_mascot_voice',
+        'briefing_featured_kartu_voice',
+        'post_run_speech',
+        'run_insight_technical',
+        'run_insight_splits',
+        'run_insight_zones',
+        'weekly_recap',
+        'pr_context',
+        'card_flavor',
+        'persona_summary',
+        'aku_profile_voice',
+        'monthly_recap',
+    ], implode(' ', [
+        'The AnalysisType case list changed. Update this list only after settling the call sites that',
+        'read the cases as a set rather than one case at a time: Analysis::knownType(), which decides',
+        'whether historical rows of a retired type stay re-dispatchable, and the retired-type',
+        'subject_type literals in UserEraser, since erasure must still reach rows whose case is gone.',
+    ]));
+});
+
 it('maps PersonaSummary to its job + subject type', function (): void {
     expect(AnalysisType::PersonaSummary->jobClass())->toBe(AnalyzePersonaSummaryJob::class)
         ->and(AnalysisType::PersonaSummary->subjectType())->toBe(AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE);
@@ -29,7 +52,7 @@ it('flags exactly the heart-rate-zone-derived types as zone-dependent', function
     'splits' => [AnalysisType::RunInsightSplits, false],
     'post-run speech' => [AnalysisType::PostRunSpeech, false],
     'pr context' => [AnalysisType::PrContext, false],
-    'briefing headline' => [AnalysisType::BriefingHeadline, false],
+    'briefing suggestion' => [AnalysisType::BriefingSuggestion, false],
 ]);
 
 it('flags only the connected + chained kinds wired so far', function (AnalysisType $type, bool $expected): void {
@@ -42,7 +65,7 @@ it('flags only the connected + chained kinds wired so far', function (AnalysisTy
     'run insight splits (per-activity chain)' => [AnalysisType::RunInsightSplits, true],
     'run insight zones (per-activity chain)' => [AnalysisType::RunInsightZones, true],
     'card flavor (standalone)' => [AnalysisType::CardFlavor, false],
-    'briefing headline (standalone)' => [AnalysisType::BriefingHeadline, false],
+    'briefing mascot voice (standalone)' => [AnalysisType::BriefingMascotVoice, false],
 ]);
 
 it('assigns a cadence to every type', function (): void {
@@ -56,9 +79,7 @@ it('maps representative types to the expected cadence', function (AnalysisType $
 })->with([
     'post-run speech is per-activity' => [AnalysisType::PostRunSpeech, AnalysisCadence::PerActivity],
     'card flavor is per-activity' => [AnalysisType::CardFlavor, AnalysisCadence::PerActivity],
-    'briefing headline is daily' => [AnalysisType::BriefingHeadline, AnalysisCadence::Daily],
-    'daily greeting is daily' => [AnalysisType::DailyGreeting, AnalysisCadence::Daily],
-    'trend caption is daily' => [AnalysisType::TrendCaption, AnalysisCadence::Daily],
+    'briefing suggestion is daily' => [AnalysisType::BriefingSuggestion, AnalysisCadence::Daily],
     'weekly recap is weekly' => [AnalysisType::WeeklyRecap, AnalysisCadence::Weekly],
     'monthly recap is monthly' => [AnalysisType::MonthlyRecap, AnalysisCadence::Monthly],
     'persona summary is on-demand' => [AnalysisType::PersonaSummary, AnalysisCadence::OnDemand],
@@ -72,7 +93,6 @@ it('is the single source of truth for group membership', function (): void {
         AnalysisType::RunInsightZones,
     ])
         ->and(AnalysisType::groupedBy(AnalyzeBriefingJob::class))->toBe([
-            AnalysisType::BriefingHeadline,
             AnalysisType::BriefingSuggestion,
         ])
         // The job classes derive their grouped types from the enum.
@@ -84,7 +104,7 @@ it('returns null group job for non-grouped types', function (AnalysisType $type)
     expect($type->groupJobClass())->toBeNull();
 })->with([
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice],
-    'daily greeting' => [AnalysisType::DailyGreeting],
+    'briefing featured kartu voice' => [AnalysisType::BriefingFeaturedKartuVoice],
     'weekly recap' => [AnalysisType::WeeklyRecap],
     'monthly recap' => [AnalysisType::MonthlyRecap],
 ]);

@@ -159,7 +159,6 @@ export interface BriefingResult {
     vibeState: string;
     vibeLabel: string;
     vibeEmoji: string;
-    headline: AnalysisPayload;
     suggestion: AnalysisPayload;
     mascotVoice: AnalysisPayload;
     featuredKartuVoice: AnalysisPayload;

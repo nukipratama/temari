@@ -142,14 +142,11 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
 
     expect($copy)->toBe($expected);
 })->with([
-    'briefing headline' => [AnalysisType::BriefingHeadline, 'Kondisi kamu hari ini **stabil**, kapasitas cukup buat sesi ringan sampai sedang.'],
     'briefing suggestion' => [AnalysisType::BriefingSuggestion, "Tempo ringan, 35-45 menit.\n\nWarmup 10 menit santai, tempo 15-20 menit di zona 3 atas, terus cooldown. Jaga cadence di 175+, napas terengah-engah tapi masih bisa potong kalimat.\n\nYang perlu diperhatikan: kalau HR cepat naik padahal pelan, mundur ke run-walk 15-25 menit atau berhenti di cooldown. Cuaca terasa panas atau badan masih lemes, rest juga tidak rugi."],
-    'daily greeting' => [AnalysisType::DailyGreeting, 'Halo. Aku di sini, siap nemenin begitu kamu mulai lari.'],
     'run insight splits (no detail)' => [AnalysisType::RunInsightSplits, 'Splits-nya belum kebaca lengkap.'],
     'run insight zones (no detail)' => [AnalysisType::RunInsightZones, 'Distribusi zone-nya belum kebaca lengkap.'],
     'weekly recap' => [AnalysisType::WeeklyRecap, 'Minggu ini ritme kamu cukup teratur. Volume lari masuk akal, recovery juga keurus.'],
     'pr context' => [AnalysisType::PrContext, 'PR-nya hasil dari konsistensi minggu-minggu sebelumnya, bukan kebetulan.'],
-    'trend caption' => [AnalysisType::TrendCaption, 'Tren beberapa minggu terakhir relatif rata. Solid base.'],
     'persona summary' => [AnalysisType::PersonaSummary, 'Pola lari kamu cenderung easy-dominan, sesekali quality. Tipe runner yang ngebangun pelan-pelan.'],
     'aku profile voice' => [AnalysisType::AkuProfileVoice, 'Aku catat semua perjalanan kamu di sini: **kartu**, **rekor**, **aksesori**, ceritanya. Ayo terus jalan.'],
     'monthly recap' => [AnalysisType::MonthlyRecap, 'Bulan ini ritme kamu jalan terus. Gak ngotot, gak juga ngilang. Konsisten yang aku suka.'],

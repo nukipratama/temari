@@ -21,14 +21,14 @@ it('recognises the notifiable types and ignores the rest', function (): void {
     $postRun = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
     $weekly = Analysis::factory()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
     $monthly = Analysis::factory()->make(['analysis_type' => AnalysisType::MonthlyRecap]);
-    $briefing = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingHeadline]);
-    $greeting = Analysis::factory()->make(['analysis_type' => AnalysisType::DailyGreeting]);
+    $briefing = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingSuggestion]);
+    $mascotVoice = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingMascotVoice]);
 
     expect($registry->isNotifiable($postRun))->toBeTrue()
         ->and($registry->isNotifiable($weekly))->toBeTrue()
         ->and($registry->isNotifiable($monthly))->toBeTrue()
         ->and($registry->isNotifiable($briefing))->toBeFalse() // daily briefing no longer notifies
-        ->and($registry->isNotifiable($greeting))->toBeFalse();
+        ->and($registry->isNotifiable($mascotVoice))->toBeFalse();
 });
 
 it('resolves the user behind a post-run speech via its activity', function (): void {
@@ -91,7 +91,7 @@ it('isOptedIn defaults to opted-in when the user has no preference row', functio
 });
 
 it('isOptedIn returns false for a non-notifiable type', function (): void {
-    $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::DailyGreeting]);
+    $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingMascotVoice]);
     $user = User::factory()->create();
 
     expect(new NotifiableAnalysis()->isOptedIn($analysis, $user))->toBeFalse();
@@ -343,7 +343,7 @@ it('falls back to the bare run history when the recap snapshot is gone', functio
 });
 
 it('falls back to the app name for a non-notifiable type', function (): void {
-    $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::DailyGreeting]);
+    $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingMascotVoice]);
 
     expect(new NotifiableAnalysis()->title($analysis))->toBe('Temari');
 });

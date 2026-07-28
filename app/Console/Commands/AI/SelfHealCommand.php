@@ -74,8 +74,6 @@ class SelfHealCommand extends Command
             + $this->resumeBriefingGroup($service)
             + $this->resumeSingleRowType($service, AnalysisType::BriefingMascotVoice)
             + $this->resumeSingleRowType($service, AnalysisType::BriefingFeaturedKartuVoice)
-            + $this->resumeSingleRowType($service, AnalysisType::DailyGreeting)
-            + $this->resumeSingleRowType($service, AnalysisType::TrendCaption)
             + $this->resumeSingleRowType($service, AnalysisType::PersonaSummary)
             + $this->resumeSingleRowType($service, AnalysisType::AkuProfileVoice);
 
@@ -286,16 +284,12 @@ class SelfHealCommand extends Command
     }
 
     /**
-     * Briefing group (headline + suggestion): the earliest stalled briefing day
-     * per user, matched on *any* stalled grouped type, not only the headline
-     * representative. A BriefingSuggestion left Failed under a healthy (Done)
-     * headline is otherwise never swept, so it would rot with no recovery and no
-     * visibility. Dispatching via {@see AnalysisService::request()} with the
-     * headline type resolves the group job and re-runs both rows together;
-     * AnalyzeBriefingJob is idempotent for the already-Done sibling, so a Done
-     * headline is not re-billed. Stalled + budget-bounded; demo excluded;
-     * discriminator is a zero-padded date, so a plain string ORDER BY is
-     * chronological.
+     * Briefing group (suggestion): the earliest stalled briefing day per user,
+     * matched on *any* stalled grouped type. Dispatching via
+     * {@see AnalysisService::request()} with a grouped type resolves the group job
+     * and re-runs it; AnalyzeBriefingJob is idempotent for an already-Done row, so
+     * it is not re-billed. Stalled + budget-bounded; demo excluded; discriminator
+     * is a zero-padded date, so a plain string ORDER BY is chronological.
      */
     private function resumeBriefingGroup(AnalysisService $service): int
     {
@@ -317,9 +311,9 @@ class SelfHealCommand extends Command
             $service->request(
                 subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
                 subjectId: (int) $row->subject_id,
-                // The headline is the group's representative; request() resolves
-                // AnalyzeBriefingJob from it and re-dispatches the whole group.
-                type: AnalysisType::BriefingHeadline,
+                // request() resolves AnalyzeBriefingJob from the grouped type and
+                // re-dispatches the whole group.
+                type: AnalysisType::BriefingSuggestion,
                 discriminator: $row->discriminator,
                 invalidate: false,
             );
@@ -330,16 +324,16 @@ class SelfHealCommand extends Command
 
     /**
      * Single-row-per-user narration types with no chain/group of their own:
-     * BriefingMascotVoice, BriefingFeaturedKartuVoice, DailyGreeting,
-     * TrendCaption, PersonaSummary, AkuProfileVoice. Each is dispatched only at
+     * BriefingMascotVoice, BriefingFeaturedKartuVoice, PersonaSummary,
+     * AkuProfileVoice. Each is dispatched only at
      * its own kickoff (daily briefing / weekly profile) with no other scheduled
      * recovery, so a capped-Pending or transiently-Failed row would sit stuck
      * without this sweep. subject_id is the user id directly for all of these
      * types, so no join is needed to scope by user. Stalled + budget-bounded;
      * demo excluded; re-dispatched against the stalled row's own discriminator
      * (not recomputed) so a resumed BriefingFeaturedKartuVoice still targets the
-     * card it originally narrated. The grouped briefing types (headline +
-     * suggestion) are swept by {@see self::resumeBriefingGroup()} instead.
+     * card it originally narrated. The grouped briefing type (suggestion) is
+     * swept by {@see self::resumeBriefingGroup()} instead.
      *
      * Every other type's discriminator is a zero-padded date/week string, so a
      * plain string ORDER BY is chronological. BriefingFeaturedKartuVoice's

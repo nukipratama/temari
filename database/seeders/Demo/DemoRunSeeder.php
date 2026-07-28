@@ -333,18 +333,6 @@ class DemoRunSeeder
                 discriminator: (string) $featuredCard->id,
             );
         }
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
-            subjectId: $user->id,
-            type: AnalysisType::DailyGreeting,
-            discriminator: $today,
-        );
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
-            subjectId: $user->id,
-            type: AnalysisType::TrendCaption,
-            discriminator: $today,
-        );
 
         // Persona summary is cached per ISO week — discriminator must match
         // ProfileController::resolvePersonaSummary() or the Aku card misses it.
@@ -389,8 +377,6 @@ class DemoRunSeeder
                     ->orWhere(fn ($qq) => $qq->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
                     ->orWhere(fn ($qq) => $qq->whereIn('subject_type', [
                         AnalysisType::BRIEFING_SUBJECT_TYPE,
-                        AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
-                        AnalysisType::TREND_CAPTION_SUBJECT_TYPE,
                         AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE,
                         AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                     ])->where('subject_id', $user->id));
