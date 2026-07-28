@@ -34,7 +34,7 @@ const TAB_PAGES = ['HariIni', 'Koleksi/Kartu', 'Riwayat/Jejak', 'Aku'];
  * on a tab does not wait on a network round trip for its code.
  *
  * Deliberately not `{ eager: true }` on the glob: that folds every page into
- * the entry graph and promotes the `charts` (178KB) and `maps` (156KB) manual
+ * the entry graph and promotes the `charts` (170KB) and `maps` (152KB) vendor
  * chunks from lazy to always-fetched, which would hurt exactly the first load
  * this is meant to protect. Warming four importers by hand keeps those lazy.
  *

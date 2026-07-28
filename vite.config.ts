@@ -18,18 +18,41 @@ export default defineConfig({
       output: {
         // Split heavy vendors into their own chunks so a page that doesn't use
         // charts/maps/animation doesn't pull the whole bundle. Without this
-        // they all land in one large vendor chunk. Function form because Vite 8
-        // / Rolldown rejects the object form of manualChunks.
-        manualChunks(id) {
-          if (id.includes("node_modules/chart.js") || id.includes("node_modules/react-chartjs-2")) {
-            return "charts";
-          }
-          if (id.includes("node_modules/leaflet") || id.includes("node_modules/react-leaflet")) {
-            return "maps";
-          }
-          if (id.includes("node_modules/framer-motion")) {
-            return "motion";
-          }
+        // they all land in one large vendor chunk.
+        //
+        // `advancedChunks`, not `manualChunks`: Rolldown collapses a
+        // manualChunks function into one group at priority 0, so its branches
+        // cannot outrank each other, and `includeDependenciesRecursively`
+        // (default true) then sweeps React into whichever vendor group reaches
+        // it first. Explicit groups give react-vendor a priority that wins.
+        advancedChunks: {
+          groups: [
+            {
+              name: "react-vendor",
+              test: (id) =>
+                id.includes("node_modules/react/") ||
+                id.includes("node_modules/react-dom/") ||
+                id.includes("node_modules/scheduler/"),
+              priority: 100,
+            },
+            {
+              name: "charts",
+              test: (id) =>
+                id.includes("node_modules/chart.js") || id.includes("node_modules/react-chartjs-2"),
+              priority: 10,
+            },
+            {
+              name: "maps",
+              test: (id) =>
+                id.includes("node_modules/leaflet") || id.includes("node_modules/react-leaflet"),
+              priority: 10,
+            },
+            {
+              name: "motion",
+              test: (id) => id.includes("node_modules/framer-motion"),
+              priority: 10,
+            },
+          ],
         },
       },
     },

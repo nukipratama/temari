@@ -33,6 +33,8 @@ There is no client-side router and no REST/JSON API for pages. Every screen is a
 - **Mounts under a shared [ErrorBoundary](resources/js/app.tsx#L27)** and installs the global client-error reporter ([app.tsx:9](resources/js/app.tsx#L9)) that POSTs to the CSRF-exempt `/client-errors` sink. The Inertia progress bar uses the Daybreak leaf green ([app.tsx:32](resources/js/app.tsx#L32)); tokens live in [[design-tokens]].
 - **Sets the document title** template `"{title} · Temari"` ([app.tsx:12](resources/js/app.tsx#L12)); pages set their own title via `<Head>` (see [Login.tsx](resources/js/pages/Auth/Login.tsx#L49)).
 
+**Code splitting.** The page glob is lazy, so every page is its own chunk, and heavy vendors are lifted into shared `react-vendor` / `charts` / `maps` / `motion` chunks by Rolldown's `advancedChunks` groups ([vite.config.ts:28](vite.config.ts#L28)). React core carries the highest `priority` deliberately: Rolldown otherwise parks a shared module in whichever vendor group reaches it first, which put `react` inside `charts` and `react-dom` inside `maps`, dragging both — ~325KB raw — onto the first-paint path of every route, Login included. With React pinned, the entry's static closure is the Rolldown runtime + `app` + `react-vendor` only; `charts` and `maps` now load only when a page that renders one does. The four bottom-nav chunks are additionally warmed after idle ([app.tsx:44](resources/js/app.tsx#L44)).
+
 ## Shared props vs page props
 
 Two prop channels reach a React page, both via `usePage().props`:
