@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Pulse;
 
-use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Activity;
 use App\Services\Strava\StravaCircuitBreaker;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
+use App\Support\SharedPropCacheKey;
 use Illuminate\Contracts\Support\Renderable;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 use Laravel\Pulse\Livewire\Card;
@@ -27,10 +26,9 @@ class SystemControl extends Card
     public function toggleAi(): void
     {
         $this->toggle(AppConfigKey::AiEnabled);
-        // Bust the middleware's short-lived pause cache so the banner + hidden
-        // re-analysis buttons reflect the flip on the next request, not up to a
-        // minute later.
-        Cache::forget(HandleInertiaRequests::AI_PAUSED_CACHE_KEY);
+        // Bust the short-lived pause cache so the banner + hidden re-analysis
+        // buttons reflect the flip on the next request, not up to a minute later.
+        SharedPropCacheKey::AiPaused->forget();
     }
 
     public function toggleStrava(): void

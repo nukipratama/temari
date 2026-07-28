@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\SharedPropCacheKey;
 use Database\Factories\RunnerProfileFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Override;
 
 /**
@@ -49,10 +49,10 @@ class RunnerProfile extends Model
             }
         });
 
-        // Keep the shared `hrZonesChangedAt` Inertia prop (cached in
-        // HandleInertiaRequests) in step with the stored marker.
+        // Keep the shared `hrZonesChangedAt` Inertia prop in step with the
+        // stored marker.
         static::saved(function (RunnerProfile $profile): void {
-            Cache::forget("hr-zones-changed-at:{$profile->user_id}");
+            SharedPropCacheKey::HrZonesChangedAt->forget($profile->user_id);
         });
     }
 

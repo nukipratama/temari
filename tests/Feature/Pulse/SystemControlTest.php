@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\HandleInertiaRequests;
 use App\Livewire\Pulse\SystemControl;
 use App\Models\Activity;
 use App\Services\Strava\StravaCircuitBreaker;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
+use App\Support\SharedPropCacheKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
@@ -78,11 +78,11 @@ it('toggleAi flips the AI kill-switch in app_config', function (): void {
 });
 
 it('toggleAi busts the cached ai-paused signal so the banner reflects the flip immediately', function (): void {
-    Cache::forever(HandleInertiaRequests::AI_PAUSED_CACHE_KEY, false);
+    Cache::forever(SharedPropCacheKey::AiPaused->key(), false);
 
     Livewire::test(SystemControl::class)->call('toggleAi');
 
-    expect(Cache::has(HandleInertiaRequests::AI_PAUSED_CACHE_KEY))->toBeFalse();
+    expect(Cache::has(SharedPropCacheKey::AiPaused->key()))->toBeFalse();
 });
 
 it('toggleStrava flips the Strava kill-switch in app_config', function (): void {
