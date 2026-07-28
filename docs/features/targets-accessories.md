@@ -17,7 +17,7 @@ code_refs:
 
 Two sides of the same loop: **Target** (`/target`) shows what you're working toward, and **Aksesori** (`/aksesori`) is the wardrobe of what you've earned and can put on Temari. Both are organized by the same six equipment **slots**: Medali, Ikat Kepala, Kaus, Celana, Sepatu, Aura.
 
-**Navigation:** `route('target')` → `/target` (GoalController::index); `route('accessories')` → `/aksesori` (AksesoriController::index). Named routes: `target`, `accessories`.
+**Navigation:** `route('target')` → `/target` (GoalController::index); `route('aksesori')` → `/aksesori` (AksesoriController::index). Named routes: `target`, `aksesori`.
 
 ## System dependencies
 

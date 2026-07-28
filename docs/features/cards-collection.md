@@ -22,8 +22,8 @@ code_refs:
 
 Every Strava run that syncs becomes a **kartu** — a trading-card view of that run with a rarity, a few badges, and a Temari-written "special move" name. `/kartu` is the whole collection; tapping any card opens its run in [[run-detail]], where the card gets its own full-view section (see below). There is no separate card detail page or URL — a card and its run are the same page.
 
-**Navigation:** `route('cards.index')` → `/kartu` (Card grid, `CardController::index`).
-Named route: `cards.index`. All cards link to their respective `route('runs.show', activity)`.
+**Navigation:** `route('kartu.index')` → `/kartu` (Card grid, `CardController::index`).
+Named route: `kartu.index`. All cards link to their respective `route('aktivitas.show', activity)`.
 
 ## System dependencies
 

@@ -15,9 +15,9 @@ code_refs:
 
 # Profile (Aku)
 
-The "Aku" page (`/aku`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Aku](resources/js/pages/Aku.tsx) page.
+The "Aku" page (`/profil`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Aku](resources/js/pages/Aku.tsx) page.
 
-**Navigation:** `route('profile')` → `/aku`. Named route: `profile`.
+**Navigation:** `route('profil')` → `/profil`. Named route: `profil`. "Aku" is the nav *label* only ([TopNav](resources/js/components/TopNav.tsx)); there is no `/aku` route, and `/profile` is a permanent redirect to `/profil`.
 
 ## System dependencies
 
