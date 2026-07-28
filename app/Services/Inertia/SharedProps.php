@@ -45,8 +45,6 @@ final readonly class SharedProps
         /** @var User|null $user */
         $user = $request->user();
 
-        $user?->load(['telegramConnection', 'runnerProfile', 'stravaConnection']);
-
         return [
             'auth' => [
                 'user' => $user === null ? null : [

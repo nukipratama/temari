@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Models\RunnerProfile;
+use App\Models\StravaConnection;
+use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Services\Inertia\SharedProps;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -78,6 +81,26 @@ it('answers with safe guest defaults when nobody is signed in', function (): voi
             'sepatu' => null,
             'aura' => null,
         ]);
+});
+
+it('loads none of the auth user relations when no prop asks for them', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    TelegramConnection::factory()->for($user)->create();
+    RunnerProfile::factory()->for($user)->create();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $props = sharedPropsFor($user);
+
+    expect($props['auth']['user']['id'])->toBe($user->id)
+        ->and($queries)->toBe(0)
+        ->and($user->relationLoaded('telegramConnection'))->toBeFalse()
+        ->and($user->relationLoaded('runnerProfile'))->toBeFalse()
+        ->and($user->relationLoaded('stravaConnection'))->toBeFalse();
 });
 
 it('runs no queries at all for a guest request', function (): void {
