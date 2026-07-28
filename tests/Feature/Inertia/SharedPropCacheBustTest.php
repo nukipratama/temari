@@ -193,6 +193,35 @@ it('reflects a Strava revoke on the very next request', function (): void {
         ->assertInertia(fn (Assert $page) => $page->where('stravaZoneScopeMissing', false));
 });
 
+it('reflects a Strava revoke in stravaSync on the very next request', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create();
+
+    warmSharedProps($user);
+
+    visitAs($user)
+        ->assertInertia(fn (Assert $page) => $page->where('stravaSync.state', 'syncing'));
+
+    $connection->markRevoked();
+
+    visitAs($user)
+        ->assertInertia(fn (Assert $page) => $page->where('stravaSync.state', 'revoked'));
+});
+
+it('reflects a first Strava connect in stravaSync on the very next request', function (): void {
+    $user = User::factory()->create();
+
+    warmSharedProps($user);
+
+    visitAs($user)
+        ->assertInertia(fn (Assert $page) => $page->where('stravaSync.state', 'disconnected'));
+
+    StravaConnection::factory()->for($user)->create();
+
+    visitAs($user)
+        ->assertInertia(fn (Assert $page) => $page->where('stravaSync.state', 'syncing'));
+});
+
 it('busts only the acting user cache, never a bystander', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();

@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -57,6 +58,16 @@ class RunController extends Controller
      * beyond the cap are flagged via `runsTruncated`.
      */
     private const int MAX_RUNS = 365;
+
+    /**
+     * How long one run-detail view reserves the right to re-dispatch a location
+     * resolve. `ShouldBeUnique` only dedupes while the job is queued or running,
+     * so once it finishes without stamping `location_resolved_at` — the
+     * deliberate outcome of a transient Nominatim miss — the very next poll tick
+     * re-queues it. Matched to the job's own `uniqueFor`, which also covers the
+     * longest narration poll window (30 ticks at up to 15s).
+     */
+    private const int LOCATION_DISPATCH_GUARD_SECONDS = 600;
 
     /** Safety cap on weekly snapshots loaded into memory (10 years ≈ 520 weeks). */
     private const int MAX_WEEKS = 520;
@@ -585,7 +596,9 @@ class RunController extends Controller
         $detail = $activity->detail;
         abort_if($detail === null, 404, 'Activity not yet analyzed.');
 
-        if ($detail->start_lat !== null && $detail->location_resolved_at === null) {
+        if ($detail->start_lat !== null
+            && $detail->location_resolved_at === null
+            && Cache::lock("geo:resolve-dispatch:{$detail->id}", self::LOCATION_DISPATCH_GUARD_SECONDS)->get()) {
             ResolveActivityLocationJob::dispatch($detail->id);
         }
 
