@@ -29,6 +29,15 @@ class AnalysisService
 {
     private bool $dispatchSuppressed = false;
 
+    /**
+     * Memoized {@see self::dailyCostCeilingExceeded()} answer. The service is a
+     * `scoped` binding, so this lives exactly one HTTP request or one queue job:
+     * both the queue worker and Octane discard it via forgetScopedInstances().
+     * Only the cost read is memoized -- the kill switch and the config breaker
+     * stay live, so a breaker reset still resumes generation within the scope.
+     */
+    private ?bool $costCeilingMemo = null;
+
     public function __construct(
         private readonly AppConfig $config,
         private readonly LlmCostCalculator $costCalculator,
@@ -490,6 +499,11 @@ class AnalysisService
      * ceiling configured (null) means this never gates dispatch.
      */
     private function dailyCostCeilingExceeded(): bool
+    {
+        return $this->costCeilingMemo ??= $this->computeDailyCostCeilingExceeded();
+    }
+
+    private function computeDailyCostCeilingExceeded(): bool
     {
         $ceiling = config('azure_openai.daily_cost_ceiling');
         if ($ceiling === null) {
