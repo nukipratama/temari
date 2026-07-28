@@ -112,7 +112,7 @@ it('promotes to legendaris on a half-marathon PR with clean zone split', functio
     expect($card->rarity)->toBe(Rarity::Legendary);
 });
 
-it('promotes to langka on a negative split with badges pushing score to 4-5', function (): void {
+it('keeps a negative split with two badges at berkesan rather than langka', function (): void {
     $user = User::factory()->create();
     // Prior analyzed activity at 6km so pertama_kali doesn't fire, and 8km won't be a new bracket.
     $prev = Activity::factory()->for($user)->analyzed()->create();
@@ -139,8 +139,8 @@ it('promotes to langka on a negative split with badges pushing score to 4-5', fu
     $card = app(RunCardFactory::class)->build($activity, $detail);
 
     // Score: +2 negSplit, badges: negSplit + santai (140bpm is 78% of the default
-    // 180 max, an easy effort) -> badgeCount=2, = 2+2 = 4 -> Rare.
-    expect($card->rarity)->toBe(Rarity::Rare);
+    // 180 max, an easy effort) -> badgeCount=2, = 2+2 = 4 -> Uncommon.
+    expect($card->rarity)->toBe(Rarity::Uncommon);
 });
 
 it('awards the hari_panas badge when temp >= 31C', function (): void {
@@ -1087,33 +1087,33 @@ it('adds 1 point to the rarity score when weekly consistency is met', function (
 
 // --- Point-based scoring tests ---
 
-it('maps score 0-1 to Biasa (Common)', function (): void {
+it('maps score 0-2 to Biasa (Common)', function (): void {
     $factory = app(RunCardFactory::class);
     expect($factory->rarityFromScore(0))->toBe(Rarity::Common);
-    expect($factory->rarityFromScore(1))->toBe(Rarity::Common);
+    expect($factory->rarityFromScore(2))->toBe(Rarity::Common);
 });
 
-it('maps score 2-3 to Berkesan (Uncommon)', function (): void {
+it('maps score 3-4 to Berkesan (Uncommon)', function (): void {
     $factory = app(RunCardFactory::class);
-    expect($factory->rarityFromScore(2))->toBe(Rarity::Uncommon);
     expect($factory->rarityFromScore(3))->toBe(Rarity::Uncommon);
+    expect($factory->rarityFromScore(4))->toBe(Rarity::Uncommon);
 });
 
-it('maps score 4-5 to Langka (Rare)', function (): void {
+it('maps score 5-6 to Langka (Rare)', function (): void {
     $factory = app(RunCardFactory::class);
-    expect($factory->rarityFromScore(4))->toBe(Rarity::Rare);
     expect($factory->rarityFromScore(5))->toBe(Rarity::Rare);
+    expect($factory->rarityFromScore(6))->toBe(Rarity::Rare);
 });
 
-it('maps score 6-7 to Istimewa (Epic)', function (): void {
+it('maps score 7-8 to Istimewa (Epic)', function (): void {
     $factory = app(RunCardFactory::class);
-    expect($factory->rarityFromScore(6))->toBe(Rarity::Epic);
     expect($factory->rarityFromScore(7))->toBe(Rarity::Epic);
+    expect($factory->rarityFromScore(8))->toBe(Rarity::Epic);
 });
 
-it('maps score 8+ to Legendaris', function (): void {
+it('maps score 9+ to Legendaris', function (): void {
     $factory = app(RunCardFactory::class);
-    expect($factory->rarityFromScore(8))->toBe(Rarity::Legendary);
+    expect($factory->rarityFromScore(9))->toBe(Rarity::Legendary);
     expect($factory->rarityFromScore(20))->toBe(Rarity::Legendary);
 });
 
