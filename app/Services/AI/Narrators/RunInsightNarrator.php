@@ -82,6 +82,10 @@ class RunInsightNarrator
             lagipula di bawah ambang, jangan disebut).
 
         - splits: highlight 1-2 km paling menarik atau pola pacing keseluruhan.
+          get_km_splits udah nyariin `fastest_km` dan `slowest_km` buat kamu,
+          jadi mulai dari situ, jangan nyisir tabelnya sendiri. Di lari panjang
+          `per_km` cuma sampel dan `omitted_km` bilang berapa yang gak ikut, jadi
+          jangan bilang "km 7 satu-satunya yang melambat" kalau ada yang dilewat.
           Sebut km spesifik dan waktunya kalau data ada. Bicara soal pola
           (negative split, even pacing, fade at the end). Kalau elevation_gain_m
           menonjol, kaitkan perlambatan ke tanjakan secara eksplisit, jangan
