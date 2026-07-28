@@ -49,18 +49,30 @@ function bootNarrator(string $jsonContent): array
     return ['user' => $user, 'narrator' => $narrator, 'client' => $client];
 }
 
-it('returns headline + suggestion from a valid LLM structured response', function (): void {
+it('returns the suggestion from a valid LLM structured response', function (): void {
     // Mascot voice was split into BriefingMascotVoiceNarrator (separate LLM
-    // call) so this narrator only handles headline + suggestion now.
+    // call) so this narrator only handles the suggestion now.
     ['user' => $user, 'narrator' => $narrator] = bootNarrator(json_encode([
-        'headline' => 'Pagi yang oke buat lari pelan',
         'suggestion' => 'Easy run 30 menit, dengerin badan',
     ], JSON_THROW_ON_ERROR));
 
-    $payload = $narrator->generate($user, Carbon::today());
+    expect($narrator->generate($user, Carbon::today()))->toBe('Easy run 30 menit, dengerin badan');
+});
 
-    expect($payload['headline'])->toBe('Pagi yang oke buat lari pelan')
-        ->and($payload['suggestion'])->toBe('Easy run 30 menit, dengerin badan');
+it('never asks the model for a headline', function (): void {
+    ['user' => $user, 'narrator' => $narrator, 'client' => $client] = bootNarrator(json_encode([
+        'suggestion' => 'Easy run 30 menit, dengerin badan',
+    ], JSON_THROW_ON_ERROR));
+
+    $narrator->generate($user, Carbon::today());
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $schema = $params['text']['format']['schema'];
+
+        return $schema['required'] === ['suggestion']
+            && array_keys($schema['properties']) === ['suggestion']
+            && ! str_contains(strtolower((string) $params['input'][0]['content']), 'headline');
+    });
 });
 
 it('throws UnavailableException when the response is not valid JSON', function (): void {
@@ -68,10 +80,10 @@ it('throws UnavailableException when the response is not valid JSON', function (
     $narrator->generate($user, Carbon::today());
 })->throws(UnavailableException::class, 'non-JSON');
 
-it('throws UnavailableException when required fields are missing', function (): void {
-    ['user' => $user, 'narrator' => $narrator] = bootNarrator(json_encode(['headline' => 'only one'], JSON_THROW_ON_ERROR));
+it('throws UnavailableException when the suggestion is missing', function (): void {
+    ['user' => $user, 'narrator' => $narrator] = bootNarrator(json_encode(['something_else' => 'nope'], JSON_THROW_ON_ERROR));
     $narrator->generate($user, Carbon::today());
-})->throws(UnavailableException::class, 'missing required fields');
+})->throws(UnavailableException::class, 'missing suggestion');
 
 it('feeds the 28-day pace/HR baseline into the prompt payload', function (): void {
     $user = User::factory()->create(['name' => 'Ada Lovelace']);
@@ -86,7 +98,7 @@ it('feeds the 28-day pace/HR baseline into the prompt payload', function (): voi
     ]);
 
     $client = new ClientFake([fakeAzureResponse(json_encode([
-        'headline' => 'h', 'suggestion' => 's',
+        'suggestion' => 's',
     ], JSON_THROW_ON_ERROR))]);
     $narrator = new BriefingNarrator(
         app(Vibe::class),

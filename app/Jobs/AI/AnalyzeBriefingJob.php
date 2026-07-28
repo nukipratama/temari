@@ -41,10 +41,8 @@ class AnalyzeBriefingJob extends AnalyzeGroupJob
     {
         /** @var User $subject */
         $asOf = $this->discriminator !== null ? Carbon::parse($this->discriminator) : Carbon::today();
-        $payload = app(BriefingNarrator::class)->generate($subject, $asOf);
-
         return [
-            AnalysisType::BriefingSuggestion->value => $payload['suggestion'],
+            AnalysisType::BriefingSuggestion->value => app(BriefingNarrator::class)->generate($subject, $asOf),
         ];
     }
 }
