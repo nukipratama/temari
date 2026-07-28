@@ -9,8 +9,10 @@ use App\Models\WeeklySnapshot;
 use App\Services\Gamification\UnlockEngine;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -280,4 +282,57 @@ it('rebuildForwardFrom returns the anchor week snapshot', function (): void {
     expect($snap)->toBeInstanceOf(WeeklySnapshot::class)
         ->and($snap->week_ending->toDateString())
         ->toBe($anchor->copy()->endOfWeek(Carbon::SUNDAY)->toDateString());
+});
+
+it('projects only the columns the roll-up reads, never the whole detail row', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000,
+        'moving_time' => 2400,
+        'trimp_edwards' => 80.0,
+        'start_date_local' => Carbon::today()->subDays(7),
+        'stream_summary' => ['decoupling_pct' => 3.0],
+        'splits_metric' => [['distance' => 1000, 'moving_time' => 300]],
+    ]);
+
+    $selects = [];
+    DB::listen(function (QueryExecuted $query) use (&$selects): void {
+        if (str_starts_with($query->sql, 'select') && str_contains($query->sql, 'from `activity_details`')) {
+            $selects[] = $query->sql;
+        }
+    });
+
+    $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+
+    expect($selects)->not->toBeEmpty();
+    foreach ($selects as $sql) {
+        expect($sql)->not->toContain('`activity_details`.*')
+            ->and($sql)->not->toContain('splits_metric')
+            ->and($sql)->toContain('`activity_details`.`stream_summary`')
+            ->and($sql)->toContain('`activity_details`.`trimp_edwards`');
+    }
+});
+
+it('still computes decoupling and sums from the narrowed projection', function (): void {
+    $user = User::factory()->create();
+    foreach ([['dist' => 8000, 'dec' => 2.0], ['dist' => 6000, 'dec' => 6.0]] as $cfg) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => $cfg['dist'],
+            'moving_time' => 2400,
+            'trimp_edwards' => 60.0,
+            'start_date_local' => Carbon::today(),
+            'stream_summary' => ['decoupling_pct' => $cfg['dec']],
+            'splits_metric' => [['distance' => 1000, 'moving_time' => 300]],
+        ]);
+    }
+
+    $snapshot = $this->aggregator->rebuildForWeekOf($user, Carbon::today());
+
+    expect($snapshot)->not->toBeNull()
+        ->and((float) $snapshot->distance_km)->toBe(14.0)
+        ->and($snapshot->runs)->toBe(2)
+        ->and($snapshot->moving_time_sec)->toBe(4800)
+        ->and($snapshot->avg_decoupling)->toBe(4.0);
 });
