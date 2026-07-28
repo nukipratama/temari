@@ -4,7 +4,9 @@ import EmptyState from '@/components/ui/EmptyState';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
 
-const Line = lazy(() => import('react-chartjs-2').then((m) => ({ default: m.Line })));
+// Chart.js core + its scale/element registration live inside this lazy module,
+// so nothing chart-related enters ProgressionChart's own chunk.
+const Line = lazy(() => import('./LineChart'));
 
 interface ProgressionChartProps {
     weeks: ReadonlyArray<string>;
@@ -14,21 +16,6 @@ interface ProgressionChartProps {
     category?: string;
     className?: string;
 }
-
-// Side-effect register Chart.js. Top-level so the import is paid once
-// even though Line is lazy-loaded.
-import {
-    CategoryScale,
-    Chart as ChartJS,
-    Filler,
-    Legend,
-    LineElement,
-    LinearScale,
-    PointElement,
-    Tooltip,
-} from 'chart.js';
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 // Daybreak tokens resolved to the hex Chart.js needs (it paints to canvas and
 // can't read the CSS custom properties). Keep in sync with the @theme block in
