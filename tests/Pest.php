@@ -249,6 +249,31 @@ expect()->extend('toBeOne', fn () => $this->toBe(1));
 |
 */
 
+/**
+ * The asset version a partial (`X-Inertia-Partial-Data`) request to `$url` has
+ * to echo back. Shared by the controller tests that assert closure props are
+ * skipped on the analysis poller's `router.reload({ only })`.
+ *
+ * It has to be read off a real response: Inertia 409s a partial request whose
+ * `X-Inertia-Version` does not match, and the middleware only computes that
+ * value while handling a request.
+ *
+ * Read off the HTML page rather than a bare Inertia GET: without a version
+ * header that request 409s too. This adapter renders the page object as the
+ * text content of a <script type="application/json"> block (a CSP measure),
+ * not as a data-page attribute.
+ *
+ * @param  object  $actingAs  The authenticated test case.
+ */
+function inertiaVersionFor(object $actingAs, string $url): string
+{
+    $html = $actingAs->get($url)->getContent();
+    preg_match('/type="application\/json">(.*?)<\/script>/s', (string) $html, $matches);
+    $page = json_decode(html_entity_decode($matches[1] ?? ''), true);
+
+    return is_array($page) ? (string) ($page['version'] ?? '') : '';
+}
+
 function mockStravaDriver(callable $configure): MockInterface
 {
     $driver = Mockery::mock(AbstractProvider::class);

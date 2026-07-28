@@ -11,6 +11,8 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\RelativeEffort;
+use App\Services\Run\Story\PastYouMatcher;
 use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -925,31 +927,110 @@ it('still returns every prop on a full page load', function (): void {
 });
 
 /**
+ * The four run insights are the whole reload set of the detail page's poll
+ * (`DEFAULT_RELOAD_PROPS` in resources/js/components/run/FourLensGrid.tsx), and
+ * it ticks every 3-15s for up to 30 attempts while narration generates. Every
+ * prop used to be computed in the method body, so each tick re-ran the past-you
+ * match, the relative-effort baseline, the card payload and the story-line
+ * query for props it never asked for. Behind closures, Inertia skips them.
+ */
+it('does not run the past-you match or the relative-effort baseline on an insight-only partial reload', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+    RunCard::factory()->for($activity)->create();
+
+    // Built before the mocks: the helper loads the real page to read the asset
+    // version, which legitimately invokes both collaborators.
+    $headers = insightOnlyHeaders($this->actingAs($user), $activity->id);
+
+    $this->mock(PastYouMatcher::class, fn ($mock) => $mock->shouldNotReceive('findMatch'));
+    $this->mock(RelativeEffort::class, fn ($mock) => $mock->shouldNotReceive('forRun'));
+
+    $response = $this->actingAs($user)->get("/aktivitas/{$activity->id}", $headers)->assertSuccessful();
+
+    $response->assertJsonPath('component', 'Runs/Show');
+    $response->assertJsonPath('props.speechAnalysis.type', AnalysisType::PostRunSpeech->value);
+    foreach (['pastYou', 'relativeEffort', 'card', 'storyLine', 'moodFallback', 'isChainHead'] as $skipped) {
+        $response->assertJsonMissingPath("props.{$skipped}");
+    }
+});
+
+it('still runs the past-you match and the relative-effort baseline on a full run-detail load', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+
+    $this->mock(PastYouMatcher::class, fn ($mock) => $mock->shouldReceive('findMatch')->once()->andReturn(null));
+    $this->mock(RelativeEffort::class, fn ($mock) => $mock->shouldReceive('forRun')->once()->andReturn(null));
+
+    $this->actingAs($user)->get("/aktivitas/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Runs/Show')
+            ->where('pastYou', null)
+            ->where('relativeEffort', null));
+});
+
+it('runs no story-line queries when only the run insights are requested', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+    RunCard::factory()->for($activity)->create();
+    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN]);
+
+    $headers = insightOnlyHeaders($this->actingAs($user), $activity->id);
+
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    $this->actingAs($user)->get("/aktivitas/{$activity->id}")->assertSuccessful();
+    $fullLoad = $queries;
+
+    $queries = [];
+    $this->actingAs($user)->get("/aktivitas/{$activity->id}", $headers)->assertSuccessful();
+    $partialReload = $queries;
+
+    // `storyLine` and `moodFallback` are the only readers of story_lines on this
+    // page, and neither is in the poll's reload set.
+    $storyLineReads = array_filter($partialReload, fn (string $sql): bool => str_contains($sql, '`story_lines`'));
+
+    expect($storyLineReads)->toBeEmpty()
+        ->and(count($partialReload))->toBeLessThan(count($fullLoad));
+});
+
+/**
  * Partial-reload headers mimicking the analysis poller's
  * `router.reload({ only: ['weeklySnapshots'] })`.
- *
- * The asset version has to be read off a real response: Inertia 409s a partial
- * request whose `X-Inertia-Version` does not match, and the middleware only
- * computes that value while handling a request.
  *
  * @param  object  $actingAs  The authenticated test case.
  * @return array<string, string>
  */
 function snapshotOnlyHeaders(object $actingAs): array
 {
-    // Read off the HTML page rather than a bare Inertia GET: without a version
-    // header that request 409s too. This adapter renders the page object as the
-    // text content of a <script type="application/json"> block (a CSP measure),
-    // not as a data-page attribute.
-    $html = $actingAs->get('/aktivitas')->getContent();
-    preg_match('/type="application\/json">(.*?)<\/script>/s', (string) $html, $matches);
-    $page = json_decode(html_entity_decode($matches[1] ?? ''), true);
-    $version = is_array($page) ? ($page['version'] ?? '') : '';
-
     return [
         'X-Inertia' => 'true',
-        'X-Inertia-Version' => $version,
+        'X-Inertia-Version' => inertiaVersionFor($actingAs, '/aktivitas'),
         'X-Inertia-Partial-Component' => 'Riwayat/Jejak',
         'X-Inertia-Partial-Data' => 'weeklySnapshots',
+    ];
+}
+
+/**
+ * Partial-reload headers mimicking the run-detail poller's
+ * `router.reload({ only: [...the four insights] })`.
+ *
+ * @param  object  $actingAs  The authenticated test case.
+ * @return array<string, string>
+ */
+function insightOnlyHeaders(object $actingAs, int $activityId): array
+{
+    return [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => inertiaVersionFor($actingAs, "/aktivitas/{$activityId}"),
+        'X-Inertia-Partial-Component' => 'Runs/Show',
+        'X-Inertia-Partial-Data' => 'speechAnalysis,insightTechnical,insightSplits,insightZones',
     ];
 }
