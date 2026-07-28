@@ -7,6 +7,7 @@ namespace App\Http\Controllers\WebPush;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePushSubscriptionRequest;
 use App\Models\User;
+use App\Support\SharedPropCacheKey;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -29,6 +30,8 @@ class PushSubscriptionController extends Controller
             (string) $request->input('keys.auth'),
         );
 
+        SharedPropCacheKey::WebPushSubscribed->forget($user->id);
+
         return response()->noContent();
     }
 
@@ -41,6 +44,8 @@ class PushSubscriptionController extends Controller
         /** @var User $user */
         $user = $request->user();
         $user->deletePushSubscription($validated['endpoint']);
+
+        SharedPropCacheKey::WebPushSubscribed->forget($user->id);
 
         return response()->noContent();
     }

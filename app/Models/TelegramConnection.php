@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\SharedPropCacheKey;
 use Database\Factories\TelegramConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -32,6 +33,23 @@ class TelegramConnection extends Model
 {
     /** @use HasFactory<TelegramConnectionFactory> */
     use HasFactory;
+
+    /**
+     * Keep the shared `telegramConnected` Inertia prop in step with the link
+     * state. Covers every writer, since the connect upsert and `markRevoked()`
+     * both go through the model. The one query-builder write that bypasses this
+     * ({@see \App\Jobs\Telegram\HandleTelegramUpdateJob}, clearing another
+     * user's already-revoked row so its chat_id can be reused) cannot change the
+     * prop: that user was unreachable before the delete and stays unreachable
+     * after it.
+     */
+    #[Override]
+    protected static function booted(): void
+    {
+        static::saved(function (TelegramConnection $connection): void {
+            SharedPropCacheKey::TelegramConnected->forget($connection->user_id);
+        });
+    }
 
     /**
      * @return BelongsTo<User, $this>

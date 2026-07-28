@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\RunnerProfile;
+use App\Support\SharedPropCacheKey;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -64,7 +65,7 @@ it('leaves hr_zones_changed_at untouched when only optimal_cadence_spm changes',
 
 it('forgets the shared hr-zones-changed-at cache prop on every save', function (): void {
     $profile = RunnerProfile::factory()->create();
-    $cacheKey = "hr-zones-changed-at:{$profile->user_id}";
+    $cacheKey = SharedPropCacheKey::HrZonesChangedAt->key($profile->user_id);
     Cache::put($cacheKey, 'stale-value');
 
     $profile->update(['optimal_cadence_spm' => 175]);

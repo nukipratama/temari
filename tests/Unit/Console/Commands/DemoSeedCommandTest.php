@@ -16,10 +16,12 @@ use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
+use App\Support\SharedPropCacheKey;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -132,7 +134,14 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         'revoked_at' => Carbon::now(),
     ]);
 
+    // The re-equip sweep is a mass update, so no model event fires for it; the
+    // seeder has to bust the shared prop by hand or the demo mascot keeps
+    // wearing the previous seed's accessories.
+    Cache::forever(SharedPropCacheKey::EquippedAccessories->key($user->id), ['medal' => 'stale']);
+
     $this->artisan('demo:seed')->assertSuccessful();
+
+    expect(Cache::has(SharedPropCacheKey::EquippedAccessories->key($user->id)))->toBeFalse();
 
     $connection = StravaConnection::query()->where('user_id', $user->id)->firstOrFail();
     expect(StravaConnection::query()->where('user_id', $user->id)->count())->toBe(1)
