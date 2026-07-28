@@ -16,6 +16,9 @@ use Override;
  * @property int $prompt_tokens
  * @property int $completion_tokens
  * @property int $total_tokens
+ * @property int $cached_tokens  Subset of prompt_tokens served from the prompt cache.
+ * @property int $reasoning_tokens  Subset of completion_tokens spent thinking, billed as output.
+ * @property int $steps  Model turns in the run; above 1 whenever the agent loop called tools.
  * @property string|null $model
  * @property string|null $user_name  Captured when the user is deleted; null while they exist.
  * @property int|null $strava_athlete_id  Captured when the user is deleted; null while they exist.
@@ -23,7 +26,7 @@ use Override;
  * @property bool $truncated
  * @property Carbon $created_at
  */
-#[Fillable(['user_id', 'user_name', 'strava_athlete_id', 'kind', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'model', 'latency_ms', 'truncated', 'created_at'])]
+#[Fillable(['user_id', 'user_name', 'strava_athlete_id', 'kind', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'cached_tokens', 'reasoning_tokens', 'steps', 'model', 'latency_ms', 'truncated', 'created_at'])]
 class TokenUsage extends Model
 {
     #[Override]

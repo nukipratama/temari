@@ -22,6 +22,12 @@ interface UsageRow {
     truncated_calls: number;
     avg_latency_ms: number | null;
     max_latency_ms: number | null;
+    /** Model turns per call. Above 1 means the agent loop called tools. */
+    avg_steps: number | null;
+    /** Share of prompt tokens the provider served from its cache. */
+    cached_pct: number | null;
+    /** Share of completion tokens spent reasoning rather than answering. */
+    reasoning_pct: number | null;
 }
 
 interface UsageTotals {
@@ -805,6 +811,28 @@ function UserCells({ row, grandTotal }: Readonly<{ row: UserRow; grandTotal: num
     );
 }
 
+/**
+ * The agent line: how many model turns a block takes, how much of its input the
+ * cache absorbed, and how much of its output went on thinking rather than
+ * answering. Rendered under the kind name rather than as three more columns,
+ * which the table has no room for.
+ */
+function AgentSummary({ row }: Readonly<{ row: UsageRow }>) {
+    // typeof rather than a null check: these three arrive over the wire and are
+    // absent entirely on a payload rendered before they existed.
+    const parts = [
+        typeof row.avg_steps === 'number' ? `${row.avg_steps.toFixed(1)} langkah` : null,
+        typeof row.cached_pct === 'number' ? `${row.cached_pct.toFixed(0)}% cache` : null,
+        typeof row.reasoning_pct === 'number' ? `${row.reasoning_pct.toFixed(0)}% reasoning` : null,
+    ].filter((part): part is string => part !== null);
+
+    if (parts.length === 0) {
+        return null;
+    }
+
+    return <div className="mt-0.5 font-mono text-[11px] text-ink-2">{parts.join(' · ')}</div>;
+}
+
 function KindCells({ row, grandTotal, currency }: Readonly<{ row: UsageRow; grandTotal: number; currency: string }>) {
     const share = grandTotal > 0 ? row.total / grandTotal : 0;
     const truncatedRate = row.calls > 0 ? (row.truncated_calls / row.calls) * 100 : 0;
@@ -817,6 +845,7 @@ function KindCells({ row, grandTotal, currency }: Readonly<{ row: UsageRow; gran
         <>
             <td className="px-5 py-3 font-medium text-ink">
                 <div>{row.kind}</div>
+                <AgentSummary row={row} />
                 <ProgressBar
                     value={share}
                     size="sm"

@@ -17,6 +17,7 @@ use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\AI\Agent\AgentBudget;
 use App\Services\AI\TokenUsageRecorder;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -66,11 +67,19 @@ it('throws UnavailableException when a required key is missing from the structur
         ->call('kind', 'sys', [], 'schema', ['headline']);
 })->throws(UnavailableException::class, 'missing headline');
 
-it('does not record token usage when the response is malformed', function (): void {
+// A malformed answer is still a billed turn. Metering used to sit downstream of
+// the JSON decode, so those tokens vanished -- and with $tries=3 on the job, a
+// flaky row under-reported roughly three times its real spend to the daily cost
+// ceiling that reads this table.
+it('records the turn it already paid for even when the response is malformed', function (): void {
     expect(fn () => structuredCaller('{not valid json')->call('kind', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class);
 
-    expect(TokenUsage::query()->count())->toBe(0);
+    $row = TokenUsage::query()->first();
+    expect($row)->not->toBeNull()
+        ->and($row->prompt_tokens)->toBe(10)
+        ->and($row->completion_tokens)->toBe(5)
+        ->and($row->steps)->toBe(1);
 });
 
 it('returns the decoded payload when all required keys are present', function (): void {
@@ -136,6 +145,43 @@ it('flags truncated=true when the response stays length-truncated after the sing
     Log::shouldHaveReceived('warning')->with('narrator.ai.truncated_retry', Mockery::any());
 });
 
+it('records the completed turns when the run dies part-way through the tool loop', function (): void {
+    $client = new ClientFake([
+        fakeAzureToolCallResponse([['name' => 'get_thing']], 40, 10),
+        new RuntimeException('upstream blew up on turn two'),
+    ]);
+
+    $caller = fakeStructuredCaller($client);
+    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => ['value' => 1])]);
+
+    expect(fn () => $caller->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(toolbox: $toolbox)))
+        ->toThrow(UnavailableException::class);
+
+    // Turn one was answered and billed before turn two failed, so it must reach
+    // the table the daily cost ceiling reads.
+    $row = TokenUsage::query()->first();
+    expect($row)->not->toBeNull()
+        ->and($row->prompt_tokens)->toBe(40)
+        ->and($row->completion_tokens)->toBe(10)
+        ->and($row->steps)->toBe(1);
+});
+
+it('records the cached and reasoning breakdown summed across the run', function (): void {
+    $client = new ClientFake([
+        fakeAzureToolCallResponse([['name' => 'get_thing']], 100, 20, cachedTokens: 60, reasoningTokens: 12),
+        fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'completed', null, 150, 30, 90, 8),
+    ]);
+
+    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => ['value' => 1])]);
+    fakeStructuredCaller($client)
+        ->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(toolbox: $toolbox));
+
+    $row = TokenUsage::query()->first();
+    expect($row->cached_tokens)->toBe(150)
+        ->and($row->reasoning_tokens)->toBe(20)
+        ->and($row->steps)->toBe(2);
+});
+
 it('does not record usage when Azure call fails', function (): void {
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
@@ -178,7 +224,10 @@ it('TokenUsageRecorder logs a warning when the DB insert throws', function (): v
 
     Schema::drop('ai_token_usages');
 
-    app(TokenUsageRecorder::class)->record('briefing', 10, 5, 15, 'gpt-test');
+    $usage = new AgentBudget(8, 30_000);
+    $usage->recordStep(10, 5, 15);
+
+    app(TokenUsageRecorder::class)->record('briefing', $usage, 'gpt-test');
 
     Log::shouldHaveReceived('warning')
         ->once()

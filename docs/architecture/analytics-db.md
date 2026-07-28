@@ -59,9 +59,12 @@ against the analytics schema explicitly:
 php artisan migrate --database=analytics --path=database/migrations/analytics --force
 ```
 
-CI does exactly this as its own step in [ci.yml](.github/workflows/ci.yml). Note the
-migrations themselves use `Schema::create(...)` (not `Schema::connection('analytics')`),
-so the `--database=analytics` flag is what routes them to the right schema. There is no
+CI does exactly this as its own step in [ci.yml](.github/workflows/ci.yml). The
+`--database=analytics` flag is what routes them, but **name the connection in the
+migration too** — `Schema::connection('analytics')->table(...)`, as every migration
+since the first one does. The flag alone is a footgun: run the command without it
+and a plain `Schema::create(...)` silently builds the table in the app database.
+Naming the connection makes the migration correct regardless of how it is invoked. There is no
 cross-schema foreign key from these tables back to `users` (impossible across schemas),
 so `user_id` is a bare nullable integer.
 

@@ -29,6 +29,10 @@ final class AgentBudget
 
     private int $totalTokens = 0;
 
+    private int $cachedTokens = 0;
+
+    private int $reasoningTokens = 0;
+
     public function __construct(
         private readonly int $maxSteps,
         private readonly int $maxTokens,
@@ -47,13 +51,25 @@ final class AgentBudget
      * Fold one model turn's usage into the run. `total` is trusted when the
      * provider reports it, since reasoning tokens land there but in neither
      * input nor output.
+     *
+     * `cached` and `reasoning` are breakdowns, not additions: cached tokens are
+     * a subset of input (billed at a discount), reasoning a subset of output.
+     * Neither is added to the totals, and neither counts toward the ceiling on
+     * its own — the ceiling already sees them through `total`.
      */
-    public function recordStep(int $inputTokens, int $outputTokens, int $totalTokens): void
-    {
+    public function recordStep(
+        int $inputTokens,
+        int $outputTokens,
+        int $totalTokens,
+        int $cachedTokens = 0,
+        int $reasoningTokens = 0,
+    ): void {
         $this->steps++;
         $this->inputTokens += $inputTokens;
         $this->outputTokens += $outputTokens;
         $this->totalTokens += $totalTokens > 0 ? $totalTokens : $inputTokens + $outputTokens;
+        $this->cachedTokens += $cachedTokens;
+        $this->reasoningTokens += $reasoningTokens;
     }
 
     /**
@@ -94,5 +110,17 @@ final class AgentBudget
     public function totalTokens(): int
     {
         return $this->totalTokens;
+    }
+
+    /** Input tokens served from the provider's prompt cache, billed at a discount. */
+    public function cachedTokens(): int
+    {
+        return $this->cachedTokens;
+    }
+
+    /** Output tokens spent on reasoning rather than the answer, billed as output. */
+    public function reasoningTokens(): int
+    {
+        return $this->reasoningTokens;
     }
 }

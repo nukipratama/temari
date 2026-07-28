@@ -25,8 +25,17 @@ class LlmCostCalculator
 
     /**
      * Cost in USD for a single call's token split against the deployment's rate.
+     *
+     * `$cachedTokens` is the slice of `$promptTokens` the provider served from
+     * its prompt cache. It only changes the bill when the deployment declares a
+     * `cached_input_per_1m`; without one it bills as ordinary input, so a
+     * deployment that has not been given a cached rate costs exactly what it did
+     * before this argument existed.
+     *
+     * Reasoning tokens need no handling here: the provider already counts them
+     * inside `$completionTokens`, so they bill at the output rate by arriving.
      */
-    public function costFor(string $deployment, int $promptTokens, int $completionTokens): float
+    public function costFor(string $deployment, int $promptTokens, int $completionTokens, int $cachedTokens = 0): float
     {
         $rate = $this->priceFor($deployment);
 
@@ -39,7 +48,12 @@ class LlmCostCalculator
             return 0.0;
         }
 
-        return ($promptTokens / 1_000_000) * $rate['input_per_1m']
+        // Clamped because the two numbers arrive from the provider independently:
+        // a cached count above the prompt count would otherwise bill negative.
+        $cached = max(0, min($cachedTokens, $promptTokens));
+
+        return (($promptTokens - $cached) / 1_000_000) * $rate['input_per_1m']
+            + ($cached / 1_000_000) * ($rate['cached_input_per_1m'] ?? $rate['input_per_1m'])
             + ($completionTokens / 1_000_000) * $rate['output_per_1m'];
     }
 
@@ -51,22 +65,25 @@ class LlmCostCalculator
     {
         $rows = DB::connection('analytics')->table('ai_token_usages')
             ->whereBetween('created_at', [Carbon::today()->startOfDay(), Carbon::today()->endOfDay()])
-            ->selectRaw('model, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion')
+            ->selectRaw('model, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, SUM(cached_tokens) as cached')
             ->groupBy('model')
             ->get();
 
         $total = 0.0;
         foreach ($rows as $row) {
-            $total += $this->costFor((string) $row->model, (int) $row->prompt, (int) $row->completion);
+            $total += $this->costFor((string) $row->model, (int) $row->prompt, (int) $row->completion, (int) $row->cached);
         }
 
         return $total;
     }
 
     /**
-     * The per-1M rate for a deployment, or null when it has no configured rate.
+     * The per-1M rates for a deployment, or null when it has no configured rate.
      *
-     * @return array{input_per_1m: float, output_per_1m: float}|null
+     * `cached_input_per_1m` is optional: null means the deployment has no
+     * declared cache discount and cached input bills as ordinary input.
+     *
+     * @return array{input_per_1m: float, output_per_1m: float, cached_input_per_1m: float|null}|null
      */
     public function priceFor(string $deployment): ?array
     {
@@ -82,6 +99,7 @@ class LlmCostCalculator
         return [
             'input_per_1m' => (float) $rate['input_per_1m'],
             'output_per_1m' => (float) $rate['output_per_1m'],
+            'cached_input_per_1m' => isset($rate['cached_input_per_1m']) ? (float) $rate['cached_input_per_1m'] : null,
         ];
     }
 }

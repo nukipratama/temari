@@ -1135,6 +1135,38 @@ function narratorPrompt(string $class): string
     return (string) new ReflectionClass($class)->getConstant('SYSTEM_PROMPT');
 }
 
+/**
+ * Every `kind: '...'` a narrator passes to StructuredChatCaller, read from source
+ * so this cannot drift as narrators are added or renamed.
+ *
+ * @return list<string>
+ */
+function narratorKinds(): array
+{
+    $kinds = [];
+    foreach (glob(app_path('Services/AI/Narrators/*.php')) ?: [] as $file) {
+        preg_match_all("/kind: '([a-z_]+)'/", (string) file_get_contents($file), $matches);
+        foreach ($matches[1] as $kind) {
+            $kinds[$kind] = true;
+        }
+    }
+
+    return array_keys($kinds);
+}
+
+// Model routing is env-owned: config/azure_openai.php maps each kind to its own
+// AZURE_OPENAI_*_DEPLOYMENT var, falling back to the default. The map and the
+// kind strings are kept in sync by hand, so a renamed kind would silently drop
+// that narrator back to the default deployment with no error anywhere — and a
+// key left behind reads as configurable when nothing consumes it. Both
+// directions matter, so assert the two sets are identical.
+it('the deployment map and the narrator kinds are the same set', function (): void {
+    $kinds = narratorKinds();
+
+    expect($kinds)->not->toBeEmpty()
+        ->and(array_keys((array) config('azure_openai.narrators')))->toEqualCanonicalizing($kinds);
+});
+
 it('MonthlyRecapNarrator prompt makes the mood step conditional on mood_mix', function (): void {
     $prompt = narratorPrompt(MonthlyRecapNarrator::class);
 

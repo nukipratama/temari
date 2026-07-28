@@ -107,6 +107,11 @@ it('renders the AiUsage page with totals + per-kind breakdown filtered by date',
                     'avg_latency_ms' => 2400,
                     'max_latency_ms' => 2400,
                     'cost' => 0,
+                    // Seeded without steps, as rows written before the agent
+                    // columns existed look: unmeasured, not zero.
+                    'avg_steps' => null,
+                    'cached_pct' => null,
+                    'reasoning_pct' => null,
                 ])
                 ->where('byKind.1', [
                     'kind' => 'briefing',
@@ -118,6 +123,9 @@ it('renders the AiUsage page with totals + per-kind breakdown filtered by date',
                     'avg_latency_ms' => 1000,
                     'max_latency_ms' => 1200,
                     'cost' => 0,
+                    'avg_steps' => null,
+                    'cached_pct' => null,
+                    'reasoning_pct' => null,
                 ])
                 ->has('byDeployment')
                 ->has('budget'),

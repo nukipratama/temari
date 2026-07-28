@@ -30,7 +30,7 @@ class TokenUsageReport
      * @return array{
      *     totals: array{prompt:int, completion:int, total:int, calls:int, truncated_calls:int, cost:float},
      *     previousTotals: array{prompt:int, completion:int, total:int, calls:int, cost:float}|null,
-     *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float}>,
+     *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float, avg_steps:float|null, cached_pct:float|null, reasoning_pct:float|null}>,
      *     byDeployment: list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>,
      *     byUser: list<array{user_id:int, user_name:string|null, strava_athlete_id:int|null, deleted:bool, prompt:int, completion:int, total:int, calls:int}>,
      *     daily: list<array{day:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
@@ -75,7 +75,7 @@ class TokenUsageReport
      * @param  Builder  $baseQuery
      * @return array{
      *     totals: array{prompt:int, completion:int, total:int, calls:int, truncated_calls:int, cost:float},
-     *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float}>,
+     *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float, avg_steps:float|null, cached_pct:float|null, reasoning_pct:float|null}>,
      *     byDeployment: list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>,
      * }
      */
@@ -85,6 +85,7 @@ class TokenUsageReport
             ->selectRaw(
                 'kind, model, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
                 'SUM(total_tokens) as total, COUNT(*) as calls, '.
+                'SUM(cached_tokens) as cached, SUM(reasoning_tokens) as reasoning, SUM(steps) as steps, '.
                 'SUM(CASE WHEN truncated = 1 THEN 1 ELSE 0 END) as truncated_calls, '.
                 'AVG(latency_ms) as avg_latency_ms, MAX(latency_ms) as max_latency_ms'
             )
@@ -93,7 +94,7 @@ class TokenUsageReport
 
         $totals = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'truncated_calls' => 0, 'cost' => 0.0];
 
-        /** @var array<string, array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, avg_sum:float, latency_calls:int, max_latency_ms:int|null, cost:float}> $kinds */
+        /** @var array<string, array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, cached:int, reasoning:int, steps:int, avg_sum:float, latency_calls:int, max_latency_ms:int|null, cost:float}> $kinds */
         $kinds = [];
         /** @var array<string, array{prompt:int, completion:int, total:int, calls:int}> $models */
         $models = [];
@@ -102,12 +103,14 @@ class TokenUsageReport
             $modelKey = (string) $row->model;
             $prompt = (int) $row->prompt;
             $completion = (int) $row->completion;
-            $cost = $this->costCalculator->costFor($modelKey, $prompt, $completion);
+            $cached = (int) $row->cached;
+            $cost = $this->costCalculator->costFor($modelKey, $prompt, $completion, $cached);
 
             if (! isset($kinds[$kindKey])) {
                 $kinds[$kindKey] = [
                     'kind' => $kindKey,
                     'prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'truncated_calls' => 0,
+                    'cached' => 0, 'reasoning' => 0, 'steps' => 0,
                     'avg_sum' => 0.0, 'latency_calls' => 0, 'max_latency_ms' => null, 'cost' => 0.0,
                 ];
             }
@@ -117,6 +120,9 @@ class TokenUsageReport
             $kinds[$kindKey]['total'] += (int) $row->total;
             $kinds[$kindKey]['calls'] += (int) $row->calls;
             $kinds[$kindKey]['truncated_calls'] += (int) $row->truncated_calls;
+            $kinds[$kindKey]['cached'] += $cached;
+            $kinds[$kindKey]['reasoning'] += (int) $row->reasoning;
+            $kinds[$kindKey]['steps'] += (int) $row->steps;
             $kinds[$kindKey]['cost'] += $cost;
 
             // AVG(latency_ms) over a (kind, model) subgroup is re-weighted by its
@@ -160,6 +166,7 @@ class TokenUsageReport
                 'avg_latency_ms' => $entry['latency_calls'] === 0 ? null : (int) round($entry['avg_sum'] / $entry['latency_calls']),
                 'max_latency_ms' => $entry['max_latency_ms'],
                 'cost' => $entry['cost'],
+                ...self::agentSummary($entry),
             ];
         }
 
@@ -167,6 +174,31 @@ class TokenUsageReport
         usort($byKind, fn (array $a, array $b): int => $b['total'] <=> $a['total']);
 
         return ['totals' => $totals, 'byKind' => $byKind, 'byDeployment' => $this->byDeployment($models)];
+    }
+
+    /**
+     * How a kind behaves as an agent: model turns per call, how much of its
+     * input the provider's cache absorbed, and how much of its output went on
+     * reasoning rather than the answer.
+     *
+     * All three are null together when no call in range recorded a step, which
+     * is how rows written before these columns existed look. Reporting zero
+     * would read as "never cached, never reasoned" rather than "never measured".
+     *
+     * @param  array{calls:int, prompt:int, completion:int, cached:int, reasoning:int, steps:int}  $entry
+     * @return array{avg_steps:float|null, cached_pct:float|null, reasoning_pct:float|null}
+     */
+    private static function agentSummary(array $entry): array
+    {
+        if ($entry['steps'] === 0) {
+            return ['avg_steps' => null, 'cached_pct' => null, 'reasoning_pct' => null];
+        }
+
+        return [
+            'avg_steps' => $entry['calls'] === 0 ? null : round($entry['steps'] / $entry['calls'], 1),
+            'cached_pct' => $entry['prompt'] === 0 ? null : round(($entry['cached'] / $entry['prompt']) * 100, 1),
+            'reasoning_pct' => $entry['completion'] === 0 ? null : round(($entry['reasoning'] / $entry['completion']) * 100, 1),
+        ];
     }
 
     /**

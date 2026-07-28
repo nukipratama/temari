@@ -32,6 +32,7 @@ code_refs:
 - **KPI tiles** via [KpiTile](../../resources/js/components/dashboard/KpiTile.tsx) — total tokens, estimated cost, prompt tokens (and prompt share), plus a fourth tile.
 - A **budget gauge** comparing the window's spend against the configured daily ceiling.
 - Breakdown tables: **by kind** (which narrator/analysis), **by user**, and **by deployment** (which Azure model deployment served the call).
+- Each **by kind** row carries an agent summary line under its name — `3.5 langkah · 71% cache · 18% reasoning`. Every narrator is a tool-calling agent, so one row can span several model turns: without the step count an expensive block is indistinguishable from a chatty one. The line is **absent, not zeroed**, for kinds whose rows predate those columns, since zero would read as "never cached, never reasoned" rather than "never measured".
 - A **daily** series for the spend-over-time view.
 - An **attention area** (hidden when nothing is stuck) with a global one-shot **Pulihkan semua** recover action plus three per-user buckets so the "healthy" dashboard stops hiding silent rot: **Perlu perhatian** (dead-lettered, self-heal gave up), **Failed, belum menyerah** (Failed but still under the retry budget), and **Nyangkut** (Pending/Queued stuck past `Analysis::STALE_IN_FLIGHT_HOURS`, excluding window-gated open-period recap rows whose Pending is inert by design). The dead-letter and failed-under-budget buckets carry a per-user re-arm button; Nyangkut is recovered by the global action.
 
