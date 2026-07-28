@@ -766,3 +766,30 @@ it('markDone does not notify when Telegram is unconfigured', function (): void {
 
     Notification::assertNothingSent();
 });
+
+it('requestRuleBased fills a row from the filler without dispatching or cooling', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+
+    $row = $this->service->requestRuleBased(
+        WeeklySnapshot::class,
+        $snap->id,
+        AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Done)
+        ->and($row->content)->toBeString()->not->toBeEmpty()
+        ->and($row->generated_at)->not->toBeNull()
+        ->and($row->cooldownRemaining())->toBeNull();
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('requestRuleBased refills an already-Done row in place rather than minting a second one', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    $first = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+
+    $second = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+
+    expect($second->id)->toBe($first->id)
+        ->and(Analysis::query()->count())->toBe(1);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});

@@ -12,7 +12,11 @@ return [
     // body `model`, not in the URL path.
     'uri' => (string) env('AZURE_OPENAI_URI', ''),
     'api_key' => (string) env('AZURE_OPENAI_API_KEY', ''),
-    'timeout' => (int) env('AZURE_OPENAI_TIMEOUT', 15),
+    // A Guzzle timeout drops the connection but Azure still bills the completion
+    // it generated, and the token meter can't record a response it never got, so
+    // this must clear the slowest narration. Bounded above by the Horizon `ai`
+    // supervisor's 300s.
+    'timeout' => (int) env('AZURE_OPENAI_TIMEOUT', 90),
     'max_completion_tokens' => (int) env('AZURE_OPENAI_MAX_COMPLETION_TOKENS', 700),
 
     // Primary/default deployment (model) name — the fallback for every narrator.

@@ -53,8 +53,8 @@ function expectActionLinks() {
     const aksesori = screen.getByText('Dandanin Temari').closest('a');
     expect(aksesori).toHaveAttribute('href', '/aksesori');
 
-    const riwayat = screen.getByText('Lihat rekap lari kamu').closest('a');
-    expect(riwayat).toHaveAttribute('href', '/riwayat');
+    const aktivitas = screen.getByText('Lihat rekap lari kamu').closest('a');
+    expect(aktivitas).toHaveAttribute('href', '/aktivitas');
 }
 
 describe('EmptyRunsState', () => {

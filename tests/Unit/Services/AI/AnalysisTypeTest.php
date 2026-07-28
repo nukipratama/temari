@@ -27,8 +27,10 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
     ], implode(' ', [
         'The AnalysisType case list changed. Update this list only after settling the call sites that',
         'read the cases as a set rather than one case at a time: Analysis::knownType(), which decides',
-        'whether historical rows of a retired type stay re-dispatchable, and the retired-type',
-        'subject_type literals in UserEraser, since erasure must still reach rows whose case is gone.',
+        'whether historical rows of a retired type stay re-dispatchable, the retired-type subject_type',
+        'literals in UserEraser, since erasure must still reach rows whose case is gone, and',
+        'discriminatorRules(), an exhaustive match with no default whose comma-separated arms PHP',
+        'evaluates left to right, so one stale case name there is a fatal Error on every type at once.',
     ]));
 });
 
@@ -107,4 +109,31 @@ it('returns null group job for non-grouped types', function (AnalysisType $type)
     'briefing featured kartu voice' => [AnalysisType::BriefingFeaturedKartuVoice],
     'weekly recap' => [AnalysisType::WeeklyRecap],
     'monthly recap' => [AnalysisType::MonthlyRecap],
+]);
+
+it('gives every type a discriminator rule set', function (): void {
+    foreach (AnalysisType::cases() as $case) {
+        expect($case->discriminatorRules())->toBeArray()->not->toBeEmpty();
+    }
+});
+
+it('prohibits a discriminator on the types that key off subject_id alone', function (AnalysisType $type): void {
+    expect($type->discriminatorRules())->toBe(['prohibited']);
+})->with([
+    'post run speech' => [AnalysisType::PostRunSpeech],
+    'run insight zones' => [AnalysisType::RunInsightZones],
+    'weekly recap' => [AnalysisType::WeeklyRecap],
+    'pr context' => [AnalysisType::PrContext],
+    'card flavor' => [AnalysisType::CardFlavor],
+    'aku profile voice' => [AnalysisType::AkuProfileVoice],
+]);
+
+it('requires the date shape each keyed type dispatches with', function (AnalysisType $type, string $rule): void {
+    expect($type->discriminatorRules())->toContain('required')->toContain($rule);
+})->with([
+    'briefing suggestion is a day' => [AnalysisType::BriefingSuggestion, 'date_format:Y-m-d'],
+    'briefing mascot voice is a day' => [AnalysisType::BriefingMascotVoice, 'date_format:Y-m-d'],
+    'monthly recap is a month' => [AnalysisType::MonthlyRecap, 'date_format:Y-m'],
+    'persona summary is an ISO week' => [AnalysisType::PersonaSummary, 'regex:/^\d{4}-W\d{2}$/'],
+    'featured kartu is a card id' => [AnalysisType::BriefingFeaturedKartuVoice, 'regex:/^[1-9][0-9]*$/'],
 ]);

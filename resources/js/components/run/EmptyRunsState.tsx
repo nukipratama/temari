@@ -47,7 +47,7 @@ const ACTIONS = [
         icon: 'mdi:chart-line',
         title: 'Lihat rekap lari kamu',
         desc: 'Begitu lari pertama masuk, rekap langsung muncul di sini.',
-        href: '/riwayat',
+        href: '/aktivitas',
     },
 ] as const;
 

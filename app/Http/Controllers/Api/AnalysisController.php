@@ -55,6 +55,20 @@ class AnalysisController extends Controller
             return $this->payload($existing, $analysisType, $subjectId, $discriminator);
         }
 
+        // The demo login is public, so its "Baca ulang" is served from the
+        // rule-based filler rather than the LLM: the button stays live for a
+        // reviewer, but an anonymous visitor can never spend Azure tokens.
+        // Deliberately ahead of the chain-resume and zone-recompute paths, both
+        // of which only exist to shape a real narration.
+        if ($user->is_demo) {
+            return $this->payload(
+                $service->requestRuleBased($analysisType->subjectType(), $subjectId, $analysisType, $discriminator),
+                $analysisType,
+                $subjectId,
+                $discriminator,
+            );
+        }
+
         // Chained kinds resume the chain rather than narrating the clicked row
         // in isolation. Only a head regenerate (a Done row that IS the chain
         // head) re-narrates that exact row below. Every other chained click,

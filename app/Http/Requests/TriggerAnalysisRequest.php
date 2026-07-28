@@ -14,9 +14,10 @@ use Illuminate\Validation\Rule;
 /**
  * Validates the loose inputs on the analysis-trigger endpoint: the `{type}`
  * route segment (must be a known {@see AnalysisType} backing value) and the
- * optional `discriminator` query string (a short opaque key). `{subjectId}` is
- * already constrained to digits by the route's `whereNumber`, so it is bounded
- * here as a positive integer for defence in depth.
+ * `discriminator` query string, which is constrained to the closed set the
+ * resolved type actually uses ({@see AnalysisType::discriminatorRules()}).
+ * `{subjectId}` is already constrained to digits by the route's `whereNumber`,
+ * so it is bounded here as a positive integer for defence in depth.
  */
 class TriggerAnalysisRequest extends FormRequest
 {
@@ -51,8 +52,22 @@ class TriggerAnalysisRequest extends FormRequest
         return [
             'type' => ['required', 'string', Rule::enum(AnalysisType::class)],
             'subjectId' => ['required', 'integer', 'min:1'],
-            'discriminator' => ['nullable', 'string', 'max:64'],
+            'discriminator' => $this->discriminatorRules(),
         ];
+    }
+
+    /**
+     * The closed set of discriminators the resolved type accepts. An unresolvable
+     * type stays permissive here so the `type` rule owns the failure and the
+     * `unknown_analysis_type` contract below is what the caller sees.
+     *
+     * @return list<string>
+     */
+    private function discriminatorRules(): array
+    {
+        $type = AnalysisType::tryFrom((string) $this->route('type'));
+
+        return $type?->discriminatorRules() ?? ['nullable'];
     }
 
     public function discriminator(): ?string
