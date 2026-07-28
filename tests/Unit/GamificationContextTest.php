@@ -8,8 +8,10 @@ use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\GamificationContext;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -177,4 +179,69 @@ it('counts a sub-5:30/km run as fastPace but not a 5:33/km run', function (): vo
     $ctx = GamificationContext::forUser($user);
 
     expect($ctx->fastPace)->toBe(1);
+});
+
+it('keeps every counter independent when one fixture straddles all the boundaries', function (): void {
+    $user = User::factory()->create();
+    // Distances chosen so each counter lands on a different subset, and the
+    // paces are set independently of distance so a collapsed aggregate that
+    // leaked one condition into another would move at least one number.
+    activityWithDetail($user, ['distance' => 21097.5, 'average_speed' => 3.0]);          // 5k,10k,HM  slow
+    activityWithDetail($user, ['distance' => 21050.0, 'average_speed' => 1000 / 330]);   // 5k,10k     fast
+    activityWithDetail($user, ['distance' => 10000.0, 'average_speed' => 4.0]);          // 5k,10k     fast
+    activityWithDetail($user, ['distance' => 9999.0, 'average_speed' => 2.0]);           // 5k         slow
+    activityWithDetail($user, ['distance' => 5000.0, 'average_speed' => 3.5]);            // 5k         fast
+    activityWithDetail($user, ['distance' => 4999.0, 'average_speed' => 1.0]);           // none       slow
+
+    $ctx = GamificationContext::forUser($user);
+
+    expect($ctx->halfMarathon)->toBe(1)
+        ->and($ctx->tenKPlus)->toBe(3)
+        ->and($ctx->fiveKPlus)->toBe(5)
+        ->and($ctx->fastPace)->toBe(3)
+        ->and($ctx->totalDistanceM)->toBe(72145.5)
+        ->and($ctx->activityCount)->toBe(6);
+});
+
+it('ignores null distance and pace, and activities with no detail row at all', function (): void {
+    $user = User::factory()->create();
+    activityWithDetail($user, ['distance' => 10000.0, 'average_speed' => 4.0]);
+    // A detail row with nothing measured: must not count toward any milestone.
+    $bare = Activity::factory()->for($user)->create();
+    $bare->detail()->create(['distance' => null, 'moving_time' => null, 'average_speed' => null]);
+    // An analyzed activity with no detail row at all: counted as an activity,
+    // but invisible to every detail-derived counter (as the whereHas was).
+    Activity::factory()->for($user)->create();
+
+    $ctx = GamificationContext::forUser($user);
+
+    expect($ctx->activityCount)->toBe(3)
+        ->and($ctx->tenKPlus)->toBe(1)
+        ->and($ctx->fiveKPlus)->toBe(1)
+        ->and($ctx->halfMarathon)->toBe(0)
+        ->and($ctx->fastPace)->toBe(1)
+        ->and($ctx->totalDistanceM)->toBe(10000.0);
+});
+
+it('resolves the whole context in six queries, with the detail milestones in one', function (): void {
+    $user = User::factory()->create();
+    activityWithDetail($user, ['distance' => 12000.0]);
+    activityWithDetail($user, ['distance' => 6000.0]);
+
+    $queries = [];
+    DB::listen(function (QueryExecuted $query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    (void) GamificationContext::forUser($user);
+
+    $detailQueries = array_values(array_filter(
+        $queries,
+        fn (string $sql): bool => str_contains($sql, 'activity_details'),
+    ));
+
+    expect($queries)->toHaveCount(6)
+        ->and($detailQueries)->toHaveCount(1)
+        ->and($detailQueries[0])->toContain('five_k_plus')
+        ->and($detailQueries[0])->toContain('fast_pace');
 });

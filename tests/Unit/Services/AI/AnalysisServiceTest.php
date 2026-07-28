@@ -21,9 +21,11 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\MaintainerAlerter;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
@@ -792,4 +794,117 @@ it('requestRuleBased refills an already-Done row in place rather than minting a 
     expect($second->id)->toBe($first->id)
         ->and(Analysis::query()->count())->toBe(1);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('runs the daily cost aggregate once per scope no matter how many rows it dispatches', function (): void {
+    config(['azure_openai.daily_cost_ceiling' => 100.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+
+    $snaps = WeeklySnapshot::factory()->count(4)->create();
+
+    $aggregates = 0;
+    DB::listen(function (QueryExecuted $query) use (&$aggregates): void {
+        if (str_contains($query->sql, 'ai_token_usages')) {
+            $aggregates++;
+        }
+    });
+
+    foreach ($snaps as $snap) {
+        $this->service->request(
+            subjectOrType: WeeklySnapshot::class,
+            subjectId: $snap->id,
+            type: AnalysisType::WeeklyRecap,
+        );
+    }
+
+    expect($aggregates)->toBe(1);
+    Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 4);
+});
+
+it('re-reads the ceiling in a fresh scope, so a memo never outlives its request or job', function (): void {
+    config(['azure_openai.daily_cost_ceiling' => 100.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+
+    $aggregates = 0;
+    DB::listen(function (QueryExecuted $query) use (&$aggregates): void {
+        if (str_contains($query->sql, 'ai_token_usages')) {
+            $aggregates++;
+        }
+    });
+
+    $first = WeeklySnapshot::factory()->create();
+    app(AnalysisService::class)->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $first->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    // What the queue worker does between jobs and Octane does between requests.
+    $this->app->forgetScopedInstances();
+
+    $second = WeeklySnapshot::factory()->create();
+    app(AnalysisService::class)->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $second->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($aggregates)->toBe(2);
+});
+
+it('honours a ceiling that is already breached when the scope starts', function (): void {
+    config(['azure_openai.daily_cost_ceiling' => 1.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+    TokenUsage::query()->create([
+        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+
+    $snaps = WeeklySnapshot::factory()->count(3)->create();
+    foreach ($snaps as $snap) {
+        $row = $this->service->request(
+            subjectOrType: WeeklySnapshot::class,
+            subjectId: $snap->id,
+            type: AnalysisType::WeeklyRecap,
+        );
+        expect($row->status)->toBe(AnalysisStatus::Pending);
+    }
+
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+    expect($this->service->generationPaused())->toBeTrue();
+});
+
+it('keeps withoutDispatching suppressing after the memo is already warm', function (): void {
+    config(['azure_openai.daily_cost_ceiling' => 100.0]);
+
+    $warm = WeeklySnapshot::factory()->create();
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $warm->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+    Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
+
+    $suppressed = WeeklySnapshot::factory()->create();
+    $this->service->withoutDispatching(function () use ($suppressed): void {
+        $row = $this->service->request(
+            subjectOrType: WeeklySnapshot::class,
+            subjectId: $suppressed->id,
+            type: AnalysisType::WeeklyRecap,
+        );
+        expect($row->status)->toBe(AnalysisStatus::Pending);
+        expect($this->service->generationPaused())->toBeTrue();
+    });
+
+    // Suppression lifts cleanly: the warm memo is still the real answer.
+    Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
+    expect($this->service->generationPaused())->toBeFalse();
+
+    $after = WeeklySnapshot::factory()->create();
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $after->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+    Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 2);
 });

@@ -18,6 +18,25 @@ use function is_array;
 
 class WeeklyAggregator
 {
+    /**
+     * The only ActivityDetail columns the weekly roll-up reads: the week filter
+     * and daily TRIMP map need the date, upsertWeek sums distance/moving_time,
+     * and averageDecoupling reads `stream_summary`. Everything else on the table
+     * (notably the `splits_metric` blob) would be a year of JSON pulled per
+     * ingest for nothing.
+     *
+     * @var list<string>
+     */
+    private const array HISTORY_COLUMNS = [
+        'activity_details.id',
+        'activity_details.activity_id',
+        'activity_details.start_date_local',
+        'activity_details.distance',
+        'activity_details.moving_time',
+        'activity_details.trimp_edwards',
+        'activity_details.stream_summary',
+    ];
+
     public function __construct(
         private readonly TrainingLoad $trainingLoad,
         private readonly UnlockEngine $unlockEngine,
@@ -107,7 +126,7 @@ class WeeklyAggregator
             ->where('activity_details.start_date_local', '>=', $from)
             ->where('activity_details.start_date_local', '<=', $weekEnding->copy()->endOfDay())
             ->orderBy('activity_details.start_date_local')
-            ->select('activity_details.*')
+            ->select(self::HISTORY_COLUMNS)
             ->get();
     }
 
@@ -119,7 +138,7 @@ class WeeklyAggregator
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->orderBy('activity_details.start_date_local')
-            ->select('activity_details.*')
+            ->select(self::HISTORY_COLUMNS)
             ->get();
 
         if ($details->isEmpty()) {

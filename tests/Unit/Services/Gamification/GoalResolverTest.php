@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Badge;
+use App\Enums\PrCategory;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\PersonalRecord;
@@ -12,6 +13,8 @@ use App\Models\UserUnlock;
 use App\Services\Gamification\GamificationContext;
 use App\Services\Gamification\GoalResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -292,6 +295,10 @@ it('closestToCompletion never pads with completed goals when fewer than the limi
         }
         UserUnlock::factory()->for($user)->create(['unlock_key' => $id]);
     }
+    // The forUser() call above warmed the resolver cache; these unlocks were
+    // seeded straight through the factory rather than through UnlockEngine, so
+    // drop the entry to read the state this test actually set up.
+    Cache::forget(GoalResolver::cacheKey($user->id));
 
     $closest = $this->resolver->closestToCompletion($user, 3);
 
@@ -317,4 +324,54 @@ it('carries the catalog rarity onto each goal', function (): void {
     // From config/temari_unlocks.php.
     expect($byId['accessory.medal_pertama']['rarity'])->toBe('common')
         ->and($byId['accessory.medal_emas']['rarity'])->toBe('uncommon');
+});
+
+it('resolves the catalog once per TTL instead of re-querying on every call', function (): void {
+    $user = User::factory()->create();
+    Cache::forget(GoalResolver::cacheKey($user->id));
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $first = $this->resolver->forUser($user);
+    $afterFirst = $queries;
+    $second = $this->resolver->forUser($user);
+
+    expect($afterFirst)->toBeGreaterThan(0)
+        ->and($queries)->toBe($afterFirst)
+        ->and($second)->toBe($first);
+});
+
+it('bypasses the cache when the caller supplies its own context', function (): void {
+    $user = User::factory()->create();
+    $this->resolver->forUser($user);
+
+    PersonalRecord::factory()->for($user)->create(['category' => PrCategory::Km5]);
+    $ctx = GamificationContext::forUser($user);
+
+    $withCtx = $this->resolver->forUser($user, $ctx);
+    $cached = $this->resolver->forUser($user);
+
+    $prGoal = fn (array $goals): array => collect($goals)
+        ->firstWhere('id', 'accessory.medal_pertama');
+
+    // The supplied context sees the new PR; the cached read still holds the
+    // snapshot taken before it, which is what the 120s window means.
+    expect($prGoal($withCtx)['current'])->toBe(1)
+        ->and($prGoal($cached)['current'])->toBe(0);
+});
+
+it('keys the cache per user so one runner never reads another goals', function (): void {
+    $a = User::factory()->create();
+    $b = User::factory()->create();
+    PersonalRecord::factory()->for($a)->create(['category' => PrCategory::Km5]);
+
+    $prCurrent = fn (User $u): int|float => collect($this->resolver->forUser($u))
+        ->firstWhere('id', 'accessory.medal_pertama')['current'];
+
+    expect($prCurrent($a))->toBe(1)
+        ->and($prCurrent($b))->toBe(0)
+        ->and(GoalResolver::cacheKey($a->id))->not->toBe(GoalResolver::cacheKey($b->id));
 });

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
+use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\ThresholdEstimator;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -40,23 +40,12 @@ class ProfileController extends Controller
         VdotEstimator $vdotEstimator,
         ThresholdEstimator $thresholdEstimator,
         TrainingPaceCalculator $trainingPaceCalculator,
+        LifetimeStats $lifetimeStats,
     ): Response {
         /** @var User $user */
         $user = $request->user();
 
-        $totalRuns = $user->activities()->count();
-
-        $detailAggregates = ActivityDetail::query()
-            ->whereHas(
-                'activity',
-                fn ($q) => $q->where('user_id', $user->id),
-            )
-            ->selectRaw('SUM(distance) AS total_distance, MAX(distance) AS longest_distance, MIN(start_date_local) AS first_run_at')
-            ->first();
-
-        $totalDistanceMeters = (float) ($detailAggregates?->getAttribute('total_distance') ?? 0);
-        $longestRunMeters = (float) ($detailAggregates?->getAttribute('longest_distance') ?? 0);
-        $firstRunAt = $detailAggregates?->getAttribute('first_run_at');
+        $lifetime = $lifetimeStats->forUser($user);
 
         $personalRecords = PersonalRecord::query()
             ->where('user_id', $user->id)
@@ -70,14 +59,14 @@ class ProfileController extends Controller
             'identity' => [
                 'name' => $user->name,
                 'avatar_url' => $user->avatar_url,
-                'first_run_at' => \is_string($firstRunAt) ? $firstRunAt : $firstRunAt?->toIso8601String(),
+                'first_run_at' => $lifetime['first_run_at'],
                 'member_since' => $user->created_at?->toIso8601String(),
                 'strava_connected' => $user->stravaConnection !== null,
             ],
             'stats' => [
-                'total_runs' => $totalRuns,
-                'total_km' => round($totalDistanceMeters / 1000, 1),
-                'longest_run_km' => round($longestRunMeters / 1000, 2),
+                'total_runs' => $lifetime['total_runs'],
+                'total_km' => $lifetime['total_km'],
+                'longest_run_km' => $lifetime['longest_km'],
             ],
             'personaMix' => $personaNarrator->personaMix($user),
             'personaSummary' => $this->resolvePersonaSummary($user),

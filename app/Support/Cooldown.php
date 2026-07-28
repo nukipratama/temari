@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
@@ -75,6 +77,44 @@ final readonly class Cooldown
     public function start(): void
     {
         RateLimiter::hit($this->key, $this->window);
+    }
+
+    /**
+     * {@see self::remaining()} for many keys in one cache round trip (an MGET on
+     * Redis) instead of one `availableIn()` per key. List payloads resolve a
+     * countdown per row, so the per-key form turns one page into hundreds of
+     * sequential round trips.
+     *
+     * Reads the same `:timer` entries from the same limiter store `availableIn()`
+     * reads, so the values are identical to calling it key by key. CooldownTest
+     * pins that equivalence, which is what would catch the framework changing
+     * this layout underneath us.
+     *
+     * @param  array<int, string>  $keys
+     * @return array<string, int|null>  Keyed by the original key.
+     */
+    public static function remainingMany(array $keys): array
+    {
+        if ($keys === []) {
+            return [];
+        }
+
+        $timerKeys = [];
+        foreach ($keys as $key) {
+            $timerKeys[$key] = RateLimiter::cleanRateLimiterKey($key).':timer';
+        }
+
+        $availableAt = Cache::driver(config('cache.limiter'))->many(array_values($timerKeys));
+        $now = Carbon::now()->getTimestamp();
+
+        $remaining = [];
+        foreach ($timerKeys as $key => $timerKey) {
+            $value = $availableAt[$timerKey] ?? null;
+            $seconds = is_numeric($value) ? (int) $value - $now : 0;
+            $remaining[$key] = $seconds > 0 ? $seconds : null;
+        }
+
+        return $remaining;
     }
 
     public static function notificationKey(int $analysisId): string
