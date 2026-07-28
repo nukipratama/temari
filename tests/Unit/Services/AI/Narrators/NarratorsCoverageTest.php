@@ -1162,6 +1162,29 @@ it('recap prompts give storytelling room (3-4 sentences, no rigid word cap)', fu
     'monthly' => [MonthlyRecapNarrator::class],
 ]);
 
+it('WeeklyRecapNarrator prompt caps the number count so the recap stops reading as a table', function (): void {
+    // Prod shipped ten numbers across four sentences: the field list read as a
+    // menu to recite, and "sebutkan 1-2 angka" was no ceiling against it.
+    $prompt = narratorPrompt(WeeklyRecapNarrator::class);
+
+    expect($prompt)
+        ->toContain('maksimal 3 angka di SELURUH output')
+        ->toContain('buat KAMU BACA')
+        ->toContain('Itu tabel, bukan cerita.')
+        ->not->toContain('Sebutkan 1-2');
+});
+
+it('CardFlavorNarrator prompt refuses badge and move names stitched together', function (): void {
+    // Prod shipped "dapet badge Z2 Master, dibawa oleh special move Calm &
+    // Steady" -- two labels joined by a connective, with nothing earned in view.
+    $prompt = narratorPrompt(CardFlavorNarrator::class);
+
+    expect($prompt)
+        ->toContain('label, bukan cerita')
+        ->toContain('dibawa oleh special move')
+        ->toContain('dua nama yang ditempel');
+});
+
 it('TrendCaptionNarrator prompt demands one coherent reading with a concrete number', function (): void {
     $prompt = narratorPrompt(TrendCaptionNarrator::class);
 

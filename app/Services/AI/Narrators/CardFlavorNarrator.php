@@ -34,6 +34,14 @@ class CardFlavorNarrator
         unik, sebut badge spesifik kalau ada, sebut cuaca kalau ekstrem
         ("cuaca 33 derajat" atau "hujan").
 
+        TAPI: nama badge dan nama special move itu label, bukan cerita. Jangan
+        cuma dirangkai pakai kata sambung. Sebut apa yang bikin label itu
+        kepasang, angkanya atau kejadiannya, baru namanya kebaca berarti.
+        Contoh salah: "dapet badge Z2 Master, dibawa oleh special move Calm &
+        Steady." Itu dua nama yang ditempel, gak ada isinya.
+        Contoh benar: "90% waktunya kamu tahan di Z2, sabar banget, pantes
+        move-nya 'Calm & Steady'."
+
         ANGIN: sebut angin cuma kalau kencang atau bergust (weather_wind_speed_kmh
         atau weather_wind_gust_kmh tinggi) DAN dia punya peran, misalnya headwind
         yang bikin negative split makin berkesan. Angin bukan detail wajib tiap

@@ -23,6 +23,7 @@ For any English word, ask: **"would a Jakarta runner actually say this word in E
 - **Loanwords people genuinely say → keep.** `highlight, sync, share, rekap, progress, streak, vibe, mood, fit, mode, podium`. Forcing `sorotan` / `sinkronkan` / `bagikan` / `mode` sounds like a manual. (`★ Highlight minggu ini`, not `Sorotan`.)
 - **Generic UI / everyday English → translate.** It reads as lazy translation otherwise: `earn → dapetin`, `tap → ketuk`, `Quality day! → Lari berkualitas!`, `continue → lanjut`, `back → kembali`, `save → simpan`, `next → berikutnya`.
 - **Internal consistency beats translation.** Localize a word everywhere or nowhere. Rarity is shown in Indonesian, so there is no `Epic+`; `hr` appears as `HR` consistently, never translated to `DNJ`.
+- **The allowance covers nouns, not verbs.** `pace` and `Z2` are things a runner names in English; *staying* and *pushing* are things they do in Indonesian. `stay di Z2` / `push di km terakhir` / `maintain pace` read as half-translated — write `bertahan di Z2`, `gas di km terakhir`, `jaga pace`. Narration leaked `stay` this way even with the noun list in force, which is why the persona now says it outright.
 
 ## Beginner-accessibility tier (obscure jargon)
 
@@ -88,7 +89,7 @@ Labels only — the `Rarity` enum cases (`common…legendary`) and `rarity-*` co
 ## Numbers
 
 - **Decimals take a comma.** `24,7 detik`, `90,3%`, `TRIMP 80,4`. Data arrives with a period (`90.3`) and must be converted, never copied through — a single output mixing both styles is the tell that it was.
-- **Round to one decimal**, and drop it when the value is whole: `35 menit`, not `35,0 menit`.
+- **One decimal place is a ceiling, not a default.** Tool payloads carry more precision than the copy should (`21.36` km), so round before writing: `21,4 km`, never `21,36 km`. Drop the decimal entirely when the value is whole: `35 menit`, not `35,0 menit`.
 - **Thousands run plain**, no separator: `1200 kalori`. A period there collides with the decimal comma.
 - **Pace and duration stay clock-formatted**, never decimal: `7:38 per km`, not `7,63 menit per km`.
 
