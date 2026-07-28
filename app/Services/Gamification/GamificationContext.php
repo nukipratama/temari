@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Shared gamification stats for a user. Queried once and consumed by both
- * GoalResolver and UnlockEngine so the ~10 DB queries are not duplicated
+ * GoalResolver and UnlockEngine so the six DB queries are not duplicated
  * across the two services.
  */
 readonly class GamificationContext
@@ -67,33 +67,10 @@ readonly class GamificationContext
             ->pluck('cnt', 'rarity')
             ->all();
 
-        $totalDistanceM = (float) Activity::query()
-            ->where('user_id', $user->id)
-            ->join('activity_details', 'activities.id', '=', 'activity_details.activity_id')
-            ->sum('activity_details.distance');
+        $detail = self::detailAggregates($user);
 
         $streakWeeks = WeeklySnapshot::consecutiveWeekStreak($user->id);
         $twoWeekStreak = min($streakWeeks, 2);
-
-        $tenKPlus = Activity::query()
-            ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($q) => $q->where('distance', '>=', 10000))
-            ->count();
-
-        $fiveKPlus = Activity::query()
-            ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($q) => $q->where('distance', '>=', 5000))
-            ->count();
-
-        $halfMarathon = Activity::query()
-            ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($q) => $q->where('distance', '>=', PrCategory::HalfMarathon->distanceMeters()))
-            ->count();
-
-        $fastPace = Activity::query()
-            ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($q) => $q->where('average_speed', '>=', self::FAST_PACE_SPEED_MS))
-            ->count();
 
         $badgeCounts = RunCard::badgeCountsForUser($user->id);
 
@@ -101,15 +78,47 @@ readonly class GamificationContext
             user: $user,
             prCount: $prCount,
             activityCount: $activityCount,
-            totalDistanceM: $totalDistanceM,
+            totalDistanceM: $detail['total_distance_m'],
             rarityCounts: $rarityCounts,
             streakWeeks: $streakWeeks,
             twoWeekStreak: $twoWeekStreak,
-            tenKPlus: $tenKPlus,
-            fiveKPlus: $fiveKPlus,
-            halfMarathon: $halfMarathon,
-            fastPace: $fastPace,
+            tenKPlus: $detail['ten_k_plus'],
+            fiveKPlus: $detail['five_k_plus'],
+            halfMarathon: $detail['half_marathon'],
+            fastPace: $detail['fast_pace'],
             badgeCounts: $badgeCounts,
         );
+    }
+
+    /**
+     * Total distance plus the four distance/pace milestone counters in one pass.
+     * `activity_details.activity_id` is UNIQUE, so this inner join matches each
+     * activity at most once and the conditional SUMs are exactly the counts the
+     * four `whereHas('detail', ...)` subqueries returned.
+     *
+     * @return array{total_distance_m: float, five_k_plus: int, ten_k_plus: int, half_marathon: int, fast_pace: int}
+     */
+    private static function detailAggregates(User $user): array
+    {
+        $row = Activity::query()
+            ->where('user_id', $user->id)
+            ->join('activity_details', 'activities.id', '=', 'activity_details.activity_id')
+            ->selectRaw(
+                'SUM(activity_details.distance) AS total_distance, '
+                .'SUM(CASE WHEN activity_details.distance >= ? THEN 1 ELSE 0 END) AS five_k_plus, '
+                .'SUM(CASE WHEN activity_details.distance >= ? THEN 1 ELSE 0 END) AS ten_k_plus, '
+                .'SUM(CASE WHEN activity_details.distance >= ? THEN 1 ELSE 0 END) AS half_marathon, '
+                .'SUM(CASE WHEN activity_details.average_speed >= ? THEN 1 ELSE 0 END) AS fast_pace',
+                [5000, 10000, PrCategory::HalfMarathon->distanceMeters(), self::FAST_PACE_SPEED_MS],
+            )
+            ->first();
+
+        return [
+            'total_distance_m' => (float) ($row?->getAttribute('total_distance') ?? 0),
+            'five_k_plus' => (int) ($row?->getAttribute('five_k_plus') ?? 0),
+            'ten_k_plus' => (int) ($row?->getAttribute('ten_k_plus') ?? 0),
+            'half_marathon' => (int) ($row?->getAttribute('half_marathon') ?? 0),
+            'fast_pace' => (int) ($row?->getAttribute('fast_pace') ?? 0),
+        ];
     }
 }

@@ -19,7 +19,7 @@ use App\Models\UserUnlock;
 readonly class GoalResolver
 {
     /**
-     * @param  GamificationContext|null  $ctx  A pre-built context to reuse; pass it when the caller already holds one to avoid re-running its ~10 queries.
+     * @param  GamificationContext|null  $ctx  A pre-built context to reuse; pass it when the caller already holds one to avoid re-running its six queries.
      * @return list<array{id: string, title: string, description: string, slot: string, rarity: string, current: int|float, target: int|float, unit: string, is_completed: bool}>
      */
     public function forUser(User $user, ?GamificationContext $ctx = null): array
