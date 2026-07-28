@@ -31,7 +31,7 @@ class ThresholdEstimator
 
         $paces = [];
         foreach ($details as $detail) {
-            $summary = $detail->streamSummary();
+            $summary = StreamSummary::fromArray($detail->streamSummary());
             if (! $this->isHardSession($summary)) {
                 continue;
             }
@@ -62,22 +62,16 @@ class ThresholdEstimator
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $summary
-     */
-    private function isHardSession(array $summary): bool
+    private function isHardSession(StreamSummary $summary): bool
     {
-        return StreamSummary::fromArray($summary)->hardZoneShare() >= self::HARD_SESSION_Z3_PLUS_PCT;
+        return $summary->hardZoneShare() >= self::HARD_SESSION_Z3_PLUS_PCT;
     }
 
-    /**
-     * @param  array<string, mixed>  $summary
-     */
-    private function bestSustainedPace(array $summary): ?float
+    private function bestSustainedPace(StreamSummary $summary): ?float
     {
-        foreach (['best_60min_pace', 'best_30min_pace'] as $key) {
-            $label = $summary[$key] ?? null;
-            if (! is_string($label)) {
+        foreach (['60min', '30min'] as $window) {
+            $label = $summary->bestPace($window);
+            if ($label === null) {
                 continue;
             }
             $secs = PaceFormatter::parse($label);
