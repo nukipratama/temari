@@ -11,6 +11,7 @@ use App\Support\SharedPropCacheKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -31,7 +32,7 @@ uses(RefreshDatabase::class);
  * that object for the next one — an artefact of the test harness, not of a real
  * request, which rebuilds the user from the session every time.
  */
-function visitAs(User $user): Illuminate\Testing\TestResponse
+function visitAs(User $user): TestResponse
 {
     return test()->actingAs($user->fresh())->get('/rekor');
 }
