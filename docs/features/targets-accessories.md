@@ -27,7 +27,9 @@ Two sides of the same loop: **Target** (`/target`) shows what you're working tow
 
 ## Targets (`/target`)
 
-The [GoalController](../../app/Http/Controllers/GoalController.php) `index` delegates to the `GoalResolver` service, which returns the user's goals (each with `current` / `target` / `unit`, a `slot`, a `rarity`, and an `is_completed` flag) plus a completed count. The page [Target](../../resources/js/pages/Target.tsx) groups goals by slot in a fixed order, and renders each as a `GoalCard` with a progress bar driven by `goalProgressRatio`. A completed goal flips to a horizon accent with a check chip; the header shows the running "N / total tercapai" tally. The page is read-only — progress is recomputed server-side from run data, not edited here.
+The [GoalController](../../app/Http/Controllers/GoalController.php) `index` delegates to the `GoalResolver` service, which returns the user's goals (each with `current` / `target` / `unit`, a `slot`, a `rarity`, and an `is_completed` flag) plus a completed count. The page [Target](../../resources/js/pages/Target.tsx) groups goals by slot in a fixed order, and renders each as a `GoalCard` with a progress bar driven by `goalProgressRatio`. A completed goal flips to a horizon accent with a check chip; the header shows the running "N / total tercapai" tally. The page is read-only — progress is derived server-side from run data, not edited here.
+
+`GoalResolver::forUser` caches its resolved catalog per user for 120s, the same TTL as the `goalsSummary` share in [HandleInertiaRequests](../../app/Http/Middleware/HandleInertiaRequests.php) that feeds the nav chip. Both caches are TTL-only with no busting, so each is a snapshot at most one window old and the two surfaces can never disagree by more than that window. Passing a pre-built `GamificationContext` (as [WeeklyRecapBuilder](../../app/Services/Gamification/WeeklyRecapBuilder.php) does) bypasses the cache, since that caller has already chosen which snapshot it reads.
 
 ## Accessories (`/aksesori`)
 

@@ -8,6 +8,7 @@ use App\Enums\Badge;
 use App\Enums\Rarity;
 use App\Models\User;
 use App\Models\UserUnlock;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Computes goal progress for every unlock in the catalog. Each goal carries
@@ -19,12 +20,40 @@ use App\Models\UserUnlock;
 readonly class GoalResolver
 {
     /**
-     * @param  GamificationContext|null  $ctx  A pre-built context to reuse; pass it when the caller already holds one to avoid re-running its six queries.
+     * Goal progress only moves when an activity is ingested, so the whole
+     * resolved catalog is cached per user for a short window. The TTL matches
+     * the goals-summary share in HandleInertiaRequests, so the nav chip and
+     * `/target` can never be more than one window apart from each other.
+     */
+    private const int CACHE_TTL_SECONDS = 120;
+
+    /**
+     * @param  GamificationContext|null  $ctx  A pre-built context to reuse; pass it when the caller already holds one to avoid re-running its six queries. Supplying one also bypasses the cache, since the caller has already decided which snapshot it wants read.
      * @return list<array{id: string, title: string, description: string, slot: string, rarity: string, current: int|float, target: int|float, unit: string, is_completed: bool}>
      */
     public function forUser(User $user, ?GamificationContext $ctx = null): array
     {
-        $ctx ??= GamificationContext::forUser($user);
+        if ($ctx !== null) {
+            return $this->resolve($user, $ctx);
+        }
+
+        return Cache::remember(
+            self::cacheKey($user->id),
+            self::CACHE_TTL_SECONDS,
+            fn (): array => $this->resolve($user, GamificationContext::forUser($user)),
+        );
+    }
+
+    public static function cacheKey(int $userId): string
+    {
+        return "goals:{$userId}";
+    }
+
+    /**
+     * @return list<array{id: string, title: string, description: string, slot: string, rarity: string, current: int|float, target: int|float, unit: string, is_completed: bool}>
+     */
+    private function resolve(User $user, GamificationContext $ctx): array
+    {
         /** @var list<string> $unlockedKeys */
         $unlockedKeys = array_values(UserUnlock::query()
             ->where('user_id', $user->id)
