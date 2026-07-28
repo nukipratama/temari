@@ -9,6 +9,29 @@ use App\Jobs\AI\AnalyzePersonaSummaryJob;
 use App\Services\AI\AnalysisCadence;
 use App\Services\AI\AnalysisType;
 
+it('pins the exact case list, so adding or retiring a type is a deliberate edit', function (): void {
+    expect(array_column(AnalysisType::cases(), 'value'))->toBe([
+        'briefing_suggestion',
+        'briefing_mascot_voice',
+        'briefing_featured_kartu_voice',
+        'post_run_speech',
+        'run_insight_technical',
+        'run_insight_splits',
+        'run_insight_zones',
+        'weekly_recap',
+        'pr_context',
+        'card_flavor',
+        'persona_summary',
+        'aku_profile_voice',
+        'monthly_recap',
+    ], implode(' ', [
+        'The AnalysisType case list changed. Update this list only after settling the call sites that',
+        'read the cases as a set rather than one case at a time: Analysis::knownType(), which decides',
+        'whether historical rows of a retired type stay re-dispatchable, and the retired-type',
+        'subject_type literals in UserEraser, since erasure must still reach rows whose case is gone.',
+    ]));
+});
+
 it('maps PersonaSummary to its job + subject type', function (): void {
     expect(AnalysisType::PersonaSummary->jobClass())->toBe(AnalyzePersonaSummaryJob::class)
         ->and(AnalysisType::PersonaSummary->subjectType())->toBe(AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE);
