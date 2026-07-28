@@ -6,9 +6,9 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
-use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Story\MoodMix;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -59,7 +59,10 @@ final class MonthTotalsTool extends NoArgumentTool
                 ->whereBetween('set_at', [$start, $end])
                 ->count(),
             'weekly_distance_km' => self::weeklyDistanceKm($details, $start),
-            'mood_mix' => $this->moodMix($start, $end),
+            // Half-open, so the exclusive bound is the next month's start rather
+            // than this month's inclusive end -- passing $end would drop a run
+            // logged in the final second.
+            'mood_mix' => MoodMix::between($this->user->id, $start, $start->copy()->addMonth()->startOfMonth()),
             'fitness' => $this->fitnessArc($start, $end),
         ];
     }
@@ -101,33 +104,6 @@ final class MonthTotalsTool extends NoArgumentTool
         }
 
         return $weeks;
-    }
-
-    /** @return list<array{mood: string, count: int, percent: float}> */
-    private function moodMix(Carbon $start, Carbon $end): array
-    {
-        $rows = StoryLine::query()
-            ->where('user_id', $this->user->id)
-            ->whereNotNull('activity_id')
-            ->whereBetween('created_at', [$start, $end])
-            ->selectRaw('mood, COUNT(*) as c')
-            ->groupBy('mood')
-            ->pluck('c', 'mood');
-
-        $total = (int) $rows->sum();
-        $mix = [];
-        foreach ($rows as $mood => $count) {
-            $count = (int) $count;
-            $mix[] = [
-                'mood' => (string) $mood,
-                'count' => $count,
-                'percent' => $total > 0 ? round(($count / $total) * 100, 1) : 0.0,
-            ];
-        }
-
-        usort($mix, static fn (array $a, array $b): int => $b['count'] <=> $a['count']);
-
-        return $mix;
     }
 
     /**
