@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\Validator;
 function triggerAnalysisRules(string $type): array
 {
     $request = TriggerAnalysisRequest::create("/api/analyses/{$type}/1/trigger", 'POST');
-    $request->setRouteResolver(fn () => new class ($type) {
-        public function __construct(private readonly string $type)
+    $request->setRouteResolver(fn () => new readonly class ($type) {
+        public function __construct(private string $type)
         {
         }
 
