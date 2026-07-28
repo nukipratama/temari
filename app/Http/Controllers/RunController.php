@@ -585,54 +585,66 @@ class RunController extends Controller
         $detail = $activity->detail;
         abort_if($detail === null, 404, 'Activity not yet analyzed.');
 
-        $storyLine = StoryLine::query()
-            ->where('activity_id', $activity->id)
-            ->where('kind', StoryLine::KIND_POST_RUN)
-            ->first();
-
-        $analyses = Analysis::query()
-            ->where('subject_type', Activity::class)
-            ->where('subject_id', $activity->id)
-            ->whereIn('analysis_type', self::RUN_INSIGHT_TYPES)
-            ->get()
-            ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
-
         if ($detail->start_lat !== null && $detail->location_resolved_at === null) {
             ResolveActivityLocationJob::dispatch($detail->id);
         }
 
+        // Resolved lazily, and memoized because the four insight props plus the
+        // notification cooldown all read it.
+        //
+        // Every prop below used to be computed in the method body, which meant
+        // `useAnalysisTrigger`'s poll — a `router.reload({ only })` every 3-15s
+        // for up to 30 ticks while the four run insights generate — re-ran the
+        // past-you match, the relative-effort baseline, the card payload and the
+        // story line on each tick for props it never asked for. Behind closures,
+        // Inertia skips every prop the poll does not name.
+        /** @var Collection<string, Analysis>|null $loadedAnalyses */
+        $loadedAnalyses = null;
+        $loadAnalyses = function () use ($activity, &$loadedAnalyses): Collection {
+            /** @var Collection<string, Analysis> */
+            return $loadedAnalyses ??= Analysis::query()
+                ->where('subject_type', Activity::class)
+                ->where('subject_id', $activity->id)
+                ->whereIn('analysis_type', self::RUN_INSIGHT_TYPES)
+                ->get()
+                ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
+        };
+
         $payloadFor = fn (AnalysisType $type): array => Analysis::toPayload(
-            $analyses->get($type->value),
+            $loadAnalyses()->get($type->value),
             $type,
             Activity::class,
             $activity->id,
         );
 
-        $speechAnalysis = $payloadFor(AnalysisType::PostRunSpeech);
-
-        // Per-activity narration is a connected + chained kind: only the chain
-        // head (the user's latest run) may regenerate ("Baca ulang"); historical
-        // runs are resume-only, so re-narrating mid-history can't desync the
-        // later runs that quoted their old narrative.
-        $isChainHead = Activity::latestIdForUser($user->id) === $activity->id;
-
         return Inertia::render('Runs/Show', [
+            // `activity` and `detail` are already hydrated for the 404 guards
+            // above, so a closure would defer nothing.
             'activity' => $activity,
             'detail' => $detail,
-            'card' => $this->cardPayload($activity->runCard, $user),
-            'storyLine' => $storyLine,
+            'card' => fn (): ?array => $this->cardPayload($activity->runCard, $user),
+            'storyLine' => fn (): ?StoryLine => StoryLine::query()
+                ->where('activity_id', $activity->id)
+                ->where('kind', StoryLine::KIND_POST_RUN)
+                ->first(),
             // Backend-computed mood for the (rare) window before the post-run
             // StoryLine lands, so the detail mascot matches the share card
             // instead of diverging into a frontend heuristic.
-            'moodFallback' => Temari::moodForActivityOrDefault($activity),
-            'isChainHead' => $isChainHead,
-            'speechAnalysis' => $speechAnalysis,
-            'notificationRetryAfterSeconds' => Analysis::notificationCooldownRemaining($speechAnalysis),
-            'insightTechnical' => $payloadFor(AnalysisType::RunInsightTechnical),
-            'insightSplits' => $payloadFor(AnalysisType::RunInsightSplits),
-            'insightZones' => $payloadFor(AnalysisType::RunInsightZones),
-            'pastYou' => $matcher->findMatch($activity, $detail),
-            'relativeEffort' => $relativeEffort->forRun($activity, $detail),
+            'moodFallback' => fn (): string => Temari::moodForActivityOrDefault($activity),
+            // Per-activity narration is a connected + chained kind: only the chain
+            // head (the user's latest run) may regenerate ("Baca ulang"); historical
+            // runs are resume-only, so re-narrating mid-history can't desync the
+            // later runs that quoted their old narrative.
+            'isChainHead' => fn (): bool => Activity::latestIdForUser($user->id) === $activity->id,
+            'speechAnalysis' => fn (): array => $payloadFor(AnalysisType::PostRunSpeech),
+            'notificationRetryAfterSeconds' => fn (): ?int => Analysis::notificationCooldownRemaining(
+                $payloadFor(AnalysisType::PostRunSpeech),
+            ),
+            'insightTechnical' => fn (): array => $payloadFor(AnalysisType::RunInsightTechnical),
+            'insightSplits' => fn (): array => $payloadFor(AnalysisType::RunInsightSplits),
+            'insightZones' => fn (): array => $payloadFor(AnalysisType::RunInsightZones),
+            'pastYou' => fn (): ?array => $matcher->findMatch($activity, $detail),
+            'relativeEffort' => fn (): ?array => $relativeEffort->forRun($activity, $detail),
         ]);
     }
 
