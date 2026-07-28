@@ -1,7 +1,7 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useRef, useState } from 'react';
-import { bareLayout } from '@/layouts/appLayout';
+import { bareLayout } from '@/layouts/BareShell';
 import BrandMark from '@/components/BrandMark';
 import KartuMini from '@/components/card/KartuMini';
 import PillButton from '@/components/ui/PillButton';

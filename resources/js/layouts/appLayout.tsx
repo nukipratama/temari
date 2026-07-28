@@ -10,11 +10,12 @@ import AppShell from '@/layouts/AppShell';
  * reload instead of an app, and a stable shell is also what lets the content
  * region alone show a loading state while the shell stays put.
  *
- * Both are module-level constants on purpose: Inertia compares the layout by
+ * A module-level constant on purpose: Inertia compares the layout by
  * reference, so an inline `page => <AppShell>{page}</AppShell>` at each call
  * site would be a new function every render and defeat the persistence.
+ *
+ * The standalone counterpart is `bareLayout` in `BareShell.tsx`, kept in its
+ * own module so that importing it does not drag `AppShell` — and with it
+ * framer-motion — onto Login's first paint.
  */
 export const appLayout = (page: ReactNode) => <AppShell>{page}</AppShell>;
-
-/** For standalone screens outside the app chrome (Login). */
-export const bareLayout = (page: ReactNode) => <AppShell withNav={false}>{page}</AppShell>;
