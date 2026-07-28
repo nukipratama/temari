@@ -72,3 +72,34 @@ it('exposes the configured rate and null for an unconfigured deployment', functi
     expect(new LlmCostCalculator()->priceFor('nuki-5.2'))->toMatchArray(['input_per_1m' => 2.50, 'output_per_1m' => 10.00])
         ->and(new LlmCostCalculator()->priceFor('mystery'))->toBeNull();
 });
+
+// Both deployments bill cached input at a tenth of their input rate, and prod
+// was already serving 43-62% of input from cache before these were configured,
+// so the estimate had been overstating spend.
+it('bills cached input at the configured discount for the real deployments', function (): void {
+    config()->set('azure_openai.prices', [
+        'nuki-5.4-mini' => ['input_per_1m' => 0.75, 'cached_input_per_1m' => 0.075, 'output_per_1m' => 4.50],
+    ]);
+
+    $calculator = app(LlmCostCalculator::class);
+
+    // 1M input of which 600k cached, 100k output.
+    // (0.4 * 0.75) + (0.6 * 0.075) + (0.1 * 4.50) = 0.3 + 0.045 + 0.45
+    expect(round($calculator->costFor('nuki-5.4-mini', 1_000_000, 100_000, 600_000), 4))
+        ->toBe(0.795)
+        // Same tokens, none cached, costs more.
+        ->and(round($calculator->costFor('nuki-5.4-mini', 1_000_000, 100_000, 0), 4))
+        ->toBe(1.2);
+});
+
+it('bills cached input as ordinary input when a deployment declares no cached rate', function (): void {
+    config()->set('azure_openai.prices', [
+        'legacy' => ['input_per_1m' => 1.00, 'output_per_1m' => 2.00],
+    ]);
+
+    $calculator = app(LlmCostCalculator::class);
+
+    // A missing cached rate must never understate: cached and uncached cost the same.
+    expect($calculator->costFor('legacy', 1_000_000, 0, 1_000_000))
+        ->toBe($calculator->costFor('legacy', 1_000_000, 0, 0));
+});
