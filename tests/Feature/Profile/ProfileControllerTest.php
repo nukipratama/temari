@@ -8,8 +8,12 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\Run\LifetimeStats;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -104,4 +108,55 @@ it('exposes personaMix derived from StoryLine moods + personaSummary payload', f
             ->has('personaSummary')
             ->where('personaSummary.type', 'persona_summary')
             ->where('personaSummary.subject_type', 'persona_summary_user'));
+});
+
+it('serves the hero stats from LifetimeStats, keeping 1dp total km and 2dp longest run', function (): void {
+    $user = User::factory()->create();
+    $activities = Activity::factory()->for($user)->analyzed()->count(2)->create();
+    // 7,777 m and 10,126 m: total 17.903 km -> 17.9 at 1dp, longest 10.126 km
+    // -> 10.13 at 2dp. Both digits differ from the other precision, so a
+    // silently swapped rounding would fail here.
+    foreach ([7777.0, 10126.0] as $idx => $distance) {
+        ActivityDetail::factory()->for($activities[$idx])->create([
+            'distance' => $distance,
+            'start_date_local' => Carbon::today()->subDays(5 - $idx),
+        ]);
+    }
+
+    $lifetime = app(LifetimeStats::class)->forUser($user);
+
+    $this->actingAs($user)->get('/profil')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('stats.total_km', 17.9)
+            ->where('stats.longest_run_km', 10.13)
+            ->where('stats.total_runs', $lifetime['total_runs'])
+            ->where('stats.total_km', $lifetime['total_km'])
+            ->where('stats.longest_run_km', $lifetime['longest_km'])
+            ->where('identity.first_run_at', $lifetime['first_run_at'])
+            ->etc());
+});
+
+it('reuses the LifetimeStats cache instead of re-running the aggregate per /aku load', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 9000.0,
+        'start_date_local' => Carbon::today()->subDay(),
+    ]);
+
+    Cache::forget(LifetimeStats::cacheKey($user->id));
+
+    $this->actingAs($user)->get('/profil')->assertSuccessful();
+
+    $aggregates = [];
+    DB::listen(function (QueryExecuted $query) use (&$aggregates): void {
+        if (str_contains($query->sql, 'longest_distance')) {
+            $aggregates[] = $query->sql;
+        }
+    });
+
+    $this->actingAs($user)->get('/profil')->assertSuccessful();
+
+    expect($aggregates)->toBeEmpty();
 });

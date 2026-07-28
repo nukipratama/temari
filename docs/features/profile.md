@@ -34,7 +34,9 @@ Server side, `ProfileController::resolveProfileVoice` looks up the `AkuProfileVo
 
 ## Stats trio
 
-Three `StatCard`s: **Total km**, **Total lari**, **Lari terjauh**. The controller computes these in one aggregate query over `ActivityDetail` (`SUM(distance)`, `MAX(distance)`, `MIN(start_date_local)`) plus `user->activities()->count()` for the run count, converting meters to km in the payload.
+Three `StatCard`s: **Total km**, **Total lari**, **Lari terjauh**. The controller delegates to [LifetimeStats](app/Services/Run/LifetimeStats.php), the same service `/kalender` uses: one aggregate query over `ActivityDetail` (`SUM(distance)`, `MAX(distance)`, `MIN(start_date_local)`) plus `user->activities()->count()` for the run count, converted to km and cached per user for 5 minutes. `/profil` maps its `longest_km` onto the `longest_run_km` prop; the page renders **Total km** at 1dp and **Lari terjauh** at 2dp, matching the precision the service rounds to.
+
+Sharing `/kalender`'s cache means the totals can trail a just-ingested run by up to the TTL, the same window `/kalender` has always had.
 
 ## Persona — 12 minggu terakhir
 
