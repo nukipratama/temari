@@ -10,11 +10,9 @@ use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
-use App\Jobs\AI\AnalyzeDailyGreetingJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePersonaSummaryJob;
 use App\Jobs\AI\AnalyzePrContextJob;
-use App\Jobs\AI\AnalyzeTrendCaptionJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
@@ -28,11 +26,9 @@ use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\BriefingNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
-use App\Services\AI\Narrators\DailyGreetingNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PersonaSummaryNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
-use App\Services\AI\Narrators\TrendCaptionNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,7 +55,7 @@ function rowOf(string $subjectType, int $subjectId, AnalysisType $type, ?string 
 
 // ── AnalyzeBriefingJob (group) ────────────────────────────────────────
 
-it('AnalyzeBriefingJob writes the two briefing rows (headline + suggestion) Done', function (): void {
+it('AnalyzeBriefingJob writes the briefing suggestion row Done', function (): void {
     $user = User::factory()->create();
     mockNarrator(BriefingNarrator::class, [
         'headline' => 'H',
@@ -75,9 +71,7 @@ it('AnalyzeBriefingJob writes the two briefing rows (headline + suggestion) Done
         ->get()
         ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
 
-    expect($rows[AnalysisType::BriefingHeadline->value]->content)->toBe('H')
-        ->and($rows[AnalysisType::BriefingHeadline->value]->status)->toBe(AnalysisStatus::Done)
-        ->and($rows[AnalysisType::BriefingSuggestion->value]->content)->toBe('S')
+    expect($rows[AnalysisType::BriefingSuggestion->value]->content)->toBe('S')
         ->and($rows[AnalysisType::BriefingSuggestion->value]->status)->toBe(AnalysisStatus::Done);
 });
 
@@ -91,22 +85,20 @@ it('AnalyzeBriefingJob falls back to today when discriminator is null', function
 
     new AnalyzeBriefingJob($user->id)->handle(app(AnalysisService::class));
 
-    expect(Analysis::query()->where('subject_id', $user->id)->count())->toBe(2);
+    expect(Analysis::query()->where('subject_id', $user->id)->count())->toBe(1);
     Carbon::setTestNow();
 });
 
 it('AnalyzeBriefingJob does not re-invoke the narrator when its rows are already Done (no double-bill)', function (): void {
     $user = User::factory()->create();
 
-    // Pre-seed both group rows as Done so the idempotency guard short-circuits.
-    foreach ([AnalysisType::BriefingHeadline, AnalysisType::BriefingSuggestion] as $type) {
-        Analysis::factory()->done('preexisting')->create([
-            'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-            'subject_id' => $user->id,
-            'analysis_type' => $type,
-            'discriminator' => '2026-05-18',
-        ]);
-    }
+    // Pre-seed the group row as Done so the idempotency guard short-circuits.
+    Analysis::factory()->done('preexisting')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'discriminator' => '2026-05-18',
+    ]);
 
     $mock = Mockery::mock(BriefingNarrator::class);
     $mock->shouldNotReceive('generate');
@@ -119,7 +111,7 @@ it('AnalyzeBriefingJob does not re-invoke the narrator when its rows are already
         ->where('discriminator', '2026-05-18')
         ->get();
 
-    expect($rows)->toHaveCount(2);
+    expect($rows)->toHaveCount(1);
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Done)
             ->and($row->content)->toBe('preexisting');
@@ -141,7 +133,7 @@ it('AnalyzeBriefingJob falls back to rule-based content for every row when gener
         ->where('discriminator', '2026-05-18')
         ->get();
 
-    expect($rows)->toHaveCount(2);
+    expect($rows)->toHaveCount(1);
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Done)
             ->and($row->content)->not->toBeEmpty();
@@ -152,22 +144,32 @@ it('AnalyzeBriefingJob marks all rows failed when user missing', function (): vo
     new AnalyzeBriefingJob(99999, '2026-05-18')->handle(app(AnalysisService::class));
 
     $rows = Analysis::query()->where('subject_id', 99999)->get();
-    expect($rows)->toHaveCount(2);
+    expect($rows)->toHaveCount(1);
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Failed);
     }
 });
 
-it('AnalyzeBriefingJob failed() marks every stranded group row Failed (and spares Done ones)', function (): void {
+it('AnalyzeBriefingJob failed() marks a stranded group row Failed', function (): void {
     $user = User::factory()->create();
 
-    $headline = Analysis::factory()->create([
+    $suggestion = Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
         'status' => AnalysisStatus::Processing,
     ]);
+
+    new AnalyzeBriefingJob($user->id, '2026-05-18')->failed(new RuntimeException('worker timeout'));
+
+    expect($suggestion->fresh()->status)->toBe(AnalysisStatus::Failed)
+        ->and($suggestion->fresh()->error)->toBe('worker timeout');
+});
+
+it('AnalyzeBriefingJob failed() spares a group row that is already Done', function (): void {
+    $user = User::factory()->create();
+
     $suggestion = Analysis::factory()->done('kept')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
@@ -177,9 +179,7 @@ it('AnalyzeBriefingJob failed() marks every stranded group row Failed (and spare
 
     new AnalyzeBriefingJob($user->id, '2026-05-18')->failed(new RuntimeException('worker timeout'));
 
-    expect($headline->fresh()->status)->toBe(AnalysisStatus::Failed)
-        ->and($headline->fresh()->error)->toBe('worker timeout')
-        ->and($suggestion->fresh()->status)->toBe(AnalysisStatus::Done)
+    expect($suggestion->fresh()->status)->toBe(AnalysisStatus::Done)
         ->and($suggestion->fresh()->content)->toBe('kept');
 });
 
@@ -371,79 +371,6 @@ it('AnalyzeMonthlyRecapJob does not advance into the still-open current month', 
 
     expect($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
     Carbon::setTestNow();
-});
-
-// ── AnalyzeTrendCaptionJob (row) ─────────────────────────────────────
-
-it('AnalyzeTrendCaptionJob narrates as of the discriminator date', function (): void {
-    $user = User::factory()->create();
-
-    $mock = Mockery::mock(TrendCaptionNarrator::class);
-    $mock->shouldReceive('generate')
-        ->once()
-        ->withArgs(fn (User $u, Carbon $asOf): bool => $u->is($user) && $asOf->toDateString() === '2026-05-18')
-        ->andReturn('volume naik 5 km dalam 4 minggu');
-    app()->instance(TrendCaptionNarrator::class, $mock);
-
-    $row = rowOf(AnalysisType::TREND_CAPTION_SUBJECT_TYPE, $user->id, AnalysisType::TrendCaption, '2026-05-18');
-    new AnalyzeTrendCaptionJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->content)->toBe('volume naik 5 km dalam 4 minggu')
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
-});
-
-it('AnalyzeTrendCaptionJob falls back to today when discriminator is null', function (): void {
-    Carbon::setTestNow('2026-05-19 12:00:00');
-    $user = User::factory()->create();
-
-    $mock = Mockery::mock(TrendCaptionNarrator::class);
-    $mock->shouldReceive('generate')
-        ->once()
-        ->withArgs(fn (User $u, Carbon $asOf): bool => $asOf->toDateString() === '2026-05-19')
-        ->andReturn('tren stabil');
-    app()->instance(TrendCaptionNarrator::class, $mock);
-
-    $row = rowOf(AnalysisType::TREND_CAPTION_SUBJECT_TYPE, $user->id, AnalysisType::TrendCaption, null);
-    new AnalyzeTrendCaptionJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done);
-    Carbon::setTestNow();
-});
-
-it('AnalyzeTrendCaptionJob throws when user missing', function (): void {
-    $row = rowOf(AnalysisType::TREND_CAPTION_SUBJECT_TYPE, 99999, AnalysisType::TrendCaption);
-    new AnalyzeTrendCaptionJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
-});
-
-// ── AnalyzeDailyGreetingJob (row) ────────────────────────────────────
-
-it('AnalyzeDailyGreetingJob returns greeting', function (): void {
-    $user = User::factory()->create();
-    mockNarrator(DailyGreetingNarrator::class, 'halo pagi');
-
-    $row = rowOf(AnalysisType::DAILY_GREETING_SUBJECT_TYPE, $user->id, AnalysisType::DailyGreeting, '2026-05-18');
-    new AnalyzeDailyGreetingJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->content)->toBe('halo pagi');
-});
-
-it('AnalyzeDailyGreetingJob falls back to today when discriminator is null', function (): void {
-    $user = User::factory()->create();
-    mockNarrator(DailyGreetingNarrator::class, 'today halo');
-
-    $row = rowOf(AnalysisType::DAILY_GREETING_SUBJECT_TYPE, $user->id, AnalysisType::DailyGreeting, null);
-    new AnalyzeDailyGreetingJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->content)->toBe('today halo');
-});
-
-it('AnalyzeDailyGreetingJob throws when user missing', function (): void {
-    $row = rowOf(AnalysisType::DAILY_GREETING_SUBJECT_TYPE, 99999, AnalysisType::DailyGreeting);
-    new AnalyzeDailyGreetingJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 // ── AnalyzePersonaSummaryJob (row) ────────────────────────────────────

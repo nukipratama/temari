@@ -73,7 +73,7 @@ it('has a test class for every concrete app class', function (): void {
         StravaSyncLog::class,           // SyncOrchestratorTest
         SumsPulseTotals::class,         // trait, exercised via AiPipelineHealthTest + StravaHealthTest
         ReadsPreviousActivityNarrative::class, // trait, exercised via PostRunSpeechNarratorTest + RunInsightNarratorTest
-        ReadsPreviousDailyNarrative::class, // trait, exercised via DailyGreeting + BriefingMascotVoice cases in NarratorsCoverageTest
+        ReadsPreviousDailyNarrative::class, // trait, exercised via the BriefingMascotVoice cases in NarratorsCoverageTest
         PushesAnalysisNotification::class, // trait, exercised via the three Send*NotificationControllerTest suites
         RevokesConnectionOnPermanentFailure::class, // trait, exercised via TelegramChannelTest
     ];

@@ -64,21 +64,14 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $this->analysisService->requestBriefingGroup($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
         // BriefingMascotVoice was split out of the briefing group; dispatch it
         // independently so its own LLM call runs alongside the briefing group.
-        $dailyRowTypes = [
-            AnalysisType::BriefingMascotVoice,
-            AnalysisType::DailyGreeting,
-            AnalysisType::TrendCaption,
-        ];
-        foreach ($dailyRowTypes as $type) {
-            $this->analysisService->request(
-                subjectOrType: $type->subjectType(),
-                subjectId: $user->id,
-                type: $type,
-                discriminator: $today,
-                delaySeconds: $delaySec,
-                invalidate: $isToday,
-            );
-        }
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::BriefingMascotVoice->subjectType(),
+            subjectId: $user->id,
+            type: AnalysisType::BriefingMascotVoice,
+            discriminator: $today,
+            delaySeconds: $delaySec,
+            invalidate: $isToday,
+        );
 
         if ($detail->start_date_local === null) {
             return;

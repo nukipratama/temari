@@ -14,15 +14,6 @@ const briefing: BriefingResult = {
     vibeState: 'pumped',
     vibeLabel: 'Membara',
     vibeEmoji: '💥',
-    headline: {
-        id: 1,
-        status: 'done',
-        content: 'Pagi yang oke',
-        type: 'briefing_headline',
-        subject_type: 'briefing_user_day',
-        subject_id: 1,
-        discriminator: '2026-05-18',
-    },
     suggestion: {
         id: 2,
         status: 'done',

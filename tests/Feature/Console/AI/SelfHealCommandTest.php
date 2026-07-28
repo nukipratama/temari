@@ -14,6 +14,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -436,12 +437,12 @@ it('skips the still-open current month', function (): void {
         ->assertSuccessful();
 });
 
-it('re-kicks the earliest stalled BriefingHeadline group per user with invalidate:false', function (): void {
+it('re-kicks the earliest stalled briefing group per user with invalidate:false', function (): void {
     $user = User::factory()->create();
     $earliest = Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
         'status' => AnalysisStatus::Pending,
     ]);
@@ -449,7 +450,7 @@ it('re-kicks the earliest stalled BriefingHeadline group per user with invalidat
     Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-06-01',
         'status' => AnalysisStatus::Pending,
     ]);
@@ -464,17 +465,17 @@ it('re-kicks the earliest stalled BriefingHeadline group per user with invalidat
     expect($captured)->toHaveCount(1)
         ->and($captured[0]['subjectOrType'])->toBe(AnalysisType::BRIEFING_SUBJECT_TYPE)
         ->and($captured[0]['subjectId'])->toBe($user->id)
-        ->and($captured[0]['type'])->toBe(AnalysisType::BriefingHeadline)
+        ->and($captured[0]['type'])->toBe(AnalysisType::BriefingSuggestion)
         ->and($captured[0]['discriminator'])->toBe($earliest->discriminator)
         ->and($captured[0]['invalidate'])->toBeFalse();
 });
 
-it('skips a demo user for the BriefingHeadline group so the resume net never auto-bills it', function (): void {
+it('skips a demo user for the briefing group so the resume net never auto-bills it', function (): void {
     $demo = User::factory()->demo()->create();
     Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $demo->id,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
         'status' => AnalysisStatus::Pending,
     ]);
@@ -512,8 +513,6 @@ it('re-kicks the earliest stalled single-row block per user with invalidate:fals
 })->with([
     'BriefingMascotVoice' => [AnalysisType::BriefingMascotVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '2026-05-18'],
     'BriefingFeaturedKartuVoice' => [AnalysisType::BriefingFeaturedKartuVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '42'],
-    'DailyGreeting' => [AnalysisType::DailyGreeting, AnalysisType::DAILY_GREETING_SUBJECT_TYPE, '2026-05-18'],
-    'TrendCaption' => [AnalysisType::TrendCaption, AnalysisType::TREND_CAPTION_SUBJECT_TYPE, '2026-05-18'],
     'PersonaSummary' => [AnalysisType::PersonaSummary, AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, '2026-W21'],
     'AkuProfileVoice' => [AnalysisType::AkuProfileVoice, AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, null],
 ]);
@@ -521,9 +520,9 @@ it('re-kicks the earliest stalled single-row block per user with invalidate:fals
 it('skips a demo user for a single-row type so the resume net never auto-bills it', function (): void {
     $demo = User::factory()->demo()->create();
     Analysis::factory()->create([
-        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE,
         'subject_id' => $demo->id,
-        'analysis_type' => AnalysisType::DailyGreeting,
+        'analysis_type' => AnalysisType::PersonaSummary,
         'discriminator' => '2026-05-18',
         'status' => AnalysisStatus::Pending,
     ]);
@@ -556,4 +555,28 @@ it('early-exits without sweeping when AI generation is paused', function (): voi
     $this->artisan('ai:self-heal')
         ->expectsOutputToContain('Skipped: AI generation is paused')
         ->assertSuccessful();
+});
+
+it('sweeps past a retired-type row left in flight instead of dying on the enum cast', function (): void {
+    $user = User::factory()->create();
+    DB::table('ai_analyses')->insert([
+        'subject_type' => 'trend_caption_user_day',
+        'subject_id' => $user->id,
+        'analysis_type' => 'trend_caption',
+        'discriminator' => '2026-05-18',
+        'status' => AnalysisStatus::Queued->value,
+        'attempts' => 0,
+        'queued_at' => Carbon::now()->subDay(),
+        'created_at' => Carbon::now()->subDay(),
+        'updated_at' => Carbon::now()->subDay(),
+    ]);
+
+    $this->app->instance(AnalysisService::class, nonDispatchingResumeService());
+
+    $this->artisan('ai:self-heal')
+        ->expectsOutputToContain('Resumed 0 blocks.')
+        ->assertSuccessful();
+
+    expect(DB::table('ai_analyses')->where('analysis_type', 'trend_caption')->value('status'))
+        ->toBe(AnalysisStatus::Queued->value);
 });

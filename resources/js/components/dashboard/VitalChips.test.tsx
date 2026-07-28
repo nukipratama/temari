@@ -19,7 +19,6 @@ const briefing: BriefingResult = {
     vibeState: 'pumped',
     vibeLabel: 'Membara',
     vibeEmoji: '💥',
-    headline: payload(),
     suggestion: payload(),
     mascotVoice: payload(),
     featuredKartuVoice: payload(),

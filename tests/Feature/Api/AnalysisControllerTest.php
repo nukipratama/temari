@@ -38,13 +38,13 @@ it('rejects unknown analysis types with 422', function (): void {
 it('rejects an over-long discriminator with a validation 422', function (): void {
     $user = User::factory()->create();
     $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_headline/{$user->id}/trigger?discriminator=".str_repeat('x', 65))
+        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=".str_repeat('x', 65))
         ->assertStatus(422)
         ->assertJsonValidationErrors('discriminator');
 });
 
 it('requires authentication', function (): void {
-    $this->postJson('/api/analyses/briefing_headline/1/trigger')
+    $this->postJson('/api/analyses/briefing_suggestion/1/trigger')
         ->assertStatus(401);
 });
 
@@ -53,15 +53,15 @@ it('rejects triggering briefing for another user', function (): void {
     $other = User::factory()->create();
 
     $this->actingAs($self)
-        ->postJson("/api/analyses/briefing_headline/{$other->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_suggestion/{$other->id}/trigger?discriminator=2026-05-18")
         ->assertStatus(403);
 });
 
-it('triggers a briefing headline analysis for the authenticated user', function (): void {
+it('triggers a briefing suggestion analysis for the authenticated user', function (): void {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_headline/{$user->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJsonStructure(['id', 'status', 'content', 'type', 'subject_type', 'subject_id', 'discriminator']);
 
@@ -79,7 +79,7 @@ it('force re-triggers a briefing when no cooldown window is active', function ()
     ]);
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_headline/{$user->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJsonPath('status', AnalysisStatus::Queued->value)
         ->assertJsonPath('retry_after_seconds', null);
@@ -93,10 +93,10 @@ it('returns the cached payload with retry_after_seconds when within cooldown', f
         'subject_id' => $user->id,
         'discriminator' => '2026-05-18',
     ]);
-    RateLimiter::hit(Analysis::cooldownKey(AnalysisType::BriefingHeadline, $user->id, '2026-05-18'), Cooldown::WINDOW_SECONDS);
+    RateLimiter::hit(Analysis::cooldownKey(AnalysisType::BriefingSuggestion, $user->id, '2026-05-18'), Cooldown::WINDOW_SECONDS);
 
     $response = $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_headline/{$user->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJsonPath('status', AnalysisStatus::Done->value)
         ->assertJsonPath('content', 'fresh content');
@@ -129,7 +129,7 @@ it('returns the current state via GET show', function (): void {
     ]);
 
     $this->actingAs($user)
-        ->getJson("/api/analyses/briefing_headline/{$user->id}?discriminator=2026-05-18")
+        ->getJson("/api/analyses/briefing_suggestion/{$user->id}?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJsonPath('status', AnalysisStatus::Done->value)
         ->assertJsonPath('content', 'content here');
@@ -139,7 +139,7 @@ it('returns a pending pseudo-row when no analysis exists yet', function (): void
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->getJson("/api/analyses/briefing_headline/{$user->id}?discriminator=2026-05-18")
+        ->getJson("/api/analyses/briefing_suggestion/{$user->id}?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJsonPath('status', AnalysisStatus::Pending->value)
         ->assertJsonPath('content', null)

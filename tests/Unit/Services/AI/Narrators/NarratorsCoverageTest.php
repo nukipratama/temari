@@ -21,19 +21,16 @@ use App\Services\AI\Agent\Tools\PersonaMixTool;
 use App\Services\AI\Agent\Tools\PersonalRecordTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
-use App\Services\AI\Agent\Tools\WeeklyTrendTool;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\BriefingNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
-use App\Services\AI\Narrators\DailyGreetingNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PersonaSummaryNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
-use App\Services\AI\Narrators\TrendCaptionNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\RelativeEffort;
@@ -244,69 +241,6 @@ it('PostRunSpeechNarrator is not offered the splits or zones its insights alread
     ]);
 });
 
-// ── DailyGreetingNarrator ─────────────────────────────────────────────
-
-it('DailyGreetingNarrator returns speech on valid JSON', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller(json_encode(['speech' => 'Halo pagi'], JSON_THROW_ON_ERROR));
-    $narrator = new DailyGreetingNarrator($caller, new TrainingLoad(), app(VerdictNarrator::class));
-    expect($narrator->generate($user, 'membara'))->toBe('Halo pagi');
-});
-
-it('DailyGreetingNarrator throws on missing speech key', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new DailyGreetingNarrator($caller, new TrainingLoad(), app(VerdictNarrator::class));
-    $narrator->generate($user, 'membara');
-})->throws(UnavailableException::class);
-
-it('DailyGreetingNarrator throws on non-JSON response', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller('not json');
-    $narrator = new DailyGreetingNarrator($caller, new TrainingLoad(), app(VerdictNarrator::class));
-    $narrator->generate($user, 'membara');
-})->throws(UnavailableException::class, 'non-JSON');
-
-it('DailyGreetingNarrator feeds prev_narrative from the prior day greeting when Done', function (): void {
-    $user = User::factory()->create();
-    Analysis::factory()->done('Halo, kemarin kamu fresh banget.')->create([
-        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::DailyGreeting,
-        'discriminator' => '2026-05-17',
-    ]);
-
-    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'), new TrainingLoad(), app(VerdictNarrator::class))
-        ->context($user, 'membara', Carbon::parse('2026-05-18'));
-
-    expect($context['prev_narrative'])->toBe('Halo, kemarin kamu fresh banget.');
-});
-
-it('DailyGreetingNarrator omits prev_narrative when the prior day greeting is not yet Done', function (): void {
-    $user = User::factory()->create();
-    Analysis::factory()->create([
-        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::DailyGreeting,
-        'discriminator' => '2026-05-17',
-        'status' => AnalysisStatus::Pending,
-    ]);
-
-    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'), new TrainingLoad(), app(VerdictNarrator::class))
-        ->context($user, 'membara', Carbon::parse('2026-05-18'));
-
-    expect($context['prev_narrative'])->toBeNull();
-});
-
-it('DailyGreetingNarrator leaves prev_narrative null on the first day', function (): void {
-    $user = User::factory()->create();
-
-    $context = new DailyGreetingNarrator(fakeCaller('{"speech":"x"}'), new TrainingLoad(), app(VerdictNarrator::class))
-        ->context($user, 'membara', Carbon::parse('2026-05-18'));
-
-    expect($context['prev_narrative'])->toBeNull();
-});
-
 // ── RunInsightNarrator ────────────────────────────────────────────────
 
 it('RunInsightNarrator returns 3-string payload on valid JSON', function (): void {
@@ -433,18 +367,6 @@ it('BriefingMascotVoiceNarrator reads the day and can compare against the last r
 
     expect(array_column($narrator->toolbox($user, Carbon::today())->definitions(), 'name'))
         ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_latest_past_you']);
-});
-
-it('DailyGreetingNarrator gains the gap it could never see from the vibe alone', function (): void {
-    $user = User::factory()->create();
-    $narrator = app(DailyGreetingNarrator::class);
-
-    // The vibe stays in the context because the caller decided it; a tool that
-    // recomputed it would be a second source of truth.
-    expect(array_keys($narrator->context($user, 'membara', Carbon::today())))
-        ->toBe(['name', 'vibe', 'vibe_label', ...NarratorContinuity::CONTEXT_KEYS])
-        ->and(array_column($narrator->toolbox($user, Carbon::today())->definitions(), 'name'))
-        ->toBe(['get_week_state', 'get_recent_runs']);
 });
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
@@ -605,81 +527,6 @@ it('PrContextNarrator feeds the PR run conditions into the context', function ()
     expect($context['weather_temp_c'])->toBe(33);
 });
 
-// ── TrendCaptionNarrator ──────────────────────────────────────────────
-
-it('TrendCaptionNarrator returns caption on valid JSON', function (): void {
-    $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->subWeek()->endOfWeek()->toDateString(),
-        'distance_km' => 25,
-        'ctl_42d' => 40,
-    ]);
-    $caller = fakeCaller(json_encode(['caption' => 'Tren naik'], JSON_THROW_ON_ERROR));
-    $narrator = new TrendCaptionNarrator($caller, app(TrainingLoad::class));
-    expect($narrator->generate($user, Carbon::today()))->toBe('Tren naik');
-});
-
-it('TrendCaptionNarrator throws on missing caption key', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new TrendCaptionNarrator($caller, app(TrainingLoad::class));
-    $narrator->generate($user, Carbon::today());
-})->throws(UnavailableException::class);
-
-it('TrendCaptionNarrator throws on non-JSON', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller('not json');
-    $narrator = new TrendCaptionNarrator($caller, app(TrainingLoad::class));
-    $narrator->generate($user, Carbon::today());
-})->throws(UnavailableException::class, 'non-JSON');
-
-it('WeeklyTrendTool derives the 4-week CTL + volume deltas', function (): void {
-    $user = User::factory()->create();
-    // 8 weeks of data: CTL climbs 30 -> 44, volume recent 4w sum vs prior 4w sum.
-    $ctls = [30, 32, 34, 36, 38, 40, 42, 44];
-    $kms = [10, 10, 10, 10, 12, 12, 12, 12];
-    foreach ($ctls as $i => $ctl) {
-        WeeklySnapshot::factory()->for($user)->create([
-            'week_ending' => Carbon::parse('2026-03-08')->addWeeks($i)->toDateString(),
-            'distance_km' => $kms[$i],
-            'ctl_42d' => $ctl,
-        ]);
-    }
-
-    $context = new WeeklyTrendTool($user, Carbon::parse('2026-05-01'), app(TrainingLoad::class))->handle([]);
-
-    // CTL: latest 44 minus the one 4 weeks earlier (36) = 8.0.
-    expect($context['ctl_delta_4w'])->toBe(8.0)
-        ->and($context['volume_recent_4w_km'])->toBe(48.0)  // 12*4
-        ->and($context['volume_prev_4w_km'])->toBe(40.0);   // 10*4
-});
-
-it('WeeklyTrendTool flags weeks that contain a personal record', function (): void {
-    $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'distance_km' => 20, 'ctl_42d' => 30]);
-    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'distance_km' => 25, 'ctl_42d' => 33]);
-    // A PR set on Thu 2026-05-14 falls in the week ending Sun 2026-05-17.
-    PersonalRecord::factory()->for($user)->create(['set_at' => Carbon::parse('2026-05-14T06:00')]);
-
-    $context = new WeeklyTrendTool($user, Carbon::parse('2026-05-18'), app(TrainingLoad::class))->handle([]);
-
-    $weeks = collect($context['weeks']);
-    expect($weeks->firstWhere('ending', '2026-05-17')['pr'])->toBeTrue()
-        ->and($weeks->firstWhere('ending', '2026-05-10')['pr'])->toBeFalse();
-});
-
-it('WeeklyTrendTool leaves the 4-week deltas null without enough history', function (): void {
-    $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-03', 'distance_km' => 12, 'ctl_42d' => 30,
-    ]);
-
-    $context = new WeeklyTrendTool($user, Carbon::parse('2026-05-04'), app(TrainingLoad::class))->handle([]);
-
-    expect($context['ctl_delta_4w'])->toBeNull()
-        ->and($context['volume_recent_4w_km'])->toBeNull();
-});
-
 it('WeeklyRecapNarrator sends only the continuity line and reads the week', function (): void {
     $user = User::factory()->create();
     $snapshot = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
@@ -693,13 +540,6 @@ it('MonthlyRecapNarrator sends only the continuity line and reads the month', fu
 
     expect(array_keys(new MonthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05')))
         ->toBe(NarratorContinuity::CONTEXT_KEYS);
-});
-
-it('TrendCaptionNarrator sends nothing at all, since the caption is entirely a read', function (): void {
-    $user = User::factory()->create();
-
-    expect(new TrendCaptionNarrator(fakeCaller('{"caption":"x"}'), app(TrainingLoad::class))
-        ->context($user, Carbon::today()))->toBe([]);
 });
 
 // ── CardFlavorNarrator ────────────────────────────────────────────────
@@ -1300,16 +1140,6 @@ it('CardFlavorNarrator prompt refuses badge and move names stitched together', f
         ->toContain('label, bukan cerita')
         ->toContain('dibawa oleh special move')
         ->toContain('dua nama yang ditempel');
-});
-
-it('TrendCaptionNarrator prompt demands one coherent reading with a concrete number', function (): void {
-    $prompt = narratorPrompt(TrendCaptionNarrator::class);
-
-    expect($prompt)
-        ->toContain('SATU PEMBACAAN SAJA')
-        ->toContain('jangan')
-        ->toContain('minimal 1 angka konkret')
-        ->not->toContain('—');
 });
 
 it('RunInsightNarrator prompt steers general words to Indonesian while keeping run terms English', function (): void {

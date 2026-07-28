@@ -24,7 +24,7 @@ class AnalysisFactory extends Factory
         return [
             'subject_type' => 'briefing_user_day',
             'subject_id' => 1,
-            'analysis_type' => AnalysisType::BriefingHeadline,
+            'analysis_type' => AnalysisType::BriefingSuggestion,
             'discriminator' => '2026-05-18',
             'status' => AnalysisStatus::Pending,
             'content' => null,

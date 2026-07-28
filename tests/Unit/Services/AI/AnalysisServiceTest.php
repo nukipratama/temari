@@ -239,13 +239,13 @@ it('activity group debounces — 3 sibling-type requests dispatch only one Analy
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
 });
 
-it('requestBriefingGroup creates 2 rows (headline + suggestion) and dispatches one AnalyzeBriefingJob', function (): void {
+it('requestBriefingGroup creates the suggestion row and dispatches one AnalyzeBriefingJob', function (): void {
     $user = User::factory()->create();
 
     $this->service->requestBriefingGroup($user, '2026-05-18');
 
     // Mascot voice is split into its own row job — not in this group anymore.
-    expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(2);
+    expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(1);
     Bus::assertDispatched(
         AnalyzeBriefingJob::class,
         fn (AnalyzeBriefingJob $job): bool => $job->subjectId === $user->id && $job->discriminator === '2026-05-18',
@@ -417,7 +417,7 @@ it('markDone records content and generated_at', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
     ]);
 
@@ -440,7 +440,7 @@ it('markDone stores a content fingerprint when given, and leaves it null otherwi
     $without = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
     ]);
 
@@ -455,7 +455,7 @@ it('markDone uses supplied generatedAt when given', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
     ]);
 
@@ -470,7 +470,7 @@ it('markFailed records error message without clearing prior content', function (
     $row = Analysis::factory()->done('prior content')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
     ]);
 
@@ -491,7 +491,7 @@ it('markFailed alerts maintainers exactly at the dead-letter crossing', function
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
         'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
     ]);
@@ -510,7 +510,7 @@ it('markFailed does not alert while a Failed row is still under the retry budget
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
         'attempts' => 1,
     ]);
@@ -524,7 +524,7 @@ it('markProcessing increments attempts', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
         'attempts' => 0,
     ]);
@@ -580,7 +580,7 @@ it('does not create a duplicate briefing-group row when re-requested', function 
         ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
         ->where('subject_id', $user->id)
         ->where('discriminator', '2026-05-18')
-        ->count())->toBe(2);
+        ->count())->toBe(1);
 });
 
 it('rejects a duplicate (subject_type, subject_id, analysis_type, discriminator) at the DB level', function (): void {
@@ -672,7 +672,7 @@ it('markDone fans out a notification for a notifiable, wired type', function ():
 
 it('markDone does not notify for a non-notifiable type', function (): void {
     Notification::fake();
-    $row = Analysis::factory()->create(['analysis_type' => AnalysisType::DailyGreeting]);
+    $row = Analysis::factory()->create(['analysis_type' => AnalysisType::BriefingMascotVoice]);
 
     $this->service->markDone($row, 'Halo!');
 
@@ -704,7 +704,7 @@ it('markDone does not start the re-trigger cooldown under withoutDispatching (de
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingHeadline,
+        'analysis_type' => AnalysisType::BriefingSuggestion,
         'discriminator' => '2026-05-18',
     ]);
 

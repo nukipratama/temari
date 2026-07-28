@@ -23,7 +23,6 @@ use Override;
 final readonly class BriefingResult implements Arrayable
 {
     /**
-     * @param  AnalysisPayload  $headline
      * @param  AnalysisPayload  $suggestion
      * @param  AnalysisPayload  $mascotVoice
      * @param  AnalysisPayload  $featuredKartuVoice
@@ -32,7 +31,6 @@ final readonly class BriefingResult implements Arrayable
         public string $vibeState,
         public string $vibeLabel,
         public string $vibeEmoji,
-        public array $headline,
         public array $suggestion,
         public array $mascotVoice,
         public array $featuredKartuVoice,
@@ -57,7 +55,6 @@ final readonly class BriefingResult implements Arrayable
             'vibeState' => $this->vibeState,
             'vibeLabel' => $this->vibeLabel,
             'vibeEmoji' => $this->vibeEmoji,
-            'headline' => $this->headline,
             'suggestion' => $this->suggestion,
             'mascotVoice' => $this->mascotVoice,
             'featuredKartuVoice' => $this->featuredKartuVoice,

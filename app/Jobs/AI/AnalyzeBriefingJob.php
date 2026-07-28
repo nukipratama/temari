@@ -44,7 +44,6 @@ class AnalyzeBriefingJob extends AnalyzeGroupJob
         $payload = app(BriefingNarrator::class)->generate($subject, $asOf);
 
         return [
-            AnalysisType::BriefingHeadline->value => $payload['headline'],
             AnalysisType::BriefingSuggestion->value => $payload['suggestion'],
         ];
     }

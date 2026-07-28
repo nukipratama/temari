@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\Rarity;
 use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
-use App\Jobs\AI\AnalyzeDailyGreetingJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -39,7 +38,7 @@ it('dispatches briefing group and daily row types for each active user', functio
             $briefingGroupCalls[] = ['user_id' => $u->id, 'discriminator' => $discriminator];
         });
     $service->shouldReceive('request')
-        ->times(4) // TrendCaption, MascotVoice, DailyGreeting, FeaturedKartuVoice
+        ->times(2) // MascotVoice, FeaturedKartuVoice
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$requestCalls): Analysis {
             $requestCalls[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'invalidate');
 
@@ -48,7 +47,7 @@ it('dispatches briefing group and daily row types for each active user', functio
     $this->app->instance(AnalysisService::class, $service);
 
     $this->artisan('ai:daily-briefing')
-        ->expectsOutputToContain('Dispatched daily kickoff (briefing + trend caption) for 1 active users.')
+        ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 1 active users.')
         ->assertSuccessful();
 
     // Briefing group called once for the user with today's discriminator.
@@ -56,12 +55,10 @@ it('dispatches briefing group and daily row types for each active user', functio
     expect($briefingGroupCalls[0]['user_id'])->toBe($user->id)
         ->and($briefingGroupCalls[0]['discriminator'])->toBe($today);
 
-    // Trend caption first, then the two day-keyed rows, then the featured-kartu row.
+    // The day-keyed mascot voice first, then the featured-kartu row.
     $requestedTypes = collect($requestCalls)->map(fn (array $c): string => $c['type']->value)->all();
     expect($requestedTypes)->toBe([
-        'trend_caption',
         'briefing_mascot_voice',
-        'daily_greeting',
         'briefing_featured_kartu_voice',
     ]);
 
@@ -71,18 +68,14 @@ it('dispatches briefing group and daily row types for each active user', functio
     }
     // Day-keyed rows carry today; the featured voice keys off the card id so it
     // regenerates only when the featured pick changes.
-    expect($byType['trend_caption']['subjectOrType'])->toBe(AnalysisType::TREND_CAPTION_SUBJECT_TYPE)
-        ->and($byType['trend_caption']['discriminator'])->toBe($today)
+    expect($byType['briefing_mascot_voice']['subjectOrType'])->toBe(AnalysisType::BRIEFING_SUBJECT_TYPE)
         ->and($byType['briefing_mascot_voice']['discriminator'])->toBe($today)
-        ->and($byType['daily_greeting']['discriminator'])->toBe($today)
         ->and($byType['briefing_featured_kartu_voice']['discriminator'])->toBe((string) $card->id);
 
-    // The LLM types invalidate=false; the rule-based trend caption recomputes (invalidate=true).
+    // The LLM types never invalidate an existing row (no re-bill).
     $invalidateByType = $byType->map(fn (array $c): bool => $c['invalidate']);
-    expect($invalidateByType['trend_caption'])->toBeTrue()
-        ->and($invalidateByType['briefing_mascot_voice'])->toBeFalse()
-        ->and($invalidateByType['briefing_featured_kartu_voice'])->toBeFalse()
-        ->and($invalidateByType['daily_greeting'])->toBeFalse();
+    expect($invalidateByType['briefing_mascot_voice'])->toBeFalse()
+        ->and($invalidateByType['briefing_featured_kartu_voice'])->toBeFalse();
 
     Carbon::setTestNow();
 });
@@ -99,11 +92,11 @@ it('skips the demo user even with recent analyzed activity', function (): void {
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('requestBriefingGroup')->once();
-    $service->shouldReceive('request')->times(4)->andReturn(new Analysis());
+    $service->shouldReceive('request')->times(2)->andReturn(new Analysis());
     $this->app->instance(AnalysisService::class, $service);
 
     $this->artisan('ai:daily-briefing')
-        ->expectsOutputToContain('Dispatched daily kickoff (briefing + trend caption) for 1 active users.')
+        ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 1 active users.')
         ->assertSuccessful();
 
     Carbon::setTestNow();
@@ -122,19 +115,13 @@ it('a second same-day run only fills missing types and never re-bills Done rows'
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()->subDays(2)]);
     $card = RunCard::factory()->for($activity)->create(['rarity' => Rarity::Epic]);
 
-    // Simulate the earlier (00:01) run having already completed the mascot voice
-    // and daily greeting, but NOT the featured kartu voice (the row a missed tick
-    // left unproduced; here it is simply absent).
+    // Simulate the earlier (00:01) run having already completed the mascot
+    // voice, but NOT the featured kartu voice (the row a missed tick left
+    // unproduced; here it is simply absent).
     Analysis::factory()->done('kata temari kemarin')->create([
         'subject_type' => AnalysisType::BriefingMascotVoice->subjectType(),
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => $today,
-    ]);
-    Analysis::factory()->done('selamat pagi')->create([
-        'subject_type' => AnalysisType::DailyGreeting->subjectType(),
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::DailyGreeting,
         'discriminator' => $today,
     ]);
 
@@ -142,7 +129,7 @@ it('a second same-day run only fills missing types and never re-bills Done rows'
     Bus::fake();
 
     $this->artisan('ai:daily-briefing')
-        ->expectsOutputToContain('Dispatched daily kickoff (briefing + trend caption) for 1 active users.')
+        ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 1 active users.')
         ->assertSuccessful();
 
     // The missing type is created + dispatched once, keyed by the featured card id.
@@ -154,24 +141,16 @@ it('a second same-day run only fills missing types and never re-bills Done rows'
         ->firstOrFail();
     expect($featured->status)->toBe(AnalysisStatus::Queued);
 
-    // The already-Done types are neither re-dispatched nor reset (no re-bill).
+    // The already-Done type is neither re-dispatched nor reset (no re-bill).
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    Bus::assertNotDispatched(AnalyzeDailyGreetingJob::class);
 
     $mascot = Analysis::query()
         ->where('subject_id', $user->id)
         ->where('analysis_type', AnalysisType::BriefingMascotVoice)
         ->where('discriminator', $today)
         ->firstOrFail();
-    $greeting = Analysis::query()
-        ->where('subject_id', $user->id)
-        ->where('analysis_type', AnalysisType::DailyGreeting)
-        ->where('discriminator', $today)
-        ->firstOrFail();
     expect($mascot->status)->toBe(AnalysisStatus::Done)
-        ->and($mascot->content)->toBe('kata temari kemarin')
-        ->and($greeting->status)->toBe(AnalysisStatus::Done)
-        ->and($greeting->content)->toBe('selamat pagi');
+        ->and($mascot->content)->toBe('kata temari kemarin');
 
     Carbon::setTestNow();
 });
@@ -188,7 +167,7 @@ it('reports zero active users when no analyzed activities are recent', function 
     $this->app->instance(AnalysisService::class, $service);
 
     $this->artisan('ai:daily-briefing')
-        ->expectsOutputToContain('Dispatched daily kickoff (briefing + trend caption) for 0 active users.')
+        ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 0 active users.')
         ->assertSuccessful();
 
     Carbon::setTestNow();

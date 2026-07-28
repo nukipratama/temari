@@ -46,9 +46,9 @@ function seedUserWithData(): array
         'discriminator' => null,
     ]);
     Analysis::factory()->create([
-        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::DailyGreeting,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
     ]);
 
@@ -62,7 +62,7 @@ function seedUserWithData(): array
     ]);
     TokenUsage::query()->create([
         'user_id' => $user->id,
-        'kind' => 'daily_greeting',
+        'kind' => 'briefing_mascot_voice',
         'prompt_tokens' => 20,
         'completion_tokens' => 10,
         'total_tokens' => 30,
@@ -90,7 +90,7 @@ it('removes the user and all owned data, deletes their analyses, but keeps ai_to
     // All analyses (activity-subject + personal-record-subject + user-subject) are deleted.
     expect(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->exists())->toBeFalse()
         ->and(Analysis::query()->where('subject_type', PersonalRecord::class)->where('subject_id', $personalRecord->id)->exists())->toBeFalse()
-        ->and(Analysis::query()->where('subject_type', AnalysisType::DAILY_GREETING_SUBJECT_TYPE)->where('subject_id', $user->id)->exists())->toBeFalse();
+        ->and(Analysis::query()->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)->where('subject_id', $user->id)->exists())->toBeFalse();
 
     // Token-usage rows are kept (now orphaned) for cost history.
     expect(TokenUsage::query()->where('user_id', $user->id)->count())->toBe(2);

@@ -56,9 +56,9 @@ it('leaves no orphaned narration, deliveries or push endpoints behind', function
         'analysis_type' => AnalysisType::PostRunSpeech,
     ]);
     Analysis::factory()->done('Halo.')->create([
-        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::DailyGreeting,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
     ]);
     DB::table('notification_deliveries')->insert([
         'analysis_id' => $activityAnalysis->id,
@@ -101,9 +101,9 @@ it('does not touch another user data', function (): void {
     $user = User::factory()->create();
     $bystander = User::factory()->create();
     Analysis::factory()->done('Punya orang lain.')->create([
-        'subject_type' => AnalysisType::DAILY_GREETING_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $bystander->id,
-        'analysis_type' => AnalysisType::DailyGreeting,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
     ]);
     DB::table('push_subscriptions')->insert([
         'subscribable_type' => $bystander->getMorphClass(),

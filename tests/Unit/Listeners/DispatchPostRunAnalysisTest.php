@@ -7,8 +7,6 @@ use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
-use App\Jobs\AI\AnalyzeDailyGreetingJob;
-use App\Jobs\AI\AnalyzeTrendCaptionJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\Activity;
@@ -53,14 +51,14 @@ function fire(Activity $activity): void
     app(DispatchPostRunAnalysis::class)->handle(new ActivityIngested($activity->id));
 }
 
-it('fans out activity + briefing + greeting analyses', function (): void {
+it('fans out activity + briefing + mascot voice analyses', function (): void {
     $activity = analyzedActivity();
 
     fire($activity);
 
     Bus::assertDispatched(AnalyzeActivityJob::class);
     Bus::assertDispatched(AnalyzeBriefingJob::class);
-    Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 it('stages the weekly recap Pending without an LLM dispatch (weekly cadence)', function (): void {
@@ -142,7 +140,7 @@ it('uses today as the briefing discriminator', function (): void {
         AnalyzeBriefingJob::class,
         fn (AnalyzeBriefingJob $job): bool => $job->discriminator === '2026-05-19',
     );
-    Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Carbon::setTestNow();
 });
 
@@ -154,10 +152,8 @@ it('refreshes the daily briefing set on the second run of the day', function ():
     // The morning's briefing set finishes generating (rows flip to Done).
     Analysis::query()
         ->whereIn('analysis_type', [
-            AnalysisType::BriefingHeadline->value,
             AnalysisType::BriefingSuggestion->value,
             AnalysisType::BriefingMascotVoice->value,
-            AnalysisType::DailyGreeting->value,
         ])
         ->get()
         ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'sudah jadi'));
@@ -172,7 +168,6 @@ it('refreshes the daily briefing set on the second run of the day', function ():
     Bus::assertDispatched(AnalyzeActivityJob::class);
     Bus::assertDispatched(AnalyzeBriefingJob::class);
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    Bus::assertDispatched(AnalyzeDailyGreetingJob::class);
     Carbon::setTestNow();
 });
 
@@ -184,10 +179,8 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
     // Today's daily set finishes generating (rows flip to Done).
     Analysis::query()
         ->whereIn('analysis_type', [
-            AnalysisType::BriefingHeadline->value,
             AnalysisType::BriefingSuggestion->value,
             AnalysisType::BriefingMascotVoice->value,
-            AnalysisType::DailyGreeting->value,
         ])
         ->get()
         ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'sudah jadi'));
@@ -200,30 +193,6 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
     Bus::assertDispatched(AnalyzeActivityJob::class);
     Bus::assertNotDispatched(AnalyzeBriefingJob::class);
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    Bus::assertNotDispatched(AnalyzeDailyGreetingJob::class);
-    Carbon::setTestNow();
-});
-
-// The caption used to be filled inline from stored snapshots, so re-running it
-// per run was free. It is narrated now, so it follows the same daily-refresh
-// rule as the rest of the set: today's runs re-narrate, older ones never do.
-it('re-narrates the trend caption on every run of the day', function (): void {
-    Carbon::setTestNow('2026-05-19 06:00:00');
-    $first = analyzedActivity('2026-05-19 05:30:00');
-    fire($first);
-
-    $row = Analysis::query()
-        ->where('analysis_type', AnalysisType::TrendCaption)
-        ->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'tren stabil');
-
-    Bus::fake();
-    Carbon::setTestNow('2026-05-19 17:45:00');
-    $second = analyzedActivity('2026-05-19 17:30:00', $first->user_id);
-    fire($second);
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
-    Bus::assertDispatched(AnalyzeTrendCaptionJob::class);
     Carbon::setTestNow();
 });
 

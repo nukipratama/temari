@@ -344,12 +344,9 @@ class AnalysisController extends Controller
     private function authorizeSubject(User $user, AnalysisType $type, int $subjectId): void
     {
         $authorized = match ($type) {
-            AnalysisType::BriefingHeadline,
             AnalysisType::BriefingSuggestion,
             AnalysisType::BriefingMascotVoice,
             AnalysisType::BriefingFeaturedKartuVoice,
-            AnalysisType::DailyGreeting,
-            AnalysisType::TrendCaption,
             AnalysisType::PersonaSummary,
             AnalysisType::AkuProfileVoice,
             AnalysisType::MonthlyRecap => $subjectId === $user->id,

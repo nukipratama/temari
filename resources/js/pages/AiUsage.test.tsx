@@ -34,7 +34,7 @@ const baseProps = {
         { day: '2026-05-19', prompt: 300, completion: 130, total: 430, calls: 2, cost: 0.02 },
     ],
     availableKinds: [
-        { value: 'briefing', label: 'BriefingHeadline' },
+        { value: 'briefing', label: 'BriefingSuggestion' },
         { value: 'run-insight', label: 'RunInsightTechnical' },
     ],
     budget: { todayCost: 0.02, dailyCeiling: 0.1, currency: 'USD' },
@@ -57,7 +57,7 @@ const nyangkutGroup = {
     user_id: 8,
     user_name: 'Dina',
     count: 1,
-    blocks: [{ type: 'daily_greeting', error: null, failed_at: '2026-05-19T08:00:00+00:00' }],
+    blocks: [{ type: 'briefing_mascot_voice', error: null, failed_at: '2026-05-19T08:00:00+00:00' }],
 };
 
 describe('AiUsage page', () => {

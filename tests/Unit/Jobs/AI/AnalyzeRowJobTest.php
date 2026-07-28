@@ -98,7 +98,7 @@ function makeRowForRowJobTest(): Analysis
     return Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::DailyGreeting,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
     ]);
 }

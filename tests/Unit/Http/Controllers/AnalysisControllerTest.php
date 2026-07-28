@@ -15,9 +15,9 @@ uses(RefreshDatabase::class);
 
 it('throws Unauthenticated when the request has no user (defensive guard)', function (): void {
     $controller = new AnalysisController();
-    $request = TriggerAnalysisRequest::create('/api/analyses/briefing_headline/1/trigger', 'POST');
+    $request = TriggerAnalysisRequest::create('/api/analyses/briefing_suggestion/1/trigger', 'POST');
 
-    expect(fn () => $controller->trigger($request, app(AnalysisService::class), app(ActivityPipeline::class), 'briefing_headline', 1))
+    expect(fn () => $controller->trigger($request, app(AnalysisService::class), app(ActivityPipeline::class), 'briefing_suggestion', 1))
         ->toThrow(AuthorizationException::class, 'Unauthenticated');
 });
 

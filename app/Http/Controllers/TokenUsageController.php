@@ -88,7 +88,7 @@ class TokenUsageController extends Controller
      */
     public function retryFailed(int $userId): RedirectResponse
     {
-        $rows = Analysis::query()->where('status', AnalysisStatus::Failed)->get();
+        $rows = Analysis::query()->knownType()->where('status', AnalysisStatus::Failed)->get();
         $ownerIds = Analysis::ownerIdsForRows($rows);
         $matching = $rows->filter(fn (Analysis $row): bool => ($ownerIds[$row->id] ?? null) === $userId);
 
@@ -129,6 +129,7 @@ class TokenUsageController extends Controller
     private function failedUnderBudgetByUser(): array
     {
         $rows = Analysis::query()
+            ->knownType()
             ->where('status', AnalysisStatus::Failed)
             ->where('attempts', '<', Analysis::MAX_SELF_HEAL_ATTEMPTS)
             ->orderByDesc('updated_at')
@@ -151,6 +152,7 @@ class TokenUsageController extends Controller
         $threshold = Carbon::now()->subHours(Analysis::STALE_IN_FLIGHT_HOURS);
 
         $rows = Analysis::query()
+            ->knownType()
             ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Queued])
             ->where(function ($query) use ($threshold): void {
                 $query

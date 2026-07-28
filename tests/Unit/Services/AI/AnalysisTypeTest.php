@@ -29,7 +29,7 @@ it('flags exactly the heart-rate-zone-derived types as zone-dependent', function
     'splits' => [AnalysisType::RunInsightSplits, false],
     'post-run speech' => [AnalysisType::PostRunSpeech, false],
     'pr context' => [AnalysisType::PrContext, false],
-    'briefing headline' => [AnalysisType::BriefingHeadline, false],
+    'briefing suggestion' => [AnalysisType::BriefingSuggestion, false],
 ]);
 
 it('flags only the connected + chained kinds wired so far', function (AnalysisType $type, bool $expected): void {
@@ -42,7 +42,7 @@ it('flags only the connected + chained kinds wired so far', function (AnalysisTy
     'run insight splits (per-activity chain)' => [AnalysisType::RunInsightSplits, true],
     'run insight zones (per-activity chain)' => [AnalysisType::RunInsightZones, true],
     'card flavor (standalone)' => [AnalysisType::CardFlavor, false],
-    'briefing headline (standalone)' => [AnalysisType::BriefingHeadline, false],
+    'briefing mascot voice (standalone)' => [AnalysisType::BriefingMascotVoice, false],
 ]);
 
 it('assigns a cadence to every type', function (): void {
@@ -56,9 +56,7 @@ it('maps representative types to the expected cadence', function (AnalysisType $
 })->with([
     'post-run speech is per-activity' => [AnalysisType::PostRunSpeech, AnalysisCadence::PerActivity],
     'card flavor is per-activity' => [AnalysisType::CardFlavor, AnalysisCadence::PerActivity],
-    'briefing headline is daily' => [AnalysisType::BriefingHeadline, AnalysisCadence::Daily],
-    'daily greeting is daily' => [AnalysisType::DailyGreeting, AnalysisCadence::Daily],
-    'trend caption is daily' => [AnalysisType::TrendCaption, AnalysisCadence::Daily],
+    'briefing suggestion is daily' => [AnalysisType::BriefingSuggestion, AnalysisCadence::Daily],
     'weekly recap is weekly' => [AnalysisType::WeeklyRecap, AnalysisCadence::Weekly],
     'monthly recap is monthly' => [AnalysisType::MonthlyRecap, AnalysisCadence::Monthly],
     'persona summary is on-demand' => [AnalysisType::PersonaSummary, AnalysisCadence::OnDemand],
@@ -72,7 +70,6 @@ it('is the single source of truth for group membership', function (): void {
         AnalysisType::RunInsightZones,
     ])
         ->and(AnalysisType::groupedBy(AnalyzeBriefingJob::class))->toBe([
-            AnalysisType::BriefingHeadline,
             AnalysisType::BriefingSuggestion,
         ])
         // The job classes derive their grouped types from the enum.
@@ -84,7 +81,7 @@ it('returns null group job for non-grouped types', function (AnalysisType $type)
     expect($type->groupJobClass())->toBeNull();
 })->with([
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice],
-    'daily greeting' => [AnalysisType::DailyGreeting],
+    'briefing featured kartu voice' => [AnalysisType::BriefingFeaturedKartuVoice],
     'weekly recap' => [AnalysisType::WeeklyRecap],
     'monthly recap' => [AnalysisType::MonthlyRecap],
 ]);

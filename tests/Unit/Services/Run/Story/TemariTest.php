@@ -2,14 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Jobs\AI\AnalyzeDailyGreetingJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Models\User;
-use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -303,12 +301,8 @@ it('emits a daily greeting story line per (user, date) with null speech and disp
         ->and($line->speech)->toBeNull();
 
     // No LLM dispatch on page-load greeting — analyses are user-triggered.
-    Bus::assertNotDispatched(AnalyzeDailyGreetingJob::class);
-
-    $analysis = Analysis::query()
-        ->forSubject(AnalysisType::DAILY_GREETING_SUBJECT_TYPE, $user->id, AnalysisType::DailyGreeting, '2026-05-11')
-        ->first();
-    expect($analysis)->toBeNull();
+    Bus::assertNothingDispatched();
+    expect(Analysis::query()->count())->toBe(0);
 });
 
 it('upserts the daily greeting (no dup on second call)', function (): void {
