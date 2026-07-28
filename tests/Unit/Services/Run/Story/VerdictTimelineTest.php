@@ -46,6 +46,64 @@ function seedVerdict(User $user, Carbon $when, string $mood, ?string $speech, fl
     return $activity;
 }
 
+// ── Characterisation: filters the SQL rewrite must preserve ──────────
+//
+// Three of these are enforced today only as side effects of loading everything
+// and dropping rows in PHP: the AnalyzedScope nulls out `$line->activity` for a
+// stub, a null start_date_local is skipped after hydration, and blank speech is
+// skipped after a second query. Bounding the query in SQL has to reproduce all
+// three, so pin them before touching it.
+
+it('skips a story line whose activity is still an un-ingested stub', function (): void {
+    $user = User::factory()->create();
+    $stub = Activity::factory()->for($user)->create(['analyzed_at' => null]);
+    ActivityDetail::factory()->for($stub)->create(['start_date_local' => Carbon::parse('2026-05-10 06:00:00')]);
+    StoryLine::query()->create([
+        'user_id' => $user->id, 'activity_id' => $stub->id, 'kind' => StoryLine::KIND_POST_RUN,
+        'mood' => Temari::MOOD_NYALA, 'speech' => null, 'sigil_pattern' => 'dddd',
+    ]);
+    Analysis::factory()->done('ada ceritanya')->create([
+        'subject_type' => Activity::class, 'subject_id' => $stub->id,
+        'analysis_type' => AnalysisType::PostRunSpeech, 'discriminator' => null,
+    ]);
+
+    expect(app(VerdictTimeline::class)->recent($user))->toBe([]);
+});
+
+it('skips a story line whose detail has no start date', function (): void {
+    $user = User::factory()->create();
+    seedVerdict($user, Carbon::parse('2026-05-10 06:00:00'), Temari::MOOD_NYALA, 'kemarin', 5000.0);
+    $undated = seedVerdict($user, Carbon::parse('2026-05-09 06:00:00'), Temari::MOOD_ENTENG, 'tanpa tanggal', 5000.0);
+    $undated->detail->update(['start_date_local' => null]);
+
+    $items = app(VerdictTimeline::class)->recent($user);
+
+    expect($items)->toHaveCount(1)
+        ->and($items[0]->oneline)->toBe('kemarin');
+});
+
+it('skips a story line whose speech is Done but empty', function (): void {
+    $user = User::factory()->create();
+    $blank = seedVerdict($user, Carbon::parse('2026-05-10 06:00:00'), Temari::MOOD_NYALA, '', 5000.0);
+
+    expect($blank->id)->toBeGreaterThan(0)
+        ->and(app(VerdictTimeline::class)->recent($user))->toBe([]);
+});
+
+it('returns exactly the newest $limit activities when more qualify', function (): void {
+    $user = User::factory()->create();
+    $ids = [];
+    foreach (range(1, 6) as $day) {
+        $ids[$day] = seedVerdict($user, Carbon::parse("2026-05-{$day} 06:00:00"), Temari::MOOD_NYALA, "hari {$day}", 5000.0)->id;
+    }
+
+    $items = app(VerdictTimeline::class)->recent($user, 3);
+
+    // Newest first: days 6, 5, 4.
+    expect(array_map(fn ($item): int => $item->activityId, $items))
+        ->toBe([$ids[6], $ids[5], $ids[4]]);
+});
+
 it('returns an empty list when the user has no verdicts', function (): void {
     $user = User::factory()->create();
 

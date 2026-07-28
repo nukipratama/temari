@@ -12,6 +12,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Override;
 
 class VerdictTimeline implements VerdictNarrator
@@ -19,6 +20,20 @@ class VerdictTimeline implements VerdictNarrator
     public const DEFAULT_LIMIT = 8;
 
     /**
+     * The user's most recent narrated runs, newest first.
+     *
+     * Every filter is in the query so the LIMIT can be too. It used to load the
+     * user's entire post-run history — hydrating each activity detail's
+     * `stream_summary` JSON along with it — sort in PHP, and slice five off the
+     * end. Both briefing narrators call this, twice a day.
+     *
+     * The three conditions are what the PHP loop used to enforce implicitly:
+     * an un-ingested stub was dropped because {@see AnalyzedScope} nulled the
+     * `activity` relation, a detail with no start date was skipped after
+     * hydration, and a run whose speech was missing or blank was skipped after a
+     * second query. The scope does not reach a join from `story_lines`, so
+     * `analyzed_at` is asserted here directly.
+     *
      * @return list<VerdictTimelineItem>
      */
     #[Override]
@@ -26,34 +41,50 @@ class VerdictTimeline implements VerdictNarrator
     {
         /** @var Collection<int, StoryLine> $lines */
         $lines = StoryLine::query()
-            ->with('activity.detail')
-            ->where('user_id', $user->id)
-            ->where('kind', StoryLine::KIND_POST_RUN)
-            ->whereNotNull('activity_id')
+            ->select('story_lines.*')
+            ->join('activities', 'activities.id', '=', 'story_lines.activity_id')
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('story_lines.user_id', $user->id)
+            ->where('story_lines.kind', StoryLine::KIND_POST_RUN)
+            ->whereNotNull('activities.analyzed_at')
+            ->whereNotNull('activity_details.start_date_local')
+            ->whereExists(fn (QueryBuilder $query) => $query
+                ->from('ai_analyses')
+                ->whereColumn('ai_analyses.subject_id', 'story_lines.activity_id')
+                ->where('ai_analyses.subject_type', Activity::class)
+                ->where('ai_analyses.analysis_type', AnalysisType::PostRunSpeech->value)
+                ->where('ai_analyses.status', AnalysisStatus::Done->value)
+                ->whereNotNull('ai_analyses.content')
+                ->where('ai_analyses.content', '!=', ''))
+            // Column-limited so the run's stream_summary blob is never hydrated;
+            // only these four fields are read below.
+            ->with(['activity.detail' => fn ($query) => $query->select(
+                'id',
+                'activity_id',
+                'start_date_local',
+                'distance',
+                'trimp_edwards',
+                'moving_time',
+            )])
+            ->orderByDesc('activity_details.start_date_local')
+            ->limit($limit)
             ->get();
 
         if ($lines->isEmpty()) {
             return [];
         }
 
-        $activityIds = $lines->pluck('activity_id')->all();
         $speechByActivity = Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('analysis_type', AnalysisType::PostRunSpeech)
             ->where('status', AnalysisStatus::Done)
-            ->whereIn('subject_id', $activityIds)
+            ->whereIn('subject_id', $lines->pluck('activity_id')->all())
             ->pluck('content', 'subject_id');
 
         $items = [];
         foreach ($lines as $line) {
-            $activity = $line->activity;
-            $detail = $activity?->detail;
-            if ($detail === null || $detail->start_date_local === null) {
-                continue;
-            }
-
-            $speech = $speechByActivity->get($line->activity_id);
-            if (blank($speech)) {
+            $detail = $line->activity?->detail;
+            if ($detail?->start_date_local === null) {
                 continue;
             }
 
@@ -61,19 +92,14 @@ class VerdictTimeline implements VerdictNarrator
                 activityId: (int) $line->activity_id,
                 mood: $line->mood,
                 moodFace: $this->moodFace($line->mood),
-                oneline: $speech,
+                oneline: (string) $speechByActivity->get($line->activity_id),
                 startedAt: $detail->start_date_local,
                 distanceKm: round((float) ($detail->distance ?? 0) / 1000, 1),
                 intensity: $this->intensity($detail->trimp_edwards, $detail->moving_time),
             );
         }
 
-        usort(
-            $items,
-            fn (VerdictTimelineItem $a, VerdictTimelineItem $b): int => $b->startedAt->timestamp <=> $a->startedAt->timestamp,
-        );
-
-        return array_slice($items, 0, $limit);
+        return $items;
     }
 
     /**
