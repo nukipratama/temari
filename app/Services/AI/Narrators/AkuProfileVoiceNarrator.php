@@ -31,7 +31,7 @@ class AkuProfileVoiceNarrator
 
         Kalau weekly_streak >= 2, akui ritmenya (mis. "konsisten 4 minggu
         beruntun"). Kalau favorite_time ada, selipkan karakternya secara natural
-        (pagi = anak pagi, malam = pelari malam), jangan dipaksa kalau null.
+        (pagi = anak pagi, malam = pelari malam), jangan dipaksa kalau gak muncul.
 
         Kalau vdot tersedia, sebutkan skornya sebagai gambaran level kebugaran
         (mis. "VDOT 45, lumayan buat intermediate runner"). Kalau ada
@@ -47,7 +47,7 @@ class AkuProfileVoiceNarrator
         form_status (kondisi beban terkini: fresh/optimal/fatigued/overreaching)
         cuma buat nyelarasin nada, bukan subjek utama. Jangan dorong "gas terus"
         kalau lagi fatigued/overreaching, dan jangan kontradiksi sama recap.
-        Fokus tetap ke identitas dan progres jangka panjang. Kalau null, abaikan.
+        Fokus tetap ke identitas dan progres jangka panjang. Kalau gak muncul, abaikan.
 
         Bahasa: Indonesia, istilah running tetap bahasa Inggris (pace, cadence,
         HR, split, easy, tempo).

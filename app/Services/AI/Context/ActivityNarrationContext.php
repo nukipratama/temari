@@ -30,8 +30,12 @@ final readonly class ActivityNarrationContext
         public ?int $weatherWindSpeedKmh,
         public ?int $weatherWindGustKmh,
         public ?int $weatherWindDirectionDeg,
-        /** 'forecast' when the rain flag is from the (uncertain) forecast endpoint, else 'observed'. */
-        public string $weatherRainSource,
+        /**
+         * 'forecast' when the rain flag came from the (uncertain) forecast
+         * endpoint, 'observed' when it was measured, and null when the run
+         * carries no rain reading at all — which is not the same as no rain.
+         */
+        public ?string $weatherRainSource,
     ) {
     }
 
@@ -50,7 +54,15 @@ final readonly class ActivityNarrationContext
             weatherWindSpeedKmh: $detail?->weather_wind_speed_kmh,
             weatherWindGustKmh: $detail?->weather_wind_gust_kmh,
             weatherWindDirectionDeg: $detail?->weather_wind_direction_deg,
-            weatherRainSource: $detail?->weather_rain_is_forecast ? 'forecast' : 'observed',
+            // No rain reading at all is not an observation of no rain: without
+            // this branch a run that never had weather attached reported its
+            // source as "observed", which the prompts are entitled to treat as
+            // fact.
+            weatherRainSource: match (true) {
+                $detail?->weather_rain_detected === null => null,
+                (bool) $detail->weather_rain_is_forecast => 'forecast',
+                default => 'observed',
+            },
         );
     }
 

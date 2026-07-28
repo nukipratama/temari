@@ -29,7 +29,7 @@ class MonthlyRecapNarrator
         2. Narasi mood (HANYA kalau mood_mix terisi): mood mana yang dominan
            dan apa artinya. Gunakan data mood_mix -- sebut persentase kalau
            menonjol (mis. "60% sesi kamu adem, cuma 2 kali nyala"). Kalau
-           mood_mix kosong atau null, LEWATI langkah ini diam-diam, langsung ke
+           mood_mix kosong atau gak muncul, LEWATI langkah ini diam-diam, langsung ke
            highlight, jangan sebut bahwa data mood belum ada.
         3. Highlight: lari terjauh, jumlah PR (pr_count) kalau ada, progres
            mingguan dari weekly_distance_km (mis. "naik tiap minggu" atau
@@ -38,7 +38,7 @@ class MonthlyRecapNarrator
            Pakai 1 yang paling menonjol.
         4. Tutup: 1 refleksi singkat atau dorongan untuk bulan depan. Kalau
            `fitness.form_status_end` overreaching/fatigued, condong ke recovery,
-           jangan dorong nambah beban. Kalau null, lewati.
+           jangan dorong nambah beban. Kalau gak muncul, lewati.
 
         Sesuaikan tone:
         - Mayoritas nyala/enteng: rayakan konsistensi.

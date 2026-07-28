@@ -45,7 +45,7 @@ class PersonaSummaryNarrator
         form_status (kondisi beban terkini: fresh/optimal/fatigued/overreaching)
         cuma buat nyelarasin nada dorongan, jangan kontradiksi sama recap. Kalau
         overreaching/fatigued, dorongan condong ke recovery, bukan nambah quality.
-        Kalau null, abaikan.
+        Kalau gak muncul, abaikan.
 
         ANTI-PATTERN:
         - "Pola lari kamu cenderung easy-dominan" tanpa penjelasan lanjutan.

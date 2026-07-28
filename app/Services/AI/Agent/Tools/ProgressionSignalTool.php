@@ -38,8 +38,8 @@ final class ProgressionSignalTool extends UserTool
     public function description(): string
     {
         return 'Jarak yang paling banyak dia perbaiki sepanjang riwayatnya, dengan selisih detiknya '
-            .'(label + delta_sec). Null kalau belum ada jarak yang punya minimal dua catatan buat '
-            .'dibandingkan, jadi jangan mengarang progres.';
+            .'(label + delta_sec). Kalau progression_signal gak muncul, belum ada jarak yang punya '
+            .'minimal dua catatan buat dibandingkan, jadi jangan mengarang progres.';
     }
 
     /** @return array<string, mixed> */

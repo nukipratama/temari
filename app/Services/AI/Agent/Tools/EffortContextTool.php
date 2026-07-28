@@ -28,7 +28,7 @@ final class EffortContextTool extends ActivityTool
     {
         return 'Seberapa berat sesi ini dibanding niatnya dan dibanding kebiasaan 28 hari terakhir: '
             .'session_intent (workout/race/easy/unknown, tagged atau inferred), relative_effort band, '
-            .'dan decoupling. decoupling null berarti lari ini terlalu pendek untuk mengukurnya, '
+            .'dan decoupling. Kalau decoupling gak muncul, lari ini terlalu pendek buat mengukurnya, '
             .'jadi jangan dikarang.';
     }
 

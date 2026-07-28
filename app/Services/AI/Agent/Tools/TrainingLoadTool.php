@@ -27,7 +27,7 @@ final class TrainingLoadTool extends UserTool
     {
         return 'Kondisi beban latihan pengguna: acute_7d, chronic_42d, form, dan form_status '
             .'(fresh/optimal/fatigued/overreaching). Panggil sebelum menyarankan recovery atau sesi '
-            .'berikutnya. Null kalau riwayat TRIMP-nya belum cukup.';
+            .'berikutnya. Kalau training_load gak muncul, riwayat TRIMP-nya belum cukup.';
     }
 
     /** @return array<string, mixed> */

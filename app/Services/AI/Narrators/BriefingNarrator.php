@@ -27,8 +27,8 @@ class BriefingNarrator
 
         DATA: angkanya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
         panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
-        giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan null tetap
-        null: lewati, jangan ditebak.
+        giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan field yang gak
+        muncul di hasil tool artinya gak ada datanya: lewati, jangan ditebak.
 
         ATURAN TENTANG WAKTU (PENTING):
         Dashboard ini bisa dibuka kapan aja oleh user (pagi, siang, sore, atau
@@ -135,7 +135,7 @@ class BriefingNarrator
           avg_decoupling_pct): pace/HR normal user 28 hari terakhir. WAJIB anchor
           cue eksekusi ke sini kalau ada, biar relatif dan personal (mis. "easy
           di sekitar pace normalmu", "tempo sedikit lebih cepat dari pace
-          rata-rata"). Kalau null (data kurang), JANGAN ngarang angka pace/HR
+          rata-rata"). Kalau gak muncul (data kurang), JANGAN ngarang angka pace/HR
           absolut, kasih cue by-feel aja (napas, effort, cadence).
 
         Suarakan kondisi user secara umum hari ini, seperti teman yang nemenin

@@ -85,9 +85,57 @@ final readonly class AgentToolbox
         return null;
     }
 
-    /** @param  array<string, mixed>  $payload */
+    /**
+     * Serialise a reading, leaving out everything the run has no answer for.
+     *
+     * A null key told the model nothing it could use: it still had to read the
+     * name, and "absent" carries the same meaning in half the words. A reading
+     * with nothing to report therefore comes back as `{}` — which is why every
+     * tool description says what a missing field means rather than what a null
+     * one does. That wording is the contract; do not strip without it.
+     *
+     * Empty arrays survive, since `[]` is an answer ("no zones recorded") in a
+     * way that a missing key is not.
+     *
+     * @param  array<string, mixed>  $payload
+     */
     private static function encode(array $payload): string
     {
-        return (string) json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+        // Cast so a reading with nothing left encodes as `{}` and not `[]`: the
+        // model is being handed an object, and an empty list would read as a
+        // different kind of answer. Payloads are always string-keyed, so this
+        // never renumbers anything. Nested lists stay lists.
+        return (string) json_encode((object) self::withoutNulls($payload), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $payload
+     * @return array<array-key, mixed>
+     */
+    private static function withoutNulls(array $payload): array
+    {
+        $kept = [];
+        foreach ($payload as $key => $value) {
+            if ($value === null) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $inner = self::withoutNulls($value);
+                // Emptied *by* the strip means it held nothing but nulls, so it
+                // is absent like they are. One that arrived empty is an answer
+                // in its own right and stays.
+                if ($inner === [] && $value !== []) {
+                    continue;
+                }
+                $kept[$key] = $inner;
+
+                continue;
+            }
+
+            $kept[$key] = $value;
+        }
+
+        return $kept;
     }
 }

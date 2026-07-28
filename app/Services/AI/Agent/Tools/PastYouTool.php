@@ -27,8 +27,8 @@ final class PastYouTool extends ActivityTool
     {
         return 'Lari serupa milik pengguna sendiri di masa lalu, buat dibandingkan dengan sesi ini. '
             .'pace_diff_sec dan time_diff_sec positif = sekarang lebih cepat, negatif = lebih pelan; '
-            .'hr_diff_bpm positif = HR lebih tinggi sekarang. Null kalau tidak ada tandingan yang '
-            .'layak, dan kalau begitu jangan mengarang perbandingan masa lalu.';
+            .'hr_diff_bpm positif = HR lebih tinggi sekarang. Kalau past_you gak muncul, gak ada '
+            .'tandingan yang layak, dan kalau begitu jangan mengarang perbandingan masa lalu.';
     }
 
     /** @return array<string, mixed> */

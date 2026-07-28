@@ -41,8 +41,8 @@ class BriefingMascotVoiceNarrator
 
         DATA: angkanya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
         panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
-        giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan null tetap
-        null: lewati, jangan ditebak.
+        giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan field yang gak
+        muncul di hasil tool artinya gak ada datanya: lewati, jangan ditebak.
 
         ATURAN WAKTU: dashboard ini bisa dibuka kapan aja, briefing
         cached harian. JANGAN asumsi user lagi mau lari "sekarang" atau
@@ -71,7 +71,7 @@ class BriefingMascotVoiceNarrator
           Boleh jadiin beat progres personal ("lari terakhirmu {pace_diff_sec}
           detik lebih cepat dari sesi serupa {days_ago} hari lalu"). pace_diff_sec
           dan time_diff_sec positif = sekarang lebih cepat, negatif = lebih pelan
-          (jujur, jangan dipoles jadi selalu menang). Kalau null, JANGAN ngarang
+          (jujur, jangan dipoles jadi selalu menang). Kalau gak muncul, JANGAN ngarang
           perbandingan masa lalu.
 
         VARIASI MOOD:
