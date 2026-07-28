@@ -72,11 +72,7 @@ class DashboardController extends Controller
             'snapshot' => fn (): ?WeeklySnapshot => WeeklySnapshot::query()
                 ->where('user_id', $user->id)
                 ->orderByDesc('week_ending')
-                ->limit(12)
-                ->get()
-                ->reverse()
-                ->values()
-                ->last(),
+                ->first(),
             'recentRuns' => fn (): Collection => $loadRecentRuns(),
             'lastRunNote' => function () use ($loadRecentRuns, $noteReader): ?array {
                 $lastRunActivityId = $loadRecentRuns()->first()?->activity_id;

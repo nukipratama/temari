@@ -87,6 +87,43 @@ it('renders KPIs + recent runs when the user has training-load history', functio
     Carbon::setTestNow();
 });
 
+/**
+ * `snapshot` is a single row — `KondisiCard` takes one `WeeklySnapshot | null`.
+ * The read used to pull the newest twelve and throw eleven away.
+ */
+it('reads only the newest weekly snapshot, not a window of them', function (): void {
+    $user = User::factory()->create();
+
+    foreach (range(1, 14) as $weeksAgo) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->subWeeks($weeksAgo)->toDateString(),
+        ]);
+    }
+
+    $newest = Carbon::today()->subWeek()->toDateString();
+
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('snapshot.week_ending', $newest));
+
+    // Narrowed to the hydrating read; the briefing runs its own projection
+    // (`select week_ending ... and runs > ?`) over the same table.
+    $snapshotReads = array_values(array_filter(
+        $queries,
+        fn (string $sql): bool => str_contains($sql, 'select * from `weekly_snapshots`'),
+    ));
+
+    // toEndWith, not toContain: `limit 12` contains `limit 1`.
+    expect($snapshotReads)->toHaveCount(1)
+        ->and($snapshotReads[0])->toEndWith('limit 1');
+});
+
 it('does not ship the unused trendAnalysis or weeklyRecap props', function (): void {
     $user = User::factory()->create();
 
