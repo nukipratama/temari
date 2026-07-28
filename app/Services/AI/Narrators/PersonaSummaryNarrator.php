@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
-use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\PersonaMixTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\TemariPersona;
+use App\Services\Run\Story\MoodMix;
 use Illuminate\Support\Carbon;
 
 class PersonaSummaryNarrator
@@ -96,43 +96,7 @@ class PersonaSummaryNarrator
      */
     public function personaMix(User $user): array
     {
-        return $this->moodMixBetween($user, Carbon::now()->subWeeks(self::LOOKBACK_WEEKS), null);
+        return MoodMix::between($user->id, Carbon::now()->subWeeks(self::LOOKBACK_WEEKS));
     }
 
-    /**
-     * Mood distribution (descending by count) for the user's post-run story
-     * lines created in [$from, $to). A null $to leaves the window open-ended
-     * (everything from $from onward), so it captures runs logged right now.
-     *
-     * @return list<array{mood: string, count: int, percent: float}>
-     */
-    private function moodMixBetween(User $user, Carbon $from, ?Carbon $to): array
-    {
-        $rows = StoryLine::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('activity_id')
-            ->where('created_at', '>=', $from)
-            ->when($to !== null, fn ($q) => $q->where('created_at', '<', $to))
-            ->selectRaw('mood, COUNT(*) as c')
-            ->groupBy('mood')
-            ->pluck('c', 'mood');
-
-        $total = (int) $rows->sum();
-        if ($total === 0) {
-            return [];
-        }
-
-        $out = [];
-        foreach ($rows as $mood => $count) {
-            $count = (int) $count;
-            $out[] = [
-                'mood' => (string) $mood,
-                'count' => $count,
-                'percent' => round(($count / $total) * 100, 1),
-            ];
-        }
-        usort($out, static fn (array $a, array $b): int => $b['count'] <=> $a['count']);
-
-        return $out;
-    }
 }
