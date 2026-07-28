@@ -12,7 +12,6 @@ import FourLensGrid from '@/components/run/FourLensGrid';
 import HeroPanel from '@/components/ui/HeroPanel';
 import Kartu from '@/components/card/Kartu';
 import KartuMount from '@/components/card/KartuMount';
-import ShareCardModal from '@/components/card/ShareCardModal';
 import type { ShareKartuData } from '@/lib/shareCard';
 import BackLink from '@/components/ui/BackLink';
 import MoodChip from '@/components/ui/MoodChip';
@@ -53,6 +52,8 @@ import type {
 } from '@/types/inertia';
 
 const RouteMap = lazy(() => import('@/components/run/RouteMap'));
+// Carries the ~1200-line canvas engine; fetched on the Bagikan tap.
+const ShareCardModal = lazy(() => import('@/components/card/ShareCardModal'));
 
 type DetailedActivityDetail = ActivityDetail & {
     stream_summary?: Record<string, unknown> | null;
@@ -476,10 +477,11 @@ export default function RunsShow({
                     Tersambung otomatis dari Strava · {formatIdDate(activity.analyzed_at ?? null, 'long')}
                 </footer>
             </PageContainer>
-            <ShareCardModal
-                kartu={shareOpen ? shareData : null}
-                onClose={() => setShareOpen(false)}
-            />
+            {shareOpen && shareData !== null && (
+                <Suspense fallback={null}>
+                    <ShareCardModal kartu={shareData} onClose={() => setShareOpen(false)} />
+                </Suspense>
+            )}
         </>
     );
 }
