@@ -47,8 +47,8 @@ class PostRunSpeechNarrator
 
         DATA: angka larinya gak dikasih di depan. Ambil sendiri lewat tool yang
         ada, panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
-        giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan null tetap
-        null: lewati, jangan ditebak.
+        giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan field yang gak
+        muncul di hasil tool artinya gak ada datanya: lewati, jangan ditebak.
 
         Buka dari sorotan, bukan dari status atau basa-basi. Sesuaikan tone ke
         mood di field `mood` (kode Daybreak), ikut kalibrasi mood di persona.

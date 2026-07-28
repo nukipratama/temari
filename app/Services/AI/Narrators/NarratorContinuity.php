@@ -34,7 +34,7 @@ final class NarratorContinuity
         jangan buka dengan cara yang mirip prev_opener, dan jangan ulang kalimat
         atau angka yang sama. Singgung yang sebelumnya HANYA kalau ada progres
         atau perubahan nyata yang layak diceritakan, itu pun lewat isi, bukan
-        lewat kata sambung di pembuka. Kalau prev_narrative null, tulis berdiri
+        lewat kata sambung di pembuka. Kalau prev_narrative gak muncul, tulis berdiri
         sendiri tanpa menyinggung yang sebelumnya.
         PROMPT;
 

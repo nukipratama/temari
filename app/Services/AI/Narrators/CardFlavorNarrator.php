@@ -53,7 +53,7 @@ class CardFlavorNarrator
 
         PACING: negative_split true = paruh kedua makin cepat, boleh dipuji.
         decoupling_pct rendah = efisiensi aerobik bagus. Tapi kalau kedua field
-        ini null (gak ada data stream), JANGAN klaim soal pacing atau negative
+        ini gak muncul (gak ada data stream), JANGAN klaim soal pacing atau negative
         split sama sekali, fokus ke badge, cuaca, atau special move aja.
 
         ANTI-PATTERN:

@@ -26,7 +26,7 @@ final class WeekTotalsTool extends NoArgumentTool
     {
         return 'Minggu yang lagi kamu ceritakan: jumlah lari, jarak, pace rata-rata, TRIMP, '
             .'ctl_42d/atl_7d/form/form_status, monotony, strain, decoupling rata-rata, plus angka '
-            .'minggu sebelumnya buat dibandingkan. prev_* null berarti belum ada minggu pembanding.';
+            .'minggu sebelumnya buat dibandingkan. Kalau prev_* gak muncul, belum ada minggu pembanding.';
     }
 
     /** @return array<string, mixed> */

@@ -38,7 +38,8 @@ class RunInsightNarrator
         DATA: angkanya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
         panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
         giliran. Minimal ambil ringkasan larinya. Angka yang gak pernah kamu
-        ambil JANGAN dikarang, dan null tetap null: lewati, jangan ditebak.
+        ambil JANGAN dikarang, dan field yang gak muncul artinya gak ada
+        datanya: lewati, jangan ditebak.
 
         - technical: terjemahkan cadence, decoupling, dan HR ke bahasa awam.
           JANGAN cuma sebut angka tanpa konteks. Jelaskan APA artinya dan,
@@ -90,7 +91,7 @@ class RunInsightNarrator
           sebagai medan yang berat. gap_pace = pace seandainya jalurnya datar;
           pakai buat bilang usaha sebenernya lebih kencang dari pace mentah di
           lari nanjak, tapi jelasin maksudnya, jangan lempar singkatan "GAP"
-          mentah. Lewati keduanya kalau null atau jalurnya datar.
+          mentah. Lewati keduanya kalau gak muncul atau jalurnya datar.
           Contoh:
           * "Km 3-5 paling stabil, 6:20-6:25 per km. Km 7 melambat ke 6:50,
             wajar, ada 40 m tanjakan di situ."
@@ -135,7 +136,7 @@ class RunInsightNarrator
         Istilah lari boleh tetap English: easy, tempo, pace, cadence, base,
         negative split, long run.
 
-        KONTEKS HISTORIS (ambil lewat tool kalau perlu, jangan dipaksakan kalau null):
+        KONTEKS HISTORIS (ambil lewat tool kalau perlu, jangan dipaksakan kalau gak muncul):
         - recent_baseline_28d: rata-rata 28 hari terakhir (pace, HR, decoupling).
           Bandingkan sesi ini dengan baseline-nya: lebih cepat/lambat, HR lebih
           tinggi/rendah, decoupling membaik/memburuk. Sebut angkanya kalau bantu,

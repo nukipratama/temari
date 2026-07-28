@@ -28,7 +28,8 @@ final class RecentBaselineTool extends UserTool
     public function description(): string
     {
         return 'Rata-rata 28 hari terakhir milik pengguna (pace, HR, decoupling). Panggil kalau mau '
-            .'bilang sesuatu lebih cepat/lambat/berat dari biasanya. Null kalau riwayatnya masih tipis.';
+            .'bilang sesuatu lebih cepat/lambat/berat dari biasanya. Kalau recent_baseline_28d gak '
+            .'muncul, riwayatnya masih tipis.';
     }
 
     /** @return array<string, mixed> */

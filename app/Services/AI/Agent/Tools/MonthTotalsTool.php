@@ -36,7 +36,7 @@ final class MonthTotalsTool extends NoArgumentTool
         return 'Rekap bulan yang lagi kamu ceritakan: total lari dan km, lari terjauh, jumlah PR, '
             .'km per minggu di dalam bulan itu, sebaran mood, dan arah kebugaran (ctl_start vs '
             .'ctl_end plus form_status_end). mood_mix kosong berarti belum ada data mood, jadi '
-            .'lewati bagian mood diam-diam. fitness null berarti bulan itu tidak punya snapshot.';
+            .'lewati bagian mood diam-diam. Kalau fitness gak muncul, bulan itu gak punya snapshot.';
     }
 
     /** @return array<string, mixed> */

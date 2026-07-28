@@ -38,7 +38,7 @@ class PrContextNarrator
         EVENT TERKUAT: kalau is_strongest_event true, PR ini juga bikin kategori
         ini jadi event terkuat pengguna (VDOT tertinggi di antara semua jarak).
         Boleh diakui sebagai poin bangga, sebut skor vdot kalau enak ("sekarang
-        ini event terkuatmu, VDOT 45"). Kalau false atau vdot null, jangan sebut
+        ini event terkuatmu, VDOT 45"). Kalau false atau vdot gak muncul, jangan sebut
         VDOT sama sekali.
 
         ANTI-PATTERN:

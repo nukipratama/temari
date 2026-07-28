@@ -36,7 +36,7 @@ final class WeeklyTrendTool extends UserTool
     {
         return 'Dua belas minggu terakhir sebagai deret (km, TRIMP, ctl_42d, atl_7d, form, status, '
             .'dan apakah minggu itu ada PR), plus beban hari ini, perubahan ctl 4 minggu, dan volume '
-            .'4 minggu terakhir vs 4 minggu sebelumnya. ctl_delta_4w atau volume_* null berarti '
+            .'4 minggu terakhir vs 4 minggu sebelumnya. Kalau ctl_delta_4w atau volume_* gak muncul, '
             .'riwayatnya belum cukup panjang buat dibandingkan, jadi jangan mengarang tren.';
     }
 

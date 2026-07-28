@@ -28,7 +28,7 @@ final class PersonalRecordTool extends NoArgumentTool
         return 'PR yang lagi kamu rayakan: kategori, catatan waktunya, kapan dipecahkan, plus PR '
             .'sebelumnya di kategori yang sama dan selisihnya (delta_sec positif = lebih cepat '
             .'sekarang). is_strongest_event true berarti kategori ini yang paling menonjol dari '
-            .'semua jaraknya. previous_* null berarti ini PR pertama di kategori itu.';
+            .'semua jaraknya. Kalau previous_* gak muncul, ini PR pertama di kategori itu.';
     }
 
     /** @return array<string, mixed> */
