@@ -113,3 +113,19 @@ it('asks for training-load jargon to be translated rather than dropped bare', fu
         ->toContain('Istilah beban latihan')
         ->toContain('rata-rata kamu biasanya');
 });
+
+it('keeps English to the nouns, so verbs stop leaking in', function (): void {
+    // Prod output said "mayoritas waktunya memang stay di Z2". The allow-list
+    // covers running terms; it never said the verbs around them stay Indonesian.
+    expect($this->prompt)
+        ->toContain('NAMA HAL-nya (kata benda), bukan kata kerjanya')
+        ->toContain('stay di Z2');
+});
+
+it('caps decimals at one place so tool precision stops leaking through', function (): void {
+    // Prod monthly recap said "21,36 km": the comma rule landed, the rounding
+    // one read as a suggestion ("cukup") and lost to the raw tool value.
+    expect($this->prompt)
+        ->toContain('MAKSIMAL satu angka di belakang koma')
+        ->toContain('21,4 km');
+});
