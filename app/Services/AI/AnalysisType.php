@@ -164,6 +164,45 @@ enum AnalysisType: string
         };
     }
 
+    /**
+     * Validation rules for a caller-supplied `discriminator` on this type, as a
+     * closed set. The discriminator is part of the row identity and of the
+     * re-trigger cooldown key, so an unconstrained value mints a fresh row and a
+     * fresh billed generation on every request. Each arm mirrors the shape this
+     * type's own dispatch sites write:
+     *
+     * - `Y-m-d` daily keys: DailyBriefingCommand, BriefingComposer.
+     * - featured kartu: the RunCard id. Never null — BriefingComposer only emits
+     *   the block once a card is picked, and a null id would bill the narrator's
+     *   "no card yet" line under a second cooldown key.
+     * - PersonaSummary: the ISO week key WeeklyProfileCommand + ProfileController use.
+     * - `Y-m` months: MonthlyRecapCommand, CalendarController.
+     * - every other type keys off subject_id alone and its job ignores the
+     *   discriminator, so a non-null value is rejected outright.
+     *
+     * Exhaustive on purpose (no `default`): a new type must state its choice.
+     *
+     * @return list<string>
+     */
+    public function discriminatorRules(): array
+    {
+        return match ($this) {
+            self::BriefingSuggestion,
+            self::BriefingMascotVoice => ['required', 'string', 'date_format:Y-m-d'],
+            self::BriefingFeaturedKartuVoice => ['required', 'string', 'max:19', 'regex:/^[1-9][0-9]*$/'],
+            self::PersonaSummary => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/'],
+            self::MonthlyRecap => ['required', 'string', 'date_format:Y-m'],
+            self::PostRunSpeech,
+            self::RunInsightTechnical,
+            self::RunInsightSplits,
+            self::RunInsightZones,
+            self::WeeklyRecap,
+            self::PrContext,
+            self::CardFlavor,
+            self::AkuProfileVoice => ['prohibited'],
+        };
+    }
+
     public function subjectType(): string
     {
         return match ($this) {

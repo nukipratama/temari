@@ -96,11 +96,14 @@ it('still lets the demo user log out', function (): void {
     expect(auth()->check())->toBeFalse();
 });
 
-it('still lets the demo user trigger "Baca ulang" (a real on-demand LLM call)', function (): void {
+it('still lets the demo user trigger "Baca ulang", served rule-based so it never bills', function (): void {
     Bus::fake();
     $user = User::factory()->create(['is_demo' => true]);
 
     $this->actingAs($user)
         ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
-        ->assertSuccessful();
+        ->assertSuccessful()
+        ->assertJson(['status' => 'done']);
+
+    Bus::assertNothingDispatched();
 });

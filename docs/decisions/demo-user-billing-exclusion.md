@@ -50,6 +50,7 @@ The demo's narration is otherwise backfilled deterministically with zero tokens:
 
 ## See also
 
+- [[demo-triggers-served-rule-based]] — refines the "live Baca ulang" affordance above: the button stays live but is filled rule-based, never billed; the scheduler exclusions here still stand
 - [[ai-pipeline]] — the narrator/analysis pipeline these schedulers feed
 - [[deferred-recap-windowing]] — why the recaps are scheduled at all
 - [[chained-narration]] — the self-heal safety net whose per-activity sweep is the one place demo isn't filtered

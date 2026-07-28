@@ -13,6 +13,7 @@ use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Telegram\NotifiableAnalysis;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -75,6 +76,29 @@ class AnalysisService
         }
 
         return $this->dispatchRow($subjectType, $subjectId, $type, $discriminator, $invalidate, $delaySeconds);
+    }
+
+    /**
+     * Serve a trigger from the deterministic rule-based filler instead of the
+     * LLM. The row is reused (or staged) and marked Done immediately, all under
+     * {@see self::withoutDispatching()}, so no job is queued, no cooldown starts
+     * and no notification fans out. The demo login is public and a manual
+     * trigger deliberately fires past the cost ceiling, so the demo account's
+     * "Baca ulang" resolves here and can never bill Azure.
+     */
+    public function requestRuleBased(
+        Model|string $subjectOrType,
+        int $subjectId,
+        AnalysisType $type,
+        ?string $discriminator = null,
+    ): Analysis {
+        $row = $this->requestDeferred($subjectOrType, $subjectId, $type, $discriminator);
+
+        $this->withoutDispatching(function () use ($row): void {
+            $this->markDone($row, app(RuleBasedNarrationFiller::class)->fillFor($row));
+        });
+
+        return $row;
     }
 
     /**

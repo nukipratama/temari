@@ -617,3 +617,82 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
 
     Carbon::setTestNow();
 });
+
+/**
+ * The cooldown key embeds the discriminator, so an unconstrained value would
+ * find no existing row, skip the cooldown entirely, and firstOrCreate a fresh
+ * row plus a real billed Azure call on every request.
+ */
+it('does not dispatch a billed job for a novel discriminator', function (string $url): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson(str_replace('{id}', (string) $user->id, $url))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('discriminator');
+
+    Bus::assertNothingDispatched();
+    expect(Analysis::query()->count())->toBe(0);
+})->with([
+    'random key on a daily type' => ['/api/analyses/briefing_suggestion/{id}/trigger?discriminator=kEy9fQ2z'],
+    'wrong shape on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=2026-05'],
+    'wrong shape on the monthly recap' => ['/api/analyses/monthly_recap/{id}/trigger?discriminator=2026-05-18'],
+    'wrong shape on the persona summary' => ['/api/analyses/persona_summary/{id}/trigger?discriminator=2026-05-18'],
+    'missing card id on the featured kartu voice' => ['/api/analyses/briefing_featured_kartu_voice/{id}/trigger'],
+]);
+
+it('does not dispatch a billed job when a discriminator is sent to a type whose job ignores it', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/aku_profile_voice/{$user->id}/trigger?discriminator=kEy9fQ2z")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('discriminator');
+
+    Bus::assertNothingDispatched();
+    expect(Analysis::query()->count())->toBe(0);
+});
+
+/**
+ * The demo login is public, so its trigger is served from the rule-based filler:
+ * the reviewer keeps a working "Baca ulang" and no anonymous visitor can spend
+ * Azure tokens.
+ */
+it('serves the demo account a rule-based narration instead of dispatching a billed job', function (): void {
+    $user = User::factory()->create(['is_demo' => true]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
+        ->assertSuccessful()
+        ->assertJson(['status' => 'done']);
+
+    Bus::assertNothingDispatched();
+    expect($response->json('content'))->toBeString()->not->toBeEmpty();
+
+    $row = Analysis::query()->sole();
+    expect($row->status)->toBe(AnalysisStatus::Done)
+        ->and($row->content)->toBe($response->json('content'));
+});
+
+it('leaves the demo account re-triggerable, since a rule-based fill starts no cooldown', function (): void {
+    $user = User::factory()->create(['is_demo' => true]);
+    $url = "/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18";
+
+    $this->actingAs($user)->postJson($url)->assertSuccessful();
+    $this->actingAs($user)->postJson($url)
+        ->assertSuccessful()
+        ->assertJson(['status' => 'done', 'retry_after_seconds' => null]);
+
+    Bus::assertNothingDispatched();
+    expect(Analysis::query()->count())->toBe(1);
+});
+
+it('still dispatches a real billed job for a non-demo user on the same block', function (): void {
+    $user = User::factory()->create(['is_demo' => false]);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
+        ->assertSuccessful();
+
+    Bus::assertDispatched(AnalyzeBriefingJob::class);
+});
