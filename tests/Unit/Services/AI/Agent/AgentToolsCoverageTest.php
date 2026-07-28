@@ -150,10 +150,84 @@ it('reads null splits without fataling when there is no stream summary', functio
 
     expect(new KmSplitsTool($a, $d->fresh())->handle([]))->toBe([
         'per_km' => null,
+        'omitted_km' => 0,
+        'fastest_km' => null,
+        'slowest_km' => null,
         'finish_partial' => null,
         'negative_split' => null,
         'pace_consistency' => null,
     ]);
+});
+
+// The narrator prompt asks for "1-2 km paling menarik". Naming the extremes
+// answers that directly instead of leaving the model to scan the table for them.
+it('names the fastest and slowest kilometre outright', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['per_km' => [
+        ['km' => 1, 'pace' => '6:00'],
+        ['km' => 2, 'pace' => '5:20'],
+        ['km' => 3, 'pace' => '6:30'],
+    ]]]);
+
+    $reading = new KmSplitsTool($a, $d->fresh())->handle([]);
+
+    expect($reading['fastest_km'])->toBe(2)
+        ->and($reading['slowest_km'])->toBe(3)
+        ->and($reading['omitted_km'])->toBe(0)
+        ->and($reading['per_km'])->toHaveCount(3);
+});
+
+it('leaves the extremes null when no split carries a readable pace', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '-']]]]);
+
+    $reading = new KmSplitsTool($a, $d->fresh())->handle([]);
+
+    expect($reading['fastest_km'])->toBeNull()
+        ->and($reading['slowest_km'])->toBeNull();
+});
+
+it('samples a long run down while keeping the opening, the finish and both extremes', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+
+    // 30 km, with the extremes buried mid-run where an even spread could miss them.
+    $perKm = [];
+    foreach (range(1, 30) as $km) {
+        $perKm[] = ['km' => $km, 'pace' => '6:00'];
+    }
+    $perKm[12] = ['km' => 13, 'pace' => '4:30'];
+    $perKm[19] = ['km' => 20, 'pace' => '7:45'];
+    $d->update(['stream_summary' => ['per_km' => $perKm]]);
+
+    $reading = new KmSplitsTool($a, $d->fresh())->handle([]);
+    $kept = array_column($reading['per_km'], 'km');
+
+    expect($reading['fastest_km'])->toBe(13)
+        ->and($reading['slowest_km'])->toBe(20)
+        // Opening and finish survive, so a closing-kick story is still readable.
+        ->and($kept)->toContain(1)
+        ->and($kept)->toContain(30)
+        ->and($kept)->toContain(13)
+        ->and($kept)->toContain(20)
+        ->and(count($kept))->toBeLessThan(30)
+        ->and($reading['omitted_km'])->toBe(30 - count($kept))
+        // Still ordered by km, so the run reads front to back.
+        ->and($kept)->toBe(array_values(array_unique($kept)))
+        ->and($kept === array_values($kept) && $kept === collect($kept)->sort()->values()->all())->toBeTrue();
+});
+
+it('leaves a run at the sample size untouched', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $perKm = [];
+    foreach (range(1, 12) as $km) {
+        $perKm[] = ['km' => $km, 'pace' => '6:00'];
+    }
+    $d->update(['stream_summary' => ['per_km' => $perKm]]);
+
+    $reading = new KmSplitsTool($a, $d->fresh())->handle([]);
+
+    expect($reading['per_km'])->toHaveCount(12)
+        ->and($reading['omitted_km'])->toBe(0);
 });
 
 // ── HrZonesTool ───────────────────────────────────────────────────────
