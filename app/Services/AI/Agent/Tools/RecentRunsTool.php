@@ -42,7 +42,8 @@ final class RecentRunsTool extends UserTool
                 'intensity' => $item->intensity,
                 'oneline' => $item->oneline,
             ],
-            array_slice($this->verdicts->recent($this->user, self::LIMIT), 0, self::LIMIT),
+            // recent() applies the limit in SQL, so no second slice is needed.
+            $this->verdicts->recent($this->user, self::LIMIT),
         );
 
         return ['recent_runs' => $runs];

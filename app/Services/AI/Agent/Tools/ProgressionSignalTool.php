@@ -58,13 +58,12 @@ final class ProgressionSignalTool extends UserTool
         $best = null;
         $bestDelta = 0;
 
-        foreach (self::CATEGORIES as $category) {
-            $record = $records->first(fn (PersonalRecord $row): bool => $row->category === $category);
-            if ($record === null) {
-                continue;
-            }
+        // One build for every record: buildMany ORs the distance bands into a
+        // single scan, so calling it per category was four full ActivityDetail
+        // scans to answer one question.
+        $series = $this->progressionSeriesBuilder->buildMany($this->user, array_values($records->all()), fn () => null);
 
-            $series = $this->progressionSeriesBuilder->buildMany($this->user, [$record], fn () => null);
+        foreach (self::CATEGORIES as $category) {
             $data = $series[$category->value] ?? null;
             if ($data === null || count($data['times_sec']) < 2) {
                 continue;
@@ -73,7 +72,7 @@ final class ProgressionSignalTool extends UserTool
             $delta = (int) (max($data['times_sec']) - min($data['times_sec']));
             if ($delta > $bestDelta) {
                 $bestDelta = $delta;
-                $best = ['label' => $record->category->label(), 'delta_sec' => $delta];
+                $best = ['label' => $category->label(), 'delta_sec' => $delta];
             }
         }
 
