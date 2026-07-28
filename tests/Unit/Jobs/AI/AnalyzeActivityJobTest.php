@@ -59,9 +59,10 @@ it('writes speech + 3 insight rows Done from one job run', function (): void {
     $insights = ['technical' => 'tech text', 'splits' => 'splits text', 'zones' => 'zones text'];
 
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
-    // The generated insight triplet flows into the speech narrator's 4th arg.
+    // The speech is told the mood and nothing else about the run: the insight
+    // triplet is the other three lenses' material, not its own.
     $speechMock->shouldReceive('generate')
-        ->withArgs(fn ($a, $d, $mood, $passed): bool => $passed === $insights)
+        ->withArgs(fn ($a, $d, $mood): bool => $mood === 'nyala')
         ->andReturn('nice run');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
     mockInsightNarrator($insights);
@@ -169,16 +170,8 @@ it('reuses Done insight rows instead of re-billing RunInsightNarrator on a cerit
         ]);
     }
 
-    $expectedInsights = [
-        'technical' => 'stored tech',
-        'splits' => 'stored splits',
-        'zones' => 'stored zones',
-    ];
-
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
-    $speechMock->shouldReceive('generate')
-        ->withArgs(fn ($a, $d, $mood, $passed): bool => $passed === $expectedInsights)
-        ->andReturn('cerita baru');
+    $speechMock->shouldReceive('generate')->andReturn('cerita baru');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
     // The insight LLM must NOT be called: the Done rows are reused verbatim.

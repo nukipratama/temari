@@ -24,31 +24,34 @@ class PostRunSpeechNarrator
 
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Tugas: cerita post-run hangat setelah pengguna selesai lari. Rangkai
-        2-4 kalimat (maksimal 75 kata) jadi satu cerita kecil beralur: buka dari
-        satu sorotan, tunjukin satu titik menarik di tengah (misalnya pace sempat
-        pecah lalu balik, atau finish yang nyala), lalu tutup dengan enak.
+        2-4 kalimat (maksimal 75 kata) jadi satu cerita kecil beralur.
+
+        LENSA KAMU: di halaman ini ada empat blok yang berdiri sebelahan. Tiga
+        lainnya sudah membedah mekanik larinya: "Terjemahan teknis" (cadence,
+        decoupling, HR), "Split paling seru" (bentuk pacing, km mana yang
+        kencang), dan "Zona HR" (sebaran zone). Itu bukan bagian kamu.
+
+        Bagian kamu adalah yang gak bisa mereka sentuh: ARTI lari ini. Suasananya
+        (jam berapa, cuaca, medan), posisinya dalam perjalanan pengguna (dibanding
+        sesi serupa dulu, dibanding rekor, dibanding lari sebelumnya), dan
+        rasanya. Mereka jawab "apa yang terjadi"; kamu jawab "kenapa lari ini
+        berarti".
+
+        Karena itu JANGAN membedah pacing, split per km, cadence, decoupling,
+        atau sebaran zone. Bukan karena datanya rahasia, tapi karena blok di
+        sebelah kamu sudah menceritakannya, dan pengguna membaca keduanya
+        sekaligus. Kalau satu-satunya hal menarik dari lari ini memang mekanik,
+        lebih baik ceritakan jarak, kebiasaan, atau kehadirannya hari itu.
+        Menyebut effort secara umum ("kerasa berat", "santai") tetap boleh, itu
+        rasa, bukan pembacaan angka.
 
         DATA: angka larinya gak dikasih di depan. Ambil sendiri lewat tool yang
         ada, panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
         giliran. Angka yang gak pernah kamu ambil JANGAN dikarang, dan null tetap
         null: lewati, jangan ditebak.
 
-        Split per km dan breakdown zone SENGAJA gak dikasih sebagai tool: ketiga
-        analisis di bawah udah menafsirkannya buat kamu. Pakai hasil tafsirnya,
-        jangan bikin pembacaan km-per-km versi kamu sendiri.
-
-        Kamu menerima tiga analisis teknis yang sudah jadi di field insights:
-        - technical: terjemahan teknis (cadence, decoupling, HR).
-        - splits: split atau pola pacing paling menarik.
-        - zones: interpretasi HR zone.
-        Tafsirkan ketiganya jadi satu cerita manusiawi. Pilih SATU sorotan paling
-        menonjol buat dibuka, sisanya jadi latar. JANGAN mendaftar semua angka
-        atau mengulang isi analisis mentah-mentah.
-
-        Buka dari sorotan itu, bukan dari status atau basa-basi. Kalau ada,
-        sematkan detail suasana (jam lari, cuaca, medan) biar kerasa nyata.
-        Sesuaikan tone ke mood di field `mood` (kode Daybreak), ikut kalibrasi
-        mood di persona.
+        Buka dari sorotan, bukan dari status atau basa-basi. Sesuaikan tone ke
+        mood di field `mood` (kode Daybreak), ikut kalibrasi mood di persona.
 
         Soal hujan: kalau weather_rain true, lihat weather_rain_source. "observed"
         boleh disebut tegas ("sempat kehujanan"). "forecast" cuma prakiraan, belum
@@ -75,15 +78,12 @@ class PostRunSpeechNarrator
     ) {
     }
 
-    /**
-     * @param  array{technical: string, splits: string, zones: string}  $insights
-     */
-    public function generate(Activity $activity, ActivityDetail $detail, string $mood, array $insights): string
+    public function generate(Activity $activity, ActivityDetail $detail, string $mood): string
     {
         $decoded = $this->caller->call(
             kind: 'post_run_speech',
             systemPrompt: self::SYSTEM_PROMPT."\n\n".NarratorContinuity::RULE,
-            context: $this->context($activity, $detail, $mood, $insights),
+            context: $this->context($activity, $detail, $mood),
             schemaName: 'TemariPostRunSpeech',
             requiredKeys: ['speech'],
             options: new ChatCallOptions(
@@ -97,15 +97,12 @@ class PostRunSpeechNarrator
     }
 
     /**
-     * Only what no tool can serve: the mood this speech was asked to carry, the
-     * three insight blocks written moments ago in the same job (they are not
-     * persisted yet, so there is nothing to read), and the continuity line the
-     * content-filter retry has to be able to strip.
+     * Only what no tool can serve: the mood this speech was asked to carry, and
+     * the continuity line the content-filter retry has to be able to strip.
      *
-     * @param  array{technical: string, splits: string, zones: string}  $insights
      * @return array<string, mixed>
      */
-    public function context(Activity $activity, ActivityDetail $detail, string $mood, array $insights): array
+    public function context(Activity $activity, ActivityDetail $detail, string $mood): array
     {
         $prevNarrative = $this->previousActivityNarrative(
             $activity,
@@ -115,7 +112,6 @@ class PostRunSpeechNarrator
 
         return [
             'mood' => $mood,
-            'insights' => $insights,
             ...NarratorContinuity::fields($prevNarrative),
         ];
     }
@@ -123,11 +119,13 @@ class PostRunSpeechNarrator
     /**
      * The reads this speech may pull, each bound to this activity.
      *
-     * Deliberately narrower than run insight's. The splits and the zone
-     * breakdown reach this narrator already interpreted, as the `insights`
-     * prose it is asked to build a story on; handing it the raw per-km table
-     * as well just invited a fourth recitation of "km 3 slowed, km 5 closed
-     * fastest" alongside the three blocks that had already said it.
+     * Deliberately narrower than run insight's, and narrower still than it was:
+     * no per-km table, no zone breakdown, and no longer the three insight blocks
+     * as prose either. Handing it any of them produced a fourth telling of the
+     * same run alongside the three lenses that had already told it, on a page
+     * where all four sit side by side. What is left is the material for the one
+     * lens the others cannot hold: where this run sits against the athlete's own
+     * history, and what the day around it was like.
      */
     public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox
     {
