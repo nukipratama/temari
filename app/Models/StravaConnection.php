@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Support\Carbon;
+use App\Support\SharedPropCacheKey;
 use Database\Factories\StravaConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -40,6 +41,20 @@ class StravaConnection extends Model
 {
     /** @use HasFactory<StravaConnectionFactory> */
     use HasFactory;
+
+    /**
+     * Keep the shared `stravaZoneScopeMissing` Inertia prop in step with the
+     * granted scopes. Every writer goes through the model — the OAuth
+     * connect/reconnect, the background token refresh and `markRevoked()` — so
+     * a save is the one hook that catches all of them.
+     */
+    #[Override]
+    protected static function booted(): void
+    {
+        static::saved(function (StravaConnection $connection): void {
+            SharedPropCacheKey::StravaZoneScopeMissing->forget($connection->user_id);
+        });
+    }
 
     /**
      * @return BelongsTo<User, $this>

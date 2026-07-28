@@ -12,6 +12,7 @@ use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Support\SharedPropCacheKey;
 use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
@@ -149,6 +150,8 @@ class DemoRunSeeder
                     'accessory.medal_emas',
                 ])
                 ->update(['equipped' => true]);
+
+            SharedPropCacheKey::EquippedAccessories->forget($user->id);
 
             $log("Generating today's Temari greeting...");
             $vibeState = $this->vibe->current($user);

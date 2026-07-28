@@ -65,7 +65,7 @@ final readonly class SharedProps
             // Public VAPID key only — the client needs it to subscribe; the private
             // key never leaves the server.
             'webPushPublicKey' => (string) config('webpush.vapid.public_key'),
-            'equippedAccessories' => fn (): array => $this->equippedAccessories->forUser($user),
+            'equippedAccessories' => fn (): array => $this->equippedAccessoriesFor($user),
             'pendingReveal' => fn () => $this->pendingRevealFor($user),
             'stravaSync' => fn () => $this->stravaSyncFor($user),
             'goalsSummary' => fn () => $this->goalsSummaryFor($user),
@@ -75,6 +75,27 @@ final readonly class SharedProps
             'stravaZoneScopeMissing' => fn (): bool => $this->stravaZoneScopeMissingFor($user),
             'aiPaused' => fn (): bool => $this->aiPausedFor($user),
         ];
+    }
+
+    /**
+     * Which accessories the mascot is wearing. Cached because it costs a
+     * `user_unlocks` scan on every page load while only ever moving when the
+     * user equips something ({@see \App\Http\Controllers\AksesoriController}
+     * busts it there). Granting an unlock cannot change it: rows are inserted
+     * without `equipped`, which defaults to false.
+     *
+     * @return array<string, string|null>
+     */
+    private function equippedAccessoriesFor(?User $user): array
+    {
+        if ($user === null) {
+            return $this->equippedAccessories->forUser(null);
+        }
+
+        return SharedPropCacheKey::EquippedAccessories->remember(
+            $user->id,
+            fn (): array => $this->equippedAccessories->forUser($user),
+        );
     }
 
     /**
@@ -110,13 +131,18 @@ final readonly class SharedProps
             return false;
         }
 
-        $connection = $user->stravaConnection;
+        return SharedPropCacheKey::StravaZoneScopeMissing->remember(
+            $user->id,
+            function () use ($user): bool {
+                $connection = $user->stravaConnection;
 
-        if ($connection === null || $connection->isRevoked()) {
-            return false;
-        }
+                if ($connection === null || $connection->isRevoked()) {
+                    return false;
+                }
 
-        return ! $connection->hasZoneScope();
+                return ! $connection->hasZoneScope();
+            },
+        );
     }
 
     /**
@@ -129,7 +155,14 @@ final readonly class SharedProps
      */
     private function telegramConnectedFor(?User $user): bool
     {
-        return $user !== null && $this->channels->telegramReachable($user);
+        if ($user === null) {
+            return false;
+        }
+
+        return SharedPropCacheKey::TelegramConnected->remember(
+            $user->id,
+            fn (): bool => $this->channels->telegramReachable($user),
+        );
     }
 
     /**
@@ -138,7 +171,14 @@ final readonly class SharedProps
      */
     private function webPushSubscribedFor(?User $user): bool
     {
-        return $user !== null && $this->channels->pushReachable($user);
+        if ($user === null) {
+            return false;
+        }
+
+        return SharedPropCacheKey::WebPushSubscribed->remember(
+            $user->id,
+            fn (): bool => $this->channels->pushReachable($user),
+        );
     }
 
     /**

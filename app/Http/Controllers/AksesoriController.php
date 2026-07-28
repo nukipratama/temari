@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\Gamification\EquippedAccessories;
+use App\Support\SharedPropCacheKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -99,6 +100,11 @@ class AksesoriController extends Controller
 
             $unlock->forceFill(['equipped' => true])->save();
         });
+
+        // The sibling unequip is a mass update, so no model event fires for it.
+        // Busted after the commit so a concurrent read cannot re-warm the cache
+        // from the pre-swap rows.
+        SharedPropCacheKey::EquippedAccessories->forget($user->id);
 
         return back();
     }
