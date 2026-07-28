@@ -44,14 +44,17 @@ return [
     // https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/.
     // Values are Global Standard; map the deployment to its model's published rate.
     //
-    // An optional third key, 'cached_input_per_1m', prices the slice of input the
-    // provider served from its prompt cache. Leave it out and cached input bills
-    // at the ordinary input rate, which is what every deployment did before the
-    // column existed — so adding it only ever lowers an estimate, never raises it.
-    // Add it once /ai-usage shows a cache-hit rate worth pricing.
+    // 'cached_input_per_1m' prices the slice of input the provider served from its
+    // prompt cache, which both models bill at a tenth of their input rate. Omit it
+    // for a deployment and its cached input bills as ordinary input, so a missing
+    // entry only ever overstates the estimate, never understates it.
+    // Measured on prod before these were filled in: 43-62% of input on multi-step
+    // calls was already arriving cached, so the estimate was overstating by a lot.
     'prices' => [
-        'nuki-5.2' => ['input_per_1m' => 1.75, 'output_per_1m' => 14.00],       // gpt-5.2
-        'nuki-5.4-mini' => ['input_per_1m' => 0.75, 'output_per_1m' => 4.50],   // gpt-5.4-mini
+        // gpt-5.2
+        'nuki-5.2' => ['input_per_1m' => 1.75, 'cached_input_per_1m' => 0.17, 'output_per_1m' => 14.00],
+        // gpt-5.4-mini
+        'nuki-5.4-mini' => ['input_per_1m' => 0.75, 'cached_input_per_1m' => 0.075, 'output_per_1m' => 4.50],
     ],
 
     // Nullable USD/day spend ceiling. null = no ceiling (auto-dispatch never
