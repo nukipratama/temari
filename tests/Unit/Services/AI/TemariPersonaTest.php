@@ -129,3 +129,22 @@ it('caps decimals at one place so tool precision stops leaking through', functio
         ->toContain('MAKSIMAL satu angka di belakang koma')
         ->toContain('21,4 km');
 });
+
+it('forbids announcing missing data, not just inventing it', function (): void {
+    // Validated against prod: on a run with no HR the model correctly refused to
+    // invent one, then told the user so -- "Data HR zone-nya nggak kebaca, jadi
+    // aku nggak mau ngarang" -- in three of four blocks. It obeyed the
+    // don't-invent half and ignored the don't-announce half, so both are stated
+    // as separate hard rules with the observed sentences as the anti-examples.
+    expect($this->prompt)
+        ->toContain('Dua aturan, dua-duanya keras')
+        ->toContain('JANGAN diumumkan')
+        ->toContain('Cadence memang nggak kebaca')
+        ->toContain('aku nggak mau ngarang');
+});
+
+it('forbids narrating its own reading process to the user', function (): void {
+    expect($this->prompt)
+        ->toContain('cerita soal proses kamu sendiri')
+        ->toContain('mereka lagi ngobrol sama aku');
+});
