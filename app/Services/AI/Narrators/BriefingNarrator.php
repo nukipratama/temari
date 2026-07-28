@@ -178,6 +178,7 @@ class BriefingNarrator
             schemaName: 'TemariBriefing',
             requiredKeys: ['headline', 'suggestion'],
             options: new ChatCallOptions(
+                temperature: 0.8,
                 userId: $user->id,
                 maxTokens: 1200,
                 toolbox: $this->toolbox($user, $asOf),

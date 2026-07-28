@@ -76,6 +76,13 @@ final readonly class StructuredChatCaller
             ],
             'max_output_tokens' => $effectiveMaxTokens,
             'temperature' => $options->temperature,
+            // Keyed on the narrator, never the user. The cacheable prefix is the
+            // persona plus this narrator's prompt and tool schemas, which is
+            // byte-identical for everyone who calls it — keying per user would
+            // shard that one prefix across the whole user base and make the hit
+            // rate worse, not better. Azure scopes its cache per deployment
+            // already, so this must not encode a model either.
+            'prompt_cache_key' => $kind,
             'text' => ['format' => self::textFormat($schemaName, $requiredKeys)],
         ];
 

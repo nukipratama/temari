@@ -66,6 +66,7 @@ class DailyGreetingNarrator
             schemaName: 'TemariDailyGreeting',
             requiredKeys: ['speech'],
             options: new ChatCallOptions(
+                temperature: 0.8,
                 userId: $user->id,
                 maxTokens: 400,
                 toolbox: $this->toolbox($user, $asOf ?? Carbon::today()),

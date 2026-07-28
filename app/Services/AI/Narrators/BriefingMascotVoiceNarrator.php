@@ -114,6 +114,7 @@ class BriefingMascotVoiceNarrator
             schemaName: 'TemariMascotVoice',
             requiredKeys: ['mascot_voice'],
             options: new ChatCallOptions(
+                temperature: 0.8,
                 userId: $user->id,
                 maxTokens: 1500,
                 toolbox: $this->toolbox($user, $asOf ?? Carbon::today()),
