@@ -198,7 +198,7 @@ describe('AppShell', () => {
         await act(async () => { fireEvent.click(screen.getByText('Nanti aja')); });
     });
 
-    it('defers the aksesori-unlock modal while a CardReveal pack is pending, so they never stack', () => {
+    it('defers the aksesori-unlock modal while a CardReveal pack is pending, so they never stack', async () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
@@ -209,12 +209,12 @@ describe('AppShell', () => {
         });
         render(<AppShell><p>x</p></AppShell>);
         // CardReveal (the pack) takes priority: it's shown...
-        expect(screen.getByText('Sync masuk')).toBeInTheDocument();
+        expect(await screen.findByText('Sync masuk')).toBeInTheDocument();
         // ...and the aksesori modal is held back, even though a major unlock fired.
         expect(screen.queryByText(/Ikat Kepala Istimewa/)).not.toBeInTheDocument();
     });
 
-    it('hides the UnlockToast while a CardReveal pack is pending', () => {
+    it('hides the UnlockToast while a CardReveal pack is pending', async () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
@@ -224,7 +224,7 @@ describe('AppShell', () => {
             demoLoginEnabled: false,
         });
         render(<AppShell><p>x</p></AppShell>);
-        expect(screen.getByText('Sync masuk')).toBeInTheDocument();
+        expect(await screen.findByText('Sync masuk')).toBeInTheDocument();
         expect(screen.queryByText('Unlock baru')).not.toBeInTheDocument();
     });
 });

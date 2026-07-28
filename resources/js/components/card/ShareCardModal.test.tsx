@@ -12,6 +12,13 @@ vi.mock('@/lib/shareCard', () => ({
 (globalThis as unknown as { ClipboardItem: unknown }).ClipboardItem = class {
     constructor(public data: Record<string, Blob | Promise<Blob>>) {}
 };
+
+// jsdom has no canvas backend, so toBlob is unimplemented and never calls back.
+// The spy also records which canvas the modal exported from.
+const toBlobSpy = vi.fn(function (this: HTMLCanvasElement, cb: BlobCallback) {
+    cb(new Blob(['png'], { type: 'image/png' }));
+});
+HTMLCanvasElement.prototype.toBlob = toBlobSpy as unknown as HTMLCanvasElement['toBlob'];
 import ShareCardModal, { type ShareKartuData } from './ShareCardModal';
 
 // Both share paths fetch the rendered data: URL and turn it into a Blob.
@@ -143,6 +150,37 @@ describe('ShareCardModal', () => {
         rerender(<ShareCardModal kartu={{ ...kartu, polyline: null }} onClose={vi.fn()} />);
         const lastCall = vi.mocked(drawShareCard).mock.calls.at(-1);
         expect(lastCall?.[1].layout).toBe('kartu');
+    });
+
+    describe('export source', () => {
+        const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+
+        afterEach(() => {
+            if (originalClipboard) {
+                Object.defineProperty(navigator, 'clipboard', originalClipboard);
+            }
+        });
+
+        it('exports the preview canvas itself instead of redrawing the card into a second one', async () => {
+            const { shareCardBlob } = await import('@/lib/shareCard');
+            vi.mocked(shareCardBlob).mockClear();
+            toBlobSpy.mockClear();
+            const write = vi.fn(() => Promise.resolve());
+            Object.defineProperty(navigator, 'clipboard', { value: { write }, configurable: true });
+
+            render(<ShareCardModal kartu={kartu} onClose={vi.fn()} />);
+            await act(async () => { fireEvent.click(screen.getByText(/Salin gambar/)); });
+
+            expect(write).toHaveBeenCalled();
+            expect(shareCardBlob).not.toHaveBeenCalled();
+            expect(toBlobSpy).toHaveBeenCalledWith(expect.any(Function), 'image/png');
+            // Same element as the on-screen preview, at the full 1080x1920 export
+            // resolution — the shared PNG must not silently drop to preview size.
+            const exported = toBlobSpy.mock.instances[0];
+            expect(exported).toBe(screen.getByLabelText(/Pratinjau kartu/));
+            expect(exported.width).toBe(1080);
+            expect(exported.height).toBe(1920);
+        });
     });
 
     it('switches the export format when a format button is clicked', () => {

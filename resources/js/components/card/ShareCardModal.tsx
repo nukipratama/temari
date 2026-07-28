@@ -17,6 +17,12 @@ interface ShareCardModalProps {
     onClose: () => void;
 }
 
+function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('toBlob failed'))), 'image/png');
+    });
+}
+
 const LAYOUTS: Layout[] = ['kartu', 'rute'];
 const LAYOUT_LABELS: Record<Layout, string> = {
     kartu: 'Kartu',
@@ -30,6 +36,7 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
     // UI of its own, or surfaces a failure instead of swallowing it silently.
     const [status, setStatus] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const drawRef = useRef<Promise<void> | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
     useDismissable(kartu !== null, panelRef, onClose);
@@ -47,7 +54,7 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
         // 'rute' selection (carried over from a previous GPS card) must not
         // paint a blank map. See `hasRoute` below.
         const drawLayout = kartu.polyline != null && kartu.polyline !== '' ? layout : 'kartu';
-        void drawShareCard(canvasRef.current, { kartu, layout: drawLayout, format });
+        drawRef.current = drawShareCard(canvasRef.current, { kartu, layout: drawLayout, format });
     }, [kartu, layout, format]);
 
     // Auto-clear the status line so it reads as a transient toast.
@@ -67,7 +74,15 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
 
     const cfg = { kartu, layout: effectiveLayout, format };
 
-    const captureImage = (): Promise<Blob> => shareCardBlob(cfg);
+    // The preview canvas already holds the exact export bitmap at its full
+    // internal resolution, so read it back rather than redrawing every template
+    // into a second canvas. Awaiting the in-flight repaint first, because a tap
+    // can land before it settles and would otherwise export a blank canvas.
+    const captureImage = async (): Promise<Blob> => {
+        await drawRef.current;
+        const canvas = canvasRef.current;
+        return canvas === null ? shareCardBlob(cfg) : canvasToBlob(canvas);
+    };
 
     const handleShare = async () => {
         if (typeof navigator.share === 'function') {

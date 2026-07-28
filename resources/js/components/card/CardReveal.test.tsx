@@ -254,9 +254,9 @@ describe("CardReveal", () => {
     expect(bagikan).toBeInTheDocument();
     await u.click(bagikan);
     // Share modal opens
-    expect(screen.getByText(/Bagikan kartu/)).toBeInTheDocument();
+    expect(await screen.findByText(/Bagikan kartu/)).toBeInTheDocument();
     // Close the modal (covers () => setShareOpen(false))
-    await u.click(screen.getByLabelText("Tutup"));
+    await u.click(await screen.findByLabelText("Tutup"));
   });
 
   it("Escape inside the share modal closes only the modal, not the whole reveal", async () => {
@@ -264,7 +264,7 @@ describe("CardReveal", () => {
     render(<CardReveal pending={epicReveal} />);
     await u.click(screen.getByTestId("pack-wrapper"));
     await u.click(await screen.findByRole("button", { name: /Bagikan/ }));
-    expect(screen.getByText(/Bagikan kartu/)).toBeInTheDocument();
+    expect(await screen.findByText(/Bagikan kartu/)).toBeInTheDocument();
 
     // Escape closes the topmost layer (the share modal) only — the reveal
     // beneath it stays open and is NOT marked seen.

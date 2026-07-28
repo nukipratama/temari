@@ -1,13 +1,12 @@
 import { router } from "@inertiajs/react";
 import { Icon } from "@iconify/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import ConfettiBurst from "@/components/ConfettiBurst";
 import HeroPanel from "@/components/ui/HeroPanel";
 import Kartu from "./Kartu";
 import PackWrapper from "./PackWrapper";
 import PillButton from "@/components/ui/PillButton";
-import ShareCardModal from "./ShareCardModal";
 import type { ShareKartuData } from "@/lib/shareCard";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
@@ -17,6 +16,10 @@ import { RARITY_HEX, RARITY_LABELS, badgeEmblem, badgeName, buildCardStats, pace
 import { formatDuration, formatKm, formatPace, paceSecPerKm } from "@/lib/pace";
 import { csrfToken } from "@/lib/http";
 import type { ActivityDetail, PendingReveal, Rarity } from "@/types/inertia";
+
+// Carries the ~1200-line canvas engine, so it is fetched on the Bagikan tap
+// rather than riding along with the reveal itself.
+const ShareCardModal = lazy(() => import("./ShareCardModal"));
 
 interface CardRevealProps {
   pending: PendingReveal;
@@ -358,10 +361,11 @@ export default function CardReveal({
           </HeroPanel>
         </motion.div>
       </div>
-      <ShareCardModal
-        kartu={shareOpen ? shareData : null}
-        onClose={() => setShareOpen(false)}
-      />
+      {shareOpen && (
+        <Suspense fallback={null}>
+          <ShareCardModal kartu={shareData} onClose={() => setShareOpen(false)} />
+        </Suspense>
+      )}
     </>
   );
 }
