@@ -820,6 +820,57 @@ it('dispatches a ResolveActivityLocationJob when the run has coords but no resol
     Queue::assertPushed(ResolveActivityLocationJob::class, 1);
 });
 
+/**
+ * `useAnalysisTrigger` reloads this page every 3-15s for up to 30 ticks while
+ * the run insights generate. The job's `ShouldBeUnique` lock only spans the
+ * queued-or-running window, and a transient Nominatim miss deliberately leaves
+ * `location_resolved_at` null, so each finished-but-unresolved attempt freed the
+ * lock for the next tick to re-queue against a rate-limited public endpoint.
+ *
+ * `releaseUniqueJobLocks()` is what makes this honest: without it the fake holds
+ * the unique lock forever and the test would pass with no guard at all.
+ */
+it('does not re-dispatch a ResolveActivityLocationJob on every poll tick', function (): void {
+    Queue::fake();
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_lat' => -6.24,
+        'start_lng' => 106.81,
+        'location_resolved_at' => null,
+    ]);
+
+    foreach (range(1, 3) as $ignored) {
+        $this->actingAs($user)->get("/aktivitas/{$activity->id}")->assertSuccessful();
+        Queue::releaseUniqueJobLocks();
+    }
+
+    Queue::assertPushed(ResolveActivityLocationJob::class, 1);
+});
+
+it('dispatches for a different run while another run holds the guard', function (): void {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    $activities = collect(range(1, 2))->map(function () use ($user): Activity {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_lat' => -6.24,
+            'start_lng' => 106.81,
+            'location_resolved_at' => null,
+        ]);
+
+        return $activity;
+    });
+
+    foreach ($activities as $activity) {
+        $this->actingAs($user)->get("/aktivitas/{$activity->id}")->assertSuccessful();
+        Queue::releaseUniqueJobLocks();
+    }
+
+    Queue::assertPushed(ResolveActivityLocationJob::class, 2);
+});
+
 it('does not dispatch a ResolveActivityLocationJob when already resolved', function (): void {
     Queue::fake();
     $user = User::factory()->create();
