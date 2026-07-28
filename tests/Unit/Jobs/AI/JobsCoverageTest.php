@@ -57,10 +57,7 @@ function rowOf(string $subjectType, int $subjectId, AnalysisType $type, ?string 
 
 it('AnalyzeBriefingJob writes the briefing suggestion row Done', function (): void {
     $user = User::factory()->create();
-    mockNarrator(BriefingNarrator::class, [
-        'headline' => 'H',
-        'suggestion' => 'S',
-    ]);
+    mockNarrator(BriefingNarrator::class, 'S');
 
     new AnalyzeBriefingJob($user->id, '2026-05-18')->handle(app(AnalysisService::class));
 
@@ -78,10 +75,7 @@ it('AnalyzeBriefingJob writes the briefing suggestion row Done', function (): vo
 it('AnalyzeBriefingJob falls back to today when discriminator is null', function (): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
     $user = User::factory()->create();
-    mockNarrator(BriefingNarrator::class, [
-        'headline' => 'H',
-        'suggestion' => 'S',
-    ]);
+    mockNarrator(BriefingNarrator::class, 'S');
 
     new AnalyzeBriefingJob($user->id)->handle(app(AnalysisService::class));
 

@@ -309,9 +309,8 @@ class DemoRunSeeder
                 type: AnalysisType::WeeklyRecap,
             );
         }
-        // Headline + suggestion are one group: stage the whole group (not just the
-        // headline) so the dashboard's suggestion card is filled too and never
-        // renders "Belum dibaca". Mirrors DailyBriefingCommand.
+        // Mirrors DailyBriefingCommand so the dashboard's suggestion card is
+        // filled and never renders "Belum dibaca".
         $this->analysisService->requestBriefingGroup($user, $today);
         $this->analysisService->request(
             subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
