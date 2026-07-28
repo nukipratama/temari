@@ -87,6 +87,7 @@ class PostRunSpeechNarrator
             schemaName: 'TemariPostRunSpeech',
             requiredKeys: ['speech'],
             options: new ChatCallOptions(
+                temperature: 0.8,
                 userId: $activity->user_id,
                 maxTokens: 1500,
                 toolbox: $this->toolbox($activity, $detail),

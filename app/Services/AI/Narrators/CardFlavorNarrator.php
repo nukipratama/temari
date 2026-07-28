@@ -84,6 +84,7 @@ class CardFlavorNarrator
             schemaName: 'TemariCardFlavor',
             requiredKeys: ['flavor'],
             options: new ChatCallOptions(
+                temperature: 0.8,
                 userId: $card->activity->user_id,
                 maxTokens: 400,
                 toolbox: $this->toolbox($card),

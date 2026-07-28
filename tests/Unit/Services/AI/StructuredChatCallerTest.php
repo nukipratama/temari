@@ -667,3 +667,36 @@ it('keeps the budget across a content-filter retry so the strip cannot double th
     expect($payload)->toBe(['speech' => 'clean'])
         ->and(TokenUsage::query()->first()->total_tokens)->toBe(100);
 });
+
+// ── Prompt cache key ─────────────────────────────────────────────────
+
+// The cacheable prefix is the persona plus the narrator's own prompt and tool
+// schemas -- identical for every user who calls that narrator. Keying per user
+// would shard one shared prefix across the whole user base.
+it('keys the prompt cache on the narrator, not the caller', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
+
+    fakeStructuredCaller($client)
+        ->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(userId: 42));
+
+    $client->assertSent(
+        Responses::class,
+        fn (string $method, array $params): bool => $params['prompt_cache_key'] === 'briefing',
+    );
+});
+
+it('sends the same cache key for two different users of one narrator', function (): void {
+    $keys = [];
+    foreach ([7, 99] as $userId) {
+        $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
+        fakeStructuredCaller($client)
+            ->call('daily_greeting', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(userId: $userId));
+        $client->assertSent(Responses::class, function (string $method, array $params) use (&$keys): bool {
+            $keys[] = $params['prompt_cache_key'];
+
+            return true;
+        });
+    }
+
+    expect($keys)->toBe(['daily_greeting', 'daily_greeting']);
+});

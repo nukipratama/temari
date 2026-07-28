@@ -68,6 +68,7 @@ class BriefingFeaturedKartuVoiceNarrator
             schemaName: 'TemariKartuVoice',
             requiredKeys: ['kartu_voice'],
             options: new ChatCallOptions(
+                temperature: 0.8,
                 userId: $user->id,
                 maxTokens: 500,
                 toolbox: new AgentToolbox([new FeaturedCardTool($card)]),
