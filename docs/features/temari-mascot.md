@@ -1,6 +1,6 @@
 ---
 title: Temari mascot
-description: The character that voices the app — poses from mood/vibe, equipped gear from shared props, and bubble/peek/thread variants
+description: The character that voices the app — poses from mood/vibe, equipped gear from shared props, and the ambient peek variant
 tags: [feature, temari]
 status: living
 reviewed: 2026-06-20
@@ -8,9 +8,6 @@ code_refs:
   - resources/js/components/temari/Temari.tsx
   - resources/js/components/temari/TemariProto.tsx
   - resources/js/lib/temariPose.ts
-  - resources/js/components/temari/TemariBubble.tsx
-  - resources/js/components/temari/TemariThread.tsx
-  - resources/js/components/temari/TemariLottie.tsx
   - resources/js/components/temari/TemariPeek.tsx
 ---
 
@@ -59,7 +56,7 @@ celebration). See [[targets-accessories]].
 state to pose:
 
 - `MOOD_TO_POSE` — run `Mood` → pose (e.g. `nyala` → `proud`, `lemes` → `wobble`,
-  `adem` → `reading`). Used on the run detail, recaps, bubbles, threads.
+  `adem` → `reading`). Used on the run detail and the recaps.
 - `VIBE_TO_POSE` — a persona/weekly `vibe` string → pose (e.g. `pumped` →
   `pumped`, `cooked` → `wobble`).
 - `poseForFormStatus` — weekly training-load `FormStatus` → pose, used on the
@@ -67,16 +64,6 @@ state to pose:
 
 ## Variants
 
-- [TemariBubble](../../resources/js/components/temari/TemariBubble.tsx) — mascot
-  beside a single speech bubble (an `AnalysisStatus` row), `sm`/`lg` sizes,
-  pose from the line's mood.
-- [TemariThread](../../resources/js/components/temari/TemariThread.tsx) — the
-  mascot anchoring a vertical chat-style thread of several analyses connected by
-  a rail; collapses gracefully to one entry. Used for multi-lens narration.
-- [TemariLottie](../../resources/js/components/temari/TemariLottie.tsx) — fetches
-  a Lottie JSON by `src` and plays it via a lazy `LottiePlayer`; **falls back to
-  the SVG `Temari`** whenever `src` is empty or the fetch fails, so no rigged
-  asset is required to ship.
 - [TemariPeek](../../resources/js/components/temari/TemariPeek.tsx) — an ambient
   tooltip-style peek that pops a random line once per session (sessionStorage
   guard), respecting `prefers-reduced-motion`; the parent must be `relative`.

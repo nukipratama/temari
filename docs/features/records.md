@@ -18,7 +18,7 @@ code_refs:
 
 `/rekor` is the runner's PR wall: best time at every distance, the standout effort blown up into a scoreboard, and a "you used to be slower" progression chart per distance.
 
-**Navigation:** `route('records')` → `/rekor`. Named route: `records`.
+**Navigation:** `route('rekor')` → `/rekor`. Named route: `rekor`.
 
 ## System dependencies
 

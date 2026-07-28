@@ -21,7 +21,7 @@ code_refs:
 which 404s on a foreign or not-yet-analyzed activity and lazily kicks a
 location-resolve job when the run has GPS but no resolved place name.
 
-**Navigation:** `route('runs.show', activity)` → `/aktivitas/{activity}`. Named route: `runs.show`.
+**Navigation:** `route('aktivitas.show', activity)` → `/aktivitas/{activity}`. Named route: `aktivitas.show`.
 
 ## System dependencies
 

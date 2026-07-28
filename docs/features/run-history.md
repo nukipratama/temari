@@ -22,9 +22,9 @@ that share a header tab strip. [RiwayatTabs](../../resources/js/components/riway
 links **Jejak** (`/aktivitas`) and **Kalender** (`/kalender`) — two routes, two
 controllers, one mental model.
 
-**Navigation:** `route('runs.index')` → `/aktivitas` (Jejak, `RunController::index`);
-`route('calendar')` → `/kalender` (Kalender, `CalendarController::__invoke`).
-Named routes: `runs.index`, `calendar`.
+**Navigation:** `route('aktivitas.index')` → `/aktivitas` (Jejak, `RunController::index`);
+`route('kalender')` → `/kalender` (Kalender, `CalendarController::__invoke`).
+Named routes: `aktivitas.index`, `kalender`.
 
 ## System dependencies
 
