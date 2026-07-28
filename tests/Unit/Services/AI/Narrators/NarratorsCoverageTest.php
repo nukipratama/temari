@@ -1321,3 +1321,20 @@ it('RunInsightNarrator prompt steers general words to Indonesian while keeping r
         ->toContain('negative split')
         ->not->toContain('—');
 });
+
+// Validated twice against prod. A general "do not announce missing data" rule in
+// the persona was not enough for these two blocks, because their task
+// definitions ARE the missing thing: technical is told to translate cadence and
+// HR, zones to interpret an HR breakdown. On a run with no HR their assigned job
+// is absent, so explaining that is the cooperative answer. They need a different
+// job, not a stronger prohibition -- the same shape as #429's post-run lens.
+it('RunInsightNarrator gives technical and zones a job when their subject is missing', function (): void {
+    $prompt = narratorPrompt(RunInsightNarrator::class);
+
+    expect($prompt)
+        ->toContain('KALAU CADENCE/HR/DECOUPLING GAK ADA')
+        ->toContain('KALAU ZONE-NYA GAK ADA')
+        // The two phrasings prod actually produced, named so they cannot return.
+        ->toContain('fokus ke pace')
+        ->toContain('dari durasi dan');
+});

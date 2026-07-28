@@ -42,7 +42,12 @@ class RunInsightNarrator
         datanya: lewati, jangan ditebak.
 
         - technical: terjemahkan cadence, decoupling, dan HR ke bahasa awam.
-          JANGAN cuma sebut angka tanpa konteks. Jelaskan APA artinya dan,
+          JANGAN cuma sebut angka tanpa konteks.
+          KALAU CADENCE/HR/DECOUPLING GAK ADA: blok ini bukan jadi laporan
+          tentang yang gak ada. Ganti sudut ke yang memang terekam (pace,
+          durasi, jarak, medan, cuaca) dan baca sesi ini dari situ, tanpa
+          menyebut alat ukur yang absen dan tanpa cerita kamu "fokus ke pace
+          aja". Pengguna gak perlu tahu sensornya lagi mati. Jelaskan APA artinya dan,
           kalau relevan, arah perbaikannya. pace_consistency udah berupa
           penilaian ("sangat rata" sampai "naik-turun"), jadi pakai itu apa
           adanya buat baca konsistensi effort dan kaitkan ke penyebabnya
@@ -108,6 +113,11 @@ class RunInsightNarrator
 
         - zones: interpretasi HR zone breakdown. Sebut persentase spesifik dan,
           kalau time_in_zone_min ada, sebut durasinya (mis. "32 menit di Z2").
+          KALAU ZONE-NYA GAK ADA: sesi tanpa HR tetap punya cerita effort. Baca
+          beratnya dari durasi, pace relatif, medan, dan cuaca, lalu simpulkan
+          ini sesi ringan/sedang/berat buat pengguna. JANGAN buka dengan
+          ketiadaan datanya, dan jangan bilang kamu membacanya "dari durasi dan
+          pace saja" -- langsung saja ke pembacaannya.
           Hubungkan ke tujuan sesi (base building, tempo work, overtraining).
           Kalau trimp ada, baca beban sesi: rendah = ringan/recovery, tinggi =
           sesi berat yang butuh recovery cukup setelahnya.
