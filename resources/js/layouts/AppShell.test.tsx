@@ -48,12 +48,6 @@ describe('AppShell', () => {
         expect(motionConfigSpy).toHaveBeenCalledWith('user');
     });
 
-    it('wraps the no-nav branch in MotionConfig reducedMotion="user" too', () => {
-        setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
-        render(<AppShell withNav={false}><p>x</p></AppShell>);
-        expect(motionConfigSpy).toHaveBeenCalledWith('user');
-    });
-
     it('sets a data-time-of-day attribute on body via useDawnShift', () => {
         setMockPage({
             auth: { user: andiUser },
@@ -166,22 +160,6 @@ describe('AppShell', () => {
         // Scoped by testid, not by tag: TopNav is also a <header> and stays in
         // the DOM on mobile, hidden by CSS alone.
         expect(screen.getByTestId('mobile-top-bar')).toBeInTheDocument();
-    });
-
-    it('pads the no-nav branch past the notch, since it has no top bar to do it', () => {
-        const { container } = render(<AppShell withNav={false}>content</AppShell>);
-        expect(container.querySelector('.min-h-screen')).toHaveClass('pt-[env(safe-area-inset-top)]');
-    });
-
-    it('omits nav chrome when withNav is false', () => {
-        setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
-        render(
-            <AppShell withNav={false}>
-                <p>only child</p>
-            </AppShell>,
-        );
-        expect(screen.queryByText('Hari Ini')).not.toBeInTheDocument();
-        expect(screen.getByText('only child')).toBeInTheDocument();
     });
 
     it('shows AksesoriUnlockModal and dismisses it when a major unlock is flashed', async () => {

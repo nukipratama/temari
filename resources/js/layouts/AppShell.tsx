@@ -20,11 +20,9 @@ const CardReveal = lazy(() => import('@/components/card/CardReveal'));
 
 interface AppShellProps {
     children: ReactNode;
-    /** Hides the TopNav + MobileBottomNav for standalone screens (e.g. Login). */
-    withNav?: boolean;
 }
 
-export default function AppShell({ children, withNav = true }: Readonly<AppShellProps>) {
+export default function AppShell({ children }: Readonly<AppShellProps>) {
     useDawnShift();
     useSwipeBack();
     const { pendingReveal, flash } = usePage<SharedProps>().props;
@@ -42,21 +40,6 @@ export default function AppShell({ children, withNav = true }: Readonly<AppShell
         if (unlock?.is_major) {
             setMajorUnlock(unlock);
         }
-    }
-
-    if (!withNav) {
-        return (
-            <MotionConfig reducedMotion="user">
-                {/* No MobileTopBar here, so this branch pads for the notch
-                    itself. */}
-                <div className="min-h-screen bg-cream-deep pt-[env(safe-area-inset-top)] text-ink">
-                    <ErrorBanner />
-                    <StravaZoneReconnectBanner />
-                    <AiOutageBanner />
-                    {children}
-                </div>
-            </MotionConfig>
-        );
     }
 
     return (

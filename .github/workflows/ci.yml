@@ -42,7 +42,7 @@ jobs:
           if printf '%s\n' "$changed" | grep -qE '^(app|bootstrap|config|database|routes|tests)/|^composer\.(json|lock)$|^phpunit\.xml$|^artisan$|^(phpstan|phpstan-baseline)\.neon$|^rector\.php$|^pint\.json$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             backend=true
           fi
-          if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^public/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
+          if printf '%s\n' "$changed" | grep -qE '^resources/(js|css|views)/|^public/|^package(-lock)?\.json$|^vite\.config\.ts$|^vitest\.config\.ts$|^tsconfig\.json$|^eslint\.config\.|^\.nvmrc$|^scripts/check-entry-chunks\.mjs$|^\.github/workflows/ci\.yml$|^docker/|^Dockerfile$|^compose[^/]*\.yaml$|^\.env\.example$'; then
             frontend=true
           fi
           echo "backend=$backend" >> "$GITHUB_OUTPUT"
@@ -238,6 +238,16 @@ jobs:
               echo ""
             } >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      # The only gate that reads the built bundle. Without it, a bundler
+      # upgrade or a stray static import can put a chart engine or the
+      # animation library back on every route's first paint with nothing
+      # failing — which is exactly how the React-in-charts split survived.
+      - name: Build assets
+        run: npm run build
+
+      - name: Entry chunk guard (first-paint budget)
+        run: npm run check:chunks
 
   # Cold static analysis. Local pre-commit/caches can mask drift (unchanged
   # files skip re-analysis), so a fresh checkout here is the only place that

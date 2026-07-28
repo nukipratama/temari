@@ -13,6 +13,7 @@
         "icons:build": "node scripts/build-icon-bundle.mjs",
         "purge": "rm -rf public/build public/hot node_modules/.vite node_modules/.cache coverage",
         "lint": "eslint resources/js --max-warnings 0",
+        "check:chunks": "node scripts/check-entry-chunks.mjs",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
