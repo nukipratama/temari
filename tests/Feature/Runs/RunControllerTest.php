@@ -956,6 +956,21 @@ it('does not run the past-you match or the relative-effort baseline on an insigh
     }
 });
 
+it('still resolves the card payload on the card-only partial reload', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+    RunCard::factory()->for($activity)->create(['special_move' => 'Paru-paru Baja']);
+
+    $headers = insightOnlyHeaders($this->actingAs($user), $activity->id);
+    $headers['X-Inertia-Partial-Data'] = 'card';
+
+    $response = $this->actingAs($user)->get("/aktivitas/{$activity->id}", $headers)->assertSuccessful();
+
+    $response->assertJsonPath('props.card.special_move', 'Paru-paru Baja');
+    $response->assertJsonPath('props.card.edition', ['index' => 1, 'total' => 1]);
+});
+
 it('still runs the past-you match and the relative-effort baseline on a full run-detail load', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

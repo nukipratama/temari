@@ -146,6 +146,8 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
         ->and($snapshotReads)->toBeEmpty();
 
     $response->assertJsonPath('component', 'HariIni');
+    // The one prop the poll does name still has to resolve.
+    $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
     foreach (['load', 'snapshot', 'recentRuns', 'lastRunNote', 'recentMoods'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
