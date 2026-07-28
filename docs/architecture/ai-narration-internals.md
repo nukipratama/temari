@@ -38,7 +38,7 @@ The per-activity narrators no longer take a pre-computed context. Every number r
 
 Each tool is bound to its subject at construction and declares an argument-free schema ([ActivityTool](app/Services/AI/Agent/Tools/ActivityTool.php)), which is how cross-user reads are prevented: there is no id to pass. The loop, its ceilings, and why the model gets an error payload rather than a failed block are in [[narration-agents-on-openai-php]].
 
-**What still travels in the context** is whatever no tool could serve: a value the *call itself* carries rather than the database (post-run speech's `mood`, and its three insight blocks, written moments earlier in the same job and not yet persisted), plus the continuity line, which stays in the prompt because the content-filter retry has to be able to strip it.
+**What still travels in the context** is whatever no tool could serve: a value the *call itself* carries rather than the database (post-run speech's `mood`), plus the continuity line, which stays in the prompt because the content-filter retry has to be able to strip it.
 
 A toolbox is built per call, so it can be shorter when the subject is thinner — a card whose activity has no detail row is offered only `get_card_identity`, rather than four tools that would answer null to everything.
 
@@ -60,7 +60,9 @@ The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string �
 
 Profile voice, persona summary and PR context complete the set, and all three send an **empty context** — unlike the recaps there was not even a continuity line to keep, since none of them are chained. Their arithmetic moved with them: lifetime stats and the favourite-time bucket, the persona mood mix with its recent-vs-earlier split, and the progression signal were private methods on the narrators and are tools now.
 
-Every narrator now reads rather than receives. What remains in any context is only ever one of three things: a value the *call* carries (post-run speech's `mood`, the daily greeting's `vibe`), output written moments earlier in the same job and not yet persisted (post-run speech's `insights`), or the continuity line.
+Every narrator now reads rather than receives. What remains in any context is only ever one of two things: a value the *call* carries (post-run speech's `mood`, the daily greeting's `vibe`), or the continuity line.
+
+**The post-run speech is the one narrator deliberately kept short of data.** It used to receive the three insight blocks as prose to synthesize. All four render side by side in the [[run-detail]] lens grid, so being handed the other three made it a fourth telling of the same run — and saying "don't repeat" did not hold, in its own prompt or by removing its splits and zone tools. It now owns a lens the others structurally cannot: the day around the run, and where the run sits against the athlete's own history. Mechanics belong to the other three.
 
 ### BriefingContext (per-user-day signals)
 

@@ -56,7 +56,7 @@ The heart of the page is [FourLensGrid](../../resources/js/components/run/FourLe
 fed four separate `Analysis` payloads the controller resolves from
 `RunController::RUN_INSIGHT_TYPES`:
 
-- **Cerita lari ini** — the post-run speech (`PostRunSpeech`)
+- **Cerita lari ini** — the post-run speech (`PostRunSpeech`). Deliberately *not* a summary of the other three: it carries the run's context and its place in the athlete's history, and is told to leave pacing, cadence and zones to the lenses beside it.
 - **Terjemahan teknis** — `RunInsightTechnical`
 - **Split paling seru** — `RunInsightSplits`
 - **Zona HR** — `RunInsightZones`

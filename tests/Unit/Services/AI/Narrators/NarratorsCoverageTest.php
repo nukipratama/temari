@@ -79,16 +79,6 @@ function capturingCaller(string $content): array
 
 // ── PostRunSpeechNarrator ─────────────────────────────────────────────
 
-/** @return array{technical: string, splits: string, zones: string} */
-function postRunInsightsFixture(): array
-{
-    return [
-        'technical' => 'Cadence 168, decoupling rendah.',
-        'splits' => 'Km 4 tercepat, negative split rapi.',
-        'zones' => '70% di Z2, cocok base building.',
-    ];
-}
-
 function postRunFixture(): array
 {
     $user = User::factory()->create();
@@ -106,21 +96,21 @@ it('PostRunSpeechNarrator returns speech on valid JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['speech' => 'Nice run today!'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
-    expect($narrator->generate($a, $d, 'nyala', postRunInsightsFixture()))->toBe('Nice run today!');
+    expect($narrator->generate($a, $d, 'nyala'))->toBe('Nice run today!');
 });
 
 it('PostRunSpeechNarrator throws on non-JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller('not json');
     $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
-    $narrator->generate($a, $d, 'nyala', postRunInsightsFixture());
+    $narrator->generate($a, $d, 'nyala');
 })->throws(UnavailableException::class, 'non-JSON');
 
 it('PostRunSpeechNarrator throws on missing key', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
-    $narrator->generate($a, $d, 'nyala', postRunInsightsFixture());
+    $narrator->generate($a, $d, 'nyala');
 })->throws(UnavailableException::class, 'missing speech');
 
 it('PostRunSpeechNarrator does not fatal when the stream summary is null', function (): void {
@@ -128,7 +118,7 @@ it('PostRunSpeechNarrator does not fatal when the stream summary is null', funct
     $d->update(['stream_summary' => null]);
     $caller = fakeCaller(json_encode(['speech' => 'Mantap'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
-    expect($narrator->generate($a, $d->fresh(), 'dim', postRunInsightsFixture()))->toBe('Mantap');
+    expect($narrator->generate($a, $d->fresh(), 'dim'))->toBe('Mantap');
 });
 
 it('PostRunSpeechNarrator narrates a run with a populated stream summary', function (): void {
@@ -140,16 +130,21 @@ it('PostRunSpeechNarrator narrates a run with a populated stream summary', funct
     ]]);
     $caller = fakeCaller(json_encode(['speech' => 'Base solid'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
-    expect($narrator->generate($a, $d->fresh(), 'nyala', postRunInsightsFixture()))->toBe('Base solid');
+    expect($narrator->generate($a, $d->fresh(), 'nyala'))->toBe('Base solid');
 });
 
-it('PostRunSpeechNarrator carries the insight triplet into context', function (): void {
+// The speech used to be handed all three insight blocks as prose to synthesize.
+// On a page where all four render side by side, that made it a fourth telling of
+// the same run. Its lens is what the other three structurally cannot hold -- the
+// day around the run and where it sits in the athlete's history -- so the
+// triplet no longer reaches it at all.
+it('PostRunSpeechNarrator is not handed the insight blocks it used to retell', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $insights = postRunInsightsFixture();
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala', $insights);
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))
+        ->context($a, $d->fresh(), 'nyala');
 
-    expect($context['insights'])->toBe($insights);
+    expect($context)->not->toHaveKey('insights');
 });
 
 /**
@@ -178,7 +173,7 @@ it('PostRunSpeechNarrator feeds prev_narrative from the prior activity post-run 
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'Lari kemarin enteng banget.');
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala');
 
     expect($context['prev_narrative'])->toBe('Lari kemarin enteng banget.')
         // prev_opener is the first few words, so the model can steer away from it.
@@ -198,7 +193,7 @@ it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala');
 
     expect($context['prev_narrative'])->toBeNull()
         ->and($context['prev_opener'])->toBeNull();
@@ -212,7 +207,7 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
         'Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup dan pace makin rapi di akhir.',
     );
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala');
 
     expect($context['prev_opener'])->toBe('Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup')
         ->and(str_word_count((string) $context['prev_opener']))->toBeLessThanOrEqual(10);
@@ -222,12 +217,11 @@ it('PostRunSpeechNarrator keeps only what no tool can serve in the context', fun
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))
-        ->context($a, $d->fresh(), 'nyala', postRunInsightsFixture());
+        ->context($a, $d->fresh(), 'nyala');
 
-    // mood is the call's own argument and the insights were written moments ago
-    // in this same job, so neither is readable from anywhere.
+    // mood is the call's own argument, so it is not readable from anywhere.
     expect(array_keys($context))
-        ->toBe(['mood', 'insights', ...NarratorContinuity::CONTEXT_KEYS]);
+        ->toBe(['mood', ...NarratorContinuity::CONTEXT_KEYS]);
 });
 
 it('PostRunSpeechNarrator is not offered the splits or zones its insights already interpret', function (): void {
@@ -1161,6 +1155,20 @@ it('recap prompts give storytelling room (3-4 sentences, no rigid word cap)', fu
     'weekly' => [WeeklyRecapNarrator::class],
     'monthly' => [MonthlyRecapNarrator::class],
 ]);
+
+it('PostRunSpeechNarrator prompt hands the mechanics to the other three lenses', function (): void {
+    // All four blocks render side by side in FourLensGrid, so a speech that
+    // re-tells the pacing is visibly redundant. Telling it not to repeat had
+    // already failed twice (its own prompt said so, and #423 took its tools);
+    // the fix was giving it a lens of its own instead.
+    $prompt = narratorPrompt(PostRunSpeechNarrator::class);
+
+    expect($prompt)
+        ->toContain('LENSA KAMU')
+        ->toContain('Itu bukan bagian kamu.')
+        ->toContain('JANGAN membedah pacing')
+        ->toContain('kenapa lari ini');
+});
 
 it('WeeklyRecapNarrator prompt caps the number count so the recap stops reading as a table', function (): void {
     // Prod shipped ten numbers across four sentences: the field list read as a

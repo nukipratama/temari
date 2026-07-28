@@ -177,7 +177,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
         $insights = $this->resolveInsights($subject, $detail);
 
         $speech = app(PostRunSpeechNarrator::class)
-            ->generate($subject, $detail, $storyLine->mood, $insights);
+            ->generate($subject, $detail, $storyLine->mood);
 
         return [
             AnalysisType::PostRunSpeech->value => $speech,
@@ -188,9 +188,9 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     }
 
     /**
-     * The three run-insight analyses the post-run speech synthesizes. Reused
-     * verbatim from already-Done insight rows when present (so a cerita-only
-     * re-dispatch does not re-bill the insight LLM); otherwise generated fresh.
+     * The three run-insight analyses this group persists. Reused verbatim from
+     * already-Done insight rows when present (so a cerita-only re-dispatch does
+     * not re-bill the insight LLM); otherwise generated fresh.
      *
      * @return array{technical: string, splits: string, zones: string}
      */
