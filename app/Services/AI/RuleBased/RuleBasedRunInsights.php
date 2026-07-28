@@ -336,7 +336,7 @@ final readonly class RuleBasedRunInsights
         }
 
         $easyPct = (float) ($zonePct['Z1'] ?? 0) + (float) ($zonePct['Z2'] ?? 0);
-        $hardPct = StreamSummary::hardZoneShare($summary);
+        $hardPct = StreamSummary::fromArray($summary)->hardZoneShare();
         $discipline = match (true) {
             $easyPct >= 80 => 'base building proper, mayoritas easy',
             $easyPct >= 60 => 'kombinasi easy dan moderate, seimbang',
@@ -361,7 +361,7 @@ final readonly class RuleBasedRunInsights
      */
     private function resolveZonePercentages(array $summary): array
     {
-        $zonePct = StreamSummary::zonePct($summary);
+        $zonePct = StreamSummary::fromArray($summary)->zonePct();
         if ($zonePct !== []) {
             return $zonePct;
         }

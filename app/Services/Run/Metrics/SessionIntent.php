@@ -58,7 +58,7 @@ final class SessionIntent
         }
 
         $summary = $detail->streamSummary();
-        if (StreamSummary::zonePct($summary) === []) {
+        if (StreamSummary::fromArray($summary)->zonePct() === []) {
             return ['intent' => self::UNKNOWN, 'source' => self::NONE];
         }
 
@@ -91,9 +91,9 @@ final class SessionIntent
      */
     private static function looksLikeThresholdWork(array $summary): bool
     {
-        $z4Share = (float) (StreamSummary::zonePct($summary)['Z4'] ?? 0);
+        $z4Share = (float) (StreamSummary::fromArray($summary)->zonePct()['Z4'] ?? 0);
 
-        return StreamSummary::hardZoneShare($summary) >= self::HARD_SHARE_MIN
+        return StreamSummary::fromArray($summary)->hardZoneShare() >= self::HARD_SHARE_MIN
             || $z4Share >= self::THRESHOLD_SHARE_MIN;
     }
 }

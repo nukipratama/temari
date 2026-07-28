@@ -381,7 +381,7 @@ class RunCardFactory
     {
         $badges = [];
 
-        $zonePct = StreamSummary::zonePct($summary);
+        $zonePct = StreamSummary::fromArray($summary)->zonePct();
         if (($zonePct['Z2'] ?? 0) > 80.0) {
             $badges[] = Badge::Z2Master->value;
         }
@@ -546,7 +546,7 @@ class RunCardFactory
             return false;
         }
 
-        return StreamSummary::hardZoneShare($summary) < 25.0;
+        return StreamSummary::fromArray($summary)->hardZoneShare() < 25.0;
     }
 
     /**
@@ -559,7 +559,7 @@ class RunCardFactory
             return false;
         }
 
-        return StreamSummary::hardZoneShare($summary) < 10.0;
+        return StreamSummary::fromArray($summary)->hardZoneShare() < 10.0;
     }
 
     private function hasPrFromThisActivity(Activity $activity): bool

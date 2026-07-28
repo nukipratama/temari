@@ -25,7 +25,7 @@ final class HrZonesTool extends ActivityTool
         $summary = $this->summary();
 
         return [
-            'zone_pct' => StreamSummary::zonePct($summary),
+            'zone_pct' => StreamSummary::fromArray($summary)->zonePct(),
             'time_in_zone_min' => $summary['time_in_zone_min'] ?? null,
             'trimp' => $this->detail->trimp_edwards,
         ];

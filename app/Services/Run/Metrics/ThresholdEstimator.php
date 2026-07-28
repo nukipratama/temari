@@ -67,7 +67,7 @@ class ThresholdEstimator
      */
     private function isHardSession(array $summary): bool
     {
-        return StreamSummary::hardZoneShare($summary) >= self::HARD_SESSION_Z3_PLUS_PCT;
+        return StreamSummary::fromArray($summary)->hardZoneShare() >= self::HARD_SESSION_Z3_PLUS_PCT;
     }
 
     /**

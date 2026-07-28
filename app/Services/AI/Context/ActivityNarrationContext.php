@@ -48,7 +48,7 @@ final readonly class ActivityNarrationContext
             distanceMeters: $detail?->distance,
             decouplingPct: $summary['decoupling_pct'] ?? null,
             negativeSplit: $summary['negative_split'] ?? null,
-            zonePct: StreamSummary::zonePct($summary),
+            zonePct: StreamSummary::fromArray($summary)->zonePct(),
             weatherTempC: $detail?->weather_temp_c,
             weatherRain: $detail?->weather_rain_detected,
             weatherWindSpeedKmh: $detail?->weather_wind_speed_kmh,

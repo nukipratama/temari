@@ -116,7 +116,7 @@ class Temari
     private static function moodForActivity(ActivityDetail $detail, bool $hasPr): string
     {
         $summary = $detail->streamSummary();
-        $hardShare = StreamSummary::hardZoneShare($summary);
+        $hardShare = StreamSummary::fromArray($summary)->hardZoneShare();
         $decoupling = (float) ($summary['decoupling_pct'] ?? 0);
         $hotWeather = (int) ($detail->weather_temp_c ?? 0) >= 31;
         $negativeSplit = ($summary['negative_split'] ?? false) === true;

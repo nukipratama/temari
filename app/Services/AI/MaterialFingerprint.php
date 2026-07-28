@@ -75,7 +75,7 @@ final class MaterialFingerprint
      */
     private static function bucketedZones(array $summary): array
     {
-        $zonePct = StreamSummary::zonePct($summary);
+        $zonePct = StreamSummary::fromArray($summary)->zonePct();
         $rounded = [];
         foreach ($zonePct as $zone => $pct) {
             $rounded[$zone] = (int) round((float) $pct);
