@@ -14,7 +14,6 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\AI\TokenUsage;
 use App\Models\Analytics\StravaSyncLog;
 use App\Services\AI\ChatCallOptions;
-use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\AI\TokenUsageRecorder;
 use App\Services\Geo\ResolvedLocation;
@@ -69,7 +68,6 @@ it('has a test class for every concrete app class', function (): void {
         TokenUsage::class,              // StructuredChatCallerTest
         TokenUsageRecorder::class,      // StructuredChatCallerTest
         RuleBasedNarrationFiller::class, // DemoSeedCommandTest
-        RuleBasedInsightBuilder::class,  // JobsCoverageTest, AnalyzeActivityJobTest
         PaceFormatter::class,           // exercised across pace tests
         StreamSummary::class,           // StreamAnalysisTest
         StravaSyncLog::class,           // SyncOrchestratorTest

@@ -127,29 +127,27 @@ it('reverts group rows to Pending without billing when generation is paused', fu
         ->and($rows->pluck('attempts')->unique()->all())->toBe([0]);
 });
 
-it('degrades run-insight to rule-based content when the LLM is unavailable', function (): void {
+// An unavailable model used to degrade the insights to deterministic template
+// copy. It no longer does: a template presented as narration is a lie the user
+// cannot see through, so the group fails honestly and the UI offers "Coba lagi".
+it('fails the whole group rather than templating run-insight when the LLM is unavailable', function (): void {
     $activity = seedActivityForJob();
 
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
-    $speechMock->shouldReceive('generate')->andReturn('nice run');
+    $speechMock->shouldNotReceive('generate');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
-    // LLM run-insight throws: the job should fall back to the rule-based builder,
-    // not fail the whole group.
     $insightMock = Mockery::mock(RunInsightNarrator::class);
     $insightMock->shouldReceive('generate')->andThrow(new UnavailableException('llm down'));
     app()->instance(RunInsightNarrator::class, $insightMock);
 
     new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
-    $rows = Analysis::query()
-        ->where('subject_id', $activity->id)
-        ->get()
-        ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
-
-    foreach ([AnalysisType::RunInsightTechnical, AnalysisType::RunInsightSplits, AnalysisType::RunInsightZones] as $type) {
-        expect($rows[$type->value]->status)->toBe(AnalysisStatus::Done)
-            ->and($rows[$type->value]->content)->not->toBeEmpty();
+    $rows = Analysis::query()->where('subject_id', $activity->id)->get();
+    expect($rows)->not->toBeEmpty();
+    foreach ($rows as $row) {
+        expect($row->status)->toBe(AnalysisStatus::Failed)
+            ->and($row->content)->toBeNull();
     }
 });
 
@@ -256,6 +254,12 @@ it('no-ops when all rows already Done (idempotent)', function (): void {
 
 it('rethrows non-UnavailableException so Laravel can retry the whole group', function (): void {
     $activity = seedActivityForJob();
+
+    $insightMock = Mockery::mock(RunInsightNarrator::class);
+    $insightMock->shouldReceive('generate')->andReturn([
+        'technical' => 'tech', 'splits' => 'splits', 'zones' => 'zones',
+    ]);
+    app()->instance(RunInsightNarrator::class, $insightMock);
 
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
     $speechMock->shouldReceive('generate')->andThrow(new RuntimeException('boom'));

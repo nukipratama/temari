@@ -204,7 +204,10 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
     Carbon::setTestNow();
 });
 
-it('refreshes the rule-based trend caption on every run of the day (free, no LLM)', function (): void {
+// The caption used to be filled inline from stored snapshots, so re-running it
+// per run was free. It is narrated now, so it follows the same daily-refresh
+// rule as the rest of the set: today's runs re-narrate, older ones never do.
+it('re-narrates the trend caption on every run of the day', function (): void {
     Carbon::setTestNow('2026-05-19 06:00:00');
     $first = analyzedActivity('2026-05-19 05:30:00');
     fire($first);
@@ -212,16 +215,15 @@ it('refreshes the rule-based trend caption on every run of the day (free, no LLM
     $row = Analysis::query()
         ->where('analysis_type', AnalysisType::TrendCaption)
         ->firstOrFail();
-    expect($row->status)->toBe(AnalysisStatus::Done);
-    $firstGeneratedAt = $row->generated_at;
+    app(AnalysisService::class)->markDone($row, 'tren stabil');
 
+    Bus::fake();
     Carbon::setTestNow('2026-05-19 17:45:00');
     $second = analyzedActivity('2026-05-19 17:30:00', $first->user_id);
     fire($second);
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->generated_at->gt($firstGeneratedAt))->toBeTrue();
-    Bus::assertNotDispatched(AnalyzeTrendCaptionJob::class);
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    Bus::assertDispatched(AnalyzeTrendCaptionJob::class);
     Carbon::setTestNow();
 });
 

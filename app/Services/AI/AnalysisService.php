@@ -13,8 +13,6 @@ use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
-use App\Services\AI\RuleBased\RuleBasedInsightBuilder;
-use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Telegram\NotifiableAnalysis;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -31,8 +29,6 @@ class AnalysisService
     private bool $dispatchSuppressed = false;
 
     public function __construct(
-        private readonly RuleBasedNarrationFiller $filler,
-        private readonly RuleBasedInsightBuilder $insightBuilder,
         private readonly AppConfig $config,
         private readonly LlmCostCalculator $costCalculator,
         private readonly NotifiableAnalysis $notifiableAnalysis,
@@ -208,16 +204,6 @@ class AnalysisService
         $row = $this->upsertRow($subjectType, $subjectId, $type, $discriminator);
         $justCreated = $row->wasRecentlyCreated;
 
-        // Rule-based types carry deterministic content (no LLM) -> fill inline.
-        if ($type->isRuleBased()) {
-            if ($justCreated || ($invalidate && $row->status === AnalysisStatus::Done)) {
-                $this->markDone($row, $this->ruleBasedContent($row));
-                $row->refresh();
-            }
-
-            return $row;
-        }
-
         // Generation paused (cost ceiling / AI off / Azure unset / demo seed):
         // stay honest -> a fresh row rests Pending for the empty state, an existing
         // Done keeps its real prose. Never substitute a template; ai:self-heal
@@ -244,31 +230,6 @@ class AnalysisService
         $this->dispatchPending($jobClass::dispatch($row->id), $delaySeconds);
 
         return $row;
-    }
-
-    /** Generate deterministic content for rule-based analysis types. */
-    private function ruleBasedContent(Analysis $row): string
-    {
-        if ($row->analysis_type === AnalysisType::TrendCaption) {
-            return $this->insightBuilder->trendCaption(
-                User::query()->findOrFail($row->subject_id),
-                $row->discriminator !== null ? Carbon::parse($row->discriminator) : Carbon::today(),
-            );
-        }
-
-        $activity = Activity::query()->with('detail')->findOrFail($row->subject_id);
-        $detail = $activity->detail;
-
-        if ($detail === null) {
-            return $this->filler->fillFor($row);
-        }
-
-        return match ($row->analysis_type) {
-            AnalysisType::RunInsightTechnical => $this->insightBuilder->runInsightTechnical($activity, $detail),
-            AnalysisType::RunInsightSplits => $this->insightBuilder->runInsightSplits($detail),
-            AnalysisType::RunInsightZones => $this->insightBuilder->runInsightZones($detail),
-            default => $this->filler->fillFor($row),
-        };
     }
 
     /**

@@ -32,6 +32,7 @@ use App\Services\AI\Narrators\DailyGreetingNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PersonaSummaryNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
+use App\Services\AI\Narrators\TrendCaptionNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -374,31 +375,38 @@ it('AnalyzeMonthlyRecapJob does not advance into the still-open current month', 
 
 // ── AnalyzeTrendCaptionJob (row) ─────────────────────────────────────
 
-it('AnalyzeTrendCaptionJob returns caption with discriminator', function (): void {
+it('AnalyzeTrendCaptionJob narrates as of the discriminator date', function (): void {
     $user = User::factory()->create();
-    // Seed two weekly snapshots so RuleBasedInsightBuilder can produce a caption.
-    WeeklySnapshot::factory()->create(['user_id' => $user->id, 'week_ending' => '2026-05-11', 'distance_km' => 20, 'form' => 10]);
-    WeeklySnapshot::factory()->create(['user_id' => $user->id, 'week_ending' => '2026-05-18', 'distance_km' => 25, 'form' => 12]);
+
+    $mock = Mockery::mock(TrendCaptionNarrator::class);
+    $mock->shouldReceive('generate')
+        ->once()
+        ->withArgs(fn (User $u, Carbon $asOf): bool => $u->is($user) && $asOf->toDateString() === '2026-05-18')
+        ->andReturn('volume naik 5 km dalam 4 minggu');
+    app()->instance(TrendCaptionNarrator::class, $mock);
 
     $row = rowOf(AnalysisType::TREND_CAPTION_SUBJECT_TYPE, $user->id, AnalysisType::TrendCaption, '2026-05-18');
     new AnalyzeTrendCaptionJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->not->toBeEmpty()
+    expect($row->fresh()->content)->toBe('volume naik 5 km dalam 4 minggu')
         ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
 });
 
 it('AnalyzeTrendCaptionJob falls back to today when discriminator is null', function (): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
     $user = User::factory()->create();
-    // Seed two weekly snapshots so RuleBasedInsightBuilder can produce a caption.
-    WeeklySnapshot::factory()->create(['user_id' => $user->id, 'week_ending' => '2026-05-11', 'distance_km' => 20, 'form' => 10]);
-    WeeklySnapshot::factory()->create(['user_id' => $user->id, 'week_ending' => '2026-05-18', 'distance_km' => 25, 'form' => 12]);
+
+    $mock = Mockery::mock(TrendCaptionNarrator::class);
+    $mock->shouldReceive('generate')
+        ->once()
+        ->withArgs(fn (User $u, Carbon $asOf): bool => $asOf->toDateString() === '2026-05-19')
+        ->andReturn('tren stabil');
+    app()->instance(TrendCaptionNarrator::class, $mock);
 
     $row = rowOf(AnalysisType::TREND_CAPTION_SUBJECT_TYPE, $user->id, AnalysisType::TrendCaption, null);
     new AnalyzeTrendCaptionJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->not->toBeEmpty()
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done);
     Carbon::setTestNow();
 });
 

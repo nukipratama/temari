@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\RuleBased;
 
 use App\Enums\Badge;
-use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
@@ -18,15 +17,15 @@ use App\Services\AI\AnalysisType;
  * - BriefingComposer when Azure OpenAI is unconfigured (empty env)
  *
  * Output is deterministic and Temari-voiced. Where the subject's real data is
- * available it drives the copy (delegating run-insight types to the shared
- * {@see RuleBasedInsightBuilder} so demo output matches production), falling
- * back to seeded variants only when the subject row is missing. Users with a
- * configured Azure can re-trigger via "Baca ulang" to get real LLM output.
+ * available it drives the copy (run-insight types via {@see RuleBasedRunInsights}
+ * so a seeded demo shows the run's real numbers), falling back to seeded
+ * variants only when the subject row is missing. Users with a configured Azure
+ * can re-trigger via "Baca ulang" to get real LLM output.
  */
 final readonly class RuleBasedNarrationFiller
 {
     public function __construct(
-        private RuleBasedInsightBuilder $insightBuilder,
+        private RuleBasedRunInsights $runInsights,
     ) {
     }
 
@@ -178,14 +177,12 @@ final readonly class RuleBasedNarrationFiller
 
     private function runInsightTechnical(int $activityId): string
     {
-        $activity = Activity::query()->with('detail')->find($activityId);
-        if ($activity?->detail === null) {
+        $detail = $this->detailFor($activityId);
+        if ($detail === null) {
             return 'Detail teknis-nya belum kebaca lengkap.';
         }
 
-        // Same code path as production, so demo + unconfigured-env output is the
-        // run's real cadence / decoupling / HR story, not a generic template.
-        return $this->insightBuilder->runInsightTechnical($activity, $activity->detail);
+        return $this->runInsights->technical($detail);
     }
 
     private function runInsightSplits(int $activityId): string
@@ -195,7 +192,7 @@ final readonly class RuleBasedNarrationFiller
             return 'Splits-nya belum kebaca lengkap.';
         }
 
-        return $this->insightBuilder->runInsightSplits($detail);
+        return $this->runInsights->splits($detail);
     }
 
     private function runInsightZones(int $activityId): string
@@ -205,7 +202,7 @@ final readonly class RuleBasedNarrationFiller
             return 'Distribusi zone-nya belum kebaca lengkap.';
         }
 
-        return $this->insightBuilder->runInsightZones($detail);
+        return $this->runInsights->zones($detail);
     }
 
     private function weeklyRecap(int $snapshotId): string

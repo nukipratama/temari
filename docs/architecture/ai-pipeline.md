@@ -1,6 +1,6 @@
 ---
 title: AI narration pipeline
-description: How AI copy flows from a narrator through a queued job into an Analysis row, with cadence, chaining, idempotency, cost ceiling, manual retry, and the rule-based fallback.
+description: How AI copy flows from a narrator through a queued job into an Analysis row, with cadence, chaining, idempotency, cost ceiling, manual retry, and dead-lettering.
 tags: [architecture, ai]
 status: living
 reviewed: 2026-07-27
@@ -29,7 +29,7 @@ Every piece of AI-written copy in the app is one row in the `ai_analyses` table,
 ## The shape
 
 ```
-narrator (LLM/rule-based)  ->  queued Job  ->  AnalysisService marks the row  ->  Analysis row (Done)
+narrator (LLM)             ->  queued Job  ->  AnalysisService marks the row  ->  Analysis row (Done)
 ```
 
 - **Narrators** ([app/Services/AI/Narrators/](app/Services/AI/Narrators/RunInsightNarrator.php)) own the prompt + the LLM call for one kind of copy and return a string.
@@ -43,7 +43,7 @@ The full catalogue of copy kinds lives in the [AnalysisType](app/Services/AI/Ana
 - `cadence()` returns an [AnalysisCadence](app/Services/AI/AnalysisCadence.php): `PerActivity`, `Daily`, `Weekly`, `Monthly`, or `OnDemand`. Cadence governs how the post-ingest cascade dispatches the type — per-activity types fire on every ingest, windowed (daily/weekly/monthly) types are deferred to a scheduled command so a multi-run window isn't re-billed per run, and on-demand types only fire on an explicit user click.
 - `jobClass()` maps the type to its concrete [AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php) subclass.
 - `subjectType()` maps it to a model class or a synthetic string subject (e.g. `briefing_user_day`, `monthly_recap_user_month`) — the subject for daily/weekly/monthly copy is a user+period token, not a row.
-- `isRuleBased()`, `isChained()`, `isZoneDependent()` are flags consumed below.
+- `isChained()`, `isZoneDependent()` are flags consumed below.
 
 Recurring recap windows are modelled by [RecapPeriod](app/Services/AI/RecapPeriod.php) — it resolves the current open period's boundaries (e.g. which ISO week is "this week", which calendar month is "this month") and is used by the scheduled commands and `AnalysisController::trigger()` to gate deferred dispatch (see [[deferred-recap-windowing]]).
 
@@ -98,7 +98,7 @@ LLM calls go through an Azure OpenAI client configured by [config/azure_openai.p
 
 Two distinct things still produce content without the LLM:
 
-1. **Rule-based types** — `AnalysisType::isRuleBased()` (the run-insight blocks + trend caption) are deterministic. In `dispatchRow()` they are always filled inline via `ruleBasedContent()` and marked Done — no queue, no tokens. **LLM types are never templated on a real account**: when generation is paused (cost ceiling / AI off / Azure unset) a single-row LLM block stays honestly `Pending` (an existing Done keeps its real prose) and `ai:self-heal` fills it once generation resumes. A block that reaches the LLM and keeps failing is bounded by `Analysis::MAX_SELF_HEAL_ATTEMPTS`, then **dead-lettered** — surfaced per-user on `/ai-usage` ([TokenUsageController](app/Http/Controllers/TokenUsageController.php)) with a manual "Coba lagi" that re-arms the budget.
+1. **Every type is narrated.** The run-insight blocks and the trend caption were the last types filled inline from arithmetic; they go through the model now, so there is no longer a no-queue, no-token path in `dispatchRow()`. **No block is ever templated on a real account**: when generation is paused (cost ceiling / AI off / Azure unset) a single-row LLM block stays honestly `Pending` (an existing Done keeps its real prose) and `ai:self-heal` fills it once generation resumes. A block that reaches the LLM and keeps failing is bounded by `Analysis::MAX_SELF_HEAL_ATTEMPTS`, then **dead-lettered** — surfaced per-user on `/ai-usage` ([TokenUsageController](app/Http/Controllers/TokenUsageController.php)) with a manual "Coba lagi" that re-arms the budget.
 2. **Demo seed** — the demo seeder backfills every Analysis row through [RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php) under `AnalysisService::withoutDispatching()`, so seeding spends no tokens (the filler is demo-only). The "Baca ulang" button stays live so a reviewer can trigger one real LLM call per block on demand.
 
 ## See also

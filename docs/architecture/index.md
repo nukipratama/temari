@@ -30,8 +30,8 @@ _Pipelines & metrics_
 - [[training-load-metrics]] — Edwards TRIMP, CTL/ATL EWMA, strain/monotony/form, backdated propagation
 
 _AI narration_
-- [[ai-pipeline]] — narrator → job → Analysis row; cadence; group/row jobs; chaining; cost ceiling; rule-based fallback
-- [[ai-narration-internals]] — context builders (prompt signals) + rule-based fallback mechanics
+- [[ai-pipeline]] — narrator → job → Analysis row; cadence; group/row jobs; chaining; cost ceiling; dead-lettering
+- [[ai-narration-internals]] — context builders (prompt signals) + the demo filler
 
 _External integrations_
 - [[strava-client]] — circuit breaker state machine, rate buckets, token refresh
