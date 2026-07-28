@@ -17,6 +17,12 @@ class StreamAnalysis
     /** Rolling window (seconds) for the steepest *sustained* grade. */
     private const int GRADE_WINDOW_SEC = 20;
 
+    /** Distance (m) at or above which a Strava split counts as a full kilometre. */
+    private const float FULL_KM_MIN_DISTANCE_M = 950;
+
+    /** Distance (m) below which the trailing "sisa" segment is discarded as noise. */
+    private const float PARTIAL_SPLIT_MIN_DISTANCE_M = 100;
+
     /**
      * Aerobic decoupling compares HR/pace drift between halves, which only
      * describes physiology over a sustained steady effort. Below this the split
@@ -62,15 +68,17 @@ class StreamAnalysis
         $distance = $this->data($streams, 'distance');
         $grade = $this->data($streams, 'grade_smooth');
 
-        $summary = $this->bestEffortPaces($time, $velocity)
-            + $this->elevation($altitude)
-            + $this->timeInZones($time, $heartrate, $hrZones)
-            + $this->stoppedTime($time, $velocity)
-            + $this->cadenceDistribution($time, $cadence, $optimalCadenceSpm)
-            + $this->grade($grade, $time, $velocity);
+        $summary = array_merge(
+            $this->bestEffortPaces($time, $velocity),
+            $this->elevation($altitude),
+            $this->timeInZones($time, $heartrate, $hrZones),
+            $this->stoppedTime($time, $velocity),
+            $this->cadenceDistribution($time, $cadence, $optimalCadenceSpm),
+            $this->grade($grade, $time, $velocity),
+        );
 
         if ($this->isSustainedEffort($time, $heartrate, $velocity, $summary)) {
-            $summary += $this->decoupling($time, $heartrate, $velocity);
+            $summary = array_merge($summary, $this->decoupling($time, $heartrate, $velocity));
         }
 
         if (is_array($splitsMetric) && $splitsMetric !== []) {
@@ -79,12 +87,15 @@ class StreamAnalysis
             if (isset($perKm['per_km'])) {
                 $perKm['per_km'] = $this->attachStreamCadenceToRows($perKm['per_km'], $cadenceByKm);
             }
-            $summary += $perKm
-                + $this->partialSplit($splitsMetric, $cadenceByKm)
-                + $this->hrDriftFromSplits($splitsMetric)
-                + $this->cadenceDropFromSplits($splitsMetric)
-                + $this->negativeSplit($splitsMetric)
-                + $this->paceVariability($splitsMetric);
+            $summary = array_merge(
+                $summary,
+                $perKm,
+                $this->partialSplit($splitsMetric, $cadenceByKm),
+                $this->hrDriftFromSplits($splitsMetric),
+                $this->cadenceDropFromSplits($splitsMetric),
+                $this->negativeSplit($splitsMetric),
+                $this->paceVariability($splitsMetric),
+            );
         }
 
         return $summary;
@@ -386,11 +397,23 @@ class StreamAnalysis
         $distance = (float) ($split['distance'] ?? 0);
         $moving = (float) ($split['moving_time'] ?? 0);
 
-        if ($distance < 950 || $moving <= 0) {
+        if ($distance < self::FULL_KM_MIN_DISTANCE_M || $moving <= 0) {
             return null;
         }
 
         return $moving / ($distance / 1000);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $splits
+     * @return list<array<string, mixed>>
+     */
+    private function fullKmSplits(array $splits): array
+    {
+        return array_values(array_filter(
+            $splits,
+            fn (array $s): bool => (float) ($s['distance'] ?? 0) >= self::FULL_KM_MIN_DISTANCE_M,
+        ));
     }
 
     /**
@@ -628,7 +651,7 @@ class StreamAnalysis
         }
         $distance = (float) ($last['distance'] ?? 0);
         $moving = (float) ($last['moving_time'] ?? 0);
-        if ($distance >= 950 || $distance < 100 || $moving <= 0) {
+        if ($distance >= self::FULL_KM_MIN_DISTANCE_M || $distance < self::PARTIAL_SPLIT_MIN_DISTANCE_M || $moving <= 0) {
             return [];
         }
         $paceSec = $moving / ($distance / 1000);
@@ -738,7 +761,7 @@ class StreamAnalysis
      */
     private function hrDriftFromSplits(array $splits): array
     {
-        $full = array_values(array_filter($splits, fn (array $s): bool => (float) ($s['distance'] ?? 0) >= 950));
+        $full = $this->fullKmSplits($splits);
         if (count($full) < 2) {
             return [];
         }
@@ -761,7 +784,7 @@ class StreamAnalysis
      */
     private function cadenceDropFromSplits(array $splits): array
     {
-        $full = array_values(array_filter($splits, fn (array $s): bool => (float) ($s['distance'] ?? 0) >= 950));
+        $full = $this->fullKmSplits($splits);
         if (count($full) < 2) {
             return [];
         }
@@ -781,7 +804,7 @@ class StreamAnalysis
      */
     private function negativeSplit(array $splits): array
     {
-        $full = array_values(array_filter($splits, fn (array $s): bool => (float) ($s['distance'] ?? 0) >= 950));
+        $full = $this->fullKmSplits($splits);
         if (count($full) < 2) {
             return [];
         }
