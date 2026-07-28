@@ -5,17 +5,21 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Models\AI\TokenUsage;
+use App\Services\AI\Agent\AgentBudget;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class TokenUsageRecorder
 {
+    /**
+     * Write one row for one call. `$usage` carries the whole run's totals, which
+     * for an agent means every turn of the tool loop plus any retry, not just
+     * the turn that produced the answer.
+     */
     public function record(
         string $kind,
-        int $promptTokens,
-        int $completionTokens,
-        int $totalTokens,
+        AgentBudget $usage,
         ?string $model,
         ?int $latencyMs = null,
         bool $truncated = false,
@@ -25,9 +29,13 @@ class TokenUsageRecorder
             TokenUsage::query()->create([
                 'user_id' => $userId,
                 'kind' => $kind,
-                'prompt_tokens' => $promptTokens,
-                'completion_tokens' => $completionTokens,
-                'total_tokens' => $totalTokens,
+                // The usage table's prompt/completion columns hold input/output.
+                'prompt_tokens' => $usage->inputTokens(),
+                'completion_tokens' => $usage->outputTokens(),
+                'total_tokens' => $usage->totalTokens(),
+                'cached_tokens' => $usage->cachedTokens(),
+                'reasoning_tokens' => $usage->reasoningTokens(),
+                'steps' => $usage->steps(),
                 'model' => $model,
                 'latency_ms' => $latencyMs,
                 'truncated' => $truncated,

@@ -43,6 +43,12 @@ return [
     // names that can't be matched reliably, so these are maintained by hand from
     // https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/.
     // Values are Global Standard; map the deployment to its model's published rate.
+    //
+    // An optional third key, 'cached_input_per_1m', prices the slice of input the
+    // provider served from its prompt cache. Leave it out and cached input bills
+    // at the ordinary input rate, which is what every deployment did before the
+    // column existed — so adding it only ever lowers an estimate, never raises it.
+    // Add it once /ai-usage shows a cache-hit rate worth pricing.
     'prices' => [
         'nuki-5.2' => ['input_per_1m' => 1.75, 'output_per_1m' => 14.00],       // gpt-5.2
         'nuki-5.4-mini' => ['input_per_1m' => 0.75, 'output_per_1m' => 4.50],   // gpt-5.4-mini

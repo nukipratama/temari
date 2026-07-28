@@ -12,6 +12,22 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
+/** Seed one instrumented call, i.e. a row written after the agent columns landed. */
+function seedAgentUsage(string $kind, int $prompt, int $completion, int $cached, int $reasoning, int $steps): void
+{
+    TokenUsage::query()->create([
+        'kind' => $kind,
+        'prompt_tokens' => $prompt,
+        'completion_tokens' => $completion,
+        'total_tokens' => $prompt + $completion,
+        'cached_tokens' => $cached,
+        'reasoning_tokens' => $reasoning,
+        'steps' => $steps,
+        'model' => 'gpt-4o',
+        'created_at' => Carbon::today(),
+    ]);
+}
+
 beforeEach(function (): void {
     // Freeze time so a seed at Carbon::today() and the report's "today" query
     // can't straddle the Asia/Jakarta midnight boundary and flake the todayCost.
@@ -308,4 +324,30 @@ it('returns zeroed totals and empty breakdowns when no rows fall in range', func
         ->and($result['byUser'])->toBe([])
         ->and($result['daily'])->toBe([])
         ->and($result['availableKinds'])->toBe([]);
+});
+
+it('summarises how a kind behaves as an agent', function (): void {
+    // Two calls: one two-turn, one four-turn, so the average is not an integer.
+    seedAgentUsage('run_insight', 1000, 200, 600, 50, 2);
+    seedAgentUsage('run_insight', 1000, 200, 900, 30, 4);
+
+    $row = collect($this->report->build(Carbon::today(), Carbon::today(), null)['byKind'])
+        ->firstWhere('kind', 'run_insight');
+
+    expect($row['avg_steps'])->toBe(3.0)
+        ->and($row['cached_pct'])->toBe(75.0)
+        ->and($row['reasoning_pct'])->toBe(20.0);
+});
+
+// A kind whose rows all predate the agent columns must read as unmeasured, not
+// as a narrator that never cached and never reasoned.
+it('leaves the agent summary null when no call recorded a step', function (): void {
+    seedReportUsage('briefing', 100, 50, Carbon::today());
+
+    $row = collect($this->report->build(Carbon::today(), Carbon::today(), null)['byKind'])
+        ->firstWhere('kind', 'briefing');
+
+    expect($row['avg_steps'])->toBeNull()
+        ->and($row['cached_pct'])->toBeNull()
+        ->and($row['reasoning_pct'])->toBeNull();
 });

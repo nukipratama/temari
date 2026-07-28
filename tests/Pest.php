@@ -58,6 +58,8 @@ function fakeAzureResponse(
     ?string $truncateReason = null,
     int $inputTokens = 10,
     int $outputTokens = 5,
+    int $cachedTokens = 0,
+    int $reasoningTokens = 0,
 ): CreateResponse {
     return CreateResponse::from([
         'id' => 'resp_test', 'object' => 'response', 'created_at' => 0, 'status' => $status, 'error' => null,
@@ -73,7 +75,8 @@ function fakeAzureResponse(
         'usage' => [
             'input_tokens' => $inputTokens, 'output_tokens' => $outputTokens,
             'total_tokens' => $inputTokens + $outputTokens,
-            'input_tokens_details' => ['cached_tokens' => 0], 'output_tokens_details' => ['reasoning_tokens' => 0],
+            'input_tokens_details' => ['cached_tokens' => $cachedTokens],
+            'output_tokens_details' => ['reasoning_tokens' => $reasoningTokens],
         ],
         'user' => null, 'metadata' => [],
     ], MetaInformation::from([]));
@@ -124,8 +127,13 @@ function fakeAgentTool(string $name, callable $handler): AgentTool
  *
  * @param  list<array{name: string, arguments?: string}>  $calls
  */
-function fakeAzureToolCallResponse(array $calls, int $inputTokens = 10, int $outputTokens = 5): CreateResponse
-{
+function fakeAzureToolCallResponse(
+    array $calls,
+    int $inputTokens = 10,
+    int $outputTokens = 5,
+    int $cachedTokens = 0,
+    int $reasoningTokens = 0,
+): CreateResponse {
     $output = [];
     foreach ($calls as $index => $call) {
         $output[] = [
@@ -149,7 +157,8 @@ function fakeAzureToolCallResponse(array $calls, int $inputTokens = 10, int $out
         'usage' => [
             'input_tokens' => $inputTokens, 'output_tokens' => $outputTokens,
             'total_tokens' => $inputTokens + $outputTokens,
-            'input_tokens_details' => ['cached_tokens' => 0], 'output_tokens_details' => ['reasoning_tokens' => 0],
+            'input_tokens_details' => ['cached_tokens' => $cachedTokens],
+            'output_tokens_details' => ['reasoning_tokens' => $reasoningTokens],
         ],
         'user' => null, 'metadata' => [],
     ], MetaInformation::from([]));

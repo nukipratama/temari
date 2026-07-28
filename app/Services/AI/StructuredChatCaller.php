@@ -83,54 +83,101 @@ final readonly class StructuredChatCaller
             $payload['tools'] = $toolbox->definitions();
         }
 
+        // Everything below can throw after tokens have already been billed: a
+        // transient 5xx on turn five, a non-JSON answer, a missing key. The meter
+        // therefore runs in a finally. Losing those turns understated spend
+        // exactly when the job's retries were multiplying it, and the daily cost
+        // ceiling reads the table it writes.
+        $response = null;
+
         try {
-            [$response, $input] = $this->converse($kind, $payload, $toolbox, $budget, $startedAt);
-        } catch (ContentFilterException $e) {
-            // A stored continuity line fed back as input can trip Azure's filter.
-            // Strip the continuity keys and retry once against the clean context;
-            // if the retry still content-filters, let it propagate. The retry
-            // restarts the conversation from the two base messages — a filtered
-            // run's tool outputs are not worth replaying — but keeps the budget,
-            // since the tokens it already burned were still billed.
-            $strippedKeys = array_values(array_intersect(NarratorContinuity::CONTEXT_KEYS, array_keys($context)));
-            if ($strippedKeys === []) {
-                throw $e;
+            try {
+                [$response, $input] = $this->converse($kind, $payload, $toolbox, $budget, $startedAt);
+            } catch (ContentFilterException $e) {
+                // A stored continuity line fed back as input can trip Azure's filter.
+                // Strip the continuity keys and retry once against the clean context;
+                // if the retry still content-filters, let it propagate. The retry
+                // restarts the conversation from the two base messages — a filtered
+                // run's tool outputs are not worth replaying — but keeps the budget,
+                // since the tokens it already burned were still billed.
+                $strippedKeys = array_values(array_intersect(NarratorContinuity::CONTEXT_KEYS, array_keys($context)));
+                if ($strippedKeys === []) {
+                    throw $e;
+                }
+
+                $context = array_diff_key($context, array_flip(NarratorContinuity::CONTEXT_KEYS));
+                $payload['input'][1]['content'] = json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+                Log::info('narrator.ai.content_filter_retry', [
+                    'kind' => $kind,
+                    'stripped_keys' => $strippedKeys,
+                ]);
+
+                [$response, $input] = $this->converse($kind, $payload, $toolbox, $budget, $startedAt);
             }
 
-            $context = array_diff_key($context, array_flip(NarratorContinuity::CONTEXT_KEYS));
-            $payload['input'][1]['content'] = json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+            // Truncated structured output is unparseable, so retry once at a higher
+            // token cap, bounded by self::MAX_RETRY_OUTPUT_TOKENS. The retry replays
+            // the conversation as it stands and forbids further tools, so the extra
+            // budget buys the answer rather than another read.
+            if (self::isTruncated($response)) {
+                $retryMaxTokens = min((int) ceil($effectiveMaxTokens * 1.5), self::MAX_RETRY_OUTPUT_TOKENS);
+                if ($retryMaxTokens > $effectiveMaxTokens) {
+                    Log::warning('narrator.ai.truncated_retry', [
+                        'kind' => $kind,
+                        'max_output_tokens' => $effectiveMaxTokens,
+                        'retry_max_output_tokens' => $retryMaxTokens,
+                    ]);
+                    $effectiveMaxTokens = $retryMaxTokens;
+                    $payload = self::forcedAnswerPayload($payload, $input, $effectiveMaxTokens);
+                    $response = $this->createResponse($kind, $payload, $startedAt);
+                    $budget->recordStep(...self::usageOf($response));
+                }
+            }
 
-            Log::info('narrator.ai.content_filter_retry', [
+            $decoded = $this->decoded($response, $requiredKeys);
+            $truncated = self::isTruncated($response);
+
+            if ($truncated) {
+                Log::warning('narrator.ai.truncated', [
+                    'kind' => $kind,
+                    'output_tokens' => $budget->outputTokens(),
+                    'max_output_tokens' => $effectiveMaxTokens,
+                ]);
+            }
+
+            Log::info('narrator.ai.call', [
                 'kind' => $kind,
-                'stripped_keys' => $strippedKeys,
+                'status' => 'ok',
+                'latency_ms' => self::latencyMs($startedAt),
+                'truncated' => $truncated,
+                'steps' => $budget->steps(),
+                'usage' => [
+                    'input' => $budget->inputTokens(),
+                    'output' => $budget->outputTokens(),
+                    'total' => $budget->totalTokens(),
+                    'cached' => $budget->cachedTokens(),
+                    'reasoning' => $budget->reasoningTokens(),
+                ],
             ]);
 
-            [$response, $input] = $this->converse($kind, $payload, $toolbox, $budget, $startedAt);
+            return $decoded;
+        } finally {
+            $this->meter($kind, $budget, $deployment, $startedAt, $response, $options->userId);
         }
+    }
 
-        // Truncated structured output is unparseable, so retry once at a higher
-        // token cap, bounded by self::MAX_RETRY_OUTPUT_TOKENS. The retry replays
-        // the conversation as it stands and forbids further tools, so the extra
-        // budget buys the answer rather than another read.
-        if (self::isTruncated($response)) {
-            $retryMaxTokens = min((int) ceil($effectiveMaxTokens * 1.5), self::MAX_RETRY_OUTPUT_TOKENS);
-            if ($retryMaxTokens > $effectiveMaxTokens) {
-                Log::warning('narrator.ai.truncated_retry', [
-                    'kind' => $kind,
-                    'max_output_tokens' => $effectiveMaxTokens,
-                    'retry_max_output_tokens' => $retryMaxTokens,
-                ]);
-                $effectiveMaxTokens = $retryMaxTokens;
-                $payload = self::forcedAnswerPayload($payload, $input, $effectiveMaxTokens);
-                $response = $this->createResponse($kind, $payload, $startedAt);
-                $budget->recordStep(...self::usageOf($response));
-            }
-        }
-
-        $content = (string) ($response->outputText ?? '');
-
+    /**
+     * The structured payload the run produced, or a terminal failure explaining
+     * why it could not be read.
+     *
+     * @param  list<string>  $requiredKeys
+     * @return array<string, mixed>
+     */
+    private function decoded(CreateResponse $response, array $requiredKeys): array
+    {
         try {
-            $decoded = json_decode($content, true, 16, JSON_THROW_ON_ERROR);
+            $decoded = json_decode((string) ($response->outputText ?? ''), true, 16, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
             throw new UnavailableException('Azure OpenAI returned non-JSON: '.$e->getMessage());
         }
@@ -144,48 +191,36 @@ final readonly class StructuredChatCaller
             throw new UnavailableException("Azure OpenAI structured output missing {$missingLabel}");
         }
 
-        // Usage is the whole run's, not the last turn's: a tool loop bills every
-        // step, and so does each retry above.
-        $inputTokens = $budget->inputTokens();
-        $outputTokens = $budget->outputTokens();
-        $totalTokens = $budget->totalTokens();
-        $truncated = self::isTruncated($response);
-        $latencyMs = self::latencyMs($startedAt);
+        return $decoded;
+    }
 
-        if ($truncated) {
-            Log::warning('narrator.ai.truncated', [
-                'kind' => $kind,
-                'output_tokens' => $outputTokens,
-                'max_output_tokens' => $effectiveMaxTokens,
-            ]);
+    /**
+     * Write the run's usage: the whole run's, not the last turn's, since a tool
+     * loop bills every step and so does each retry.
+     *
+     * Called from a finally, so it also fires when the run threw after burning
+     * turns. A run with no completed turn has nothing to report and is skipped.
+     */
+    private function meter(
+        string $kind,
+        AgentBudget $budget,
+        string $deployment,
+        float $startedAt,
+        ?CreateResponse $response,
+        ?int $userId,
+    ): void {
+        if ($budget->steps() === 0) {
+            return;
         }
 
-        Log::info('narrator.ai.call', [
-            'kind' => $kind,
-            'status' => 'ok',
-            'latency_ms' => $latencyMs,
-            'truncated' => $truncated,
-            'steps' => $budget->steps(),
-            'usage' => [
-                'input' => $inputTokens,
-                'output' => $outputTokens,
-                'total' => $totalTokens,
-            ],
-        ]);
-
-        // The usage table's prompt/completion columns hold input/output tokens.
         $this->usageRecorder->record(
-            $kind,
-            $inputTokens,
-            $outputTokens,
-            $totalTokens,
-            $deployment !== '' ? $deployment : null,
-            $latencyMs,
-            $truncated,
-            $options->userId,
+            kind: $kind,
+            usage: $budget,
+            model: $deployment !== '' ? $deployment : null,
+            latencyMs: self::latencyMs($startedAt),
+            truncated: $response !== null && self::isTruncated($response),
+            userId: $userId,
         );
-
-        return $decoded;
     }
 
     /**
@@ -273,7 +308,13 @@ final readonly class StructuredChatCaller
     }
 
     /**
-     * @return array{0: int, 1: int, 2: int} input, output, total tokens
+     * The turn's usage, in the order {@see AgentBudget::recordStep()} takes it.
+     *
+     * The last two are breakdowns the provider reports alongside the totals:
+     * cached input (billed at a discount) and reasoning output (billed at the
+     * full output rate). Both are absent on responses that carry neither.
+     *
+     * @return array{0: int, 1: int, 2: int, 3: int, 4: int} input, output, total, cached, reasoning
      */
     private static function usageOf(CreateResponse $response): array
     {
@@ -281,6 +322,8 @@ final readonly class StructuredChatCaller
             (int) ($response->usage->inputTokens ?? 0),
             (int) ($response->usage->outputTokens ?? 0),
             (int) ($response->usage->totalTokens ?? 0),
+            (int) ($response->usage->inputTokensDetails->cachedTokens ?? 0),
+            (int) ($response->usage->outputTokensDetails->reasoningTokens ?? 0),
         ];
     }
 

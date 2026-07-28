@@ -18,8 +18,9 @@ const baseProps = {
         cost: number;
     } | null,
     byKind: [
-        { kind: 'run-insight', prompt: 300, completion: 150, total: 450, calls: 1, cost: 0.03, truncated_calls: 0, avg_latency_ms: 800, max_latency_ms: 800 },
-        { kind: 'briefing', prompt: 300, completion: 130, total: 430, calls: 2, cost: 0.02, truncated_calls: 0, avg_latency_ms: 1000, max_latency_ms: 1200 },
+        { kind: 'run-insight', prompt: 300, completion: 150, total: 450, calls: 1, cost: 0.03, truncated_calls: 0, avg_latency_ms: 800, max_latency_ms: 800, avg_steps: 3.5, cached_pct: 71.2, reasoning_pct: 18.4 },
+        // Written before the agent columns existed: unmeasured, so the summary line is absent.
+        { kind: 'briefing', prompt: 300, completion: 130, total: 430, calls: 2, cost: 0.02, truncated_calls: 0, avg_latency_ms: 1000, max_latency_ms: 1200, avg_steps: null, cached_pct: null, reasoning_pct: null },
     ],
     byUser: [
         { user_id: 1, user_name: 'Alice', strava_athlete_id: null, deleted: false, prompt: 500, completion: 230, total: 730, calls: 2 },
@@ -60,6 +61,15 @@ const nyangkutGroup = {
 };
 
 describe('AiUsage page', () => {
+    it('shows the agent summary for an instrumented kind and omits it for an unmeasured one', () => {
+        render(<AiUsage {...baseProps} />);
+
+        // run-insight carries steps/cache/reasoning; briefing predates the
+        // columns, so it must render no line rather than a row of zeroes.
+        expect(screen.getByText('3.5 langkah · 71% cache · 18% reasoning')).toBeInTheDocument();
+        expect(screen.queryAllByText(/langkah/)).toHaveLength(1);
+    });
+
     it('renders the flash info banner when present', () => {
         setMockPage({ flash: { info: 'Mencoba ulang 2 blok untuk Charlie.' } });
         render(<AiUsage {...baseProps} />);
