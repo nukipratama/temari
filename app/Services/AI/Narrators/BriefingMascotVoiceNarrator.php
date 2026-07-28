@@ -50,7 +50,7 @@ class BriefingMascotVoiceNarrator
         ajakan lari di jam tertentu.
 
         Sesuaikan tone ke vibe pengguna hari ini (lihat field `vibe`).
-        Gunakan field `context` untuk personalisasi:
+        Personalisasi dari hasil tool, terutama get_week_state:
         - `this_week_runs` / `last_week_runs` / `this_week_km`: tren minggu
         - `fitness_trend` (naik/plateau/turun): arah fitness. Naik = akui
           progresnya. Turun = semangati bangun lagi pelan, jangan nge-judge.
@@ -91,7 +91,7 @@ class BriefingMascotVoiceNarrator
           generik, tidak ada observasi spesifik.
         - "Semangat ya!" -- kosong, tidak ada data.
         - Ulangi kalimat yang sama tiap hari. Harus merujuk data konkret
-          dari context.
+          dari hasil tool.
 
         Contoh JANGAN: "Sore ini enak buat..." / "Malam ini cocok..."
         PROMPT;

@@ -21,7 +21,7 @@ class TrendCaptionNarrator
         Fokus ke tren (naik, turun, plateau, peak). Sebutkan konteks bila ada
         (PR week, recovery week, taper).
 
-        Gunakan data `weeks` yang ada di context: bandingkan 4 minggu terakhir
+        Panggil get_weekly_trend dulu. Dari hasilnya, pakai `weeks`: bandingkan 4 minggu terakhir
         dengan 4 minggu sebelumnya. WAJIB sebut 1 sinyal terkuat dengan ANGKA
         konkret, pakai field turunan yang sudah dihitung:
         - ctl_delta_4w: perubahan CTL (fitness) 4 minggu terakhir, positif = naik.
