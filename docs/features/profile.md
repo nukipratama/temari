@@ -1,6 +1,6 @@
 ---
 title: Profile (Aku)
-description: The runner's identity page — Temari's profile voice, lifetime stats, 12-week persona mix, top PRs, accessories, Strava status
+description: The runner's identity page — Temari's profile voice, lifetime stats, 12-week persona mix, PR progression charts, Strava status
 tags: [feature, profile]
 status: living
 reviewed: 2026-06-20
@@ -9,22 +9,22 @@ code_refs:
   - app/Http/Controllers/ProfileController.php
   - resources/js/components/PersonaBar.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
-  - resources/js/components/card/PrCard.tsx
+  - resources/js/components/koleksi/ProgressionChart.tsx
   - resources/js/components/temari/Temari.tsx
 ---
 
 # Profile (Aku)
 
-The "Aku" page (`/aku`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, recent PRs, and their accessory collection. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Aku](resources/js/pages/Aku.tsx) page.
+The "Aku" page (`/aku`) is the runner's about-me: who they are, how Temari sees them, their lifetime totals, a 12-week mood persona, and their PR progression over time. Server entry is [ProfileController](app/Http/Controllers/ProfileController.php) (`__invoke`), rendering the [Aku](resources/js/pages/Aku.tsx) page.
 
 **Navigation:** `route('profile')` → `/aku`. Named route: `profile`.
 
 ## System dependencies
 
 - **AI narration** — `profileVoice` (`AkuProfileVoice`) and `personaSummary` (`PersonaSummary`) are `Analysis` rows from the [[ai-pipeline]].
-- **Gamification** — PRs come from [[gamification]]; accessories from `UserUnlock` rows.
+- **Gamification** — the `PersonalRecord` rows behind the progression charts come from [[gamification]].
 - **Settings** — the Telegram toggles, HR-zone entry, and account deletion moved to the [[settings]] hub; Aku links to it.
-- **Data model** — `PersonalRecord`, `UserUnlock` shapes in [[data-model]].
+- **Data model** — `PersonalRecord` shape in [[data-model]].
 
 ## Identity + Kata Temari tentang kamu
 
@@ -42,13 +42,13 @@ The "Persona" section renders [PersonaBar](resources/js/components/PersonaBar.ts
 
 `ProfileController::resolvePersonaSummary` keys this analysis by **ISO week** (`isoFormat('GGGG-[W]WW')`) as its discriminator — moods don't shift hourly, so the narration is cached per week even though the narrator pulls 12 weeks of history. Empty mix → PersonaBar shows "Belum ada cukup lari buat baca personamu."
 
-## Top PRs
+## Perjalanan (progression)
 
-When present, "Rekor terbaru" shows up to three `RekorMini` cards — each a [PrCard](resources/js/components/card/PrCard.tsx) with the category label (`PR_CATEGORY_LABELS`), formatted value, set-date, and a link to the source run. Supplied by `ProfileController::topPrs` (`PersonalRecord` ordered by `set_at desc`, limit `TOP_PR_COUNT` = 3). Full list is `/rekor` — see [[records]].
+When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM) renders [ProgressionChart](resources/js/components/koleksi/ProgressionChart.tsx) alongside a "dulu → sekarang" best/worst readout and a goal chip. The series are built server-side by `ProfileController::buildProgressionByCategory` via `ProgressionSeriesBuilder`, over the four `PROGRESSION_CATEGORIES`.
 
-## Accessories
+## Not on this page
 
-The "Aksesori" section (`AksesoriStrip`) shows the full unlock catalog (`config('temari_unlocks')`) with a "{n} / {total} kebuka" chip; unlocked entries are highlighted, locked ones show their criteria behind a lock icon. `unlocks` comes from the user's `UserUnlock` rows. Links to `/aksesori` to equip. See [[targets-accessories]] and [[temari-mascot]].
+PRs and accessories are **not** rendered here — Aku shows no PR cards and no accessory strip. The full PR list lives at `/rekor` ([[records]]) and the unlock catalog at `/aksesori` ([[targets-accessories]]).
 
 ## Pengaturan
 
@@ -58,4 +58,4 @@ Aku no longer carries a settings entry point. The Telegram notification panel an
 
 - `profileVoice` has **no discriminator** (one analysis per user, refreshed manually); `personaSummary` is **per-ISO-week**. Don't confuse the two cache keys.
 - The mascot here renders via the shared [Temari](resources/js/components/temari/Temari.tsx) wrapper, so any equipped accessory shows up automatically.
-- Both voice blocks lean on the same [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) state machine as the rest of the app — see [[ai-pipeline]] and [[data-model]] (`Analysis`, `PersonalRecord`, `UserUnlock`).
+- Both voice blocks lean on the same [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) state machine as the rest of the app — see [[ai-pipeline]] and [[data-model]] (`Analysis`, `PersonalRecord`).

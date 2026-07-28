@@ -8,7 +8,6 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
-use App\Models\UserUnlock;
 use App\Services\Run\Metrics\ThresholdEstimator;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -24,8 +23,6 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
-    private const int TOP_PR_COUNT = 3;
-
     /**
      * @var list<PrCategory>
      */
@@ -61,16 +58,6 @@ class ProfileController extends Controller
         $longestRunMeters = (float) ($detailAggregates?->getAttribute('longest_distance') ?? 0);
         $firstRunAt = $detailAggregates?->getAttribute('first_run_at');
 
-        $unlocks = UserUnlock::query()
-            ->where('user_id', $user->id)
-            ->orderBy('unlocked_at')
-            ->get()
-            ->map(fn (UserUnlock $row): array => [
-                'unlock_key' => $row->unlock_key,
-                'unlocked_at' => $row->unlocked_at->toIso8601String(),
-            ])
-            ->all();
-
         $personalRecords = PersonalRecord::query()
             ->where('user_id', $user->id)
             ->orderBy('category')
@@ -92,9 +79,6 @@ class ProfileController extends Controller
                 'total_km' => round($totalDistanceMeters / 1000, 1),
                 'longest_run_km' => round($longestRunMeters / 1000, 2),
             ],
-            'topPrs' => $this->topPrs($user),
-            'unlocks' => $unlocks,
-            'unlockCatalog' => config('temari_unlocks'),
             'personaMix' => $personaNarrator->personaMix($user),
             'personaSummary' => $this->resolvePersonaSummary($user),
             'profileVoice' => $this->resolveProfileVoice($user),
@@ -132,33 +116,6 @@ class ProfileController extends Controller
             ->first();
 
         return Analysis::toPayload($row, AnalysisType::AkuProfileVoice, $subjectType, $user->id);
-    }
-
-    /**
-     * @return list<array{id: int, category: string, value_sec: int, set_at: string, activity_id: int|null, activity_name: string|null}>
-     */
-    private function topPrs(User $user): array
-    {
-        $rows = PersonalRecord::query()
-            ->where('user_id', $user->id)
-            ->with(['activity:id', 'activity.detail:id,activity_id,name'])
-            ->orderByDesc('set_at')
-            ->limit(self::TOP_PR_COUNT)
-            ->get();
-
-        $out = [];
-        foreach ($rows as $pr) {
-            $out[] = [
-                'id' => $pr->id,
-                'category' => $pr->category->value,
-                'value_sec' => (int) $pr->value_sec,
-                'set_at' => $pr->set_at->format('Y-m-d\TH:i:s'),
-                'activity_id' => $pr->activity_id,
-                'activity_name' => $pr->activity?->detail?->name,
-            ];
-        }
-
-        return $out;
     }
 
     /**

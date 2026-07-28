@@ -59,28 +59,6 @@ it('reports strava_connected as false when the user has no connection', function
             ->where('stats.longest_run_km', 0));
 });
 
-it('returns up to 3 most recent PRs with activity context when available', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['name' => 'Morning 5k']);
-
-    foreach (['1km', '5km', '10km', 'half_marathon'] as $idx => $category) {
-        PersonalRecord::factory()->for($user)->create([
-            'category' => $category,
-            'value_sec' => 300 + $idx * 60,
-            'set_at' => Carbon::today()->subDays(10 - $idx),
-            'activity_id' => $category === '5km' ? $activity->id : null,
-        ]);
-    }
-
-    $this->actingAs($user)->get('/profil')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('topPrs', 3)
-            ->where('topPrs.0.category', 'half_marathon')
-            ->where('topPrs.2.category', '5km')
-            ->where('topPrs.2.activity_name', 'Morning 5k'));
-});
-
 it('requires auth', function (): void {
     $this->get('/profil')->assertRedirect('/login');
 });
