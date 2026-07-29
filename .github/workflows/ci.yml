@@ -225,8 +225,19 @@ jobs:
       - name: Component/test 1:1 structure check
         run: npx vitest run resources/js/test/structure.test.ts
 
-      - name: Vitest (coverage)
-        run: npm run test:coverage
+      - name: Vitest
+        run: |
+          # Same split as the backend Pest step above: the coverage gate is a
+          # merge gate, not a deploy gate. Re-running --coverage on the main
+          # push would only put instrumentation of 1500+ tests on the deploy
+          # critical path for an already-gated tree.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Running Vitest with coverage (threshold gate)"
+            npm run test:coverage
+          else
+            echo "Running Vitest without coverage"
+            npm run test
+          fi
 
       - name: Vitest summary
         if: always()
