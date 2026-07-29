@@ -3,9 +3,10 @@ title: AI narration pipeline
 description: How AI copy flows from a narrator through a queued job into an Analysis row, with cadence, chaining, idempotency, cost ceiling, manual retry, and dead-lettering.
 tags: [architecture, ai]
 status: living
-reviewed: 2026-07-27
+reviewed: 2026-07-29
 code_refs:
   - app/Services/AI/AnalysisService.php
+  - app/Services/AI/ChainResolver.php
   - app/Services/AI/AnalysisType.php
   - app/Services/AI/AnalysisStatus.php
   - app/Services/AI/AnalysisCadence.php
@@ -82,6 +83,8 @@ Propagation is a hook fired after a row/group completes: `AnalyzeRowJob::afterDo
 
 A stalled block is re-kicked hourly by the `ai:self-heal` command ([SelfHealCommand](app/Console/Commands/AI/SelfHealCommand.php)) in [routes/console.php](routes/console.php): it re-dispatches the earliest stalled block per user (the chains, plus the standalone card-flavor and PR-context narration) with `invalidate:false` so it never re-bills, early-exits while generation is paused, and bounds Failed retries by `Analysis::MAX_SELF_HEAL_ATTEMPTS` before dead-lettering (see below).
 
+*Which* link either path targets is resolved in one place, [ChainResolver](app/Services/AI/ChainResolver.php) — but by two deliberately different predicates, and they are not interchangeable. A user click resumes the earliest **unfilled** link (no Done recap, whatever its attempt count); the hourly sweep only re-kicks the earliest **stalled** one (Pending or Failed *under* the retry budget, demo users excluded). That gap is the dead-letter: a block that burned its budget is re-armable by hand and never again by the automatic net.
+
 ## Deferred recaps (windowing)
 
 The still-open current week/month never narrates on demand — its recap row is staged `Pending` (via `AnalysisService::requestDeferred()`) and filled only by the scheduled command once the period closes (`ai:weekly-recap` Monday 00:01, `ai:monthly-recap` on the 1st), in [routes/console.php](routes/console.php). `AnalysisController::trigger()` guards this with `isStillOpenRecapPeriod()`, returning the inert row unchanged. A Pending recap for the open window is therefore expected, not a backlog. See [[deferred-recap-windowing]].
@@ -92,7 +95,7 @@ Failed blocks are never auto-retried — that keeps LLM cost predictable. See [[
 
 - **Failure model** — [AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php) sets `$tries = 3` with backoff. `settleFailure()` re-queues + releases a `TransientUpstreamException` (429/5xx/timeout, honoring `Retry-After` capped at 600s) while a try remains; a terminal `UnavailableException` (bad schema / malformed JSON) is swallowed so the worker stops; anything else is rethrown into `failed_jobs`. The `failed()` hook marks a row stuck in `Processing` (worker died) back to `Failed` so it becomes re-dispatchable.
 - **One budget, not two** — `$tries` and `Analysis::MAX_SELF_HEAL_ATTEMPTS` are not independent ceilings that multiply. `attempts` bumps once per real run (`markProcessing`), so both draw from it: `settleFailure()` stops releasing once the row's budget is spent, and `haltForSpentRetryBudget()` ([AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php)) refuses a queue-driven re-entry — a rethrow being retried, or a run whose worker died mid-flight — that the budget can no longer pay for, settling the row `Failed` so it dead-letters rather than resting where no sweep can see it. Total billed LLM runs per block is therefore exactly `MAX_SELF_HEAL_ATTEMPTS`. Every *dispatch* marks its row `Queued` first, which is what separates a human "Coba lagi" (still runs) from the queue re-entering a row it already failed. A **paused** row never reaches `markProcessing`, so a pause of any length costs nothing and can never dead-letter a block.
-- **Retry path** — a failed block shows a "Coba lagi" empty state; the user re-dispatches via `POST` to `AnalysisController::trigger()`. For chained kinds, a click does **not** narrate the clicked row in isolation — `earliestUnfilledChainLink()` resumes the earliest unfilled link forward (`invalidate: false`, no re-bill of Done siblings), and only a genuine chain **head** regenerate (`isChainHeadRegenerate()`) re-narrates that exact row with `invalidate: true`. A `cooldownRemaining()` (a 15-minute Redis-backed [Cooldown](app/Support/Cooldown.php) opened at `markDone`) suppresses rapid re-triggers. Developers can also retry from Horizon's failed-jobs tab.
+- **Retry path** — a failed block shows a "Coba lagi" empty state; the user re-dispatches via `POST` to `AnalysisController::trigger()`. For chained kinds, a click does **not** narrate the clicked row in isolation — [ChainResolver](app/Services/AI/ChainResolver.php)`::earliestUnfilledLink()` resumes the earliest unfilled link forward (`invalidate: false`, no re-bill of Done siblings), and only a genuine chain **head** regenerate (`isHeadRegenerate()`) re-narrates that exact row with `invalidate: true`. A `cooldownRemaining()` (a 15-minute Redis-backed [Cooldown](app/Support/Cooldown.php) opened at `markDone`) suppresses rapid re-triggers. Developers can also retry from Horizon's failed-jobs tab.
 
 ## Rule-based fallback (Azure unconfigured)
 
