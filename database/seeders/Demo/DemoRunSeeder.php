@@ -331,12 +331,12 @@ class DemoRunSeeder
             );
         }
 
-        // Persona summary is cached per ISO week — discriminator must match
-        // ProfileController::resolvePersonaSummary() or the Aku card misses it.
+        // The Aku voice is cached per ISO week — discriminator must match
+        // ProfileController::resolveProfileVoice() or the Aku hero misses it.
         $this->analysisService->request(
-            subjectOrType: AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE,
+            subjectOrType: AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
             subjectId: $user->id,
-            type: AnalysisType::PersonaSummary,
+            type: AnalysisType::AkuProfileVoice,
             discriminator: Carbon::now()->isoFormat('GGGG-[W]WW'),
         );
 
@@ -374,7 +374,7 @@ class DemoRunSeeder
                     ->orWhere(fn ($qq) => $qq->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
                     ->orWhere(fn ($qq) => $qq->whereIn('subject_type', [
                         AnalysisType::BRIEFING_SUBJECT_TYPE,
-                        AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE,
+                        AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
                         AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                     ])->where('subject_id', $user->id));
             })

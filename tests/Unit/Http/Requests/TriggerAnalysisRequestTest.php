@@ -96,11 +96,10 @@ it('accepts the discriminator shape its own dispatch sites write', function (str
 })->with([
     'briefing mascot voice day' => ['briefing_mascot_voice', '2026-05-18'],
     'featured kartu card id' => ['briefing_featured_kartu_voice', '42'],
-    'persona summary ISO week' => ['persona_summary', '2026-W31'],
+    'aku profile voice ISO week' => ['aku_profile_voice', '2026-W31'],
     'monthly recap month' => ['monthly_recap', '2026-05'],
     'weekly recap keys off the snapshot id' => ['weekly_recap', null],
     'card flavor keys off the card id' => ['card_flavor', null],
-    'aku profile voice keys off the user id' => ['aku_profile_voice', null],
 ]);
 
 /**
@@ -116,8 +115,8 @@ it('rejects a novel or malformed discriminator', function (string $type, string 
     'a month where a day belongs' => ['briefing_mascot_voice', '2026-05'],
     'a non-date on the mascot voice day' => ['briefing_mascot_voice', 'yesterday'],
     'a day where a month belongs' => ['monthly_recap', '2026-05-18'],
-    'a day where an ISO week belongs' => ['persona_summary', '2026-05-18'],
-    'a malformed ISO week' => ['persona_summary', '2026-W3'],
+    'a day where an ISO week belongs' => ['aku_profile_voice', '2026-05-18'],
+    'a malformed ISO week' => ['aku_profile_voice', '2026-W3'],
     'a non-numeric featured card' => ['briefing_featured_kartu_voice', 'abc'],
     'a zero featured card id' => ['briefing_featured_kartu_voice', '0'],
     'a zero-padded featured card id' => ['briefing_featured_kartu_voice', '007'],
@@ -139,14 +138,13 @@ it('rejects any discriminator on the types whose job ignores it', function (stri
     'weekly_recap',
     'pr_context',
     'card_flavor',
-    'aku_profile_voice',
 ]);
 
 it('requires the discriminator on the types keyed by one', function (string $type): void {
     expect(triggerAnalysisPasses($type, null))->toBeFalse();
 })->with([
     'briefing_mascot_voice',
-    'persona_summary',
+    'aku_profile_voice',
     'monthly_recap',
     'briefing_featured_kartu_voice',
 ]);

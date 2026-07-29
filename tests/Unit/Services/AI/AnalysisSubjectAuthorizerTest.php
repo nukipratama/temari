@@ -21,7 +21,6 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
     $subjectId = match ($type) {
         AnalysisType::BriefingMascotVoice,
         AnalysisType::BriefingFeaturedKartuVoice,
-        AnalysisType::PersonaSummary,
         AnalysisType::AkuProfileVoice,
         AnalysisType::MonthlyRecap => $owner->id,
         AnalysisType::PostRunSpeech,

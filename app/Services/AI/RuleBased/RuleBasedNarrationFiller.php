@@ -46,7 +46,6 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::WeeklyRecap => $this->weeklyRecap($seed),
             AnalysisType::PrContext => $this->prContext($seed),
             AnalysisType::CardFlavor => $this->cardFlavor($seed),
-            AnalysisType::PersonaSummary => $this->personaSummary($seed),
             AnalysisType::AkuProfileVoice => $this->akuProfileVoice($seed),
             AnalysisType::MonthlyRecap => $this->monthlyRecap($seed),
         };
@@ -352,26 +351,13 @@ final readonly class RuleBasedNarrationFiller
     private function akuProfileVoice(int $seed): string
     {
         return $this->select([
-            'Aku catat semua perjalanan kamu di sini: **kartu**, **rekor**, **aksesori**, ceritanya. Ayo terus jalan.',
-            'Seluruh cerita lari kamu ada di sini. Dari kartu pertama sampai rekor terbaru, aku simpan semua.',
-            'Ini ruang kamu. **Kartu**, **rekor**, **aksesori** yang udah kamu kumpulin, aku jaga baik-baik.',
-            'Semua yang kamu dapetin dari lari ada di sini. Aku terus catat, kamu terus jalan.',
-            'Di sini aku rekam jejak lari kamu, dari **kartu** sampai **rekor**. Terus isi, aku catat.',
-            'Semua yang kamu kumpulin dari lari kesimpen di sini. Aku jagain, kamu tinggal jalan.',
-            'Ini arsip perjalanan kamu. **Kartu**, **rekor**, **aksesori**, semua ada. Ayo tambah terus.',
-        ], $seed);
-    }
-
-    private function personaSummary(int $seed): string
-    {
-        return $this->select([
-            'Pola lari kamu cenderung easy-dominan, sesekali quality. Tipe runner yang ngebangun pelan-pelan.',
-            'Lari kamu lebih sering santai daripada push. Sabar ngebangun base, gak buru-buru. Respek.',
-            'Gaya lari kamu steady, gak banyak drama. Consistency over intensity, dan itu strategi yang bagus.',
-            'Kamu tipe yang sabar ngebangun fondasi. Easy dominan, sesekali quality. Pelan tapi pasti.',
-            'Kamu runner yang milih rutin daripada heboh. Base dulu, kecepatan nyusul. Sabar yang bener.',
-            'Pola kamu kebaca disiplin: lebih sering easy, sesekali digas. Cara ngebangun yang sehat.',
-            'Gaya lari kamu tenang tapi gak berhenti. Konsistensi model gini yang bikin progres awet.',
+            'Lari kamu lebih sering **adem** daripada digas, dan itu kelihatan di caranya numpuk: pelan, rutin, gak pernah lompat jauh. Tipe yang ngebangun base sabar. Terusin ritmenya, aku catat semuanya di sini.',
+            'Sebaran mood kamu condong ke **enteng** dan itu ngedukung angkanya: kamu balik lagi terus tanpa drama, minggu demi minggu. Konsistensi model gini yang bikin progres awet, jadi gak usah buru-buru naik.',
+            'Kamu tipe yang milih rutin daripada heboh, dan streak mingguan kamu ngebuktiin itu. Base dulu, kecepatan nyusul. Kalau nanti mau nyelipin satu sesi lebih naik, kamu udah punya fondasinya.',
+            'Belakangan **nyala** kamu lebih sering muncul dibanding beberapa bulan lalu yang lebih adem, dan rekor yang kekumpul ngikutin arah itu. Kamu lagi di fase berani. Jaga satu easy di antaranya biar gak kebablasan.',
+            'Mood lari kamu campur antara **nyala** dan **oleng**, dan jarak terjauhmu kebaca lahir dari hari-hari beraninya. Kamu suka push, itu bagus. Satu sesi santai di sela-sela bakal bikin yang berat kerasa lebih enteng.',
+            'Pola kamu kebaca disiplin: lebih sering **adem**, sesekali digas, dan total km kamu numpuk dari situ, bukan dari satu lari heroik. Cara ngebangun yang sehat. Lanjut aja pelan-pelan.',
+            'Kamu baru mulai dan mix-nya masih tipis, tapi kamu udah datang lagi berkali-kali. Buat aku itu udah cerita. Kita bangun pelan, biar bacaan personanya nanti beneran punya isi.',
         ], $seed);
     }
 

@@ -25,7 +25,6 @@ final class AnalysisSubjectAuthorizer
         $authorized = match ($type) {
             AnalysisType::BriefingMascotVoice,
             AnalysisType::BriefingFeaturedKartuVoice,
-            AnalysisType::PersonaSummary,
             AnalysisType::AkuProfileVoice,
             AnalysisType::MonthlyRecap => $subjectId === $user->id,
             AnalysisType::PostRunSpeech,

@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-it('refreshes persona (week-keyed, invalidate:false) and Kata Temari (invalidate:true) for an active user', function (): void {
+it('refreshes the Kata Temari voice once, week-keyed and invalidate:false, for an active user', function (): void {
     // Monday 2026-05-18, ISO week 2026-W21.
     Carbon::setTestNow('2026-05-18 00:05:00');
 
@@ -25,19 +25,16 @@ it('refreshes persona (week-keyed, invalidate:false) and Kata Temari (invalidate
         ->expectsOutputToContain('Dispatched weekly profile refresh for 1 active users')
         ->assertSuccessful();
 
-    expect($captured)->toHaveCount(2);
+    // One request per user per week, not two: the week key is the refresh, so a
+    // mid-week "Baca ulang" is never re-billed by the scheduler.
+    expect($captured)->toHaveCount(1);
 
-    $persona = collect($captured)->firstWhere('type', AnalysisType::PersonaSummary);
-    expect($persona['subjectOrType'])->toBe(AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE)
-        ->and($persona['subjectId'])->toBe($user->id)
-        ->and($persona['discriminator'])->toBe('2026-W21')
-        ->and($persona['invalidate'])->toBeFalse();
-
-    $voice = collect($captured)->firstWhere('type', AnalysisType::AkuProfileVoice);
-    expect($voice['subjectOrType'])->toBe(AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
+    $voice = $captured[0];
+    expect($voice['type'])->toBe(AnalysisType::AkuProfileVoice)
+        ->and($voice['subjectOrType'])->toBe(AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE)
         ->and($voice['subjectId'])->toBe($user->id)
-        ->and($voice['discriminator'])->toBeNull()
-        ->and($voice['invalidate'])->toBeTrue();
+        ->and($voice['discriminator'])->toBe('2026-W21')
+        ->and($voice['invalidate'])->toBeFalse();
 
     Carbon::setTestNow();
 });

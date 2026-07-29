@@ -17,7 +17,6 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\Tools\LifetimeStatsTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
-use App\Services\AI\Agent\Tools\PersonaMixTool;
 use App\Services\AI\Agent\Tools\PersonalRecordTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
@@ -26,7 +25,6 @@ use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
-use App\Services\AI\Narrators\PersonaSummaryNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
@@ -610,70 +608,6 @@ it('CardFlavorNarrator throws on non-JSON', function (): void {
     $narrator->generate($card);
 })->throws(UnavailableException::class, 'non-JSON');
 
-// ── PersonaSummaryNarrator ────────────────────────────────────────────
-
-it('PersonaSummaryNarrator builds a mood-mix percent breakdown from story lines', function (): void {
-    $user = User::factory()->create();
-    $cutoff = Carbon::now()->subWeeks(11);
-
-    foreach (['nyala', 'nyala', 'nyala', 'adem', 'lemes'] as $mood) {
-        $activity = Activity::factory()->for($user)->analyzed()->create();
-        StoryLine::factory()->for($user)->create([
-            'activity_id' => $activity->id,
-            'mood' => $mood,
-            'created_at' => $cutoff->copy()->addDay(),
-        ]);
-    }
-
-    $caller = fakeCaller(json_encode(['narrative' => 'Larimu lebih sering nyala.'], JSON_THROW_ON_ERROR));
-    $narrator = new PersonaSummaryNarrator($caller);
-
-    $mix = $narrator->personaMix($user->fresh());
-    $nyala = collect($mix)->firstWhere('mood', 'nyala');
-    expect($nyala['mood'])->toBe('nyala');
-    expect($nyala['count'])->toBe(3);
-    expect($nyala['percent'])->toBe(60.0);
-    expect($narrator->generate($user->fresh()))->toBe('Larimu lebih sering nyala.');
-});
-
-it('PersonaSummaryNarrator feeds the latest form_status as the consistency spine', function (): void {
-    $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'form_status' => 'fatigued']);
-
-    $context = new PersonaMixTool($user->fresh(), Carbon::now())->handle([]);
-
-    expect($context['form_status'])->toBe('fatigued');
-});
-
-it('PersonaSummaryNarrator returns an empty mix for a user with no story lines', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller(json_encode(['narrative' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new PersonaSummaryNarrator($caller);
-    expect($narrator->personaMix($user))->toBe([]);
-});
-
-it('PersonaSummaryNarrator splits the persona mix into recent vs earlier halves', function (): void {
-    $user = User::factory()->create();
-    // Earlier half (8 weeks ago): adem-dominant. Recent half (1 week ago): nyala-dominant.
-    $seed = function (string $mood, int $weeksAgo) use ($user): void {
-        $activity = Activity::factory()->for($user)->analyzed()->create();
-        StoryLine::factory()->for($user)->create([
-            'activity_id' => $activity->id,
-            'mood' => $mood,
-            'created_at' => Carbon::now()->subWeeks($weeksAgo),
-        ]);
-    };
-    $seed('adem', 8);
-    $seed('adem', 8);
-    $seed('nyala', 1);
-
-    $context = new PersonaMixTool($user->fresh(), Carbon::now())->handle([]);
-
-    expect($context['persona_mix_earlier'][0]['mood'])->toBe('adem')
-        ->and($context['persona_mix_recent'][0]['mood'])->toBe('nyala')
-        ->and($context['total_runs'])->toBe(3);
-});
-
 // ── MonthlyRecapNarrator ──────────────────────────────────────────────
 
 it('MonthTotalsTool reads month totals and the mood mix', function (): void {
@@ -791,6 +725,38 @@ it('MonthlyRecapNarrator leaves prev_narrative null on the first month', functio
 });
 
 // ── AkuProfileVoiceNarrator ───────────────────────────────────────────
+
+it('AkuProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', function (): void {
+    $user = User::factory()->create();
+    $cutoff = Carbon::now()->subWeeks(11);
+
+    foreach (['nyala', 'nyala', 'nyala', 'adem', 'lemes'] as $mood) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        StoryLine::factory()->for($user)->create([
+            'activity_id' => $activity->id,
+            'mood' => $mood,
+            'created_at' => $cutoff->copy()->addDay(),
+        ]);
+    }
+
+    $caller = fakeCaller(json_encode(['profile_voice' => 'Larimu lebih sering nyala.'], JSON_THROW_ON_ERROR));
+    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+
+    $mix = $narrator->personaMix($user->fresh());
+    $nyala = collect($mix)->firstWhere('mood', 'nyala');
+    expect($nyala['mood'])->toBe('nyala');
+    expect($nyala['count'])->toBe(3);
+    expect($nyala['percent'])->toBe(60.0);
+    expect($narrator->generate($user->fresh()))->toBe('Larimu lebih sering nyala.');
+});
+
+it('AkuProfileVoiceNarrator returns an empty mix for a user with no story lines', function (): void {
+    $user = User::factory()->create();
+    $caller = fakeCaller(json_encode(['profile_voice' => 'x'], JSON_THROW_ON_ERROR));
+    $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+
+    expect($narrator->personaMix($user))->toBe([]);
+});
 
 it('AkuProfileVoiceNarrator returns profile voice on valid JSON', function (): void {
     $user = User::factory()->create();
@@ -1108,7 +1074,6 @@ it('per-narrator step budgets cover two full read passes and only exist where th
     expect($declared)->toBe([
         'BriefingFeaturedKartuVoiceNarrator' => 4,
         'MonthlyRecapNarrator' => 4,
-        'PersonaSummaryNarrator' => 4,
         'PrContextNarrator' => 6,
         'WeeklyRecapNarrator' => 4,
     ]);

@@ -147,8 +147,7 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
     'run insight zones (no detail)' => [AnalysisType::RunInsightZones, 'Distribusi zone-nya belum kebaca lengkap.'],
     'weekly recap' => [AnalysisType::WeeklyRecap, 'Minggu ini ritme kamu cukup teratur. Volume lari masuk akal, recovery juga keurus.'],
     'pr context' => [AnalysisType::PrContext, 'PR-nya hasil dari konsistensi minggu-minggu sebelumnya, bukan kebetulan.'],
-    'persona summary' => [AnalysisType::PersonaSummary, 'Pola lari kamu cenderung easy-dominan, sesekali quality. Tipe runner yang ngebangun pelan-pelan.'],
-    'aku profile voice' => [AnalysisType::AkuProfileVoice, 'Aku catat semua perjalanan kamu di sini: **kartu**, **rekor**, **aksesori**, ceritanya. Ayo terus jalan.'],
+    'aku profile voice' => [AnalysisType::AkuProfileVoice, 'Lari kamu lebih sering **adem** daripada digas, dan itu kelihatan di caranya numpuk: pelan, rutin, gak pernah lompat jauh. Tipe yang ngebangun base sabar. Terusin ritmenya, aku catat semuanya di sini.'],
     'monthly recap' => [AnalysisType::MonthlyRecap, 'Bulan ini ritme kamu jalan terus. Gak ngotot, gak juga ngilang. Konsisten yang aku suka.'],
 ]);
 

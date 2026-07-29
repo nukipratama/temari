@@ -23,7 +23,7 @@ Temari narrates the runner's history at three cadences — per **week**, per **m
 
 ## System dependencies
 
-- **AI pipeline** — every recap is an `Analysis` row from [[ai-pipeline]]; weekly = `AnalysisType::WeeklyRecap`, monthly = `MonthlyRecap`, profile = `AkuProfileVoice` / `PersonaSummary`.
+- **AI pipeline** — every recap is an `Analysis` row from [[ai-pipeline]]; weekly = `AnalysisType::WeeklyRecap`, monthly = `MonthlyRecap`, profile = `AkuProfileVoice`.
 - **Windowing** — the open week/month is gated by [[deferred-recap-windowing]]; chaining is handled by [[chained-narration]].
 - **Training metrics** — weekly recaps read `TrainingLoad` / `WeeklySnapshot` from [[training-load-metrics]].
 - **Notifications** — completed recaps fan out to [[telegram-notifications]].
@@ -44,11 +44,9 @@ Rendered by the local `MonthlyRecapCard` in [Kalender](resources/js/pages/Riwaya
 
 ## Persona / profile voice — on Aku
 
-The profile page surfaces two more Temari narratives (see [[profile]]):
-- **`profileVoice`** ("Kata Temari tentang kamu") — `AnalysisType::AkuProfileVoice`, keyed with **no discriminator** (one per user), refreshed manually.
-- **`personaSummary`** — `AnalysisType::PersonaSummary`, keyed **per ISO week**, narrating the 12-week `PersonaBar` mix.
+The profile page surfaces one more Temari narrative (see [[profile]]): **`profileVoice`** ("Kata Temari tentang kamu"), `AnalysisType::AkuProfileVoice`, keyed **per ISO week**. It carries both readings the page used to bill separately, the 12-week mood persona behind `PersonaBar` and the lifetime/progression numbers, in a single call.
 
-Both come from [ProfileController](app/Http/Controllers/ProfileController.php) (`resolveProfileVoice`, `resolvePersonaSummary`) and render via plain (non-chained) `AnalysisStatus` blocks.
+It comes from [ProfileController](app/Http/Controllers/ProfileController.php) (`resolveProfileVoice`) and renders via a plain (non-chained) `AnalysisStatus` block. `ai:weekly-profile` re-narrates it once a week with `invalidate: false`, so a mid-week "Baca ulang" is never re-billed by the scheduler.
 
 ## Notes / gotchas
 
