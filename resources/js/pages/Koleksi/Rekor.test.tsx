@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import KoleksiRekor from './Rekor';
 import { makeUser, setMockPage } from '@/test/setup';
@@ -92,6 +92,23 @@ describe('Koleksi/Rekor', () => {
             />,
         );
         expect(screen.getByText(/Pace ticker/)).toBeInTheDocument();
+    });
+
+    it('renders pace-ticker effort PRs in ascending duration order, not data-arrival order', () => {
+        render(
+            <KoleksiRekor
+                personalRecords={[
+                    pr('best_60min', 3500, 10, null),
+                    pr('best_5min', 320, 11, null),
+                    pr('best_30min', 1800, 12, null),
+                    pr('best_10min', 620, 13, null),
+                    pr('best_20min', 1180, 14, null),
+                ]}
+            />,
+        );
+        const ticker = screen.getByText(/Pace ticker/).closest('section');
+        const labels = within(ticker!).getAllByText(/Best \d+ menit/).map((el) => el.textContent);
+        expect(labels).toEqual(['Best 5 menit', 'Best 10 menit', 'Best 20 menit', 'Best 30 menit', 'Best 60 menit']);
     });
 
     it('renders the featured PR context narrative when context_analysis is provided', () => {
