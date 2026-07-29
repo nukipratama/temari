@@ -6,10 +6,13 @@ namespace App\Jobs\Strava;
 
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Strava\StravaClient;
@@ -38,8 +41,12 @@ class CleanupDeletedActivityJob implements ShouldQueue
     ) {
     }
 
-    public function handle(WeeklyAggregator $weekly, PersonalRecords $personalRecords, StravaClient $client): void
-    {
+    public function handle(
+        WeeklyAggregator $weekly,
+        PersonalRecords $personalRecords,
+        StravaClient $client,
+        AnalysisService $analysisService,
+    ): void {
         $user = User::query()->with('stravaConnection')->find($this->userId);
         if ($user === null) {
             return;
@@ -112,6 +119,19 @@ class CleanupDeletedActivityJob implements ShouldQueue
                     ->delete();
             }
         });
+
+        // After commit: rebuildForUser drops and re-mints every PR row, so the
+        // surviving records need their narration staged against the new row ids.
+        // invalidate:false, so a record that kept its holder is not re-billed.
+        $prIds = PersonalRecord::query()->where('user_id', $user->id)->orderBy('id')->pluck('id');
+        foreach ($prIds as $prId) {
+            $analysisService->request(
+                subjectOrType: PersonalRecord::class,
+                subjectId: (int) $prId,
+                type: AnalysisType::PrContext,
+                invalidate: false,
+            );
+        }
 
         Log::info('strava.webhook cleaned up deleted activity', [
             'user_id' => $user->id,

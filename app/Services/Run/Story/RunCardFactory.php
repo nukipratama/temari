@@ -10,8 +10,6 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
-use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisType;
 use App\Services\Gamification\UnlockEngine;
 use App\Services\Run\Metrics\StreamSummary;
 use Illuminate\Support\Carbon;
@@ -79,7 +77,6 @@ class RunCardFactory
 
     public function __construct(
         private readonly SpecialMoves $specialMoves,
-        private readonly AnalysisService $analysisService,
         private readonly UnlockEngine $unlockEngine,
     ) {
     }
@@ -117,13 +114,6 @@ class RunCardFactory
                 'special_move' => $move,
                 'pr_set' => $prSet,
             ],
-        );
-
-        $this->analysisService->request(
-            subjectOrType: RunCard::class,
-            subjectId: $card->id,
-            type: AnalysisType::CardFlavor,
-            invalidate: true,
         );
 
         if (in_array($card->rarity, [Rarity::Epic, Rarity::Legendary], strict: true)) {

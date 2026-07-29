@@ -13,6 +13,7 @@ use App\Models\PersonalRecord;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Strava\StravaClient;
@@ -82,6 +83,7 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
         app(WeeklyAggregator::class),
         app(PersonalRecords::class),
         app(StravaClient::class),
+        app(AnalysisService::class),
     );
 
     expect(Activity::query()->withStubs()->whereKey($doomed->id)->exists())->toBeFalse()
@@ -114,7 +116,7 @@ it('prunes a now-empty weekly snapshot when the deleted run was the last one', f
     $personalRecords = Mockery::mock(PersonalRecords::class);
     $personalRecords->shouldReceive('rebuildForUser')->once();
 
-    new CleanupDeletedActivityJob($user->id, 7_003)->handle($weekly, $personalRecords, app(StravaClient::class));
+    new CleanupDeletedActivityJob($user->id, 7_003)->handle($weekly, $personalRecords, app(StravaClient::class), app(AnalysisService::class));
 
     expect(Activity::query()->withStubs()->whereKey($sole->id)->exists())->toBeFalse()
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
@@ -127,6 +129,7 @@ it('no-ops when the activity is already gone', function (): void {
         app(WeeklyAggregator::class),
         app(PersonalRecords::class),
         app(StravaClient::class),
+        app(AnalysisService::class),
     );
 
     expect(true)->toBeTrue();
@@ -144,6 +147,7 @@ it('does NOT delete when Strava still returns the activity (forged delete event)
         app(WeeklyAggregator::class),
         app(PersonalRecords::class),
         app(StravaClient::class),
+        app(AnalysisService::class),
     );
 
     expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue()
@@ -159,6 +163,7 @@ it('does NOT delete when there is no live connection to verify against', functio
         app(WeeklyAggregator::class),
         app(PersonalRecords::class),
         app(StravaClient::class),
+        app(AnalysisService::class),
     );
 
     expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue();

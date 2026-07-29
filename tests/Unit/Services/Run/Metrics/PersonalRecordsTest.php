@@ -7,7 +7,6 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
-use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\Gamification\UnlockEngine;
 use App\Services\Run\Metrics\PersonalRecords;
@@ -204,21 +203,8 @@ it('respects per-user scoping (PR break for user A does not affect user B)', fun
         ->toBe(1500.0);
 });
 
-it('requests pr_context with invalidate:false so a backfill does not re-bill each beat', function (): void {
-    $mock = $this->mock(AnalysisService::class);
-    $mock->shouldReceive('request')
-        ->atLeast()->once()
-        // Positional matcher (named-arg with() trips a Mockery quirk): request is
-        // (subjectOrType, subjectId, type, discriminator, delaySeconds, invalidate).
-        ->withArgs(fn (...$args): bool => ($args[0] ?? null) === PersonalRecord::class
-            && ($args[2] ?? null) === AnalysisType::PrContext
-            && ($args[5] ?? true) === false)
-        ->andReturn(new Analysis());
-
-    $records = app(PersonalRecords::class);
-
+it('stages no pr_context row of its own, leaving the fan-out to DispatchPostRunAnalysis', function (): void {
     $user = User::factory()->create();
-    // A single 5km record so exactly one category beats and pr_context is requested.
     PersonalRecord::factory()->for($user)->create([
         'category' => '5km',
         'value_sec' => 1500.0,
@@ -230,7 +216,8 @@ it('requests pr_context with invalidate:false so a backfill does not re-bill eac
         'stream_summary' => null,
     ]);
 
-    expect($records->detectAndStore($activity, $detail))->toContain('5km');
+    expect($this->records->detectAndStore($activity, $detail))->toContain('5km')
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::PrContext)->count())->toBe(0);
 });
 
 it('rebuildForUser drops orphaned records and re-detects from surviving runs', function (): void {

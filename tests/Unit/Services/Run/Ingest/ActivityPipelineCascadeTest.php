@@ -3,8 +3,13 @@
 declare(strict_types=1);
 
 use App\Events\ActivityIngested;
+use App\Jobs\AI\AnalyzeCardFlavorJob;
+use App\Jobs\AI\AnalyzePrContextJob;
 use App\Models\Activity;
+use App\Models\AI\Analysis;
+use App\Models\RunCard;
 use App\Models\StravaConnection;
+use App\Services\Gamification\MilestoneDetector;
 use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -19,9 +24,6 @@ beforeEach(function (): void {
     // not run here — the fan-out is covered by DispatchPostRunAnalysisTest. The
     // pipeline's job is simply to emit the event once the run is persisted.
     Event::fake([ActivityIngested::class]);
-    // ingest() also calls RunCardFactory directly (independent of the faked
-    // event above), which queues a real AnalyzeCardFlavorJob under the sync test
-    // queue connection. That job has its own dedicated test.
     Bus::fake();
     $this->pipeline = app(ActivityPipeline::class);
 });
@@ -63,6 +65,35 @@ it('emits ActivityIngested with the activity id after a successful ingest', func
         ActivityIngested::class,
         fn (ActivityIngested $event): bool => $event->activityId === $activity->id,
     );
+});
+
+it('queues no AI job from inside the ingest transaction', function (): void {
+    $activity = ingestSeed();
+
+    $this->pipeline->ingest($activity);
+
+    // The story layer runs inside DB::transaction; every analysis request now
+    // belongs to the post-commit listener, so nothing is billable until the
+    // watermark is durable.
+    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
+    Bus::assertNotDispatched(AnalyzePrContextJob::class);
+    expect(Analysis::query()->count())->toBe(0);
+});
+
+it('dispatches nothing when the ingest transaction rolls back', function (): void {
+    $activity = ingestSeed();
+
+    $milestones = Mockery::mock(MilestoneDetector::class);
+    $milestones->shouldReceive('detect')->andThrow(new RuntimeException('story layer blew up'));
+    $this->app->instance(MilestoneDetector::class, $milestones);
+
+    expect(fn (): mixed => app(ActivityPipeline::class)->ingest($activity))
+        ->toThrow(RuntimeException::class);
+
+    Bus::assertNothingDispatched();
+    Event::assertNotDispatched(ActivityIngested::class);
+    expect(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeFalse()
+        ->and(Analysis::query()->count())->toBe(0);
 });
 
 it('does not emit ActivityIngested when the detail fetch fails', function (): void {
