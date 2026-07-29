@@ -356,7 +356,6 @@ class AnalysisService
             fn (AnalysisType $type): bool => ! $existing->has($type->value),
         ));
 
-        $insertedKeys = [];
         foreach ($missingValues as $type) {
             $row = Analysis::query()->firstOrCreate(
                 [
@@ -368,9 +367,6 @@ class AnalysisService
                 $defaults,
             );
             $existing->put($type->value, $row);
-            if ($row->wasRecentlyCreated) {
-                $insertedKeys[] = $type->value;
-            }
         }
 
         $rows = new Collection();

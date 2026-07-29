@@ -1,6 +1,6 @@
 import { DAYBREAK, hrZone } from '@/lib/chartTokens';
 import { projectPolyline } from '@/lib/route';
-import { RARITY_LABELS, RARITY_SYMBOL } from '@/lib/runcard';
+import { RARITY_HEX, RARITY_LABELS, RARITY_SYMBOL } from '@/lib/runcard';
 import { moodSigilColor } from '@/lib/mood';
 import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
 
@@ -92,14 +92,7 @@ const C = {
     surfaceSunken: '#efe8da',
     line: '#e3dccd',
     inkOnSky: '#b8ad97',
-    // Vivid loot-ladder rarity — mirrors RARITY_HEX / the --color-rarity-* tokens.
-    rarity: {
-        common: '#7d8694',
-        uncommon: '#2fb350',
-        rare: '#2f81f7',
-        epic: '#a855f7',
-        legendary: '#f5a623',
-    } as Record<string, string>,
+    rarity: RARITY_HEX,
 };
 
 // Every card gets the SAME bright border bloom regardless of rarity — unlike

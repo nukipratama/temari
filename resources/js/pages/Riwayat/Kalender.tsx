@@ -4,13 +4,13 @@ import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { appLayout } from '@/layouts/appLayout';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
-import RiwayatFilter, { type MoodOption } from '@/components/riwayat/RiwayatFilter';
+import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
-import { MOOD_FILL, MOOD_HINT, MOOD_LABEL, MOOD_ORDER, MOOD_SOFT_FILL, moodSigilColor } from '@/lib/mood';
+import { MOOD_FILL, MOOD_FILTER_OPTIONS, MOOD_HINT, MOOD_LABEL, MOOD_ORDER, MOOD_SOFT_FILL, moodSigilColor } from '@/lib/mood';
 import { formatPace, formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { aktivitasUrl } from '@/lib/routes';
@@ -65,13 +65,6 @@ interface WeekRow {
 
 const WEEKDAY_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'] as const;
 
-const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => ({
-    mood,
-    label: MOOD_LABEL[mood],
-    hint: MOOD_HINT[mood],
-    swatchClass: MOOD_FILL[mood],
-}));
-
 export default function Kalender({
     cells,
     monthLabel,
@@ -83,7 +76,7 @@ export default function Kalender({
     todayQuote = null,
     monthlyRecap,
 }: Readonly<KalenderProps>) {
-    const weeks = useMemo<WeekRow[]>(() => groupByWeek(cells), [cells]);
+    const weeks = useMemo<WeekRow[]>(() => chunkIntoWeeks(cells), [cells]);
     const dominantMood = useMemo(() => dominantMoodOf(cells), [cells]);
     const isCurrentMonth = month === todayMonth;
     const [moodFilter, setMoodFilter] = useState<ReadonlySet<Mood>>(() => new Set());
@@ -533,7 +526,7 @@ function Legend({ className }: Readonly<{ className?: string }>) {
     );
 }
 
-function groupByWeek(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
+function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
     const weeks: WeekRow[] = [];
     for (let i = 0; i < cells.length; i += 7) {
         const days = cells.slice(i, i + 7);

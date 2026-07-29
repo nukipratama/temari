@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import RiwayatFilter, { type MoodOption } from './RiwayatFilter';
+import type { MoodOption } from '@/lib/mood';
+import RiwayatFilter from './RiwayatFilter';
 
 type Range = '8w' | '12w';
 
