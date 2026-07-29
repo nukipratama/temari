@@ -313,15 +313,9 @@ jobs:
     concurrency:
       group: deploy-prod
       cancel-in-progress: false
-    # Measured across 93 deploys this is a 1.5-2 min job, 5.2 min at the worst
-    # observed, so this limit only ever binds on a cold-cache image build on the
-    # shared 4-core host — which is precisely the case where hitting it hurts.
-    # An overrun is a *cancellation*, not a step failure, so the `Roll back on
-    # failure` step below may never run; and when it does run it refuses to roll
-    # back if MIGRATIONS_APPLIED is true (which it defaults to when unset). An
-    # overrun mid-roll thus strands a half-deployed stack with no rollback and no
-    # alert. Headroom costs nothing on a job that normally finishes in two minutes.
-    timeout-minutes: 25
+    # A job timeout is a cancellation, so `if: failure()` never runs. Overruns are
+    # capped per step instead; this is a backstop above the sum of those caps.
+    timeout-minutes: 60
     env:
       COMPOSE: docker compose -f compose.prod.yaml
       BACKUP_DIR: /var/lib/temari-backups
@@ -335,6 +329,7 @@ jobs:
           fi
 
       - name: Build new image
+        timeout-minutes: 15
         run: $COMPOSE build app
 
       - name: Bring up the data + cache layer
@@ -349,6 +344,7 @@ jobs:
       # MYSQL_PWD (exported inside the container) instead of `-p"$pass"` so the
       # password never lands in the container process table / /proc/*/cmdline.
       - name: Backup DB before migrate
+        timeout-minutes: 5
         run: |
           set -o pipefail
           mkdir -p "$BACKUP_DIR"
@@ -368,6 +364,7 @@ jobs:
           ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz | tail -n +11 | xargs -r rm
 
       - name: Backup analytics schema
+        timeout-minutes: 5
         run: |
           out="$BACKUP_DIR/analytics-pre-deploy-${{ github.sha }}.sql.gz"
           if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "USE $adb"' 2>/dev/null; then
@@ -402,9 +399,11 @@ jobs:
           echo "Migrations pending this deploy: $applied"
 
       - name: Migrate (one-shot, on the new image)
+        timeout-minutes: 10
         run: $COMPOSE run --rm app php artisan migrate --force
 
       - name: Migrate analytics schema
+        timeout-minutes: 10
         run: $COMPOSE run --rm app php artisan migrate --database=analytics --path=database/migrations/analytics --force
 
       # Roll app + workers together: /up (VerifyDependencies) 500s unless Horizon is
@@ -419,7 +418,7 @@ jobs:
       - name: Healthcheck
         run: |
           for i in $(seq 1 20); do
-            if curl -fsS http://127.0.0.1:7001/up; then
+            if curl -fsS --max-time 10 http://127.0.0.1:7001/up; then
               echo "Healthcheck passed"; exit 0
             fi
             sleep 3
@@ -428,23 +427,23 @@ jobs:
 
       - name: Smoke test
         run: |
-          curl -fsS -o /dev/null -w "login: HTTP %{http_code} in %{time_total}s\n" \
+          curl -fsS --max-time 10 -o /dev/null -w "login: HTTP %{http_code} in %{time_total}s\n" \
             http://127.0.0.1:7001/login
           # PWA assets must serve with the right MIME + cache headers. Asserting them
           # here catches a Caddyfile serving regression (e.g. the file copied to the
           # wrong path → default config with no header handles) before the deploy goes green.
-          sw=$(curl -fsS -D- -o /dev/null http://127.0.0.1:7001/sw.js)
+          sw=$(curl -fsS --max-time 10 -D- -o /dev/null http://127.0.0.1:7001/sw.js)
           printf '%s' "$sw" | grep -qi '^content-type: *text/javascript' \
             || { echo "::error::/sw.js missing Content-Type text/javascript"; exit 1; }
           printf '%s' "$sw" | grep -qi '^cache-control: *no-cache' \
             || { echo "::error::/sw.js missing Cache-Control no-cache"; exit 1; }
-          man=$(curl -fsS -D- -o /dev/null http://127.0.0.1:7001/manifest.webmanifest)
+          man=$(curl -fsS --max-time 10 -D- -o /dev/null http://127.0.0.1:7001/manifest.webmanifest)
           printf '%s' "$man" | grep -qi '^content-type: *application/manifest+json' \
             || { echo "::error::/manifest.webmanifest missing Content-Type application/manifest+json"; exit 1; }
           # The service worker's offline fallback. It must be a real static file:
           # if it ever 404s or gets routed through PHP, an offline user sees the
           # browser error page instead, and nothing else would surface that.
-          off=$(curl -fsS -D- -o /dev/null http://127.0.0.1:7001/offline.html)
+          off=$(curl -fsS --max-time 10 -D- -o /dev/null http://127.0.0.1:7001/offline.html)
           printf '%s' "$off" | grep -qi '^content-type: *text/html' \
             || { echo "::error::/offline.html missing Content-Type text/html"; exit 1; }
           echo "PWA assets OK: /sw.js + /manifest.webmanifest + /offline.html"
@@ -454,6 +453,7 @@ jobs:
 
       - name: Roll back on failure
         if: failure()
+        timeout-minutes: 6
         run: |
           $COMPOSE start scheduler horizon pulse || true
 
@@ -466,7 +466,7 @@ jobs:
             $COMPOSE exec -T app php artisan horizon:terminate || true
             rolled_ok=false
             for i in $(seq 1 20); do
-              if curl -fsS http://127.0.0.1:7001/up; then rolled_ok=true; break; fi
+              if curl -fsS --max-time 10 http://127.0.0.1:7001/up; then rolled_ok=true; break; fi
               sleep 3
             done
             [ "$rolled_ok" = true ] && echo "Rolled back to :previous and healthy." \
@@ -479,6 +479,7 @@ jobs:
       - name: Alert on deploy failure
         if: failure()
         continue-on-error: true
+        timeout-minutes: 3
         run: |
           if [ "${MIGRATIONS_APPLIED:-true}" = "true" ]; then
             note="migrations ran, manual recovery needed"
