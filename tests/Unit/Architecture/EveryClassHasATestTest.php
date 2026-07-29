@@ -17,6 +17,7 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\AI\TokenUsageRecorder;
 use App\Services\Geo\ResolvedLocation;
+use App\Services\Run\JejakFilters;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Gamification\WeeklyRecap;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
@@ -62,6 +63,7 @@ it('has a test class for every concrete app class', function (): void {
         BriefingResult::class,
         VerdictTimelineItem::class,
         WeatherSnapshot::class,
+        JejakFilters::class,          // resolved Jejak filter state, asserted via JejakQueryTest
         WeeklyRecap::class,             // shaped recap DTO, built + asserted via WeeklyRecapBuilderTest
         // Covered indirectly by the suites that drive them.
         TokenUsage::class,              // StructuredChatCallerTest
