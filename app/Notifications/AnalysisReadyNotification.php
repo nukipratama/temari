@@ -14,7 +14,8 @@ use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\RunCardImageRenderer;
 use App\Services\Notifications\ChannelRouter;
-use App\Services\Telegram\NotifiableAnalysis;
+use App\Services\Telegram\AnalysisMessagePresenter;
+use App\Services\Telegram\NotificationEligibility;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -49,8 +50,8 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
      */
     public function via(User $notifiable): array
     {
-        $registry = app(NotifiableAnalysis::class);
-        if (! $registry->isNotifiable($this->analysis) || $notifiable->is_demo) {
+        $eligibility = app(NotificationEligibility::class);
+        if (! $eligibility->isNotifiable($this->analysis) || $notifiable->is_demo) {
             return [];
         }
 
@@ -68,18 +69,18 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             return $channels;
         }
 
-        $reachableNow = $registry->isRecentEnoughToAutoNotify($this->analysis)
-            && $registry->isOptedIn($this->analysis, $notifiable);
+        $reachableNow = $eligibility->isRecentEnoughToAutoNotify($this->analysis)
+            && $eligibility->isOptedIn($this->analysis, $notifiable);
 
         return $reachableNow ? $channels : [];
     }
 
     public function toTelegram(User $notifiable): TelegramMessage
     {
-        $registry = app(NotifiableAnalysis::class);
+        $presenter = app(AnalysisMessagePresenter::class);
 
         return new TelegramMessage(
-            text: $registry->format($this->analysis),
+            text: $presenter->format($this->analysis),
             photoPng: $this->renderPostRunCard(),
             deliveryKey: $this->deliveryKey(),
             force: $this->force,
@@ -88,13 +89,13 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
 
     public function toWebPush(User $notifiable, Notification $notification): WebPushMessage
     {
-        $registry = app(NotifiableAnalysis::class);
+        $presenter = app(AnalysisMessagePresenter::class);
 
         return new WebPushMessage()
-            ->title($registry->title($this->analysis))
+            ->title($presenter->title($this->analysis))
             ->body(trim((string) $this->analysis->content))
             ->icon('/icon-192.png')
-            ->data(['url' => $registry->url($this->analysis)])
+            ->data(['url' => $presenter->url($this->analysis)])
             // High urgency so the push isn't deferred by the OS in Low Power Mode.
             ->options(['urgency' => 'high']);
     }

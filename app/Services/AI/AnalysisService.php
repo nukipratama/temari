@@ -14,7 +14,7 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
-use App\Services\Telegram\NotifiableAnalysis;
+use App\Services\Telegram\NotificationEligibility;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Database\Eloquent\Model;
@@ -41,7 +41,7 @@ class AnalysisService
     public function __construct(
         private readonly AppConfig $config,
         private readonly LlmCostCalculator $costCalculator,
-        private readonly NotifiableAnalysis $notifiableAnalysis,
+        private readonly NotificationEligibility $eligibility,
         private readonly AzureConfigCircuitBreaker $configBreaker,
         private readonly MaintainerAlerter $alerter,
     ) {
@@ -199,8 +199,8 @@ class AnalysisService
         // so an unwired or opted-out user resolves to no channels and nothing is
         // enqueued. afterCommit so the queued send can't run before the row it reads
         // is committed.
-        if (! $this->dispatchSuppressed && $this->notifiableAnalysis->isNotifiable($row)) {
-            $this->notifiableAnalysis->resolveUser($row)?->notify(
+        if (! $this->dispatchSuppressed && $this->eligibility->isNotifiable($row)) {
+            $this->eligibility->resolveUser($row)?->notify(
                 new AnalysisReadyNotification($row)->afterCommit(),
             );
         }

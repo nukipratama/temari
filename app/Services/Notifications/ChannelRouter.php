@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\Builder;
  * subscription is not deleted, so un-muting is one tap with no re-auth.
  *
  * This answers *where*, never *whether*. Per-type opt-in and recency stay with
- * `NotifiableAnalysis` and the notifications themselves, because those are
+ * `NotificationEligibility` and the notifications themselves, because those are
  * per-message questions and this is a routing one. That split is also why a
  * forced send may skip the opt-in but can never skip a mute.
  */
