@@ -106,6 +106,7 @@ CI uses GitHub Actions service containers (`mysql:8.4` + `redis:8-alpine`) for t
 | CI — `pest`     | `pest` against mysql:8.4 + redis:8-alpine services — `--coverage --min=95` on pull requests, bare on the `main` push |
 | CI — `vitest`   | `npm run test:coverage` — 95% lines + functions, jsdom only            |
 | CI — `deploy`   | On push to `main`: build prod image, migrate, roll containers, recycle Horizon, healthcheck `/up` |
+| Nightly         | `composer audit` + `npm audit` (prod deps, high+) — scheduled, off the PR/deploy path so an upstream advisory can't block an unrelated change |
 
 ## Branch workflow
 

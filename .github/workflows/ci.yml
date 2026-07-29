@@ -132,9 +132,6 @@ jobs:
       - name: Install composer deps
         run: composer install --prefer-dist --no-interaction --no-progress --classmap-authoritative
 
-      - name: Audit composer dependencies
-        run: composer audit --no-interaction
-
       - name: Stub .env for file-scanning tests
         run: cp .env.example .env
 
@@ -223,9 +220,6 @@ jobs:
       - name: Install npm deps
         if: steps.node_modules_cache.outputs.cache-hit != 'true'
         run: npm ci --prefer-offline --no-audit --no-fund
-
-      - name: Audit npm dependencies (prod, high+)
-        run: npm audit --omit=dev --audit-level=high
 
       - name: Component/test 1:1 structure check
         run: npx vitest run resources/js/test/structure.test.ts

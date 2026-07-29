@@ -1,0 +1,59 @@
+name: Nightly dependency audit
+
+# Supply-chain audits are the one gate whose verdict does not depend on the
+# diff: a freshly-published advisory against a package nobody in this PR touched
+# turns `composer audit` / `npm audit` red, and on `main` that red sits in front
+# of the deploy. Auditing on a schedule keeps the signal without letting an
+# upstream disclosure block an unrelated change from shipping. Neither job
+# installs dependencies — both read the lock files directly.
+#
+# Failure is visible as a red run in the Actions tab plus GitHub's own
+# failed-scheduled-run notification. It deliberately does NOT push through
+# MaintainerAlerter: that path is Telegram-over-the-prod-DB and is only
+# reachable from inside the prod app container on the homelab runner.
+
+on:
+  schedule:
+    # 03:17 WIB — off the hour, since on-the-hour crons queue behind everyone else's.
+    - cron: '17 20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PHP_VERSION: '8.5'
+
+jobs:
+  composer-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+
+      # --locked audits composer.lock itself, so no vendor install is needed.
+      - name: Audit composer dependencies
+        run: composer audit --locked --no-interaction
+
+  # A separate job, not a second step: one ecosystem going red must not hide
+  # whether the other one is clean.
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: '.nvmrc'
+
+      # --package-lock-only builds the tree from package-lock.json, so this needs
+      # no `npm ci`; --omit=dev then prunes dev-only advisories, which cannot
+      # reach production (the image's assets stage never ships node_modules).
+      - name: Audit npm dependencies (prod, high+)
+        run: npm audit --omit=dev --audit-level=high --package-lock-only
