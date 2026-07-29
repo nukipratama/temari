@@ -12,6 +12,9 @@ const TRIGGER_DEBOUNCE_MS = 2000;
 
 export const RATE_LIMITED_ERROR = 'rate_limited';
 
+/** Server refusal status for a trigger posted while narration is paused. */
+const PAUSED_STATUS = 409;
+
 const MALFORMED_RESPONSE_ERROR = 'Respons tidak valid dari server';
 
 /**
@@ -54,8 +57,8 @@ interface TriggerResult {
     pollingRetired: boolean;
     /**
      * LLM narration is globally paused (`aiPaused`). Consumers hide their
-     * trigger affordance while this is true — a POST would be refused server-side
-     * and the row would just stay pending, so the button is a dead action. The
+     * trigger affordance while this is true — the server answers a paused POST
+     * with 409 and leaves the row untouched, so the button is a dead action. The
      * global {@link AiOutageBanner} carries the explanation instead.
      */
     paused: boolean;
@@ -202,6 +205,13 @@ export function useAnalysisTrigger(
                 discriminator: payload.discriminator,
             });
 
+            if (response.status === PAUSED_STATUS) {
+                setStatus(payload.status);
+                router.reload();
+
+                return;
+            }
+
             if (!response.ok) {
                 throw new Error(response.status === 429 ? RATE_LIMITED_ERROR : `Trigger failed (${response.status})`);
             }
@@ -224,7 +234,7 @@ export function useAnalysisTrigger(
         } finally {
             setPending(false);
         }
-    }, [pending, payload.type, payload.subject_id, payload.discriminator, inertiaReloadProps, onUpdate]);
+    }, [pending, payload.type, payload.subject_id, payload.discriminator, payload.status, inertiaReloadProps, onUpdate]);
 
     // Mirror server-provided status/retry into local state when the props change —
     // adjusted during render (React-endorsed) rather than in effects. Local

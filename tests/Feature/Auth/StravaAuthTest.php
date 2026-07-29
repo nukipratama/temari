@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Jobs\Strava\SyncZonesJob;
+use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\RequestException;
@@ -13,6 +16,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Two\InvalidStateException;
@@ -161,6 +165,33 @@ it('creates a new user from the strava callback and logs them in', function (): 
         SyncActivitiesJob::class,
         fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null,
     );
+});
+
+it('still connects on a fresh connect while the strava kill switch is off, without fetching zones', function (): void {
+    // Only the backfill is faked here: SyncZonesJob runs inline (QUEUE_CONNECTION=sync)
+    // against the real ZoneFetcher, so the assertion covers the whole connect path.
+    Bus::fake([SyncActivitiesJob::class]);
+    Http::fake();
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'access-token-paused';
+    $stravaUser->refreshToken = 'refresh-token-paused';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('551122');
+    $stravaUser->shouldReceive('getName')->andReturn('Paused Runner');
+    $stravaUser->shouldReceive('getEmail')->andReturn('paused@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/paused.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->get(route('auth.strava.callback'))->assertRedirect(route('dashboard'));
+
+    $this->assertAuthenticated();
+    $connection = StravaConnection::where('strava_athlete_id', 551122)->firstOrFail();
+
+    Http::assertNothingSent();
+    expect(RunnerProfile::query()->where('user_id', $connection->user_id)->exists())->toBeFalse();
 });
 
 it('stores only the granted scopes and logs when a required scope is declined', function (): void {

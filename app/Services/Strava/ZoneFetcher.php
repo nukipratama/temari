@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Services\Strava;
 
 use App\Models\StravaConnection;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Http\Client\RequestException;
 
 class ZoneFetcher
 {
     private const array KEYS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
 
-    public function __construct(private readonly StravaClient $client)
-    {
+    public function __construct(
+        private readonly StravaClient $client,
+        private readonly AppConfig $config,
+    ) {
     }
 
     /**
@@ -28,6 +32,10 @@ class ZoneFetcher
      */
     public function fetch(StravaConnection $connection, int $restingHr): ?array
     {
+        if (! $this->config->boolean(AppConfigKey::StravaEnabled)) {
+            return null;
+        }
+
         if (! $connection->hasZoneScope()) {
             return null;
         }

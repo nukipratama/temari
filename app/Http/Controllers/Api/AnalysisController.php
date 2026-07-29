@@ -68,6 +68,11 @@ class AnalysisController extends Controller
             );
         }
 
+        if ($service->generationPaused()) {
+            return $this->payload($existing, $analysisType, $subjectId, $discriminator)
+                ->setStatusCode(409);
+        }
+
         // Chained kinds resume the chain rather than narrating the clicked row
         // in isolation. Only a head regenerate (a Done row that IS the chain
         // head) re-narrates that exact row below. Every other chained click,

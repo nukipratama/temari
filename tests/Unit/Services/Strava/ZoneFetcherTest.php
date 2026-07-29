@@ -6,11 +6,18 @@ use App\Models\StravaConnection;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\StravaClient;
 use App\Services\Strava\ZoneFetcher;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
+
+function zoneFetcher(): ZoneFetcher
+{
+    return new ZoneFetcher(new StravaClient(), app(AppConfig::class));
+}
 
 function stravaZonesConnection(array $overrides = []): StravaConnection
 {
@@ -39,7 +46,7 @@ it('parses the athlete zones response into the app hr_zones shape', function ():
 
     $connection = stravaZonesConnection();
 
-    $zones = new ZoneFetcher(new StravaClient())->fetch($connection, 55);
+    $zones = zoneFetcher()->fetch($connection, 55);
 
     expect($zones)->toBe([
         'Z1' => ['lo' => 55, 'hi' => 120],
@@ -67,7 +74,7 @@ it('lifts a rest-anchored Z1 floor up to the resting HR', function (): void {
         ]),
     ]);
 
-    $zones = new ZoneFetcher(new StravaClient())->fetch(stravaZonesConnection(), 56);
+    $zones = zoneFetcher()->fetch(stravaZonesConnection(), 56);
 
     expect($zones['Z1'])->toBe(['lo' => 56, 'hi' => 137])
         ->and($zones['Z2'])->toBe(['lo' => 137, 'hi' => 153]);
@@ -89,7 +96,7 @@ it('leaves Z1 untouched when Strava already starts it above resting', function (
         ]),
     ]);
 
-    $zones = new ZoneFetcher(new StravaClient())->fetch(stravaZonesConnection(), 55);
+    $zones = zoneFetcher()->fetch(stravaZonesConnection(), 55);
 
     expect($zones['Z1'])->toBe(['lo' => 100, 'hi' => 120]);
 });
@@ -105,7 +112,7 @@ it('soft-skips (returns null) on a 403, without throwing StravaConnectionRevoked
     $thrown = null;
 
     try {
-        $zones = new ZoneFetcher(new StravaClient())->fetch($connection, 55);
+        $zones = zoneFetcher()->fetch($connection, 55);
     } catch (StravaConnectionRevokedException $e) {
         $thrown = $e;
     }
@@ -119,7 +126,17 @@ it('does not call Strava at all when the connection lacks profile:read_all', fun
 
     $connection = stravaZonesConnection(['scopes' => 'read,activity:read_all']);
 
-    $zones = new ZoneFetcher(new StravaClient())->fetch($connection, 55);
+    $zones = zoneFetcher()->fetch($connection, 55);
+
+    expect($zones)->toBeNull();
+    Http::assertNothingSent();
+});
+
+it('does not call Strava at all when the strava kill switch is off', function (): void {
+    Http::fake();
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
+
+    $zones = zoneFetcher()->fetch(stravaZonesConnection(), 55);
 
     expect($zones)->toBeNull();
     Http::assertNothingSent();
@@ -134,7 +151,7 @@ it('returns null when the zones payload is malformed', function (): void {
 
     $connection = stravaZonesConnection();
 
-    $zones = new ZoneFetcher(new StravaClient())->fetch($connection, 55);
+    $zones = zoneFetcher()->fetch($connection, 55);
 
     expect($zones)->toBeNull();
 });
