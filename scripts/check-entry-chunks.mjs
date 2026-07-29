@@ -50,9 +50,19 @@ const ENTRY_ALLOWED = ['rolldown-runtime', 'app', 'react-vendor'];
  * page's own. Login is the only page an unauthenticated visitor sees and it
  * renders nothing animated, so it must stay clear of framer-motion (~41KB
  * gzipped on its own).
+ *
+ * The authenticated routes carry framer-motion legitimately -- AppShell
+ * renders it on all of them -- so their budgets sit above that, sized to
+ * catch a lazy-only engine turning into a static import: `charts` is ~59KB
+ * gzipped and `maps` ~45KB, either of which blows the headroom here. Slow
+ * creep below that is deliberately not caught; a budget tight enough to
+ * catch it would fire on ordinary feature growth and get raised on sight.
  */
 const ROUTE_BUDGETS_KB = [
     { name: 'Login', src: 'resources/js/pages/Auth/Login.tsx', budgetKb: 160 },
+    { name: 'HariIni', src: 'resources/js/pages/HariIni.tsx', budgetKb: 240 },
+    { name: 'Runs/Show', src: 'resources/js/pages/Runs/Show.tsx', budgetKb: 245 },
+    { name: 'Aku', src: 'resources/js/pages/Aku.tsx', budgetKb: 230 },
 ];
 
 if (!existsSync(manifestPath)) {
@@ -166,5 +176,5 @@ console.log('Entry chunk guard: first-paint closures within budget ✓');
 console.log(`  entry  ${kb(entryWeight.raw)} kB raw / ${kb(entryWeight.gz)} kB gzipped  [${entryWeight.chunks.map((c) => c.name).join(', ')}]`);
 for (const route of ROUTE_BUDGETS_KB) {
     const weight = weigh(closure([ENTRY, route.src]));
-    console.log(`  ${route.name.padEnd(6)} ${kb(weight.raw)} kB raw / ${kb(weight.gz)} kB gzipped  (budget ${route.budgetKb} kB)`);
+    console.log(`  ${route.name.padEnd(9)} ${kb(weight.raw)} kB raw / ${kb(weight.gz)} kB gzipped  (budget ${route.budgetKb} kB)`);
 }
