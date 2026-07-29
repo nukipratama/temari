@@ -17,6 +17,8 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\SummaryRecomputer;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -687,6 +689,53 @@ it('leaves the demo account re-triggerable, since a rule-based fill starts no co
 
     Bus::assertNothingDispatched();
     expect(Analysis::query()->count())->toBe(1);
+});
+
+it('refuses a trigger with 409 while narration is globally paused, without staging a row', function (): void {
+    $user = User::factory()->create();
+    app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
+        ->assertStatus(409)
+        ->assertJson(['status' => 'pending', 'type' => 'briefing_mascot_voice']);
+
+    Bus::assertNothingDispatched();
+    expect(Analysis::query()->count())->toBe(0);
+});
+
+it('leaves an existing row untouched when a paused trigger is refused', function (): void {
+    $user = User::factory()->create();
+    $row = Analysis::factory()->done('narasi lama')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-18',
+        'generated_at' => Carbon::now()->subDay(),
+    ]);
+    app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
+        ->assertStatus(409)
+        ->assertJson(['status' => 'done', 'content' => 'narasi lama']);
+
+    Bus::assertNothingDispatched();
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->toBe('narasi lama');
+});
+
+it('still serves the demo account a rule-based narration while narration is paused', function (): void {
+    $user = User::factory()->create(['is_demo' => true]);
+    app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
+        ->assertSuccessful()
+        ->assertJson(['status' => 'done']);
+
+    Bus::assertNothingDispatched();
+    expect($response->json('content'))->toBeString()->not->toBeEmpty();
 });
 
 it('still dispatches a real billed job for a non-demo user on the same block', function (): void {

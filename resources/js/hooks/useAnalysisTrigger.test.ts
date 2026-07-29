@@ -74,6 +74,20 @@ describe('useAnalysisTrigger', () => {
         expect(result.current.error).toBeTruthy();
     });
 
+    it('restores the server status without an error when a paused trigger is refused with 409', async () => {
+        fetchMock.mockResolvedValue({ ok: false, status: 409, json: async () => payload() });
+
+        const { result } = renderHook(() => useAnalysisTrigger(payload({ status: 'done', content: 'narasi lama' }), ['briefing']));
+        await act(async () => {
+            await result.current.trigger();
+        });
+
+        expect(result.current.status).toBe('done');
+        expect(result.current.error).toBeNull();
+        expect(result.current.pending).toBe(false);
+        expect(vi.mocked(router.reload)).toHaveBeenCalledWith();
+    });
+
     it('reloads inertia props when reload list is provided', async () => {
         fetchMock.mockResolvedValue({ ok: true, json: async () => payload({ status: 'queued' }) });
 
