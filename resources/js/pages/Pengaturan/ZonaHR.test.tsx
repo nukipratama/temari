@@ -125,6 +125,20 @@ describe('ZonaHR', () => {
         expect(screen.getByRole('button', { name: /Balik ke zona standar/i })).toBeInTheDocument();
     });
 
+    it('hides the Strava re-sync while the kill-switch is off, keeping the reset', () => {
+        setMockPage({
+            auth: { user: makeUser() },
+            flash: {},
+            errors: {},
+            demoLoginEnabled: false,
+            stravaPaused: true,
+        });
+        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile source="manual" canSyncFromStrava />);
+
+        expect(screen.queryByRole('button', { name: /Sinkron ulang dari Strava/i })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Balik ke zona standar/i })).toBeInTheDocument();
+    });
+
     it('surfaces a server field error under the input', () => {
         setMockPage({
             auth: { user: makeUser() },

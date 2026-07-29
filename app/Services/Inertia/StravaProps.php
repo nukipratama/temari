@@ -6,19 +6,25 @@ namespace App\Services\Inertia;
 
 use App\Models\Activity;
 use App\Models\User;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use App\Support\SharedPropCacheKey;
 use Closure;
 
 /**
  * The Strava-connection family of shared props: how the sync is going, whether
- * the connection still lacks the zone scope, and when the heart-rate zones that
- * connection feeds last moved.
+ * the kill-switch has it paused, whether the connection still lacks the zone
+ * scope, and when the heart-rate zones that connection feeds last moved.
  *
  * Every prop is returned as a closure, so Inertia skips the work entirely on a
  * partial reload that did not ask for that key.
  */
 final readonly class StravaProps
 {
+    public function __construct(private AppConfig $config)
+    {
+    }
+
     /**
      * @return array<string, Closure>
      */
@@ -26,9 +32,27 @@ final readonly class StravaProps
     {
         return [
             'stravaSync' => fn () => $this->stravaSyncFor($user),
+            'stravaPaused' => fn (): bool => $this->stravaPausedFor($user),
             'hrZonesChangedAt' => fn () => $this->hrZonesChangedAtFor($user),
             'stravaZoneScopeMissing' => fn (): bool => $this->stravaZoneScopeMissingFor($user),
         ];
+    }
+
+    /**
+     * True when the Strava kill-switch is off, so the UI can hide every manual
+     * sync affordance and show one soft banner instead. Only the pause fact is
+     * shared, never the operator-facing reason. Guests have nothing to sync.
+     */
+    private function stravaPausedFor(?User $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        return SharedPropCacheKey::StravaPaused->remember(
+            null,
+            fn (): bool => ! $this->config->boolean(AppConfigKey::StravaEnabled),
+        );
     }
 
     /**

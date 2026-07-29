@@ -7,8 +7,11 @@ use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\Inertia\StravaProps;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
@@ -20,7 +23,7 @@ function stravaPropsFor(?User $user): array
 it('keeps every prop a closure so a partial reload can skip it', function (): void {
     $props = stravaPropsFor(User::factory()->create());
 
-    foreach (['stravaSync', 'hrZonesChangedAt', 'stravaZoneScopeMissing'] as $key) {
+    foreach (['stravaSync', 'stravaPaused', 'hrZonesChangedAt', 'stravaZoneScopeMissing'] as $key) {
         expect($props[$key])->toBeInstanceOf(Closure::class);
     }
 });
@@ -30,7 +33,8 @@ it('answers with safe guest defaults when nobody is signed in', function (): voi
 
     expect(($props['stravaSync'])())->toBe(['state' => 'disconnected', 'last_synced_at' => null])
         ->and(($props['hrZonesChangedAt'])())->toBeNull()
-        ->and(($props['stravaZoneScopeMissing'])())->toBeFalse();
+        ->and(($props['stravaZoneScopeMissing'])())->toBeFalse()
+        ->and(($props['stravaPaused'])())->toBeFalse();
 });
 
 it('reports the sync state the UI branches on', function (Closure $arrange, string $expected): void {
@@ -97,3 +101,13 @@ it('returns the stored zone-change marker as ISO-8601', function (): void {
 
     expect((stravaPropsFor($user->fresh())['hrZonesChangedAt'])())->toBeString();
 });
+
+it('mirrors the Strava kill-switch into stravaPaused', function (bool $enabled, bool $paused): void {
+    Cache::flush();
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, $enabled);
+
+    expect((stravaPropsFor(User::factory()->create())['stravaPaused'])())->toBe($paused);
+})->with([
+    'kill-switch on' => [true, false],
+    'kill-switch off' => [false, true],
+]);

@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Jobs\Strava\ResyncActivityJob;
 use App\Models\Activity;
 use App\Models\User;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 
@@ -53,4 +55,19 @@ it('throttles rapid taps like the manual sync', function (): void {
     $this->actingAs($user)->post(route('aktivitas.resync', $activity))->assertRedirect();
     $this->actingAs($user)->post(route('aktivitas.resync', $activity))->assertRedirect();
     $this->actingAs($user)->post(route('aktivitas.resync', $activity))->assertStatus(429);
+});
+
+it('says so instead of faking success while the kill-switch is off', function (): void {
+    Bus::fake();
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+
+    $this->actingAs($user)
+        ->post(route('aktivitas.resync', $activity))
+        ->assertRedirect()
+        ->assertSessionMissing('success')
+        ->assertSessionHas('info');
+
+    Bus::assertNotDispatched(ResyncActivityJob::class);
 });
