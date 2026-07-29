@@ -314,7 +314,7 @@ jobs:
           done
 
   build:
-    name: Build prod image
+    name: build-prod-image
     needs: [changes, secret-scan, docs-citation-guard]
     if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
     runs-on: ubuntu-latest
