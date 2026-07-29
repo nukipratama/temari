@@ -2,8 +2,7 @@ import { Link, router } from "@inertiajs/react";
 import { Icon } from "@iconify/react";
 import { useCallback, useRef, useState } from "react";
 import UserAvatar from "@/components/UserAvatar";
-import { useDismissable } from "@/hooks/useDismissable";
-import { useFocusReturn } from "@/hooks/useFocusReturn";
+import { usePopover } from "@/hooks/usePopover";
 
 /** Shared by both menu items so they read as one list. */
 const ITEM_CLASS =
@@ -27,8 +26,7 @@ export default function UserMenu({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
-  useDismissable(open, containerRef, close);
-  useFocusReturn(open);
+  usePopover(open, containerRef, close);
 
   function handleLogout() {
     setOpen(false);
