@@ -9,6 +9,8 @@ use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\PersonalRecord;
+use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -43,13 +45,17 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
     public function handle(ActivityIngested $event): void
     {
-        $activity = Activity::query()->with(['detail', 'user'])->find($event->activityId);
+        $activity = Activity::query()->with(['detail', 'user', 'runCard'])->find($event->activityId);
         if ($activity === null || $activity->detail === null) {
             return;
         }
 
         $user = $activity->user;
         $detail = $activity->detail;
+
+        $this->requestPrContext($activity);
+        $this->requestCardFlavor($activity);
+
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
         $delaySec = $isBackfill ? $this->backfillDelaySeconds($activity) : 0;
@@ -101,6 +107,47 @@ class DispatchPostRunAnalysis implements ShouldQueue
                 $detail->start_date_local->format('Y-m'),
             );
         }
+    }
+
+    /**
+     * The records this run currently holds, i.e. the ones its ingest just beat.
+     *
+     * invalidate:false so a chronological backfill (each historical run
+     * beats the same category record in turn) does not re-bill pr_context on
+     * every beat: the idempotency guard skips a row that is already Done. The
+     * narrator reads the live PR row at job time, so a still-pending row
+     * narrates the LATEST value regardless of how many beats preceded it.
+     */
+    private function requestPrContext(Activity $activity): void
+    {
+        $prIds = PersonalRecord::query()
+            ->where('activity_id', $activity->id)
+            ->orderBy('id')
+            ->pluck('id');
+
+        foreach ($prIds as $prId) {
+            $this->analysisService->request(
+                subjectOrType: PersonalRecord::class,
+                subjectId: (int) $prId,
+                type: AnalysisType::PrContext,
+                invalidate: false,
+            );
+        }
+    }
+
+    private function requestCardFlavor(Activity $activity): void
+    {
+        $card = $activity->runCard;
+        if ($card === null) {
+            return;
+        }
+
+        $this->analysisService->request(
+            subjectOrType: RunCard::class,
+            subjectId: $card->id,
+            type: AnalysisType::CardFlavor,
+            invalidate: true,
+        );
     }
 
     /**

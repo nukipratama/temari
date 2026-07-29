@@ -10,14 +10,11 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Gamification\UnlockEngine;
-use App\Services\AI\AnalysisType;
-use App\Services\AI\AnalysisService;
 use Illuminate\Support\Carbon;
 
 class PersonalRecords
 {
     public function __construct(
-        private readonly AnalysisService $analysisService,
         private readonly UnlockEngine $unlockEngine,
     ) {
     }
@@ -184,7 +181,7 @@ class PersonalRecords
             return false;
         }
 
-        $pr = PersonalRecord::query()->updateOrCreate(
+        PersonalRecord::query()->updateOrCreate(
             [
                 'user_id' => $activity->user_id,
                 'category' => $category,
@@ -194,18 +191,6 @@ class PersonalRecords
                 'activity_id' => $activity->id,
                 'set_at' => $setAt,
             ],
-        );
-
-        // invalidate:false so a chronological backfill (each historical run
-        // beats the same category record in turn) does not re-bill pr_context on
-        // every beat: the idempotency guard skips a row that is already Done. The
-        // narrator reads the live PR row at job time, so a still-pending row
-        // narrates the LATEST value regardless of how many beats preceded it.
-        $this->analysisService->request(
-            subjectOrType: PersonalRecord::class,
-            subjectId: $pr->id,
-            type: AnalysisType::PrContext,
-            invalidate: false,
         );
 
         return true;

@@ -7,11 +7,14 @@ use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
+use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\PersonalRecord;
+use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -50,6 +53,53 @@ function fire(Activity $activity): void
 {
     app(DispatchPostRunAnalysis::class)->handle(new ActivityIngested($activity->id));
 }
+
+it('requests card flavor for the run card the ingest minted', function (): void {
+    $activity = analyzedActivity();
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
+    expect(Analysis::query()
+        ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
+        ->exists())->toBeTrue();
+});
+
+it('re-narrates card flavor on a re-ingest (invalidate:true) without minting a second row', function (): void {
+    $activity = analyzedActivity();
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+    $row = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
+    app(AnalysisService::class)->markDone($row, 'kartu pertama');
+
+    fire($activity);
+
+    expect(Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->count())->toBe(1)
+        ->and($row->fresh()->status)->not->toBe(AnalysisStatus::Done);
+});
+
+it('requests pr_context for the records this run holds, invalidate:false so a backfill never re-bills', function (): void {
+    $activity = analyzedActivity();
+    $held = PersonalRecord::factory()->for($activity->user)->create([
+        'category' => '5km',
+        'activity_id' => $activity->id,
+    ]);
+    // Held by an older run: this ingest did not beat it, so it is not re-requested.
+    $other = PersonalRecord::factory()->for($activity->user)->create(['category' => '10km']);
+
+    fire($activity);
+    $row = Analysis::query()->forSubject(PersonalRecord::class, $held->id, AnalysisType::PrContext)->firstOrFail();
+    app(AnalysisService::class)->markDone($row, 'rekor pertama');
+
+    fire($activity);
+
+    expect(Analysis::query()->forSubject(PersonalRecord::class, $held->id, AnalysisType::PrContext)->count())->toBe(1)
+        // Already Done: the second fan-out is a no-op, never a second bill.
+        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and(Analysis::query()->forSubject(PersonalRecord::class, $other->id, AnalysisType::PrContext)->exists())->toBeFalse();
+});
 
 it('fans out activity + briefing + mascot voice analyses', function (): void {
     $activity = analyzedActivity();
