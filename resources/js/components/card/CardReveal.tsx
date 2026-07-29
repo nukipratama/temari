@@ -14,7 +14,7 @@ import Temari from "@/components/temari/Temari";
 import { type TemariPose } from "@/components/temari/TemariProto";
 import { RARITY_HEX, RARITY_LABELS, badgeEmblem, badgeName, buildCardStats, paceShapeFromDetail, zonePctFromDetail } from "@/lib/runcard";
 import { formatDuration, formatKm, formatPace, paceSecPerKm } from "@/lib/pace";
-import { csrfToken } from "@/lib/http";
+import { postJson } from "@/lib/http";
 import type { ActivityDetail, PendingReveal, Rarity } from "@/types/inertia";
 
 // Carries the ~1200-line canvas engine, so it is fetched on the Bagikan tap
@@ -62,17 +62,7 @@ export default function CardReveal({
   const markSeen = useCallback((): Promise<void> => {
     if (sentRef.current) return Promise.resolve();
     sentRef.current = true;
-    return fetch(`/api/kartu/${pending.card_id}/seen`, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-CSRF-TOKEN": csrfToken(),
-        "X-Requested-With": "XMLHttpRequest",
-      },
-      body: "{}",
-    })
+    return postJson(`/api/kartu/${pending.card_id}/seen`)
       .then(() => {})
       .catch(() => {
         /* silent — next reload picks up server state */
