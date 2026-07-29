@@ -48,25 +48,17 @@ import type {
     Mood,
     RunCard,
     StoryLine,
+    StreamSummary,
     StreamSummaryPartial,
+    StreamSummaryPerKm,
 } from '@/types/inertia';
 
 const RouteMap = lazy(() => import('@/components/run/RouteMap'));
 // Carries the ~1200-line canvas engine; fetched on the Bagikan tap.
 const ShareCardModal = lazy(() => import('@/components/card/ShareCardModal'));
 
-type DetailedActivityDetail = ActivityDetail & {
-    stream_summary?: Record<string, unknown> | null;
-    max_heartrate?: number | null;
-    average_cadence?: number | null;
-    weather_temp_c?: number | null;
-    weather_humidity_pct?: number | null;
-    weather_rain_detected?: boolean | null;
-};
-
 type DetailedActivity = Activity & {
-    analyzed_at?: string | null;
-    detail: DetailedActivityDetail;
+    detail: ActivityDetail;
 };
 
 interface PastYouMatch {
@@ -96,14 +88,6 @@ const EFFORT_SUB: Record<NonNullable<RelativeEffortPayload['band']>, string> = {
     below: 'lebih enteng dari biasanya',
 };
 
-interface PerKmRow {
-    km?: number | string;
-    pace?: string;
-    pace_sec?: number;
-    avg_hr?: number;
-    avg_cadence_spm?: number;
-}
-
 /** The run's RunCard, enriched with the flavor/edition/share fields this page's
  *  card section needs (see RunController::cardPayload). */
 type RunCardDetail = Omit<RunCard, 'activity' | 'edition'> & {
@@ -114,7 +98,7 @@ type RunCardDetail = Omit<RunCard, 'activity' | 'edition'> & {
 
 interface ShowProps {
     activity: DetailedActivity;
-    detail: DetailedActivityDetail;
+    detail: ActivityDetail;
     card: RunCardDetail | null;
     storyLine: StoryLine | null;
     speechAnalysis: AnalysisPayload;
@@ -148,9 +132,9 @@ export default function RunsShow({
     relativeEffort,
 }: Readonly<ShowProps>) {
     const notificationsReachable = useNotificationsReachable();
-    const summary = (detail.stream_summary ?? {}) as Record<string, unknown>;
-    const perKm = (summary.per_km as PerKmRow[] | undefined) ?? [];
-    const partialSplit = (summary.partial_split as StreamSummaryPartial | null | undefined) ?? null;
+    const summary: StreamSummary = detail.stream_summary ?? {};
+    const perKm = summary.per_km ?? [];
+    const partialSplit = summary.partial_split ?? null;
 
     const mood: Mood = storyLine?.mood ?? moodFallback;
     const pose: TemariPose = MOOD_TO_POSE[mood];
@@ -476,7 +460,7 @@ export default function RunsShow({
     );
 }
 
-function MapWeatherPanel({ detail, className }: Readonly<{ detail: DetailedActivityDetail; className?: string }>) {
+function MapWeatherPanel({ detail, className }: Readonly<{ detail: ActivityDetail; className?: string }>) {
     const temp = detail.weather_temp_c;
     const humidity = detail.weather_humidity_pct;
     const location = detail.location_name;
@@ -583,7 +567,7 @@ interface DetailTile {
 function DetailTiles({
     detail,
     summary,
-}: Readonly<{ detail: DetailedActivityDetail; summary: Record<string, unknown> }>) {
+}: Readonly<{ detail: ActivityDetail; summary: StreamSummary }>) {
     const tiles: DetailTile[] = [];
 
     if (detail.average_heartrate != null) {
@@ -597,10 +581,12 @@ function DetailTiles({
     }
     // Elevation gain (ASCENT) now lives in the hero stat row; only max-grade stays here.
     // Only when the run actually climbed, so a flat GPS run doesn't show a noisy 0%.
+    // stream_summary is an untyped DB JSON blob; a corrupt or legacy row can
+    // carry an unusable reading, which must not render as "NaN%".
     const maxGrade = Number(summary.max_grade_pct);
     if (summary.max_grade_pct != null && Number.isFinite(maxGrade) && maxGrade >= 3) {
         tiles.push({ label: 'TANJAKAN', value: `${maxGrade}%`, sub: 'tanjakan tercuram' });
-        if (typeof summary.gap_pace === 'string') {
+        if (summary.gap_pace != null) {
             tiles.push({ label: 'GAP', value: summary.gap_pace, sub: '/km setara datar', metricKey: 'gap' });
         }
     }
@@ -665,7 +651,7 @@ function SplitsTable({
     rows,
     partial,
     className,
-}: Readonly<{ rows: PerKmRow[]; partial?: StreamSummaryPartial | null; className?: string }>) {
+}: Readonly<{ rows: StreamSummaryPerKm[]; partial?: StreamSummaryPartial | null; className?: string }>) {
     const paces = rows
         .map((r) => paceSecOf(r))
         .filter((s): s is number => s != null && Number.isFinite(s));
@@ -774,13 +760,9 @@ function splitRowFill(isFast: boolean, idx: number): string {
     return 'bg-sky/[0.03]';
 }
 
-function paceSecOf(row: PerKmRow): number | null {
-    if (typeof row.pace_sec === 'number') return row.pace_sec;
-    if (typeof row.pace === 'string') {
-        const sec = parsePaceSec(row.pace);
-        if (Number.isFinite(sec)) return sec;
-    }
-    return null;
+function paceSecOf(row: StreamSummaryPerKm): number | null {
+    const sec = parsePaceSec(row.pace);
+    return Number.isFinite(sec) ? sec : null;
 }
 
 // Per-km spread (seconds) at which the bar-width band reaches its full 50-point swing.

@@ -48,10 +48,10 @@ Strava omits cadence from `splits_metric`, so per-km cadence is back-filled by b
 
 ## Output shape (the contract)
 
-Downstream consumers key into specific fields, so the shape is a contract. The producer ([compute](app/Services/Run/Ingest/StreamAnalysis.php#L32)) is the source of truth; the TypeScript mirror lives in [inertia.ts](resources/js/types/inertia.ts#L171). The notable keys:
+Downstream consumers key into specific fields, so the shape is a contract. The producer ([compute](app/Services/Run/Ingest/StreamAnalysis.php#L32)) is the source of truth; the TypeScript mirror lives in [inertia.ts](resources/js/types/inertia.ts#L175) and enumerates every key the producer can write — it carries no index signature, so a page reading an unknown key is a type error rather than an `unknown`. The notable keys:
 
 - `time_in_zone_min` / `time_in_zone_pct` — minutes and percent per zone (keyed `Z1..Z5`).
-- `per_km[]` — rows of `{ km, pace, avg_hr?, avg_cadence_spm? }` ([type](resources/js/types/inertia.ts#L161)).
+- `per_km[]` — rows of `{ km, pace, avg_hr?, avg_cadence_spm? }` ([type](resources/js/types/inertia.ts#L144)).
 - `best_{window}_pace` — e.g. `best_60min_pace`, as `"M:SS"` strings.
 - `decoupling_pct`, `hr_drift_bpm` (both absent below the 45-minute floor), `cadence_drop_spm`, `negative_split` (bool).
 - `cadence_distribution_pct`, `optimal_cadence_pct`, `pace_variability_sec` (absent below two full km), `stopped_time_sec`, `stop_count`, `descent_m`. Ascent comes from `ActivityDetail::$total_elevation_gain`, not from this blob.
