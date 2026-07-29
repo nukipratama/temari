@@ -58,19 +58,20 @@ export default function HariIni({
             <Head title="Hari Ini" />
             <PageContainer>
                 {/* HEADLINE */}
-                <header>
-                    <Eyebrow token="hero" tone="ink-2" className="mb-3.5">
-                        {dateLine}
-                    </Eyebrow>
-                    <h1 className="font-display text-display-2xl text-ink">
-                        Halo, {firstName}<br />
-                        <span className="italic text-horizon">{vibeSubtitle}</span>
-                    </h1>
+                <header className="grid grid-cols-1 items-end gap-9 lg:grid-cols-[1.4fr_1fr]">
+                    <div>
+                        <Eyebrow token="hero" tone="ink-2" className="mb-3.5">
+                            {dateLine}
+                        </Eyebrow>
+                        <h1 className="font-display text-display-2xl text-ink">
+                            Halo, {firstName}<br />
+                            <span className="italic text-horizon">{vibeSubtitle}</span>
+                        </h1>
+                    </div>
+                    <aside className="pb-3.5">
+                        <KataTemariCard briefing={briefing} pose={pose} lastRun={lastRun} />
+                    </aside>
                 </header>
-
-                <div className="mt-8">
-                    <KataTemariCard briefing={briefing} pose={pose} lastRun={lastRun} />
-                </div>
 
                 {recentRuns.length === 0 ? (
                     <EmptyRunsState />
