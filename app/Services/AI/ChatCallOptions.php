@@ -11,6 +11,12 @@ use App\Services\AI\Agent\AgentToolbox;
  * Kept as a value object so the caller's parameter list stays under the
  * sonar 7-param threshold without losing call-site readability.
  *
+ * `temperature` null = send no `temperature` at all, for a deployment that
+ * rejects or ignores a sampling temperature (the gpt-5-class reasoning tier
+ * does). Every kind sends one today, since both configured deployments accept
+ * it; opting one out is a sampling change, so it belongs to whoever swaps the
+ * deployment, not to a refactor.
+ *
  * `maxTokens` null = use the global `azure_openai.max_completion_tokens`
  * config default. Override per-narrator when the schema can produce longer
  * output (Cerita lari, Weekly recap, etc.) to avoid truncated responses.
@@ -28,7 +34,7 @@ use App\Services\AI\Agent\AgentToolbox;
 final readonly class ChatCallOptions
 {
     public function __construct(
-        public float $temperature = 0.8,
+        public ?float $temperature = 0.8,
         public ?int $userId = null,
         public ?int $maxTokens = null,
         public ?AgentToolbox $toolbox = null,

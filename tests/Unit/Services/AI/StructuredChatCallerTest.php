@@ -100,6 +100,28 @@ it('sends the narrator-tuned temperature in every request', function (): void {
     );
 });
 
+it('sends the default temperature when a narrator names none', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
+
+    fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline']);
+
+    $client->assertSent(
+        Responses::class,
+        fn (string $method, array $params): bool => $method === 'create' && $params['temperature'] === 0.8,
+    );
+});
+
+it('omits temperature entirely for a kind that opts out', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
+
+    fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(temperature: null));
+
+    $client->assertSent(
+        Responses::class,
+        fn (string $method, array $params): bool => $method === 'create' && ! array_key_exists('temperature', $params),
+    );
+});
+
 it('records a token-usage row on successful call', function (): void {
     structuredCaller(
         json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR),
