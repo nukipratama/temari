@@ -29,6 +29,9 @@ use Laravel\Pulse\Facades\Pulse;
  */
 class StravaWebhookController extends Controller
 {
+    /** @var list<string> */
+    private const array HEARTBEAT_ASPECTS = ['create', 'update', 'delete'];
+
     /**
      * Subscription validation handshake. Strava issues a GET with
      * `hub.mode=subscribe`, `hub.verify_token` and `hub.challenge`; we echo the
@@ -63,7 +66,7 @@ class StravaWebhookController extends Controller
 
         // Heartbeat: a flatline on the /pulse Strava-health card means Strava
         // stopped delivering and we're silently leaning on the hourly poll.
-        Pulse::record('strava_webhook', $aspectType !== '' ? $aspectType : 'unknown')->count();
+        Pulse::record('strava_webhook', self::heartbeatKey($aspectType))->count();
 
         $connection = StravaConnection::query()
             ->where('strava_athlete_id', $athleteId)
@@ -169,5 +172,15 @@ class StravaWebhookController extends Controller
     private function ack(): JsonResponse
     {
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * The body is attacker-supplied and reaches Pulse before any athlete check,
+     * so anything off the known set collapses to a single bucket rather than
+     * minting a new Pulse key per request.
+     */
+    private static function heartbeatKey(string $aspectType): string
+    {
+        return in_array($aspectType, self::HEARTBEAT_ASPECTS, true) ? $aspectType : 'unknown';
     }
 }

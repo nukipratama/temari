@@ -14,6 +14,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+use Laravel\Pulse\Entry;
+use Laravel\Pulse\Facades\Pulse;
 
 uses(RefreshDatabase::class);
 
@@ -263,3 +265,41 @@ it('ignores an athlete update that is not a deauthorization', function (): void 
 
     expect($connection->fresh()->isRevoked())->toBeFalse();
 });
+
+function stubPulseEntry(): void
+{
+    $entry = Mockery::mock(Entry::class);
+    $entry->shouldReceive('count')->andReturnSelf();
+    Pulse::shouldReceive('record')->andReturn($entry);
+}
+
+function postWebhookAspect(string $aspect): void
+{
+    test()->postJson(route('strava.webhook.handle'), [
+        'object_type' => 'activity',
+        'object_id' => 9_001,
+        'aspect_type' => $aspect,
+        'owner_id' => 999,
+    ])->assertOk();
+}
+
+it('records the heartbeat under the reported aspect when it is a known one', function (string $aspect): void {
+    stubPulseEntry();
+
+    postWebhookAspect($aspect);
+
+    Pulse::shouldHaveReceived('record')->with('strava_webhook', $aspect)->once();
+})->with(['create', 'update', 'delete']);
+
+it('collapses an unrecognised aspect_type into a single heartbeat bucket', function (string $aspect): void {
+    stubPulseEntry();
+
+    postWebhookAspect($aspect);
+
+    Pulse::shouldHaveReceived('record')->with('strava_webhook', 'unknown')->once();
+})->with([
+    'empty' => '',
+    'unknown verb' => 'subscribe',
+    'per-request cardinality bomb' => 'create-8f3b1c2d-9a4e',
+    'injection-ish' => '<script>alert(1)</script>',
+]);

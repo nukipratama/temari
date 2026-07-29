@@ -12,6 +12,7 @@ export interface ClientErrorPayload {
 }
 
 const MAX_REPORTS = 10;
+const MAX_TRACE_CHARS = 2000;
 const seen = new Set<string>();
 let sent = 0;
 
@@ -29,9 +30,9 @@ export function reportClientError(payload: ClientErrorPayload): void {
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
             body: JSON.stringify({
                 message: payload.message.slice(0, 1000),
-                stack: payload.stack?.slice(0, 5000) ?? null,
+                stack: payload.stack?.slice(0, MAX_TRACE_CHARS) ?? null,
                 url: payload.url ?? window.location.href,
-                componentStack: payload.componentStack?.slice(0, 5000) ?? null,
+                componentStack: payload.componentStack?.slice(0, MAX_TRACE_CHARS) ?? null,
             }),
             keepalive: true,
         });

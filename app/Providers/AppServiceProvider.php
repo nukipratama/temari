@@ -105,6 +105,6 @@ class AppServiceProvider extends ServiceProvider
 
         // Client-error telemetry sink. IP-keyed so a single misbehaving browser
         // (error loop) can't flood the logs.
-        RateLimiter::for('client-errors', fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->ip()));
+        RateLimiter::for('client-errors', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->ip()));
     }
 }
