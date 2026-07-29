@@ -8,6 +8,8 @@ use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Services\Geo\PolylineProjector;
 use App\Services\Run\Metrics\DistanceFormatter;
+use App\Services\Run\Metrics\DurationFormatter;
+use App\Services\Run\Metrics\PaceFormatter;
 use Imagick;
 use ImagickPixel;
 
@@ -130,7 +132,7 @@ SVG;
             $cells[] = ['HR', round($detail->average_heartrate).' bpm'];
         }
         if ($detail->moving_time !== null) {
-            $cells[] = ['DURASI', $this->formatDuration((int) $detail->moving_time)];
+            $cells[] = ['DURASI', DurationFormatter::hms((int) $detail->moving_time)];
         }
 
         [$cream, $inkOnSky] = [self::CREAM, self::INK_ON_SKY];
@@ -182,27 +184,9 @@ SVG;
 
     private function paceLabel(ActivityDetail $detail): ?string
     {
-        if ($detail->distance === null || $detail->distance <= 0 || $detail->moving_time === null) {
-            return null;
-        }
+        $secPerKm = $detail->paceSecPerKm();
 
-        $secPerKm = (int) round($detail->moving_time / ($detail->distance / 1000));
-
-        return $this->formatPace($secPerKm).'/km';
-    }
-
-    private function formatPace(int $secPerKm): string
-    {
-        return sprintf('%d:%02d', intdiv($secPerKm, 60), $secPerKm % 60);
-    }
-
-    private function formatDuration(int $seconds): string
-    {
-        $h = intdiv($seconds, 3600);
-        $m = intdiv($seconds % 3600, 60);
-        $s = $seconds % 60;
-
-        return $h > 0 ? sprintf('%d:%02d:%02d', $h, $m, $s) : sprintf('%d:%02d', $m, $s);
+        return $secPerKm === null ? null : PaceFormatter::format($secPerKm).'/km';
     }
 
     private function humanizeBadge(string $slug): string

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\DistanceFormatter;
+use App\Services\Run\Metrics\DurationFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PaceFormatter;
 use Illuminate\Support\Carbon;
@@ -181,7 +182,7 @@ class NotifiableAnalysis
             $parts[] = DistanceFormatter::kmString($detail->distance, DistanceFormatter::EXACT) . ' km';
         }
         if ($detail->moving_time !== null) {
-            $parts[] = $this->formatDuration($detail->moving_time);
+            $parts[] = DurationFormatter::hms($detail->moving_time);
         }
         $pace = PaceCalculator::secPerKm($detail->distance, $detail->moving_time);
         if ($pace !== null) {
@@ -201,18 +202,6 @@ class NotifiableAnalysis
         }
 
         return $this->detailCache[$activityId];
-    }
-
-    /** Seconds to mm:ss, or h:mm:ss past an hour (no backend duration formatter exists). */
-    private function formatDuration(int $seconds): string
-    {
-        $hours = intdiv($seconds, 3600);
-        $minutes = intdiv($seconds % 3600, 60);
-        $secs = $seconds % 60;
-
-        return $hours > 0
-            ? sprintf('%d:%02d:%02d', $hours, $minutes, $secs)
-            : sprintf('%d:%02d', $minutes, $secs);
     }
 
     /** Absolute app URL the notification links to, or null when not resolvable. */
