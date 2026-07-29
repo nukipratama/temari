@@ -3,9 +3,13 @@ title: Gamification (cards, rarities, badges, unlocks, milestones)
 description: The reward engine — how a run becomes a card with rarity, badges and a special move, plus milestones, PRs and accessory unlocks.
 tags: [feature, gamification]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-07-29
 code_refs:
   - app/Services/Run/Story/RunCardFactory.php
+  - app/Services/Run/Story/CardContext.php
+  - app/Services/Run/Story/CardContextBuilder.php
+  - app/Services/Run/Story/BadgeEvaluator.php
+  - app/Services/Run/Story/RarityScorer.php
   - app/Services/Run/Story/SpecialMoves.php
   - app/Services/Run/Story/Temari.php
   - app/Services/Gamification/MilestoneDetector.php
@@ -31,9 +35,11 @@ Gamification isn't a page — it's an engine that runs as each activity is inges
 
 ## A run becomes a card
 
-[RunCardFactory](../../app/Services/Run/Story/RunCardFactory.php) (`build(Activity, ActivityDetail): RunCard`) is the centrepiece. It scores the run, derives a **rarity** from that score, attaches a list of **badges** (weather, distance bracket, splits, streak), and names a **special move**. It is invoked from the ingest pipeline (`app/Services/Run/Ingest/ActivityPipeline.php`) and from `app/Jobs/Story/GenerateRunCardJob.php`.
+[RunCardFactory](../../app/Services/Run/Story/RunCardFactory.php) (`build(Activity, ActivityDetail): RunCard`) is the entry point, but it only orchestrates and persists: it resolves the sticky PR flag, delegates the **badges** (weather, distance bracket, splits, streak) and the **rarity** score, names a **special move**, writes the row and queues the reveal. It is invoked from the ingest pipeline (`app/Services/Run/Ingest/ActivityPipeline.php`) and from `app/Jobs/Story/GenerateRunCardJob.php`.
 
-The rarity isn't a coin flip: [rarityScore](../../app/Services/Run/Story/RunCardFactory.php#L154) folds a handful of run signals (distance, pace, weather, the earned badge set, PRs) into a single number, and [rarityFromScore](../../app/Services/Run/Story/RunCardFactory.php#L198) buckets that number into a tier. Tune the tier boundaries there, not in the callers. The same rarity rank is what the featured-kartu picker ranks on, see [[vibe-and-mood]].
+The scoring rules themselves are pure. Everything that needs the user's whole history is resolved up front by [CardContextBuilder::for()](../../app/Services/Run/Story/CardContextBuilder.php#L39) into a [CardContext](../../app/Services/Run/Story/CardContext.php) (first run ever, first distance bracket, weekly consistency, day streak, athlete max HR); [BadgeEvaluator::evaluate()](../../app/Services/Run/Story/BadgeEvaluator.php#L62) and [RarityScorer::score()](../../app/Services/Run/Story/RarityScorer.php#L45) then read facts off that context and never touch the database. The builder folds the first-run, first-bracket and weekly-consistency counts into a single conditional aggregate, so a card costs two whole-history queries rather than four.
+
+The rarity isn't a coin flip: [RarityScorer::score()](../../app/Services/Run/Story/RarityScorer.php#L45) folds a handful of run signals (distance, pace, weather, the earned badge set, PRs) into a single number, and [fromScore()](../../app/Services/Run/Story/RarityScorer.php#L89) buckets that number into a tier. Tune the tier boundaries there, not in the callers. The same rarity rank is what the featured-kartu picker ranks on, see [[vibe-and-mood]].
 
 **The badge count's contribution is capped.** Badges stack with circumstance rather than merit — a hot, rainy, pre-dawn long run collects several without being remarkable — so an uncapped count dominated the score and made Langka the single most common tier, covering half of all cards. The ceiling keeps badges as one signal among several rather than the deciding one.
 
