@@ -4,6 +4,7 @@ import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { appLayout } from '@/layouts/appLayout';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
+import Eyebrow from '@/components/ui/Eyebrow';
 import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import SendNotificationButton from '@/components/SendNotificationButton';
@@ -162,9 +163,9 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
         }
     }
     return (
-        <div className="mb-3.5 font-mono font-bold text-[11px] uppercase tracking-[0.18em] text-ink-2 lg:text-xs">
+        <Eyebrow tracking="0.18" tone="ink-2" className="mb-3.5 lg:text-xs">
             {['Riwayat', ...stats].join(' · ')}
-        </div>
+        </Eyebrow>
     );
 }
 
@@ -304,17 +305,20 @@ function NavButton({ href, icon, label }: Readonly<{ href: string; icon: string;
 function CalendarHeader() {
     return (
         <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-line/60 bg-surface-sunken/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
-            <div className="px-1 py-2.5 text-center font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink-2 lg:px-3 lg:text-left lg:text-xs lg:tracking-[0.14em]">
+            <Eyebrow size="10" tracking="0.06" tone="ink-2" className="px-1 py-2.5 text-center lg:px-3 lg:text-left lg:text-xs lg:tracking-[0.14em]">
                 <span className="sr-only">Pekan, jarak dalam kilometer</span>
                 <span aria-hidden>KM</span>
-            </div>
+            </Eyebrow>
             {WEEKDAY_LABELS.map((label) => (
-                <div
+                <Eyebrow
                     key={label}
-                    className="px-1 py-2.5 text-center font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink-2 lg:px-2 lg:text-xs lg:tracking-[0.14em]"
+                    size="10"
+                    tracking="0.06"
+                    tone="ink-2"
+                    className="px-1 py-2.5 text-center lg:px-2 lg:text-xs lg:tracking-[0.14em]"
                 >
                     {label}
-                </div>
+                </Eyebrow>
             ))}
         </div>
     );
@@ -356,9 +360,9 @@ function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
                     <span className="text-xs font-bold tabular-nums leading-none text-ink lg:text-lg">
                         {week.totalKm.toFixed(1)}
                     </span>
-                    <span className="font-mono font-bold text-[11px] uppercase tracking-[0.06em] text-ink-2 lg:tracking-[0.14em]">
+                    <Eyebrow as="span" tracking="0.06" tone="ink-2" className="lg:tracking-[0.14em]">
                         WK {week.weekNumber}
-                    </span>
+                    </Eyebrow>
                 </>
             ) : (
                 <span className="text-xs text-ink-3">—</span>
@@ -473,9 +477,9 @@ function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string
                 {hasRun && cell.mood && (
                     <span aria-hidden className={cn('h-1.5 w-1.5 shrink-0 rounded-full lg:hidden', MOOD_FILL[cell.mood])} title={MOOD_LABEL[cell.mood]} />
                 )}
-                <span className="hidden font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-horizon lg:inline">
+                <Eyebrow as="span" tracking="0.18" weight="semibold" tone="horizon" className="hidden lg:inline">
                     Hari ini
-                </span>
+                </Eyebrow>
             </div>
             {body}
         </>
@@ -508,9 +512,9 @@ function Legend({ className }: Readonly<{ className?: string }>) {
                 className,
             )}
         >
-            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2 lg:text-xs">
+            <Eyebrow as="span" tone="ink-2" className="lg:text-xs">
                 Mood
-            </span>
+            </Eyebrow>
             {MOOD_ORDER.map((mood) => (
                 <span key={mood} className="inline-flex whitespace-nowrap items-center gap-2 text-xs lg:text-sm">
                     <span

@@ -1,3 +1,4 @@
+import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { formatPace } from '@/lib/pace';
 
@@ -57,9 +58,9 @@ export default function SplitsSparkline({ paceSec, partialPaceSec, className }: 
     return (
         <div className={cn('rounded-xl border border-cream/[0.12] bg-sky/40 px-5 py-4 backdrop-blur', className)}>
             <header className="mb-3 flex items-baseline justify-between gap-3">
-                <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
+                <Eyebrow weight="none" tone="ink-on-sky">
                     Splits · pace per km{perKm ? '' : ` · rata-rata tiap ${bucketSize} km`}
-                </div>
+                </Eyebrow>
                 <div className="font-display text-[13px] italic text-horizon">
                     {negativeSplit ? 'negatif-split rapi' : 'splits stabil'}: {formatPace(first)} → {formatPace(last)}
                 </div>

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Icon } from '@iconify/react';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { formatKm } from '@/lib/pace';
 import type { ActivityDetail } from '@/types/inertia';
@@ -26,12 +27,12 @@ export default function MapWeatherPanel({ detail, className }: Readonly<{ detail
                                 {Math.round(temp)}°<span className="text-sm font-medium">C</span>
                             </div>
                             {humidity != null && (
-                                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cream">
+                                <Eyebrow size="10" tracking="0.12" weight="none" tone="cream" className="mt-1">
                                     {Math.round(humidity)}% lembab
-                                </div>
+                                </Eyebrow>
                             )}
                             {windSpeed != null && (
-                                <div className="mt-0.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cream">
+                                <Eyebrow size="10" tracking="0.12" weight="none" tone="cream" className="mt-0.5 flex items-center gap-1">
                                     <Icon icon="mdi:weather-windy" width={11} height={11} aria-hidden />
                                     {Math.round(windSpeed)} km/j
                                     {showGust && <span>· gust {Math.round(gust)}</span>}
@@ -45,7 +46,7 @@ export default function MapWeatherPanel({ detail, className }: Readonly<{ detail
                                             className="text-horizon"
                                         />
                                     )}
-                                </div>
+                                </Eyebrow>
                             )}
                         </div>
                     )}
@@ -57,9 +58,9 @@ export default function MapWeatherPanel({ detail, className }: Readonly<{ detail
                                     <>
                                         <div className="truncate font-display text-xl leading-tight tracking-[-0.005em]">{place}</div>
                                         {region && (
-                                            <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.1em] text-cream/70">
+                                            <Eyebrow tracking="0.1" weight="none" className="mt-0.5 truncate text-cream/70">
                                                 {region}
-                                            </div>
+                                            </Eyebrow>
                                         )}
                                     </>
                                 );

@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Icon } from '@iconify/react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Card from '@/components/ui/Card';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { triggerAnalysis } from '@/hooks/useAnalysisTrigger';
 import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { formatDurationHMS } from '@/lib/pace';
@@ -131,9 +132,9 @@ export default function FourLensGrid({
                                 aria-hidden
                                 className={cn(TONE_ICON[lens.tone])}
                             />
-                            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
+                            <Eyebrow tone="ink-2">
                                 {lens.label}
-                            </div>
+                            </Eyebrow>
                         </div>
                         <AnalysisStatus
                             analysis={lens.analysis}

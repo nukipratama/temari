@@ -1,4 +1,5 @@
 import Card from '@/components/ui/Card';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { formatShortDateTimeId, formatPace } from '@/lib/pace';
 import { cn } from '@/lib/cn';
 
@@ -38,9 +39,9 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
 
     return (
         <Card as="section" padding="lg" className={className}>
-            <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-ink-2">
+            <Eyebrow as="h3" tracking="0.16" tone="ink-2">
                 Kamu vs Lari Pertama Kamu
-            </h3>
+            </Eyebrow>
             <p className="mt-2 font-sans text-sm leading-relaxed text-ink">
                 Total <span className="font-semibold text-horizon-deep">{total_km.toFixed(1)} km</span> kekumpul sejak lari pertama
                 {first.date && (

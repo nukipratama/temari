@@ -5,6 +5,7 @@ import { appLayout } from '@/layouts/appLayout';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
+import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import MilestoneStrip from '@/components/koleksi/MilestoneStrip';
 import PrCard from '@/components/card/PrCard';
@@ -192,9 +193,9 @@ function HeroScoreboard({
 function Caption({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
     return (
         <div>
-            <div className="mb-1.5 font-mono text-sm uppercase tracking-[0.14em] text-ink-on-sky">
+            <Eyebrow size="sm" weight="none" tone="ink-on-sky" className="mb-1.5">
                 {label}
-            </div>
+            </Eyebrow>
             <div className="font-sans text-sm font-medium leading-tight text-cream">{value}</div>
         </div>
     );
@@ -286,9 +287,9 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
             </div>
             <div className="border-t border-cream/10 pt-2.5">
                 <div className="font-sans text-xs text-cream/85">{runName}</div>
-                <div className="font-mono text-xs uppercase tracking-[0.12em] text-ink-on-sky">
+                <Eyebrow size="xs" tracking="0.12" weight="none" tone="ink-on-sky">
                     {formatNaiveIdDate(pr.set_at, 'short')}
-                </div>
+                </Eyebrow>
             </div>
         </div>
     );

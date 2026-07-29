@@ -9,6 +9,7 @@ import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import DetailTiles from '@/components/run/DetailTiles';
+import Eyebrow from '@/components/ui/Eyebrow';
 import FourLensGrid from '@/components/run/FourLensGrid';
 import HeroPanel from '@/components/ui/HeroPanel';
 import MapWeatherPanel from '@/components/run/MapWeatherPanel';
@@ -269,9 +270,9 @@ export default function RunsShow({
                                     <div className="min-w-0 flex-1">
                                         <div className="mb-1.5 flex flex-wrap items-center gap-2">
                                             <MoodChip mood={mood} onSky />
-                                            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
+                                            <Eyebrow as="span" weight="none" tone="ink-on-sky">
                                                 {formatShortDateTimeId(detail.start_date_local)}
-                                            </span>
+                                            </Eyebrow>
                                         </div>
                                         <h1 className="font-display text-display-sm text-cream">
                                             {detail.name ?? 'Lari'}
@@ -291,9 +292,9 @@ export default function RunsShow({
                                 {pastYou && (
                                     <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-cream/15 bg-cream/[0.08] px-4 py-3 backdrop-blur-sm">
                                         <div className="min-w-0">
-                                            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-cream/60">
+                                            <Eyebrow className="text-cream/60">
                                                 Kamu vs {pastYou.days_ago} hari lalu
-                                            </div>
+                                            </Eyebrow>
                                             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-cream/90">
                                                 <span className={cn('font-bold tabular-nums', pastYou.pace_diff_sec > 0 ? 'text-leaf' : 'text-citrus')}>
                                                     {Math.abs(Math.round(pastYou.pace_diff_sec))} detik/km {pastYou.pace_diff_sec > 0 ? 'lebih cepat' : 'lebih lambat'}
@@ -348,9 +349,9 @@ export default function RunsShow({
 
                         <div className="flex flex-col gap-6">
                             <div>
-                                <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-2">
+                                <Eyebrow tracking="0.18" tone="ink-2" className="mb-3">
                                     ★ {rarityLabel}{card.edition && ` · ${card.edition.total} dari koleksimu`}
-                                </div>
+                                </Eyebrow>
                                 <h2 className="font-display text-display-sm leading-[0.95] tracking-[-0.02em] text-ink">
                                     {card.special_move}.
                                 </h2>
@@ -450,9 +451,9 @@ export default function RunsShow({
                 {/* SPLITS */}
                 {(perKm.length > 0 || partialSplit) && <SplitsTable rows={perKm} partial={partialSplit} className="mt-10" />}
 
-                <footer className="mt-8 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-3">
+                <Eyebrow as="footer" tracking="0.1" tone="ink-3" className="mt-8">
                     Tersambung otomatis dari Strava · {formatIdDate(activity.analyzed_at ?? null, 'long')}
-                </footer>
+                </Eyebrow>
             </PageContainer>
             {shareOpen && shareData !== null && (
                 <Suspense fallback={null}>

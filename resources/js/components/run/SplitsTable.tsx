@@ -1,4 +1,5 @@
 import Card from '@/components/ui/Card';
+import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import { formatKm, formatPace } from '@/lib/pace';
@@ -59,9 +60,9 @@ export default function SplitsTable({
                                 rowFill,
                             )}
                         >
-                            <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-2">
+                            <Eyebrow tracking="0.1" weight="none" tone="ink-2">
                                 KM {row.km ?? '?'}
-                            </div>
+                            </Eyebrow>
                             <div className="h-2.5 overflow-hidden rounded bg-sky/[0.06] lg:h-3">
                                 <div
                                     className={cn('h-full rounded', isFast ? 'bg-horizon' : 'bg-sky')}
