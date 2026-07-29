@@ -300,7 +300,7 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [backend-tests, frontend-tests, static-analysis, build, secret-scan, docs-citation-guard]
+    needs: [backend-tests, frontend-tests, static-analysis, build, secret-scan, docs-citation-guard, changes]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -309,7 +309,7 @@ jobs:
           for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.static-analysis.result }}" "${{ needs.build.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
-          for r in "${{ needs.secret-scan.result }}" "${{ needs.docs-citation-guard.result }}"; do
+          for r in "${{ needs.secret-scan.result }}" "${{ needs.docs-citation-guard.result }}" "${{ needs.changes.result }}"; do
             [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
           done
 
