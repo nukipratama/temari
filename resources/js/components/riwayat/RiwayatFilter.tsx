@@ -3,8 +3,7 @@ import { Icon } from '@iconify/react';
 import { motion, useDragControls } from 'framer-motion';
 import { useCallback, useRef, useState } from 'react';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
-import { useDismissable } from '@/hooks/useDismissable';
-import { useFocusReturn } from '@/hooks/useFocusReturn';
+import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';
 import type { MoodOption } from '@/lib/mood';
 import type { Mood } from '@/types/inertia';
@@ -103,8 +102,7 @@ export default function RiwayatFilter<V extends string, B extends string = strin
     const containerRef = useRef<HTMLDivElement>(null);
     const close = useCallback(() => setOpen(false), []);
     const dragControls = useDragControls();
-    useDismissable(open, containerRef, close);
-    useFocusReturn(open);
+    usePopover(open, containerRef, close);
     // Only the mobile form is a sheet, and only a sheet should pin the page
     // behind it. On `lg` this is an anchored popover, where freezing the
     // document would read as the page having broken rather than as a modal.

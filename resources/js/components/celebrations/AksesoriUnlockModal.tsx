@@ -4,9 +4,7 @@ import { Icon } from '@iconify/react';
 import { useRef } from 'react';
 import TemariProto from '@/components/temari/TemariProto';
 import { keyToPreviewEquipped } from '@/lib/equippedAccessories';
-import { useDismissable } from '@/hooks/useDismissable';
-import { useFocusTrap } from '@/hooks/useFocusTrap';
-import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useModal } from '@/hooks/useModal';
 import type { UnlockFlash } from '@/types/inertia';
 
 interface AksesoriUnlockModalProps {
@@ -22,9 +20,7 @@ export default function AksesoriUnlockModal({
     const panelRef = useRef<HTMLDivElement>(null);
     const isOpen = unlock?.is_major === true;
 
-    useDismissable(isOpen, panelRef, onClose);
-    useFocusTrap(isOpen, panelRef);
-    useBodyScrollLock(isOpen);
+    useModal(isOpen, panelRef, onClose);
 
     const handleEquip = () => {
         onClose();

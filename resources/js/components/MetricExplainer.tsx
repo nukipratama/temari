@@ -1,8 +1,7 @@
 import { Icon } from '@iconify/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useId, useRef, useState } from 'react';
-import { useDismissable } from '@/hooks/useDismissable';
-import { useFocusReturn } from '@/hooks/useFocusReturn';
+import { usePopover } from '@/hooks/usePopover';
 import { METRIC_GLOSSARY, type MetricGlossaryEntry, type MetricKey } from '@/lib/metricGlossary';
 import { cn } from '@/lib/cn';
 
@@ -32,8 +31,7 @@ export default function MetricExplainer({
     const popoverId = useId();
 
     const close = useCallback(() => setOpen(false), []);
-    useDismissable(open, containerRef, close);
-    useFocusReturn(open);
+    usePopover(open, containerRef, close);
 
     const iconSize = size === 'xs' ? 12 : 14;
     const buttonClass =
