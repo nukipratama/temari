@@ -1,11 +1,11 @@
 import { type ReactNode } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { aktivitasUrl } from '@/lib/routes';
 import { appLayout } from '@/layouts/appLayout';
-import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import Eyebrow from '@/components/ui/Eyebrow';
+import EmptyPanel from '@/components/ui/EmptyPanel';
 import HeroPanel from '@/components/ui/HeroPanel';
 import MilestoneStrip from '@/components/koleksi/MilestoneStrip';
 import PrCard from '@/components/card/PrCard';
@@ -13,12 +13,13 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import SplitsSparkline from '@/components/run/SplitsSparkline';
 import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import StravaSyncButton from '@/components/StravaSyncButton';
 import PageContainer from '@/components/ui/PageContainer';
 import { formatNaiveIdDate } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
 import GradientText from '@/components/ui/GradientText';
-import type { AnalysisPayload, PersonalRecord } from '@/types/inertia';
+import type { AnalysisPayload, PersonalRecord, SharedProps, StravaSyncState } from '@/types/inertia';
 
 interface ExtendedPR extends Omit<PersonalRecord, 'activity'> {
     value_sec: number;
@@ -296,13 +297,18 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
 }
 
 function EmptyState() {
+    const { stravaSync } = usePage<SharedProps>().props;
+    const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
+
     return (
-        <Card tone="empty" padding="lg" className="mt-8 text-center">
-            <p className="font-display text-3xl italic text-ink-2">Belum ada PR.</p>
-            <p className="mt-2 font-sans text-sm text-ink-3">
-                Sync Strava kamu, Temari otomatis nyatet rekor yang kepecahin.
-            </p>
-        </Card>
+        <EmptyPanel
+            title="Belum ada PR."
+            titleClassName="text-3xl"
+            body="Sync Strava kamu, Temari otomatis nyatet rekor yang kepecahin."
+            bodyClassName="text-ink-3"
+            action={state !== 'syncing' && <StravaSyncButton state={state} className="mt-4" />}
+            className="mt-8"
+        />
     );
 }
 

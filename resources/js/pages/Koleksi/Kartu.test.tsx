@@ -42,9 +42,23 @@ beforeEach(() => {
 });
 
 describe('Koleksi/Kartu', () => {
-    it('renders the EmptyState when no cards and no featured card', () => {
+    it('renders the EmptyState when no cards and no featured card, with a sync CTA', () => {
         render(<KoleksiKartu cards={emptyCards()} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
         expect(screen.getByText(/Belum ada kartu di sini/)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Sambungin Strava/i })).toBeInTheDocument();
+    });
+
+    it('hides the sync CTA on the EmptyState while a sync is already running', () => {
+        setMockPage({
+            auth: { user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null } },
+            flash: {},
+            demoLoginEnabled: false,
+            stravaSync: { state: 'syncing', last_synced_at: null },
+        });
+        render(<KoleksiKartu cards={emptyCards()} selectedRarity={null} featuredCard={null} rarityCounts={rarityCounts} />);
+        expect(screen.getByText(/Belum ada kartu di sini/)).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Sambungin Strava/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /sync/i })).not.toBeInTheDocument();
     });
 
     it('renders the LegendaryTease when legendary count is 0', () => {

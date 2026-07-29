@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { appLayout } from '@/layouts/appLayout';
 import MotionLink from '@/components/MotionLink';
@@ -6,10 +6,12 @@ import ConfettiBurst from '@/components/ConfettiBurst';
 import Card from '@/components/ui/Card';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import Eyebrow from '@/components/ui/Eyebrow';
+import EmptyPanel from '@/components/ui/EmptyPanel';
 import Kartu from '@/components/card/Kartu';
 import KartuMount from '@/components/card/KartuMount';
 import FeaturedCardHero from '@/components/card/FeaturedCardHero';
 import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
+import StravaSyncButton from '@/components/StravaSyncButton';
 import { cn } from '@/lib/cn';
 import { pressShrink } from '@/lib/motion';
 import { aktivitasUrl } from '@/lib/routes';
@@ -26,6 +28,8 @@ import type {
     PaginatedResponse,
     Rarity,
     RunCard as RunCardModel,
+    SharedProps,
+    StravaSyncState,
 } from '@/types/inertia';
 
 interface FeaturedCardPayload {
@@ -341,13 +345,16 @@ const CardCell = memo(function CardCell({
 });
 
 function EmptyState() {
+    const { stravaSync } = usePage<SharedProps>().props;
+    const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
+
     return (
-        <Card tone="empty" padding="lg" className="mt-8 text-center">
-            <p className="font-display text-2xl italic text-ink-2">
-                Belum ada kartu di sini.
-            </p>
-            <p className="mt-2 font-sans text-sm text-ink-2">Coba filter lain, atau sync lari terbaru dulu.</p>
-        </Card>
+        <EmptyPanel
+            title="Belum ada kartu di sini."
+            body="Coba filter lain, atau sync lari terbaru dulu."
+            action={state !== 'syncing' && <StravaSyncButton state={state} className="mt-4" />}
+            className="mt-8"
+        />
     );
 }
 
