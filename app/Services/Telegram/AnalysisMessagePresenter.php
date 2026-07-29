@@ -6,9 +6,7 @@ namespace App\Services\Telegram;
 
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
@@ -18,28 +16,12 @@ use App\Services\Run\Metrics\PaceFormatter;
 use Illuminate\Support\Carbon;
 
 /**
- * Registry of the analysis types that fan out a Telegram notification when they
- * complete, and how each one resolves its user, preference flag, and message.
- * Adding a third notifiable event is a single entry here. See the AI-pipeline
- * note for the markDone hook that consults this.
+ * Builds the Telegram message body and web-push title/URL for an already-
+ * eligible analysis. See {@see NotificationEligibility} for whether the
+ * analysis should be sent at all.
  */
-class NotifiableAnalysis
+class AnalysisMessagePresenter
 {
-    /**
-     * Map of notifiable type to the NotificationPreference boolean column that
-     * gates it (channel-neutral: the same opt-in governs Telegram + web push), the
-     * emoji leading the title line, a data-less fallback `title` used when the
-     * type's dynamic data can't be resolved, and the tap-through CTA appended
-     * before the link.
-     *
-     * @var array<string, array{pref: string, emoji: string, title: string, cta: string}>
-     */
-    private const array TYPES = [
-        AnalysisType::PostRunSpeech->value => ['pref' => 'post_run', 'emoji' => '🏃', 'title' => 'Lari kamu udah masuk! 🏁', 'cta' => 'Lihat detail lari'],
-        AnalysisType::WeeklyRecap->value => ['pref' => 'weekly_recap', 'emoji' => '📊', 'title' => 'Rekap minggu lalu udah siap', 'cta' => 'Lihat riwayat'],
-        AnalysisType::MonthlyRecap->value => ['pref' => 'monthly_recap', 'emoji' => '🗓️', 'title' => 'Rekap bulanan udah siap', 'cta' => 'Lihat kalender'],
-    ];
-
     /**
      * Indonesian month names by month number, for the monthly-recap title.
      * Hardcoded rather than leaning on Carbon's `id` locale data, which isn't
@@ -54,85 +36,13 @@ class NotifiableAnalysis
     ];
 
     /**
-     * Per-instance memo of activity_id => ActivityDetail, so a single send
-     * (recency gate + metrics line both look up the same row) hits the DB once.
+     * Per-instance memo of activity_id => ActivityDetail, so a single message
+     * build (the metrics line + the post-run title both look up the same row)
+     * hits the DB once.
      *
      * @var array<int, ActivityDetail|null>
      */
     private array $detailCache = [];
-
-    public function isNotifiable(Analysis $analysis): bool
-    {
-        return array_key_exists($analysis->analysis_type->value, self::TYPES);
-    }
-
-    /**
-     * Whether an automatic push is still relevant to send. A big Strava backfill
-     * stages hundreds of old per-run and historical recap narrations that
-     * eventually complete via the deferred chain (see
-     * DispatchPostRunAnalysis::isBackfill); without this, each one would still
-     * push to Telegram once done. Gates by the age of the type's reference date
-     * (the run's start, the week's ending, the recap month's end) against
-     * `notify_max_age_days`, so only the freshest period pings and history stays
-     * quiet. Types with no reference date, or a missing one, are never gated.
-     * Only the automatic path — the manual "Kirim ke Telegram" push (force)
-     * bypasses it on purpose.
-     */
-    public function isRecentEnoughToAutoNotify(Analysis $analysis): bool
-    {
-        $reference = $this->autoNotifyReferenceDate($analysis);
-        if ($reference === null) {
-            return true;
-        }
-
-        $maxDays = (int) config('services.telegram.notify_max_age_days');
-
-        return $reference->diffInDays(Carbon::now(), absolute: true) <= $maxDays;
-    }
-
-    /**
-     * The date an automatic push for this type is measured against, or null when
-     * its reference can't be resolved (missing activity/snapshot, blank
-     * discriminator).
-     */
-    private function autoNotifyReferenceDate(Analysis $analysis): ?Carbon
-    {
-        return match ($analysis->analysis_type) {
-            AnalysisType::PostRunSpeech => $this->carbonOrNull($this->activityDetail($analysis->subject_id)?->start_date_local),
-            AnalysisType::WeeklyRecap => $this->carbonOrNull(WeeklySnapshot::query()->find($analysis->subject_id)?->week_ending),
-            AnalysisType::MonthlyRecap => $this->carbonOrNull($analysis->discriminator)?->endOfMonth(),
-            default => null,
-        };
-    }
-
-    private function carbonOrNull(mixed $date): ?Carbon
-    {
-        return $date === null ? null : Carbon::parse($date);
-    }
-
-    /**
-     * Whether the user has opted in to notifications for this analysis type. The
-     * opt-in is channel-neutral; a missing preference row means all-on (default).
-     */
-    public function isOptedIn(Analysis $analysis, User $user): bool
-    {
-        $column = self::TYPES[$analysis->analysis_type->value]['pref'] ?? null;
-        if ($column === null) {
-            return false;
-        }
-
-        $preference = $user->notificationPreference;
-
-        return $preference === null || (bool) $preference->{$column};
-    }
-
-    /** The user this analysis belongs to, or null when it can't be resolved. */
-    public function resolveUser(Analysis $analysis): ?User
-    {
-        $userId = AnalysisSubjectMap::ownerId($analysis->subject_type, $analysis->subject_id);
-
-        return $userId !== null ? User::query()->find($userId) : null;
-    }
 
     /**
      * The Telegram message body, mirroring the web-push title→body hierarchy: the
@@ -153,7 +63,7 @@ class NotifiableAnalysis
             $message .= "\n\n" . $metrics;
         }
 
-        $meta = self::TYPES[$analysis->analysis_type->value] ?? null;
+        $meta = NotifiableAnalysisTypes::TYPES[$analysis->analysis_type->value] ?? null;
         $url = $this->url($analysis);
         if ($meta !== null && $url !== null) {
             $message .= "\n\n" . $meta['cta'] . ': ' . $url;
@@ -243,7 +153,7 @@ class NotifiableAnalysis
      */
     public function title(Analysis $analysis): string
     {
-        $meta = self::TYPES[$analysis->analysis_type->value] ?? null;
+        $meta = NotifiableAnalysisTypes::TYPES[$analysis->analysis_type->value] ?? null;
         if ($meta === null) {
             return 'Temari';
         }
@@ -271,7 +181,7 @@ class NotifiableAnalysis
     {
         $month = $this->monthName($analysis->discriminator);
 
-        return $month === null ? self::TYPES[AnalysisType::MonthlyRecap->value]['title'] : "Rekap {$month} udah siap";
+        return $month === null ? NotifiableAnalysisTypes::TYPES[AnalysisType::MonthlyRecap->value]['title'] : "Rekap {$month} udah siap";
     }
 
     /** The Indonesian month name for a "YYYY-MM" discriminator, or null when blank. */

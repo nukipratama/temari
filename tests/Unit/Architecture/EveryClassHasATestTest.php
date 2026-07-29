@@ -26,6 +26,7 @@ use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\Run\Story\BriefingResult;
 use App\Services\Run\Story\VerdictTimelineItem;
+use App\Services\Telegram\NotifiableAnalysisTypes;
 use App\Services\Weather\WeatherSnapshot;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
@@ -67,6 +68,7 @@ it('has a test class for every concrete app class', function (): void {
         WeatherSnapshot::class,
         JejakFilters::class,          // resolved Jejak filter state, asserted via JejakQueryTest
         WeeklyRecap::class,             // shaped recap DTO, built + asserted via WeeklyRecapBuilderTest
+        NotifiableAnalysisTypes::class, // shared type registry, asserted via NotificationEligibilityTest + AnalysisMessagePresenterTest
         // Covered indirectly by the suites that drive them.
         TokenUsage::class,              // StructuredChatCallerTest
         TokenUsageRecorder::class,      // StructuredChatCallerTest
