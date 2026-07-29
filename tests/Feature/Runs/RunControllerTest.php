@@ -960,6 +960,26 @@ it('runs no activity queries when only snapshots are requested', function (): vo
         ->and($storyLineReads)->toBeEmpty();
 });
 
+it('fetches the capped run list exactly once on a full load', function (): void {
+    $user = User::factory()->create();
+    $run = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($run)->create(['start_date_local' => Carbon::now()]);
+
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    $this->actingAs($user)->get('/aktivitas')->assertSuccessful();
+
+    // `runs`, `notes`, `moods` and `runsTruncated` are four separate closures
+    // over one memoized loader; more than one capped fetch means the
+    // memoization broke and every prop re-ran the query.
+    $runFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'limit 366'));
+
+    expect($runFetches)->toHaveCount(1);
+});
+
 it('still returns every prop on a full page load', function (): void {
     $user = User::factory()->create();
     $run = Activity::factory()->for($user)->analyzed()->create();

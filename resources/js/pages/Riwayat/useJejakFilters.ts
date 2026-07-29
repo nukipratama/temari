@@ -43,7 +43,7 @@ export const DISTANCE_OPTIONS: ReadonlyArray<{ value: DistanceBand; label: strin
 ];
 
 /**
- * Must match RunController::resolveRange()'s fallback and the first entry of
+ * Must match JejakFilterRequest::range()'s fallback and the first entry of
  * RANGE_FILTER_OPTIONS (which RiwayatFilter treats as the implicit default).
  * When it drifts, every URL carries a redundant `range=` and the "clean
  * /aktivitas" case never happens.
