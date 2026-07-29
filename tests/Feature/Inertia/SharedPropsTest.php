@@ -31,6 +31,7 @@ it('shares every documented key on every response', function (): void {
         'pendingReveal',
         'goalsSummary',
         'stravaSync',
+        'stravaPaused',
         'hrZonesChangedAt',
         'stravaZoneScopeMissing',
         'telegramConnected',
@@ -45,7 +46,7 @@ it('keeps every derived prop a closure so a partial reload can skip it', functio
     foreach ([
         'equippedAccessories', 'pendingReveal', 'stravaSync', 'goalsSummary',
         'hrZonesChangedAt', 'telegramConnected', 'webPushSubscribed',
-        'stravaZoneScopeMissing', 'aiPaused',
+        'stravaZoneScopeMissing', 'aiPaused', 'stravaPaused',
     ] as $key) {
         expect($props[$key])->toBeInstanceOf(Closure::class);
     }
