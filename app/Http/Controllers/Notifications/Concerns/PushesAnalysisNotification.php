@@ -13,7 +13,7 @@ use Illuminate\Http\RedirectResponse;
 
 /**
  * Shared body of every manual "Kirim notifikasi" controller: force-notify the
- * push (force: true, so it bypasses the per-type toggle and the once-only guard,
+ * push (force: true, so it bypasses the master switch and the once-only guard,
  * and reaches every wired channel — Telegram if connected, web push if
  * subscribed) when the analysis is Done, otherwise flash that it isn't ready yet.
  * A per-send {@see Cooldown} blocks re-firing the same push within the window.

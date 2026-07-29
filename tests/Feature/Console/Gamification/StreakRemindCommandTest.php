@@ -126,12 +126,12 @@ it('skips a user with no live streak', function (): void {
     Notification::assertNothingSent();
 });
 
-it('skips a user opted out of the weekly recap', function (): void {
+it('skips a user who turned the notification master switch off', function (): void {
     Notification::fake();
 
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
-    NotificationPreference::factory()->for($user)->create(['weekly_recap' => false]);
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
 
     $this->artisan('streak:remind')

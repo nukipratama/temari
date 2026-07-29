@@ -15,8 +15,10 @@ use Override;
 /**
  * A user's notification preferences, on two independent axes.
  *
- * **What** gets sent — `post_run`, `weekly_recap`, `monthly_recap` — stays
- * channel-neutral: the same toggle gates Telegram and web push alike.
+ * **What** gets sent — `notifications_enabled` — is one channel-neutral master
+ * switch over everything Temari initiates: the post-run story, the weekly and
+ * monthly recaps, and the streak-at-risk nudge. The same switch gates Telegram
+ * and web push alike.
  *
  * **Where** it may go — `telegram_enabled`, `push_enabled` — is a non-destructive
  * mute. Off means the connection or subscription stays intact and simply
@@ -24,26 +26,22 @@ use Override;
  * Telegram link or dropping the push subscription, both expensive to undo (push
  * needs a fresh browser permission grant, unrecoverable on iOS once denied).
  *
- * Keeping the axes independent is deliberate. Crossing them would give a 3x2
- * matrix of toggles, which is more control than anyone wants to configure.
+ * Keeping the axes independent is deliberate. Crossing them would give a matrix
+ * of toggles, which is more control than anyone wants to configure.
  *
  * A missing row means all-on for both axes, so a user who never opened the
  * settings receives everything on every wired channel.
  *
  * @property int $id
  * @property int $user_id
- * @property bool $post_run
- * @property bool $weekly_recap
- * @property bool $monthly_recap
+ * @property bool $notifications_enabled
  * @property bool $telegram_enabled
  * @property bool $push_enabled
  * @property-read User $user
  */
 #[Fillable([
     'user_id',
-    'post_run',
-    'weekly_recap',
-    'monthly_recap',
+    'notifications_enabled',
     'telegram_enabled',
     'push_enabled',
 ])]
@@ -80,9 +78,7 @@ class NotificationPreference extends Model
     protected function casts(): array
     {
         return [
-            'post_run' => 'boolean',
-            'weekly_recap' => 'boolean',
-            'monthly_recap' => 'boolean',
+            'notifications_enabled' => 'boolean',
             'telegram_enabled' => 'boolean',
             'push_enabled' => 'boolean',
         ];

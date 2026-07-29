@@ -10,9 +10,8 @@ use Illuminate\Http\Request;
 
 /**
  * Update the signed-in user's notification preferences, on both axes: the
- * channel-neutral per-type opt-ins (post-run / weekly recap / monthly recap)
- * and the per-channel mutes. A missing row means all-on, so the first write
- * creates it.
+ * channel-neutral master switch over everything Temari sends, and the
+ * per-channel mutes. A missing row means all-on, so the first write creates it.
  *
  * Every field is `required` because the client always sends the complete state.
  * That invariant matters now that the toggles live in two different groups on
@@ -24,9 +23,7 @@ class NotificationPreferenceController extends Controller
     public function __invoke(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'post_run' => ['required', 'boolean'],
-            'weekly_recap' => ['required', 'boolean'],
-            'monthly_recap' => ['required', 'boolean'],
+            'notifications_enabled' => ['required', 'boolean'],
             'telegram_enabled' => ['required', 'boolean'],
             'push_enabled' => ['required', 'boolean'],
         ]);

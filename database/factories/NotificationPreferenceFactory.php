@@ -20,9 +20,7 @@ class NotificationPreferenceFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'post_run' => true,
-            'weekly_recap' => true,
-            'monthly_recap' => true,
+            'notifications_enabled' => true,
             'telegram_enabled' => true,
             'push_enabled' => true,
         ];

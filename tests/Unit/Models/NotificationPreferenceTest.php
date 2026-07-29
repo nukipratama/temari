@@ -14,22 +14,22 @@ it('belongs to a user', function (): void {
     expect($preference->user)->toBeInstanceOf(User::class);
 });
 
-it('casts the per-type flags to booleans', function (): void {
+it('casts both axes to booleans', function (): void {
     $preference = NotificationPreference::factory()->make([
-        'post_run' => 1,
-        'weekly_recap' => 0,
-        'monthly_recap' => 1,
+        'notifications_enabled' => 0,
+        'telegram_enabled' => 1,
+        'push_enabled' => 0,
     ]);
 
-    expect($preference->post_run)->toBeTrue()
-        ->and($preference->weekly_recap)->toBeFalse()
-        ->and($preference->monthly_recap)->toBeTrue();
+    expect($preference->notifications_enabled)->toBeFalse()
+        ->and($preference->telegram_enabled)->toBeTrue()
+        ->and($preference->push_enabled)->toBeFalse();
 });
 
 it('is reachable as a hasOne from the user', function (): void {
     $user = User::factory()->create();
-    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
     expect($user->notificationPreference)->toBeInstanceOf(NotificationPreference::class)
-        ->and($user->notificationPreference->post_run)->toBeFalse();
+        ->and($user->notificationPreference->notifications_enabled)->toBeFalse();
 });

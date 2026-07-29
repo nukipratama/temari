@@ -60,10 +60,10 @@ it('routes nowhere for the demo user', function (): void {
     expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
 });
 
-it('routes nowhere when opted out of the type', function (): void {
+it('routes nowhere when the notification master switch is off', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
-    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
     expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
 });
@@ -102,7 +102,7 @@ it('routes nowhere for an automatic push older than the max age', function (): v
 it('force routes to Telegram even when opted out', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
-    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
     expect(viaFor(postRunAnalysis($user), $user, force: true))->toBe([TelegramChannel::class]);
 });
@@ -111,7 +111,7 @@ it('force bypasses the recency gate for an old run', function (): void {
     config(['services.telegram.notify_max_age_days' => 3]);
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
-    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
     expect(viaFor(postRunAnalysis($user, daysAgo: 10), $user, force: true))->toBe([TelegramChannel::class]);
 });
@@ -123,10 +123,10 @@ it('routes to web push for a subscribed user with a recent analysis', function (
     expect(viaFor(postRunAnalysis($user), $user))->toBe([IdempotentWebPushChannel::class]);
 });
 
-it('routes nowhere to web push when opted out of the type', function (): void {
+it('routes nowhere to web push when the notification master switch is off', function (): void {
     $user = User::factory()->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
-    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
     expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
 });
@@ -238,27 +238,27 @@ function fakeRenderer(?Throwable $throws = null): RunCardImageRenderer
 
 /**
  * The one rule that differs from every other gate: `force: true` skips the
- * recency and per-type opt-in checks, because the user explicitly asked for this
- * send. It cannot skip a channel mute, because that is a routing decision — "do
+ * recency and master-switch opt-in checks, because the user explicitly asked for
+ * this send. It cannot skip a channel mute, because that is a routing decision — "do
  * not deliver here, ever" — rather than a per-message one.
  */
 it('will not force a send to a muted channel, even though force skips the opt-in', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
     NotificationPreference::factory()->for($user)->create([
-        'post_run' => false,
+        'notifications_enabled' => false,
         'telegram_enabled' => false,
     ]);
 
-    // post_run is off too, and force would normally override that.
+    // notifications_enabled is off too, and force would normally override that.
     expect(viaFor(postRunAnalysis($user), $user->fresh(), force: true))->toBe([]);
 });
 
-it('forces past the per-type opt-in when the channel is not muted', function (): void {
+it('forces past the master-switch opt-in when the channel is not muted', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
     NotificationPreference::factory()->for($user)->create([
-        'post_run' => false,
+        'notifications_enabled' => false,
         'telegram_enabled' => true,
     ]);
 

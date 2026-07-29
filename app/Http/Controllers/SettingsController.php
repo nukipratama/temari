@@ -57,29 +57,25 @@ class SettingsController extends Controller
     }
 
     /**
-     * Both preference axes: the channel-neutral per-type opt-ins, and the
+     * Both preference axes: the channel-neutral master switch, and the
      * per-channel mutes. A missing row means all-on, so an untouched account
      * defaults to true everywhere.
      *
-     * @return array{post_run: bool, weekly_recap: bool, monthly_recap: bool, telegram_enabled: bool, push_enabled: bool}
+     * @return array{notifications_enabled: bool, telegram_enabled: bool, push_enabled: bool}
      */
     private function resolveNotificationPrefs(User $user): array
     {
         $preference = $user->notificationPreference;
         if ($preference === null) {
             return [
-                'post_run' => true,
-                'weekly_recap' => true,
-                'monthly_recap' => true,
+                'notifications_enabled' => true,
                 'telegram_enabled' => true,
                 'push_enabled' => true,
             ];
         }
 
         return [
-            'post_run' => $preference->post_run,
-            'weekly_recap' => $preference->weekly_recap,
-            'monthly_recap' => $preference->monthly_recap,
+            'notifications_enabled' => $preference->notifications_enabled,
             'telegram_enabled' => $preference->telegram_enabled,
             'push_enabled' => $preference->push_enabled,
         ];

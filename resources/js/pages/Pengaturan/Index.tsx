@@ -27,9 +27,8 @@ interface TelegramPayload {
 }
 
 interface NotificationPrefs {
-    post_run: boolean;
-    weekly_recap: boolean;
-    monthly_recap: boolean;
+    /** Master switch over everything Temari sends, on every channel. */
+    notifications_enabled: boolean;
     /** Per-channel mutes: off means wired but silent, not disconnected. */
     telegram_enabled: boolean;
     push_enabled: boolean;
@@ -49,9 +48,7 @@ const TELEGRAM_DEFAULT: TelegramPayload = {
 };
 
 const PREFS_DEFAULT: NotificationPrefs = {
-    post_run: true,
-    weekly_recap: true,
-    monthly_recap: true,
+    notifications_enabled: true,
     telegram_enabled: true,
     push_enabled: true,
 };
@@ -159,17 +156,15 @@ function NotificationPrefsPanel({
     // Local state prevents a rapid-click race: if the user flips two toggles before
     // Inertia refreshes props, the second PATCH would read stale props for the first
     // toggle's value and silently revert it. Local state sees the latest flipped value.
-    const [postRun, setPostRun] = useState(prefs.post_run);
-    const [weeklyRecap, setWeeklyRecap] = useState(prefs.weekly_recap);
-    const [monthlyRecap, setMonthlyRecap] = useState(prefs.monthly_recap);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(prefs.notifications_enabled);
     const [telegramEnabled, setTelegramEnabled] = useState(prefs.telegram_enabled);
     const [pushEnabled, setPushEnabled] = useState(prefs.push_enabled);
     const { open, setOpen, guard } = useDemoGuard();
 
-    const latestRef = useRef({ postRun, weeklyRecap, monthlyRecap, telegramEnabled, pushEnabled });
-    latestRef.current = { postRun, weeklyRecap, monthlyRecap, telegramEnabled, pushEnabled };
+    const latestRef = useRef({ notificationsEnabled, telegramEnabled, pushEnabled });
+    latestRef.current = { notificationsEnabled, telegramEnabled, pushEnabled };
 
-    // Always sends the complete state — the server validates all five as
+    // Always sends the complete state — the server validates all three as
     // required, and the toggles now live in two different groups, so a partial
     // write would leave updateOrCreate holding stale values for the other group.
     const savePrefs = useCallback(() => {
@@ -177,9 +172,7 @@ function NotificationPrefsPanel({
         router.patch(
             '/profil/notifikasi',
             {
-                post_run: current.postRun,
-                weekly_recap: current.weeklyRecap,
-                monthly_recap: current.monthlyRecap,
+                notifications_enabled: current.notificationsEnabled,
                 telegram_enabled: current.telegramEnabled,
                 push_enabled: current.pushEnabled,
             },
@@ -191,52 +184,24 @@ function NotificationPrefsPanel({
         <div className="flex flex-col gap-6">
             <div>
                 <GroupLabel>Apa yang dikirim</GroupLabel>
+                {/* One switch, not three. Per-type toggles asked the user to
+                    curate a list they never wanted to curate, and the streak
+                    nudge had no toggle of its own at all, so it silently rode
+                    along on "Rekap mingguan". Naming everything here is what
+                    makes that coupling honest. */}
                 <div className="flex flex-col">
                     <SettingsRow
-                        icon="mdi:message-text-outline"
-                        label="Cerita abis lari"
+                        icon="mdi:bell-outline"
+                        label="Kabarin aku"
+                        description="Cerita abis lari, rekap mingguan sama bulanan, plus pengingat kalau streak kamu lagi di ujung."
                         control={
                             <Toggle
-                                label="Cerita abis lari"
-                                checked={postRun}
+                                label="Kabarin aku"
+                                checked={notificationsEnabled}
                                 onChange={(value) =>
                                     guard(() => {
-                                        setPostRun(value);
-                                        latestRef.current.postRun = value;
-                                        savePrefs();
-                                    })
-                                }
-                            />
-                        }
-                    />
-                    <SettingsRow
-                        icon="mdi:calendar-week"
-                        label="Rekap mingguan"
-                        control={
-                            <Toggle
-                                label="Rekap mingguan"
-                                checked={weeklyRecap}
-                                onChange={(value) =>
-                                    guard(() => {
-                                        setWeeklyRecap(value);
-                                        latestRef.current.weeklyRecap = value;
-                                        savePrefs();
-                                    })
-                                }
-                            />
-                        }
-                    />
-                    <SettingsRow
-                        icon="mdi:calendar-month-outline"
-                        label="Rekap bulanan"
-                        control={
-                            <Toggle
-                                label="Rekap bulanan"
-                                checked={monthlyRecap}
-                                onChange={(value) =>
-                                    guard(() => {
-                                        setMonthlyRecap(value);
-                                        latestRef.current.monthlyRecap = value;
+                                        setNotificationsEnabled(value);
+                                        latestRef.current.notificationsEnabled = value;
                                         savePrefs();
                                     })
                                 }

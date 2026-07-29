@@ -16,14 +16,14 @@ code_refs:
 
 # Streak reminders
 
-Every Saturday at 18:00, `streak:remind` checks every user Temari can reach on **any** notification channel who hasn't opted out of the weekly recap. If the user has a live streak but hasn't run yet this week, it dispatches a nudge: one message per user, per at-risk week, no repeats.
+Every Saturday at 18:00, `streak:remind` checks every user Temari can reach on **any** notification channel who hasn't turned notifications off. If the user has a live streak but hasn't run yet this week, it dispatches a nudge: one message per user, per at-risk week, no repeats.
 
-There is no dedicated streak toggle — the nudge piggybacks the `weekly_recap` per-type preference ([NotificationPreference](../../app/Models/NotificationPreference.php)), so opting out of weekly recaps also silences streak reminders. A missing preference row means all-on.
+There is no dedicated streak toggle — the nudge is governed by the single `notifications_enabled` master switch ([NotificationPreference](../../app/Models/NotificationPreference.php)), the same one that gates the post-run story and both recaps. It used to ride on `weekly_recap`, a coupling the UI never named; the master switch's own description names the streak nudge out loud, so the behaviour is chosen rather than inherited. A missing preference row means all-on.
 
 ## Flow
 
 1. **Cron** (Saturday 18:00, see [routes/console.php](routes/console.php#L72)) fires `StreakRemindCommand::handle()`.
-2. The command queries **users** who are not demo, haven't set `weekly_recap = false`, and are reachable on at least one channel (an active Telegram connection **or** at least one web-push subscription), then applies three guards:
+2. The command queries **users** who are not demo, haven't set `notifications_enabled = false`, and are reachable on at least one channel (an active Telegram connection **or** at least one web-push subscription), then applies three guards:
    - Skip if `WeeklySnapshot::consecutiveWeekStreak($userId)` returns `< 1` (no live streak).
    - Skip if the current week's `WeeklySnapshot` already has `runs > 0`.
    - Skip if `claim()` fails — `insertOrIgnore` on `streak_reminders` with a unique `(user_id, week_ending)` constraint, so repeated cron runs never double-send.
@@ -31,7 +31,7 @@ There is no dedicated streak toggle — the nudge piggybacks the `weekly_recap` 
 
 > The command iterates **users, not Telegram connections**. Iterating connections (as it did before web push existed) silently excluded anyone who only had phone push enabled, so they got weekly recaps but never a streak nudge.
 
-The notification's `via()` re-checks the guards at send time (not demo, `weekly_recap` still true) and fans out to whichever channels are live: [TelegramChannel](../../app/Notifications/Channels/TelegramChannel.php) and/or [IdempotentWebPushChannel](../../app/Notifications/Channels/IdempotentWebPushChannel.php). Both carry the same title → body pair, with web push at `Urgency: high` (the nudge is time-boxed to the rest of the week, so an OS deferral under Low Power Mode would defeat it):
+The notification's `via()` re-checks the guards at send time (not demo, `notifications_enabled` still true) and fans out to whichever channels are live: [TelegramChannel](../../app/Notifications/Channels/TelegramChannel.php) and/or [IdempotentWebPushChannel](../../app/Notifications/Channels/IdempotentWebPushChannel.php). Both carry the same title → body pair, with web push at `Urgency: high` (the nudge is time-boxed to the rest of the week, so an OS deferral under Low Power Mode would defeat it):
 
 > 🔥 Streak lari {n} minggu kamu lagi di ujung
 >
@@ -57,7 +57,7 @@ Saturday 18:00 gives the user a ~30-hour window (Saturday evening through Sunday
 ## Key dependencies
 
 - `WeeklySnapshot::consecutiveWeekStreak()` — walks backward through contiguous running weeks; returns 0 if the most recent run is older than last Sunday.
-- `NotificationPreference` — the channel-neutral per-type opt-in; the streak nudge reads `weekly_recap`.
+- `NotificationPreference` — the channel-neutral master switch; the streak nudge reads `notifications_enabled`.
 - `TelegramConnection` — one of the two reachable channels; `isRevoked()` checks for a null `revoked_at`.
 
 ## See also

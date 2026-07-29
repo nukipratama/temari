@@ -87,19 +87,19 @@ class NotificationEligibility
     }
 
     /**
-     * Whether the user has opted in to notifications for this analysis type. The
-     * opt-in is channel-neutral; a missing preference row means all-on (default).
+     * Whether the user has opted in to notifications for this analysis type. One
+     * master switch covers every notifiable type; it is channel-neutral, and a
+     * missing preference row means all-on (default).
      */
     public function isOptedIn(Analysis $analysis, User $user): bool
     {
-        $column = NotifiableAnalysisTypes::TYPES[$analysis->analysis_type->value]['pref'] ?? null;
-        if ($column === null) {
+        if (! $this->isNotifiable($analysis)) {
             return false;
         }
 
         $preference = $user->notificationPreference;
 
-        return $preference === null || (bool) $preference->{$column};
+        return $preference === null || $preference->notifications_enabled;
     }
 
     /** The user this analysis belongs to, or null when it can't be resolved. */

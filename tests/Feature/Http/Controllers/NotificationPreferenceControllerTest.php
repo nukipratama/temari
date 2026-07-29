@@ -13,9 +13,7 @@ it('creates a preference row on the first write', function (): void {
 
     $this->actingAs($user)
         ->patch('/profil/notifikasi', [
-            'post_run' => false,
-            'weekly_recap' => true,
-            'monthly_recap' => false,
+            'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
         ])
@@ -23,45 +21,40 @@ it('creates a preference row on the first write', function (): void {
 
     $preference = $user->notificationPreference()->first();
     expect($preference)->not->toBeNull()
-        ->and($preference->post_run)->toBeFalse()
-        ->and($preference->weekly_recap)->toBeTrue()
-        ->and($preference->monthly_recap)->toBeFalse();
+        ->and($preference->notifications_enabled)->toBeFalse()
+        ->and($preference->telegram_enabled)->toBeTrue();
 });
 
 it('updates the existing preference row without creating a second', function (): void {
     $user = User::factory()->create();
     NotificationPreference::factory()->for($user)->create([
-        'post_run' => true,
-        'weekly_recap' => true,
-        'monthly_recap' => true,
-            'telegram_enabled' => true,
-            'push_enabled' => true,
+        'notifications_enabled' => true,
+        'telegram_enabled' => true,
+        'push_enabled' => true,
     ]);
 
     $this->actingAs($user)
         ->patch('/profil/notifikasi', [
-            'post_run' => false,
-            'weekly_recap' => false,
-            'monthly_recap' => false,
+            'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
         ])
         ->assertRedirect();
 
     expect($user->notificationPreference()->count())->toBe(1)
-        ->and($user->notificationPreference()->first()->post_run)->toBeFalse();
+        ->and($user->notificationPreference()->first()->notifications_enabled)->toBeFalse();
 });
 
 it('validates that the flags are present and boolean', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patchJson('/profil/notifikasi', ['post_run' => 'maybe'])
+        ->patchJson('/profil/notifikasi', ['notifications_enabled' => 'maybe'])
         ->assertStatus(422);
 });
 
 it('requires authentication', function (): void {
-    $this->patch('/profil/notifikasi', ['post_run' => true, 'weekly_recap' => true, 'monthly_recap' => true, 'telegram_enabled' => true, 'push_enabled' => true])
+    $this->patch('/profil/notifikasi', ['notifications_enabled' => true, 'telegram_enabled' => true, 'push_enabled' => true])
         ->assertRedirect('/login');
 });
 
@@ -75,22 +68,24 @@ it('rejects a partial write that omits the channel mutes', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patch('/profil/notifikasi', [
-            'post_run' => true,
-            'weekly_recap' => true,
-            'monthly_recap' => true,
-        ])
+        ->patch('/profil/notifikasi', ['notifications_enabled' => true])
         ->assertSessionHasErrors(['telegram_enabled', 'push_enabled']);
 });
 
-it('persists the channel mutes alongside the per-type opt-ins', function (): void {
+it('rejects a partial write that omits the master switch', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch('/profil/notifikasi', ['telegram_enabled' => true, 'push_enabled' => true])
+        ->assertSessionHasErrors(['notifications_enabled']);
+});
+
+it('persists the channel mutes alongside the master switch', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->patch('/profil/notifikasi', [
-            'post_run' => true,
-            'weekly_recap' => true,
-            'monthly_recap' => true,
+            'notifications_enabled' => true,
             'telegram_enabled' => false,
             'push_enabled' => true,
         ])
@@ -100,5 +95,5 @@ it('persists the channel mutes alongside the per-type opt-ins', function (): voi
 
     expect($preference->telegram_enabled)->toBeFalse()
         ->and($preference->push_enabled)->toBeTrue()
-        ->and($preference->post_run)->toBeTrue();
+        ->and($preference->notifications_enabled)->toBeTrue();
 });
