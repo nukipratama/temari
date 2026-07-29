@@ -11,6 +11,7 @@ concurrency:
 
 env:
   PHP_VERSION: '8.5'
+  APP_IMAGE: ghcr.io/${{ github.repository }}/app
 
 # Least-privilege default for GITHUB_TOKEN across every job; a job that needs
 # more widens it in its own permissions block.
@@ -305,11 +306,46 @@ jobs:
             [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
           done
 
+  build:
+    name: Build prod image
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push the runtime image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.APP_IMAGE }}:${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=registry,ref=${{ env.APP_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.APP_IMAGE }}:buildcache,mode=max
+          provenance: false
+
   deploy:
     name: Deploy
-    needs: [ci-gate]
+    needs: [ci-gate, build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: [self-hosted, homelab]
+    permissions:
+      contents: read
+      packages: read
     concurrency:
       group: deploy-prod
       cancel-in-progress: false
@@ -328,9 +364,17 @@ jobs:
             docker tag temari/app:latest temari/app:previous
           fi
 
-      - name: Build new image
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the image built on the hosted runner
         timeout-minutes: 15
-        run: $COMPOSE build app
+        run: |
+          docker pull "$APP_IMAGE:${{ github.sha }}"
+          docker tag "$APP_IMAGE:${{ github.sha }}" temari/app:latest
 
       - name: Bring up the data + cache layer
         # redis-cache is named explicitly (not just pulled in via app's depends_on)
