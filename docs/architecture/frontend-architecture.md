@@ -3,7 +3,7 @@ title: Frontend Architecture (Inertia 2 + React 19)
 description: How the SPA is wired — the controller→page→component flow, shared props, the middleware/route gate, the React entry, layout, and frontend conventions
 tags: [architecture, frontend]
 status: living
-reviewed: 2026-07-28
+reviewed: 2026-07-29
 code_refs:
   - resources/js/app.tsx
   - resources/views/app.blade.php
@@ -11,6 +11,7 @@ code_refs:
   - app/Services/Inertia/SharedProps.php
   - app/Support/SharedPropCacheKey.php
   - resources/js/layouts/AppShell.tsx
+  - resources/js/components/FlashNotice.tsx
   - resources/js/types/inertia.ts
   - routes/web.php
   - bootstrap/app.php
@@ -69,6 +70,10 @@ Auth is **Strava OAuth via Socialite**, not password login — see [[strava-conn
 ## Layout
 
 There are two layouts. [AppShell](resources/js/layouts/AppShell.tsx#L25) is the full one; pages opt into it as an Inertia **persistent layout** (`Page.layout = appLayout`, [appLayout.tsx:21](resources/js/layouts/appLayout.tsx#L21)), which keeps the shell mounted across navigations instead of remounting it every visit. It renders the desktop [TopNav](resources/js/components/TopNav.tsx#L1), the mobile top bar + bottom nav, a skip-link, and the app-wide overlays that fire off shared props: the [CardReveal](resources/js/layouts/AppShell.tsx#L19) when `pendingReveal` is set and the accessory-unlock modal driven by `flash.unlock`. Animation is gated globally through `MotionConfig reducedMotion="user"`.
+
+**Server-said-something surfaces.** Two banner components sit at the top of the shell and are the *only* app-wide renderers for a per-response message. [ErrorBanner](resources/js/components/ErrorBanner.tsx#L12) takes the `withErrors()` bag; [FlashNotice](resources/js/components/FlashNotice.tsx#L38) takes `flash.error` / `flash.info` / `flash.success`, in that priority, one at a time. Both are mounted once, dismissable, and re-show only when the message *changes* — so a partial reload, which keeps unrequested props client-side, cannot resurrect a dismissed message or stack a duplicate. Before `FlashNotice` existed, every `->with('success', …)` in the app rendered nowhere and `flash.info` rendered only on the two pages that read it themselves, so honest server refusals were invisible. A new controller message needs no wiring beyond the `->with()`.
+
+Two renderers stay deliberately local rather than folding into `FlashNotice`: [AiUsage](resources/js/pages/AiUsage.tsx#L34) has no layout at all (an operator screen with its own chrome and plainer tone), and Login is on `BareShell` with the message placed inside the form column rather than as chrome. `FlashNotice` is therefore **not** mounted in `BareShell` — that would double-render Login's own info block.
 
 [BareShell](resources/js/layouts/BareShell.tsx#L12) is the standalone one — banners, children, no chrome — and only Login uses it ([Login.tsx:4](resources/js/pages/Auth/Login.tsx#L4)). It is a **separate module rather than an `AppShell` prop on purpose**: Login renders nothing animated, but while `bareLayout` lived beside `appLayout` it dragged `AppShell` — and through it `MotionConfig`, `MobileBottomNav`, `UnlockToast` and `AksesoriUnlockModal` — into Login's static import closure, putting all ~127KB of framer-motion on the login first paint. Splitting the module removed it: **Login's closure fell 599.5 → 455.6KB raw, 193.4 → 147.1KB gzipped (-23.9%)**. Keep BareShell free of framer-motion.
 

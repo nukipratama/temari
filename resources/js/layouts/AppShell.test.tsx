@@ -100,6 +100,20 @@ describe('AppShell', () => {
         expect(screen.getByText(/Sambungin ulang Strava/)).toBeInTheDocument();
     });
 
+    it('mounts the flash notice as shell chrome', () => {
+        setMockPage({
+            auth: { user: andiUser },
+            flash: { info: 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.' },
+            demoLoginEnabled: false,
+        });
+        render(
+            <AppShell>
+                <p>child content</p>
+            </AppShell>,
+        );
+        expect(screen.getByText(/Tarikan dari Strava lagi dijeda sebentar/)).toBeInTheDocument();
+    });
+
     // The content region used to be keyed on the Inertia component name, which
     // tore down and rebuilt the whole subtree on every visit and replayed an
     // enter animation starting at opacity 0 — so a navigation read as

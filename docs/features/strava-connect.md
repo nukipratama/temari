@@ -3,7 +3,7 @@ title: Strava connection (OAuth, sync, webhook)
 description: Connecting Strava, the manual "Sync now" button, and the live push webhook.
 tags: [feature, strava]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-07-29
 code_refs:
   - resources/js/pages/Auth/Login.tsx
   - app/Http/Controllers/Auth/StravaAuthController.php
@@ -15,6 +15,7 @@ code_refs:
   - resources/js/components/StravaSyncBadge.tsx
   - resources/js/components/StravaAction.tsx
   - resources/js/components/StravaPausedBanner.tsx
+  - resources/js/components/FlashNotice.tsx
   - app/Services/Inertia/StravaProps.php
   - routes/web.php
 ---
@@ -61,7 +62,7 @@ The `/pulse` Strava kill-switch (`AppConfigKey::StravaEnabled`) is enforced down
 
 - **Shared state.** [StravaProps](../../app/Services/Inertia/StravaProps.php) shares a `stravaPaused` boolean, cached globally under `SharedPropCacheKey::StravaPaused` and busted by `SystemControl::toggleStrava()` so a flip lands on the next request. Only the pause *fact* crosses to the client, never the operator reason. `StravaSyncState` is deliberately untouched: other components branch on that union, and a fifth variant would force every one of them to handle it.
 - **UI.** [StravaAction](../../resources/js/components/StravaAction.tsx) wraps each manual affordance and renders nothing while paused, so the control is *absent* rather than greyed out; [StravaPausedBanner](../../resources/js/components/StravaPausedBanner.tsx) carries the single calm explanation app-wide. Connect/reconnect links are **not** gated: OAuth still completes, and Strava is the only way to sign in.
-- **Server.** All three re-pull controllers guard at the entry point and answer `back()->with('info', …)`, never a fake `success`. The downstream guards stay as belt and braces.
+- **Server.** All three re-pull controllers guard at the entry point and answer `back()->with('info', …)`, never a fake `success`. The downstream guards stay as belt and braces. That refusal is only honest if the user reads it, and until [FlashNotice](../../resources/js/components/FlashNotice.tsx) existed the redirect landed on a page with no flash renderer at all. It is mounted once in [AppShell](../../resources/js/layouts/AppShell.tsx) and covers every authenticated page — see [[frontend-architecture]].
 - **Zone fetch.** `ActivityPipeline` / `SyncOrchestrator` never covered [ZoneFetcher](../../app/Services/Strava/ZoneFetcher.php), so the zone path still reached Strava with the switch off from two ungated callers: the on-connect `SyncZonesJob` dispatched by [StravaAuthController](../../app/Http/Controllers/Auth/StravaAuthController.php)`::callback`, and the monthly `strava:sync-zones` sweep. The switch is enforced inside `ZoneFetcher::fetch()` itself, returning its existing `null` "nothing to apply" result rather than at each caller. A fresh connect still connects and logs in; only the zone pull is suppressed, and since a `null` writes no `runner_profiles` row, nothing ever claims the zones synced.
 
 ## Webhook (live push)
