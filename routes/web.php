@@ -78,8 +78,15 @@ Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->
 Route::middleware(['auth'])->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
 
-    Route::get('/aktivitas', [RunController::class, 'index'])->name('aktivitas.index');
-    Route::get('/aktivitas/{activity}', [RunController::class, 'show'])->name('aktivitas.show');
+    // Conditional GET on the three history-read pages: the same URL is genuinely
+    // revisited (filter/tab toggling, month paging, deep links back into a past
+    // run) and their payloads are the largest in the app.
+    Route::get('/aktivitas', [RunController::class, 'index'])
+        ->middleware('inertia-etag')
+        ->name('aktivitas.index');
+    Route::get('/aktivitas/{activity}', [RunController::class, 'show'])
+        ->middleware('inertia-etag')
+        ->name('aktivitas.show');
     Route::post('/aktivitas/{activity}/resync', ResyncActivityController::class)
         ->middleware('throttle:strava-sync')
         ->name('aktivitas.resync');
@@ -87,7 +94,9 @@ Route::middleware(['auth'])->group(function (): void {
         ->middleware('block-demo-telegram')
         ->name('aktivitas.kirim');
 
-    Route::get('/kalender', CalendarController::class)->name('kalender');
+    Route::get('/kalender', CalendarController::class)
+        ->middleware('inertia-etag')
+        ->name('kalender');
 
     Route::post('/rekap-mingguan/{snapshot}/kirim', SendWeeklyRecapNotificationController::class)
         ->middleware('block-demo-telegram')

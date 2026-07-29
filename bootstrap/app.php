@@ -3,6 +3,7 @@
 use App\Http\Middleware\BlockDemoTelegramWrites;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetInertiaEtag;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -41,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'block-demo-telegram' => BlockDemoTelegramWrites::class,
             'admin' => EnsureUserIsAdmin::class,
+            'inertia-etag' => SetInertiaEtag::class,
         ]);
 
         // Strava POSTs the webhook with no session/CSRF token; it is guarded by

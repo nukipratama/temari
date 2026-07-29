@@ -8,6 +8,7 @@ code_refs:
   - resources/js/app.tsx
   - resources/views/app.blade.php
   - app/Http/Middleware/HandleInertiaRequests.php
+  - app/Http/Middleware/SetInertiaEtag.php
   - app/Services/Inertia/SharedProps.php
   - app/Support/SharedPropCacheKey.php
   - resources/js/layouts/AppShell.tsx
@@ -66,6 +67,18 @@ The middleware stack is assembled in [bootstrap/app.php](bootstrap/app.php#L14):
 - **`auth` + `admin`** — `/ai-usage` and its POST actions, gated by `['auth', 'admin']` in [routes/web.php](../../routes/web.php); the same `is_admin` gate covers Horizon and Pulse. Cloudflare Access fronts the edge in prod; there is no basic-auth wall.
 
 Auth is **Strava OAuth via Socialite**, not password login — see [[strava-connect]]. The unauthenticated `/api/*` flows (analysis poll/trigger, card seen/replay) are deliberately small JSON endpoints, not Inertia pages.
+
+## Conditional GET on the history pages
+
+Three routes carry the `inertia-etag` alias ([bootstrap/app.php](bootstrap/app.php), [routes/web.php](routes/web.php)): `/aktivitas`, `/aktivitas/{activity}` and `/kalender`. [`SetInertiaEtag`](app/Http/Middleware/SetInertiaEtag.php) tags their full Inertia page object with `ETag` + `Cache-Control: private, no-cache`, so a revisit revalidates and gets an empty `304` when nothing moved. It is applied **per-route, never globally** — it saves wire bytes, not server work (the controller has already run and Inertia has already serialized the page by the time the middleware sees the response), so it only pays off where the same URL is genuinely re-fetched: filter and tab toggling on `/aktivitas`, month paging on `/kalender`, and deep links back into a past run from a Telegram notification or a share URL. These are also the three largest payloads in the app (up to 365 runs; a run detail carries `stream_summary` + `summary_polyline` + the card).
+
+Three properties make it safe, and all three follow from the ETag being a hash of the **exact response bytes** rather than a synthetic key:
+
+- **It cannot leak across users.** `auth.user.id` is inside the hashed bytes, so two users can never collide on an ETag for the same URL, and `private` keeps the body out of any shared cache while `no-cache` forces revalidation before every use. Even a misbehaving intermediary cannot turn a stored body into a wrong `304`: the server recomputes the body and compares, so a mismatch is always answered with a full `200`.
+- **It cannot serve a stale shared prop or a stale flash.** Every closure prop and the whole `flash` bag are in the hashed bytes. A `304` therefore asserts only that the copy the browser holds is byte-identical to the one this request just built — a flash that has since aged out, a shared prop that has ticked, or a narration block that has settled all change the bytes and miss.
+- **It costs no extra prop evaluation.** The hash is taken from the already-serialized `JsonResponse` content, so the lazy-closure discipline above is untouched — nothing is force-evaluated just to compute an ETag.
+
+Partial reloads are deliberately excluded and marked `no-store`: the browser cache is keyed by URL, so letting a poll tick's narrow prop subset be stored would evict the full page object the next visit wants to revalidate against. The initial HTML document is untagged too (it carries the per-session CSRF meta tag, and the service worker already intercepts navigations only — [public/sw.js](public/sw.js)).
 
 ## Layout
 
