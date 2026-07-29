@@ -115,11 +115,11 @@ class Temari
     // Order matters — first matching rule wins, most-prestigious mood first.
     private static function moodForActivity(ActivityDetail $detail, bool $hasPr): string
     {
-        $summary = $detail->streamSummary();
-        $hardShare = StreamSummary::fromArray($summary)->hardZoneShare();
-        $decoupling = (float) ($summary['decoupling_pct'] ?? 0);
+        $summary = StreamSummary::fromArray($detail->streamSummary());
+        $hardShare = $summary->hardZoneShare();
+        $decoupling = $summary->decouplingPct() ?? 0.0;
         $hotWeather = (int) ($detail->weather_temp_c ?? 0) >= 31;
-        $negativeSplit = ($summary['negative_split'] ?? false) === true;
+        $negativeSplit = $summary->negativeSplit() === true;
         $hardSession = $hardShare >= 80.0;
         $intendedHard = SessionIntent::isIntendedHard($detail);
 

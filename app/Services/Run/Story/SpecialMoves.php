@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Services\Run\Metrics\StreamSummary;
+
 class SpecialMoves
 {
     public const DEFAULT_MOVE = 'Easy Run'; // honest default — easy, no story
@@ -19,14 +21,11 @@ class SpecialMoves
      */
     public function pick(array $streamSummary, array $context): string
     {
-        $zonePct = is_array($streamSummary['time_in_zone_pct'] ?? null)
-            ? $streamSummary['time_in_zone_pct']
-            : [];
-        $distribution = is_array($streamSummary['cadence_distribution_pct'] ?? null)
-            ? $streamSummary['cadence_distribution_pct']
-            : [];
-        $negativeSplit = (bool) ($streamSummary['negative_split'] ?? false);
-        $cadenceDropSpm = (float) ($streamSummary['cadence_drop_spm'] ?? 0.0);
+        $summary = StreamSummary::fromArray($streamSummary);
+        $zonePct = $summary->zonePct();
+        $distribution = $summary->cadenceDistributionPct();
+        $negativeSplit = $summary->negativeSplit() === true;
+        $cadenceDropSpm = $summary->cadenceDropSpm() ?? 0.0;
         $distanceM = (float) ($context['distance_m'] ?? 0.0);
         $prSet = (bool) ($context['pr_set'] ?? false);
         $seed = (int) ($context['seed'] ?? 0);
