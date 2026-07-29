@@ -8,6 +8,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
@@ -128,7 +129,7 @@ class NotifiableAnalysis
     /** The user this analysis belongs to, or null when it can't be resolved. */
     public function resolveUser(Analysis $analysis): ?User
     {
-        $userId = $analysis->ownerId();
+        $userId = AnalysisSubjectMap::ownerId($analysis->subject_type, $analysis->subject_id);
 
         return $userId !== null ? User::query()->find($userId) : null;
     }

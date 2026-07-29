@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
 use App\Services\AI\TokenUsageReport;
@@ -88,9 +89,10 @@ class TokenUsageController extends Controller
      */
     public function retryFailed(int $userId): RedirectResponse
     {
-        $rows = Analysis::query()->knownType()->where('status', AnalysisStatus::Failed)->get();
-        $ownerIds = Analysis::ownerIdsForRows($rows);
-        $matching = $rows->filter(fn (Analysis $row): bool => ($ownerIds[$row->id] ?? null) === $userId);
+        $matching = AnalysisSubjectMap::whereOwnedBy(
+            Analysis::query()->knownType()->where('status', AnalysisStatus::Failed),
+            $userId,
+        )->get();
 
         foreach ($matching as $row) {
             $row->update(['attempts' => 0]);
@@ -220,7 +222,7 @@ class TokenUsageController extends Controller
      */
     private function groupByUser(EloquentCollection $rows): array
     {
-        $ownerIds = Analysis::ownerIdsForRows($rows);
+        $ownerIds = AnalysisSubjectMap::ownerIdsForRows($rows);
 
         /** @var array<int, list<Analysis>> $byUser */
         $byUser = [];
