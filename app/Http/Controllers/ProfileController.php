@@ -8,9 +8,6 @@ use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Run\LifetimeStats;
-use App\Services\Run\Metrics\ThresholdEstimator;
-use App\Services\Run\Metrics\TrainingPaceCalculator;
-use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\ProgressionSeriesBuilder;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\PersonaSummaryNarrator;
@@ -37,9 +34,6 @@ class ProfileController extends Controller
         Request $request,
         PersonaSummaryNarrator $personaNarrator,
         ProgressionSeriesBuilder $progressionSeriesBuilder,
-        VdotEstimator $vdotEstimator,
-        ThresholdEstimator $thresholdEstimator,
-        TrainingPaceCalculator $trainingPaceCalculator,
         LifetimeStats $lifetimeStats,
     ): Response {
         /** @var User $user */
@@ -52,7 +46,6 @@ class ProfileController extends Controller
             ->orderBy('category')
             ->get();
 
-        $fitness = $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user);
         $progressionByCategory = $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $personalRecords);
 
         return Inertia::render('Aku', [
@@ -72,7 +65,6 @@ class ProfileController extends Controller
             'personaSummary' => $this->resolvePersonaSummary($user),
             'profileVoice' => $this->resolveProfileVoice($user),
             'progressionByCategory' => $progressionByCategory,
-            'fitness' => $fitness,
         ]);
     }
 
@@ -122,25 +114,5 @@ class ProfileController extends Controller
         }
 
         return $builder->buildMany($user, $prs, fn (PersonalRecord $pr): ?int => null);
-    }
-
-    /**
-     * @return array{vdot: float|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null}|null
-     */
-    private function fitness(VdotEstimator $vdotEstimator, ThresholdEstimator $thresholdEstimator, TrainingPaceCalculator $trainingPaceCalculator, User $user): ?array
-    {
-        $vdot = $vdotEstimator->estimate($user);
-        $threshold = $thresholdEstimator->estimate($user);
-
-        if ($vdot === null && $threshold === null) {
-            return null;
-        }
-
-        return [
-            'vdot' => $vdot['vdot'] ?? null,
-            'threshold_pace_sec' => $threshold['pace_sec'] ?? null,
-            'threshold_confidence' => $threshold['confidence'] ?? null,
-            'training_paces' => $trainingPaceCalculator->fromVdotResult($vdot),
-        ];
     }
 }

@@ -13,7 +13,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import ProgressionChart from '@/components/koleksi/ProgressionChart';
-import { formatDurationHMS, formatPace, formatShortDateId, monthsSinceId } from '@/lib/pace';
+import { formatDurationHMS, formatShortDateId, monthsSinceId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
@@ -39,20 +39,6 @@ interface ProgressionSeries {
     goal_sec: number | null;
 }
 
-interface TrainingPaces {
-    easy: number;
-    marathon: number;
-    threshold: number;
-    interval: number;
-}
-
-interface FitnessPayload {
-    vdot: number | null;
-    threshold_pace_sec: number | null;
-    threshold_confidence: string | null;
-    training_paces?: TrainingPaces | null;
-}
-
 interface AkuProps {
     identity: IdentityPayload;
     stats: StatsPayload;
@@ -60,7 +46,6 @@ interface AkuProps {
     personaSummary?: AnalysisPayload;
     profileVoice?: AnalysisPayload;
     progressionByCategory?: Record<string, ProgressionSeries> | null;
-    fitness?: FitnessPayload | null;
 }
 
 export default function Aku({
@@ -70,7 +55,6 @@ export default function Aku({
     personaSummary,
     profileVoice,
     progressionByCategory = null,
-    fitness = null,
 }: Readonly<AkuProps>) {
     const { auth, stravaSync } = usePage<SharedProps>().props;
     const sharedUser = auth.user;
@@ -137,47 +121,12 @@ export default function Aku({
                             </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-5 sm:grid-cols-5 justify-items-center">
+                    <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 justify-items-center">
                         <StatTile tone="plainSky" size="md" align="center" label="Total km" value={stats.total_km.toFixed(1)} unit="km" />
                         <StatTile tone="plainSky" size="md" align="center" label="Total lari" value={stats.total_runs.toString()} unit="lari" />
                         <StatTile tone="plainSky" size="md" align="center" label="Lari terjauh" value={stats.longest_run_km.toFixed(2)} unit="km" />
-                        {fitness?.vdot != null && (
-                            <StatTile tone="plainSky" size="md" align="center" label="VDOT" value={fitness.vdot.toFixed(1)} explainerKey="vdot" />
-                        )}
-                        {fitness?.threshold_pace_sec != null && (
-                            <StatTile tone="plainSky" size="md" align="center" label="Threshold pace" value={formatPace(fitness.threshold_pace_sec)} unit="/km" explainerKey="threshold_pace" />
-                        )}
                     </div>
                 </HeroPanel>
-
-                {fitness?.training_paces && (
-                    <section className="mt-10">
-                        <SectionLabel>Latihan · pace target</SectionLabel>
-                        <Card className="mt-3">
-                            <div className="grid grid-cols-2 gap-5 sm:grid-cols-4 justify-items-center">
-                                {(
-                                    [
-                                        ['Easy', fitness.training_paces.easy, 'pace_easy'],
-                                        ['Marathon', fitness.training_paces.marathon, 'pace_marathon'],
-                                        ['Tempo', fitness.training_paces.threshold, 'pace_tempo'],
-                                        ['Interval', fitness.training_paces.interval, 'pace_interval'],
-                                    ] as const
-                                ).map(([label, paceSec, explainerKey]) => (
-                                    <StatTile
-                                        key={explainerKey}
-                                        tone="cream"
-                                        size="sm"
-                                        align="center"
-                                        label={label}
-                                        value={formatPace(paceSec)}
-                                        unit="/km"
-                                        explainerKey={explainerKey}
-                                    />
-                                ))}
-                            </div>
-                        </Card>
-                    </section>
-                )}
 
                 <section className="mt-10">
                     <SectionLabel>Persona · 12 minggu terakhir</SectionLabel>
