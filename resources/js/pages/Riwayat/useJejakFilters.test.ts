@@ -12,7 +12,8 @@ import {
     type FilterState,
     type RunWithDetail,
 } from './useJejakFilters';
-import type { ActivityDetail, Mood, WeeklySnapshotWithRecap } from '@/types/inertia';
+import { run } from './runFixture';
+import type { Mood, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 function state(overrides: Partial<FilterState> = {}): FilterState {
     return {
@@ -23,24 +24,6 @@ function state(overrides: Partial<FilterState> = {}): FilterState {
         sort: 'newest',
         week: null,
         ...overrides,
-    };
-}
-
-function run(id: number, name: string, isoDate: string | null): RunWithDetail {
-    return {
-        id,
-        user_id: 1,
-        analyzed_at: '2026-05-19',
-        detail: {
-            id,
-            activity_id: id,
-            name,
-            start_date_local: isoDate,
-            distance: 5000,
-            moving_time: 1800,
-            trimp_edwards: 50,
-            average_heartrate: 145,
-        } as ActivityDetail,
     };
 }
 

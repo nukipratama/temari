@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
 import RunsIndex from './Jejak';
 import { makeUser, setMockPage } from '@/test/setup';
-import type { Activity, ActivityDetail } from '@/types/inertia';
+import { run } from './runFixture';
 
 vi.mock('@/components/aktivitas/JourneyStrip', () => ({
     default: () => <div data-testid="journey-strip" />,
@@ -14,24 +14,6 @@ vi.mock('@/components/run/RunListRow', () => ({
         <div data-testid="run-row">{detail.name}</div>
     ),
 }));
-
-function run(id: number, name: string, isoDate: string | null): Activity & { detail: ActivityDetail } {
-    return {
-        id,
-        user_id: 1,
-        analyzed_at: '2026-05-19',
-        detail: {
-            id,
-            activity_id: id,
-            name,
-            start_date_local: isoDate,
-            distance: 5000,
-            moving_time: 1800,
-            trimp_edwards: 50,
-            average_heartrate: 145,
-        } as ActivityDetail,
-    };
-}
 
 beforeEach(() => {
     setMockPage({
