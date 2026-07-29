@@ -10,6 +10,7 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
 
@@ -193,7 +194,7 @@ final readonly class RuleBasedNarrationFiller
             ], $snapshotId);
         }
 
-        $km = number_format((float) $snapshot->distance_km, 1);
+        $km = DecimalFormatter::decimal((float) $snapshot->distance_km);
         $runs = $snapshot->runs;
         $closer = match ($snapshot->form_status) {
             'fresh' => 'Badan lagi seger, ada ruang buat naik pelan-pelan.',

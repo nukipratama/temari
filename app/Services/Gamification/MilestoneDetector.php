@@ -7,6 +7,7 @@ namespace App\Services\Gamification;
 use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
 
@@ -103,7 +104,7 @@ class MilestoneDetector
             $milestones[] = [
                 'kind' => 'longest_ever',
                 'label' => 'Lari terjauh sampai sekarang',
-                'body' => sprintf('%.2f km, melampaui rekor jarak kamu sebelumnya.', DistanceFormatter::km($distanceMeters, DistanceFormatter::EXACT)),
+                'body' => sprintf('%s km, melampaui rekor jarak kamu sebelumnya.', DistanceFormatter::kmString($distanceMeters, DistanceFormatter::EXACT)),
                 'priority' => 90,
             ];
         }
@@ -167,7 +168,7 @@ class MilestoneDetector
         return [
             'kind' => 'first_ever_distance',
             'label' => sprintf('%s pertama kamu!', $this->formatKmLabel($thresholdReached)),
-            'body' => sprintf('Pertama kali kamu lari sejauh %.2f km. Tandai momen ini.', $distanceKm),
+            'body' => sprintf('Pertama kali kamu lari sejauh %s km. Tandai momen ini.', DecimalFormatter::decimal($distanceKm, DistanceFormatter::EXACT)),
             'priority' => 50 + (int) round($thresholdReached * 2),
         ];
     }
@@ -222,7 +223,7 @@ class MilestoneDetector
             return 'Marathon';
         }
 
-        return rtrim(rtrim(number_format($km, 1, '.', ''), '0'), '.').' km';
+        return DecimalFormatter::trimmed($km).' km';
     }
 
     private function formatPaceLabel(int $paceSec): string

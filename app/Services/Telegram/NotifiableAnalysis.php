@@ -9,6 +9,7 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\DurationFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
@@ -282,11 +283,9 @@ class NotifiableAnalysis
         return self::MONTHS[Carbon::parse($discriminator . '-01')->month] ?? null;
     }
 
-    /** Metres to a short "8,2K" label: km at 1 decimal, id comma, trailing ",0" dropped (5000 → "5K"). */
+    /** Metres to a short "8,2K" label: km at 1 decimal, trailing ",0" dropped (5000 → "5K"). */
     private function shortDistance(int $meters): string
     {
-        $rounded = number_format(DistanceFormatter::km((float) $meters), 1, ',', '.');
-
-        return rtrim(rtrim($rounded, '0'), ',') . 'K';
+        return DecimalFormatter::trimmed(DistanceFormatter::km((float) $meters)) . 'K';
     }
 }

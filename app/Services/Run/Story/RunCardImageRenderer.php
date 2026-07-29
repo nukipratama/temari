@@ -7,6 +7,7 @@ namespace App\Services\Run\Story;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Services\Geo\PolylineProjector;
+use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\DurationFormatter;
 use App\Services\Run\Metrics\PaceFormatter;
@@ -290,9 +291,10 @@ SVG;
             return '0';
         }
 
-        $km = number_format(DistanceFormatter::km($distanceMeters, DistanceFormatter::EXACT), 2, '.', '');
-
-        return rtrim(rtrim($km, '0'), '.');
+        return DecimalFormatter::trimmed(
+            DistanceFormatter::km($distanceMeters, DistanceFormatter::EXACT),
+            DistanceFormatter::EXACT,
+        );
     }
 
     private function escape(string $value): string

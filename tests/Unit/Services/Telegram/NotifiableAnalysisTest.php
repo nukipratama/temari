@@ -113,7 +113,7 @@ it('formats a post-run message with the title line, a blank line, the content, a
 it('includes a metrics line for a post-run notification', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create([
-        'distance' => 5200,        // 5.20 km
+        'distance' => 5200,        // 5,20 km
         'moving_time' => 2054,     // 34:14, pace 6:35/km
         'average_heartrate' => 159,
     ]);
@@ -125,7 +125,7 @@ it('includes a metrics line for a post-run notification', function (): void {
 
     $message = new NotifiableAnalysis()->format($analysis);
 
-    expect($message)->toContain('5.20 km · 34:14 · 6:35/km · 159 bpm');
+    expect($message)->toContain('5,20 km · 34:14 · 6:35/km · 159 bpm');
 });
 
 it('omits HR from the metrics line on a strap-less run', function (): void {
@@ -143,7 +143,7 @@ it('omits HR from the metrics line on a strap-less run', function (): void {
 
     $message = new NotifiableAnalysis()->format($analysis);
 
-    expect($message)->toContain('5.20 km · 34:14 · 6:35/km')
+    expect($message)->toContain('5,20 km · 34:14 · 6:35/km')
         ->and($message)->not->toContain('bpm');
 });
 

@@ -7,6 +7,7 @@ namespace App\Services\Gamification;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use Illuminate\Support\Carbon;
 
@@ -148,7 +149,7 @@ readonly class WeeklyRecapBuilder
         $ratio = $target > 0 ? min($goal['current'] / $target, 1.0) : 0.0;
         $remaining = max($target - $goal['current'], 0);
         // Whole goals (lari/PR/kartu) read as integers; km goals keep one decimal.
-        $remainder = fmod((float) $remaining, 1.0) !== 0.0 ? round($remaining, 1) : (int) $remaining;
+        $remainder = DecimalFormatter::trimmed((float) $remaining);
 
         return [
             'id' => $goal['id'],
