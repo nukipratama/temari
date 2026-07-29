@@ -313,14 +313,8 @@ jobs:
     concurrency:
       group: deploy-prod
       cancel-in-progress: false
-    # Overruns are bounded per STEP, not by this job cap. A job timeout is a
-    # *cancellation*, so `if: failure()` is skipped — an overrun would strand a
-    # half-deployed stack with no rollback and no alert. A step timeout is an
-    # ordinary step failure and does reach the failure path below. Every step that
-    # can hang indefinitely (build, both dumps, both migrates, and the failure path
-    # itself) therefore carries its own cap; this job cap is a last-resort backstop
-    # and is deliberately larger than their sum. Measured across 93 deploys this is
-    # a 1.5-2 min job, 5.2 min at the worst observed.
+    # A job timeout is a cancellation, so `if: failure()` never runs. Overruns are
+    # capped per step instead; this is a backstop above the sum of those caps.
     timeout-minutes: 60
     env:
       COMPOSE: docker compose -f compose.prod.yaml
@@ -335,9 +329,6 @@ jobs:
           fi
 
       - name: Build new image
-        # The one step that realistically binds: a cold-cache build shares 4 cores
-        # with live traffic. Failing here is the cheapest possible failure — nothing
-        # has been quiesced, migrated or rolled yet.
         timeout-minutes: 15
         run: $COMPOSE build app
 
@@ -407,9 +398,6 @@ jobs:
           echo "MIGRATIONS_APPLIED=$applied" >> "$GITHUB_ENV"
           echo "Migrations pending this deploy: $applied"
 
-      # A long ALTER can block indefinitely on a lock. Timing out here leaves
-      # MIGRATIONS_APPLIED=true, so the failure path correctly refuses to auto-roll
-      # a partially-applied schema and alerts for manual recovery instead.
       - name: Migrate (one-shot, on the new image)
         timeout-minutes: 10
         run: $COMPOSE run --rm app php artisan migrate --force
@@ -463,8 +451,6 @@ jobs:
       - name: Resume scheduler (deploy green)
         run: $COMPOSE up -d --no-deps scheduler
 
-      # Capped so a wedged rollback can't eat the job backstop and take the alert
-      # below down with it — a silent failed deploy is the worst outcome here.
       - name: Roll back on failure
         if: failure()
         timeout-minutes: 6
