@@ -25,29 +25,7 @@ import { formStatusLabel } from '@/lib/formStatus';
 import { MOOD_FILTER_OPTIONS, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
 import PageContainer from '@/components/ui/PageContainer';
-import type { Activity, ActivityDetail, AnalysisPayload, FormStatus, Mood, SharedProps, StravaSyncState } from '@/types/inertia';
-
-interface WeeklySnapshotRow {
-    id: number;
-    week_ending: string;
-    distance_km: number | null;
-    runs: number | null;
-    weekly_trimp: number | null;
-    atl_7d: number | null;
-    ctl_42d: number | null;
-    form: number | null;
-    form_status: FormStatus | null;
-    avg_decoupling: number | null;
-    monotony: number | null;
-    strain: number | null;
-    /** True for the in-progress week, whose recap waits for the weekly scheduler. */
-    is_current_week: boolean;
-    /** True for the latest completed week, the only chain link that may regenerate. */
-    is_chain_head: boolean;
-    recap_analysis: AnalysisPayload;
-    /** Remaining Telegram-send cooldown for this week's recap, or null. */
-    notification_retry_after_seconds: number | null;
-}
+import type { Activity, ActivityDetail, FormStatus, Mood, SharedProps, StravaSyncState, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 interface RunsIndexProps {
     runs: ReadonlyArray<Activity & { detail: ActivityDetail }>;
@@ -71,7 +49,7 @@ interface RunsIndexProps {
     runsTruncated?: boolean;
     /** The per-page cap, shown in the truncation note. */
     maxRuns?: number;
-    weeklySnapshots: ReadonlyArray<WeeklySnapshotRow>;
+    weeklySnapshots: ReadonlyArray<WeeklySnapshotWithRecap>;
     journeyMatch?: JourneyMatchData | null;
 }
 
@@ -195,7 +173,7 @@ export default function RunsIndex({
 }: Readonly<RunsIndexProps>) {
     const buckets = useMemo<WeekBucket[]>(() => groupByWeek(runs), [runs]);
     const snapshotsByWeek = useMemo(() => {
-        const map = new Map<string, WeeklySnapshotRow>();
+        const map = new Map<string, WeeklySnapshotWithRecap>();
         for (const snap of weeklySnapshots) map.set(snap.week_ending.slice(0, 10), snap);
         return map;
     }, [weeklySnapshots]);
@@ -485,7 +463,7 @@ function RankedList({
 
 interface WeekSectionProps {
     bucket: WeekBucket;
-    snapshot: WeeklySnapshotRow | null;
+    snapshot: WeeklySnapshotWithRecap | null;
     notes: Record<number, RunNote>;
     moods: Record<number, Mood>;
     /** A filter narrowed this week's runs, so its totals describe a subset. */
@@ -586,7 +564,7 @@ const WeekSection = memo(function WeekSection({ bucket, snapshot, notes, moods, 
     );
 });
 
-function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotRow }>) {
+function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotWithRecap }>) {
     // Monotony ≥ 1.5 and decoupling ≥ 8% are the runner-relevant alarm thresholds.
     // Below those, render the chip in the neutral cream tone so the row doesn't
     // light up with semantic color when nothing is wrong.
@@ -842,7 +820,7 @@ function NoFilterMatchState({ onReset }: Readonly<{ onReset: () => void }>) {
     );
 }
 
-function ruleBasedFallback(snap: WeeklySnapshotRow): string {
+function ruleBasedFallback(snap: WeeklySnapshotWithRecap): string {
     const parts: string[] = [];
     if (snap.runs !== null && snap.distance_km !== null) {
         parts.push(`Minggu ini kamu lari ${snap.runs}x sejauh ${snap.distance_km.toFixed(1)} km.`);

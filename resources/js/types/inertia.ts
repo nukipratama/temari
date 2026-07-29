@@ -275,16 +275,34 @@ export interface TrainingLoad {
     strain: number;
 }
 
+/** One `weekly_snapshots` row, shipped whole (`WeeklySnapshot::toArray()`). */
 export interface WeeklySnapshot {
     id: number;
     user_id: number;
     week_ending: string;
-    runs: number;
+    runs: number | null;
     distance_km: number | null;
+    moving_time_sec?: number | null;
+    weekly_trimp: number | null;
     ctl_42d: number | null;
     atl_7d: number | null;
     form: number | null;
+    form_status: FormStatus | null;
     avg_decoupling: number | null;
+    monotony: number | null;
+    strain: number | null;
+}
+
+/** A snapshot decorated by RunController::decorateSnapshot with its recap
+ *  narration and the flags the Jejak week list renders it with. */
+export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
+    /** True for the in-progress week, whose recap waits for the weekly scheduler. */
+    is_current_week: boolean;
+    /** True for the latest completed week, the only chain link that may regenerate. */
+    is_chain_head: boolean;
+    recap_analysis: AnalysisPayload;
+    /** Remaining Telegram-send cooldown for this week's recap, or null. */
+    notification_retry_after_seconds: number | null;
 }
 
 export interface PersonalRecord {

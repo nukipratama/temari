@@ -68,10 +68,14 @@ const snapshot: WeeklySnapshot = {
     week_ending: '2026-05-11',
     runs: 4,
     distance_km: 35.5,
+    weekly_trimp: 280,
     ctl_42d: 42,
     atl_7d: 44.5,
     form: -2.5,
+    form_status: 'optimal',
     avg_decoupling: 3.2,
+    monotony: 1.4,
+    strain: 392,
 };
 
 const detailWithCard: ActivityDetail = {
