@@ -13,6 +13,7 @@ use App\Events\ActivityIngested;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\AI\TokenUsage;
 use App\Models\Analytics\StravaSyncLog;
+use App\Services\AI\ChainLink;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\AI\TokenUsageRecorder;
@@ -58,6 +59,7 @@ it('has a test class for every concrete app class', function (): void {
         HandleInertiaRequests::class, // framework wiring
         // Immutable value objects / DTOs (no behaviour to unit-test).
         ActivityIngested::class,         // event payload, asserted via DispatchPostRunAnalysisTest + ActivityPipelineCascadeTest
+        ChainLink::class,               // chain link identity, asserted via ChainResolverTest
         ChatCallOptions::class,
         ResolvedLocation::class,
         BriefingResult::class,

@@ -13,8 +13,8 @@ use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\ChainResolver;
 use App\Services\AI\RecapPeriod;
 use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -28,6 +28,7 @@ class AnalysisController extends Controller
         TriggerAnalysisRequest $request,
         AnalysisService $service,
         ActivityPipeline $pipeline,
+        ChainResolver $chains,
         string $type,
         int $subjectId,
     ): JsonResponse {
@@ -77,11 +78,12 @@ class AnalysisController extends Controller
         // desyncs the later blocks that quoted its old narrative.
         $resuming = false;
         if ($analysisType->isChained()
-            && ! $this->isChainHeadRegenerate($user, $analysisType, $subjectId, $discriminator, $existing)
+            && ! $chains->isHeadRegenerate($user, $analysisType, $subjectId, $discriminator, $existing)
         ) {
-            $resume = $this->earliestUnfilledChainLink($user, $analysisType);
+            $resume = $chains->earliestUnfilledLink($user, $analysisType);
             if ($resume !== null) {
-                [$subjectId, $discriminator, $existing] = $resume;
+                $subjectId = $resume->subjectId;
+                $discriminator = $resume->discriminator;
                 $resuming = true;
             }
         }
@@ -133,177 +135,6 @@ class AnalysisController extends Controller
                 ->exists(),
             default => false,
         };
-    }
-
-    /**
-     * Whether the clicked row is a legitimate head regenerate: a Done row that
-     * is the latest narrated link of the user's chain. Only the head may
-     * regenerate; re-narrating a mid-history link would desync later blocks.
-     * Returns false for non-Done rows and for unknown chained types (which fall
-     * through to the resume path).
-     *
-     * Keying differs per kind: WeeklyRecap is keyed by the WeeklySnapshot
-     * subject id; MonthlyRecap is keyed by the discriminator month (Y-m) under a
-     * single user subject, so its head is matched on the discriminator.
-     */
-    private function isChainHeadRegenerate(User $user, AnalysisType $type, int $subjectId, ?string $discriminator, ?Analysis $existing): bool
-    {
-        if ($existing?->status !== AnalysisStatus::Done) {
-            return false;
-        }
-
-        return match ($type) {
-            AnalysisType::WeeklyRecap => $subjectId === $this->weeklyChainHeadId($user),
-            AnalysisType::MonthlyRecap => $discriminator !== null && $discriminator === $this->monthlyChainHeadMonth($user),
-            AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsightTechnical,
-            AnalysisType::RunInsightSplits,
-            AnalysisType::RunInsightZones => $subjectId === Activity::latestIdForUser($user->id),
-            default => false,
-        };
-    }
-
-    /**
-     * The earliest unfilled link of the user's chain for a chained type, as a
-     * `[subjectId, discriminator, existingRow]` tuple, or null when there is
-     * nothing earlier to resume (the clicked row is then used as-is). "Unfilled"
-     * = no Done recap; walking from oldest forward fills the chronological gap so
-     * each successor still reads a Done predecessor. Returns null for an unknown
-     * chained type so the caller keeps the clicked row's identity.
-     *
-     * @return array{0: int, 1: string|null, 2: Analysis|null}|null
-     */
-    private function earliestUnfilledChainLink(User $user, AnalysisType $type): ?array
-    {
-        return match ($type) {
-            AnalysisType::WeeklyRecap => $this->earliestUnfilledWeeklyLink($user),
-            AnalysisType::MonthlyRecap => $this->earliestUnfilledMonthlyLink($user),
-            AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsightTechnical,
-            AnalysisType::RunInsightSplits,
-            AnalysisType::RunInsightZones => $this->earliestUnfilledActivityLink($user, $type),
-            default => null,
-        };
-    }
-
-    /** @return array{0: int, 1: string|null, 2: Analysis|null}|null */
-    private function earliestUnfilledWeeklyLink(User $user): ?array
-    {
-        $lastWeekEnding = RecapPeriod::lastClosedWeekEnding();
-
-        $earliest = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('week_ending', '<=', $lastWeekEnding)
-            ->where('runs', '>', 0)
-            ->whereDoesntHave('analyses', fn ($query) => $query
-                ->where('analysis_type', AnalysisType::WeeklyRecap)
-                ->where('status', AnalysisStatus::Done))
-            ->orderBy('week_ending')
-            ->first();
-
-        if ($earliest === null) {
-            return null;
-        }
-
-        $existing = Analysis::query()
-            ->forSubject(WeeklySnapshot::class, $earliest->id, AnalysisType::WeeklyRecap)
-            ->first();
-
-        return [(int) $earliest->id, null, $existing];
-    }
-
-    /**
-     * The monthly chain's earliest unfilled (not Done) month for the user. The
-     * chain links are the pre-staged Analysis rows themselves (keyed by the Y-m
-     * discriminator under the user subject), so this walks those rows rather than
-     * a per-month subject table. The still-running current month is excluded (its
-     * row is staged Pending but inert until the month closes), so resuming never
-     * narrates an incomplete month.
-     *
-     * @return array{0: int, 1: string|null, 2: Analysis|null}|null
-     */
-    private function earliestUnfilledMonthlyLink(User $user): ?array
-    {
-        $earliest = Analysis::query()
-            ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
-            ->where('subject_id', $user->id)
-            ->where('analysis_type', AnalysisType::MonthlyRecap)
-            ->where('status', '!=', AnalysisStatus::Done)
-            ->where('discriminator', '<=', RecapPeriod::lastClosedMonth())
-            ->orderBy('discriminator')
-            ->first();
-
-        if ($earliest === null) {
-            return null;
-        }
-
-        return [$user->id, $earliest->discriminator, $earliest];
-    }
-
-    /**
-     * The per-activity chain's earliest unfilled (not Done) link for the clicked
-     * type. The chain is keyed by the Activity id (discriminator null) and
-     * ordered by start_date_local, so this walks the user's activities oldest
-     * first for the first one whose clicked-type row is not Done, resuming the
-     * group from there. Returns null when every activity's row is already Done
-     * (the clicked row is then used as-is, which the head-regenerate path
-     * handles).
-     *
-     * @return array{0: int, 1: string|null, 2: Analysis|null}|null
-     */
-    private function earliestUnfilledActivityLink(User $user, AnalysisType $type): ?array
-    {
-        $earliest = Activity::query()
-            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
-            ->where('activities.user_id', $user->id)
-            ->whereNotNull('activity_details.start_date_local')
-            ->whereDoesntHave('analyses', fn ($query) => $query
-                ->where('analysis_type', $type)
-                ->where('status', AnalysisStatus::Done))
-            ->orderBy('activity_details.start_date_local')
-            ->select('activities.id')
-            ->first();
-
-        if ($earliest === null) {
-            return null;
-        }
-
-        $existing = Analysis::query()
-            ->forSubject(Activity::class, (int) $earliest->id, $type)
-            ->first();
-
-        return [(int) $earliest->id, null, $existing];
-    }
-
-    /** The WeeklySnapshot id of the user's latest completed running week, or null. */
-    private function weeklyChainHeadId(User $user): ?int
-    {
-        $lastWeekEnding = RecapPeriod::lastClosedWeekEnding();
-
-        $headId = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('week_ending', '<=', $lastWeekEnding)
-            ->where('runs', '>', 0)
-            ->orderByDesc('week_ending')
-            ->value('id');
-
-        return $headId === null ? null : (int) $headId;
-    }
-
-    /**
-     * The latest closed month (Y-m) the user has a MonthlyRecap row for, or null.
-     * Capped at the last fully-closed month so the still-running current month's
-     * inert Pending row is never treated as the regenerable chain head.
-     */
-    private function monthlyChainHeadMonth(User $user): ?string
-    {
-        return Analysis::query()
-            ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
-            ->where('subject_id', $user->id)
-            ->where('analysis_type', AnalysisType::MonthlyRecap)
-            ->where('discriminator', '<=', RecapPeriod::lastClosedMonth())
-            ->orderByDesc('discriminator')
-            ->value('discriminator');
     }
 
     public function show(

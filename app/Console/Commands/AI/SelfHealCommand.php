@@ -15,8 +15,8 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\ChainResolver;
 use App\Services\AI\MaintainerAlerter;
-use App\Services\AI\RecapPeriod;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -46,7 +46,7 @@ class SelfHealCommand extends Command
      * by {@see Analysis::MAX_SELF_HEAL_ATTEMPTS} so a terminally-broken block
      * drops out to the /ai-usage dead-letter instead of re-billing forever.
      */
-    public function handle(AnalysisService $service, MaintainerAlerter $alerter): int
+    public function handle(AnalysisService $service, MaintainerAlerter $alerter, ChainResolver $chains): int
     {
         // Detect a pause on/off transition before the early-exit, so both entering
         // a pause (healthy -> paused) and resuming (paused -> healthy) push an alert
@@ -66,8 +66,8 @@ class SelfHealCommand extends Command
         // Queued/Processing is back to Pending before the family sweeps run and
         // can re-dispatch the earliest of them in this same pass.
         $resumed = $this->revertStaleInFlight($service)
-            + $this->resumeWeekly($service)
-            + $this->resumeMonthly($service)
+            + $this->resumeWeekly($service, $chains)
+            + $this->resumeMonthly($service, $chains)
             + $this->resumePerActivity($service)
             + $this->resumeCardFlavor($service)
             + $this->resumePrContext($service)
@@ -147,74 +147,37 @@ class SelfHealCommand extends Command
         return $stale->count();
     }
 
-    /**
-     * Weekly chains: the earliest stalled WeeklyRecap per user (runs > 0) among
-     * the fully-closed weeks. "Stalled" = Pending or Failed under the retry
-     * budget ({@see Analysis::scopeStalled}), so this recovers a link a transient
-     * failure or cost-ceiling pause left behind without re-billing a block that
-     * has burned its budget. Capped at the latest closed week so the sweep never
-     * narrates the still-running current week on incomplete data (the weekly
-     * kickoff owns first-narration). Demo is excluded so it never auto-bills.
-     */
-    private function resumeWeekly(AnalysisService $service): int
+    private function resumeWeekly(AnalysisService $service, ChainResolver $chains): int
     {
-        $lastWeekEnding = RecapPeriod::lastClosedWeekEnding();
+        $links = $chains->stalledWeeklyLinkPerUser();
 
-        $earliestPerUser = Analysis::query()
-            ->stalled()
-            ->where('ai_analyses.subject_type', WeeklySnapshot::class)
-            ->where('ai_analyses.analysis_type', AnalysisType::WeeklyRecap)
-            ->join('weekly_snapshots', 'weekly_snapshots.id', '=', 'ai_analyses.subject_id')
-            ->where('weekly_snapshots.runs', '>', 0)
-            ->where('weekly_snapshots.week_ending', '<=', $lastWeekEnding)
-            ->whereIn('weekly_snapshots.user_id', User::query()->notDemo()->select('id'))
-            ->orderBy('weekly_snapshots.week_ending')
-            ->get(['ai_analyses.subject_id', 'weekly_snapshots.user_id'])
-            ->unique('user_id');
-
-        foreach ($earliestPerUser as $row) {
+        foreach ($links as $link) {
             $service->request(
                 subjectOrType: WeeklySnapshot::class,
-                subjectId: (int) $row->subject_id,
+                subjectId: $link->subjectId,
                 type: AnalysisType::WeeklyRecap,
                 invalidate: false,
             );
         }
 
-        return $earliestPerUser->count();
+        return $links->count();
     }
 
-    /**
-     * Monthly chains: the earliest stalled MonthlyRecap month per user among the
-     * fully-closed months. "Stalled" = Pending or Failed under the retry budget.
-     * Capped at the latest closed month so the sweep never narrates the
-     * still-running current month (the monthly kickoff owns first-narration).
-     * Demo never stages a monthly row, so it is naturally absent here.
-     */
-    private function resumeMonthly(AnalysisService $service): int
+    private function resumeMonthly(AnalysisService $service, ChainResolver $chains): int
     {
-        $lastClosedMonth = RecapPeriod::lastClosedMonth();
+        $links = $chains->stalledMonthlyLinkPerUser();
 
-        $earliestPerUser = Analysis::query()
-            ->stalled()
-            ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
-            ->where('analysis_type', AnalysisType::MonthlyRecap)
-            ->where('discriminator', '<=', $lastClosedMonth)
-            ->orderBy('discriminator')
-            ->get(['subject_id', 'discriminator'])
-            ->unique('subject_id');
-
-        foreach ($earliestPerUser as $row) {
+        foreach ($links as $link) {
             $service->request(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-                subjectId: (int) $row->subject_id,
+                subjectId: $link->subjectId,
                 type: AnalysisType::MonthlyRecap,
-                discriminator: $row->discriminator,
+                discriminator: $link->discriminator,
                 invalidate: false,
             );
         }
 
-        return $earliestPerUser->count();
+        return $links->count();
     }
 
     /**
