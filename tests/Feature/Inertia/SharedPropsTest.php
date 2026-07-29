@@ -29,12 +29,12 @@ it('shares every documented key on every response', function (): void {
         'webPushPublicKey',
         'equippedAccessories',
         'pendingReveal',
-        'stravaSync',
         'goalsSummary',
+        'stravaSync',
         'hrZonesChangedAt',
+        'stravaZoneScopeMissing',
         'telegramConnected',
         'webPushSubscribed',
-        'stravaZoneScopeMissing',
         'aiPaused',
     ]);
 });

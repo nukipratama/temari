@@ -41,7 +41,7 @@ so a fresh inline `equipped={{...}}` doesn't rebuild the whole tree.
 [Temari.tsx](../../resources/js/components/temari/Temari.tsx) is the **wrapper you
 almost always use**. It reads `equippedAccessories` from the globally-shared
 Inertia props (built in
-[SharedProps.php](../../app/Services/Inertia/SharedProps.php)),
+[GamificationProps.php](../../app/Services/Inertia/GamificationProps.php)),
 maps them with `serverToEquipped`
 ([equippedAccessories.ts](../../resources/js/lib/equippedAccessories.ts)), and
 renders `TemariProto`. So a hard-earned headband shows up *everywhere* Temari
