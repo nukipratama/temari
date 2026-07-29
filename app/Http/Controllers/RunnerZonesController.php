@@ -8,6 +8,8 @@ use App\Http\Requests\UpdateHrZonesRequest;
 use App\Jobs\Strava\SyncZonesJob;
 use App\Models\RunnerProfile;
 use App\Models\User;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -81,12 +83,16 @@ class RunnerZonesController extends Controller
      * reflects the refreshed zones + `strava` source; the job swallows every
      * Strava error, so a slow/failed pull just leaves the profile untouched.
      */
-    public function resyncFromStrava(Request $request): RedirectResponse
+    public function resyncFromStrava(Request $request, AppConfig $config): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
 
         abort_unless($this->canSyncFromStrava($user), 403);
+
+        if (! $config->boolean(AppConfigKey::StravaEnabled)) {
+            return back()->with('info', 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.');
+        }
 
         SyncZonesJob::dispatchSync($user->id, force: true);
 

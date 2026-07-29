@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Jobs\Strava\ResyncActivityJob;
 use App\Models\Activity;
 use App\Models\User;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -18,11 +20,15 @@ use Illuminate\Http\Request;
  */
 class ResyncActivityController extends Controller
 {
-    public function __invoke(Request $request, Activity $activity): RedirectResponse
+    public function __invoke(Request $request, Activity $activity, AppConfig $config): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
         abort_unless($user->can('view', $activity), 404);
+
+        if (! $config->boolean(AppConfigKey::StravaEnabled)) {
+            return back()->with('info', 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.');
+        }
 
         // A manual resync re-narrates the latest run; the webhook path does not.
         ResyncActivityJob::dispatch($activity->id, renarrate: true);

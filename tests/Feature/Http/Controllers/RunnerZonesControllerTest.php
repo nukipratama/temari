@@ -6,6 +6,8 @@ use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\Strava\ZoneFetcher;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -207,4 +209,23 @@ it('forbids re-syncing without the profile:read_all scope, without touching Stra
     $this->actingAs($user)
         ->post('/pengaturan/zona/sinkron-strava')
         ->assertForbidden();
+});
+
+it('says so instead of touching Strava while the kill-switch is off', function (): void {
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all,profile:read_all']);
+    RunnerProfile::factory()->for($user)->create(['source' => 'manual', 'max_hr' => 200]);
+
+    $fetcher = Mockery::mock(ZoneFetcher::class);
+    $fetcher->shouldNotReceive('fetch');
+    app()->instance(ZoneFetcher::class, $fetcher);
+
+    $this->actingAs($user)
+        ->post('/pengaturan/zona/sinkron-strava')
+        ->assertRedirect()
+        ->assertSessionMissing('success')
+        ->assertSessionHas('info');
+
+    expect(RunnerProfile::query()->where('user_id', $user->id)->value('source'))->toBe('manual');
 });

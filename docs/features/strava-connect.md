@@ -9,8 +9,13 @@ code_refs:
   - app/Http/Controllers/Auth/StravaAuthController.php
   - app/Http/Controllers/Strava/SyncController.php
   - app/Http/Controllers/Strava/StravaWebhookController.php
+  - app/Http/Controllers/Strava/ResyncActivityController.php
+  - app/Http/Controllers/RunnerZonesController.php
   - resources/js/components/StravaSyncButton.tsx
   - resources/js/components/StravaSyncBadge.tsx
+  - resources/js/components/StravaAction.tsx
+  - resources/js/components/StravaPausedBanner.tsx
+  - app/Services/Inertia/StravaProps.php
   - routes/web.php
 ---
 
@@ -48,6 +53,16 @@ Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../route
 
 [StravaSyncBadge](../../resources/js/components/StravaSyncBadge.tsx) reflects status in the nav: a green dot + relative "synced" time when ready, a pulsing "Lagi sinkron" while syncing, an ember "Strava putus" when revoked.
 
+Two more manual re-pulls exist beyond "Sync sekarang": [ResyncActivityController](../../app/Http/Controllers/Strava/ResyncActivityController.php) behind the run detail page's "Resync dari Strava", and `RunnerZonesController::resyncFromStrava` behind the Pengaturan zone "Sinkron ulang dari Strava" (which runs [SyncZonesJob](../../app/Jobs/Strava/SyncZonesJob.php) inline rather than queued).
+
+## Kill-switch pause
+
+The `/pulse` Strava kill-switch (`AppConfigKey::StravaEnabled`) is enforced downstream in [ActivityPipeline](../../app/Services/Run/Ingest/ActivityPipeline.php) and [SyncOrchestrator](../../app/Services/Run/Ingest/SyncOrchestrator.php), but downstream-only enforcement is invisible: the buttons above used to queue work and flash success for a pull that would never happen.
+
+- **Shared state.** [StravaProps](../../app/Services/Inertia/StravaProps.php) shares a `stravaPaused` boolean, cached globally under `SharedPropCacheKey::StravaPaused` and busted by `SystemControl::toggleStrava()` so a flip lands on the next request. Only the pause *fact* crosses to the client, never the operator reason. `StravaSyncState` is deliberately untouched: other components branch on that union, and a fifth variant would force every one of them to handle it.
+- **UI.** [StravaAction](../../resources/js/components/StravaAction.tsx) wraps each manual affordance and renders nothing while paused, so the control is *absent* rather than greyed out; [StravaPausedBanner](../../resources/js/components/StravaPausedBanner.tsx) carries the single calm explanation app-wide. Connect/reconnect links are **not** gated: OAuth still completes, and Strava is the only way to sign in.
+- **Server.** All three re-pull controllers guard at the entry point and answer `back()->with('info', …)`, never a fake `success`. The downstream guards stay as belt and braces.
+
 ## Webhook (live push)
 
 [StravaWebhookController](../../app/Http/Controllers/Strava/StravaWebhookController.php) is unauthenticated by design — Strava calls it without a session.
@@ -55,7 +70,7 @@ Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../route
 - `verify()` (GET) answers the subscription handshake, echoing `hub.challenge` only when `hub.verify_token` matches our configured secret via `hash_equals`.
 - `handle()` (POST) acks 200 fast and queues the work. Activity `create`/`update` → `SyncActivitiesJob` for that one activity. **Destructive events are treated as forgeable hints, not commands** (the body's `owner_id` is attacker-supplied): activity `delete` queues `CleanupDeletedActivityJob`, which only deletes after Strava confirms the activity truly 404s with the stored token; athlete `delete` / `updates.authorized === 'false'` queues [VerifyStravaRevocationJob](../../app/Jobs/Strava/VerifyStravaRevocationJob.php), which only `markRevoked()`s after `/athlete` returns a genuine 401. A live grant (2xx) means the event was forged/stale and is ignored. Unknown `owner_id` is a silent ack, never a leak. A `strava_webhook` Pulse heartbeat lets ops spot a delivery flatline.
 
-The POST route is rate-limited (60/min) to blunt amplification. The kill-switch / rate limiting downstream lives in [[strava-circuit-breaker-rate-limit]]; the edge runs behind Cloudflare per [[trust-all-proxies-cloudflare]].
+The POST route is rate-limited (60/min) to blunt amplification. The circuit breaker / rate limiting downstream lives in [[strava-circuit-breaker-rate-limit]]; the edge runs behind Cloudflare per [[trust-all-proxies-cloudflare]].
 
 ## See also
 

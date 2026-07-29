@@ -91,6 +91,14 @@ it('toggleStrava flips the Strava kill-switch in app_config', function (): void 
     expect(new AppConfig()->boolean(AppConfigKey::StravaEnabled))->toBeFalse();
 });
 
+it('toggleStrava busts the cached strava-paused signal so the banner reflects the flip immediately', function (): void {
+    Cache::forever(SharedPropCacheKey::StravaPaused->key(), false);
+
+    Livewire::test(SystemControl::class)->call('toggleStrava');
+
+    expect(Cache::has(SharedPropCacheKey::StravaPaused->key()))->toBeFalse();
+});
+
 it('resetBreaker force-closes an open breaker', function (): void {
     $breaker = new StravaCircuitBreaker(new AppConfig());
     for ($i = 0; $i < 5; $i++) {

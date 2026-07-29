@@ -5,6 +5,7 @@ import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import PillButton from '@/components/ui/PillButton';
 import SendNotificationButton from '@/components/SendNotificationButton';
+import StravaAction from '@/components/StravaAction';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
@@ -237,22 +238,24 @@ export default function RunsShow({
                 </BackLink>
 
                 <div className="mb-5 flex flex-wrap gap-2">
-                    <PillButton
-                        tone="outline"
-                        size="sm"
-                        disabled={resyncing}
-                        className="disabled:opacity-60 disabled:cursor-not-allowed"
-                        onClick={resync}
-                    >
-                        <Icon
-                            icon={resyncing ? 'mdi:loading' : 'mdi:sync'}
-                            width={15}
-                            height={15}
-                            className={resyncing ? 'animate-spin' : undefined}
-                            aria-hidden
-                        />
-                        {resyncing ? 'Lagi narik…' : 'Resync dari Strava'}
-                    </PillButton>
+                    <StravaAction>
+                        <PillButton
+                            tone="outline"
+                            size="sm"
+                            disabled={resyncing}
+                            className="disabled:opacity-60 disabled:cursor-not-allowed"
+                            onClick={resync}
+                        >
+                            <Icon
+                                icon={resyncing ? 'mdi:loading' : 'mdi:sync'}
+                                width={15}
+                                height={15}
+                                className={resyncing ? 'animate-spin' : undefined}
+                                aria-hidden
+                            />
+                            {resyncing ? 'Lagi narik…' : 'Resync dari Strava'}
+                        </PillButton>
+                    </StravaAction>
                     <SendNotificationButton
                         url={`/aktivitas/${activity.id}/kirim`}
                         retryAfterSeconds={notificationRetryAfterSeconds}

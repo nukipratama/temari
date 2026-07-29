@@ -111,7 +111,7 @@ const insightDefaults = {
 
 function renderShow(
     overrides: Partial<Parameters<typeof RunsShow>[0]> = {},
-    { telegramConnected = false }: { telegramConnected?: boolean } = {},
+    { telegramConnected = false, stravaPaused = false }: { telegramConnected?: boolean; stravaPaused?: boolean } = {},
 ) {
     // telegramConnected is now a shared Inertia prop, read via usePage.
     setMockPage({
@@ -119,6 +119,7 @@ function renderShow(
         flash: {},
         demoLoginEnabled: false,
         telegramConnected,
+        stravaPaused,
     });
     return render(
         <RunsShow
@@ -333,6 +334,11 @@ describe('Runs/Show', () => {
             {},
             expect.objectContaining({ preserveScroll: true, onStart: expect.any(Function), onFinish: expect.any(Function) }),
         );
+    });
+
+    it('hides the Resync button entirely while the Strava kill-switch is off', () => {
+        renderShow({}, { stravaPaused: true });
+        expect(screen.queryByText('Resync dari Strava')).not.toBeInTheDocument();
     });
 
     it('disables the Resync button and shows a pending label while the request is in flight', () => {

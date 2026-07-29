@@ -10,6 +10,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
+import StravaAction from '@/components/StravaAction';
 
 const ZONE_KEYS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 type ZoneKey = (typeof ZONE_KEYS)[number];
@@ -188,16 +189,18 @@ export default function ZonaHR({
                     {source !== 'default' && (
                         <div className="mt-4 flex flex-wrap items-center gap-3">
                             {canShowResync && (
-                                <PillButton tone="outline" size="sm" onClick={resyncFromStrava} disabled={resyncing}>
-                                    <Icon
-                                        icon={resyncing ? 'mdi:loading' : 'mdi:sync'}
-                                        width={14}
-                                        height={14}
-                                        className={resyncing ? 'animate-spin' : undefined}
-                                        aria-hidden
-                                    />
-                                    {resyncing ? 'Lagi narik…' : 'Sinkron ulang dari Strava'}
-                                </PillButton>
+                                <StravaAction>
+                                    <PillButton tone="outline" size="sm" onClick={resyncFromStrava} disabled={resyncing}>
+                                        <Icon
+                                            icon={resyncing ? 'mdi:loading' : 'mdi:sync'}
+                                            width={14}
+                                            height={14}
+                                            className={resyncing ? 'animate-spin' : undefined}
+                                            aria-hidden
+                                        />
+                                        {resyncing ? 'Lagi narik…' : 'Sinkron ulang dari Strava'}
+                                    </PillButton>
+                                </StravaAction>
                             )}
                             <PillButton tone="outline" size="sm" onClick={resetToDefault}>
                                 <Icon icon="mdi:backup-restore" width={14} height={14} aria-hidden />

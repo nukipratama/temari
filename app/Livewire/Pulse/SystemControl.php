@@ -34,6 +34,7 @@ class SystemControl extends Card
     public function toggleStrava(): void
     {
         $this->toggle(AppConfigKey::StravaEnabled);
+        SharedPropCacheKey::StravaPaused->forget();
     }
 
     public function resetBreaker(): void

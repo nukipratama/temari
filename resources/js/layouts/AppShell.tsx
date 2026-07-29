@@ -9,6 +9,7 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import ErrorBanner from '@/components/ErrorBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
+import StravaPausedBanner from '@/components/StravaPausedBanner';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import type { SharedProps, UnlockFlash } from '@/types/inertia';
@@ -60,6 +61,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
             <ErrorBanner />
             <StravaZoneReconnectBanner />
             <AiOutageBanner />
+            <StravaPausedBanner />
 
             {/* Deliberately unkeyed and unanimated. A `key` here forced React to
                 tear down and rebuild the whole content subtree on every visit

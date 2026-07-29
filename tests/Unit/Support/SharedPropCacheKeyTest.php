@@ -9,12 +9,14 @@ it('suffixes per-user keys with the user id', function (SharedPropCacheKey $case
     expect($case->key(7))->toBe($case->value.':7');
 })->with(array_filter(
     SharedPropCacheKey::cases(),
-    fn (SharedPropCacheKey $case): bool => $case !== SharedPropCacheKey::AiPaused,
+    fn (SharedPropCacheKey $case): bool => ! in_array($case, [SharedPropCacheKey::AiPaused, SharedPropCacheKey::StravaPaused], true),
 ));
 
-it('keeps the global ai-paused signal un-suffixed even when handed a user id', function (): void {
+it('keeps the global pause signals un-suffixed even when handed a user id', function (): void {
     expect(SharedPropCacheKey::AiPaused->key())->toBe('ai-paused')
-        ->and(SharedPropCacheKey::AiPaused->key(7))->toBe('ai-paused');
+        ->and(SharedPropCacheKey::AiPaused->key(7))->toBe('ai-paused')
+        ->and(SharedPropCacheKey::StravaPaused->key())->toBe('strava-paused')
+        ->and(SharedPropCacheKey::StravaPaused->key(7))->toBe('strava-paused');
 });
 
 it('gives every key a positive TTL', function (SharedPropCacheKey $case): void {
@@ -23,6 +25,7 @@ it('gives every key a positive TTL', function (SharedPropCacheKey $case): void {
 
 it('keeps the documented TTLs', function (): void {
     expect(SharedPropCacheKey::AiPaused->ttl())->toBe(60)
+        ->and(SharedPropCacheKey::StravaPaused->ttl())->toBe(60)
         ->and(SharedPropCacheKey::StravaSync->ttl())->toBe(120)
         ->and(SharedPropCacheKey::GoalsSummary->ttl())->toBe(120)
         ->and(SharedPropCacheKey::HrZonesChangedAt->ttl())->toBe(300)

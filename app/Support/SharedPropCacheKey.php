@@ -23,6 +23,7 @@ enum SharedPropCacheKey: string
     case EquippedAccessories = 'equipped-accessories';
     case GoalsSummary = 'goals-summary';
     case HrZonesChangedAt = 'hr-zones-changed-at';
+    case StravaPaused = 'strava-paused';
     case StravaSync = 'strava-sync';
     case StravaZoneScopeMissing = 'strava-zone-scope-missing';
     case TelegramConnected = 'telegram-connected';
@@ -61,6 +62,13 @@ enum SharedPropCacheKey: string
     private const int AI_PAUSED_SECONDS = 60;
 
     /**
+     * TTL for the global Strava-pause signal, which reads the `strava.enabled`
+     * kill-switch from the app_config control plane on every page load. A flip
+     * on /pulse busts the key, so the TTL is only a safety net.
+     */
+    private const int STRAVA_PAUSED_SECONDS = 60;
+
+    /**
      * TTL shared by the four settings-shaped signals: equipped accessories,
      * Telegram reachability, web-push reachability and the missing Strava zone
      * scope. Each moves only on an explicit write — an equip, a connect or
@@ -73,13 +81,13 @@ enum SharedPropCacheKey: string
     private const int SETTINGS_SIGNAL_SECONDS = 300;
 
     /**
-     * `AiPaused` is a single global signal, so it deliberately carries no
-     * per-user suffix and ignores `$userId`.
+     * `AiPaused` and `StravaPaused` are single global signals, so they
+     * deliberately carry no per-user suffix and ignore `$userId`.
      */
     public function key(?int $userId = null): string
     {
         return match ($this) {
-            self::AiPaused => $this->value,
+            self::AiPaused, self::StravaPaused => $this->value,
             default => "{$this->value}:{$userId}",
         };
     }
@@ -88,6 +96,7 @@ enum SharedPropCacheKey: string
     {
         return match ($this) {
             self::AiPaused => self::AI_PAUSED_SECONDS,
+            self::StravaPaused => self::STRAVA_PAUSED_SECONDS,
             self::GoalsSummary => self::GOALS_SUMMARY_SECONDS,
             self::HrZonesChangedAt => self::HR_ZONES_CHANGED_SECONDS,
             self::StravaSync => self::STRAVA_SYNC_SECONDS,
