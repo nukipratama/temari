@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
-import { useAnalysisTrigger } from './useAnalysisTrigger';
+import { triggerAnalysis, useAnalysisTrigger } from './useAnalysisTrigger';
 import type { AnalysisPayload } from '@/types/inertia';
 
 const fetchMock = vi.fn();
@@ -414,5 +414,39 @@ describe('useAnalysisTrigger', () => {
             await result.current.trigger();
         });
         expect(onUpdate).toHaveBeenCalledWith(next);
+    });
+});
+
+describe('triggerAnalysis', () => {
+    it('POSTs the routes-built trigger url with the CSRF + AJAX headers', async () => {
+        const response = { ok: true } as Response;
+        fetchMock.mockResolvedValue(response);
+
+        await expect(triggerAnalysis(payload({ subject_id: 8, discriminator: '2026-05-19' }))).resolves.toBe(response);
+
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe('/api/analyses/briefing_suggestion/8/trigger?discriminator=2026-05-19');
+        expect(init.method).toBe('POST');
+        expect(init.credentials).toBe('same-origin');
+        expect((init.headers as Record<string, string>)['X-CSRF-TOKEN']).toBe('test-token');
+        expect((init.headers as Record<string, string>)['X-Requested-With']).toBe('XMLHttpRequest');
+    });
+
+    it('issues the same request the hook does, so the bulk control cannot drift from it', async () => {
+        fetchMock.mockResolvedValue({ ok: true, json: async () => payload({ status: 'queued' }) });
+        const analysis = payload({ subject_id: 8, discriminator: '2026-05-19' });
+
+        const { result } = renderHook(() => useAnalysisTrigger(analysis, []));
+        await act(async () => {
+            await result.current.trigger();
+        });
+        const viaHook = fetchMock.mock.calls[0] as [string, RequestInit];
+
+        fetchMock.mockClear();
+        await triggerAnalysis(analysis);
+        const viaBulk = fetchMock.mock.calls[0] as [string, RequestInit];
+
+        expect(viaBulk[0]).toBe(viaHook[0]);
+        expect(viaBulk[1]).toStrictEqual(viaHook[1]);
     });
 });

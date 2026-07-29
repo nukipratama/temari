@@ -52,8 +52,19 @@ describe('postJson', () => {
         expect(init.headers['X-Requested-With']).toBe('XMLHttpRequest');
     });
 
-    it('resolves to undefined and swallows a rejected fetch (network error)', async () => {
+    it('resolves with the raw Response so a caller can check .ok', async () => {
+        const response = new Response('{"ok":true}', { status: 429 });
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+
+        const result = await postJson('/api/x');
+
+        expect(result).toBe(response);
+        expect(result.ok).toBe(false);
+        expect(result.status).toBe(429);
+    });
+
+    it('rejects a network error rather than swallowing it, leaving the policy to the caller', async () => {
         vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-        await expect(postJson('/api/x')).resolves.toBeUndefined();
+        await expect(postJson('/api/x')).rejects.toThrow('offline');
     });
 });

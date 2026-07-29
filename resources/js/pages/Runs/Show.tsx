@@ -23,7 +23,7 @@ import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import { cn } from '@/lib/cn';
-import { csrfToken } from '@/lib/http';
+import { postJson } from '@/lib/http';
 import { aktivitasUrl } from '@/lib/routes';
 import PageContainer from '@/components/ui/PageContainer';
 import {
@@ -179,17 +179,7 @@ export default function RunsShow({
         }
         setReplaying(true);
         setReplayError(false);
-        void fetch(`/api/kartu/${card.id}/replay`, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: '{}',
-        })
+        void postJson(`/api/kartu/${card.id}/replay`)
             .then((response) => {
                 if (!response.ok) {
                     throw new Error(`Replay failed (${response.status})`);

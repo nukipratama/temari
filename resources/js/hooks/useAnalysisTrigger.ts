@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { csrfToken } from '@/lib/http';
+import { postJson } from '@/lib/http';
+import { analysisTriggerUrl } from '@/lib/routes';
 import type { AnalysisPayload, AnalysisStatus, SharedProps } from '@/types/inertia';
 
 const POLL_INITIAL_MS = 3000;
@@ -158,6 +159,15 @@ function subscribePoll(only: string[], onRetire: () => void): () => void {
 }
 
 /**
+ * POST the trigger endpoint to enqueue (or re-enqueue) one analysis. The caller
+ * owns the response: {@link useAnalysisTrigger} runs its state machine off it,
+ * the bulk control in FourLensGrid only awaits completion.
+ */
+export function triggerAnalysis(analysis: Pick<AnalysisPayload, 'type' | 'subject_id' | 'discriminator'>): Promise<Response> {
+    return postJson(analysisTriggerUrl(analysis));
+}
+
+/**
  * POST `/api/analyses/{type}/{subjectId}/trigger?discriminator=...` to enqueue
  * (or re-enqueue) an analysis. Optimistically flips local status to `queued`
  * while the request is in flight; falls back to `failed` on error.
@@ -185,20 +195,11 @@ export function useAnalysisTrigger(
         setError(null);
         setStatus('queued');
 
-        const base = `/api/analyses/${payload.type}/${payload.subject_id}/trigger`;
-        const url = payload.discriminator
-            ? `${base}?discriminator=${encodeURIComponent(payload.discriminator)}`
-            : base;
-
         try {
-            const response = await fetch(url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken(),
-                },
+            const response = await triggerAnalysis({
+                type: payload.type,
+                subject_id: payload.subject_id,
+                discriminator: payload.discriminator,
             });
 
             if (!response.ok) {

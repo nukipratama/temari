@@ -4,12 +4,13 @@ export function csrfToken(): string {
 }
 
 /**
- * Fire-and-forget POST to a plain-JSON endpoint (the "seen"/"dismiss" markers
- * that return `{"ok":true}`). Inertia's `router` rejects any non-Inertia
- * response, so these must go through `fetch`, not `router.post`. Errors are
- * swallowed — the next page load reflects the server state.
+ * POST to a plain-JSON endpoint (the "seen"/"replay" markers that return
+ * `{"ok":true}`, the analysis trigger that returns a payload). Inertia's
+ * `router` rejects any non-Inertia response, so these must go through `fetch`,
+ * not `router.post`. Resolves with the raw `Response` — each caller owns its
+ * own error policy.
  */
-export function postJson(url: string): Promise<void> {
+export function postJson(url: string): Promise<Response> {
     return fetch(url, {
         method: 'POST',
         credentials: 'same-origin',
@@ -20,7 +21,5 @@ export function postJson(url: string): Promise<void> {
             'X-Requested-With': 'XMLHttpRequest',
         },
         body: '{}',
-    })
-        .then(() => {})
-        .catch(() => {});
+    });
 }

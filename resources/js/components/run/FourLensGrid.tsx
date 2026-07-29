@@ -3,8 +3,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { Icon } from '@iconify/react';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Card from '@/components/ui/Card';
+import { triggerAnalysis } from '@/hooks/useAnalysisTrigger';
 import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
-import { csrfToken } from '@/lib/http';
 import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { cn } from '@/lib/cn';
@@ -60,22 +60,6 @@ function bulkButtonLabel(pending: boolean, cooldownRemaining: number): string {
     return 'Baca ulang semua';
 }
 
-async function triggerOne(analysis: AnalysisPayload): Promise<void> {
-    const base = `/api/analyses/${analysis.type}/${analysis.subject_id}/trigger`;
-    const url = analysis.discriminator
-        ? `${base}?discriminator=${encodeURIComponent(analysis.discriminator)}`
-        : base;
-    await fetch(url, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': csrfToken(),
-        },
-    });
-}
-
 export default function FourLensGrid({
     cerita,
     terjemahan,
@@ -107,7 +91,7 @@ export default function FourLensGrid({
     const triggerAll = useCallback(async () => {
         if (bulkPending || cooling) return;
         setBulkPending(true);
-        await Promise.allSettled(lenses.map((l) => triggerOne(l.analysis)));
+        await Promise.allSettled(lenses.map((l) => triggerAnalysis(l.analysis)));
         router.reload({ only: inertiaReloadProps });
         setBulkPending(false);
     }, [bulkPending, cooling, lenses, inertiaReloadProps]);
