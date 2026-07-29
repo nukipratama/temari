@@ -34,7 +34,9 @@ Named route: `kartu.index`. All cards link to their respective `route('aktivitas
 
 ## The grid (`/kartu`)
 
-Served by the `index` method of [CardController](../../app/Http/Controllers/CardController.php). It paginates the user's cards 24-per-page **newest-first** (`orderByDesc('id')`), and — when a `?rarity=` query is present — narrows to a single rarity. Three derived props ride along: `rarityCounts` (per-rarity totals), `featuredCard`, and the `selectedRarity` echo. Edition numbering ("#3 of 12 epics") is computed in one window-function pass by the private `editionIndexMap` method, so there's no N+1.
+Served by the `index` method of [CardController](../../app/Http/Controllers/CardController.php). It paginates the user's cards 24-per-page **newest-first** (`orderByDesc('id')`), and — when a `?rarity=` query is present — narrows to a single rarity. Three derived props ride along: `rarityCounts` (per-rarity totals), `featuredCard`, and the `selectedRarity` echo. Edition numbering ("#3 of 12 epics") is computed in one window-function pass by [CardPresenter](../../app/Services/Run/Story/CardPresenter.php), so there's no N+1.
+
+That presenter is the single owner of the card shape. It holds the rarity counts, both edition strategies (a bulk index map for the grid, one aggregate query for a single card), the column whitelist that keeps internal columns out of Inertia, the mood fallback, and the `CardFlavor` payload. The grid, the card's full view on [[run-detail]], and the pending-reveal shared prop in [SharedProps](../../app/Services/Inertia/SharedProps.php) all read it, so the three can't drift apart.
 
 The page component [KoleksiKartu](../../resources/js/pages/Koleksi/Kartu.tsx) renders:
 

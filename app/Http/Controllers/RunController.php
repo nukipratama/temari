@@ -16,6 +16,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\PostRunNoteReader;
+use App\Services\Run\Story\CardPresenter;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
 use Carbon\Exceptions\InvalidFormatException;
@@ -597,7 +598,7 @@ class RunController extends Controller
         );
     }
 
-    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, RelativeEffort $relativeEffort): Response
+    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, RelativeEffort $relativeEffort, CardPresenter $cards): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -646,7 +647,7 @@ class RunController extends Controller
             // above, so a closure would defer nothing.
             'activity' => $activity,
             'detail' => $detail,
-            'card' => fn (): ?array => $this->cardPayload($activity->runCard, $user),
+            'card' => fn (): ?array => $this->cardPayload($cards, $activity->runCard, $user),
             'storyLine' => fn (): ?StoryLine => StoryLine::query()
                 ->where('activity_id', $activity->id)
                 ->where('kind', StoryLine::KIND_POST_RUN)
@@ -679,38 +680,16 @@ class RunController extends Controller
      *
      * @return array<string, mixed>|null
      */
-    private function cardPayload(?RunCard $card, User $user): ?array
+    private function cardPayload(CardPresenter $cards, ?RunCard $card, User $user): ?array
     {
         if ($card === null) {
             return null;
         }
 
-        $flavorAnalysis = Analysis::query()
-            ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
-            ->first();
-
-        // One aggregate pass for both the edition index and the rarity total,
-        // instead of two separate COUNT queries.
-        $editionStats = RunCard::query()
-            ->forUser($user->id)
-            ->where('rarity', $card->rarity)
-            ->selectRaw('COUNT(*) as total, SUM(id <= ?) as edition_index', [$card->id])
-            ->first();
-
         return [
-            // Explicit whitelist (not `...$card->toArray()`) so internal columns
-            // like `share_image_path` never leak into the Inertia payload —
-            // mirrors CardController::cardPayload's shared shape.
-            'id' => $card->id,
-            'activity_id' => $card->activity_id,
-            'rarity' => $card->rarity->value,
-            'special_move' => $card->special_move,
-            'badges' => $card->badges,
-            'flavor_analysis' => Analysis::toPayload($flavorAnalysis, AnalysisType::CardFlavor, RunCard::class, $card->id),
-            'edition' => [
-                'index' => (int) $editionStats?->getAttribute('edition_index'),
-                'total' => (int) $editionStats?->getAttribute('total'),
-            ],
+            ...$cards->base($card),
+            'flavor_analysis' => $cards->flavorAnalysis($card),
+            'edition' => $cards->edition($card, $user->id),
             'public_share_url' => route('aktivitas.show', ['activity' => $card->activity_id]),
         ];
     }

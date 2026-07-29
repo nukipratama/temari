@@ -5,18 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\ActivityDetail;
-use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\User;
-use App\Services\AI\AnalysisType;
-use App\Services\Run\Story\Temari;
+use App\Services\Run\Story\CardPresenter;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CardController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, CardPresenter $cards): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -34,42 +32,20 @@ class CardController extends Controller
             ->paginate(24)
             ->withQueryString();
 
-        $counts = $this->rarityCounts($user);
-        $editions = $this->editionIndexMap($user);
+        $counts = $cards->rarityCounts($user->id);
+        $editions = $cards->editionIndexMap($user->id);
 
-        $page->getCollection()->each(function (RunCard $c) use ($editions, $counts): void {
-            $c->setAttribute('edition', $this->edition($c, $editions, $counts));
-            $c->setAttribute('mood', $c->activity->postRunStoryLine->mood ?? Temari::moodForActivityOrDefault($c->activity));
+        $page->getCollection()->each(function (RunCard $c) use ($cards, $editions, $counts): void {
+            $c->setAttribute('edition', $cards->editionFromMap($c, $editions, $counts));
+            $c->setAttribute('mood', $cards->mood($c));
         });
 
         return Inertia::render('Koleksi/Kartu', [
             'cards' => $page,
             'selectedRarity' => $rarity,
-            'featuredCard' => $this->featuredCard($user, $rarity, $editions, $counts),
+            'featuredCard' => $this->featuredCard($cards, $user, $rarity, $editions, $counts),
             'rarityCounts' => $counts,
         ]);
-    }
-
-    /**
-     * The shared card shape every endpoint returns. Keep the three call sites
-     * (related, detail, featured) on this single mapper so they can't drift.
-     *
-     * @param  array<int, int>  $editions
-     * @param  array<string, int>  $counts
-     * @return array{id: int, activity_id: int, rarity: string, special_move: string, mood: string, badges: array<int, string>|null, detail: ActivityDetail|null, edition: array{index: int, total: int}}
-     */
-    private function cardPayload(RunCard $card, array $editions, array $counts): array
-    {
-        return [
-            'id' => $card->id,
-            'activity_id' => $card->activity_id,
-            'rarity' => $card->rarity->value,
-            'special_move' => $card->special_move,
-            'mood' => $card->activity->postRunStoryLine->mood ?? Temari::moodForActivityOrDefault($card->activity),
-            'badges' => $card->badges,
-            'detail' => $card->activity->detail,
-            'edition' => $this->edition($card, $editions, $counts),
-        ];
     }
 
     /**
@@ -77,7 +53,7 @@ class CardController extends Controller
      * @param  array<string, int>  $counts
      * @return array{id: int, activity_id: int, rarity: string, special_move: string, mood: string, badges: array<int, string>|null, detail: ActivityDetail|null, edition: array{index: int, total: int}, flavor_analysis: array<string, mixed>}|null
      */
-    private function featuredCard(User $user, ?string $rarity, array $editions, array $counts): ?array
+    private function featuredCard(CardPresenter $cards, User $user, ?string $rarity, array $editions, array $counts): ?array
     {
         $query = RunCard::query()
             ->forUser($user->id)
@@ -95,63 +71,12 @@ class CardController extends Controller
             return null;
         }
 
-        $flavor = Analysis::query()
-            ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
-            ->first();
-
         return [
-            ...$this->cardPayload($card, $editions, $counts),
-            'flavor_analysis' => Analysis::toPayload($flavor, AnalysisType::CardFlavor, RunCard::class, $card->id),
-        ];
-    }
-
-    /**
-     * Map of card id => 1-based edition index within its rarity (chronological by id),
-     * for the user's whole collection. One window-function pass, no N+1.
-     *
-     * @return array<int, int>
-     */
-    private function editionIndexMap(User $user): array
-    {
-        return RunCard::query()
-            ->forUser($user->id)
-            ->selectRaw('id, ROW_NUMBER() OVER (PARTITION BY rarity ORDER BY id) AS edition_index')
-            ->pluck('edition_index', 'id')
-            ->map(fn ($index): int => (int) $index)
-            ->all();
-    }
-
-    /**
-     * @param  array<int, int>  $editions
-     * @param  array<string, int>  $counts
-     * @return array{index: int, total: int}
-     */
-    private function edition(RunCard $card, array $editions, array $counts): array
-    {
-        return [
-            'index' => $editions[$card->id] ?? 1,
-            'total' => $counts[$card->rarity->value] ?? 1,
-        ];
-    }
-
-    /**
-     * @return array<string, int>
-     */
-    private function rarityCounts(User $user): array
-    {
-        $rows = RunCard::query()
-            ->forUser($user->id)
-            ->selectRaw('rarity, COUNT(*) as total')
-            ->groupBy('rarity')
-            ->pluck('total', 'rarity')
-            ->all();
-
-        return [
-            'common' => (int) ($rows['common'] ?? 0),
-            'uncommon' => (int) ($rows['uncommon'] ?? 0),
-            'rare' => (int) ($rows['rare'] ?? 0),
-            'epic' => (int) ($rows['epic'] ?? 0),
-            'legendary' => (int) ($rows['legendary'] ?? 0),
+            ...$cards->base($card),
+            'mood' => $cards->mood($card),
+            'detail' => $card->activity->detail,
+            'edition' => $cards->editionFromMap($card, $editions, $counts),
+            'flavor_analysis' => $cards->flavorAnalysis($card),
         ];
     }
 }

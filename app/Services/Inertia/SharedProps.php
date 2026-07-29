@@ -11,7 +11,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\Gamification\EquippedAccessories;
 use App\Services\Gamification\GoalResolver;
 use App\Services\Notifications\ChannelRouter;
-use App\Services\Run\Story\Temari;
+use App\Services\Run\Story\CardPresenter;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Http\Request;
 
@@ -34,6 +34,7 @@ final readonly class SharedProps
         private ChannelRouter $channels,
         private GoalResolver $goals,
         private AnalysisService $analyses,
+        private CardPresenter $cards,
     ) {
     }
 
@@ -329,7 +330,7 @@ final readonly class SharedProps
             'activity_id' => $card->activity_id,
             'rarity' => $card->rarity->value,
             'special_move' => $card->special_move,
-            'mood' => $card->activity->postRunStoryLine->mood ?? Temari::moodForActivityOrDefault($card->activity),
+            'mood' => $this->cards->mood($card),
             'badges' => $badges,
             'detail_name' => $detail?->name,
             'distance_m' => $detail?->distance,
@@ -339,26 +340,7 @@ final readonly class SharedProps
             'stream_summary' => $detail?->stream_summary,
             'summary_polyline' => $detail?->summary_polyline,
             'public_share_url' => route('aktivitas.show', ['activity' => $card->activity_id]),
-            'edition' => $this->editionFor($user, $card),
-        ];
-    }
-
-    /**
-     * Collector number for a single card within its rarity, so the reveal shows
-     * the same "#3/7" as the grid/detail pages. Two cheap counts, only paid when
-     * a reveal is actually pending (the early return above gates this).
-     *
-     * @return array{index: int, total: int}
-     */
-    private function editionFor(User $user, RunCard $card): array
-    {
-        $sameRarity = RunCard::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->where('rarity', $card->rarity);
-
-        return [
-            'index' => (clone $sameRarity)->where('id', '<=', $card->id)->count(),
-            'total' => $sameRarity->count(),
+            'edition' => $this->cards->edition($card, $user->id),
         ];
     }
 }
