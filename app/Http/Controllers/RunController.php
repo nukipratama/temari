@@ -218,14 +218,24 @@ class RunController extends Controller
             return $loadedRuns;
         };
 
+        /** @var array{notes: array<int, array{oneline: string, mood: string}>, moods: array<int, string>}|null $loadedNotes */
+        $loadedNotes = null;
+        $loadNotes = function () use ($noteReader, $loadRuns, &$loadedNotes): array {
+            if ($loadedNotes === null) {
+                $loadedNotes = $noteReader->bundleFor($loadRuns()->pluck('id')->all());
+            }
+
+            return $loadedNotes;
+        };
+
         $currentWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
         return Inertia::render('Riwayat/Jejak', [
             'runs' => fn (): Collection => $loadRuns(),
-            'notes' => fn (): array => $noteReader->forActivities($loadRuns()->pluck('id')->all()),
+            'notes' => fn (): array => $loadNotes()['notes'],
             // Persisted post-run mood per run, so the list mascot matches the
             // backend mood even before the speech (and its note) is ready.
-            'moods' => fn (): array => $noteReader->moodsFor($loadRuns()->pluck('id')->all()),
+            'moods' => fn (): array => $loadNotes()['moods'],
             'rangeFilter' => $effectiveRange,
             'moodFilter' => $moodFilter,
             'distanceFilter' => $distanceFilter,

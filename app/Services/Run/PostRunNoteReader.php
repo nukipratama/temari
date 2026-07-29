@@ -58,14 +58,24 @@ class PostRunNoteReader
      */
     public function forActivities(array $activityIds): array
     {
+        return $this->bundleFor($activityIds)['notes'];
+    }
+
+    /**
+     * Notes and moods for one batch, for the surfaces that render both. Calling
+     * {@see self::forActivities()} and {@see self::moodsFor()} side by side runs
+     * the same StoryLine read twice in a single request.
+     *
+     * @param  array<int, int>  $activityIds
+     * @return array{notes: array<int, array{oneline: string, mood: string}>, moods: array<int, string>}
+     */
+    public function bundleFor(array $activityIds): array
+    {
         if ($activityIds === []) {
-            return [];
+            return ['notes' => [], 'moods' => []];
         }
 
-        $moodByActivity = StoryLine::query()
-            ->where('kind', StoryLine::KIND_POST_RUN)
-            ->whereIn('activity_id', $activityIds)
-            ->pluck('mood', 'activity_id');
+        $moodByActivity = $this->moodsFor($activityIds);
 
         $speechByActivity = Analysis::query()
             ->where('subject_type', Activity::class)
@@ -77,14 +87,14 @@ class PostRunNoteReader
         $notes = [];
         foreach ($activityIds as $id) {
             $speech = $speechByActivity->get($id);
-            $mood = $moodByActivity->get($id);
+            $mood = $moodByActivity[$id] ?? null;
             if ($speech === null || $speech === '' || $mood === null) {
                 continue;
             }
             $notes[$id] = ['oneline' => $speech, 'mood' => $mood];
         }
 
-        return $notes;
+        return ['notes' => $notes, 'moods' => $moodByActivity];
     }
 
     /**
