@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Services\AI\AzureConfigCircuitBreaker;
 use Illuminate\Database\QueryException;
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeBriefingJob;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -241,7 +241,7 @@ it('activity group debounces — 3 sibling-type requests dispatch only one Analy
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
 });
 
-it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefingJob', function (): void {
+it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefingMascotVoiceJob', function (): void {
     $user = User::factory()->create();
 
     $this->service->requestBriefing($user, '2026-05-18');
@@ -252,13 +252,13 @@ it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefin
     $row = Analysis::query()
         ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
         ->where('subject_id', $user->id)
-        ->where('analysis_type', AnalysisType::BriefingSuggestion)
+        ->where('analysis_type', AnalysisType::BriefingMascotVoice)
         ->where('discriminator', '2026-05-18')
         ->firstOrFail();
 
     Bus::assertDispatched(
-        AnalyzeBriefingJob::class,
-        fn (AnalyzeBriefingJob $job): bool => $job->analysisId === $row->id,
+        AnalyzeBriefingMascotVoiceJob::class,
+        fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $row->id,
     );
 });
 
@@ -427,7 +427,7 @@ it('markDone records content and generated_at', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
     ]);
 
@@ -450,7 +450,7 @@ it('markDone stores a content fingerprint when given, and leaves it null otherwi
     $without = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
     ]);
 
@@ -465,7 +465,7 @@ it('markDone uses supplied generatedAt when given', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
     ]);
 
@@ -480,7 +480,7 @@ it('markFailed records error message without clearing prior content', function (
     $row = Analysis::factory()->done('prior content')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
     ]);
 
@@ -501,7 +501,7 @@ it('markFailed alerts maintainers exactly at the dead-letter crossing', function
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
         'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
     ]);
@@ -520,7 +520,7 @@ it('markFailed does not alert while a Failed row is still under the retry budget
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
         'attempts' => 1,
     ]);
@@ -534,7 +534,7 @@ it('markProcessing increments attempts', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
         'attempts' => 0,
     ]);
@@ -817,7 +817,7 @@ it('markDone does not start the re-trigger cooldown under withoutDispatching (de
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
     ]);
 

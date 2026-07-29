@@ -5,10 +5,9 @@ import { type TemariPose } from '@/components/temari/TemariProto';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
-import KataTemariCompact from '@/components/dashboard/KataTemariCompact';
+import KataTemariCard from '@/components/dashboard/KataTemariCard';
 import VitalChips from '@/components/dashboard/VitalChips';
 import FeaturedKartuPanel from '@/components/dashboard/FeaturedKartuPanel';
-import SuggestionCard from '@/components/dashboard/SuggestionCard';
 import LastLariCard, { type LastRunNote } from '@/components/dashboard/LastLariCard';
 import KondisiCard from '@/components/dashboard/KondisiCard';
 import GoalsCard from '@/components/dashboard/GoalsCard';
@@ -59,20 +58,19 @@ export default function HariIni({
             <Head title="Hari Ini" />
             <PageContainer>
                 {/* HEADLINE */}
-                <header className="grid grid-cols-1 items-end gap-9 lg:grid-cols-[1.4fr_1fr]">
-                    <div>
-                        <Eyebrow token="hero" tone="ink-2" className="mb-3.5">
-                            {dateLine}
-                        </Eyebrow>
-                        <h1 className="font-display text-display-2xl text-ink">
-                            Halo, {firstName}<br />
-                            <span className="italic text-horizon">{vibeSubtitle}</span>
-                        </h1>
-                    </div>
-                    <aside className="pb-3.5">
-                        <KataTemariCompact briefing={briefing} pose={pose} />
-                    </aside>
+                <header>
+                    <Eyebrow token="hero" tone="ink-2" className="mb-3.5">
+                        {dateLine}
+                    </Eyebrow>
+                    <h1 className="font-display text-display-2xl text-ink">
+                        Halo, {firstName}<br />
+                        <span className="italic text-horizon">{vibeSubtitle}</span>
+                    </h1>
                 </header>
+
+                <div className="mt-8">
+                    <KataTemariCard briefing={briefing} pose={pose} lastRun={lastRun} />
+                </div>
 
                 {recentRuns.length === 0 ? (
                     <EmptyRunsState />
@@ -86,9 +84,8 @@ export default function HariIni({
                             <VitalChips briefing={briefing} load={load} />
                         </section>
 
-                        {/* 3-UP */}
-                        <section className="mt-8 grid gap-4 lg:grid-cols-3">
-                            <SuggestionCard suggestion={briefing.suggestion} lastRun={lastRun} />
+                        {/* 2-UP */}
+                        <section className="mt-8 grid gap-4 lg:grid-cols-2">
                             {lastRun && <LastLariCard run={lastRun} pose={poseForRun(lastRun, recentMoods[lastRun.activity_id] ?? null)} note={lastRunNote} />}
                             <KondisiCard load={load} snapshot={snapshot} />
                         </section>

@@ -23,7 +23,6 @@ use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
-use App\Services\AI\Narrators\BriefingNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
@@ -351,22 +350,19 @@ it('RunInsightNarrator prompt tells the model to fetch its own numbers and not i
         ->and($prompt)->toContain('JANGAN dikarang');
 });
 
-it('BriefingNarrator sends only the addressee and the day, and reads the rest', function (): void {
-    $user = User::factory()->create();
-    $narrator = app(BriefingNarrator::class);
-
-    expect(array_keys($narrator->context($user, Carbon::today())))
-        ->toBe(['name', 'vibe', 'date'])
-        ->and(array_column($narrator->toolbox($user, Carbon::today())->definitions(), 'name'))
-        ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_recent_baseline']);
-});
-
-it('BriefingMascotVoiceNarrator reads the day and can compare against the last run', function (): void {
+it('BriefingMascotVoiceNarrator reads the day, the last run and the 28d baseline', function (): void {
     $user = User::factory()->create();
     $narrator = app(BriefingMascotVoiceNarrator::class);
 
     expect(array_column($narrator->toolbox($user, Carbon::today())->definitions(), 'name'))
-        ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_latest_past_you']);
+        ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_latest_past_you', 'get_recent_baseline']);
+});
+
+it('BriefingMascotVoiceNarrator prompt tells the model to fetch its own numbers and not invent the rest', function (): void {
+    $prompt = narratorPrompt(BriefingMascotVoiceNarrator::class);
+
+    expect($prompt)->toContain('Ambil sendiri lewat tool')
+        ->and($prompt)->toContain('JANGAN dikarang');
 });
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
@@ -906,6 +902,7 @@ function bootMascotNarrator(string $content): BriefingMascotVoiceNarrator
         app(VerdictNarrator::class),
         fakeCaller($content),
         app(PastYouMatcher::class),
+        app(RunBaseline::class),
     );
 }
 

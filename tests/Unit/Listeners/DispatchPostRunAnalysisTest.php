@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
@@ -107,7 +106,7 @@ it('fans out activity + briefing + mascot voice analyses', function (): void {
     fire($activity);
 
     Bus::assertDispatched(AnalyzeActivityJob::class);
-    Bus::assertDispatched(AnalyzeBriefingJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
@@ -187,8 +186,8 @@ it('uses today as the briefing discriminator', function (): void {
     fire($activity);
 
     Bus::assertDispatched(
-        AnalyzeBriefingJob::class,
-        fn (AnalyzeBriefingJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === '2026-05-19',
+        AnalyzeBriefingMascotVoiceJob::class,
+        fn (AnalyzeBriefingMascotVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === '2026-05-19',
     );
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Carbon::setTestNow();
@@ -202,7 +201,7 @@ it('refreshes the daily briefing set on the second run of the day', function ():
     // The morning's briefing set finishes generating (rows flip to Done).
     Analysis::query()
         ->whereIn('analysis_type', [
-            AnalysisType::BriefingSuggestion->value,
+            AnalysisType::BriefingMascotVoice->value,
             AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
@@ -216,7 +215,7 @@ it('refreshes the daily briefing set on the second run of the day', function ():
     // A second run today re-narrates the whole daily set so each block reflects
     // both of today's runs, not just the morning one.
     Bus::assertDispatched(AnalyzeActivityJob::class);
-    Bus::assertDispatched(AnalyzeBriefingJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Carbon::setTestNow();
 });
@@ -229,7 +228,7 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
     // Today's daily set finishes generating (rows flip to Done).
     Analysis::query()
         ->whereIn('analysis_type', [
-            AnalysisType::BriefingSuggestion->value,
+            AnalysisType::BriefingMascotVoice->value,
             AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
@@ -241,7 +240,7 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
     fire($backfill);
 
     Bus::assertDispatched(AnalyzeActivityJob::class);
-    Bus::assertNotDispatched(AnalyzeBriefingJob::class);
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Carbon::setTestNow();
 });

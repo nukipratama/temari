@@ -68,16 +68,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
         // Backfill of a previous day leaves the Done rows untouched, so
         // re-ingesting old days never re-bills.
         $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
-        // BriefingMascotVoice is its own row job; dispatch it independently so
-        // its own LLM call runs alongside the briefing suggestion.
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::BriefingMascotVoice->subjectType(),
-            subjectId: $user->id,
-            type: AnalysisType::BriefingMascotVoice,
-            discriminator: $today,
-            delaySeconds: $delaySec,
-            invalidate: $isToday,
-        );
 
         if ($detail->start_date_local === null) {
             return;

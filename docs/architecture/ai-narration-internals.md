@@ -71,7 +71,7 @@ Every narrator now reads rather than receives. What remains in any context is on
 - the Indonesian **time-of-day bucket** (`subuh` / `pagi` / `siang` / `sore` / `malam`) so a morning briefing reads differently from an evening one ([`bucketFor`](app/Services/Run/Story/BriefingContext.php#L114));
 - **consecutive weeks active** — a streak proxy reusing the `WeeklySnapshot` rows we already keep, since we don't track a day-level streak ([`countConsecutiveActiveWeeks`](app/Services/Run/Story/BriefingContext.php#L98)).
 
-Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing ([`recoveryHoursForUser`](app/Services/Run/Story/BriefingContext.php#L78)). It feeds the [BriefingNarrator](app/Services/AI/Narrators/BriefingNarrator.php#L146) and [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php#L128); the rendered surface is the [[dashboard]] Kata Temari card.
+Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing ([`recoveryHoursForUser`](app/Services/Run/Story/BriefingContext.php#L78)). It feeds the [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php#L135); the rendered surface is the [[dashboard]] Kata Temari card.
 
 ### MetricsContext (briefing call envelope)
 

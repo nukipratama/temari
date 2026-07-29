@@ -33,13 +33,6 @@ class DailyBriefingCommand extends Command
         foreach ($users as $user) {
             $service->requestBriefing($user, $today);
 
-            $service->request(
-                subjectOrType: AnalysisType::BriefingMascotVoice->subjectType(),
-                subjectId: $user->id,
-                type: AnalysisType::BriefingMascotVoice,
-                discriminator: $today,
-            );
-
             // The featured-kartu voice keys off the card id, so it regenerates
             // exactly when the featured pick changes (and never re-bills while it
             // stays the same), instead of once per day against a moving pick.

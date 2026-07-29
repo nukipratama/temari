@@ -33,7 +33,7 @@ function analysesForEverySubjectShape(User $user): void
         [RunCard::class, $card->id, AnalysisType::CardFlavor],
         [WeeklySnapshot::class, $snapshot->id, AnalysisType::WeeklyRecap],
         [PersonalRecord::class, $record->id, AnalysisType::PrContext],
-        [AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingSuggestion],
+        [AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice],
         ['daily_greeting_user_day', $user->id, AnalysisType::BriefingMascotVoice],
         ['trend_caption_user_day', $user->id, AnalysisType::BriefingMascotVoice],
         [AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, $user->id, AnalysisType::PersonaSummary],

@@ -5,7 +5,7 @@ import UsageFilters from './UsageFilters';
 import type { KindOption, RangeToken } from '@/pages/AiUsage/types';
 
 const availableKinds: KindOption[] = [
-    { value: 'briefing', label: 'BriefingSuggestion' },
+    { value: 'briefing', label: 'BriefingMascotVoice' },
     { value: 'run-insight', label: 'RunInsightTechnical' },
 ];
 

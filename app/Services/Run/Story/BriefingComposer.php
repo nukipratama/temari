@@ -32,7 +32,6 @@ class BriefingComposer
         $discriminator = $asOf->toDateString();
         $subjectType = AnalysisType::BRIEFING_SUBJECT_TYPE;
 
-        $suggestion = $this->existingRow($user, AnalysisType::BriefingSuggestion, $subjectType, $discriminator);
         $mascotVoice = $this->existingRow($user, AnalysisType::BriefingMascotVoice, $subjectType, $discriminator);
 
         // The featured-kartu voice keys off the card it describes (not the day),
@@ -48,7 +47,6 @@ class BriefingComposer
             vibeState: $vibeState,
             vibeLabel: Vibe::label($vibeState),
             vibeEmoji: Vibe::emoji($vibeState),
-            suggestion: Analysis::toPayload($suggestion, AnalysisType::BriefingSuggestion, $subjectType, $user->id, $discriminator),
             mascotVoice: Analysis::toPayload($mascotVoice, AnalysisType::BriefingMascotVoice, $subjectType, $user->id, $discriminator),
             featuredKartuVoice: Analysis::toPayload($featuredKartuVoice, AnalysisType::BriefingFeaturedKartuVoice, $subjectType, $user->id, $featuredDiscriminator),
             featuredCardId: $featuredCard?->id,

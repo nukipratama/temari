@@ -11,7 +11,7 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
         id: null,
         status: 'pending',
         content: null,
-        type: 'briefing_suggestion',
+        type: 'briefing_mascot_voice',
         subject_type: 'briefing_user_day',
         subject_id: 1,
         discriminator: null,
@@ -425,7 +425,7 @@ describe('triggerAnalysis', () => {
         await expect(triggerAnalysis(payload({ subject_id: 8, discriminator: '2026-05-19' }))).resolves.toBe(response);
 
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-        expect(url).toBe('/api/analyses/briefing_suggestion/8/trigger?discriminator=2026-05-19');
+        expect(url).toBe('/api/analyses/briefing_mascot_voice/8/trigger?discriminator=2026-05-19');
         expect(init.method).toBe('POST');
         expect(init.credentials).toBe('same-origin');
         expect((init.headers as Record<string, string>)['X-CSRF-TOKEN']).toBe('test-token');

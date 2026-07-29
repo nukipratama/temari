@@ -38,7 +38,7 @@ it('dispatches briefing group and daily row types for each active user', functio
             $briefingGroupCalls[] = ['user_id' => $u->id, 'discriminator' => $discriminator];
         });
     $service->shouldReceive('request')
-        ->times(2) // MascotVoice, FeaturedKartuVoice
+        ->once() // FeaturedKartuVoice
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$requestCalls): Analysis {
             $requestCalls[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'invalidate');
 
@@ -55,10 +55,9 @@ it('dispatches briefing group and daily row types for each active user', functio
     expect($briefingGroupCalls[0]['user_id'])->toBe($user->id)
         ->and($briefingGroupCalls[0]['discriminator'])->toBe($today);
 
-    // The day-keyed mascot voice first, then the featured-kartu row.
+    // requestBriefing covers the day-keyed Temari voice; request() only the featured-kartu row.
     $requestedTypes = collect($requestCalls)->map(fn (array $c): string => $c['type']->value)->all();
     expect($requestedTypes)->toBe([
-        'briefing_mascot_voice',
         'briefing_featured_kartu_voice',
     ]);
 
@@ -66,16 +65,14 @@ it('dispatches briefing group and daily row types for each active user', functio
     foreach ($requestCalls as $call) {
         expect($call['subjectId'])->toBe($user->id);
     }
-    // Day-keyed rows carry today; the featured voice keys off the card id so it
-    // regenerates only when the featured pick changes.
-    expect($byType['briefing_mascot_voice']['subjectOrType'])->toBe(AnalysisType::BRIEFING_SUBJECT_TYPE)
-        ->and($byType['briefing_mascot_voice']['discriminator'])->toBe($today)
+    // The featured voice keys off the card id so it regenerates only when the
+    // featured pick changes.
+    expect($byType['briefing_featured_kartu_voice']['subjectOrType'])->toBe(AnalysisType::BRIEFING_SUBJECT_TYPE)
         ->and($byType['briefing_featured_kartu_voice']['discriminator'])->toBe((string) $card->id);
 
     // The LLM types never invalidate an existing row (no re-bill).
     $invalidateByType = $byType->map(fn (array $c): bool => $c['invalidate']);
-    expect($invalidateByType['briefing_mascot_voice'])->toBeFalse()
-        ->and($invalidateByType['briefing_featured_kartu_voice'])->toBeFalse();
+    expect($invalidateByType['briefing_featured_kartu_voice'])->toBeFalse();
 
     Carbon::setTestNow();
 });
@@ -92,7 +89,7 @@ it('skips the demo user even with recent analyzed activity', function (): void {
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('requestBriefing')->once();
-    $service->shouldReceive('request')->times(2)->andReturn(new Analysis());
+    $service->shouldReceive('request')->once()->andReturn(new Analysis());
     $this->app->instance(AnalysisService::class, $service);
 
     $this->artisan('ai:daily-briefing')

@@ -395,7 +395,7 @@ it('re-kicks the earliest stalled briefing suggestion per user with invalidate:f
     $earliest = Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
         'status' => AnalysisStatus::Pending,
     ]);
@@ -403,7 +403,7 @@ it('re-kicks the earliest stalled briefing suggestion per user with invalidate:f
     Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-06-01',
         'status' => AnalysisStatus::Pending,
     ]);
@@ -415,7 +415,7 @@ it('re-kicks the earliest stalled briefing suggestion per user with invalidate:f
     expect($captured)->toHaveCount(1)
         ->and($captured[0]['subjectOrType'])->toBe(AnalysisType::BRIEFING_SUBJECT_TYPE)
         ->and($captured[0]['subjectId'])->toBe($user->id)
-        ->and($captured[0]['type'])->toBe(AnalysisType::BriefingSuggestion)
+        ->and($captured[0]['type'])->toBe(AnalysisType::BriefingMascotVoice)
         ->and($captured[0]['discriminator'])->toBe($earliest->discriminator)
         ->and($captured[0]['invalidate'])->toBeFalse();
 });
@@ -425,7 +425,7 @@ it('skips a demo user for the briefing suggestion so the resume net never auto-b
     Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $demo->id,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
         'status' => AnalysisStatus::Pending,
     ]);

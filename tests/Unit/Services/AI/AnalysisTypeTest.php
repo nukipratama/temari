@@ -10,7 +10,6 @@ use App\Services\AI\AnalysisType;
 
 it('pins the exact case list, so adding or retiring a type is a deliberate edit', function (): void {
     expect(array_column(AnalysisType::cases(), 'value'))->toBe([
-        'briefing_suggestion',
         'briefing_mascot_voice',
         'briefing_featured_kartu_voice',
         'post_run_speech',
@@ -53,7 +52,7 @@ it('flags exactly the heart-rate-zone-derived types as zone-dependent', function
     'splits' => [AnalysisType::RunInsightSplits, false],
     'post-run speech' => [AnalysisType::PostRunSpeech, false],
     'pr context' => [AnalysisType::PrContext, false],
-    'briefing suggestion' => [AnalysisType::BriefingSuggestion, false],
+    'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, false],
 ]);
 
 it('flags only the connected + chained kinds wired so far', function (AnalysisType $type, bool $expected): void {
@@ -80,7 +79,6 @@ it('maps representative types to the expected cadence', function (AnalysisType $
 })->with([
     'post-run speech is per-activity' => [AnalysisType::PostRunSpeech, AnalysisCadence::PerActivity],
     'card flavor is per-activity' => [AnalysisType::CardFlavor, AnalysisCadence::PerActivity],
-    'briefing suggestion is daily' => [AnalysisType::BriefingSuggestion, AnalysisCadence::Daily],
     'weekly recap is weekly' => [AnalysisType::WeeklyRecap, AnalysisCadence::Weekly],
     'monthly recap is monthly' => [AnalysisType::MonthlyRecap, AnalysisCadence::Monthly],
     'persona summary is on-demand' => [AnalysisType::PersonaSummary, AnalysisCadence::OnDemand],
@@ -100,7 +98,6 @@ it('is the single source of truth for group membership', function (): void {
 it('returns null group job for non-grouped types', function (AnalysisType $type): void {
     expect($type->groupJobClass())->toBeNull();
 })->with([
-    'briefing suggestion' => [AnalysisType::BriefingSuggestion],
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice],
     'briefing featured kartu voice' => [AnalysisType::BriefingFeaturedKartuVoice],
     'weekly recap' => [AnalysisType::WeeklyRecap],
@@ -127,7 +124,6 @@ it('prohibits a discriminator on the types that key off subject_id alone', funct
 it('requires the date shape each keyed type dispatches with', function (AnalysisType $type, string $rule): void {
     expect($type->discriminatorRules())->toContain('required')->toContain($rule);
 })->with([
-    'briefing suggestion is a day' => [AnalysisType::BriefingSuggestion, 'date_format:Y-m-d'],
     'briefing mascot voice is a day' => [AnalysisType::BriefingMascotVoice, 'date_format:Y-m-d'],
     'monthly recap is a month' => [AnalysisType::MonthlyRecap, 'date_format:Y-m'],
     'persona summary is an ISO week' => [AnalysisType::PersonaSummary, 'regex:/^\d{4}-W\d{2}$/'],

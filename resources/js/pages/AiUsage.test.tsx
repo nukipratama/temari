@@ -27,7 +27,7 @@ const baseProps: AiUsageProps = {
         { day: '2026-05-19', prompt: 300, completion: 130, total: 430, calls: 2, cost: 0.02 },
     ],
     availableKinds: [
-        { value: 'briefing', label: 'BriefingSuggestion' },
+        { value: 'briefing', label: 'BriefingMascotVoice' },
         { value: 'run-insight', label: 'RunInsightTechnical' },
     ],
     budget: { todayCost: 0.02, dailyCeiling: 0.1, currency: 'USD' },

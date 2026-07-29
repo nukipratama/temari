@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePersonaSummaryJob;
@@ -25,7 +24,7 @@ beforeEach(function (): void {
 it('does not enqueue any LLM job on GET / (Hari Ini)', function (): void {
     $this->actingAs(User::factory()->create())->get('/')->assertSuccessful();
 
-    Bus::assertNotDispatched(AnalyzeBriefingJob::class);
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });

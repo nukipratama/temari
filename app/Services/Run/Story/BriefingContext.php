@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 /**
  * Extra signals the Briefing LLM should know about so its output sounds
  * personal instead of generic. Built once per Briefing call and injected
- * as fields into the user message sent to {@see \App\Services\AI\Narrators\BriefingNarrator}.
+ * as fields into get_week_state ({@see \App\Services\AI\Agent\Tools\WeekStateTool}).
  *
  * `timeBucket` lets the LLM frame its suggestion by the actual hour the
  * user opened the dashboard (morning prompt vs evening prompt feel

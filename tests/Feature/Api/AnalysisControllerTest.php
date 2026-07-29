@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Jobs\AI\AnalyzeBriefingJob;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
@@ -40,13 +40,13 @@ it('rejects unknown analysis types with 422', function (): void {
 it('rejects an over-long discriminator with a validation 422', function (): void {
     $user = User::factory()->create();
     $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=".str_repeat('x', 65))
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=".str_repeat('x', 65))
         ->assertStatus(422)
         ->assertJsonValidationErrors('discriminator');
 });
 
 it('requires authentication', function (): void {
-    $this->postJson('/api/analyses/briefing_suggestion/1/trigger')
+    $this->postJson('/api/analyses/briefing_mascot_voice/1/trigger')
         ->assertStatus(401);
 });
 
@@ -55,7 +55,7 @@ it('rejects triggering briefing for another user', function (): void {
     $other = User::factory()->create();
 
     $this->actingAs($self)
-        ->postJson("/api/analyses/briefing_suggestion/{$other->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_mascot_voice/{$other->id}/trigger?discriminator=2026-05-18")
         ->assertStatus(403);
 });
 
@@ -63,14 +63,14 @@ it('triggers a briefing suggestion analysis for the authenticated user', functio
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJsonStructure(['id', 'status', 'content', 'type', 'subject_type', 'subject_id', 'discriminator']);
 
     expect($response->json('status'))->toBe(AnalysisStatus::Queued->value)
         ->and($response->json('discriminator'))->toBe('2026-05-18');
 
-    Bus::assertDispatched(AnalyzeBriefingJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 it('force re-triggers a briefing when no cooldown window is active', function (): void {
@@ -81,12 +81,12 @@ it('force re-triggers a briefing when no cooldown window is active', function ()
     ]);
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJsonPath('status', AnalysisStatus::Queued->value)
         ->assertJsonPath('retry_after_seconds', null);
 
-    Bus::assertDispatched(AnalyzeBriefingJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 it('returns the cached payload with retry_after_seconds when within cooldown', function (): void {
@@ -95,16 +95,16 @@ it('returns the cached payload with retry_after_seconds when within cooldown', f
         'subject_id' => $user->id,
         'discriminator' => '2026-05-18',
     ]);
-    RateLimiter::hit(Analysis::cooldownKey(AnalysisType::BriefingSuggestion, $user->id, '2026-05-18'), Cooldown::WINDOW_SECONDS);
+    RateLimiter::hit(Analysis::cooldownKey(AnalysisType::BriefingMascotVoice, $user->id, '2026-05-18'), Cooldown::WINDOW_SECONDS);
 
     $response = $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJsonPath('status', AnalysisStatus::Done->value)
         ->assertJsonPath('content', 'fresh content');
 
     expect($response->json('retry_after_seconds'))->toBeGreaterThan(0)->toBeLessThanOrEqual(Cooldown::WINDOW_SECONDS);
-    Bus::assertNotDispatched(AnalyzeBriefingJob::class);
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 it('authorizes post-run speech only for the activity owner', function (): void {
@@ -131,7 +131,7 @@ it('returns the current state via GET show', function (): void {
     ]);
 
     $this->actingAs($user)
-        ->getJson("/api/analyses/briefing_suggestion/{$user->id}?discriminator=2026-05-18")
+        ->getJson("/api/analyses/briefing_mascot_voice/{$user->id}?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJsonPath('status', AnalysisStatus::Done->value)
         ->assertJsonPath('content', 'content here');
@@ -141,7 +141,7 @@ it('returns a pending pseudo-row when no analysis exists yet', function (): void
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->getJson("/api/analyses/briefing_suggestion/{$user->id}?discriminator=2026-05-18")
+        ->getJson("/api/analyses/briefing_mascot_voice/{$user->id}?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJsonPath('status', AnalysisStatus::Pending->value)
         ->assertJsonPath('content', null)
@@ -636,7 +636,7 @@ it('does not dispatch a billed job for a novel discriminator', function (string 
     Bus::assertNothingDispatched();
     expect(Analysis::query()->count())->toBe(0);
 })->with([
-    'random key on a daily type' => ['/api/analyses/briefing_suggestion/{id}/trigger?discriminator=kEy9fQ2z'],
+    'random key on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=kEy9fQ2z'],
     'wrong shape on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=2026-05'],
     'wrong shape on the monthly recap' => ['/api/analyses/monthly_recap/{id}/trigger?discriminator=2026-05-18'],
     'wrong shape on the persona summary' => ['/api/analyses/persona_summary/{id}/trigger?discriminator=2026-05-18'],
@@ -664,7 +664,7 @@ it('serves the demo account a rule-based narration instead of dispatching a bill
     $user = User::factory()->create(['is_demo' => true]);
 
     $response = $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJson(['status' => 'done']);
 
@@ -678,7 +678,7 @@ it('serves the demo account a rule-based narration instead of dispatching a bill
 
 it('leaves the demo account re-triggerable, since a rule-based fill starts no cooldown', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
-    $url = "/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18";
+    $url = "/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18";
 
     $this->actingAs($user)->postJson($url)->assertSuccessful();
     $this->actingAs($user)->postJson($url)
@@ -693,10 +693,10 @@ it('still dispatches a real billed job for a non-demo user on the same block', f
     $user = User::factory()->create(['is_demo' => false]);
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful();
 
-    Bus::assertDispatched(AnalyzeBriefingJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 // ── trigger → zone recompute: the branch that reads the user's CURRENT zones ──

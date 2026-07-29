@@ -21,7 +21,7 @@ it('recognises the notifiable types and ignores the rest', function (): void {
     $postRun = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
     $weekly = Analysis::factory()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
     $monthly = Analysis::factory()->make(['analysis_type' => AnalysisType::MonthlyRecap]);
-    $briefing = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingSuggestion]);
+    $briefing = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingMascotVoice]);
     $mascotVoice = Analysis::factory()->make(['analysis_type' => AnalysisType::BriefingMascotVoice]);
 
     expect($registry->isNotifiable($postRun))->toBeTrue()

@@ -26,7 +26,6 @@ return [
     // Each defaults to the general AZURE_OPENAI_DEPLOYMENT, so an unset kind just
     // uses the primary model.
     'narrators' => [
-        'briefing' => (string) env('AZURE_OPENAI_BRIEFING_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'briefing_mascot_voice' => (string) env('AZURE_OPENAI_BRIEFING_MASCOT_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'briefing_featured_kartu_voice' => (string) env('AZURE_OPENAI_BRIEFING_FEATURED_KARTU_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'run_insight' => (string) env('AZURE_OPENAI_RUN_INSIGHT_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),

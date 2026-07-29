@@ -101,7 +101,7 @@ it('still lets the demo user trigger "Baca ulang", served rule-based so it never
     $user = User::factory()->create(['is_demo' => true]);
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_suggestion/{$user->id}/trigger?discriminator=2026-05-18")
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJson(['status' => 'done']);
 

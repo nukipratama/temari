@@ -126,7 +126,6 @@ export interface BriefingResult {
     vibeState: string;
     vibeLabel: string;
     vibeEmoji: string;
-    suggestion: AnalysisPayload;
     mascotVoice: AnalysisPayload;
     featuredKartuVoice: AnalysisPayload;
     featuredCardId: number | null;

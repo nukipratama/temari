@@ -19,7 +19,6 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
     $stranger = User::factory()->create();
 
     $subjectId = match ($type) {
-        AnalysisType::BriefingSuggestion,
         AnalysisType::BriefingMascotVoice,
         AnalysisType::BriefingFeaturedKartuVoice,
         AnalysisType::PersonaSummary,

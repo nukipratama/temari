@@ -23,7 +23,6 @@ final class AnalysisSubjectAuthorizer
     public static function authorize(User $user, AnalysisType $type, int $subjectId): void
     {
         $authorized = match ($type) {
-            AnalysisType::BriefingSuggestion,
             AnalysisType::BriefingMascotVoice,
             AnalysisType::BriefingFeaturedKartuVoice,
             AnalysisType::PersonaSummary,
