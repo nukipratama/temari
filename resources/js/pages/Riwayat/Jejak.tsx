@@ -172,7 +172,7 @@ function RankedList({
         <Card as="section" padding="none" className="overflow-hidden shadow-sm">
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
                 <div className="font-display text-lg italic text-ink">{label}</div>
-                <Eyebrow tracking="0.12" weight="none" tone="ink-3">
+                <Eyebrow token="micro" tone="ink-3">
                     {runs.length} lari · diurutkan
                 </Eyebrow>
             </header>

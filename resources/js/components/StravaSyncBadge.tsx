@@ -18,8 +18,8 @@ export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<S
 
     const { label, ariaLabel, icon, iconClass } = resolveBadge(state, relative, isCompact);
     const badgeClass = cn(
-        'inline-flex items-center whitespace-nowrap rounded-full bg-sky/[0.06] font-mono font-bold uppercase tracking-[0.1em] text-ink-2',
-        isCompact ? 'gap-1.5 px-2.5 py-1.5 text-[11px]' : 'gap-2 px-3.5 py-2 text-[11px]',
+        'inline-flex items-center whitespace-nowrap rounded-full bg-sky/[0.06] text-label-micro text-ink-2',
+        isCompact ? 'gap-1.5 px-2.5 py-1.5' : 'gap-2 px-3.5 py-2',
     );
     const content = (
         <>

@@ -61,7 +61,8 @@ The middleware stack is assembled in [bootstrap/app.php](bootstrap/app.php#L14):
 
 - **`guest`** — `/login` and the Strava OAuth redirect/callback + demo login.
 - **`auth`** — every app page (`/`, `/aktivitas`, `/kartu`, `/profil`, …) plus the small `/api/*` JSON endpoints the SPA fetches outside Inertia.
-- **Public, unauthenticated** — the Strava webhook, the `/client-errors` sink, and `/ai-usage` (edge basicauth in prod).
+- **Public, unauthenticated** — the Strava webhook and the `/client-errors` sink.
+- **`auth` + `admin`** — `/ai-usage` and its POST actions, gated by `['auth', 'admin']` in [routes/web.php](../../routes/web.php); the same `is_admin` gate covers Horizon and Pulse. Cloudflare Access fronts the edge in prod; there is no basic-auth wall.
 
 Auth is **Strava OAuth via Socialite**, not password login — see [[strava-connect]]. The unauthenticated `/api/*` flows (analysis poll/trigger, card seen/replay) are deliberately small JSON endpoints, not Inertia pages.
 

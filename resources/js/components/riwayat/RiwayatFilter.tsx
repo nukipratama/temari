@@ -199,7 +199,7 @@ export default function RiwayatFilter<V extends string, B extends string = strin
                     </div>
                     {(totalActive > 0 || onReset) && (
                         <div className="flex items-center justify-between border-b border-line/60 px-3 py-2">
-                            <Eyebrow as="span" tone="ink-2">
+                            <Eyebrow as="span" token="micro" tone="ink-2">
                                 Filter
                             </Eyebrow>
                             {totalActive > 0 && onReset && (
@@ -229,7 +229,7 @@ export default function RiwayatFilter<V extends string, B extends string = strin
 function FilterSection({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
     return (
         <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
-            <Eyebrow tone="ink-2" className="mb-2">
+            <Eyebrow token="micro" tone="ink-2" className="mb-2">
                 {title}
             </Eyebrow>
             {children}

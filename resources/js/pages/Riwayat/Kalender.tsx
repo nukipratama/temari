@@ -163,7 +163,7 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
         }
     }
     return (
-        <Eyebrow tracking="0.18" tone="ink-2" className="mb-3.5 lg:text-xs">
+        <Eyebrow token="hero" tone="ink-2" className="mb-3.5 lg:text-xs">
             {['Riwayat', ...stats].join(' · ')}
         </Eyebrow>
     );
@@ -305,15 +305,14 @@ function NavButton({ href, icon, label }: Readonly<{ href: string; icon: string;
 function CalendarHeader() {
     return (
         <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] border-b border-line/60 bg-surface-sunken/60 lg:grid-cols-[6rem_repeat(7,minmax(0,1fr))]">
-            <Eyebrow size="10" tracking="0.06" tone="ink-2" className="px-1 py-2.5 text-center lg:px-3 lg:text-left lg:text-xs lg:tracking-[0.14em]">
+            <Eyebrow token="micro" tone="ink-2" className="px-1 py-2.5 text-center lg:px-3 lg:text-left lg:text-xs lg:tracking-[0.14em]">
                 <span className="sr-only">Pekan, jarak dalam kilometer</span>
                 <span aria-hidden>KM</span>
             </Eyebrow>
             {WEEKDAY_LABELS.map((label) => (
                 <Eyebrow
                     key={label}
-                    size="10"
-                    tracking="0.06"
+                    token="micro"
                     tone="ink-2"
                     className="px-1 py-2.5 text-center lg:px-2 lg:text-xs lg:tracking-[0.14em]"
                 >
@@ -360,7 +359,7 @@ function WeekSummary({ week }: Readonly<{ week: WeekRow }>) {
                     <span className="text-xs font-bold tabular-nums leading-none text-ink lg:text-lg">
                         {week.totalKm.toFixed(1)}
                     </span>
-                    <Eyebrow as="span" tracking="0.06" tone="ink-2" className="lg:tracking-[0.14em]">
+                    <Eyebrow as="span" token="micro" tone="ink-2" className="lg:tracking-[0.14em]">
                         WK {week.weekNumber}
                     </Eyebrow>
                 </>
@@ -477,7 +476,7 @@ function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string
                 {hasRun && cell.mood && (
                     <span aria-hidden className={cn('h-1.5 w-1.5 shrink-0 rounded-full lg:hidden', MOOD_FILL[cell.mood])} title={MOOD_LABEL[cell.mood]} />
                 )}
-                <Eyebrow as="span" tracking="0.18" weight="semibold" tone="horizon" className="hidden lg:inline">
+                <Eyebrow as="span" token="hero" tone="horizon" className="hidden lg:inline">
                     Hari ini
                 </Eyebrow>
             </div>
@@ -512,7 +511,7 @@ function Legend({ className }: Readonly<{ className?: string }>) {
                 className,
             )}
         >
-            <Eyebrow as="span" tone="ink-2" className="lg:text-xs">
+            <Eyebrow as="span" token="micro" tone="ink-2" className="lg:text-xs">
                 Mood
             </Eyebrow>
             {MOOD_ORDER.map((mood) => (

@@ -129,7 +129,7 @@ export default function PackWrapper({ rarity, onOpen, className }: Readonly<Pack
                 Tarik <span aria-hidden>→</span>
             </span>
 
-            <Eyebrow weight="none" className="absolute inset-x-0 bottom-5 text-center text-ink/60">
+            <Eyebrow token="micro" className="absolute inset-x-0 bottom-5 text-center text-ink/60">
                 Tarik atau ketuk buat buka
             </Eyebrow>
         </motion.div>

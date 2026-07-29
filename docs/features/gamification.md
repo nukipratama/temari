@@ -28,14 +28,14 @@ Gamification isn't a page — it's an engine that runs as each activity is inges
 
 ## System dependencies
 
-- **Ingestion** — `RunCardFactory` is invoked by the [[run-ingest-pipeline]] during activity ingest; `GenerateRunCardJob` handles async card generation.
+- **Ingestion** — `RunCardFactory` is invoked by the [[run-ingest-pipeline]] during activity ingest.
 - **AI narration** — `Temari` writes `StoryLine` rows (mood, speech) that the [[ai-pipeline]] narrators reference.
 - **Training metrics** — PRs are detected by `PersonalRecords` using data from [[stream-analysis]] and [[training-load-metrics]].
 - **Data model** — `RunCard`, `UserUnlock`, `PersonalRecord` shapes in [[data-model]].
 
 ## A run becomes a card
 
-[RunCardFactory](../../app/Services/Run/Story/RunCardFactory.php) (`build(Activity, ActivityDetail): RunCard`) is the entry point, but it only orchestrates and persists: it resolves the sticky PR flag, delegates the **badges** (weather, distance bracket, splits, streak) and the **rarity** score, names a **special move**, writes the row and queues the reveal. It is invoked from the ingest pipeline (`app/Services/Run/Ingest/ActivityPipeline.php`) and from `app/Jobs/Story/GenerateRunCardJob.php`.
+[RunCardFactory](../../app/Services/Run/Story/RunCardFactory.php) (`build(Activity, ActivityDetail): RunCard`) is the entry point, but it only orchestrates and persists: it resolves the sticky PR flag, delegates the **badges** (weather, distance bracket, splits, streak) and the **rarity** score, names a **special move**, writes the row and queues the reveal. It is invoked from the ingest pipeline ([ActivityPipeline](../../app/Services/Run/Ingest/ActivityPipeline.php)).
 
 The scoring rules themselves are pure. Everything that needs the user's whole history is resolved up front by [CardContextBuilder::for()](../../app/Services/Run/Story/CardContextBuilder.php#L39) into a [CardContext](../../app/Services/Run/Story/CardContext.php) (first run ever, first distance bracket, weekly consistency, day streak, athlete max HR); [BadgeEvaluator::evaluate()](../../app/Services/Run/Story/BadgeEvaluator.php#L62) and [RarityScorer::score()](../../app/Services/Run/Story/RarityScorer.php#L45) then read facts off that context and never touch the database. The builder folds the first-run, first-bracket and weekly-consistency counts into a single conditional aggregate, so a card costs two whole-history queries rather than four.
 

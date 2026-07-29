@@ -225,7 +225,7 @@ export default function CardReveal({
 
               {/* Content */}
               <div>
-                <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
+                <div className="mb-3 text-label-hero text-horizon">
                   {eyebrow}
                 </div>
                 <h2 className="font-display text-display-sm text-cream">

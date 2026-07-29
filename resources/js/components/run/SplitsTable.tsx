@@ -60,7 +60,7 @@ export default function SplitsTable({
                                 rowFill,
                             )}
                         >
-                            <Eyebrow tracking="0.1" weight="none" tone="ink-2">
+                            <Eyebrow token="micro" tone="ink-2">
                                 KM {row.km ?? '?'}
                             </Eyebrow>
                             <div className="h-2.5 overflow-hidden rounded bg-sky/[0.06] lg:h-3">

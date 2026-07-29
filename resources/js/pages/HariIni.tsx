@@ -61,7 +61,7 @@ export default function HariIni({
                 {/* HEADLINE */}
                 <header className="grid grid-cols-1 items-end gap-9 lg:grid-cols-[1.4fr_1fr]">
                     <div>
-                        <Eyebrow tracking="0.18" tone="ink-2" className="mb-3.5">
+                        <Eyebrow token="hero" tone="ink-2" className="mb-3.5">
                             {dateLine}
                         </Eyebrow>
                         <h1 className="font-display text-display-2xl text-ink">

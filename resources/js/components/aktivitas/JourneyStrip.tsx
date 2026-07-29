@@ -39,7 +39,7 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
 
     return (
         <Card as="section" padding="lg" className={className}>
-            <Eyebrow as="h3" tracking="0.16" tone="ink-2">
+            <Eyebrow as="h3" token="hero" tone="ink-2">
                 Kamu vs Lari Pertama Kamu
             </Eyebrow>
             <p className="mt-2 font-sans text-sm leading-relaxed text-ink">

@@ -76,7 +76,7 @@ export default function DetailTiles({
                     key={t.label}
                     className="rounded-xl border border-cream-deep bg-cream px-4 py-3.5"
                 >
-                    <Eyebrow tone="ink-2" className="mb-1.5 inline-flex items-center gap-1">
+                    <Eyebrow token="micro" tone="ink-2" className="mb-1.5 inline-flex items-center gap-1">
                         {t.label}
                         {t.metricKey && <MetricExplainer metricKey={t.metricKey} size="xs" />}
                     </Eyebrow>

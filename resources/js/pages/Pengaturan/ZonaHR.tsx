@@ -247,7 +247,7 @@ export default function ZonaHR({
                     <div className="grid gap-3">
                         {ZONE_KEYS.map((key) => (
                             <div key={key} className="grid grid-cols-[1fr_auto_auto] items-center gap-3">
-                                <Eyebrow as="span" tracking="0.12" weight="none" tone="ink-2">
+                                <Eyebrow as="span" token="micro" tone="ink-2">
                                     {ZONE_LABEL[key]}
                                 </Eyebrow>
                                 <BoundaryInput
@@ -314,7 +314,7 @@ function NumberField({ label, suffix, value, error, onChange }: Readonly<NumberF
     const errorId = useId();
     return (
         <label className="block">
-            <Eyebrow as="span" tracking="0.12" weight="none" tone="ink-3" className="mb-1.5 block">
+            <Eyebrow as="span" token="micro" tone="ink-3" className="mb-1.5 block">
                 {label}
             </Eyebrow>
             <span className="flex items-center gap-2 rounded-xl border border-cream-deep bg-cream px-4 py-2.5 focus-within:border-horizon">

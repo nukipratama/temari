@@ -68,7 +68,7 @@ export default function MobileTopBar() {
                 <Link
                     href={back.href}
                     aria-label={`Kembali ke ${back.label}`}
-                    className="pressable focus-ring -ml-1 inline-flex min-w-0 items-center gap-1 rounded py-1 pl-1 pr-2 font-mono text-xs font-bold uppercase tracking-[0.14em] text-ink-2 transition hover:text-ink"
+                    className="pressable focus-ring -ml-1 inline-flex min-w-0 items-center gap-1 rounded py-1 pl-1 pr-2 text-label-small text-ink-2 transition hover:text-ink"
                 >
                     <Icon icon="mdi:chevron-left" width={18} height={18} aria-hidden className="shrink-0" />
                     <span className="truncate">{back.label}</span>

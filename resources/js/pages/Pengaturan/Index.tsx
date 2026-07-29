@@ -403,7 +403,7 @@ function TelegramPanel({
                 <button
                     type="button"
                     onClick={() => guard(() => router.delete('/profil/telegram', { preserveScroll: true }))}
-                    className="focus-ring inline-flex shrink-0 items-center gap-1 rounded font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-3 transition hover:text-ember-deep"
+                    className="focus-ring inline-flex shrink-0 items-center gap-1 rounded text-label-small text-ink-3 transition hover:text-ember-deep"
                 >
                     <Icon icon="mdi:link-off" width={13} height={13} aria-hidden />
                     Putuskan

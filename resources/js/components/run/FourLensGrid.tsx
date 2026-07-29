@@ -108,7 +108,7 @@ export default function FourLensGrid({
                         onClick={triggerAll}
                         disabled={bulkPending || cooling}
                         aria-label={cooldownAriaLabel(cooldownRemaining, 'baca ulang semua')}
-                        className="focus-ring rounded inline-flex items-center gap-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
+                        className="focus-ring rounded inline-flex items-center gap-1.5 text-label-micro text-ink-2 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <Icon icon={bulkPending ? 'mdi:loading' : 'mdi:auto-awesome'} className={cn(bulkPending && 'animate-spin')} aria-hidden />
                         {bulkLabel}
@@ -132,7 +132,7 @@ export default function FourLensGrid({
                                 aria-hidden
                                 className={cn(TONE_ICON[lens.tone])}
                             />
-                            <Eyebrow tone="ink-2">
+                            <Eyebrow token="micro" tone="ink-2">
                                 {lens.label}
                             </Eyebrow>
                         </div>
