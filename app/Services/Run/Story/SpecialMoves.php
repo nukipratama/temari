@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Services\Run\Metrics\StreamSummary;
+
 class SpecialMoves
 {
     public const DEFAULT_MOVE = 'Easy Run'; // honest default — easy, no story
@@ -14,19 +16,14 @@ class SpecialMoves
      * deterministically selects one variant, so the same run always names the
      * same move while different runs in one bucket vary.
      *
-     * @param  array<string, mixed>  $streamSummary
      * @param  array{distance_m?: float|null, pr_set?: bool, seed?: int}  $context
      */
-    public function pick(array $streamSummary, array $context): string
+    public function pick(StreamSummary $summary, array $context): string
     {
-        $zonePct = is_array($streamSummary['time_in_zone_pct'] ?? null)
-            ? $streamSummary['time_in_zone_pct']
-            : [];
-        $distribution = is_array($streamSummary['cadence_distribution_pct'] ?? null)
-            ? $streamSummary['cadence_distribution_pct']
-            : [];
-        $negativeSplit = (bool) ($streamSummary['negative_split'] ?? false);
-        $cadenceDropSpm = (float) ($streamSummary['cadence_drop_spm'] ?? 0.0);
+        $zonePct = $summary->zonePct();
+        $distribution = $summary->cadenceDistributionPct();
+        $negativeSplit = $summary->negativeSplit() === true;
+        $cadenceDropSpm = $summary->cadenceDropSpm() ?? 0.0;
         $distanceM = (float) ($context['distance_m'] ?? 0.0);
         $prSet = (bool) ($context['pr_set'] ?? false);
         $seed = (int) ($context['seed'] ?? 0);

@@ -39,7 +39,7 @@ final class MaterialFingerprint
      */
     private static function materialFrom(Activity $activity, ActivityDetail $detail): array
     {
-        $summary = $detail->streamSummary();
+        $summary = StreamSummary::fromArray($detail->streamSummary());
 
         return [
             'distance' => self::bucket($detail->distance, 10),   // nearest 10 m
@@ -55,14 +55,14 @@ final class MaterialFingerprint
             'wind_speed' => $detail->weather_wind_speed_kmh,
             'wind_gust' => $detail->weather_wind_gust_kmh,
             'wind_dir' => $detail->weather_wind_direction_deg,
-            'decoupling' => self::bucket(self::summaryFloat($summary, 'decoupling_pct')),
-            'negative_split' => (bool) ($summary['negative_split'] ?? false),
+            'decoupling' => self::bucket($summary->decouplingPct()),
+            'negative_split' => $summary->negativeSplit() === true,
             'zone_pct' => self::bucketedZones($summary),
-            'pace_variability' => self::bucket(self::summaryFloat($summary, 'pace_variability_sec')),
+            'pace_variability' => self::bucket($summary->paceVariabilitySec()),
             'elevation_gain_m' => self::bucket($detail->total_elevation_gain),
-            'max_grade_pct' => self::half(self::summaryFloat($summary, 'max_grade_pct')),
-            'gap_pace' => $summary['gap_pace'] ?? null,
-            'partial_pace' => $summary['partial_split']['pace'] ?? null,
+            'max_grade_pct' => self::half($summary->maxGradePct()),
+            'gap_pace' => $summary->gapPace(),
+            'partial_pace' => $summary->partialSplit()['pace'] ?? null,
             'mood' => self::mood($activity),
             'session_intent' => SessionIntent::forDetail($detail)['intent'],
             'has_pr' => PersonalRecord::query()->where('activity_id', $activity->id)->exists(),
@@ -70,12 +70,11 @@ final class MaterialFingerprint
     }
 
     /**
-     * @param  array<string, mixed>  $summary
      * @return array<string, int>
      */
-    private static function bucketedZones(array $summary): array
+    private static function bucketedZones(StreamSummary $summary): array
     {
-        $zonePct = StreamSummary::zonePct($summary);
+        $zonePct = $summary->zonePct();
         $rounded = [];
         foreach ($zonePct as $zone => $pct) {
             $rounded[$zone] = (int) round((float) $pct);
@@ -103,13 +102,5 @@ final class MaterialFingerprint
     private static function half(?float $value): ?float
     {
         return $value === null ? null : round($value * 2) / 2;
-    }
-
-    /**
-     * @param  array<string, mixed>  $summary
-     */
-    private static function summaryFloat(array $summary, string $key): ?float
-    {
-        return isset($summary[$key]) ? (float) $summary[$key] : null;
     }
 }

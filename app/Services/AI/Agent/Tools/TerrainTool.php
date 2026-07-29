@@ -24,8 +24,8 @@ final class TerrainTool extends ActivityTool
 
         return [
             'elevation_gain_m' => $this->detail->total_elevation_gain,
-            'max_grade_pct' => $summary['max_grade_pct'] ?? null,
-            'gap_pace' => $summary['gap_pace'] ?? null,
+            'max_grade_pct' => $summary->maxGradePct(),
+            'gap_pace' => $summary->gapPace(),
         ];
     }
 }

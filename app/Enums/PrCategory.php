@@ -59,18 +59,18 @@ enum PrCategory: string
     }
 
     /**
-     * Stream-summary key the effort-pace cases read from. Distance cases
+     * Best-effort window the effort-pace cases read from. Distance cases
      * return null since they derive their PR value from elapsed time, not
      * a precomputed best-window pace.
      */
-    public function effortStreamKey(): ?string
+    public function effortWindow(): ?string
     {
         return match ($this) {
-            self::Best5Min => 'best_5min_pace',
-            self::Best10Min => 'best_10min_pace',
-            self::Best20Min => 'best_20min_pace',
-            self::Best30Min => 'best_30min_pace',
-            self::Best60Min => 'best_60min_pace',
+            self::Best5Min => '5min',
+            self::Best10Min => '10min',
+            self::Best20Min => '20min',
+            self::Best30Min => '30min',
+            self::Best60Min => '60min',
             default => null,
         };
     }

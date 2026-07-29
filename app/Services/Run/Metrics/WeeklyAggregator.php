@@ -14,7 +14,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Enumerable;
 
 use function count;
-use function is_array;
 
 class WeeklyAggregator
 {
@@ -240,12 +239,9 @@ class WeeklyAggregator
     {
         $values = [];
         foreach ($details as $detail) {
-            $summary = $detail->stream_summary;
-            if (! is_array($summary)) {
-                continue;
-            }
-            if (isset($summary['decoupling_pct']) && is_numeric($summary['decoupling_pct'])) {
-                $values[] = (float) $summary['decoupling_pct'];
+            $decoupling = StreamSummary::fromArray($detail->stream_summary)->decouplingPct();
+            if ($decoupling !== null) {
+                $values[] = $decoupling;
             }
         }
 

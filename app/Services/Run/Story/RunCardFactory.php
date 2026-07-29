@@ -86,7 +86,7 @@ class RunCardFactory
 
     public function build(Activity $activity, ActivityDetail $detail): RunCard
     {
-        $summary = $detail->streamSummary();
+        $summary = StreamSummary::fromArray($detail->streamSummary());
 
         $existing = RunCard::query()->where('activity_id', $activity->id)->first();
 
@@ -149,19 +149,18 @@ class RunCardFactory
      *  +1 zone discipline (<10% Z3+ on >=10km)
      *  +1 weekly consistency (>=3 runs this week)
      *
-     * @param  array<string, mixed>  $summary
      * @param  array<int, string>  $badges
      */
     public function rarityScore(
         Activity $activity,
         ActivityDetail $detail,
-        array $summary,
+        StreamSummary $summary,
         array $badges,
         bool $prSet,
     ): int {
         $score = 0;
         $distance = (float) ($detail->distance ?? 0);
-        $negativeSplit = ($summary['negative_split'] ?? false) === true;
+        $negativeSplit = $summary->negativeSplit() === true;
 
         if ($prSet) {
             $score += 3;
@@ -278,10 +277,9 @@ class RunCardFactory
      * Public so a recalibration comparison can score a run against a summary it
      * has recomputed in memory, rather than the one stored on the row.
      *
-     * @param  array<string, mixed>  $summary
      * @return list<string>
      */
-    public function badges(Activity $activity, ActivityDetail $detail, array $summary): array
+    public function badges(Activity $activity, ActivityDetail $detail, StreamSummary $summary): array
     {
         $badges = $this->originalBadges($detail, $summary);
         $streak = $this->consecutiveDaysBefore($activity);
@@ -292,10 +290,9 @@ class RunCardFactory
     /**
      * Original 6 badges: weather, time-of-day, distance, split, discipline.
      *
-     * @param  array<string, mixed>  $summary
      * @return list<string>
      */
-    private function originalBadges(ActivityDetail $detail, array $summary): array
+    private function originalBadges(ActivityDetail $detail, StreamSummary $summary): array
     {
         $badges = [];
 
@@ -314,7 +311,7 @@ class RunCardFactory
         if ($this->isLongSlowDistance($detail, $summary)) {
             $badges[] = Badge::LongSlowDistance->value;
         }
-        if (($summary['negative_split'] ?? false) === true) {
+        if ($summary->negativeSplit() === true) {
             $badges[] = Badge::NegativeSplit->value;
         }
         if ($this->isAerobicDiscipline($detail, $summary)) {
@@ -328,10 +325,9 @@ class RunCardFactory
      * 12 expanded badges: night, elevation, first-run, streaks, pace,
      * distance, zones, effort, holiday.
      *
-     * @param  array<string, mixed>  $summary
      * @return list<string>
      */
-    private function expandedBadges(Activity $activity, ActivityDetail $detail, array $summary, int $streak): array
+    private function expandedBadges(Activity $activity, ActivityDetail $detail, StreamSummary $summary, int $streak): array
     {
         $badges = [];
         $distance = (float) ($detail->distance ?? 0);
@@ -341,7 +337,7 @@ class RunCardFactory
             $badges[] = Badge::AnakMalam->value;
         }
         if (($detail->total_elevation_gain ?? 0) >= self::ELEVATION_GAIN_M
-            || (float) ($summary['max_grade_pct'] ?? 0) >= self::MAX_GRADE_PENDAKI_PCT) {
+            || ($summary->maxGradePct() ?? 0.0) >= self::MAX_GRADE_PENDAKI_PCT) {
             $badges[] = Badge::Pendaki->value;
         }
         if ($this->isFirstRunEver($activity)) {
@@ -374,14 +370,13 @@ class RunCardFactory
     /**
      * Zone-based and effort-based badges: Z2 Master, Anak Dingin, Keras, Santai.
      *
-     * @param  array<string, mixed>  $summary
      * @return list<string>
      */
-    private function zoneAndEffortBadges(Activity $activity, ActivityDetail $detail, array $summary, ?int $hour): array
+    private function zoneAndEffortBadges(Activity $activity, ActivityDetail $detail, StreamSummary $summary, ?int $hour): array
     {
         $badges = [];
 
-        $zonePct = StreamSummary::zonePct($summary);
+        $zonePct = $summary->zonePct();
         if (($zonePct['Z2'] ?? 0) > 80.0) {
             $badges[] = Badge::Z2Master->value;
         }
@@ -535,10 +530,7 @@ class RunCardFactory
         return $avg / $athleteMaxHr;
     }
 
-    /**
-     * @param  array<string, mixed>  $summary
-     */
-    private function isLongSlowDistance(ActivityDetail $detail, array $summary): bool
+    private function isLongSlowDistance(ActivityDetail $detail, StreamSummary $summary): bool
     {
         $distance = $detail->distance ?? 0;
         $elapsed = $detail->elapsed_time ?? 0;
@@ -546,20 +538,17 @@ class RunCardFactory
             return false;
         }
 
-        return StreamSummary::hardZoneShare($summary) < 25.0;
+        return $summary->hardZoneShare() < 25.0;
     }
 
-    /**
-     * @param  array<string, mixed>  $summary
-     */
-    private function isAerobicDiscipline(ActivityDetail $detail, array $summary): bool
+    private function isAerobicDiscipline(ActivityDetail $detail, StreamSummary $summary): bool
     {
         $distance = $detail->distance ?? 0;
         if ($distance < 10_000) {
             return false;
         }
 
-        return StreamSummary::hardZoneShare($summary) < 10.0;
+        return $summary->hardZoneShare() < 10.0;
     }
 
     private function hasPrFromThisActivity(Activity $activity): bool

@@ -13,6 +13,7 @@ use App\Models\StravaConnection;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Gamification\MilestoneDetector;
 use App\Services\Run\Metrics\HeartRateZones;
+use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\RunCardFactory;
@@ -366,8 +367,8 @@ class ActivityPipeline
             $optimalCadence,
         );
 
-        $minutesInZone = $summary['time_in_zone_min'] ?? null;
-        $trimp = is_array($minutesInZone) ? $this->trainingLoad->edwardsTrimp($minutesInZone) : null;
+        $minutesInZone = StreamSummary::fromArray($summary)->zoneMinutes();
+        $trimp = $minutesInZone !== null ? $this->trainingLoad->edwardsTrimp($minutesInZone) : null;
 
         $detail->update([
             'stream_summary' => $summary === [] ? null : $summary,

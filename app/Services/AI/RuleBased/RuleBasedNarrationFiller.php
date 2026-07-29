@@ -10,6 +10,7 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\StreamSummary;
 
 /**
  * Rule-based content per AnalysisType. Used by:
@@ -132,9 +133,8 @@ final readonly class RuleBasedNarrationFiller
      */
     private function postRunCoda(ActivityDetail $detail, int $seed): string
     {
-        $summary = is_array($detail->stream_summary) ? $detail->stream_summary : [];
         $codas = [];
-        if (($summary['negative_split'] ?? false) === true) {
+        if (StreamSummary::fromArray($detail->stream_summary)->negativeSplit() === true) {
             $codas[] = ' Paruh kedua malah lebih kencang, mantap.';
         }
         if ($detail->weather_rain_detected === true) {

@@ -99,16 +99,16 @@ class PersonalRecords
      */
     private function checkEffortPrs(Activity $activity, ActivityDetail $detail, Carbon $setAt): array
     {
-        $streamSummary = $detail->streamSummary();
+        $streamSummary = StreamSummary::fromArray($detail->streamSummary());
         $broken = [];
 
         foreach (PrCategory::efforts() as $category) {
-            $key = $category->effortStreamKey();
-            if ($key === null) {
+            $window = $category->effortWindow();
+            if ($window === null) {
                 continue;
             }
-            $label = $streamSummary[$key] ?? null;
-            if (! is_string($label)) {
+            $label = $streamSummary->bestPace($window);
+            if ($label === null) {
                 continue;
             }
             $value = PaceFormatter::parse($label);

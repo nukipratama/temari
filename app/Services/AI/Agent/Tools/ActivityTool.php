@@ -6,6 +6,7 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Services\Run\Metrics\StreamSummary;
 
 /**
  * Base for the reads about one run, each bound to that run at construction.
@@ -18,9 +19,8 @@ abstract class ActivityTool extends NoArgumentTool
     ) {
     }
 
-    /** @return array<string, mixed> */
-    protected function summary(): array
+    protected function summary(): StreamSummary
     {
-        return $this->detail->streamSummary();
+        return StreamSummary::fromArray($this->detail->streamSummary());
     }
 }

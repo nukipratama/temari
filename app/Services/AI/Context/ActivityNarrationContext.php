@@ -19,10 +19,10 @@ final readonly class ActivityNarrationContext
 {
     public function __construct(
         public ?float $distanceMeters,
-        /** Raw `decoupling_pct` from the stream summary, passed through untyped. */
-        public mixed $decouplingPct,
-        /** Raw `negative_split` from the stream summary, passed through untyped. */
-        public mixed $negativeSplit,
+        /** Cardiac drift over the run, or null when it carries no reading. */
+        public ?float $decouplingPct,
+        /** Whether the second half was faster, or null when there are no splits. */
+        public ?bool $negativeSplit,
         /** @var array<string, float|int> Time-in-zone percentages keyed by zone label. */
         public array $zonePct,
         public ?int $weatherTempC,
@@ -42,13 +42,13 @@ final readonly class ActivityNarrationContext
     #[NoDiscard]
     public static function fromDetail(?ActivityDetail $detail): self
     {
-        $summary = $detail?->streamSummary() ?? [];
+        $summary = StreamSummary::fromArray($detail?->streamSummary());
 
         return new self(
             distanceMeters: $detail?->distance,
-            decouplingPct: $summary['decoupling_pct'] ?? null,
-            negativeSplit: $summary['negative_split'] ?? null,
-            zonePct: StreamSummary::zonePct($summary),
+            decouplingPct: $summary->decouplingPct(),
+            negativeSplit: $summary->negativeSplit(),
+            zonePct: $summary->zonePct(),
             weatherTempC: $detail?->weather_temp_c,
             weatherRain: $detail?->weather_rain_detected,
             weatherWindSpeedKmh: $detail?->weather_wind_speed_kmh,

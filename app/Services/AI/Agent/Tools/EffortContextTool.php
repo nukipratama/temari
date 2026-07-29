@@ -38,7 +38,7 @@ final class EffortContextTool extends ActivityTool
         return [
             'session_intent' => SessionIntent::forDetail($this->detail),
             'relative_effort' => $this->relativeEffort->forRun($this->activity, $this->detail),
-            'decoupling_pct' => $this->summary()['decoupling_pct'] ?? null,
+            'decoupling_pct' => $this->summary()->decouplingPct(),
         ];
     }
 }

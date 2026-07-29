@@ -18,7 +18,6 @@ use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\AI\TokenUsageRecorder;
 use App\Services\Geo\ResolvedLocation;
 use App\Services\Run\Metrics\PaceFormatter;
-use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Gamification\WeeklyRecap;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
@@ -69,7 +68,6 @@ it('has a test class for every concrete app class', function (): void {
         TokenUsageRecorder::class,      // StructuredChatCallerTest
         RuleBasedNarrationFiller::class, // DemoSeedCommandTest
         PaceFormatter::class,           // exercised across pace tests
-        StreamSummary::class,           // StreamAnalysisTest
         StravaSyncLog::class,           // SyncOrchestratorTest
         SumsPulseTotals::class,         // trait, exercised via AiPipelineHealthTest + StravaHealthTest
         ReadsPreviousActivityNarrative::class, // trait, exercised via PostRunSpeechNarratorTest + RunInsightNarratorTest

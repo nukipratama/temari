@@ -86,9 +86,9 @@ class RunBaseline
             if ($detail->trimp_edwards !== null) {
                 $trimpValues[] = (float) $detail->trimp_edwards;
             }
-            $decoupling = $detail->streamSummary()['decoupling_pct'] ?? null;
-            if (is_numeric($decoupling)) {
-                $decouplingValues[] = (float) $decoupling;
+            $decoupling = StreamSummary::fromArray($detail->streamSummary())->decouplingPct();
+            if ($decoupling !== null) {
+                $decouplingValues[] = $decoupling;
             }
         }
 

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
+use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
@@ -134,9 +135,9 @@ class Vibe
 
         $samples = [];
         foreach ($rows as $row) {
-            $summary = $row->streamSummary();
-            if (isset($summary['decoupling_pct'])) {
-                $samples[] = (float) $summary['decoupling_pct'];
+            $decoupling = StreamSummary::fromArray($row->streamSummary())->decouplingPct();
+            if ($decoupling !== null) {
+                $samples[] = $decoupling;
             }
         }
 
