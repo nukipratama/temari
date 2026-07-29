@@ -39,10 +39,13 @@ final class AgentBudget
     ) {
     }
 
-    public static function fromConfig(): self
+    /**
+     * @param  int|null  $maxSteps  Per-narrator step ceiling; null takes the global default.
+     */
+    public static function fromConfig(?int $maxSteps = null): self
     {
         return new self(
-            (int) config('ai.agent.max_steps'),
+            $maxSteps ?? (int) config('ai.agent.max_steps'),
             (int) config('ai.agent.max_tokens'),
         );
     }

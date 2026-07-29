@@ -17,6 +17,13 @@ use App\Services\AI\Agent\AgentToolbox;
  *
  * `toolbox` null = one-shot call. Supplying one turns the call into an agent
  * run: the model reads what it decides it needs before answering.
+ *
+ * `maxSteps` null = use the global `ai.agent.max_steps` config default, which
+ * is sized for the widest toolbox. Every tool takes no arguments and is worth
+ * calling once, so one pass needs at most `tools + 1` turns; the content-filter
+ * retry replays that pass on the same budget, so an override must allow
+ * `2 * (tools + 1)` or the retry answers with no readings at all. Only worth
+ * setting where that lands *below* the default.
  */
 final readonly class ChatCallOptions
 {
@@ -25,6 +32,7 @@ final readonly class ChatCallOptions
         public ?int $userId = null,
         public ?int $maxTokens = null,
         public ?AgentToolbox $toolbox = null,
+        public ?int $maxSteps = null,
     ) {
     }
 }

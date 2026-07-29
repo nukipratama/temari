@@ -7,7 +7,9 @@ return [
 
     // Per-block ceiling on an agent run. The daily cost ceiling only gates
     // dispatch, so this is what stops one runaway tool loop from spending the
-    // day's budget inside a single job.
+    // day's budget inside a single job. max_steps is sized for the widest
+    // toolbox; a narrator with a small one tightens it via
+    // ChatCallOptions::$maxSteps, since every turn re-bills the whole prefix.
     'agent' => [
         'max_steps' => (int) env('AI_AGENT_MAX_STEPS', 8),
         'max_tokens' => (int) env('AI_AGENT_MAX_TOKENS', 30000),

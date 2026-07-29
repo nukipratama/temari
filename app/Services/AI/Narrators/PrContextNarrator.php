@@ -66,6 +66,7 @@ class PrContextNarrator
                 userId: $pr->user_id,
                 maxTokens: 500,
                 toolbox: $this->toolbox($pr),
+                maxSteps: 6,
             ),
         );
 

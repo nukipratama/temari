@@ -72,6 +72,7 @@ class BriefingFeaturedKartuVoiceNarrator
                 userId: $user->id,
                 maxTokens: 500,
                 toolbox: new AgentToolbox([new FeaturedCardTool($card)]),
+                maxSteps: 4,
             ),
         );
 

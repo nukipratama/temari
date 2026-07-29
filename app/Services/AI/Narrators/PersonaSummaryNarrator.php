@@ -75,6 +75,7 @@ class PersonaSummaryNarrator
                 userId: $user->id,
                 maxTokens: 1500,
                 toolbox: new AgentToolbox([new PersonaMixTool($user, Carbon::now())]),
+                maxSteps: 4,
             ),
         );
 

@@ -627,6 +627,33 @@ it('stops offering tools at the step ceiling and still returns narration', funct
     ));
 });
 
+it('lets a narrator tighten the step ceiling below the global default', function (): void {
+    Log::spy();
+    config()->set('ai.agent.max_steps', 8);
+
+    $client = new ClientFake([
+        fakeAzureToolCallResponse([['name' => 'get_thing']]),
+        fakeAzureToolCallResponse([['name' => 'get_thing']]),
+        fakeAzureResponse(json_encode(['headline' => 'capped early'], JSON_THROW_ON_ERROR)),
+    ]);
+    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => ['value' => 1])]);
+
+    $payload = fakeStructuredCaller($client)->call(
+        'weekly_recap',
+        'sys',
+        [],
+        'schema',
+        ['headline'],
+        new ChatCallOptions(toolbox: $toolbox, maxSteps: 2),
+    );
+
+    expect($payload)->toBe(['headline' => 'capped early']);
+
+    Log::shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
+        fn (array $ctx): bool => $ctx['reason'] === 'max_steps' && $ctx['steps'] === 2,
+    ));
+});
+
 it('stops offering tools at the token ceiling and still returns narration', function (): void {
     Log::spy();
     config()->set('ai.agent.max_tokens', 50);

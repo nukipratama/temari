@@ -66,7 +66,7 @@ final readonly class StructuredChatCaller
         $effectiveMaxTokens = $options->maxTokens ?? (int) config('azure_openai.max_completion_tokens');
         $deployment = $this->azure->deploymentFor($kind);
         $toolbox = $options->toolbox !== null && ! $options->toolbox->isEmpty() ? $options->toolbox : null;
-        $budget = AgentBudget::fromConfig();
+        $budget = AgentBudget::fromConfig($options->maxSteps);
 
         $payload = [
             'model' => $deployment,

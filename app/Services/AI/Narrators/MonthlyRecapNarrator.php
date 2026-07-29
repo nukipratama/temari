@@ -71,6 +71,7 @@ class MonthlyRecapNarrator
                 userId: $user->id,
                 maxTokens: 1500,
                 toolbox: new AgentToolbox([new MonthTotalsTool($user, $month)]),
+                maxSteps: 4,
             ),
         );
 
