@@ -73,7 +73,7 @@ export default function Aku({
             <Head title="Aku" />
             <PageContainer>
                 <header className="mb-8">
-                    <Eyebrow tracking="0.18" tone="ink-2" className="mb-3.5 lg:text-xs">
+                    <Eyebrow token="hero" tone="ink-2" className="mb-3.5 lg:text-xs">
                         {eyebrowParts.join(' · ')}
                     </Eyebrow>
                     <h1 className="font-display text-display-lg text-ink">
@@ -113,7 +113,7 @@ export default function Aku({
                                 {stravaRevoked && (
                                     <a
                                         href="/auth/strava/redirect?from=/profil"
-                                        className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-strava-orange-hover"
+                                        className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1 text-label-micro text-white transition hover:bg-strava-orange-hover"
                                     >
                                         <Icon icon="mdi:strava" width={12} height={12} aria-hidden />
                                         Sambungin lagi
@@ -181,7 +181,7 @@ function ProgressionSection({
         <Card as="section" padding="lg" className="mt-4">
             {tabs.length > 1 && (
                 <div className="mb-6 flex flex-wrap items-center gap-2" role="tablist" aria-label="Pilih jarak">
-                    <Eyebrow as="span" tone="ink-2" className="mr-1">Jarak</Eyebrow>
+                    <Eyebrow as="span" token="micro" tone="ink-2" className="mr-1">Jarak</Eyebrow>
                     {tabs.map((c) => (
                         <button
                             key={c}
@@ -190,7 +190,7 @@ function ProgressionSection({
                             aria-selected={c === selected}
                             onClick={() => setSelected(c)}
                             className={cn(
-                                'focus-ring inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] transition',
+                                'focus-ring inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
                                 c === selected
                                     ? 'border-horizon bg-horizon/10 text-horizon-deep'
                                     : 'border-line text-ink-3 hover:border-horizon/60 hover:text-ink',

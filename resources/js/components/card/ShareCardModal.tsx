@@ -163,7 +163,7 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                             <Icon icon="mdi:close" width={16} height={16} />
                         </button>
                         <div className="flex-1 text-center">
-                            <div className="font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
+                            <div className="text-label-micro text-ink-2">
                                 Bagikan kartu
                             </div>
                             <div className="font-display text-xl tracking-tight text-ink">

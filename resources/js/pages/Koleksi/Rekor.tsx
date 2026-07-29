@@ -194,7 +194,7 @@ function HeroScoreboard({
 function Caption({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
     return (
         <div>
-            <Eyebrow size="sm" weight="none" tone="ink-on-sky" className="mb-1.5">
+            <Eyebrow token="micro" tone="ink-on-sky" className="mb-1.5">
                 {label}
             </Eyebrow>
             <div className="font-sans text-sm font-medium leading-tight text-cream">{value}</div>
@@ -288,7 +288,7 @@ function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
             </div>
             <div className="border-t border-cream/10 pt-2.5">
                 <div className="font-sans text-xs text-cream/85">{runName}</div>
-                <Eyebrow size="xs" tracking="0.12" weight="none" tone="ink-on-sky">
+                <Eyebrow token="micro" tone="ink-on-sky">
                     {formatNaiveIdDate(pr.set_at, 'short')}
                 </Eyebrow>
             </div>

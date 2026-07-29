@@ -223,7 +223,7 @@ function RarityFilter({
 }>) {
     return (
         <nav aria-label="Filter kartu" className="mt-8 flex flex-wrap items-center gap-2">
-            <Eyebrow as="span" tone="ink-2" className="mr-1.5">
+            <Eyebrow as="span" token="micro" tone="ink-2" className="mr-1.5">
                 Tingkat
             </Eyebrow>
             <FilterPill href="/kartu" label="Semua" active={selected === null} dot={null} />
@@ -365,7 +365,7 @@ function LegendaryTease() {
                 ?
             </div>
             <div className="flex-1">
-                <Eyebrow tracking="0.16" className="mb-1.5 text-rarity-legendary">
+                <Eyebrow token="micro" className="mb-1.5 text-rarity-legendary">
                     ★ Legendaris · belum kebuka
                 </Eyebrow>
                 <p className="font-display text-sm italic leading-relaxed text-ink-2">

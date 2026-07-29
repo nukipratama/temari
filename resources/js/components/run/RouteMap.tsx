@@ -76,7 +76,7 @@ export default function RouteMap({ polyline, distanceKm }: Readonly<RouteMapProp
                     aria-label="Aktifkan peta untuk menggeser dan memperbesar"
                     className="absolute inset-0 z-[1000] flex items-end justify-center bg-transparent p-3"
                 >
-                    <span className="rounded-full bg-ink/70 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-cream backdrop-blur-sm">
+                    <span className="rounded-full bg-ink/70 px-3 py-1.5 text-label-micro text-cream backdrop-blur-sm">
                         Ketuk untuk interaktif
                     </span>
                 </button>

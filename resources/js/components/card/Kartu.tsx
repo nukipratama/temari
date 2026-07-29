@@ -209,7 +209,7 @@ export default function Kartu({
                     <span className={cn('font-collectible font-bold tabular-nums leading-none', RARITY_TEXT[rarity], SIZE_KM[size])}>
                         {km}
                     </span>
-                    <Eyebrow as="span" size="9" tracking="0.12" weight="none" tone="cream">km</Eyebrow>
+                    <Eyebrow as="span" token="micro" tone="cream" className="text-[9px] tracking-[0.12em] font-normal">km</Eyebrow>
                 </div>
 
                 {/* Badges — centred row below the KM hero. */}
@@ -350,7 +350,7 @@ function StatGrid({ stats, durasi }: Readonly<{ stats: KartuStats | undefined; d
         <dl className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5 text-center">
             {cells.map((cell) => (
                 <div key={cell.label} className="min-w-0">
-                    <Eyebrow as="dt" size="8" weight="none" tone="cream">{cell.label}</Eyebrow>
+                    <Eyebrow as="dt" token="micro" tone="cream" className="text-[8px] tracking-[0.14em] font-normal">{cell.label}</Eyebrow>
                     <dd className="truncate font-mono text-[12px] font-semibold tabular-nums text-cream">{cell.value}</dd>
                 </div>
             ))}

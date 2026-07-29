@@ -38,14 +38,14 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
                         {run.name ?? 'Lari'}
                     </div>
                     {dateUpper && (
-                        <Eyebrow tone="ink-2" className="mt-1 flex flex-wrap items-center gap-x-2">
+                        <Eyebrow token="micro" tone="ink-2" className="mt-1 flex flex-wrap items-center gap-x-2">
                             <span>{dateUpper}</span>
                             {timeLabel && <><span aria-hidden>·</span><span>{timeLabel}</span></>}
                             {note && <><span aria-hidden>·</span><MoodChip mood={note.mood} size="sm" /></>}
                         </Eyebrow>
                     )}
                     {(locationShort || weatherLabel) && (
-                        <Eyebrow tracking="0.1" tone="ink-2" className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <Eyebrow token="micro" tone="ink-2" className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             {locationShort && (
 <span className="inline-flex items-center gap-1">
     <Icon icon="mdi:map-marker-outline" width={11} height={11} aria-hidden />
@@ -75,7 +75,7 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
                     <p className="min-w-0">{renderBold(note.oneline)}</p>
                 </div>
             )}
-            <Eyebrow as="span" tracking="0.12" weight="semibold" tone="horizon-deep" className="mt-auto">
+            <Eyebrow as="span" token="micro" tone="horizon-deep" className="mt-auto">
                 Lihat detail lari →
             </Eyebrow>
         </LinkCard>
