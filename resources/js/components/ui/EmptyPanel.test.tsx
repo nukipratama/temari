@@ -50,17 +50,9 @@ describe('EmptyPanel', () => {
         expect(screen.getByRole('button', { name: 'Aksi' })).toBeInTheDocument();
     });
 
-    it('lets a caller override title and body typography', () => {
-        render(
-            <EmptyPanel
-                title="Judul"
-                body="Sub-copy"
-                titleClassName="text-base text-ink-3"
-                bodyClassName="text-ink-3"
-                className=""
-            />,
-        );
-        expect(screen.getByText('Judul')).toHaveClass('text-base', 'text-ink-3');
-        expect(screen.getByText('Sub-copy')).toHaveClass('text-ink-3');
+    it('renders the title and body in the canonical typography for every site', () => {
+        render(<EmptyPanel title="Judul" body="Sub-copy" className="" />);
+        expect(screen.getByText('Judul')).toHaveClass('text-2xl', 'text-ink-2');
+        expect(screen.getByText('Sub-copy')).toHaveClass('text-sm', 'text-ink-2');
     });
 });

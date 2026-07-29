@@ -303,9 +303,7 @@ function EmptyState() {
     return (
         <EmptyPanel
             title="Belum ada PR."
-            titleClassName="text-3xl"
             body="Sync Strava kamu, Temari otomatis nyatet rekor yang kepecahin."
-            bodyClassName="text-ink-3"
             action={state !== 'syncing' && <StravaSyncButton state={state} className="mt-4" />}
             className="mt-8"
         />

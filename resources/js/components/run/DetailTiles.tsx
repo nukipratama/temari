@@ -66,7 +66,7 @@ export default function DetailTiles({
     }
 
     if (tiles.length === 0) {
-        return <EmptyPanel title="Detail teknis-nya belum kebaca." titleClassName="text-base" className="" />;
+        return <EmptyPanel title="Detail teknis-nya belum kebaca." className="" />;
     }
 
     return (

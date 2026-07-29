@@ -19,7 +19,6 @@ export default function PersonaBar({ mix, className }: Readonly<PersonaBarProps>
         return (
             <EmptyPanel
                 title="Belum ada cukup lari buat baca personamu."
-                titleClassName="text-base text-ink-3"
                 className={cn('py-5', className)}
             />
         );

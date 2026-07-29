@@ -164,7 +164,6 @@ export default function ProgressionChart({
         return (
             <EmptyPanel
                 title="Belum cukup lari di jarak ini buat narik garis progresi."
-                titleClassName="text-base text-ink-3"
                 className={cn('py-10', className)}
             />
         );
