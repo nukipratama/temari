@@ -174,11 +174,23 @@ services:
           cpus: "1.0"
           memory: 1g
 
+  # Override the image's HTTP healthcheck: this container serves no HTTP, and a
+  # wedged or dead schedule:work is otherwise completely silent — every scheduled
+  # command just stops. `schedule:heartbeat` stamps a timestamp on the durable
+  # Redis every minute (routes/console.php); `--check` fails when that stamp is
+  # older than 300s. 300s = 5x the one-minute cadence, headroom for a host-load
+  # delayed tick without flapping; 3 retries at 60s means ~7min of real death
+  # before `unhealthy`. start_period covers container boot plus the wait for the
+  # next minute boundary before the first stamp lands.
   scheduler:
     <<: *app-base
     command: ["php", "artisan", "schedule:work"]
     healthcheck:
-      disable: true
+      test: ["CMD", "php", "artisan", "schedule:heartbeat", "--check"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
     deploy:
       resources:
         limits:
