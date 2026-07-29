@@ -3,7 +3,7 @@ title: Deployment & runtime
 description: Multi-stage FrankenPHP/Octane image, the loopback-only prod compose stack behind a Cloudflare Tunnel, Redis DB partitioning, and the GitHub Actions build/migrate/roll/rollback flow on a single homelab host
 tags: [architecture, infra]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-07-29
 code_refs:
   - Dockerfile
   - compose.prod.yaml
@@ -50,7 +50,7 @@ The runtime stage serves on **`:7001`** plain HTTP — TLS terminates at Cloudfl
 - **`redis`** — durable store: `redis:8-alpine`, AOF `everysec`, `maxmemory 512mb` / `noeviction`, persistent `redis_data` volume. The healthcheck is a **write probe** (`SET`), not `ping`, because Redis answers PONG while still replaying AOF but rejects writes — a ping would let app/horizon connect mid-replay and read empty sessions.
 - **`redis-cache`** — dedicated cache store split off `redis`: `redis:8-alpine`, `maxmemory 256mb` / `allkeys-lru`, `appendonly no` and **no volume** (cache is ephemeral, rebuilds lazily). Split out so cache growth can only ever evict itself, never push the durable queue/session store into `noeviction` and stall enqueues. Reuses the same `SET` write-probe healthcheck.
 
-`app`/`horizon`/`scheduler`/`pulse` all `depends_on` mysql + redis + redis-cache `service_healthy`, and carry per-service `deploy.resources` limits with CPU floors that sum well under the shared 4-core host.
+`app`/`horizon`/`scheduler`/`pulse` all `depends_on` mysql + redis + redis-cache `service_healthy`, and each carries a per-service `deploy.resources` **limit**. Only `app` also carries a CPU **floor** ([compose.prod.yaml:155-156](compose.prod.yaml)); `horizon` ([compose.prod.yaml:171-175](compose.prod.yaml)), `scheduler` ([compose.prod.yaml:182-186](compose.prod.yaml)) and `pulse` ([compose.prod.yaml:221-225](compose.prod.yaml)) declare limits with no `reservations` block, so under contention they are capped but never guaranteed a slice. The floors that exist are on `app` + `mysql` + `redis` + `redis-cache`, and sum well under the shared 4-core host.
 
 ### Redis DB partitioning
 
@@ -88,8 +88,12 @@ Write schema changes as **expand/contract split across two deploys**:
 1. **Expand** (deploy 1): add the new column/table/enum value; backfill; make new code write both old and new. Never remove or narrow anything the currently-live code depends on.
 2. **Contract** (deploy 2, after deploy 1 is fully rolled): drop the now-unused old column / tighten the constraint, once no running code references it.
 
-The heavier alternative is wrapping the migrate step in `artisan down` (a maintenance-mode blip on every deploy); expand/contract keeps deploys zero-downtime, so prefer it. See the deploy order in [.github/workflows/ci.yml](.github/workflows/ci.yml).
+The heavier alternative is wrapping the migrate step in `artisan down` (a maintenance-mode blip on every deploy); expand/contract avoids that blip and keeps the still-live old code safe against the new schema, so prefer it. See the deploy order in [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+Note what this does **not** buy: the roll itself is not zero-downtime. There is one `app` container on one loopback port and no second replica, and step 7 is a plain `up -d --no-deps app horizon pulse` ([.github/workflows/ci.yml:404](.github/workflows/ci.yml)) — compose stops the old container and starts the new one in place, so requests are refused for the second or two that takes. The `/up` healthcheck at step 9 polls the container that already replaced the old one; it verifies the new image booted, it does not gate a cutover. Expand/contract is what keeps that window a brief connection refusal instead of a wall of 500s.
 
 ## Rollback
 
-Every successful deploy leaves `temari/app:previous` and `temari/app:<git-sha>` on the host. To roll back the most recent deploy, re-tag `:previous` → `:latest`, `up -d --no-deps app horizon scheduler`, and `horizon:terminate`. For an older commit, re-tag the SHA you want (within retention). The full commands and the `/opt/temari/.env` setup table live in the Deployment section of [README.md](README.md).
+Every successful deploy leaves `temari/app:previous` and `temari/app:<git-sha>` on the host. To roll back the most recent deploy, re-tag `:previous` → `:latest`, `up -d --no-deps app horizon scheduler`, and `horizon:terminate`. The full commands and the `/opt/temari/.env` setup table live in the Deployment section of [README.md](README.md).
+
+**You can only go back one deploy.** There is no retention window holding a range of older SHAs to pick from: the prune step runs `if: always()` on every deploy and deletes every `temari/app` tag except `:latest`, `:previous` and the SHA just deployed ([.github/workflows/ci.yml:488-490](.github/workflows/ci.yml)). So the host holds exactly two recoverable images — current and one back — and the SHA tag of any older commit is already gone. To recover further back, rebuild from that commit.

@@ -6,20 +6,13 @@ import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useDismissable } from '@/hooks/useDismissable';
 import { useFocusReturn } from '@/hooks/useFocusReturn';
 import { cn } from '@/lib/cn';
+import type { MoodOption } from '@/lib/mood';
 import type { Mood } from '@/types/inertia';
 
 export interface RangeOption<V extends string> {
     value: V;
     label: string;
     hint?: string;
-}
-
-export interface MoodOption {
-    mood: Mood;
-    label: string;
-    hint: string;
-    /** Tailwind class for the chip swatch. */
-    swatchClass: string;
 }
 
 interface RangeSection<V extends string> {

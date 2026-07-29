@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Sink for client-side errors (React render errors, unhandled rejections) so
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\Log;
  */
 class ClientErrorController extends Controller
 {
+    private const int MAX_TRACE_CHARS = 2000;
+
     public function __invoke(Request $request): Response
     {
         $validated = $request->validate([
@@ -25,14 +28,24 @@ class ClientErrorController extends Controller
             'componentStack' => 'nullable|string|max:5000',
         ]);
 
-        Log::warning('client-error', [
+        Log::channel('client-errors')->warning('client-error', [
             'message' => $validated['message'],
             'url' => $validated['url'] ?? $request->headers->get('referer'),
-            'component_stack' => $validated['componentStack'] ?? null,
-            'stack' => $validated['stack'] ?? null,
+            'component_stack' => self::trace($validated['componentStack'] ?? null),
+            'stack' => self::trace($validated['stack'] ?? null),
             'user_id' => $request->user()?->id,
         ]);
 
         return response()->noContent();
+    }
+
+    /**
+     * Accepts the wider length a stale cached bundle may still send, but only
+     * ever writes the leading frames — the tail of a stack is rarely the part
+     * that identifies the bug.
+     */
+    private static function trace(?string $value): ?string
+    {
+        return $value === null ? null : Str::limit($value, self::MAX_TRACE_CHARS);
     }
 }

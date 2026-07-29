@@ -2,13 +2,16 @@
 title: Trust all proxies behind the Cloudflare tunnel
 description: Laravel trusts every proxy so it honors X-Forwarded-Proto and generates https URLs, safe because the app port is loopback-only behind the tunnel.
 tags: [decision, infra]
-status: accepted
+status: superseded
+superseded_by: narrow-trusted-proxy-headers
 reviewed: 2026-06-20
 code_refs:
   - bootstrap/app.php
   - compose.prod.yaml
   - config/services.php
 ---
+
+> **Superseded (2026-07-29) by [[narrow-trusted-proxy-headers]].** The `at: '*'` described below is no longer what the code does: proxy trust was narrowed to loopback + private ranges, and then to an explicit three-header set. The topology reasoning here — TLS terminates at the CF edge, `X-Forwarded-Proto` must be honored or Strava OAuth breaks on a `redirect_uri` mismatch, and the loopback-only port binding is a load-bearing security control — still stands and is what the newer note builds on.
 
 # Trust all proxies behind the Cloudflare tunnel
 

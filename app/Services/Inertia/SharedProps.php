@@ -298,7 +298,7 @@ final readonly class SharedProps
     }
 
     /**
-     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, mood: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null, summary_polyline: string|null, public_share_url: string, edition: array{index: int, total: int}}|null
+     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, mood: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null, average_heartrate: float|null, stream_summary: array<string, mixed>|null, summary_polyline: string|null, public_share_url: string, edition: array{index: int, total: int}}|null
      */
     private function pendingRevealFor(?User $user): ?array
     {

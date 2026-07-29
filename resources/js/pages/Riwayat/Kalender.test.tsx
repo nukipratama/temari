@@ -239,7 +239,7 @@ describe('Kalender', () => {
 
     it('renders the page chrome even with an empty cells array', () => {
         render(<Kalender {...BASE_PROPS} cells={[]} />);
-        // No grid rows since groupByWeek returns []. Chrome (month label + legend) still shows.
+        // No grid rows since chunkIntoWeeks returns []. Chrome (month label + legend) still shows.
         expect(screen.getByRole('heading', { name: 'Mei 2026' })).toBeInTheDocument();
         expect(screen.getByText('Mood')).toBeInTheDocument();
     });

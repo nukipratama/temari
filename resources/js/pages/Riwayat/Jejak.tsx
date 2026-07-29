@@ -11,7 +11,7 @@ import SendNotificationButton from '@/components/SendNotificationButton';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { useLastFilter } from '@/hooks/useLastFilter';
 import PageHero from '@/components/ui/PageHero';
-import RiwayatFilter, { type MoodOption, type RangeOption } from '@/components/riwayat/RiwayatFilter';
+import RiwayatFilter, { type RangeOption } from '@/components/riwayat/RiwayatFilter';
 import ActiveFilterChips, { type ActiveChip } from '@/components/riwayat/ActiveFilterChips';
 import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import BackLink from '@/components/ui/BackLink';
@@ -22,7 +22,7 @@ import { type MetricKey } from '@/lib/metricGlossary';
 import { cn } from '@/lib/cn';
 import { poseForFormStatus } from '@/lib/temariPose';
 import { formStatusLabel } from '@/lib/formStatus';
-import { MOOD_HINT, MOOD_LABEL, MOOD_FILL, MOOD_ORDER } from '@/lib/mood';
+import { MOOD_FILTER_OPTIONS, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
 import PageContainer from '@/components/ui/PageContainer';
 import type { Activity, ActivityDetail, AnalysisPayload, FormStatus, Mood, SharedProps, StravaSyncState } from '@/types/inertia';
@@ -169,13 +169,6 @@ const RANGE_FILTER_OPTIONS: ReadonlyArray<RangeOption<RangeFilterValue>> = [
     { value: '1y', label: 'Setahun penuh', hint: '1y' },
     { value: 'all', label: 'Semua lari', hint: 'all' },
 ];
-
-const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => ({
-    mood,
-    label: MOOD_LABEL[mood],
-    hint: MOOD_HINT[mood],
-    swatchClass: MOOD_FILL[mood],
-}));
 
 const FORM_CHIP_CLASS: Record<FormStatus, string> = {
     fresh: 'bg-leaf/15 text-leaf-deep',

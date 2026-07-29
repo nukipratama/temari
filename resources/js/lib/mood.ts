@@ -52,6 +52,21 @@ export const MOOD_HINT: Record<Mood, string> = {
     adem: 'istirahat',
 };
 
+export interface MoodOption {
+    mood: Mood;
+    label: string;
+    hint: string;
+    /** Tailwind class for the chip swatch. */
+    swatchClass: string;
+}
+
+export const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => ({
+    mood,
+    label: MOOD_LABEL[mood],
+    hint: MOOD_HINT[mood],
+    swatchClass: MOOD_FILL[mood],
+}));
+
 export function moodToken(mood: Mood): Mood {
     return mood;
 }

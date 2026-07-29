@@ -6,6 +6,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,12 +21,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // address. Trust only private ranges + loopback — enough to honor
         // X-Forwarded-Proto: https (otherwise Strava OAuth fails with redirect_uri
         // mismatch) without trusting a forwarded header spoofed from a public IP.
+        // Laravel's default header set also trusts X-Forwarded-Host and
+        // X-Forwarded-Prefix, which the CF edge relays from the client; narrowed
+        // to the three this topology needs. Host keeps resolving from the Host
+        // header, so the redirect_uri above is unaffected.
         $middleware->trustProxies(at: [
             '127.0.0.0/8',
             '10.0.0.0/8',
             '172.16.0.0/12',
             '192.168.0.0/16',
-        ]);
+        ], headers: Request::HEADER_X_FORWARDED_FOR
+            | Request::HEADER_X_FORWARDED_PROTO
+            | Request::HEADER_X_FORWARDED_PORT);
 
         $middleware->web(append: [
             HandleInertiaRequests::class,
