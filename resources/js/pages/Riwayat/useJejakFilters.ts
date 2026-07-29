@@ -137,7 +137,7 @@ function weekRangeLabel(monday: Date): string {
 
 /**
  * Bucket activities by ISO week (Monday-start). Activities without a
- * start_date_local fall into a single "Lainnya" bucket at the end.
+ * start_date_local fall into a single "Tanpa tanggal" bucket at the end.
  */
 export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
     const byKey = new Map<string, WeekBucket>();

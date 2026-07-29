@@ -23,10 +23,6 @@ export default function InlineNote({ icon, children, action, className }: Readon
     );
 }
 
-/**
- * Banner shown above the run list when the server widened the requested window
- * so an older run could surface. Keeps the active range chip honest.
- */
 export function RunsTruncatedNote({ maxRuns }: Readonly<{ maxRuns: number }>) {
     return (
         <InlineNote icon="mdi:history">

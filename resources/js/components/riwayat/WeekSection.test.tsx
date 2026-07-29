@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
 import WeekSection from './WeekSection';
 import { makeUser, setMockPage } from '@/test/setup';
+import { run } from '@/pages/Riwayat/runFixture';
 import type { WeekBucket, RunWithDetail } from '@/pages/Riwayat/useJejakFilters';
-import type { ActivityDetail, WeeklySnapshotWithRecap } from '@/types/inertia';
+import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 vi.mock('@/components/run/RunListRow', () => ({
     default: ({ detail }: { detail: { name: string } }) => (
@@ -12,21 +13,16 @@ vi.mock('@/components/run/RunListRow', () => ({
     ),
 }));
 
-function run(id: number, name: string): RunWithDetail {
+function recapAnalysis(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
     return {
-        id,
-        user_id: 1,
-        analyzed_at: '2026-05-19',
-        detail: {
-            id,
-            activity_id: id,
-            name,
-            start_date_local: '2026-05-19T06:00:00',
-            distance: 5000,
-            moving_time: 1800,
-            trimp_edwards: 50,
-            average_heartrate: 145,
-        } as ActivityDetail,
+        id: 1,
+        status: 'done',
+        content: 'Minggu konsisten.',
+        type: 'weekly_recap',
+        subject_type: 'weekly_snapshot',
+        subject_id: 7,
+        discriminator: null,
+        ...overrides,
     };
 }
 
@@ -58,15 +54,7 @@ function snapshot(overrides: Partial<WeeklySnapshotWithRecap> = {}): WeeklySnaps
         strain: 384,
         is_current_week: false,
         is_chain_head: true,
-        recap_analysis: {
-            id: 1,
-            status: 'done',
-            content: 'Minggu konsisten.',
-            type: 'weekly_recap',
-            subject_type: 'weekly_snapshot',
-            subject_id: 7,
-            discriminator: null,
-        },
+        recap_analysis: recapAnalysis(),
         notification_retry_after_seconds: null,
         ...overrides,
     };
@@ -137,6 +125,12 @@ describe('WeekSection', () => {
     });
 
     it('renders the form-status chip label for every FormStatus value', () => {
+        const labels: Record<string, string> = {
+            fresh: 'Lagi seger',
+            optimal: 'Pas banget',
+            fatigued: 'Mulai capek',
+            overreaching: 'Kelewatan',
+        };
         for (const status of ['fresh', 'optimal', 'fatigued', 'overreaching'] as const) {
             const { unmount } = render(
                 <WeekSection
@@ -147,7 +141,7 @@ describe('WeekSection', () => {
                     filtered={false}
                 />,
             );
-            expect(screen.getAllByTestId('run-row').length).toBe(1);
+            expect(screen.getByText(labels[status])).toBeInTheDocument();
             unmount();
         }
     });
@@ -319,15 +313,7 @@ describe('WeekSection', () => {
                     bucket={bucket()}
                     snapshot={snapshot({
                         is_current_week: true,
-                        recap_analysis: {
-                            id: 1,
-                            status: 'pending',
-                            content: null,
-                            type: 'weekly_recap',
-                            subject_type: 'weekly_snapshot',
-                            subject_id: 7,
-                            discriminator: null,
-                        },
+                        recap_analysis: recapAnalysis({ status: 'pending', content: null }),
                     })}
                     notes={{}}
                     moods={{}}
@@ -349,15 +335,7 @@ describe('WeekSection', () => {
                         form: null,
                         form_status: null,
                         is_current_week: true,
-                        recap_analysis: {
-                            id: 1,
-                            status: 'pending',
-                            content: null,
-                            type: 'weekly_recap',
-                            subject_type: 'weekly_snapshot',
-                            subject_id: 7,
-                            discriminator: null,
-                        },
+                        recap_analysis: recapAnalysis({ status: 'pending', content: null }),
                     })}
                     notes={{}}
                     moods={{}}

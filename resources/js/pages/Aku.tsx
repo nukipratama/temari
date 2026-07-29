@@ -93,9 +93,9 @@ export default function Aku({
                             <Temari pose="proud" size={100} animate={false} />
                         </div>
                         <div className="w-full min-w-0 sm:flex-1 sm:self-center">
-                            <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
+                            <Eyebrow token="hero" tone="horizon" className="mb-3">
                                 ★ Kata Temari tentang kamu
-                            </div>
+                            </Eyebrow>
                             {profileVoice && (
                                 <AnalysisStatus
                                     analysis={profileVoice}
