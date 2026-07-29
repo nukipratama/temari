@@ -75,6 +75,23 @@ it('fires longest_ever when a new activity beats the prior longest', function ()
     expect($kinds)->toContain('longest_ever');
 });
 
+it('writes both milestone bodies with an Indonesian comma decimal', function (): void {
+    $user = User::factory()->create();
+    [$short, $shortDetail] = buildActivity($user, '2026-05-15', 5_000);
+    $this->detector->detect($short, $shortDetail);
+
+    [$long, $longDetail] = buildActivity($user, '2026-05-21', 10_470);
+    $milestones = $this->detector->detect($long, $longDetail);
+
+    $longest = collect($milestones)->firstWhere('kind', 'longest_ever');
+    $firstEver = collect($milestones)->firstWhere('kind', 'first_ever_distance');
+
+    expect($longest['body'])->toContain('10,5 km')
+        ->and($longest['body'])->not->toContain('10.5')
+        ->and($firstEver['body'])->toContain('10,5 km')
+        ->and($firstEver['body'])->not->toContain('10.5');
+});
+
 it('includes a PR milestone when categories are passed in', function (): void {
     $user = User::factory()->create();
     [$activity, $detail] = buildActivity($user, '2026-05-21', 5_000);
@@ -221,28 +238,6 @@ it('treats older activities synced later as not setting a new "first ever" for y
 
     $kinds = array_column($milestones, 'kind');
     expect($kinds)->toContain('first_ever_distance');
-});
-
-it('writes the longest-ever body with an Indonesian comma decimal', function (): void {
-    $user = User::factory()->create();
-    [$prior, $priorDetail] = buildActivity($user, '2026-05-15', 8_000);
-    $this->detector->detect($prior, $priorDetail);
-
-    [$activity, $detail] = buildActivity($user, '2026-05-21', 10_470);
-    $longest = collect($this->detector->detect($activity, $detail))->firstWhere('kind', 'longest_ever');
-
-    expect($longest)->not->toBeNull()
-        ->and($longest['body'])->toBe('10,47 km, melampaui rekor jarak kamu sebelumnya.');
-});
-
-it('writes the first-ever distance body with an Indonesian comma decimal', function (): void {
-    $user = User::factory()->create();
-    [$activity, $detail] = buildActivity($user, '2026-05-21', 5_300);
-
-    $distance = collect($this->detector->detect($activity, $detail))->firstWhere('kind', 'first_ever_distance');
-
-    expect($distance)->not->toBeNull()
-        ->and($distance['body'])->toBe('Pertama kali kamu lari sejauh 5,30 km. Tandai momen ini.');
 });
 
 it('drops the trailing decimal from a whole-kilometre threshold label', function (): void {

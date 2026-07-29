@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Services\AI\Context\ActivityNarrationContext;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
 
 final class RunSummaryTool extends ActivityTool
@@ -28,7 +29,7 @@ final class RunSummaryTool extends ActivityTool
 
         return [
             'started_at_local' => $this->detail->start_date_local?->toDateTimeString(),
-            'distance_km' => $shared->distanceKm(2),
+            'distance_km' => $shared->distanceKm(DistanceFormatter::COPY),
             'moving_time_sec' => $this->detail->moving_time,
             'pace_sec_per_km' => $paceSecPerKm !== null ? round($paceSecPerKm, 1) : null,
             'avg_hr' => $this->detail->average_heartrate,

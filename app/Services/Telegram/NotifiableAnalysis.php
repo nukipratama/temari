@@ -180,7 +180,7 @@ class NotifiableAnalysis
 
         $parts = [];
         if ($detail->distance !== null) {
-            $parts[] = DistanceFormatter::kmString($detail->distance, DistanceFormatter::EXACT) . ' km';
+            $parts[] = DistanceFormatter::kmString($detail->distance) . ' km';
         }
         if ($detail->moving_time !== null) {
             $parts[] = DurationFormatter::hms($detail->moving_time);

@@ -291,10 +291,7 @@ SVG;
             return '0';
         }
 
-        return DecimalFormatter::trimmed(
-            DistanceFormatter::km($distanceMeters, DistanceFormatter::EXACT),
-            DistanceFormatter::EXACT,
-        );
+        return DecimalFormatter::trimmed(DistanceFormatter::km($distanceMeters));
     }
 
     private function escape(string $value): string

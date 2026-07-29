@@ -104,7 +104,7 @@ class MilestoneDetector
             $milestones[] = [
                 'kind' => 'longest_ever',
                 'label' => 'Lari terjauh sampai sekarang',
-                'body' => sprintf('%s km, melampaui rekor jarak kamu sebelumnya.', DistanceFormatter::kmString($distanceMeters, DistanceFormatter::EXACT)),
+                'body' => sprintf('%s km, melampaui rekor jarak kamu sebelumnya.', DistanceFormatter::kmString($distanceMeters)),
                 'priority' => 90,
             ];
         }
@@ -168,7 +168,7 @@ class MilestoneDetector
         return [
             'kind' => 'first_ever_distance',
             'label' => sprintf('%s pertama kamu!', $this->formatKmLabel($thresholdReached)),
-            'body' => sprintf('Pertama kali kamu lari sejauh %s km. Tandai momen ini.', DecimalFormatter::decimal($distanceKm, DistanceFormatter::EXACT)),
+            'body' => sprintf('Pertama kali kamu lari sejauh %s km. Tandai momen ini.', DecimalFormatter::decimal($distanceKm)),
             'priority' => 50 + (int) round($thresholdReached * 2),
         ];
     }
