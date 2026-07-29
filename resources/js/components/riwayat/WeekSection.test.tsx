@@ -1,0 +1,371 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { router } from '@inertiajs/react';
+import WeekSection from './WeekSection';
+import { makeUser, setMockPage } from '@/test/setup';
+import type { WeekBucket, RunWithDetail } from '@/pages/Riwayat/useJejakFilters';
+import type { ActivityDetail, WeeklySnapshotWithRecap } from '@/types/inertia';
+
+vi.mock('@/components/run/RunListRow', () => ({
+    default: ({ detail }: { detail: { name: string } }) => (
+        <div data-testid="run-row">{detail.name}</div>
+    ),
+}));
+
+function run(id: number, name: string): RunWithDetail {
+    return {
+        id,
+        user_id: 1,
+        analyzed_at: '2026-05-19',
+        detail: {
+            id,
+            activity_id: id,
+            name,
+            start_date_local: '2026-05-19T06:00:00',
+            distance: 5000,
+            moving_time: 1800,
+            trimp_edwards: 50,
+            average_heartrate: 145,
+        } as ActivityDetail,
+    };
+}
+
+function bucket(runs: RunWithDetail[] = [run(101, 'Pagi')]): WeekBucket {
+    return {
+        weekStart: '2026-05-18',
+        weekEnding: '2026-05-24',
+        label: '18 Mei - 24 Mei 2026',
+        runs,
+        totalKm: runs.length * 5,
+        totalTrimp: runs.length * 50,
+    };
+}
+
+function snapshot(overrides: Partial<WeeklySnapshotWithRecap> = {}): WeeklySnapshotWithRecap {
+    return {
+        id: 7,
+        user_id: 1,
+        week_ending: '2026-05-24',
+        distance_km: 35.5,
+        runs: 4,
+        weekly_trimp: 320,
+        atl_7d: 44.5,
+        ctl_42d: 42,
+        form: -2.5,
+        form_status: 'optimal',
+        avg_decoupling: 3.2,
+        monotony: 1.2,
+        strain: 384,
+        is_current_week: false,
+        is_chain_head: true,
+        recap_analysis: {
+            id: 1,
+            status: 'done',
+            content: 'Minggu konsisten.',
+            type: 'weekly_recap',
+            subject_type: 'weekly_snapshot',
+            subject_id: 7,
+            discriminator: null,
+        },
+        notification_retry_after_seconds: null,
+        ...overrides,
+    };
+}
+
+beforeEach(() => {
+    setMockPage({
+        auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
+        flash: {},
+        demoLoginEnabled: false,
+        stravaSync: { state: 'ready', last_synced_at: '2026-01-01' },
+    });
+});
+
+describe('WeekSection', () => {
+    it('falls back to the bucket totals when the week has no snapshot', () => {
+        render(
+            <WeekSection
+                bucket={bucket([run(101, 'Pagi'), run(102, 'Sore')])}
+                snapshot={null}
+                notes={{}}
+                moods={{}}
+                filtered={false}
+            />,
+        );
+
+        expect(screen.getByText('2 run')).toBeInTheDocument();
+        expect(screen.getByText('10.0 km')).toBeInTheDocument();
+        expect(screen.getByText('100 TRIMP')).toBeInTheDocument();
+        expect(screen.getAllByTestId('run-row').length).toBe(2);
+    });
+
+    it('shows the snapshot totals (not the range-truncated bucket count) when a snapshot exists', () => {
+        // Only 1 of the week's runs falls inside rangeStart, but the WeeklySnapshot
+        // (computed independently of the range filter) says the week had 4 runs /
+        // 35.5 km — the header must agree with that, not the truncated bucket.
+        render(
+            <WeekSection
+                bucket={bucket()}
+                snapshot={snapshot()}
+                notes={{}}
+                moods={{}}
+                filtered={false}
+            />,
+        );
+
+        expect(screen.getByText('4 run')).toBeInTheDocument();
+        expect(screen.getByText('35.5 km')).toBeInTheDocument();
+        expect(screen.getByText(/Minggu konsisten/)).toBeInTheDocument();
+    });
+
+    it('shows the live bucket totals (not a stale snapshot) for the in-progress week', () => {
+        // The snapshot for the current week is recomputed by a queued listener,
+        // so right after a fresh sync it can lag behind the runs this request
+        // just fetched live. The header must reflect what's actually rendered.
+        render(
+            <WeekSection
+                bucket={bucket([run(101, 'Pagi'), run(102, 'Sore')])}
+                snapshot={snapshot({ distance_km: 5, runs: 1, weekly_trimp: 50, is_current_week: true })}
+                notes={{}}
+                moods={{}}
+                filtered={false}
+            />,
+        );
+
+        expect(screen.getByText('2 run')).toBeInTheDocument();
+        expect(screen.getByText('10.0 km')).toBeInTheDocument();
+    });
+
+    it('renders the form-status chip label for every FormStatus value', () => {
+        for (const status of ['fresh', 'optimal', 'fatigued', 'overreaching'] as const) {
+            const { unmount } = render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot({ form_status: status })}
+                    notes={{}}
+                    moods={{}}
+                    filtered={false}
+                />,
+            );
+            expect(screen.getAllByTestId('run-row').length).toBe(1);
+            unmount();
+        }
+    });
+
+    it('renders no metric chips when the snapshot carries no metrics', () => {
+        render(
+            <WeekSection
+                bucket={bucket()}
+                snapshot={snapshot({
+                    atl_7d: null,
+                    ctl_42d: null,
+                    form: null,
+                    form_status: null,
+                    avg_decoupling: null,
+                    monotony: null,
+                })}
+                notes={{}}
+                moods={{}}
+                filtered={false}
+            />,
+        );
+
+        expect(screen.queryByText('Variasi')).not.toBeInTheDocument();
+        expect(screen.queryByText('Drift')).not.toBeInTheDocument();
+        expect(screen.queryByText('Lelah')).not.toBeInTheDocument();
+    });
+
+    // Monotony ≥ 1.5 and decoupling ≥ 8% are the runner-relevant alarm thresholds.
+    it('renders the metric chips in their alert tone past the alarm thresholds', () => {
+        render(
+            <WeekSection
+                bucket={bucket()}
+                snapshot={snapshot({ monotony: 2.1, avg_decoupling: 9.4 })}
+                notes={{}}
+                moods={{}}
+                filtered={false}
+            />,
+        );
+
+        expect(screen.getByText('2.10').parentElement).toHaveClass('bg-mood-lemes/15');
+        expect(screen.getByText('9.4%').parentElement).toHaveClass('bg-mood-lemes/15');
+    });
+
+    // Real filtering removes non-matching runs, so a week loses the context the
+    // old dimmed rows conveyed. The snapshot's own total names the gap.
+    describe('hidden-run count', () => {
+        it('names how many runs the filter hid in that week', () => {
+            render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot({ runs: 4 })}
+                    notes={{}}
+                    moods={{}}
+                    filtered
+                />,
+            );
+
+            expect(screen.getByText(/3 lari lain di minggu ini gak cocok/)).toBeInTheDocument();
+            expect(screen.getByText('1 dari 4 run')).toBeInTheDocument();
+        });
+
+        it('says nothing when the filter hid nothing', () => {
+            render(
+                <WeekSection
+                    bucket={bucket([run(101, 'A'), run(102, 'B')])}
+                    snapshot={snapshot({ runs: 2 })}
+                    notes={{}}
+                    moods={{}}
+                    filtered
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+
+        it('says nothing when no filter is active', () => {
+            render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot({ runs: 4 })}
+                    notes={{}}
+                    moods={{}}
+                    filtered={false}
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+
+        // The in-progress week's snapshot is recomputed by a queued worker, so it
+        // can lag the live bucket and would report a bogus gap.
+        it('stays quiet for the in-progress week', () => {
+            render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot({ runs: 4, is_current_week: true })}
+                    notes={{}}
+                    moods={{}}
+                    filtered
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+
+        it('stays quiet when the snapshot has no run count', () => {
+            render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot({ runs: null })}
+                    notes={{}}
+                    moods={{}}
+                    filtered
+                />,
+            );
+
+            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+        });
+    });
+
+    describe('weekly recap notification', () => {
+        it('shows a muted button that nudges (no send) when no channel is wired', () => {
+            // telegramConnected defaults to undefined (falsy) in beforeEach.
+            vi.mocked(router.post).mockReset();
+            render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot()}
+                    notes={{}}
+                    moods={{}}
+                    filtered={false}
+                />,
+            );
+
+            fireEvent.click(screen.getByText('Kirim notifikasi'));
+            expect(router.post).not.toHaveBeenCalled();
+        });
+
+        it('force-sends the weekly recap when a channel is wired and the button is clicked', () => {
+            vi.mocked(router.post).mockReset();
+            setMockPage({
+                auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
+                flash: {},
+                demoLoginEnabled: false,
+                stravaSync: { state: 'ready', last_synced_at: '2026-01-01' },
+                telegramConnected: true,
+            });
+            render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot()}
+                    notes={{}}
+                    moods={{}}
+                    filtered={false}
+                />,
+            );
+
+            fireEvent.click(screen.getByText('Kirim notifikasi'));
+            expect(router.post).toHaveBeenCalledWith(
+                '/rekap-mingguan/7/kirim',
+                {},
+                expect.objectContaining({ preserveScroll: true }),
+            );
+        });
+
+        it('offers no send while the narration is pending, and keeps the rule-based fallback visible so the block is not empty', () => {
+            render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot({
+                        is_current_week: true,
+                        recap_analysis: {
+                            id: 1,
+                            status: 'pending',
+                            content: null,
+                            type: 'weekly_recap',
+                            subject_type: 'weekly_snapshot',
+                            subject_id: 7,
+                            discriminator: null,
+                        },
+                    })}
+                    notes={{}}
+                    moods={{}}
+                    filtered={false}
+                />,
+            );
+
+            expect(screen.queryByText('Kirim notifikasi')).not.toBeInTheDocument();
+            expect(screen.getByText(/Minggu ini kamu lari 4x sejauh 35.5 km/)).toBeInTheDocument();
+        });
+
+        it('falls back to a plain nudge when the snapshot has no numbers to quote', () => {
+            render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot({
+                        runs: null,
+                        distance_km: null,
+                        form: null,
+                        form_status: null,
+                        is_current_week: true,
+                        recap_analysis: {
+                            id: 1,
+                            status: 'pending',
+                            content: null,
+                            type: 'weekly_recap',
+                            subject_type: 'weekly_snapshot',
+                            subject_id: 7,
+                            discriminator: null,
+                        },
+                    })}
+                    notes={{}}
+                    moods={{}}
+                    filtered={false}
+                />,
+            );
+
+            expect(screen.getByText(/Belum ada data minggu ini, sabar ya/)).toBeInTheDocument();
+        });
+    });
+});

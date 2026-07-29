@@ -7,6 +7,7 @@ reviewed: 2026-06-20
 code_refs:
   - resources/js/components/aktivitas/RingkasanCard.tsx
   - resources/js/pages/Riwayat/Jejak.tsx
+  - resources/js/components/riwayat/WeekSection.tsx
   - resources/js/pages/Riwayat/Kalender.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
   - app/Http/Controllers/RunController.php
@@ -31,7 +32,7 @@ Every recap is an `Analysis` row surfaced through the shared [AnalysisStatus](re
 
 ## Weekly recap — on Jejak
 
-Rendered inside each week section on [Jejak](resources/js/pages/Riwayat/Jejak.tsx) via [RingkasanCard](resources/js/components/aktivitas/RingkasanCard.tsx) (the "Catatan Temari" block beside a form-status-posed Temari). `RingkasanCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback` in Jejak — "Minggu ini kamu lari Nx sejauh …") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
+Rendered inside each [WeekSection](resources/js/components/riwayat/WeekSection.tsx) on Jejak via [RingkasanCard](resources/js/components/aktivitas/RingkasanCard.tsx) (the "Catatan Temari" block beside a form-status-posed Temari). `RingkasanCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback`, alongside it — "Minggu ini kamu lari Nx sejauh …") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
 
 [RunController](app/Http/Controllers/RunController.php) supplies it: each `WeeklySnapshot` is mapped with `recap_analysis` (from `recapAnalysesFor`, type `AnalysisType::WeeklyRecap`), `is_current_week` (the in-progress week → `awaitingSchedule`, trigger suppressed), and `is_chain_head` (`chainHeadId` = latest completed week with runs > 0, the only link that may regenerate).
 
