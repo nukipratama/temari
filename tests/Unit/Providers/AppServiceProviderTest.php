@@ -68,14 +68,14 @@ it('strava-sync limiter falls back to IP when unauthenticated', function (): voi
         ->and($limit->maxAttempts)->toBe(2);
 });
 
-it('client-errors limiter caps at 30/min, keyed by IP', function (): void {
+it('client-errors limiter caps at 10/min, keyed by IP', function (): void {
     $request = Request::create('/client-errors', 'POST', server: ['REMOTE_ADDR' => '203.0.113.7']);
 
     $limit = RateLimiter::limiter('client-errors')($request);
 
     expect($limit)->toBeInstanceOf(Limit::class)
         ->and($limit->key)->toBe('203.0.113.7')
-        ->and($limit->maxAttempts)->toBe(30);
+        ->and($limit->maxAttempts)->toBe(10);
 });
 
 it('shares one AnalysisService instance within a single request/CLI scope', function (): void {
