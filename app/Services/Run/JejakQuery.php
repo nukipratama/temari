@@ -45,7 +45,6 @@ class JejakQuery
             rangeStart: $rangeStart,
             moods: $request->moods(),
             distanceBand: $request->distanceBand(),
-            search: $request->search(),
             sort: $request->sort(),
             week: $week,
         );
@@ -76,13 +75,6 @@ class JejakQuery
                     if ($max !== null) {
                         $q->where('distance', '<', $max);
                     }
-                }
-
-                if ($filters->search !== null) {
-                    // Leading wildcard, so this can't use an index. Fine at a few
-                    // hundred runs per user; revisit with a FULLTEXT index if a
-                    // user's history ever makes it measurable.
-                    $q->where('name', 'like', '%'.addcslashes($filters->search, '%_\\').'%');
                 }
             })
             ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards', 'workout_type'])]);

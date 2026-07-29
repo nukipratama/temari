@@ -46,12 +46,6 @@ interface DistanceSection<B extends string> {
     onSelect: (band: B) => void;
 }
 
-interface SearchSection {
-    /** The term the server is currently filtering on. */
-    value: string;
-    onSubmit: (term: string) => void;
-}
-
 export interface SortOption<S extends string> {
     value: S;
     label: string;
@@ -68,7 +62,6 @@ interface RiwayatFilterProps<V extends string, B extends string = string, S exte
     range?: RangeSection<V>;
     mood?: MoodSection;
     distance?: DistanceSection<B>;
-    search?: SearchSection;
     sort?: SortSection<S>;
     /** When the user hits Reset — clears every filter set this component owns. */
     onReset?: () => void;
@@ -95,7 +88,6 @@ export default function RiwayatFilter<V extends string, B extends string = strin
     range,
     mood,
     distance,
-    search,
     sort,
     onReset,
     className,
@@ -116,12 +108,11 @@ export default function RiwayatFilter<V extends string, B extends string = strin
     const rangeActive =
         range && range.options.length > 0 && range.value !== range.options[0].value ? 1 : 0;
     const distanceActive = distance?.value != null ? 1 : 0;
-    const searchActive = (search?.value ?? '') !== '' ? 1 : 0;
     // Like range, the first sort option is the implicit default and isn't counted.
     const sortActive =
         sort && sort.options.length > 0 && sort.value !== sort.options[0].value ? 1 : 0;
-    const totalActive = moodActive + rangeActive + distanceActive + searchActive + sortActive;
-    const summary = buildSummary(range, moodActive, distance, searchActive > 0, sort);
+    const totalActive = moodActive + rangeActive + distanceActive + sortActive;
+    const summary = buildSummary(range, moodActive, distance, sort);
 
     return (
         <div ref={containerRef} className={cn('relative', className)}>
@@ -213,7 +204,6 @@ export default function RiwayatFilter<V extends string, B extends string = strin
                             )}
                         </div>
                     )}
-                    {search && <SearchSectionView section={search} />}
                     {/* Sitting on anything but the first option switches the page to a
                         flat ranked list, which the hint spells out. */}
                     {sort && <OptionListSectionView title="Urutan" section={sort} />}
@@ -290,51 +280,6 @@ function MoodSectionView({ section }: Readonly<{ section: MoodSection }>) {
 }
 
 /**
- * Free-text search over the run name. Submits on Enter or blur rather than per
- * keystroke: each submit is a server round trip, so debouncing every character
- * would fire a burst of partial reloads for a term the user is still typing.
- */
-function SearchSectionView({ section }: Readonly<{ section: SearchSection }>) {
-    const [term, setTerm] = useState(section.value);
-
-    // Re-sync when the server reports a different term (e.g. Reset was hit).
-    const [lastValue, setLastValue] = useState(section.value);
-    if (section.value !== lastValue) {
-        setLastValue(section.value);
-        setTerm(section.value);
-    }
-
-    return (
-        <FilterSection title="Cari nama lari">
-            <div className="relative">
-                <Icon
-                    icon="mdi:magnify"
-                    width={15}
-                    height={15}
-                    aria-hidden
-                    className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3"
-                />
-                <input
-                    type="search"
-                    value={term}
-                    onChange={(e) => setTerm(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            section.onSubmit(term);
-                        }
-                    }}
-                    onBlur={() => term !== section.value && section.onSubmit(term)}
-                    placeholder="Misal: Pagi santai"
-                    aria-label="Cari nama lari"
-                    className="focus-ring min-h-11 w-full rounded-lg border border-line/60 bg-surface-warm py-2 pl-8 pr-2 text-xs text-ink placeholder:text-ink-3 lg:text-sm"
-                />
-            </div>
-        </FilterSection>
-    );
-}
-
-/**
  * A titled list of buttons where at most one option is active. Backs both the
  * distance and sort sections, which render identically and differ only in
  * section title and value type.
@@ -372,7 +317,6 @@ function buildSummary<V extends string, B extends string, S extends string>(
     range: RangeSection<V> | undefined,
     moodActive: number,
     distance: DistanceSection<B> | undefined,
-    searchActive: boolean,
     sort: SortSection<S> | undefined,
 ): string {
     const parts: string[] = [];
@@ -390,9 +334,6 @@ function buildSummary<V extends string, B extends string, S extends string>(
     }
     if (moodActive > 0) {
         parts.push(`${moodActive} mood`);
-    }
-    if (searchActive) {
-        parts.push('cari');
     }
     return parts.length > 0 ? parts.join(' · ') : 'Filter';
 }

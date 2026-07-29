@@ -132,15 +132,6 @@ it('leaves an open-ended top band', function (): void {
     expect(jejakRunNames($user, 'dist=21up'))->toBe(['Ultra']);
 });
 
-it('searches the run name and escapes like wildcards', function (): void {
-    $user = User::factory()->create();
-    jejakRun($user, 'Lari pagi', Carbon::now()->subDays(3));
-    jejakRun($user, 'Lari sore', Carbon::now()->subDays(4));
-
-    expect(jejakRunNames($user, 'q=pagi'))->toBe(['Lari pagi'])
-        ->and(jejakRunNames($user, 'q='.urlencode('%')))->toBe([]);
-});
-
 it('orders newest first by default', function (): void {
     $user = User::factory()->create();
     jejakRun($user, 'First', Carbon::now()->subDays(4));

@@ -113,7 +113,6 @@ class RunController extends Controller
             'rangeFilter' => $filters->range,
             'moodFilter' => $filters->moods,
             'distanceFilter' => $filters->distanceBand,
-            'searchFilter' => $filters->search,
             'sortMode' => $filters->sort,
             'weekFilter' => $filters->week?->toDateString(),
             'rangeStart' => $filters->rangeStart?->toDateString(),

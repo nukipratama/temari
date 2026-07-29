@@ -39,8 +39,6 @@ interface RunsIndexProps {
     moodFilter?: ReadonlyArray<Mood>;
     /** Distance band the server filtered on, or null for any distance. */
     distanceFilter?: DistanceBand | null;
-    /** Free-text term the server matched against the run name, or null. */
-    searchFilter?: string | null;
     /** Ordering the server applied. Anything but 'newest' renders a flat list. */
     sortMode?: SortMode;
     /** Week deep link (that week's Sunday, YYYY-MM-DD), or null. */
@@ -63,7 +61,6 @@ export default function RunsIndex({
     rangeFilter,
     moodFilter = [],
     distanceFilter = null,
-    searchFilter = null,
     sortMode = DEFAULT_SORT,
     weekFilter = null,
     rangeAutoWidened = false,
@@ -79,7 +76,6 @@ export default function RunsIndex({
             rangeFilter,
             moodFilter,
             distanceFilter,
-            searchFilter,
             sortMode,
             weekFilter,
         });

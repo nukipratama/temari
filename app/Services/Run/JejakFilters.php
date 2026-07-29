@@ -51,9 +51,6 @@ final readonly class JejakFilters
         '21up' => [21097, null],
     ];
 
-    /** Longest accepted `?q=` term; anything beyond is truncated, not rejected. */
-    public const int MAX_SEARCH_LENGTH = 60;
-
     /**
      * Sort modes. `newest` is the default chronological view the week grouping
      * depends on; the other two rank runs globally, which the page renders as a
@@ -76,7 +73,6 @@ final readonly class JejakFilters
         public ?Carbon $rangeStart,
         public array $moods,
         public ?string $distanceBand,
-        public ?string $search,
         public string $sort,
         public ?Carbon $week,
     ) {

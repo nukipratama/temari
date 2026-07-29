@@ -52,15 +52,3 @@ it('keeps a known distance band and drops anything else', function (): void {
         ->and(jejakRequest('dist=42up')->distanceBand())->toBeNull()
         ->and(jejakRequest()->distanceBand())->toBeNull();
 });
-
-it('trims the search term and treats blank as absent', function (): void {
-    expect(jejakRequest('q='.urlencode('  pagi  '))->search())->toBe('pagi')
-        ->and(jejakRequest('q='.urlencode('   '))->search())->toBeNull()
-        ->and(jejakRequest()->search())->toBeNull();
-});
-
-it('truncates an overlong search term instead of rejecting it', function (): void {
-    $term = str_repeat('a', 200);
-
-    expect(jejakRequest("q={$term}")->search())->toBe(str_repeat('a', 60));
-});

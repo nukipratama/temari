@@ -49,14 +49,13 @@ export const DISTANCE_OPTIONS: ReadonlyArray<{ value: DistanceBand; label: strin
  * /aktivitas" case never happens.
  */
 const DEFAULT_RANGE: RangeFilterValue = '8w';
-const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'moodFilter', 'distanceFilter', 'searchFilter', 'sortMode', 'weekFilter', 'rangeStart', 'rangeAutoWidened', 'runsTruncated', 'maxRuns', 'weeklySnapshots', 'notes', 'moods'];
+const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'moodFilter', 'distanceFilter', 'sortMode', 'weekFilter', 'rangeStart', 'rangeAutoWidened', 'runsTruncated', 'maxRuns', 'weeklySnapshots', 'notes', 'moods'];
 
 /** Every filter the page owns, in one shape so callers can change one field. */
 export interface FilterState {
     range: RangeFilterValue;
     moods: ReadonlySet<Mood>;
     distance: DistanceBand | null;
-    search: string;
     sort: SortMode;
     /** Week deep-link scope (that week's Sunday), or null for the full history. */
     week: string | null;
@@ -69,7 +68,7 @@ export const DEFAULT_SORT: SortMode = 'newest';
  * unfiltered view stays a clean `/aktivitas`, and moods are serialised in
  * MOOD_ORDER so the same selection always produces the same shareable link.
  */
-export function filterQuery({ range, moods, distance, search, sort, week }: FilterState): Record<string, string> {
+export function filterQuery({ range, moods, distance, sort, week }: FilterState): Record<string, string> {
     const query: Record<string, string> = {};
     // A week scope pins its own window, so carrying `range` alongside it would
     // be noise in the URL.
@@ -77,7 +76,6 @@ export function filterQuery({ range, moods, distance, search, sort, week }: Filt
     else if (range !== DEFAULT_RANGE) query.range = range;
     if (moods.size > 0) query.mood = MOOD_ORDER.filter((m) => moods.has(m)).join(',');
     if (distance !== null) query.dist = distance;
-    if (search !== '') query.q = search;
     if (sort !== DEFAULT_SORT) query.sort = sort;
 
     return query;
@@ -123,7 +121,6 @@ export function summariseQuery(query: Record<string, string>): string | null {
         const moods = query.mood.split(',').filter((m): m is Mood => MOOD_ORDER.includes(m as Mood));
         if (moods.length > 0) parts.push(moods.map((m) => MOOD_LABEL[m]).join(', '));
     }
-    if (query.q) parts.push(`"${query.q}"`);
 
     return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -193,7 +190,6 @@ interface JejakFilterProps {
     rangeFilter: RangeFilterValue;
     moodFilter: ReadonlyArray<Mood>;
     distanceFilter: DistanceBand | null;
-    searchFilter: string | null;
     sortMode: SortMode;
     weekFilter: string | null;
 }
@@ -210,7 +206,6 @@ export function useJejakFilters({
     rangeFilter,
     moodFilter,
     distanceFilter,
-    searchFilter,
     sortMode,
     weekFilter,
 }: JejakFilterProps) {
@@ -227,11 +222,10 @@ export function useJejakFilters({
             range: rangeFilter,
             moods: selectedMoods,
             distance: distanceFilter,
-            search: searchFilter ?? '',
             sort: sortMode,
             week: weekFilter,
         }),
-        [rangeFilter, selectedMoods, distanceFilter, searchFilter, sortMode, weekFilter],
+        [rangeFilter, selectedMoods, distanceFilter, sortMode, weekFilter],
     );
 
     // The filters live in the URL and are applied by the server, so a change is a
@@ -266,11 +260,6 @@ export function useJejakFilters({
         [distanceFilter, visitWithFilters],
     );
 
-    const submitSearch = useCallback(
-        (term: string) => visitWithFilters({ search: term.trim() }),
-        [visitWithFilters],
-    );
-
     const selectSort = useCallback(
         (sort: SortMode) => visitWithFilters({ sort }),
         [visitWithFilters],
@@ -281,7 +270,6 @@ export function useJejakFilters({
             range: DEFAULT_RANGE,
             moods: new Set(),
             distance: null,
-            search: '',
             sort: DEFAULT_SORT,
             week: null,
         });
@@ -313,10 +301,6 @@ export function useJejakFilters({
             onSelect: selectDistance,
         }),
         [distanceFilter, selectDistance],
-    );
-    const searchSection = useMemo(
-        () => ({ value: searchFilter ?? '', onSubmit: submitSearch }),
-        [searchFilter, submitSearch],
     );
     const sortSection = useMemo(
         () => ({ value: sortMode, options: SORT_OPTIONS, onSelect: selectSort }),
@@ -358,16 +342,9 @@ export function useJejakFilters({
                 },
             });
         }
-        if ((searchFilter ?? '') !== '') {
-            list.push({
-                key: 'search',
-                label: `"${searchFilter}"`,
-                onRemove: () => visitWithFilters({ search: '' }),
-            });
-        }
 
         return list;
-    }, [weekFilter, rangeFilter, sortMode, distanceFilter, selectedMoods, searchFilter, visitWithFilters]);
+    }, [weekFilter, rangeFilter, sortMode, distanceFilter, selectedMoods, visitWithFilters]);
 
     // Remembered, but never applied behind the user's back — see useLastFilter.
     const { resumable, forget } = useLastFilter(filterQuery(current));
@@ -391,7 +368,6 @@ export function useJejakFilters({
     const anyFilterActive =
         selectedMoods.size > 0 ||
         distanceFilter !== null ||
-        (searchFilter ?? '') !== '' ||
         weekFilter !== null;
     // Ranking globally is incompatible with week buckets (a weekly recap card
     // only means anything in date order), so a non-default sort switches the
@@ -405,7 +381,6 @@ export function useJejakFilters({
             range: rangeSection,
             mood: moodSection,
             distance: distanceSection,
-            search: searchSection,
             sort: sortSection,
         },
         chips,

@@ -98,21 +98,4 @@ class JejakFilterRequest extends FormRequest
 
         return is_string($raw) && array_key_exists($raw, JejakFilters::DISTANCE_BANDS) ? $raw : null;
     }
-
-    /**
-     * The trimmed `?q=` term, or null when absent/blank. Capped so a pathological
-     * URL can't drive an enormous LIKE.
-     */
-    public function search(): ?string
-    {
-        $raw = $this->query('q');
-
-        if (! is_string($raw)) {
-            return null;
-        }
-
-        $term = trim($raw);
-
-        return $term === '' ? null : mb_substr($term, 0, JejakFilters::MAX_SEARCH_LENGTH);
-    }
 }
