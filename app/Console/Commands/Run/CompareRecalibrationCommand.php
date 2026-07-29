@@ -10,7 +10,9 @@ use App\Models\RunCard;
 use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\StreamSummary;
-use App\Services\Run\Story\RunCardFactory;
+use App\Services\Run\Story\BadgeEvaluator;
+use App\Services\Run\Story\CardContextBuilder;
+use App\Services\Run\Story\RarityScorer;
 use App\Services\Run\Story\SpecialMoves;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -31,7 +33,9 @@ class CompareRecalibrationCommand extends Command
 {
     public function __construct(
         private readonly StreamAnalysis $streamAnalysis,
-        private readonly RunCardFactory $cardFactory,
+        private readonly CardContextBuilder $contextBuilder,
+        private readonly BadgeEvaluator $badgeEvaluator,
+        private readonly RarityScorer $rarityScorer,
         private readonly SpecialMoves $specialMoves,
     ) {
         parent::__construct();
@@ -123,13 +127,14 @@ class CompareRecalibrationCommand extends Command
         $tallies['decoupling']['recomputed'] += $recomputed->hasDecouplingPct() ? 1 : 0;
 
         $card = RunCard::query()->where('activity_id', $activity->id)->first();
-        $badges = $this->cardFactory->badges($activity, $detail, $recomputed);
-        $score = $this->cardFactory->rarityScore(
-            $activity,
+        $context = $this->contextBuilder->for($activity, $detail);
+        $badges = $this->badgeEvaluator->evaluate($detail, $recomputed, $context);
+        $score = $this->rarityScorer->score(
             $detail,
             $recomputed,
             $badges,
             $card !== null && $card->pr_set,
+            $context,
         );
         $scores[] = $score;
 
@@ -138,7 +143,7 @@ class CompareRecalibrationCommand extends Command
         $tallies['badges']['stored'] += $card === null ? 0 : count((array) $card->badges);
         $tallies['badges']['recomputed'] += count($badges);
         $this->bump($tallies['rarity']['stored'], $card === null ? 'tidak ada kartu' : $card->rarity->value);
-        $this->bump($tallies['rarity']['recomputed'], $this->cardFactory->rarityFromScore($score)->value);
+        $this->bump($tallies['rarity']['recomputed'], $this->rarityScorer->fromScore($score)->value);
         $this->bump($tallies['move']['stored'], $card === null ? 'tidak ada kartu' : $card->special_move);
         $this->bump($tallies['move']['recomputed'], $this->specialMoves->pick($recomputed, [
             'distance_m' => $detail->distance,
