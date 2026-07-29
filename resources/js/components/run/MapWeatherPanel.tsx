@@ -27,12 +27,12 @@ export default function MapWeatherPanel({ detail, className }: Readonly<{ detail
                                 {Math.round(temp)}°<span className="text-sm font-medium">C</span>
                             </div>
                             {humidity != null && (
-                                <Eyebrow size="10" tracking="0.12" weight="none" tone="cream" className="mt-1">
+                                <Eyebrow token="micro" tone="cream" className="mt-1">
                                     {Math.round(humidity)}% lembab
                                 </Eyebrow>
                             )}
                             {windSpeed != null && (
-                                <Eyebrow size="10" tracking="0.12" weight="none" tone="cream" className="mt-0.5 flex items-center gap-1">
+                                <Eyebrow token="micro" tone="cream" className="mt-0.5 flex items-center gap-1">
                                     <Icon icon="mdi:weather-windy" width={11} height={11} aria-hidden />
                                     {Math.round(windSpeed)} km/j
                                     {showGust && <span>· gust {Math.round(gust)}</span>}
@@ -58,7 +58,7 @@ export default function MapWeatherPanel({ detail, className }: Readonly<{ detail
                                     <>
                                         <div className="truncate font-display text-xl leading-tight tracking-[-0.005em]">{place}</div>
                                         {region && (
-                                            <Eyebrow tracking="0.1" weight="none" className="mt-0.5 truncate text-cream/70">
+                                            <Eyebrow token="micro" className="mt-0.5 truncate text-cream/70">
                                                 {region}
                                             </Eyebrow>
                                         )}

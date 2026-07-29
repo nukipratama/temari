@@ -187,31 +187,13 @@ export const filterOptionVariants = cva(
     },
 );
 
-export const eyebrowVariants = cva('font-mono uppercase', {
+/** Eyebrow's type tier, one of the `.text-label-*` role utilities in app.css. */
+export const eyebrowVariants = cva('', {
     variants: {
-        size: {
-            '8': 'text-[8px]',
-            '9': 'text-[9px]',
-            '10': 'text-[10px]',
-            '11': 'text-[11px]',
-            '12': 'text-[12px]',
-            '13': 'text-[13px]',
-            xs: 'text-xs',
-            sm: 'text-sm',
-        },
-        tracking: {
-            '0.06': 'tracking-[0.06em]',
-            '0.1': 'tracking-[0.1em]',
-            '0.12': 'tracking-[0.12em]',
-            '0.14': 'tracking-[0.14em]',
-            '0.16': 'tracking-[0.16em]',
-            '0.18': 'tracking-[0.18em]',
-            '0.2': 'tracking-[0.2em]',
-        },
-        weight: {
-            bold: 'font-bold',
-            semibold: 'font-semibold',
-            none: '',
+        token: {
+            micro: 'text-label-micro',
+            small: 'text-label-small',
+            hero: 'text-label-hero',
         },
         tone: {
             'ink-2': 'text-ink-2',
@@ -221,11 +203,6 @@ export const eyebrowVariants = cva('font-mono uppercase', {
             'ink-on-sky': 'text-ink-on-sky',
             cream: 'text-cream',
         },
-    },
-    defaultVariants: {
-        size: '11',
-        tracking: '0.14',
-        weight: 'bold',
     },
 });
 

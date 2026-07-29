@@ -57,13 +57,13 @@ export default function FeaturedCardHero({
             <HeroPanel className="min-h-[300px] lg:px-14 lg:py-12">
                 {/* Left copy — kept clear of the bleeding card on desktop. */}
                 <div className="relative lg:max-w-[58%]">
-                    <Eyebrow tracking="0.2" tone="horizon" className="mb-3">
+                    <Eyebrow token="hero" tone="horizon" className="mb-3">
                         {eyebrow}
                     </Eyebrow>
                     <h2 className="font-display text-display-xl text-cream">
                         <em className="italic text-horizon">{name}</em>
                     </h2>
-                    <Eyebrow size="13" tracking="0.12" className="mt-3 text-cream/85">
+                    <Eyebrow token="small" className="mt-3 text-cream/85">
                         {catchLine}
                     </Eyebrow>
 
@@ -71,7 +71,7 @@ export default function FeaturedCardHero({
                         <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3">
                             {cells.map((cell) => (
                                 <div key={cell.label}>
-                                    <Eyebrow as="dt" size="10" tracking="0.12" weight="none" tone="ink-on-sky">
+                                    <Eyebrow as="dt" token="micro" tone="ink-on-sky">
                                         {cell.label}
                                     </Eyebrow>
                                     <dd className="font-mono text-[15px] font-semibold tabular-nums text-cream">

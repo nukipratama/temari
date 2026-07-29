@@ -106,7 +106,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                             <TemariProto pose="proud" size={220} equipped={previewEquipped} animate />
                         </div>
                         <div>
-                            <Eyebrow tracking="0.18" tone="horizon" className="mb-3">
+                            <Eyebrow token="hero" tone="horizon" className="mb-3">
                                 ★ Yang lagi dipake
                             </Eyebrow>
                             <h2 className="mb-5 font-display text-display-md text-cream">
@@ -115,7 +115,7 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                             <ul className="grid gap-2 sm:grid-cols-2">
                                 {SLOT_ORDER.map((slot) => (
                                     <li key={slot} className="flex items-center justify-between rounded-xl bg-cream/[0.06] px-4 py-3">
-                                        <Eyebrow as="span" weight="none" tone="ink-on-sky">
+                                        <Eyebrow as="span" token="micro" tone="ink-on-sky">
                                             {SLOT_LABEL[slot]}
                                         </Eyebrow>
                                         <span className="font-display text-base italic text-cream">

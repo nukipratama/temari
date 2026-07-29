@@ -58,7 +58,7 @@ export default function SplitsSparkline({ paceSec, partialPaceSec, className }: 
     return (
         <div className={cn('rounded-xl border border-cream/[0.12] bg-sky/40 px-5 py-4 backdrop-blur', className)}>
             <header className="mb-3 flex items-baseline justify-between gap-3">
-                <Eyebrow weight="none" tone="ink-on-sky">
+                <Eyebrow token="micro" tone="ink-on-sky">
                     Splits · pace per km{perKm ? '' : ` · rata-rata tiap ${bucketSize} km`}
                 </Eyebrow>
                 <div className="font-display text-[13px] italic text-horizon">

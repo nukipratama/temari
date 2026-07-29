@@ -270,7 +270,7 @@ export default function RunsShow({
                                     <div className="min-w-0 flex-1">
                                         <div className="mb-1.5 flex flex-wrap items-center gap-2">
                                             <MoodChip mood={mood} onSky />
-                                            <Eyebrow as="span" weight="none" tone="ink-on-sky">
+                                            <Eyebrow as="span" token="micro" tone="ink-on-sky">
                                                 {formatShortDateTimeId(detail.start_date_local)}
                                             </Eyebrow>
                                         </div>
@@ -292,7 +292,7 @@ export default function RunsShow({
                                 {pastYou && (
                                     <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-cream/15 bg-cream/[0.08] px-4 py-3 backdrop-blur-sm">
                                         <div className="min-w-0">
-                                            <Eyebrow className="text-cream/60">
+                                            <Eyebrow token="micro" className="text-cream/60">
                                                 Kamu vs {pastYou.days_ago} hari lalu
                                             </Eyebrow>
                                             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-cream/90">
@@ -309,7 +309,7 @@ export default function RunsShow({
                                         {pastYou.past.activity_id != null && (
                                             <Link
                                                 href={aktivitasUrl({ activity_id: pastYou.past.activity_id })}
-                                                className="focus-ring-on-sky inline-flex shrink-0 items-center gap-1 rounded-full border border-cream/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-cream/70 transition hover:border-cream/40 hover:text-cream"
+                                                className="focus-ring-on-sky inline-flex shrink-0 items-center gap-1 rounded-full border border-cream/20 px-3 py-1.5 text-label-micro text-cream/70 transition hover:border-cream/40 hover:text-cream"
                                             >
                                                 Lihat
                                                 <Icon icon="mdi:arrow-right" width={12} height={12} aria-hidden />
@@ -349,7 +349,7 @@ export default function RunsShow({
 
                         <div className="flex flex-col gap-6">
                             <div>
-                                <Eyebrow tracking="0.18" tone="ink-2" className="mb-3">
+                                <Eyebrow token="hero" tone="ink-2" className="mb-3">
                                     ★ {rarityLabel}{card.edition && ` · ${card.edition.total} dari koleksimu`}
                                 </Eyebrow>
                                 <h2 className="font-display text-display-sm leading-[0.95] tracking-[-0.02em] text-ink">
@@ -451,7 +451,7 @@ export default function RunsShow({
                 {/* SPLITS */}
                 {(perKm.length > 0 || partialSplit) && <SplitsTable rows={perKm} partial={partialSplit} className="mt-10" />}
 
-                <Eyebrow as="footer" tracking="0.1" tone="ink-3" className="mt-8">
+                <Eyebrow as="footer" token="micro" tone="ink-3" className="mt-8">
                     Tersambung otomatis dari Strava · {formatIdDate(activity.analyzed_at ?? null, 'long')}
                 </Eyebrow>
             </PageContainer>

@@ -20,8 +20,8 @@ export default function MoodChip({
     return (
         <span
             className={cn(
-                'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full font-mono font-semibold uppercase tracking-[0.08em]',
-                size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-[12px]',
+                'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full',
+                size === 'sm' ? 'px-2.5 py-1 text-label-micro' : 'px-3 py-1.5 text-label-small',
                 onSky ? 'bg-cream/10 text-cream' : cn(MOOD_SOFT_FILL[mood], 'text-ink'),
                 className,
             )}

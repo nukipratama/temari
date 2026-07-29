@@ -29,7 +29,7 @@ export default function MilestoneStrip({
             )}
         >
             <div className="flex flex-wrap items-center gap-4">
-                <Eyebrow tone="horizon">
+                <Eyebrow token="micro" tone="horizon">
                     ★ Target berikutnya
                 </Eyebrow>
                 <div className="font-display text-headline-sm text-cream">

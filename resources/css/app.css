@@ -357,6 +357,10 @@ body {
     .text-label-small {
         @apply font-mono text-[12px] font-bold uppercase tracking-[0.14em];
     }
+    /* Small uppercase metadata label — hero tier (11px, wide tracking). */
+    .text-label-hero {
+        @apply font-mono text-[11px] font-bold uppercase tracking-[0.18em];
+    }
     /* Narrator / body sentences. */
     .text-prose {
         @apply font-sans text-quote-md text-ink-2;

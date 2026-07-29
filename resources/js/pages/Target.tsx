@@ -142,7 +142,7 @@ function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
                         <span className="text-ink-3">/</span>
                         {formatGoalNumber(goal.target)}
                     </span>
-                    <Eyebrow as="span" tracking="0.1" weight="semibold" tone="ink-3">
+                    <Eyebrow as="span" token="micro" tone="ink-3">
                         {goal.unit}
                     </Eyebrow>
                 </div>

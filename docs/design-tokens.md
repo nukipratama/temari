@@ -96,8 +96,9 @@ built with `@apply` so they compose with token utilities. Prefer these over re-t
 |---|---|---|
 | `.focus-ring` | `focus-visible:ring-2 ring-leaf ring-offset-2 ring-offset-cream` (+ `outline-none`) | Keyboard focus on cream surfaces (the app default) |
 | `.focus-ring-on-sky` | same, but `ring-offset-sky` | Keyboard focus on dark sky panels |
-| `.text-label-micro` | `font-mono text-[11px] uppercase tracking-[0.12em]` | Smallest uppercase metadata label (kartu / stat captions) |
-| `.text-label-small` | `font-mono text-[12px] uppercase tracking-[0.14em]` | Section labels, chip-sized uppercase metadata |
+| `.text-label-micro` | `font-mono text-[11px] font-bold uppercase tracking-[0.12em]` | Smallest uppercase metadata label (kartu / stat captions) |
+| `.text-label-small` | `font-mono text-[12px] font-bold uppercase tracking-[0.14em]` | Section labels, chip-sized uppercase metadata |
+| `.text-label-hero` | `font-mono text-[11px] font-bold uppercase tracking-[0.18em]` | Page-hero eyebrow (wide tracking) |
 | `.text-prose` | `font-sans text-quote-md text-ink-2` | Narrator / body sentences |
 | `.text-stat` | `font-mono text-stat font-bold tabular-nums text-ink` | The big tabular KPI / PR number |
 | `.text-stat-sm` | `font-mono text-2xl font-bold tabular-nums text-ink` | Smaller stat figure (compact tiles) |

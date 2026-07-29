@@ -59,7 +59,7 @@ export default function KondisiCard({
             ))}
             <Link
                 href="/aktivitas"
-                className="focus-ring mt-auto rounded pt-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep hover:text-ember-deep"
+                className="focus-ring mt-auto rounded pt-1 text-label-micro text-horizon-deep hover:text-ember-deep"
             >
                 Detail teknis →
             </Link>
