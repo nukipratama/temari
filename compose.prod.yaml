@@ -173,6 +173,8 @@ services:
         limits:
           cpus: "1.0"
           memory: 1g
+        reservations:
+          cpus: "0.25"
 
   # Override the image's HTTP healthcheck: this container serves no HTTP, and a
   # wedged or dead schedule:work is otherwise completely silent — every scheduled
@@ -196,6 +198,8 @@ services:
         limits:
           cpus: "0.5"
           memory: 256m
+        reservations:
+          cpus: "0.1"
 
   # Combined Pulse daemon: pulse:check (Servers recorder) + pulse:work (ingest drain).
   # Bind-mounts host root read-only so the disk metric reflects the real host disk.
@@ -235,6 +239,8 @@ services:
         limits:
           cpus: "0.5"
           memory: 256m
+        reservations:
+          cpus: "0.1"
 
   mysql:
     # Custom image = stock mysql + the bootstrap baked into initdb (see docker/mysql/
