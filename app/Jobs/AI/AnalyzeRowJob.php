@@ -27,6 +27,10 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             return;
         }
 
+        if ($this->haltForSpentRetryBudget($service, [$row])) {
+            return;
+        }
+
         if ($this->haltForPausedGeneration($service, [$row])) {
             return;
         }
@@ -51,6 +55,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
         } catch (Throwable $e) {
             $this->settleFailure(
                 $e,
+                [$row],
                 markFailed: fn () => $service->markFailed($row, $e->getMessage()),
                 markRequeued: fn () => $service->markQueued($row),
             );
