@@ -227,16 +227,12 @@ jobs:
 
       - name: Vitest
         run: |
-          # Same split as the backend Pest step above: the coverage gate is a
-          # merge gate, not a deploy gate. Re-running --coverage on the main
-          # push would only put instrumentation of 1500+ tests on the deploy
-          # critical path for an already-gated tree.
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Running Vitest with coverage (threshold gate)"
-            npm run test:coverage
-          else
             echo "Running Vitest without coverage"
             npm run test
+          else
+            echo "Running Vitest with coverage (threshold gate)"
+            npm run test:coverage
           fi
 
       - name: Vitest summary
@@ -319,6 +315,7 @@ jobs:
 
   build:
     name: Build prod image
+    needs: ci-gate
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 30
