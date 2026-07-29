@@ -22,7 +22,7 @@ Server entry is [SettingsController](../../app/Http/Controllers/SettingsControll
 ## Sections
 
 - **Notifikasi** — one section holding two groups, because the user's model is one topic with two questions rather than three unrelated ones:
-  - *Apa yang dikirim* — the three channel-neutral per-type toggles (`post_run`, `weekly_recap`, `monthly_recap`), which gate Telegram and phone push alike. Full behaviour in [[telegram-notifications]].
+  - *Apa yang dikirim* — one channel-neutral master switch, **Kabarin aku** (`notifications_enabled`), covering the post-run story, both recaps and the streak nudge, and gating Telegram and phone push alike. Full behaviour in [[telegram-notifications]].
   - *Ke mana* — Telegram and web push ([PushNotificationToggle](../../resources/js/components/PushNotificationToggle.tsx), rendered once a VAPID key is configured), each with a **mute** toggle once connected: off keeps the link and simply stops delivery, so re-enabling needs no re-auth. The destructive "Putuskan" / "Matikan" sits demoted beneath the row it belongs to. Plus the "Kirim notifikasi tes" button, which lives here rather than with the types because what it proves is that a channel can reach you — it has a 60s cooldown and a pending state, both shorter than the 5-minute per-recap send for the reasons in [[telegram-notifications]].
 - **Lari · Zona HR** — a row linking to [[settings-hr-zones]] (`/pengaturan/zona`).
 - **Akun · Hapus akun** — see below.

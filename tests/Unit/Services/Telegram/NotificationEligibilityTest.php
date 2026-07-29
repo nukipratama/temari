@@ -67,21 +67,27 @@ it('resolves the user behind a monthly recap directly via its subject_id', funct
     expect(new NotificationEligibility()->resolveUser($analysis)?->id)->toBe($user->id);
 });
 
-it('isOptedIn returns true when the preference flag is on', function (): void {
+it('isOptedIn returns true when the master switch is on', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
     $user = User::factory()->create();
-    NotificationPreference::factory()->for($user)->create(['post_run' => true]);
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => true]);
 
     expect(new NotificationEligibility()->isOptedIn($analysis, $user))->toBeTrue();
 });
 
-it('isOptedIn returns false when the preference flag is off', function (): void {
-    $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);
+// One switch covers every notifiable type, so the same off state silences all
+// three rather than each needing its own flag.
+it('isOptedIn returns false for every notifiable type when the master switch is off', function (AnalysisType $type): void {
+    $analysis = Analysis::factory()->make(['analysis_type' => $type]);
     $user = User::factory()->create();
-    NotificationPreference::factory()->for($user)->create(['post_run' => false]);
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
     expect(new NotificationEligibility()->isOptedIn($analysis, $user))->toBeFalse();
-});
+})->with([
+    AnalysisType::PostRunSpeech,
+    AnalysisType::WeeklyRecap,
+    AnalysisType::MonthlyRecap,
+]);
 
 it('isOptedIn defaults to opted-in when the user has no preference row', function (): void {
     $analysis = Analysis::factory()->make(['analysis_type' => AnalysisType::PostRunSpeech]);

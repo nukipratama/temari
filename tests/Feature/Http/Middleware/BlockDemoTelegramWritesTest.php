@@ -18,9 +18,7 @@ it('blocks a demo user from an Inertia notification-preference write with an Ind
     $this->actingAs($user)
         ->withHeader('X-Inertia', 'true')
         ->patch('/profil/notifikasi', [
-            'post_run' => false,
-            'weekly_recap' => true,
-            'monthly_recap' => true,
+            'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
         ])
@@ -45,16 +43,14 @@ it('does not block a normal user from the same notification-preference write', f
 
     $this->actingAs($user)
         ->patch('/profil/notifikasi', [
-            'post_run' => false,
-            'weekly_recap' => true,
-            'monthly_recap' => true,
+            'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
         ])
         ->assertRedirect()
         ->assertSessionDoesntHaveErrors();
 
-    expect($user->notificationPreference->post_run)->toBeFalse();
+    expect($user->notificationPreference->notifications_enabled)->toBeFalse();
 });
 
 it('does not block a demo user from equipping an accessory (interactive sandbox)', function (): void {

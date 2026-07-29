@@ -27,9 +27,7 @@ it('exposes the telegram connect url when the bot username is configured', funct
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('telegram.connected', false)
-            ->where('notificationPrefs.post_run', true)
-            ->where('notificationPrefs.weekly_recap', true)
-            ->where('notificationPrefs.monthly_recap', true)
+            ->where('notificationPrefs.notifications_enabled', true)
             ->where('telegram.connect_url', fn (?string $url): bool => is_string($url)
                 && str_starts_with($url, 'https://t.me/temari_bot?start=')));
 });
@@ -38,9 +36,9 @@ it('reports the connection state and the channel-neutral preferences', function 
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['username' => 'ada_runs']);
     NotificationPreference::factory()->for($user)->create([
-        'post_run' => false,
-        'weekly_recap' => true,
-        'monthly_recap' => false,
+        'notifications_enabled' => false,
+        'telegram_enabled' => true,
+        'push_enabled' => false,
     ]);
 
     $this->actingAs($user)->get('/pengaturan')
@@ -48,9 +46,9 @@ it('reports the connection state and the channel-neutral preferences', function 
         ->assertInertia(fn (Assert $page) => $page
             ->where('telegram.connected', true)
             ->where('telegram.username', 'ada_runs')
-            ->where('notificationPrefs.post_run', false)
-            ->where('notificationPrefs.weekly_recap', true)
-            ->where('notificationPrefs.monthly_recap', false));
+            ->where('notificationPrefs.notifications_enabled', false)
+            ->where('notificationPrefs.telegram_enabled', true)
+            ->where('notificationPrefs.push_enabled', false));
 });
 
 it('redirects the legacy /settings path to the settings page', function (): void {

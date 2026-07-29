@@ -118,9 +118,7 @@ it('reflects a Telegram mute saved from the settings page', function (): void {
     warmSharedProps($user);
 
     $user->notificationPreference()->updateOrCreate([], [
-        'post_run' => true,
-        'weekly_recap' => true,
-        'monthly_recap' => true,
+        'notifications_enabled' => true,
         'telegram_enabled' => false,
         'push_enabled' => true,
     ]);

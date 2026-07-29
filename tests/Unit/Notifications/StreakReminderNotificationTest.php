@@ -30,7 +30,7 @@ function subscribeToPush(User $user): void
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
 }
 
-it('routes to Telegram for a connected, weekly-opted-in user', function (): void {
+it('routes to Telegram for a connected, opted-in user', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
 
@@ -81,13 +81,23 @@ it('routes nowhere over a revoked connection with no push subscription', functio
     expect(streakVia($user))->toBe([]);
 });
 
-it('routes nowhere when weekly recap is opted out, on either channel', function (): void {
+// The nudge is governed by the master switch, which names it in its own
+// description, rather than riding along on a recap toggle that never mentioned it.
+it('routes nowhere when the notification master switch is off, on either channel', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
     subscribeToPush($user);
-    NotificationPreference::factory()->for($user)->create(['weekly_recap' => false]);
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
     expect(streakVia($user))->toBe([]);
+});
+
+it('still routes when the master switch is on', function (): void {
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => true]);
+
+    expect(streakVia($user))->toBe([TelegramChannel::class]);
 });
 
 it('builds a keyless Telegram message naming the streak length', function (): void {

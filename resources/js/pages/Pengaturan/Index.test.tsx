@@ -11,9 +11,9 @@ const connectedTelegram = {
 };
 
 const prefs = {
-    post_run: true,
-    weekly_recap: false,
-    monthly_recap: true, telegram_enabled: true, push_enabled: true,
+    notifications_enabled: false,
+    telegram_enabled: true,
+    push_enabled: true,
 };
 
 beforeEach(() => {
@@ -81,25 +81,28 @@ describe('Pengaturan', () => {
         expect(screen.getByRole('link', { name: /Telegram/ })).toHaveAttribute('href', 'https://t.me/temari_bot?start=tok');
     });
 
-    it('shows the channel-neutral preference toggles from notificationPrefs', () => {
+    it('shows the channel-neutral master switch from notificationPrefs', () => {
         render(<Pengaturan notificationPrefs={prefs} />);
-        expect(screen.getByRole('switch', { name: 'Cerita abis lari' })).toHaveAttribute('aria-checked', 'true');
-        expect(screen.getByRole('switch', { name: 'Rekap mingguan' })).toHaveAttribute('aria-checked', 'false');
-        expect(screen.getByRole('switch', { name: 'Rekap bulanan' })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('switch', { name: 'Kabarin aku' })).toHaveAttribute('aria-checked', 'false');
     });
 
-    it('patches the channel-neutral preferences when a toggle is flipped, carrying all current values', () => {
+    // The streak nudge had no toggle of its own and silently rode along on
+    // "Rekap mingguan"; the master switch names it so the coupling is visible.
+    it('names the streak nudge among what the master switch sends', () => {
+        render(<Pengaturan notificationPrefs={prefs} />);
+        expect(screen.getByText(/pengingat kalau streak kamu lagi di ujung/)).toBeInTheDocument();
+    });
+
+    it('patches the channel-neutral preferences when the master switch is flipped, carrying all current values', () => {
         vi.mocked(router.patch).mockReset();
         render(<Pengaturan notificationPrefs={prefs} />);
 
-        fireEvent.click(screen.getByRole('switch', { name: 'Rekap mingguan' }));
+        fireEvent.click(screen.getByRole('switch', { name: 'Kabarin aku' }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/profil/notifikasi',
             {
-                post_run: true,
-                weekly_recap: true,
-                monthly_recap: true,
+                notifications_enabled: true,
                 telegram_enabled: true,
                 push_enabled: true,
             },
@@ -146,7 +149,7 @@ describe('Pengaturan', () => {
         vi.mocked(router.patch).mockReset();
         render(<Pengaturan notificationPrefs={prefs} />);
 
-        const toggle = screen.getByRole('switch', { name: 'Rekap mingguan' });
+        const toggle = screen.getByRole('switch', { name: 'Kabarin aku' });
         fireEvent.click(toggle);
 
         expect(router.patch).not.toHaveBeenCalled();

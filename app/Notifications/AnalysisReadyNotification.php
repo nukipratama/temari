@@ -26,7 +26,7 @@ use NotificationChannels\WebPush\WebPushMessage;
  * Fired from {@see \App\Services\AI\AnalysisService::markDone()} when a notifiable
  * analysis completes, and from the manual "Kirim notifikasi" controllers
  * ($force). `via()` decides per channel: an automatic push honours the recency
- * gate and the per-type opt-in, a manual push bypasses both and reaches every
+ * gate and the master-switch opt-in, a manual push bypasses both and reaches every
  * wired channel (Telegram if connected, web push if subscribed). Delivery +
  * idempotency live in {@see TelegramChannel} / {@see IdempotentWebPushChannel}.
  */
@@ -64,7 +64,7 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
         }
 
         // A manual push bypasses the recency + opt-in gates; the automatic path
-        // keeps the recency gate and the channel-neutral per-type opt-in.
+        // keeps the recency gate and the channel-neutral master-switch opt-in.
         if ($this->force) {
             return $channels;
         }
