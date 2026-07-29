@@ -6,9 +6,20 @@ status: living
 reviewed: 2026-06-20
 code_refs:
   - resources/js/pages/AiUsage.tsx
+  - resources/js/pages/AiUsage/helpers.ts
+  - resources/js/pages/AiUsage/types.ts
   - app/Http/Controllers/TokenUsageController.php
   - app/Services/AI/TokenUsageReport.php
   - resources/js/components/dashboard/KpiTile.tsx
+  - resources/js/components/aiusage/UsageFilters.tsx
+  - resources/js/components/aiusage/UsageKpis.tsx
+  - resources/js/components/aiusage/BudgetGauge.tsx
+  - resources/js/components/aiusage/DailyChart.tsx
+  - resources/js/components/aiusage/AttentionArea.tsx
+  - resources/js/components/aiusage/DeploymentTable.tsx
+  - resources/js/components/aiusage/KindTable.tsx
+  - resources/js/components/aiusage/UserTable.tsx
+  - resources/js/components/ui/DataTable.tsx
   - docker/Caddyfile
   - routes/web.php
 ---
@@ -27,16 +38,16 @@ code_refs:
 
 ## What it shows
 
-[AiUsage.tsx](../../resources/js/pages/AiUsage.tsx) renders, for a chosen date window:
+[AiUsage.tsx](../../resources/js/pages/AiUsage.tsx) is pure composition; each block below is its own component under [components/aiusage/](../../resources/js/components/aiusage/AttentionArea.tsx), and the shared formatting and payload shapes live in [helpers.ts](../../resources/js/pages/AiUsage/helpers.ts) / [types.ts](../../resources/js/pages/AiUsage/types.ts). For a chosen date window it renders:
 
-- **KPI tiles** via [KpiTile](../../resources/js/components/dashboard/KpiTile.tsx) — total tokens, estimated cost, prompt tokens (and prompt share), plus a fourth tile.
-- A **budget gauge** comparing the window's spend against the configured daily ceiling.
-- Breakdown tables: **by kind** (which narrator/analysis), **by user**, and **by deployment** (which Azure model deployment served the call).
+- **KPI tiles** via [UsageKpis](../../resources/js/components/aiusage/UsageKpis.tsx) over [KpiTile](../../resources/js/components/dashboard/KpiTile.tsx) — total tokens, estimated cost, prompt tokens (and prompt share), plus a fourth tile.
+- A **budget gauge** ([BudgetGauge](../../resources/js/components/aiusage/BudgetGauge.tsx)) comparing the window's spend against the configured daily ceiling.
+- Breakdown tables: **by kind** ([KindTable](../../resources/js/components/aiusage/KindTable.tsx), which narrator/analysis), **by user** ([UserTable](../../resources/js/components/aiusage/UserTable.tsx)), and **by deployment** ([DeploymentTable](../../resources/js/components/aiusage/DeploymentTable.tsx), which Azure model deployment served the call). All three share the generic [DataTable](../../resources/js/components/ui/DataTable.tsx) shell, which takes its empty state from the caller.
 - Each **by kind** row carries an agent summary line under its name — `3.5 langkah · 71% cache · 18% reasoning`. Every narrator is a tool-calling agent, so one row can span several model turns: without the step count an expensive block is indistinguishable from a chatty one. The line is **absent, not zeroed**, for kinds whose rows predate those columns, since zero would read as "never cached, never reasoned" rather than "never measured".
-- A **daily** series for the spend-over-time view.
-- An **attention area** (hidden when nothing is stuck) with a global one-shot **Pulihkan semua** recover action plus three per-user buckets so the "healthy" dashboard stops hiding silent rot: **Perlu perhatian** (dead-lettered, self-heal gave up), **Failed, belum menyerah** (Failed but still under the retry budget), and **Nyangkut** (Pending/Queued stuck past `Analysis::STALE_IN_FLIGHT_HOURS`, excluding window-gated open-period recap rows whose Pending is inert by design). The dead-letter and failed-under-budget buckets carry a per-user re-arm button; Nyangkut is recovered by the global action.
+- A **daily** series for the spend-over-time view ([DailyChart](../../resources/js/components/aiusage/DailyChart.tsx)).
+- An **attention area** ([AttentionArea](../../resources/js/components/aiusage/AttentionArea.tsx), hidden when nothing is stuck) with a global one-shot **Pulihkan semua** recover action plus three per-user buckets so the "healthy" dashboard stops hiding silent rot: **Perlu perhatian** (dead-lettered, self-heal gave up), **Failed, belum menyerah** (Failed but still under the retry budget), and **Nyangkut** (Pending/Queued stuck past `Analysis::STALE_IN_FLIGHT_HOURS`, excluding window-gated open-period recap rows whose Pending is inert by design). The dead-letter and failed-under-budget buckets carry a per-user re-arm button; Nyangkut is recovered by the global action.
 
-A kind filter and from/to date controls re-query the same endpoint via `router`.
+A kind filter and from/to date controls ([UsageFilters](../../resources/js/components/aiusage/UsageFilters.tsx)) re-query the same endpoint via `router`.
 
 ## Server side
 
