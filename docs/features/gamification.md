@@ -24,14 +24,14 @@ Gamification isn't a page — it's an engine that runs as each activity is inges
 
 ## System dependencies
 
-- **Ingestion** — `RunCardFactory` is invoked by the [[run-ingest-pipeline]] during activity ingest; `GenerateRunCardJob` handles async card generation.
+- **Ingestion** — `RunCardFactory` is invoked by the [[run-ingest-pipeline]] during activity ingest.
 - **AI narration** — `Temari` writes `StoryLine` rows (mood, speech) that the [[ai-pipeline]] narrators reference.
 - **Training metrics** — PRs are detected by `PersonalRecords` using data from [[stream-analysis]] and [[training-load-metrics]].
 - **Data model** — `RunCard`, `UserUnlock`, `PersonalRecord` shapes in [[data-model]].
 
 ## A run becomes a card
 
-[RunCardFactory](../../app/Services/Run/Story/RunCardFactory.php) (`build(Activity, ActivityDetail): RunCard`) is the centrepiece. It scores the run, derives a **rarity** from that score, attaches a list of **badges** (weather, distance bracket, splits, streak), and names a **special move**. It is invoked from the ingest pipeline (`app/Services/Run/Ingest/ActivityPipeline.php`) and from `app/Jobs/Story/GenerateRunCardJob.php`.
+[RunCardFactory](../../app/Services/Run/Story/RunCardFactory.php) (`build(Activity, ActivityDetail): RunCard`) is the centrepiece. It scores the run, derives a **rarity** from that score, attaches a list of **badges** (weather, distance bracket, splits, streak), and names a **special move**. It is invoked from the ingest pipeline ([ActivityPipeline](../../app/Services/Run/Ingest/ActivityPipeline.php)).
 
 The rarity isn't a coin flip: [rarityScore](../../app/Services/Run/Story/RunCardFactory.php#L154) folds a handful of run signals (distance, pace, weather, the earned badge set, PRs) into a single number, and [rarityFromScore](../../app/Services/Run/Story/RunCardFactory.php#L198) buckets that number into a tier. Tune the tier boundaries there, not in the callers. The same rarity rank is what the featured-kartu picker ranks on, see [[vibe-and-mood]].
 
