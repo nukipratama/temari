@@ -1041,6 +1041,18 @@ function narratorToolboxes(): array
 }
 
 /**
+ * The `maxSteps: N` a narrator hands StructuredChatCaller, or null when it takes
+ * the global `ai.agent.max_steps` default. Read from source so it cannot drift.
+ */
+function declaredMaxSteps(string $class): ?int
+{
+    $file = appSourcePath('Services/AI/Narrators/'.class_basename($class).'.php');
+    preg_match('/maxSteps: (\d+)/', (string) file_get_contents($file), $matches);
+
+    return isset($matches[1]) ? (int) $matches[1] : null;
+}
+
+/**
  * Every `kind: '...'` a narrator passes to StructuredChatCaller, read from source
  * so this cannot drift as narrators are added or renamed.
  *
@@ -1070,6 +1082,40 @@ it('no narrator prompt names a tool its own toolbox does not carry', function (s
     $named = array_values(array_unique($matches[0]));
     expect(array_values(array_diff($named, $tools)))->toBe([]);
 })->with(fn (): array => narratorToolboxes());
+
+// A narrator only earns its own step ceiling when its toolbox is small enough
+// that the tighter number still covers two full read passes: every tool takes
+// no arguments and is worth calling once, so one pass is at most tools + 1
+// turns, and the content-filter retry replays that pass on the same budget.
+// Below 2 * (tools + 1) the retry would answer with no readings at all, which
+// is a content change rather than a saving; at or above the global default the
+// override buys nothing and would only raise the ceiling.
+it('per-narrator step budgets cover two full read passes and only exist where they beat the default', function (): void {
+    $default = (int) config('ai.agent.max_steps');
+    $declared = [];
+
+    foreach (narratorToolboxes() as $narrator => [$class, $tools]) {
+        $budget = declaredMaxSteps($class);
+        if ($budget === null) {
+            continue;
+        }
+
+        $declared[$narrator] = $budget;
+
+        expect($budget)->toBeGreaterThanOrEqual(2 * (count($tools) + 1))
+            ->and($budget)->toBeLessThan($default);
+    }
+
+    ksort($declared);
+
+    expect($declared)->toBe([
+        'BriefingFeaturedKartuVoiceNarrator' => 4,
+        'MonthlyRecapNarrator' => 4,
+        'PersonaSummaryNarrator' => 4,
+        'PrContextNarrator' => 6,
+        'WeeklyRecapNarrator' => 4,
+    ]);
+});
 
 // Model routing is env-owned: config/azure_openai.php maps each kind to its own
 // AZURE_OPENAI_*_DEPLOYMENT var, falling back to the default. The map and the

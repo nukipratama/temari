@@ -83,6 +83,7 @@ class WeeklyRecapNarrator
                 userId: $snapshot->user_id,
                 maxTokens: 1500,
                 toolbox: new AgentToolbox([new WeekTotalsTool($snapshot)]),
+                maxSteps: 4,
             ),
         );
 

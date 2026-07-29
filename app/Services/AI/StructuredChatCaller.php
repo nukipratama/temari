@@ -66,7 +66,7 @@ final readonly class StructuredChatCaller
         $effectiveMaxTokens = $options->maxTokens ?? (int) config('azure_openai.max_completion_tokens');
         $deployment = $this->azure->deploymentFor($kind);
         $toolbox = $options->toolbox !== null && ! $options->toolbox->isEmpty() ? $options->toolbox : null;
-        $budget = AgentBudget::fromConfig();
+        $budget = AgentBudget::fromConfig($options->maxSteps);
 
         $payload = [
             'model' => $deployment,
@@ -75,7 +75,6 @@ final readonly class StructuredChatCaller
                 ['role' => 'user', 'content' => json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)],
             ],
             'max_output_tokens' => $effectiveMaxTokens,
-            'temperature' => $options->temperature,
             // Keyed on the narrator, never the user. The cacheable prefix is the
             // persona plus this narrator's prompt and tool schemas, which is
             // byte-identical for everyone who calls it — keying per user would
@@ -85,6 +84,10 @@ final readonly class StructuredChatCaller
             'prompt_cache_key' => $kind,
             'text' => ['format' => self::textFormat($schemaName, $requiredKeys)],
         ];
+
+        if ($options->temperature !== null) {
+            $payload['temperature'] = $options->temperature;
+        }
 
         if ($toolbox !== null) {
             $payload['tools'] = $toolbox->definitions();

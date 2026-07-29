@@ -100,6 +100,28 @@ it('sends the narrator-tuned temperature in every request', function (): void {
     );
 });
 
+it('sends the default temperature when a narrator names none', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
+
+    fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline']);
+
+    $client->assertSent(
+        Responses::class,
+        fn (string $method, array $params): bool => $method === 'create' && $params['temperature'] === 0.8,
+    );
+});
+
+it('omits temperature entirely for a kind that opts out', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
+
+    fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(temperature: null));
+
+    $client->assertSent(
+        Responses::class,
+        fn (string $method, array $params): bool => $method === 'create' && ! array_key_exists('temperature', $params),
+    );
+});
+
 it('records a token-usage row on successful call', function (): void {
     structuredCaller(
         json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR),
@@ -624,6 +646,33 @@ it('stops offering tools at the step ceiling and still returns narration', funct
 
     Log::shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
         fn (array $ctx): bool => $ctx['reason'] === 'max_steps' && $ctx['kind'] === 'run_insight',
+    ));
+});
+
+it('lets a narrator tighten the step ceiling below the global default', function (): void {
+    Log::spy();
+    config()->set('ai.agent.max_steps', 8);
+
+    $client = new ClientFake([
+        fakeAzureToolCallResponse([['name' => 'get_thing']]),
+        fakeAzureToolCallResponse([['name' => 'get_thing']]),
+        fakeAzureResponse(json_encode(['headline' => 'capped early'], JSON_THROW_ON_ERROR)),
+    ]);
+    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => ['value' => 1])]);
+
+    $payload = fakeStructuredCaller($client)->call(
+        'weekly_recap',
+        'sys',
+        [],
+        'schema',
+        ['headline'],
+        new ChatCallOptions(toolbox: $toolbox, maxSteps: 2),
+    );
+
+    expect($payload)->toBe(['headline' => 'capped early']);
+
+    Log::shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
+        fn (array $ctx): bool => $ctx['reason'] === 'max_steps' && $ctx['steps'] === 2,
     ));
 });
 

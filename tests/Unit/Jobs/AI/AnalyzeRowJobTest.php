@@ -93,6 +93,30 @@ function attachFakeJob(AnalyzeRowJob $job, int $attempts): ArrayObject
     return $released;
 }
 
+/**
+ * A failing job that records one entry per *billed* run, so a test can assert
+ * the total number of real LLM calls a block cost end to end.
+ *
+ * @param  ArrayObject<int, int>  $calls
+ */
+function countingRowJob(int $id, ArrayObject $calls, Closure $fail): AnalyzeRowJob
+{
+    return new class ($id, $calls, $fail) extends AnalyzeRowJob {
+        /** @param ArrayObject<int, int> $calls */
+        public function __construct(int $analysisId, private readonly ArrayObject $calls, private readonly Closure $fail)
+        {
+            parent::__construct($analysisId);
+        }
+
+        protected function generateContent(Analysis $row): string
+        {
+            $this->calls->append($row->attempts);
+
+            throw ($this->fail)();
+        }
+    };
+}
+
 function makeRowForRowJobTest(): Analysis
 {
     return Analysis::factory()->queued()->create([
@@ -233,4 +257,100 @@ it('failed() does not clobber an already-Done row', function (): void {
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('kept');
+});
+
+it('bounds total billed runs at MAX_SELF_HEAL_ATTEMPTS across self-heal re-dispatches and queue retries', function (): void {
+    $row = makeRowForRowJobTest();
+    $calls = new ArrayObject();
+    $service = app(AnalysisService::class);
+
+    // Walk `attempts` up one billed run at a time: a swallowed
+    // UnavailableException is never retried by the queue, so each of these costs
+    // exactly one call and leaves the row stalled-but-under-budget. The first is
+    // the original dispatch, the second a self-heal re-dispatch.
+    countingRowJob($row->id, $calls, fn (): Throwable => new UnavailableException('Azure down'))->handle($service);
+    expect($row->fresh()->attempts)->toBe(1)
+        ->and(Analysis::query()->stalled()->whereKey($row->id)->exists())->toBeTrue();
+
+    $service->markQueued($row->refresh());
+    countingRowJob($row->id, $calls, fn (): Throwable => new UnavailableException('Azure down'))->handle($service);
+    expect($row->fresh()->attempts)->toBe(2);
+
+    // Last re-dispatch still under budget, now failing transiently with a full
+    // set of its own `$tries` untouched. Only the shared budget can stop it
+    // from releasing two more billed runs on top of the two already spent.
+    expect(Analysis::query()->stalled()->whereKey($row->id)->exists())->toBeTrue();
+    $service->markQueued($row->refresh());
+    $job = countingRowJob($row->id, $calls, fn (): Throwable => new TransientUpstreamException('rate limited'));
+    $released = attachFakeJob($job, attempts: 1);
+
+    expect(fn () => $job->handle($service))->toThrow(TransientUpstreamException::class);
+    expect($released->getArrayCopy())->toBe([]);
+
+    // The queue still retries that rethrow; the row must refuse to bill again.
+    $job->handle($service);
+
+    $fresh = $row->fresh();
+    expect($calls->count())->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and($fresh->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and($fresh->status)->toBe(AnalysisStatus::Failed)
+        ->and(Analysis::query()->stalled()->whereKey($row->id)->exists())->toBeFalse()
+        ->and(Analysis::query()->deadLettered()->whereKey($row->id)->exists())->toBeTrue();
+});
+
+it('never spends the retry budget while generation is paused, so a pause cannot dead-letter a block', function (): void {
+    config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']);
+    $row = makeRowForRowJobTest();
+    $calls = new ArrayObject();
+    $service = app(AnalysisService::class);
+
+    // More paused runs than the whole budget: a cost ceiling that outlasts
+    // several self-heal passes must still cost nothing and stay recoverable.
+    foreach (range(1, Analysis::MAX_SELF_HEAL_ATTEMPTS + 2) as $ignored) {
+        countingRowJob($row->id, $calls, fn (): Throwable => new RuntimeException('never reached'))->handle($service);
+    }
+
+    $paused = $row->fresh();
+    expect($calls->count())->toBe(0)
+        ->and($paused->attempts)->toBe(0)
+        ->and($paused->status)->toBe(AnalysisStatus::Pending)
+        ->and(Analysis::query()->stalled()->whereKey($row->id)->exists())->toBeTrue();
+
+    config(['azure_openai.uri' => 'https://azure.test', 'azure_openai.api_key' => 'key']);
+    $service->markQueued($row->refresh());
+    fakeSuccessRowJob($row->id)->handle($service);
+
+    $resumed = $row->fresh();
+    expect($resumed->status)->toBe(AnalysisStatus::Done)
+        ->and($resumed->attempts)->toBe(1);
+});
+
+it('still bills a manual re-trigger of a dead-lettered block, only refusing queue-driven re-entry', function (): void {
+    $row = makeRowForRowJobTest();
+    $row->update(['status' => AnalysisStatus::Failed, 'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS]);
+    $service = app(AnalysisService::class);
+
+    $calls = new ArrayObject();
+    countingRowJob($row->id, $calls, fn (): Throwable => new RuntimeException('never reached'))->handle($service);
+
+    expect($calls->count())->toBe(0);
+
+    // Every dispatch path marks the row Queued first, which is what separates a
+    // human "Coba lagi" from the queue re-entering a row it already failed.
+    $service->markQueued($row->refresh());
+    fakeSuccessRowJob($row->id)->handle($service);
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done);
+});
+
+it('settles a budget-spent row stranded in Processing to Failed so it dead-letters', function (): void {
+    $row = makeRowForRowJobTest();
+    $row->update(['status' => AnalysisStatus::Processing, 'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS]);
+
+    $calls = new ArrayObject();
+    countingRowJob($row->id, $calls, fn (): Throwable => new RuntimeException('never reached'))->handle(app(AnalysisService::class));
+
+    expect($calls->count())->toBe(0)
+        ->and($row->fresh()->status)->toBe(AnalysisStatus::Failed)
+        ->and(Analysis::query()->deadLettered()->whereKey($row->id)->exists())->toBeTrue();
 });

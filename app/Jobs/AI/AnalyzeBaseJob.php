@@ -41,27 +41,33 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      */
     private const int MAX_RETRY_AFTER_SECONDS = 600;
 
+    /** Recorded on a row halted by {@see self::haltForSpentRetryBudget()}. */
+    private const string SPENT_BUDGET_ERROR = 'Retry budget exhausted before this attempt could run.';
+
     /**
      * Settle a generation failure, given callbacks that mark the affected
      * row(s) failed or re-queued.
      *
      * Any `TransientUpstreamException` (429 / 5xx / timeout) is retryable while
-     * a `$tries` slot remains, whether or not it carries a `Retry-After`:
-     * re-queue the row(s) and release the job. The release delay is the
-     * upstream `Retry-After` when present, otherwise the configured backoff,
-     * capped at {@see self::MAX_RETRY_AFTER_SECONDS}. A re-queued row is neither
-     * re-dispatchable nor shown as "Coba lagi", so a manual retry cannot race a
-     * second LLM call during the wait.
+     * both a `$tries` slot and a row retry budget remain, whether or not it
+     * carries a `Retry-After`: re-queue the row(s) and release the job. The
+     * release delay is the upstream `Retry-After` when present, otherwise the
+     * configured backoff, capped at {@see self::MAX_RETRY_AFTER_SECONDS}. A
+     * re-queued row is neither re-dispatchable nor shown as "Coba lagi", so a
+     * manual retry cannot race a second LLM call during the wait.
      *
      * Every other outcome ends this attempt failed. `UnavailableException` is
      * terminal (bad schema / malformed JSON / permanent upstream error) and is
      * swallowed so the worker does not retry; anything else (a transient error
-     * with no `$tries` slot left, or a genuine bug) is rethrown so the queue
-     * records it in `failed_jobs`.
+     * with no slot left, or a genuine bug) is rethrown so the queue records it
+     * in `failed_jobs`.
+     *
+     * @param  iterable<Analysis>  $rows
      */
-    protected function settleFailure(Throwable $e, callable $markFailed, callable $markRequeued): void
+    protected function settleFailure(Throwable $e, iterable $rows, callable $markFailed, callable $markRequeued): void
     {
         if ($e instanceof TransientUpstreamException
+            && $this->retryBudgetRemains($rows)
             && $this->attempts() < $this->tries) {
             $markRequeued();
             $this->release(min($e->retryAfterSeconds ?? $this->defaultBackoffSeconds(), self::MAX_RETRY_AFTER_SECONDS));
@@ -83,6 +89,69 @@ abstract class AnalyzeBaseJob implements ShouldQueue
     private function defaultBackoffSeconds(): int
     {
         return $this->backoff[0] ?? 0;
+    }
+
+    /**
+     * Refuse to bill a run the row's retry budget can no longer pay for, and
+     * settle it so it dead-letters. Returns true to tell handle() to stop.
+     *
+     * `attempts` bumps once per real run (markProcessing), so it is the single
+     * budget the queue's own `$tries` retries and ai:self-heal's re-dispatches
+     * both draw from, and {@see Analysis::MAX_SELF_HEAL_ATTEMPTS} bounds their
+     * sum rather than each half separately. Every dispatch leaves its row
+     * Queued, so a row arriving Failed or Processing is a queue-driven re-entry
+     * (a rethrown exception being retried, or a run whose worker died
+     * mid-flight) — a manual re-trigger still gets its run. A halted row that is
+     * not already Failed is marked so, rather than resting in a state no sweep
+     * can see.
+     *
+     * @param  iterable<Analysis>  $rows
+     */
+    protected function haltForSpentRetryBudget(AnalysisService $service, iterable $rows): bool
+    {
+        $spent = [];
+
+        foreach ($rows as $row) {
+            if (! self::retryBudgetSpent($row)) {
+                return false;
+            }
+
+            $spent[] = $row;
+        }
+
+        if ($spent === []) {
+            return false;
+        }
+
+        foreach ($spent as $row) {
+            if ($row->status !== AnalysisStatus::Failed) {
+                $service->markFailed($row, self::SPENT_BUDGET_ERROR);
+            }
+        }
+
+        return true;
+    }
+
+    private static function retryBudgetSpent(Analysis $row): bool
+    {
+        return $row->status !== AnalysisStatus::Queued
+            && $row->attempts >= Analysis::MAX_SELF_HEAL_ATTEMPTS;
+    }
+
+    /**
+     * Whether any row of this run may still spend a real LLM attempt.
+     *
+     * @param  iterable<Analysis>  $rows
+     */
+    private function retryBudgetRemains(iterable $rows): bool
+    {
+        foreach ($rows as $row) {
+            if ($row->attempts < Analysis::MAX_SELF_HEAL_ATTEMPTS) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

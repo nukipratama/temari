@@ -56,3 +56,17 @@ it('reads its ceilings from config', function (): void {
 
     expect($budget->exhaustedReason())->toBe(AgentBudget::REASON_TOKENS);
 });
+
+it('takes a per-narrator step ceiling over the config default, keeping the token one', function (): void {
+    config()->set('ai.agent.max_steps', 8);
+    config()->set('ai.agent.max_tokens', 30000);
+
+    $budget = AgentBudget::fromConfig(maxSteps: 2);
+    $budget->recordStep(5, 5, 10);
+
+    expect($budget->exhaustedReason())->toBeNull();
+
+    $budget->recordStep(5, 5, 10);
+
+    expect($budget->exhaustedReason())->toBe(AgentBudget::REASON_STEPS);
+});

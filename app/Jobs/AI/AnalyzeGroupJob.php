@@ -39,6 +39,10 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             return;
         }
 
+        if ($this->haltForSpentRetryBudget($service, $pending)) {
+            return;
+        }
+
         if ($this->haltForPausedGeneration($service, $pending)) {
             return;
         }
@@ -86,6 +90,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         } catch (Throwable $e) {
             $this->settleFailure(
                 $e,
+                $pending,
                 markFailed: fn () => $this->failPending($pending, $service, $e->getMessage()),
                 markRequeued: fn () => $pending->each(fn (Analysis $row) => $service->markQueued($row)),
             );
