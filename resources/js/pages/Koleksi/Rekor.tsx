@@ -55,6 +55,14 @@ const DISTANCE_ORDER: Record<(typeof DISTANCE_CATEGORIES)[number], number> = {
     marathon: 6,
 };
 
+const PACE_ORDER: Record<string, number> = {
+    best_5min: 1,
+    best_10min: 2,
+    best_20min: 3,
+    best_30min: 4,
+    best_60min: 5,
+};
+
 export default function KoleksiRekor({
     personalRecords,
     featuredExtras = null,
@@ -62,9 +70,9 @@ export default function KoleksiRekor({
     const distancePRs = personalRecords
         .filter((p) => DISTANCE_CATEGORIES.includes(p.category as (typeof DISTANCE_CATEGORIES)[number]))
         .sort((a, b) => DISTANCE_ORDER[b.category as (typeof DISTANCE_CATEGORIES)[number]] - DISTANCE_ORDER[a.category as (typeof DISTANCE_CATEGORIES)[number]]);
-    const pacePRs = personalRecords.filter(
-        (p) => !DISTANCE_CATEGORIES.includes(p.category as (typeof DISTANCE_CATEGORIES)[number]),
-    );
+    const pacePRs = personalRecords
+        .filter((p) => !DISTANCE_CATEGORIES.includes(p.category as (typeof DISTANCE_CATEGORIES)[number]))
+        .sort((a, b) => (PACE_ORDER[a.category] ?? 0) - (PACE_ORDER[b.category] ?? 0));
     const featured = distancePRs[0] ?? personalRecords[0] ?? null;
 
     const eyebrow = `Koleksi · ${personalRecords.length} rekor · ${distancePRs.length} jarak · ${pacePRs.length} pace`;
