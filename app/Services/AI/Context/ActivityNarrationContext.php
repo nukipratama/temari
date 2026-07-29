@@ -42,7 +42,7 @@ final readonly class ActivityNarrationContext
     #[NoDiscard]
     public static function fromDetail(?ActivityDetail $detail): self
     {
-        $summary = StreamSummary::fromArray($detail?->stream_summary);
+        $summary = StreamSummary::fromArray($detail?->streamSummary());
 
         return new self(
             distanceMeters: $detail?->distance,

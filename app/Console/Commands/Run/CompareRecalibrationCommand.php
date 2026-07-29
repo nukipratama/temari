@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PaceConsistency;
+use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\SpecialMoves;
 use Illuminate\Console\Attributes\Description;
@@ -103,23 +104,23 @@ class CompareRecalibrationCommand extends Command
      */
     private function tallyOne(Activity $activity, ActivityDetail $detail, array $streams, array &$tallies, array &$scores): void
     {
-        $stored = $detail->streamSummary();
+        $stored = StreamSummary::fromArray($detail->streamSummary());
 
         $profile = $activity->user->hrProfile();
-        $recomputed = $this->streamAnalysis->compute(
+        $recomputed = StreamSummary::fromArray($this->streamAnalysis->compute(
             $streams,
             $profile['hr_zones'],
             is_array($detail->splits_metric) ? $detail->splits_metric : null,
             $profile['optimal_cadence_spm'],
-        );
+        ));
 
-        $this->bump($tallies['pace']['stored'], PaceConsistency::label($stored['pace_variability_sec'] ?? null) ?? 'tidak ada');
-        $this->bump($tallies['pace']['recomputed'], PaceConsistency::label($recomputed['pace_variability_sec'] ?? null) ?? 'tidak ada');
+        $this->bump($tallies['pace']['stored'], PaceConsistency::label($stored->paceVariabilitySec()) ?? 'tidak ada');
+        $this->bump($tallies['pace']['recomputed'], PaceConsistency::label($recomputed->paceVariabilitySec()) ?? 'tidak ada');
 
-        $tallies['negative_split']['stored'] += ($stored['negative_split'] ?? false) === true ? 1 : 0;
-        $tallies['negative_split']['recomputed'] += ($recomputed['negative_split'] ?? false) === true ? 1 : 0;
-        $tallies['decoupling']['stored'] += isset($stored['decoupling_pct']) ? 1 : 0;
-        $tallies['decoupling']['recomputed'] += isset($recomputed['decoupling_pct']) ? 1 : 0;
+        $tallies['negative_split']['stored'] += $stored->negativeSplit() === true ? 1 : 0;
+        $tallies['negative_split']['recomputed'] += $recomputed->negativeSplit() === true ? 1 : 0;
+        $tallies['decoupling']['stored'] += $stored->hasDecouplingPct() ? 1 : 0;
+        $tallies['decoupling']['recomputed'] += $recomputed->hasDecouplingPct() ? 1 : 0;
 
         $card = RunCard::query()->where('activity_id', $activity->id)->first();
         $badges = $this->cardFactory->badges($activity, $detail, $recomputed);

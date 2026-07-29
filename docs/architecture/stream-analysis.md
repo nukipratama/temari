@@ -56,7 +56,7 @@ Downstream consumers key into specific fields, so the shape is a contract. The p
 - `decoupling_pct`, `hr_drift_bpm` (both absent below the 45-minute floor), `cadence_drop_spm`, `negative_split` (bool).
 - `cadence_distribution_pct`, `optimal_cadence_pct`, `pace_variability_sec` (absent below two full km), `stopped_time_sec`, `stop_count`, `descent_m`. Ascent comes from `ActivityDetail::$total_elevation_gain`, not from this blob.
 
-Read via the [streamSummary](app/Models/ActivityDetail.php#L115) accessor (null-safe to `[]`).
+Read through [StreamSummary](app/Services/Run/Metrics/StreamSummary.php), a typed read model with one named accessor per key. The producer omits a key entirely whenever the stream behind it is missing or too short, so every row carries a subset of the shape and rows written by older revisions carry fewer keys still — each accessor therefore reports an absent key, an explicit `null` and an unusable type alike as "no reading" ([fromArray](app/Services/Run/Metrics/StreamSummary.php#L31)). Where a reading of zero has to stay distinct from no reading at all, [hasDecouplingPct](app/Services/Run/Metrics/StreamSummary.php#L143) answers presence on its own. The raw array underneath is still reachable via the [streamSummary](app/Models/ActivityDetail.php#L137) accessor (null-safe to `[]`).
 
 ## Who consumes it
 

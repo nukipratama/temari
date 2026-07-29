@@ -56,7 +56,7 @@ final readonly class RuleBasedRunInsights
 
     public function technical(ActivityDetail $detail): string
     {
-        $summary = StreamSummary::fromArray($detail->stream_summary);
+        $summary = StreamSummary::fromArray($detail->streamSummary());
 
         $parts = [];
         $this->appendCadencePart($detail, $parts);
@@ -157,7 +157,7 @@ final readonly class RuleBasedRunInsights
 
     public function splits(ActivityDetail $detail): string
     {
-        $summary = StreamSummary::fromArray($detail->stream_summary);
+        $summary = StreamSummary::fromArray($detail->streamSummary());
         /** @var array<int, array{km: int, pace: string}> $perKm */
         $perKm = $summary->perKm() ?? [];
 
@@ -312,7 +312,7 @@ final readonly class RuleBasedRunInsights
 
     public function zones(ActivityDetail $detail): string
     {
-        $summary = StreamSummary::fromArray($detail->stream_summary);
+        $summary = StreamSummary::fromArray($detail->streamSummary());
         $zonePct = $this->resolveZonePercentages($summary);
 
         if ($zonePct === []) {

@@ -39,7 +39,7 @@ final class MaterialFingerprint
      */
     private static function materialFrom(Activity $activity, ActivityDetail $detail): array
     {
-        $summary = StreamSummary::fromArray($detail->stream_summary);
+        $summary = StreamSummary::fromArray($detail->streamSummary());
 
         return [
             'distance' => self::bucket($detail->distance, 10),   // nearest 10 m

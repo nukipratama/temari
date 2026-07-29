@@ -23,6 +23,7 @@ use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Geo\PolylineEncoder;
 use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PersonalRecords;
+use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\FeaturedKartuResolver;
@@ -506,8 +507,8 @@ class DemoRunSeeder
             $optimalCadence,
         );
 
-        $minutesInZone = $summary['time_in_zone_min'] ?? null;
-        $trimp = is_array($minutesInZone) ? $this->trainingLoad->edwardsTrimp($minutesInZone) : null;
+        $minutesInZone = StreamSummary::fromArray($summary)->zoneMinutes();
+        $trimp = $minutesInZone !== null ? $this->trainingLoad->edwardsTrimp($minutesInZone) : null;
 
         $detail->update([
             'stream_summary' => $summary === [] ? null : $summary,

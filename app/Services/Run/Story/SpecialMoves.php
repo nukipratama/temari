@@ -16,12 +16,10 @@ class SpecialMoves
      * deterministically selects one variant, so the same run always names the
      * same move while different runs in one bucket vary.
      *
-     * @param  array<string, mixed>  $streamSummary
      * @param  array{distance_m?: float|null, pr_set?: bool, seed?: int}  $context
      */
-    public function pick(array $streamSummary, array $context): string
+    public function pick(StreamSummary $summary, array $context): string
     {
-        $summary = StreamSummary::fromArray($streamSummary);
         $zonePct = $summary->zonePct();
         $distribution = $summary->cadenceDistributionPct();
         $negativeSplit = $summary->negativeSplit() === true;

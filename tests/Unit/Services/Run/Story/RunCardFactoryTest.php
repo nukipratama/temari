@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\RunnerProfile;
 use App\Models\User;
+use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Story\RunCardFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -1080,7 +1081,7 @@ it('adds 1 point to the rarity score when weekly consistency is met', function (
         'start_date_local' => $monday->copy()->addDays(4),
     ]);
 
-    $score = app(RunCardFactory::class)->rarityScore($activity, $detail, [], [], false);
+    $score = app(RunCardFactory::class)->rarityScore($activity, $detail, StreamSummary::fromArray([]), [], false);
 
     expect($score)->toBe(1);
 });
