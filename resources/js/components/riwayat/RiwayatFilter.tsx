@@ -1,12 +1,13 @@
 import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion, useDragControls } from 'framer-motion';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';
 import type { MoodOption } from '@/lib/mood';
+import { filterOptionVariants } from '@/lib/variants';
 import type { Mood } from '@/types/inertia';
 
 export interface RangeOption<V extends string> {
@@ -225,12 +226,20 @@ export default function RiwayatFilter<V extends string, B extends string = strin
     );
 }
 
-function RangeSectionView<V extends string>({ section }: Readonly<{ section: RangeSection<V> }>) {
+function FilterSection({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
     return (
         <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
             <Eyebrow tone="ink-2" className="mb-2">
-                Rentang waktu
+                {title}
             </Eyebrow>
+            {children}
+        </div>
+    );
+}
+
+function RangeSectionView<V extends string>({ section }: Readonly<{ section: RangeSection<V> }>) {
+    return (
+        <FilterSection title="Rentang waktu">
             <div className="flex flex-col gap-1">
                 {section.options.map((opt) => {
                     const active = opt.value === section.value;
@@ -242,10 +251,7 @@ function RangeSectionView<V extends string>({ section }: Readonly<{ section: Ran
                             preserveScroll
                             preserveState
                             aria-current={active ? 'true' : undefined}
-                            className={cn(
-                                'focus-ring flex min-h-11 w-full items-center justify-between rounded-lg px-2 py-2 text-left text-xs transition lg:text-sm',
-                                active ? 'bg-sky/10 font-semibold text-sky' : 'text-ink hover:bg-surface-warm',
-                            )}
+                            className={cn(filterOptionVariants({ layout: 'row', active }))}
                         >
                             <span>{opt.label}</span>
                             {opt.hint && (
@@ -255,16 +261,13 @@ function RangeSectionView<V extends string>({ section }: Readonly<{ section: Ran
                     );
                 })}
             </div>
-        </div>
+        </FilterSection>
     );
 }
 
 function MoodSectionView({ section }: Readonly<{ section: MoodSection }>) {
     return (
-        <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
-            <Eyebrow tone="ink-2" className="mb-2">
-                Mood
-            </Eyebrow>
+        <FilterSection title="Mood">
             <div className="grid grid-cols-2 gap-1">
                 {section.options.map(({ mood, label, swatchClass }) => {
                     const active = section.selected.has(mood);
@@ -274,10 +277,7 @@ function MoodSectionView({ section }: Readonly<{ section: MoodSection }>) {
                             type="button"
                             aria-pressed={active}
                             onClick={() => section.onToggle(mood)}
-                            className={cn(
-                                'focus-ring flex min-h-11 items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-medium transition',
-                                active ? 'bg-sky/10 text-sky' : 'text-ink hover:bg-surface-warm',
-                            )}
+                            className={cn(filterOptionVariants({ layout: 'mood', active }))}
                         >
                             <span className={cn('inline-block h-3 w-3 rounded-sm', swatchClass)} aria-hidden />
                             {label}
@@ -285,7 +285,7 @@ function MoodSectionView({ section }: Readonly<{ section: MoodSection }>) {
                     );
                 })}
             </div>
-        </div>
+        </FilterSection>
     );
 }
 
@@ -305,10 +305,7 @@ function SearchSectionView({ section }: Readonly<{ section: SearchSection }>) {
     }
 
     return (
-        <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
-            <Eyebrow tone="ink-2" className="mb-2">
-                Cari nama lari
-            </Eyebrow>
+        <FilterSection title="Cari nama lari">
             <div className="relative">
                 <Icon
                     icon="mdi:magnify"
@@ -333,7 +330,7 @@ function SearchSectionView({ section }: Readonly<{ section: SearchSection }>) {
                     className="focus-ring min-h-11 w-full rounded-lg border border-line/60 bg-surface-warm py-2 pl-8 pr-2 text-xs text-ink placeholder:text-ink-3 lg:text-sm"
                 />
             </div>
-        </div>
+        </FilterSection>
     );
 }
 
@@ -347,10 +344,7 @@ function OptionListSectionView<T extends string>({
     section,
 }: Readonly<{ title: string; section: { value: T | null; options: ReadonlyArray<{ value: T; label: string; hint?: string }>; onSelect: (value: T) => void } }>) {
     return (
-        <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
-            <Eyebrow tone="ink-2" className="mb-2">
-                {title}
-            </Eyebrow>
+        <FilterSection title={title}>
             <div className="flex flex-col gap-1">
                 {section.options.map((opt) => {
                     const active = opt.value === section.value;
@@ -360,10 +354,7 @@ function OptionListSectionView<T extends string>({
                             type="button"
                             aria-pressed={active}
                             onClick={() => section.onSelect(opt.value)}
-                            className={cn(
-                                'focus-ring flex min-h-11 w-full items-center justify-between rounded-lg px-2 py-2 text-left text-xs transition lg:text-sm',
-                                active ? 'bg-sky/10 font-semibold text-sky' : 'text-ink hover:bg-surface-warm',
-                            )}
+                            className={cn(filterOptionVariants({ layout: 'row', active }))}
                         >
                             <span>{opt.label}</span>
                             {opt.hint && (
@@ -373,7 +364,7 @@ function OptionListSectionView<T extends string>({
                     );
                 })}
             </div>
-        </div>
+        </FilterSection>
     );
 }
 
