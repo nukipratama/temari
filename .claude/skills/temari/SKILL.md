@@ -150,9 +150,9 @@ follows `WeeklyRecap` / `PrContext` / `CardFlavor`. Let `Name` = StudlyCase, `sn
 3. **AnalysisType** — `app/Services/AI/AnalysisType.php`: add `case {Name} = '{snake}';`; if the
    subject is a synthetic user/day/month key (not an Eloquent model) add a `*_SUBJECT_TYPE` const
    and return it from `subjectType()`, otherwise return the model class; add the `jobClass()` arm.
-4. **AnalysisController** — add the `authorizeSubject()` match arm in
-   `app/Http/Controllers/Api/AnalysisController.php`: user-scoped → `$subjectId === $user->id`;
-   model-scoped → `$this->userOwns(...)`.
+4. **AnalysisSubjectAuthorizer** — add the `authorize()` match arm in
+   `app/Services/AI/AnalysisSubjectAuthorizer.php`: user-scoped → `$subjectId === $user->id`;
+   model-scoped → `self::userOwns(...)`.
 5. **Aggregate suites** — register the narrator in
    `tests/Unit/Services/AI/Narrators/NarratorsCoverageTest.php` and the job in
    `tests/Unit/Jobs/AI/JobsCoverageTest.php`. The structure test exempts these namespaces on the
