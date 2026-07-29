@@ -108,6 +108,13 @@ it('reads the run basics, doubling the one-leg cadence Strava stores', function 
     ]);
 });
 
+it('rounds the run distance to the one decimal the copy rule allows', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['distance' => 10_470.0]);
+
+    expect(new RunSummaryTool($a, $d->fresh())->handle([]))->toMatchArray(['distance_km' => 10.5]);
+});
+
 it('leaves cadence null rather than doubling a missing value', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['average_cadence' => null]);

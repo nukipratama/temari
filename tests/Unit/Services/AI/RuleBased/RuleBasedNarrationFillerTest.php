@@ -47,7 +47,7 @@ it('weaves the card context (move or distance) into the flavor', function (): vo
     // Every template carries either the move name or the formatted distance.
     expect($flavor === '' ? '' : $flavor)
         ->toBeString()
-        ->and(str_contains($flavor, 'Threshold Hold') || str_contains($flavor, '10.0'))
+        ->and(str_contains($flavor, 'Threshold Hold') || str_contains($flavor, '10,0'))
         ->toBeTrue();
 });
 
@@ -158,7 +158,7 @@ it('weaves the run distance into the post-run speech', function (): void {
 
     $speech = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id));
 
-    expect($speech)->toContain('5.5 km');
+    expect($speech)->toContain('5,5 km');
 });
 
 it('falls back to a flat post-run speech when the activity detail is missing', function (): void {
@@ -211,7 +211,7 @@ it('weaves the snapshot real numbers into the weekly recap', function (): void {
 
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    expect($recap)->toContain('24.6')
+    expect($recap)->toContain('24,6')
         ->and($recap)->toContain('4')
         ->and($recap)->toContain('recovery minggu depan');
 });
@@ -228,7 +228,7 @@ it('adds a real-signal coda to the post-run speech (negative split)', function (
 
     $speech = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id));
 
-    expect($speech)->toContain('8.0 km')
+    expect($speech)->toContain('8,0 km')
         ->and($speech)->toContain('Paruh kedua malah lebih kencang');
 });
 

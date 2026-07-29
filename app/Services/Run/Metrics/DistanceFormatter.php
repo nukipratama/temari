@@ -8,8 +8,13 @@ namespace App\Services\Run\Metrics;
  * Metres to kilometres at one of two blessed precisions.
  *
  * {@see self::COPY} is the one-decimal ceiling `docs/voice-and-tone.md` puts on
- * user-facing numbers; {@see self::EXACT} is the two-decimal form the record and
- * per-run surfaces render.
+ * user-facing numbers, and every copy and prompt site takes it. {@see self::EXACT}
+ * is left to the "longest run" record readings and to Inertia props the client
+ * re-formats itself.
+ *
+ * {@see self::kmString()} is copy — it formats through {@see DecimalFormatter}
+ * and carries a comma. Callers building a payload or a prompt argument want the
+ * float from {@see self::km()} instead.
  */
 final class DistanceFormatter
 {
@@ -29,6 +34,6 @@ final class DistanceFormatter
 
     public static function kmString(?float $meters, int $precision = self::COPY): ?string
     {
-        return $meters === null ? null : number_format(self::km($meters, $precision), $precision);
+        return $meters === null ? null : DecimalFormatter::decimal(self::km($meters, $precision), $precision);
     }
 }

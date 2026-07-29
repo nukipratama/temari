@@ -19,8 +19,8 @@ it('rounds metres to two decimals at the exact precision', function (): void {
 it('formats zero metres as zero km at either precision', function (): void {
     expect(DistanceFormatter::km(0.0))->toBe(0.0)
         ->and(DistanceFormatter::km(0.0, DistanceFormatter::EXACT))->toBe(0.0)
-        ->and(DistanceFormatter::kmString(0.0))->toBe('0.0')
-        ->and(DistanceFormatter::kmString(0.0, DistanceFormatter::EXACT))->toBe('0.00');
+        ->and(DistanceFormatter::kmString(0.0))->toBe('0,0')
+        ->and(DistanceFormatter::kmString(0.0, DistanceFormatter::EXACT))->toBe('0,00');
 });
 
 it('passes null through kmOrNull and kmString', function (): void {
@@ -34,12 +34,12 @@ it('rounds a present distance through kmOrNull', function (): void {
         ->and(DistanceFormatter::kmOrNull(10470.0, DistanceFormatter::EXACT))->toBe(10.47);
 });
 
-it('renders a fixed-decimal string at each precision', function (): void {
-    expect(DistanceFormatter::kmString(10470.0))->toBe('10.5')
-        ->and(DistanceFormatter::kmString(10470.0, DistanceFormatter::EXACT))->toBe('10.47')
-        ->and(DistanceFormatter::kmString(5000.0))->toBe('5.0');
+it('renders a comma-decimal string at each precision', function (): void {
+    expect(DistanceFormatter::kmString(10470.0))->toBe('10,5')
+        ->and(DistanceFormatter::kmString(10470.0, DistanceFormatter::EXACT))->toBe('10,47')
+        ->and(DistanceFormatter::kmString(5000.0))->toBe('5,0');
 });
 
-it('groups thousands in kmString, matching number_format', function (): void {
-    expect(DistanceFormatter::kmString(1234500.0))->toBe('1,234.5');
+it('leaves thousands plain in kmString so they cannot read as a decimal', function (): void {
+    expect(DistanceFormatter::kmString(1234500.0))->toBe('1234,5');
 });

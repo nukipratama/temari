@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\RuleBased;
 
 use App\Models\ActivityDetail;
+use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\StreamSummary;
@@ -133,7 +134,7 @@ final readonly class RuleBasedRunInsights
             return;
         }
 
-        $label = 'decoupling +' . number_format($decoupling, 1) . '%';
+        $label = 'decoupling +' . DecimalFormatter::decimal($decoupling) . '%';
 
         if ($decoupling > self::DECOUPLING_HIGH) {
             $temp = $detail->weather_temp_c;
@@ -326,9 +327,10 @@ final readonly class RuleBasedRunInsights
         $dominantZone = array_keys($zonePct, max($zonePct), true);
         $dominantPct = (float) ($zonePct[$dominantZone[0] ?? 'Z2'] ?? 0);
         if ($dominantPct > 0) {
+            $dominantLabel = DecimalFormatter::trimmed($dominantPct);
             $parts[] = $dominantPct >= 70
-                ? "{$dominantPct}% di {$dominantZone[0]}"
-                : "didominasi {$dominantZone[0]} ({$dominantPct}%)";
+                ? "{$dominantLabel}% di {$dominantZone[0]}"
+                : "didominasi {$dominantZone[0]} ({$dominantLabel}%)";
         }
 
         $easyPct = (float) ($zonePct['Z1'] ?? 0) + (float) ($zonePct['Z2'] ?? 0);

@@ -93,6 +93,8 @@ Labels only — the `Rarity` enum cases (`common…legendary`) and `rarity-*` co
 - **Thousands run plain**, no separator: `1200 kalori`. A period there collides with the decimal comma.
 - **Pace and duration stay clock-formatted**, never decimal: `7:38 per km`, not `7,63 menit per km`.
 
+**Where this is enforced.** Backend copy formats through [DecimalFormatter](../app/Services/Run/Metrics/DecimalFormatter.php) — `decimal()` for a fixed precision, `trimmed()` when a whole value should shed its `,0`. Distances go through [DistanceFormatter](../app/Services/Run/Metrics/DistanceFormatter.php): `kmString()` is the copy form and carries the comma, `km()` returns the raw float for payloads. The dividing line is who reads the number. Inertia props, API responses, cache keys and LLM *arguments* keep the dot — the frontend formats props itself, and the model is told to convert (see the `# Angka` block in [TemariPersona.php](../app/Services/AI/TemariPersona.php)). Only strings a human reads are converted in PHP.
+
 ## Missing data is not news
 
 Two separate rules, and the second is the one that slips. Don't invent a number that isn't there — and **don't announce that it isn't there either**. A gap in the data is the app's problem, not the runner's; they can't act on it, and every sentence spent naming it is a sentence not spent on the run.
