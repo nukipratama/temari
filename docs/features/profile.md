@@ -52,6 +52,8 @@ When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM)
 
 PRs and accessories are **not** rendered here — Aku shows no PR cards and no accessory strip. The full PR list lives at `/rekor` ([[records]]) and the unlock catalog at `/aksesori` ([[targets-accessories]]).
 
+Neither is **training science**. Aku used to render a raw VDOT tile, a threshold-pace tile, and a four-tile "Latihan · pace target" block; all three are gone and `ProfileController` no longer ships a `fitness` prop. The estimators behind them ([VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php), [ThresholdEstimator](app/Services/Run/Metrics/ThresholdEstimator.php), [TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php)) are untouched and still feed narration: [AkuProfileVoiceNarrator](app/Services/AI/Narrators/AkuProfileVoiceNarrator.php) carries [TrainingPacesTool](app/Services/AI/Agent/Tools/TrainingPacesTool.php) in its toolbox, so Temari fetches these numbers and speaks them when they matter instead of the page tabulating them unprompted. Training science is an input to the voice, not a destination ([[DESIGN]]).
+
 ## Pengaturan
 
 Aku no longer carries a settings entry point. The Telegram notification panel and the Zona HR entry once lived inline here, then behind a single row at the bottom of the page; both now live on the [[settings]] hub, reached from the avatar menu ([UserMenu](../../resources/js/components/UserMenu.tsx)) next to "Keluar". Settings is an account action, not a profile section — putting it beside logout makes it reachable from every page instead of only this one.

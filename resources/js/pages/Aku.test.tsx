@@ -92,47 +92,10 @@ describe('Aku', () => {
         expect(screen.getByTestId('progression-chart')).toBeInTheDocument();
     });
 
-    it('renders VDOT and threshold pace in the hero when fitness data is provided', () => {
-        render(
-            <Aku
-                identity={identity}
-                stats={stats}
-                fitness={{ vdot: 42.1, threshold_pace_sec: 300, threshold_confidence: 'high' }}
-            />,
-        );
-        expect(screen.getByText('VDOT')).toBeInTheDocument();
-        expect(screen.getByText('42.1')).toBeInTheDocument();
-        expect(screen.getByText('Threshold pace')).toBeInTheDocument();
-    });
-
-    it('renders the Latihan pace block when training_paces is provided', () => {
-        render(
-            <Aku
-                identity={identity}
-                stats={stats}
-                fitness={{
-                    vdot: 42.1,
-                    threshold_pace_sec: 300,
-                    threshold_confidence: 'high',
-                    training_paces: { easy: 390, marathon: 330, threshold: 300, interval: 270 },
-                }}
-            />,
-        );
-        expect(screen.getByText(/Latihan/)).toBeInTheDocument();
-        expect(screen.getByText('Easy')).toBeInTheDocument();
-        expect(screen.getByText('Marathon')).toBeInTheDocument();
-        expect(screen.getByText('Interval')).toBeInTheDocument();
-        expect(screen.getByText('6:30')).toBeInTheDocument();
-    });
-
-    it('omits the Latihan pace block when training_paces is absent', () => {
-        render(
-            <Aku
-                identity={identity}
-                stats={stats}
-                fitness={{ vdot: 42.1, threshold_pace_sec: 300, threshold_confidence: 'high', training_paces: null }}
-            />,
-        );
+    it('renders no VDOT, threshold pace or Latihan pace block', () => {
+        render(<Aku identity={identity} stats={stats} />);
+        expect(screen.queryByText('VDOT')).not.toBeInTheDocument();
+        expect(screen.queryByText('Threshold pace')).not.toBeInTheDocument();
         expect(screen.queryByText(/Latihan/)).not.toBeInTheDocument();
     });
 
