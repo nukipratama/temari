@@ -111,7 +111,8 @@ jobs:
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          coverage: pcov
+          # pcov is only loaded where the coverage gate actually runs (see Tests).
+          coverage: ${{ github.event_name == 'pull_request' && 'pcov' || 'none' }}
           ini-values: >-
             opcache.enable=1,
             opcache.enable_cli=1,
@@ -152,7 +153,14 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
         run: |
-          coverage_flag="--coverage --min=95"
+          # The coverage gate is a merge gate, not a deploy gate: every commit
+          # reaches main through a PR, where this runs with --min=95. Re-running
+          # it on the main push would only put pcov instrumentation of a 2000+
+          # test suite on the deploy critical path for an already-gated tree.
+          coverage_flag=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            coverage_flag="--coverage --min=95"
+          fi
 
           echo "Running Pest${coverage_flag:+ with coverage (--min=95)}"
 

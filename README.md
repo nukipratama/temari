@@ -103,7 +103,7 @@ CI uses GitHub Actions service containers (`mysql:8.4` + `redis:8-alpine`) for t
 | commit-msg      | Conventional Commits format check                                      |
 | pre-push        | Block direct pushes to `main` (force or not). Use feature branch + PR  |
 | CI — `lint`     | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
-| CI — `pest`     | `pest --coverage --min=95` against mysql:8.4 + redis:8-alpine services |
+| CI — `pest`     | `pest` against mysql:8.4 + redis:8-alpine services — `--coverage --min=95` on pull requests, bare on the `main` push |
 | CI — `vitest`   | `npm run test:coverage` — 95% lines + functions, jsdom only            |
 | CI — `deploy`   | On push to `main`: build prod image, migrate, roll containers, recycle Horizon, healthcheck `/up` |
 
