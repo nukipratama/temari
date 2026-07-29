@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
@@ -56,7 +55,7 @@ class SelfHealer
             + $this->resumePerActivity()
             + $this->resumeCardFlavor()
             + $this->resumePrContext()
-            + $this->resumeBriefingGroup()
+            + $this->resumeSingleRowType(AnalysisType::BriefingSuggestion)
             + $this->resumeSingleRowType(AnalysisType::BriefingMascotVoice)
             + $this->resumeSingleRowType(AnalysisType::BriefingFeaturedKartuVoice)
             + $this->resumeSingleRowType(AnalysisType::PersonaSummary)
@@ -229,56 +228,16 @@ class SelfHealer
     }
 
     /**
-     * Briefing group (suggestion): the earliest stalled briefing day per user,
-     * matched on *any* stalled grouped type. Dispatching via
-     * {@see AnalysisService::request()} with a grouped type resolves the group job
-     * and re-runs it; AnalyzeBriefingJob is idempotent for an already-Done row, so
-     * it is not re-billed. Stalled + budget-bounded; demo excluded; discriminator
-     * is a zero-padded date, so a plain string ORDER BY is chronological.
-     */
-    private function resumeBriefingGroup(): int
-    {
-        $groupedValues = array_map(
-            fn (AnalysisType $type): string => $type->value,
-            AnalyzeBriefingJob::groupedTypes(),
-        );
-
-        $earliestPerUser = Analysis::query()
-            ->stalled()
-            ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
-            ->whereIn('analysis_type', $groupedValues)
-            ->whereIn('subject_id', User::query()->notDemo()->select('id'))
-            ->orderBy('discriminator')
-            ->get(['subject_id', 'discriminator'])
-            ->unique('subject_id');
-
-        foreach ($earliestPerUser as $row) {
-            $this->service->request(
-                subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
-                subjectId: (int) $row->subject_id,
-                // request() resolves AnalyzeBriefingJob from the grouped type and
-                // re-dispatches the whole group.
-                type: AnalysisType::BriefingSuggestion,
-                discriminator: $row->discriminator,
-                invalidate: false,
-            );
-        }
-
-        return $earliestPerUser->count();
-    }
-
-    /**
      * Single-row-per-user narration types with no chain/group of their own:
-     * BriefingMascotVoice, BriefingFeaturedKartuVoice, PersonaSummary,
-     * AkuProfileVoice. Each is dispatched only at
+     * BriefingSuggestion, BriefingMascotVoice, BriefingFeaturedKartuVoice,
+     * PersonaSummary, AkuProfileVoice. Each is dispatched only at
      * its own kickoff (daily briefing / weekly profile) with no other scheduled
      * recovery, so a capped-Pending or transiently-Failed row would sit stuck
      * without this sweep. subject_id is the user id directly for all of these
      * types, so no join is needed to scope by user. Stalled + budget-bounded;
      * demo excluded; re-dispatched against the stalled row's own discriminator
      * (not recomputed) so a resumed BriefingFeaturedKartuVoice still targets the
-     * card it originally narrated. The grouped briefing type (suggestion) is
-     * swept by {@see self::resumeBriefingGroup()} instead.
+     * card it originally narrated.
      *
      * Every other type's discriminator is a zero-padded date/week string, so a
      * plain string ORDER BY is chronological. BriefingFeaturedKartuVoice's

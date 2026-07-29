@@ -10,7 +10,7 @@ use App\Models\User;
 
 /**
  * Standalone row job for the "Kata Temari hari ini" mascot-voice line.
- * Split from {@see AnalyzeBriefingJob} so retrying this surface doesn't
+ * Separate from {@see AnalyzeBriefingJob} so retrying this surface doesn't
  * also re-spend LLM tokens on the briefing suggestion.
  */
 class AnalyzeBriefingMascotVoiceJob extends AnalyzeRowJob

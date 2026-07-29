@@ -58,11 +58,9 @@ enum AnalysisType: string
             self::RunInsightTechnical,
             self::RunInsightSplits,
             self::RunInsightZones => AnalyzeActivityJob::class,
-            // BriefingMascotVoice / BriefingFeaturedKartuVoice are intentionally
-            // NOT grouped here — they split into their own jobs so the "Kata
-            // Temari" / featured-card surfaces retry without re-billing the
-            // suggestion.
-            self::BriefingSuggestion => AnalyzeBriefingJob::class,
+            // The three briefing surfaces are intentionally NOT grouped — each
+            // has its own row job so one of them retrying never re-bills the
+            // other two.
             default => null,
         };
     }

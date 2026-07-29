@@ -188,7 +188,7 @@ it('uses today as the briefing discriminator', function (): void {
 
     Bus::assertDispatched(
         AnalyzeBriefingJob::class,
-        fn (AnalyzeBriefingJob $job): bool => $job->discriminator === '2026-05-19',
+        fn (AnalyzeBriefingJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === '2026-05-19',
     );
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Carbon::setTestNow();

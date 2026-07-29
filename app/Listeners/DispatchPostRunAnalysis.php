@@ -67,9 +67,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
         // daily AI set so each block narrates with every run done so far today.
         // Backfill of a previous day leaves the Done rows untouched, so
         // re-ingesting old days never re-bills.
-        $this->analysisService->requestBriefingGroup($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
-        // BriefingMascotVoice was split out of the briefing group; dispatch it
-        // independently so its own LLM call runs alongside the briefing group.
+        $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
+        // BriefingMascotVoice is its own row job; dispatch it independently so
+        // its own LLM call runs alongside the briefing suggestion.
         $this->analysisService->request(
             subjectOrType: AnalysisType::BriefingMascotVoice->subjectType(),
             subjectId: $user->id,

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePersonaSummaryJob;
 use App\Services\AI\AnalysisCadence;
@@ -94,17 +93,14 @@ it('is the single source of truth for group membership', function (): void {
         AnalysisType::RunInsightSplits,
         AnalysisType::RunInsightZones,
     ])
-        ->and(AnalysisType::groupedBy(AnalyzeBriefingJob::class))->toBe([
-            AnalysisType::BriefingSuggestion,
-        ])
-        // The job classes derive their grouped types from the enum.
-        ->and(AnalyzeActivityJob::groupedTypes())->toBe(AnalysisType::groupedBy(AnalyzeActivityJob::class))
-        ->and(AnalyzeBriefingJob::groupedTypes())->toBe(AnalysisType::groupedBy(AnalyzeBriefingJob::class));
+        // The job class derives its grouped types from the enum.
+        ->and(AnalyzeActivityJob::groupedTypes())->toBe(AnalysisType::groupedBy(AnalyzeActivityJob::class));
 });
 
 it('returns null group job for non-grouped types', function (AnalysisType $type): void {
     expect($type->groupJobClass())->toBeNull();
 })->with([
+    'briefing suggestion' => [AnalysisType::BriefingSuggestion],
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice],
     'briefing featured kartu voice' => [AnalysisType::BriefingFeaturedKartuVoice],
     'weekly recap' => [AnalysisType::WeeklyRecap],

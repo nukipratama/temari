@@ -315,7 +315,7 @@ class DemoRunSeeder
         }
         // Mirrors DailyBriefingCommand so the dashboard's suggestion card is
         // filled and never renders "Belum dibaca".
-        $this->analysisService->requestBriefingGroup($user, $today);
+        $this->analysisService->requestBriefing($user, $today);
         $this->analysisService->request(
             subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
             subjectId: $user->id,

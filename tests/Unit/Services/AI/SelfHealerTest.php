@@ -390,7 +390,7 @@ it('skips the still-open current month', function (): void {
     expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
 });
 
-it('re-kicks the earliest stalled briefing group per user with invalidate:false', function (): void {
+it('re-kicks the earliest stalled briefing suggestion per user with invalidate:false', function (): void {
     $user = User::factory()->create();
     $earliest = Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
@@ -420,7 +420,7 @@ it('re-kicks the earliest stalled briefing group per user with invalidate:false'
         ->and($captured[0]['invalidate'])->toBeFalse();
 });
 
-it('skips a demo user for the briefing group so the resume net never auto-bills it', function (): void {
+it('skips a demo user for the briefing suggestion so the resume net never auto-bills it', function (): void {
     $demo = User::factory()->demo()->create();
     Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,

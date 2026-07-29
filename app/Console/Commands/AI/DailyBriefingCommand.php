@@ -31,7 +31,7 @@ class DailyBriefingCommand extends Command
         $users = User::query()->whereIn('id', $activeUserIds)->get();
 
         foreach ($users as $user) {
-            $service->requestBriefingGroup($user, $today);
+            $service->requestBriefing($user, $today);
 
             $service->request(
                 subjectOrType: AnalysisType::BriefingMascotVoice->subjectType(),

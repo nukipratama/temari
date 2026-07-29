@@ -6,7 +6,6 @@ namespace App\Services\AI;
 
 use Closure;
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\Activity;
@@ -156,9 +155,16 @@ class AnalysisService
         }
     }
 
-    public function requestBriefingGroup(User $user, string $discriminator, bool $invalidate = false, ?int $delaySeconds = null): void
+    public function requestBriefing(User $user, string $discriminator, bool $invalidate = false, ?int $delaySeconds = null): void
     {
-        $this->dispatchGroup(AnalyzeBriefingJob::class, $user->id, $discriminator, $invalidate, $delaySeconds);
+        $this->dispatchRow(
+            AnalysisType::BRIEFING_SUBJECT_TYPE,
+            $user->id,
+            AnalysisType::BriefingSuggestion,
+            $discriminator,
+            $invalidate,
+            $delaySeconds,
+        );
     }
 
     public function markProcessing(Analysis $row): void
