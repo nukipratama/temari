@@ -8,17 +8,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\TriggerAnalysisRequest;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
-use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisSubjectAuthorizer;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\ChainResolver;
 use App\Services\AI\RecapPeriod;
 use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -36,7 +34,7 @@ class AnalysisController extends Controller
         $analysisType = AnalysisType::from($type);
 
         $user = $this->user($request);
-        $this->authorizeSubject($user, $analysisType, $subjectId);
+        AnalysisSubjectAuthorizer::authorize($user, $analysisType, $subjectId);
         $discriminator = $request->discriminator();
 
         $existing = Analysis::query()
@@ -148,7 +146,7 @@ class AnalysisController extends Controller
         }
 
         $discriminator = $this->discriminator($request);
-        $this->authorizeSubject($this->user($request), $analysisType, $subjectId);
+        AnalysisSubjectAuthorizer::authorize($this->user($request), $analysisType, $subjectId);
 
         $row = Analysis::query()
             ->forSubject($analysisType->subjectType(), $subjectId, $analysisType, $discriminator)
@@ -184,41 +182,5 @@ class AnalysisController extends Controller
         $value = (string) $request->query('discriminator', '');
 
         return $value === '' ? null : $value;
-    }
-
-    private function authorizeSubject(User $user, AnalysisType $type, int $subjectId): void
-    {
-        $authorized = match ($type) {
-            AnalysisType::BriefingSuggestion,
-            AnalysisType::BriefingMascotVoice,
-            AnalysisType::BriefingFeaturedKartuVoice,
-            AnalysisType::PersonaSummary,
-            AnalysisType::AkuProfileVoice,
-            AnalysisType::MonthlyRecap => $subjectId === $user->id,
-            AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsightTechnical,
-            AnalysisType::RunInsightSplits,
-            AnalysisType::RunInsightZones => $this->userOwns(Activity::query(), $subjectId, $user->id),
-            AnalysisType::WeeklyRecap => $this->userOwns(WeeklySnapshot::query(), $subjectId, $user->id),
-            AnalysisType::PrContext => $this->userOwns(PersonalRecord::query(), $subjectId, $user->id),
-            AnalysisType::CardFlavor => RunCard::query()
-                ->whereKey($subjectId)
-                ->forUser($user->id)
-                ->exists(),
-        };
-
-        if (! $authorized) {
-            throw new AuthorizationException("Subject does not belong to user (type={$type->value})");
-        }
-    }
-
-    /**
-     * @template TModel of \Illuminate\Database\Eloquent\Model
-     *
-     * @param  Builder<TModel>  $query
-     */
-    private function userOwns(Builder $query, int $subjectId, int $userId): bool
-    {
-        return $query->whereKey($subjectId)->where('user_id', $userId)->exists();
     }
 }
