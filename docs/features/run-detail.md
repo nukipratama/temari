@@ -8,6 +8,9 @@ code_refs:
   - resources/js/pages/Runs/Show.tsx
   - app/Http/Controllers/RunController.php
   - resources/js/components/run/FourLensGrid.tsx
+  - resources/js/components/run/MapWeatherPanel.tsx
+  - resources/js/components/run/DetailTiles.tsx
+  - resources/js/components/run/SplitsTable.tsx
   - resources/js/components/run/RouteMap.tsx
   - resources/js/components/card/Kartu.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
@@ -41,7 +44,7 @@ passes a `pastYou` match (pace + HR delta vs a similar run N days ago) with a
 link to that older run.
 
 To the right (below the stats on mobile, since the hero grid stacks under the
-`lg` breakpoint), `MapWeatherPanel` (a local component in `Show.tsx`) shows
+`lg` breakpoint), [MapWeatherPanel](../../resources/js/components/run/MapWeatherPanel.tsx) shows
 temperature / humidity / location and the **route map**. The map is the only
 heavyweight child: [RouteMap](../../resources/js/components/run/RouteMap.tsx) is
 `lazy()`-loaded and decodes `detail.summary_polyline`, so a treadmill run with
@@ -82,21 +85,22 @@ the grid this card also appears in.
 
 ## Technical tiles & splits
 
-Below the lenses, `DetailTiles` (local) surfaces AVG/MAX HR, cadence, ascent,
-and decoupling (warned past 8%) — only the fields actually present render.
-`SplitsTable` (local) reads `stream_summary.per_km` and draws a per-km pace bar
-(fastest km highlighted), responsive between a mobile card stack and a desktop
-grid.
+Below the lenses, [DetailTiles](../../resources/js/components/run/DetailTiles.tsx)
+surfaces AVG/MAX HR, cadence, ascent, and decoupling (warned past 8%) — only the
+fields actually present render.
+[SplitsTable](../../resources/js/components/run/SplitsTable.tsx) reads
+`stream_summary.per_km` and draws a per-km pace bar (fastest km highlighted),
+responsive between a mobile card stack and a desktop grid; its pace-parsing and
+bar-width maths live in [lib/splits.ts](../../resources/js/lib/splits.ts).
 
 ## Related components, not wired here
 
 The run-detail concerns of weather, HR zones, splits, and Past You each have a
 standalone sibling component — `WeatherHero`, `HrZoneCard`, `PastYouStrip`,
-`SplitsSparkline`. **This page does not use them**: `Show.tsx` re-implements
-those concerns inline (`MapWeatherPanel`, `DetailTiles`, `SplitsTable`, the
-hero Past You block). `HrZoneCard`/`SplitsSparkline` live on the collectible
-card and records views instead; treat the siblings as separate widgets, not
-parts of this page.
+`SplitsSparkline`. **This page does not use them**: the page composes its own
+`MapWeatherPanel` / `DetailTiles` / `SplitsTable` (plus the hero Past You
+block). `HrZoneCard`/`SplitsSparkline` live on the collectible card and records
+views instead; treat the siblings as separate widgets, not parts of this page.
 
 ## See also
 
