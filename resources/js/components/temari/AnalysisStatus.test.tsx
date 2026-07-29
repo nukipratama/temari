@@ -138,6 +138,26 @@ describe('AnalysisStatus', () => {
         vi.useRealTimers();
     });
 
+    it('gives the done-state timestamp and "Baca ulang" button the on-sky muted tone instead of text-ink-3', () => {
+        vi.useFakeTimers();
+        const now = new Date('2026-07-07T12:00:00Z');
+        vi.setSystemTime(now);
+        const ts = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
+        render(
+            <AnalysisStatus
+                analysis={payload({ status: 'done', content: 'ok', generated_at: ts })}
+                onSky
+            />,
+        );
+
+        expect(screen.getByText(/Dibuat 5 menit lalu/)).toHaveClass('text-ink-on-sky');
+        expect(screen.getByText(/Dibuat 5 menit lalu/)).not.toHaveClass('text-ink-3');
+        const button = screen.getByRole('button', { name: /Baca ulang/ });
+        expect(button).toHaveClass('text-ink-on-sky');
+        expect(button).not.toHaveClass('text-ink-3');
+        vi.useRealTimers();
+    });
+
     it('shows attempt count when attempts > 1 on queued/processing', () => {
         render(<AnalysisStatus analysis={payload({ status: 'processing', attempts: 3 })} />);
         expect(screen.getByText(/Percobaan 3/)).toBeInTheDocument();

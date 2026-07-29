@@ -126,7 +126,7 @@ export default function AnalysisStatus({
                 </div>
                 {staleZones && <StaleZonesBadge />}
                 {showTimestamp && analysis.generated_at && (
-                    <span className="text-xs text-ink-3">
+                    <span className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}>
                         Dibuat {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
@@ -136,7 +136,7 @@ export default function AnalysisStatus({
                         onClick={trigger}
                         disabled={cooling || pending}
                         aria-label={cooldownAriaLabel(cooldownRemaining, 'baca ulang')}
-                        className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
+                        className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-ink-3 hover:text-leaf-deep disabled:hover:text-ink-3'}`}
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
                         <span>{cooling ? formatDurationHMS(cooldownRemaining) : 'Baca ulang'}</span>
