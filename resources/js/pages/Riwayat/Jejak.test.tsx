@@ -313,7 +313,6 @@ describe('Riwayat/Jejak', () => {
                 rangeFilter="1y"
                 moodFilter={['enteng']}
                 distanceFilter="21up"
-                searchFilter="tempo"
                 rangeStart="2025-05-19"
                 weeklySnapshots={[]}
             />,
@@ -324,7 +323,7 @@ describe('Riwayat/Jejak', () => {
 
         expect(router.get).toHaveBeenCalledWith(
             '/aktivitas',
-            { range: '1y', mood: 'enteng', dist: '0-5', q: 'tempo' },
+            { range: '1y', mood: 'enteng', dist: '0-5' },
             expect.anything(),
         );
     });
@@ -347,27 +346,7 @@ describe('Riwayat/Jejak', () => {
         expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
     });
 
-    it('submits a search term into the url', () => {
-        vi.mocked(router.get).mockReset();
-        render(
-            <RunsIndex
-                runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
-                rangeFilter="8w"
-                rangeStart="2026-04-13"
-                weeklySnapshots={[]}
-            />,
-        );
-
-        fireEvent.click(screen.getByLabelText('Buka filter'));
-        const input = screen.getByLabelText('Cari nama lari');
-        fireEvent.change(input, { target: { value: '  tempo  ' } });
-        fireEvent.keyDown(input, { key: 'Enter' });
-
-        // Trimmed, so a stray space can't produce a different shareable URL.
-        expect(router.get).toHaveBeenCalledWith('/aktivitas', { q: 'tempo' }, expect.anything());
-    });
-
-    it('treats a distance or search filter as active for the result count', () => {
+    it('treats a distance filter as active for the result count', () => {
         render(
             <RunsIndex
                 runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}

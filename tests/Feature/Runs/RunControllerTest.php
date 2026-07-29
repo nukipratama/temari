@@ -243,38 +243,7 @@ it('treats an unknown distance band as no filter', function (): void {
             ->where('distanceFilter', null));
 });
 
-it('searches runs by name, case-insensitively', function (): void {
-    $user = User::factory()->create();
-    distanceFixtures($user);
-
-    $this->actingAs($user)->get('/aktivitas?q=long')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 1)
-            ->where('runs.0.detail.name', 'Long run')
-            ->where('searchFilter', 'long'));
-});
-
-it('treats a blank search as no filter', function (): void {
-    $user = User::factory()->create();
-    distanceFixtures($user);
-
-    $this->actingAs($user)->get('/aktivitas?q=%20%20')
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('runs', 3)
-            ->where('searchFilter', null));
-});
-
-// A LIKE wildcard typed into the search box should match literally, not act as
-// a wildcard that returns everything.
-it('escapes wildcards in the search term', function (): void {
-    $user = User::factory()->create();
-    distanceFixtures($user);
-
-    $this->actingAs($user)->get('/aktivitas?q=%25')
-        ->assertInertia(fn (Assert $page) => $page->has('runs', 0));
-});
-
-it('combines distance, search, mood and range', function (): void {
+it('combines distance, mood and range', function (): void {
     $user = User::factory()->create();
     $match = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($match)->create([
@@ -284,7 +253,7 @@ it('combines distance, search, mood and range', function (): void {
     ]);
     StoryLine::factory()->for($match)->create(['mood' => 'nyala']);
 
-    // Same distance + name, wrong mood.
+    // Same distance band, wrong mood.
     $wrongMood = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($wrongMood)->create([
         'name' => 'Long easy',
@@ -293,7 +262,7 @@ it('combines distance, search, mood and range', function (): void {
     ]);
     StoryLine::factory()->for($wrongMood)->create(['mood' => 'adem']);
 
-    $this->actingAs($user)->get('/aktivitas?dist=21up&q=Long&mood=nyala')
+    $this->actingAs($user)->get('/aktivitas?dist=21up&mood=nyala')
         ->assertInertia(fn (Assert $page) => $page
             ->has('runs', 1)
             ->where('runs.0.detail.name', 'Long tempo'));
