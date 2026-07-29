@@ -533,7 +533,11 @@ it('maps an output-filtered 200 response into a terminal ContentFilterException'
         ->call('briefing_mascot_voice', 'sys', ['name' => 'Nuki'], 'schema', ['speech']))
         ->toThrow(ContentFilterException::class, 'output filtered');
 
-    expect(TokenUsage::query()->count())->toBe(0);
+    $row = TokenUsage::query()->first();
+    expect($row)->not->toBeNull()
+        ->and($row->prompt_tokens)->toBe(10)
+        ->and($row->completion_tokens)->toBe(5)
+        ->and($row->steps)->toBe(1);
 });
 
 it('strips continuity and retries when the first response is output-filtered', function (): void {
@@ -555,6 +559,25 @@ it('strips continuity and retries when the first response is output-filtered', f
     Log::shouldHaveReceived('info')->with('narrator.ai.content_filter_retry', Mockery::on(
         fn (array $ctx): bool => $ctx['stripped_keys'] === NarratorContinuity::CONTEXT_KEYS,
     ));
+});
+
+it('meters both the filtered turn and the strip-retry that followed it', function (): void {
+    callerWithResponses([
+        outputFilteredResponse(),
+        fakeAzureResponse(json_encode(['speech' => 'clean'], JSON_THROW_ON_ERROR)),
+    ])->call(
+        'briefing_mascot_voice',
+        'sys',
+        ['prev_narrative' => 'poison', 'prev_opener' => 'poison'],
+        'schema',
+        ['speech'],
+    );
+
+    $row = TokenUsage::query()->first();
+    expect($row)->not->toBeNull()
+        ->and($row->prompt_tokens)->toBe(20)
+        ->and($row->completion_tokens)->toBe(10)
+        ->and($row->steps)->toBe(2);
 });
 
 it('propagates ContentFilterException when the output-filtered retry is still filtered', function (): void {
