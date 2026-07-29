@@ -53,10 +53,7 @@ final readonly class AgentLoop
         $input = $payload['input'];
 
         if ($toolbox === null) {
-            $response = $this->createResponse($kind, $payload, $startedAt);
-            $budget->recordStep(...self::usageOf($response));
-
-            return [$response, $input];
+            return [$this->createResponse($kind, $payload, $budget, $startedAt), $input];
         }
 
         while (true) {
@@ -64,8 +61,7 @@ final readonly class AgentLoop
             $payload['input'] = $input;
             $payload['tool_choice'] = $toolsAllowed ? 'auto' : 'none';
 
-            $response = $this->createResponse($kind, $payload, $startedAt);
-            $budget->recordStep(...self::usageOf($response));
+            $response = $this->createResponse($kind, $payload, $budget, $startedAt);
 
             $calls = self::functionCalls($response);
             if ($calls === [] || ! $toolsAllowed) {
@@ -113,19 +109,17 @@ final readonly class AgentLoop
         AgentBudget $budget,
         float $startedAt,
     ): CreateResponse {
-        $response = $this->createResponse($kind, self::forcedAnswerPayload($payload, $input, $maxTokens), $startedAt);
-        $budget->recordStep(...self::usageOf($response));
-
-        return $response;
+        return $this->createResponse($kind, self::forcedAnswerPayload($payload, $input, $maxTokens), $budget, $startedAt);
     }
 
     /**
-     * Issue one Responses API request, mapping any Azure failure into the
-     * caller's transient/terminal exception taxonomy.
+     * Issue one Responses API request, folding its usage into the budget and
+     * mapping any Azure failure into the caller's transient/terminal exception
+     * taxonomy.
      *
      * @param  array<string, mixed>  $payload
      */
-    private function createResponse(string $kind, array $payload, float $startedAt): CreateResponse
+    private function createResponse(string $kind, array $payload, AgentBudget $budget, float $startedAt): CreateResponse
     {
         try {
             $response = $this->azure->client()->responses()->create($payload);
@@ -151,6 +145,7 @@ final readonly class AgentLoop
         // The call reached Azure and authenticated, so any prior config-failure
         // streak is stale: reset the breaker (fast no-op when already closed).
         $this->configBreaker->recordSuccess();
+        $budget->recordStep(...self::usageOf($response));
 
         // Output-side filtering returns HTTP 200 with an empty body rather than
         // throwing a content_filter error, so it would otherwise decode as

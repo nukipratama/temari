@@ -241,12 +241,14 @@ it('throws a ContentFilterException for an output-filtered 200 response', functi
         ->toThrow(ContentFilterException::class, 'output filtered by content management policy');
 });
 
-it('records no step for an output-filtered turn, which throws before the step lands', function (): void {
+it('records the step for an output-filtered turn, which Azure processed and billed', function (): void {
     [$loop] = agentLoopWith([fakeAzureResponse('', 'incomplete', 'content_filter', 60, 15)]);
     $budget = agentLoopBudget();
 
     expect(fn () => $loop->converse('briefing_mascot_voice', agentLoopPayload(), null, $budget, microtime(true)))
         ->toThrow(ContentFilterException::class);
 
-    expect($budget->steps())->toBe(0);
+    expect($budget->steps())->toBe(1)
+        ->and($budget->inputTokens())->toBe(60)
+        ->and($budget->outputTokens())->toBe(15);
 });
