@@ -649,6 +649,109 @@ it('upsertGroupRows with NULL discriminators collapses repeat requests to one ro
         ->count())->toBe(4);
 });
 
+it('upsertGroupRows flags rows it created as wasRecentlyCreated', function (): void {
+    $activity = Activity::factory()->create();
+
+    $rows = $this->service->upsertGroupRows(
+        Activity::class,
+        $activity->id,
+        null,
+        AnalyzeActivityJob::groupedTypes(),
+    );
+
+    expect($rows)->toHaveCount(4)
+        ->and($rows->every(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toBeTrue()
+        ->and($rows->every(fn (Analysis $row): bool => $row->exists && $row->id > 0))->toBeTrue()
+        ->and($rows->keys()->all())->toBe(
+            array_map(fn (AnalysisType $type): string => $type->value, AnalyzeActivityJob::groupedTypes()),
+        );
+});
+
+it('upsertGroupRows leaves pre-existing rows unflagged and flags only the newly inserted ones', function (): void {
+    $activity = Activity::factory()->create();
+    Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $rows = $this->service->upsertGroupRows(
+        Activity::class,
+        $activity->id,
+        null,
+        AnalyzeActivityJob::groupedTypes(),
+    );
+
+    expect($rows->get(AnalysisType::PostRunSpeech->value)->wasRecentlyCreated)->toBeFalse()
+        ->and($rows->get(AnalysisType::RunInsightZones->value)->wasRecentlyCreated)->toBeTrue()
+        ->and($rows->filter(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toHaveCount(3);
+});
+
+it('upsertGroupRows flags nothing when every row already exists', function (): void {
+    $activity = Activity::factory()->create();
+    $this->service->requestActivityGroup($activity);
+
+    $rows = $this->service->upsertGroupRows(
+        Activity::class,
+        $activity->id,
+        null,
+        AnalyzeActivityJob::groupedTypes(),
+    );
+
+    expect($rows->contains(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toBeFalse();
+});
+
+it('inserted group rows carry the Queued status, queued_at and timestamps Eloquent would have set', function (): void {
+    Carbon::setTestNow('2026-05-18 07:10:59');
+    $activity = Activity::factory()->create();
+
+    $row = $this->service->upsertGroupRows(
+        Activity::class,
+        $activity->id,
+        null,
+        AnalyzeActivityJob::groupedTypes(),
+    )->get(AnalysisType::PostRunSpeech->value);
+
+    expect($row->status)->toBe(AnalysisStatus::Queued)
+        ->and($row->queued_at?->toDateTimeString())->toBe('2026-05-18 07:10:59')
+        ->and($row->created_at?->toDateTimeString())->toBe('2026-05-18 07:10:59')
+        ->and($row->updated_at?->toDateTimeString())->toBe('2026-05-18 07:10:59')
+        ->and($row->attempts)->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('inserted group rows rest Pending with no queued_at while dispatch is suppressed', function (): void {
+    $activity = Activity::factory()->create();
+
+    $this->service->withoutDispatching(function () use ($activity): void {
+        $rows = $this->service->upsertGroupRows(
+            Activity::class,
+            $activity->id,
+            null,
+            AnalyzeActivityJob::groupedTypes(),
+        );
+
+        expect($rows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Pending))->toBeTrue()
+            ->and($rows->every(fn (Analysis $row): bool => $row->queued_at === null))->toBeTrue();
+    });
+});
+
+it('a second dispatchGroup on a fully Done group does not re-dispatch', function (): void {
+    $activity = Activity::factory()->create();
+    $this->service->requestActivityGroup($activity);
+    Analysis::query()->where('subject_id', $activity->id)->update([
+        'status' => AnalysisStatus::Done->value,
+        'content' => 'sudah.',
+    ]);
+    Bus::fake();
+
+    $this->service->requestActivityGroup($activity);
+
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+});
+
 it('markDone fans out a notification for a notifiable, wired type', function (): void {
     config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.notify_max_age_days' => 14]);
     Notification::fake();

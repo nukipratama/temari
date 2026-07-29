@@ -23,7 +23,7 @@ The hourly `strava:sync` fallback poll and the daily narration commands can re-t
 
 We decided dispatch is **idempotent** and **budget-gated**, both enforced in [AnalysisService](app/Services/AI/AnalysisService.php):
 
-- **Rows are upserted, not duplicated.** `upsertRow()` / `upsertGroupRows()` use `firstOrCreate` keyed on `(subject_type, subject_id, analysis_type, discriminator)`.
+- **Rows are upserted, not duplicated.** Both paths key on `(subject_type, subject_id, analysis_type, discriminator)`: `upsertRow()` uses `firstOrCreate`; `upsertGroupRows()` bulk-inserts a group's missing rows with one `insertOrIgnore` against the same unique index (over the stored `discriminator_key` generated column), then re-reads them and flags them as created by that call.
 - **Dispatch skips rows that don't need it.** Only a freshly created row, or one whose status is `Pending`/`Failed` (`rowNeedsDispatch()`), is queued. A re-run over already-`Done` or in-flight rows enqueues nothing. (Jobs additionally early-exit if the row is already `Done`, so a UI retry racing a Horizon retry can't double-bill.)
 - **A daily USD ceiling caps auto-dispatch.** `autoDispatchEnabled()` is false once `dailyCostCeilingExceeded()` is true — it compares [LlmCostCalculator::dailyCost()](app/Services/AI/LlmCostCalculator.php) against `azure_openai.daily_cost_ceiling` ([config/azure_openai.php](config/azure_openai.php)) and logs `ai.daily_cost_ceiling_exceeded`. `dailyCost()` sums today's [TokenUsage](app/Models/AI/TokenUsage.php) rows on the `analytics` connection, grouped by deployment so each bills at its own rate.
 

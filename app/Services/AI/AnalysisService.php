@@ -322,9 +322,11 @@ class AnalysisService
     }
 
     /**
-     * Bulk-fetch all group rows in one SELECT and insert any missing ones.
-     * Returns a Collection keyed by the AnalysisType value (so callers can
-     * look up by type without rescanning) in the order of $groupTypes.
+     * Bulk-fetch all group rows in one SELECT and insert any missing ones in one
+     * INSERT IGNORE + one re-SELECT. Returns a Collection keyed by the
+     * AnalysisType value (so callers can look up by type without rescanning) in
+     * the order of $groupTypes; rows this call brought into existence carry
+     * `wasRecentlyCreated`, which drives the dispatch decision in dispatchGroup().
      *
      * @param  array<int, AnalysisType>  $groupTypes
      * @return Collection<string, Analysis>
@@ -337,45 +339,83 @@ class AnalysisService
     ): Collection {
         $typeValues = array_map(fn (AnalysisType $t): string => $t->value, $groupTypes);
 
-        $existing = Analysis::query()
+        $existing = $this->fetchGroupRows($subjectType, $subjectId, $discriminator, $typeValues);
+
+        $missingValues = array_values(array_filter(
+            $typeValues,
+            fn (string $value): bool => ! $existing->has($value),
+        ));
+
+        /** @var Collection<string, Analysis> $inserted */
+        $inserted = $missingValues === []
+            ? new Collection()
+            : $this->insertGroupRows($subjectType, $subjectId, $discriminator, $missingValues);
+
+        /** @var Collection<string, Analysis> $rows */
+        $rows = new Collection();
+        foreach ($typeValues as $value) {
+            $row = $existing->get($value) ?? $inserted->get($value);
+            if ($row instanceof Analysis) {
+                $rows->put($value, $row);
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  array<int, string>  $typeValues
+     * @return Collection<string, Analysis>
+     */
+    private function fetchGroupRows(
+        string $subjectType,
+        int $subjectId,
+        ?string $discriminator,
+        array $typeValues,
+    ): Collection {
+        return Analysis::query()
             ->where('subject_type', $subjectType)
             ->where('subject_id', $subjectId)
             ->where('discriminator', $discriminator)
             ->whereIn('analysis_type', $typeValues)
             ->get()
             ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
+    }
 
+    /**
+     * INSERT IGNORE dedupes against the ai_analyses unique index over the stored
+     * `discriminator_key` generated column, so a concurrent creator collapses to
+     * the same row. It bypasses Eloquent, hence the explicit timestamps and enum
+     * values, and the re-read rows are flagged `wasRecentlyCreated` by hand
+     * because a SELECT would otherwise report them as pre-existing.
+     *
+     * @param  array<int, string>  $typeValues
+     * @return Collection<string, Analysis>
+     */
+    private function insertGroupRows(
+        string $subjectType,
+        int $subjectId,
+        ?string $discriminator,
+        array $typeValues,
+    ): Collection {
         $canDispatch = $this->autoDispatchEnabled();
-        $defaults = [
-            'status' => $canDispatch ? AnalysisStatus::Queued : AnalysisStatus::Pending,
-            'queued_at' => $canDispatch ? Carbon::now() : null,
-        ];
+        $now = Carbon::now();
 
-        $missingValues = array_values(array_filter(
-            $groupTypes,
-            fn (AnalysisType $type): bool => ! $existing->has($type->value),
-        ));
+        Analysis::query()->insertOrIgnore(array_map(fn (string $value): array => [
+            'subject_type' => $subjectType,
+            'subject_id' => $subjectId,
+            'analysis_type' => $value,
+            'discriminator' => $discriminator,
+            'status' => ($canDispatch ? AnalysisStatus::Queued : AnalysisStatus::Pending)->value,
+            'queued_at' => $canDispatch ? $now : null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $typeValues));
 
-        foreach ($missingValues as $type) {
-            $row = Analysis::query()->firstOrCreate(
-                [
-                    'subject_type' => $subjectType,
-                    'subject_id' => $subjectId,
-                    'analysis_type' => $type,
-                    'discriminator' => $discriminator,
-                ],
-                $defaults,
-            );
-            $existing->put($type->value, $row);
-        }
-
-        $rows = new Collection();
-        foreach ($groupTypes as $type) {
-            $row = $existing->get($type->value);
-            $rows->put($type->value, $row);
-        }
-
-        return $rows;
+        return $this->fetchGroupRows($subjectType, $subjectId, $discriminator, $typeValues)
+            ->each(function (Analysis $row): void {
+                $row->wasRecentlyCreated = true;
+            });
     }
 
     /** @param Collection<array-key, Analysis> $rows */
