@@ -159,22 +159,12 @@ describe('Runs/Show', () => {
         expect(screen.queryByText(/dari biasanya/)).not.toBeInTheDocument();
     });
 
-    it('shows TANJAKAN and GAP detail tiles on a hilly run', () => {
+    it('feeds the detail tiles from the stream summary', () => {
         renderShow({
             detail: { ...detail, stream_summary: { ...detail.stream_summary, max_grade_pct: 11, gap_pace: '5:20' } },
         });
         expect(screen.getByText('TANJAKAN')).toBeInTheDocument();
-        expect(screen.getByText('11%')).toBeInTheDocument();
         expect(screen.getByText('GAP')).toBeInTheDocument();
-        expect(screen.getByText('5:20')).toBeInTheDocument();
-    });
-
-    it('hides the grade tiles on a flat run', () => {
-        renderShow({
-            detail: { ...detail, stream_summary: { ...detail.stream_summary, max_grade_pct: 1, gap_pace: '5:20' } },
-        });
-        expect(screen.queryByText('TANJAKAN')).not.toBeInTheDocument();
-        expect(screen.queryByText('GAP')).not.toBeInTheDocument();
     });
 
     it('renders the DURASI hero tile with the HMS-formatted moving_time', () => {
@@ -260,83 +250,22 @@ describe('Runs/Show', () => {
         }
     });
 
-    it('renders the map+weather panel with temp + location when present', () => {
+    it('mounts the map+weather panel with the run detail', () => {
         renderShow();
         expect(screen.getByText(/32°/)).toBeInTheDocument();
-        expect(screen.getByText(/80% lembab/)).toBeInTheDocument();
-        // Splits across two lines (place / province): "Senayan" then "Jakarta Pusat".
         expect(screen.getByText('Senayan')).toBeInTheDocument();
-        expect(screen.getByText('Jakarta Pusat')).toBeInTheDocument();
     });
 
-    it('splits a 4-segment location into place + province,country lines (no truncation)', () => {
-        const withFullLocation = { ...detail, location_name: 'Gelora Bung Karno, Jakarta Pusat, DKI Jakarta, Indonesia' };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withFullLocation }, detail: withFullLocation });
-        expect(screen.getByText('Gelora Bung Karno, Jakarta Pusat')).toBeInTheDocument();
-        expect(screen.getByText('DKI Jakarta, Indonesia')).toBeInTheDocument();
-    });
-
-    it('hides the wind row when weather_wind_speed_kmh is absent', () => {
-        renderShow();
-        expect(screen.queryByText(/km\/j/)).not.toBeInTheDocument();
-    });
-
-    it('renders the wind row when weather_wind_speed_kmh is present', () => {
-        const withWind = { ...detail, weather_wind_speed_kmh: 18 };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withWind }, detail: withWind });
-        expect(screen.getByText(/18 km\/j/)).toBeInTheDocument();
-        expect(screen.queryByText(/gust/)).not.toBeInTheDocument();
-    });
-
-    it('shows the gust reading when it clears the 8 km/j delta threshold', () => {
-        const withGust = { ...detail, weather_wind_speed_kmh: 18, weather_wind_gust_kmh: 30 };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withGust }, detail: withGust });
-        expect(screen.getByText(/gust 30/)).toBeInTheDocument();
-    });
-
-    it('hides the gust reading when it is within the 8 km/j delta threshold', () => {
-        const smallGust = { ...detail, weather_wind_speed_kmh: 18, weather_wind_gust_kmh: 24 };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: smallGust }, detail: smallGust });
-        expect(screen.getByText(/18 km\/j/)).toBeInTheDocument();
-        expect(screen.queryByText(/gust/)).not.toBeInTheDocument();
-    });
-
-    it('hides the map area when no polyline is present', () => {
-        const noPolyline = { ...detail, summary_polyline: null };
-        const { container } = renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noPolyline }, detail: noPolyline });
-        expect(container.querySelector('.skeleton, .skeleton-on-sky')).toBeNull();
-    });
-
-    it('shows the map suspense fallback when a polyline IS present', () => {
-        const withPolyline = { ...detail, summary_polyline: 'abc123' };
-        const { container } = renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withPolyline }, detail: withPolyline });
-        expect(container.querySelector('.skeleton, .skeleton-on-sky')).not.toBeNull();
-    });
-
-    it('renders the splits per-km section + highlights the fastest km', () => {
+    it('renders the splits per-km section from the stream summary', () => {
         renderShow();
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
-        // Fastest is the 5:45 km (km 2): caption leads with the km, value is the highlight
-        // (the kartu section's own "fastest km" stat can repeat the same value).
         expect(screen.getByText(/Paling kenceng di km 2/)).toBeInTheDocument();
-        expect(screen.getAllByText('5:45/km').length).toBeGreaterThan(0);
     });
 
-    it('renders a marked "sisa" partial row without crowning it fastest', () => {
-        renderShow({
-            detail: {
-                ...detail,
-                stream_summary: {
-                    ...detail.stream_summary,
-                    // A fast sisa (4:00) must not steal the "fastest km" crown from km 2 (5:45).
-                    partial_split: { distance_m: 700, pace: '4:00', avg_hr: 158, avg_cadence_spm: 168 },
-                },
-            },
-        });
-        expect(screen.getByText('0.7 KM')).toBeInTheDocument();
-        expect(screen.getByText(/putus-putus = sisa/)).toBeInTheDocument();
-        // Crown stays on the full km, not the faster partial.
-        expect(screen.getByText(/Paling kenceng di km 2/)).toBeInTheDocument();
+    it('omits the splits section when the run has neither full kms nor a partial', () => {
+        const noSplits = { ...detail, stream_summary: { decoupling_pct: 4.5 } };
+        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noSplits }, detail: noSplits });
+        expect(screen.queryByText('Splits per km')).not.toBeInTheDocument();
     });
 
     it('still renders the splits table for a sub-1km run that has only a partial', () => {
@@ -374,70 +303,6 @@ describe('Runs/Show', () => {
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
 
-    it('exposes the decoupling tile as a warning when |decoupling| > 8% on a cool run', () => {
-        const cool = {
-            ...detail,
-            weather_temp_c: 20,
-            stream_summary: { ...(detail.stream_summary ?? {}), decoupling_pct: 12.5 },
-        };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: cool }, detail: cool });
-        const value = screen.getByText('+12.5%');
-        expect(value).toHaveClass('text-ember');
-        expect(screen.getByText('napas melar di paruh kedua')).toBeInTheDocument();
-    });
-
-    it('softens the decoupling tile with a heat explanation when the run was hot', () => {
-        const hot = {
-            ...detail,
-            weather_temp_c: 32,
-            stream_summary: { ...(detail.stream_summary ?? {}), decoupling_pct: 12.5 },
-        };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: hot }, detail: hot });
-        const value = screen.getByText('+12.5%');
-        expect(value).not.toHaveClass('text-ember');
-        expect(screen.getByText('wajar, tadi panas 32°C')).toBeInTheDocument();
-    });
-
-    it('still flags a high decoupling on a run without weather data', () => {
-        const noWeather = {
-            ...detail,
-            weather_temp_c: null,
-            stream_summary: { ...(detail.stream_summary ?? {}), decoupling_pct: 12.5 },
-        };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noWeather }, detail: noWeather });
-        const value = screen.getByText('+12.5%');
-        expect(value).toHaveClass('text-ember');
-    });
-
-    it('does not apply the heat explanation to a large negative decoupling on a hot run', () => {
-        // Negative decoupling means HR:pace improved in the second half — heat only
-        // ever explains a positive drift, so a strongly negative value on a hot run
-        // must still read as a plain warning, not "wajar, tadi panas".
-        const hotNegative = {
-            ...detail,
-            weather_temp_c: 32,
-            stream_summary: { ...(detail.stream_summary ?? {}), decoupling_pct: -12.5 },
-        };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: hotNegative }, detail: hotNegative });
-        const value = screen.getByText('-12.5%');
-        expect(value).toHaveClass('text-ember');
-        expect(screen.getByText('napas melar di paruh kedua')).toBeInTheDocument();
-        expect(screen.queryByText(/wajar, tadi panas/)).not.toBeInTheDocument();
-    });
-
-    it('skips the decoupling tile when its value is not a finite number (no "NaN%")', () => {
-        const garbled = {
-            ...detail,
-            stream_summary: {
-                ...(detail.stream_summary ?? {}),
-                decoupling_pct: Number.NaN,
-            },
-        };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: garbled }, detail: garbled });
-        expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
-        expect(screen.queryByText('DECOUPLING')).not.toBeInTheDocument();
-    });
-
     it('shows elevation gain as the ELEVASI hero tile, not a secondary ASCENT tile', () => {
         renderShow();
         expect(screen.getByText('ELEVASI')).toBeInTheDocument();
@@ -445,7 +310,7 @@ describe('Runs/Show', () => {
         expect(screen.queryByText('ASCENT')).not.toBeInTheDocument();
     });
 
-    it('renders the empty-tiles fallback when detail has no technical numbers', () => {
+    it('falls back to an empty stream summary when the run has none', () => {
         const bare = {
             ...detail,
             stream_summary: null,
@@ -453,22 +318,10 @@ describe('Runs/Show', () => {
             max_heartrate: null,
             average_cadence: null,
             trimp_edwards: null,
+            weather_temp_c: null,
         };
         renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: bare }, detail: bare });
         expect(screen.getByText(/Detail teknis-nya belum kebaca/)).toBeInTheDocument();
-    });
-
-    it('parses a string-form pace_sec from splits when pace_sec is missing', () => {
-        const withStringPace = {
-            ...detail,
-            stream_summary: {
-                ...(detail.stream_summary ?? {}),
-                per_km: [{ km: 1, pace: '5:30' }, { km: 2, pace: '5:20' }],
-            },
-        };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: withStringPace }, detail: withStringPace });
-        // The splits table renders with parsed paces; we only assert the structure rendered.
-        expect(screen.getAllByText(/5:/).length).toBeGreaterThan(0);
     });
 
     it('resyncs the activity from Strava when the Resync button is clicked', () => {

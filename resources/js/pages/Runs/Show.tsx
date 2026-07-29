@@ -8,8 +8,11 @@ import SendNotificationButton from '@/components/SendNotificationButton';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
+import DetailTiles from '@/components/run/DetailTiles';
 import FourLensGrid from '@/components/run/FourLensGrid';
 import HeroPanel from '@/components/ui/HeroPanel';
+import MapWeatherPanel from '@/components/run/MapWeatherPanel';
+import SplitsTable from '@/components/run/SplitsTable';
 import Kartu from '@/components/card/Kartu';
 import KartuMount from '@/components/card/KartuMount';
 import type { ShareKartuData } from '@/lib/shareCard';
@@ -17,8 +20,6 @@ import BackLink from '@/components/ui/BackLink';
 import MoodChip from '@/components/ui/MoodChip';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
-import MetricExplainer from '@/components/MetricExplainer';
-import type { MetricKey } from '@/lib/metricGlossary';
 import Temari from '@/components/temari/Temari';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { type TemariPose } from '@/components/temari/TemariProto';
@@ -34,7 +35,6 @@ import {
     formatShortDateId,
     formatShortDateTimeId,
     paceSecPerKm,
-    parsePaceSec,
 } from '@/lib/pace';
 import { districtFromLocation } from '@/pages/HariIni/helpers';
 import { BADGE_ABILITY, RARITY_LABELS, avgCadenceFromDetail, badgeEmblem, badgeName, fastestKmFromDetail, kartuPropsFromDetail } from '@/lib/runcard';
@@ -49,11 +49,8 @@ import type {
     RunCard,
     StoryLine,
     StreamSummary,
-    StreamSummaryPartial,
-    StreamSummaryPerKm,
 } from '@/types/inertia';
 
-const RouteMap = lazy(() => import('@/components/run/RouteMap'));
 // Carries the ~1200-line canvas engine; fetched on the Bagikan tap.
 const ShareCardModal = lazy(() => import('@/components/card/ShareCardModal'));
 
@@ -174,7 +171,7 @@ export default function RunsShow({
             .finally(() => setReplaying(false));
     };
 
-    const cardBadges = (card?.badges ?? []).slice(0, 3);
+    const cardBadges = useMemo(() => (card?.badges ?? []).slice(0, 3), [card]);
     const cadence = avgCadenceFromDetail(detail);
     const fastestKm = fastestKmFromDetail(detail);
     const rarityLabel = card ? RARITY_LABELS[card.rarity] : null;
@@ -196,33 +193,39 @@ export default function RunsShow({
         return `${temp}${wind}`;
     })();
 
-    const shareData: ShareKartuData | null = card === null ? null : {
-        id: card.id,
-        name: card.special_move,
-        shareUrl: card.public_share_url,
-        rarity: card.rarity,
-        mood,
-        subtitle: kartuProps.subtitle,
-        date: shareDate,
-        km,
-        durasi: kartuProps.durasi,
-        pace: paceSec != null ? formatPace(paceSec) : null,
-        trimp: kartuProps.trimp,
-        hr: hr != null ? `${hr} bpm` : null,
-        cadence: cadence != null ? `${cadence} spm` : null,
-        fastestKm: fastestKm != null ? `${fastestKm}/km` : null,
-        ascent: detail.total_elevation_gain != null ? `${Math.round(detail.total_elevation_gain)} m` : null,
-        zonePct: kartuProps.zonePct,
-        location: districtFromLocation(detail.location_name ?? null),
-        weather: shareWeather,
-        wind: detail.weather_wind_speed_kmh != null ? `${Math.round(detail.weather_wind_speed_kmh)} km/j` : null,
-        tags: cardBadges.map((b) => badgeName(b)),
-        tagEmojis: cardBadges.map((b) => badgeEmblem(b)),
-        quote: card.flavor_analysis.content ?? null,
-        polyline: detail.summary_polyline ?? null,
-        distanceKm: detail.distance != null ? detail.distance / 1000 : null,
-        edition: card.edition ?? null,
-    };
+    const shareData: ShareKartuData | null = useMemo(
+        () =>
+            card === null
+                ? null
+                : {
+                      id: card.id,
+                      name: card.special_move,
+                      shareUrl: card.public_share_url,
+                      rarity: card.rarity,
+                      mood,
+                      subtitle: kartuProps.subtitle,
+                      date: shareDate,
+                      km,
+                      durasi: kartuProps.durasi,
+                      pace: paceSec != null ? formatPace(paceSec) : null,
+                      trimp: kartuProps.trimp,
+                      hr: hr != null ? `${hr} bpm` : null,
+                      cadence: cadence != null ? `${cadence} spm` : null,
+                      fastestKm: fastestKm != null ? `${fastestKm}/km` : null,
+                      ascent: detail.total_elevation_gain != null ? `${Math.round(detail.total_elevation_gain)} m` : null,
+                      zonePct: kartuProps.zonePct,
+                      location: districtFromLocation(detail.location_name ?? null),
+                      weather: shareWeather,
+                      wind: detail.weather_wind_speed_kmh != null ? `${Math.round(detail.weather_wind_speed_kmh)} km/j` : null,
+                      tags: cardBadges.map((b) => badgeName(b)),
+                      tagEmojis: cardBadges.map((b) => badgeEmblem(b)),
+                      quote: card.flavor_analysis.content ?? null,
+                      polyline: detail.summary_polyline ?? null,
+                      distanceKm: detail.distance != null ? detail.distance / 1000 : null,
+                      edition: card.edition ?? null,
+                  },
+        [card, mood, kartuProps, shareDate, km, paceSec, hr, cadence, fastestKm, detail, shareWeather, cardBadges],
+    );
 
     return (
         <>
@@ -458,326 +461,6 @@ export default function RunsShow({
             )}
         </>
     );
-}
-
-function MapWeatherPanel({ detail, className }: Readonly<{ detail: ActivityDetail; className?: string }>) {
-    const temp = detail.weather_temp_c;
-    const humidity = detail.weather_humidity_pct;
-    const location = detail.location_name;
-    const hasPolyline = detail.summary_polyline != null && detail.summary_polyline.length > 0;
-    const windSpeed = detail.weather_wind_speed_kmh;
-    const gust = detail.weather_wind_gust_kmh;
-    const direction = detail.weather_wind_direction_deg;
-    const showGust = gust != null && windSpeed != null && gust - windSpeed >= 8;
-
-    return (
-        <div className={cn("relative flex flex-col gap-2", className)}>
-            {(temp != null || location != null) && (
-                <div className="flex items-baseline gap-3">
-                    {temp != null && (
-                        <div>
-                            <div className="font-sans text-2xl font-bold leading-none">
-                                {Math.round(temp)}°<span className="text-sm font-medium">C</span>
-                            </div>
-                            {humidity != null && (
-                                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cream">
-                                    {Math.round(humidity)}% lembab
-                                </div>
-                            )}
-                            {windSpeed != null && (
-                                <div className="mt-0.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cream">
-                                    <Icon icon="mdi:weather-windy" width={11} height={11} aria-hidden />
-                                    {Math.round(windSpeed)} km/j
-                                    {showGust && <span>· gust {Math.round(gust)}</span>}
-                                    {direction != null && (
-                                        <Icon
-                                            icon="mdi:navigation"
-                                            width={10}
-                                            height={10}
-                                            aria-hidden
-                                            style={{ transform: `rotate(${direction}deg)` }}
-                                            className="text-horizon"
-                                        />
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {location != null && (
-                        <div className="min-w-0 flex-1 border-l border-cream/15 pl-3">
-                            {(() => {
-                                const [place, region] = splitLocationLines(location);
-                                return (
-                                    <>
-                                        <div className="truncate font-display text-xl leading-tight tracking-[-0.005em]">{place}</div>
-                                        {region && (
-                                            <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.1em] text-cream/70">
-                                                {region}
-                                            </div>
-                                        )}
-                                    </>
-                                );
-                            })()}
-                        </div>
-                    )}
-                </div>
-            )}
-            {hasPolyline && (
-                <div className="overflow-hidden rounded-xl bg-cream/[0.04]">
-                    <Suspense fallback={<div className="skeleton-on-sky h-[180px]" aria-hidden />}>
-                        <RouteMap polyline={detail.summary_polyline ?? ''} distanceKm={formatKm(detail.distance)} />
-                    </Suspense>
-                </div>
-            )}
-        </div>
-    );
-}
-
-/**
- * Splits a comma-separated reverse-geocoded name ("Gelora Bung Karno, Jakarta
- * Pusat, DKI Jakarta, Indonesia") into a place line and a province/country
- * line, instead of truncating the whole thing to one row. The last two
- * segments (province, country) become the second line; everything before
- * them stays on the first.
- */
-function splitLocationLines(location: string): [string, string | null] {
-    const parts = location.split(', ');
-    if (parts.length <= 1) {
-        return [location, null];
-    }
-    if (parts.length === 2) {
-        return [parts[0], parts[1]];
-    }
-    return [parts.slice(0, -2).join(', '), parts.slice(-2).join(', ')];
-}
-
-// Mirrors the "hot run" threshold used across the backend narration (e.g.
-// RunCardFactory, Story/Temari) so the frontend softens the same runs the
-// narrators already treat as heat-affected.
-const HOT_TEMP_C = 31;
-
-interface DetailTile {
-    label: string;
-    value: string;
-    sub?: string;
-    warn?: boolean;
-    metricKey?: MetricKey;
-}
-
-function DetailTiles({
-    detail,
-    summary,
-}: Readonly<{ detail: ActivityDetail; summary: StreamSummary }>) {
-    const tiles: DetailTile[] = [];
-
-    if (detail.average_heartrate != null) {
-        tiles.push({ label: 'AVG HR', value: `${Math.round(detail.average_heartrate)}`, sub: 'bpm' });
-    }
-    if (detail.max_heartrate != null) {
-        tiles.push({ label: 'MAX HR', value: `${detail.max_heartrate}`, sub: 'bpm' });
-    }
-    if (detail.average_cadence != null) {
-        tiles.push({ label: 'CADENCE', value: `${Math.round(detail.average_cadence * 2)}`, sub: 'spm avg', metricKey: 'cadence' });
-    }
-    // Elevation gain (ASCENT) now lives in the hero stat row; only max-grade stays here.
-    // Only when the run actually climbed, so a flat GPS run doesn't show a noisy 0%.
-    // stream_summary is an untyped DB JSON blob; a corrupt or legacy row can
-    // carry an unusable reading, which must not render as "NaN%".
-    const maxGrade = Number(summary.max_grade_pct);
-    if (summary.max_grade_pct != null && Number.isFinite(maxGrade) && maxGrade >= 3) {
-        tiles.push({ label: 'TANJAKAN', value: `${maxGrade}%`, sub: 'tanjakan tercuram' });
-        if (summary.gap_pace != null) {
-            tiles.push({ label: 'GAP', value: summary.gap_pace, sub: '/km setara datar', metricKey: 'gap' });
-        }
-    }
-    const decoupling = Number(summary.decoupling_pct);
-    if (summary.decoupling_pct != null && Number.isFinite(decoupling)) {
-        const decouplingHigh = Math.abs(decoupling) > 8;
-        // A hot run drifts HR up for a physiological reason (body works harder to shed
-        // heat), not a fitness regression, so it doesn't earn the scary warn tone. Only
-        // applies to a positive drift, mirroring the backend's rule (RuleBasedInsightBuilder
-        // decoupling > DECOUPLING_HIGH) — a large negative decoupling isn't HR drift at all,
-        // so heat can't explain it away.
-        const wasHot = detail.weather_temp_c != null && detail.weather_temp_c >= HOT_TEMP_C;
-        const heatExplainsIt = decoupling > 8 && wasHot;
-        tiles.push({
-            label: 'DECOUPLING',
-            value: `${decoupling >= 0 ? '+' : ''}${decoupling.toFixed(1)}%`,
-            sub: heatExplainsIt
-                ? `wajar, tadi panas ${Math.round(detail.weather_temp_c as number)}°C`
-                : 'napas melar di paruh kedua',
-            warn: decouplingHigh && !heatExplainsIt,
-            metricKey: 'decoupling',
-        });
-    }
-
-    if (tiles.length === 0) {
-        return (
-            <Card tone="empty" padding="lg" className="text-center font-display text-base italic text-ink-2">
-                Detail teknis-nya belum kebaca.
-            </Card>
-        );
-    }
-
-    return (
-        <div className="grid grid-cols-2 gap-2.5">
-            {tiles.map((t) => (
-                <div
-                    key={t.label}
-                    className="rounded-xl border border-cream-deep bg-cream px-4 py-3.5"
-                >
-                    <div className="mb-1.5 inline-flex items-center gap-1 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
-                        {t.label}
-                        {t.metricKey && <MetricExplainer metricKey={t.metricKey} size="xs" />}
-                    </div>
-                    <div
-                        className={cn(
-                            'font-sans font-bold leading-none tabular-nums tracking-[-0.01em] text-[22px]',
-                            t.warn ? 'text-ember' : 'text-ink',
-                        )}
-                    >
-                        {t.value}
-                    </div>
-                    {t.sub && (
-                        <div className="mt-1.5 font-sans text-[11px] leading-snug text-ink-3">{t.sub}</div>
-                    )}
-                </div>
-            ))}
-        </div>
-    );
-}
-
-function SplitsTable({
-    rows,
-    partial,
-    className,
-}: Readonly<{ rows: StreamSummaryPerKm[]; partial?: StreamSummaryPartial | null; className?: string }>) {
-    const paces = rows
-        .map((r) => paceSecOf(r))
-        .filter((s): s is number => s != null && Number.isFinite(s));
-    const fastest = paces.length > 0 ? Math.min(...paces) : null;
-    const fastestKm = fastest != null ? rows.find((r) => paceSecOf(r) === fastest)?.km ?? null : null;
-    const slowestSec = paces.length > 0 ? Math.max(...paces) : null;
-
-    // Stable, collision-proof keys baked here — km for full splits, positional for
-    // the trailing partial — so the render map keys off a data field, not its index.
-    const keyedRows = rows.map((row, i) => ({
-        row,
-        key: row.km != null ? `km-${row.km}` : `partial-${i}`,
-    }));
-
-    return (
-        <Card as="section" padding="lg" className={className}>
-            <header className="mb-1.5 flex flex-wrap items-baseline justify-between gap-3">
-                <SectionLabel>Splits per km</SectionLabel>
-                {fastest != null && fastestKm != null && (
-                    <p className="font-display text-sm italic text-ink-2">
-                        Paling kenceng di km {fastestKm},{' '}
-                        <span className="font-semibold text-horizon-deep">{formatPace(fastest)}/km</span>
-                    </p>
-                )}
-            </header>
-            {/* One dense chart at every width (HR + cadence columns fold away on phones);
-                the binary bar color needs a one-line key once the card affordance is gone. */}
-            <p className="mb-3 text-label-micro text-ink-3">
-                Batang oranye = km tercepat, gelap = lainnya{partial ? ', putus-putus = sisa' : ''}.
-            </p>
-
-            <div className="flex flex-col gap-1">
-                {keyedRows.map(({ row, key }, idx) => {
-                    const sec = paceSecOf(row);
-                    const isFast = sec != null && sec === fastest;
-                    const pctWidth = computeBarWidth(sec, fastest, slowestSec);
-                    const rowFill = splitRowFill(isFast, idx);
-                    return (
-                        <div
-                            key={key}
-                            className={cn(
-                                'grid grid-cols-[34px_1fr_56px] items-center gap-2.5 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3',
-                                // Every row gets the same rounded background box + -mx-3/px-3
-                                // bleed-and-realign so the fast row's alignment isn't special —
-                                // only the bar color should differ (see computeBarWidth caller).
-                                '-mx-3 rounded-lg px-3 py-2 lg:py-2.5',
-                                rowFill,
-                            )}
-                        >
-                            <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-2">
-                                KM {row.km ?? '?'}
-                            </div>
-                            <div className="h-2.5 overflow-hidden rounded bg-sky/[0.06] lg:h-3">
-                                <div
-                                    className={cn('h-full rounded', isFast ? 'bg-horizon' : 'bg-sky')}
-                                    style={{ width: `${pctWidth}%` }}
-                                />
-                            </div>
-                            <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink">
-                                {row.pace ?? '—'}
-                            </div>
-                            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
-                                ♡ {row.avg_hr ?? '—'}
-                            </div>
-                            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
-                                ↻ {row.avg_cadence_spm ?? '—'}
-                            </div>
-                        </div>
-                    );
-                })}
-                {partial && <SplitPartialRow partial={partial} />}
-            </div>
-        </Card>
-    );
-}
-
-// The trailing "sisa" segment (e.g. the last 0.7 km of a 5.7 km run). Rendered
-// muted with a dashed, empty (non-comparative) bar and detached by a hairline so
-// a glance reads "outside the scale, not ranked against the full kms" — its
-// normalized pace must never be compared head-to-head with a full km.
-function SplitPartialRow({ partial }: Readonly<{ partial: StreamSummaryPartial }>) {
-    return (
-        <div className="-mx-3 mt-1 grid grid-cols-[34px_1fr_56px] items-center gap-2.5 rounded-lg border-t border-cream-deep px-3 py-2 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3 lg:py-2.5">
-            <div className="font-mono text-[11px] uppercase tracking-[0.02em] text-ink-3">
-                {formatKm(partial.distance_m, 1)} KM
-            </div>
-            <div className="h-2.5 rounded border border-dashed border-sky/20 bg-sky/[0.06] lg:h-3" />
-            <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink-3">
-                {partial.pace ?? '—'}
-            </div>
-            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-3 lg:block">
-                ♡ {partial.avg_hr ?? '—'}
-            </div>
-            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-3 lg:block">
-                ↻ {partial.avg_cadence_spm ?? '—'}
-            </div>
-        </div>
-    );
-}
-
-// Every splits row shares the same rounded box (see SplitsTable); only this
-// fill differs — horizon tint for the fastest km, a faint zebra stripe otherwise.
-function splitRowFill(isFast: boolean, idx: number): string {
-    if (isFast) return 'bg-horizon/[0.08]';
-    if (idx % 2 === 1) return 'bg-cream-deep/30';
-    return 'bg-sky/[0.03]';
-}
-
-function paceSecOf(row: StreamSummaryPerKm): number | null {
-    const sec = parsePaceSec(row.pace);
-    return Number.isFinite(sec) ? sec : null;
-}
-
-// Per-km spread (seconds) at which the bar-width band reaches its full 50-point swing.
-const FULL_SPREAD_SEC = 30;
-
-function computeBarWidth(sec: number | null, fastest: number | null, slowest: number | null): number {
-    if (sec == null || fastest == null || slowest == null || slowest === fastest) return 60;
-    // Faster pace = wider bar, anchored at 90% for the fastest km. The band amplitude
-    // scales with the ABSOLUTE split spread, so a run where every km is within a second
-    // or two renders as near-equal full-width bars ("konsisten") instead of a misleading
-    // 40→90 swing that contradicts the "pacing sangat konsisten" narration above it.
-    const spread = slowest - fastest;
-    const amplitude = Math.min(spread / FULL_SPREAD_SEC, 1) * 50;
-    const t = (slowest - sec) / spread; // 0 (slowest) .. 1 (fastest)
-    return Math.round(90 - (1 - t) * amplitude);
 }
 
 RunsShow.layout = appLayout;
