@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import DetailTiles from './DetailTiles';
 import type { ActivityDetail, StreamSummary } from '@/types/inertia';
 
+const ONE_LEG_CADENCE = 85;
+
 function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
     return {
         id: 11,
@@ -14,7 +16,7 @@ function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
         average_heartrate: 150,
         trimp_edwards: 70,
         max_heartrate: 175,
-        average_cadence: 85,
+        average_cadence: ONE_LEG_CADENCE,
         weather_temp_c: 32,
         ...overrides,
     };
@@ -27,15 +29,19 @@ function renderTiles(detailOverrides: Partial<ActivityDetail> = {}, summary: Str
 }
 
 describe('DetailTiles', () => {
-    it('renders the HR + cadence tiles from the detail row', () => {
+    it('renders the HR tiles from the detail row', () => {
         renderTiles();
         expect(screen.getByText('AVG HR')).toBeInTheDocument();
         expect(screen.getByText('150')).toBeInTheDocument();
         expect(screen.getByText('MAX HR')).toBeInTheDocument();
         expect(screen.getByText('175')).toBeInTheDocument();
-        // average_cadence is one-leg; the tile shows both legs (spm).
+    });
+
+    it('doubles the one-leg average_cadence into a both-legs spm tile', () => {
+        renderTiles();
         expect(screen.getByText('CADENCE')).toBeInTheDocument();
-        expect(screen.getByText('170')).toBeInTheDocument();
+        expect(screen.getByText(String(ONE_LEG_CADENCE * 2))).toBeInTheDocument();
+        expect(screen.getByText('spm avg')).toBeInTheDocument();
     });
 
     it('shows TANJAKAN and GAP tiles on a hilly run', () => {

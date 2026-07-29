@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import SplitsTable from './SplitsTable';
 import type { StreamSummaryPartial, StreamSummaryPerKm } from '@/types/inertia';
 
@@ -9,6 +9,10 @@ const rows: StreamSummaryPerKm[] = [
 ];
 
 const partial: StreamSummaryPartial = { distance_m: 700, pace: '4:00', avg_hr: 158, avg_cadence_spm: 168 };
+
+function kmLessRow(pace: string): StreamSummaryPerKm {
+    return { km: null as unknown as number, pace };
+}
 
 describe('SplitsTable', () => {
     it('renders the section header and crowns the fastest km', () => {
@@ -45,14 +49,17 @@ describe('SplitsTable', () => {
         expect(screen.queryByText(/Paling kenceng/)).not.toBeInTheDocument();
     });
 
-    it('keys full splits by km and the trailing partial positionally', () => {
-        // A row without a km (legacy/corrupt JSON) must still get a collision-proof
-        // key rather than colliding with another km-less row.
-        const { container } = render(
-            <SplitsTable rows={[{ km: null as unknown as number, pace: '6:00' }, ...rows]} />,
-        );
+    it('labels a km-less row "KM ?" instead of dropping it', () => {
+        render(<SplitsTable rows={[kmLessRow('6:00'), ...rows]} />);
         expect(screen.getByText('KM ?')).toBeInTheDocument();
-        expect(container.querySelectorAll('.rounded-lg').length).toBeGreaterThan(0);
+    });
+
+    it('keys two km-less rows positionally so their React keys do not collide', () => {
+        const duplicateKeyWarning = vi.spyOn(console, 'error').mockImplementation(() => {});
+        render(<SplitsTable rows={[kmLessRow('6:00'), kmLessRow('6:10')]} />);
+        expect(screen.getAllByText('KM ?')).toHaveLength(2);
+        expect(duplicateKeyWarning).not.toHaveBeenCalled();
+        duplicateKeyWarning.mockRestore();
     });
 
     it('renders a marked "sisa" partial row without crowning it fastest', () => {
@@ -74,8 +81,12 @@ describe('SplitsTable', () => {
         render(<SplitsTable rows={[]} partial={{ distance_m: 800, pace: '5:00' }} />);
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
         expect(screen.getByText('0.8 KM')).toBeInTheDocument();
-        // No HR/cadence on this partial: dashes, not blanks.
-        expect(screen.getAllByText(/[♡↻] —/).length).toBe(2);
+    });
+
+    it('dashes the HR and cadence cells of a partial that recorded neither', () => {
+        render(<SplitsTable rows={[]} partial={{ distance_m: 800, pace: '5:00' }} />);
+        expect(screen.getByText('♡ —')).toBeInTheDocument();
+        expect(screen.getByText('↻ —')).toBeInTheDocument();
     });
 
     it('passes the className through to the card', () => {
