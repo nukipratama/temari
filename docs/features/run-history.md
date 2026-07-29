@@ -9,8 +9,11 @@ code_refs:
   - resources/js/pages/Riwayat/Kalender.tsx
   - app/Http/Controllers/RunController.php
   - app/Http/Controllers/CalendarController.php
+  - resources/js/pages/Riwayat/useJejakFilters.ts
   - resources/js/components/riwayat/RiwayatTabs.tsx
   - resources/js/components/riwayat/RiwayatFilter.tsx
+  - resources/js/components/riwayat/WeekSection.tsx
+  - resources/js/components/riwayat/InlineNote.tsx
   - resources/js/components/aktivitas/JourneyStrip.tsx
   - resources/js/components/aktivitas/RingkasanCard.tsx
 ---
@@ -36,8 +39,11 @@ Named routes: `aktivitas.index`, `kalender`.
 ## Jejak — the timeline
 
 [Jejak.tsx](../../resources/js/pages/Riwayat/Jejak.tsx) (default export
-`RunsIndex`) lists every run **grouped by ISO week** (`groupByWeek`, Monday-start;
-undated runs fall into a trailing "Tanpa tanggal" bucket). Each `WeekSection`
+`RunsIndex`) is pure composition: every filter derivation lives in
+[useJejakFilters.ts](../../resources/js/pages/Riwayat/useJejakFilters.ts). It lists
+every run **grouped by ISO week** (`groupByWeek` there, Monday-start; undated runs
+fall into a trailing "Tanpa tanggal" bucket). Each
+[WeekSection](../../resources/js/components/riwayat/WeekSection.tsx)
 renders a header of week totals (runs / km / TRIMP), a row of weekly load chips
 (`WeeklyStatusChips` — Lelah/ATL, Variasi/monotony, Drift/decoupling, Fit/CTL,
 Form), then Temari's narrative recap, then the runs.
@@ -53,6 +59,10 @@ worth knowing live there:
   hunt for their last run by hand. When it widens, `RangeWidenedNote` explains it.
 - **Truncation cap** (`MAX_RUNS = 365`): a wide/`all` range is capped at the
   365 newest runs; older ones drop and `RunsTruncatedNote` says so.
+
+Both of those notes, plus the week-deep-link `WeekFocusNote`, are one shape:
+[InlineNote](../../resources/js/components/riwayat/InlineNote.tsx), a cream-deep
+strip that names why the list below is not the plain full history.
 
 The **weekly recap** under each week is a `WeeklySnapshot.recap_analysis`
 payload rendered through [RingkasanCard](../../resources/js/components/aktivitas/RingkasanCard.tsx),

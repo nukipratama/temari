@@ -124,19 +124,6 @@ describe('Riwayat/Jejak', () => {
         expect(screen.getByText(/Menampilkan 365 lari terbaru/i)).toBeInTheDocument();
     });
 
-    it('shows the "semua lari" note when widened all the way', () => {
-        render(
-            <RunsIndex
-                runs={[run(101, 'Pagi', '2026-05-19T06:00:00')]}
-                rangeFilter="all"
-                rangeStart={null}
-                rangeAutoWidened
-                weeklySnapshots={[]}
-            />,
-        );
-        expect(screen.getByText(/Menampilkan semua lari kamu/i)).toBeInTheDocument();
-    });
-
     it('groups runs into weekly buckets + renders weekly snapshot stats', () => {
         const runs = [
             run(101, 'Pagi negatif-split', '2026-05-19T06:00:00'),
@@ -182,220 +169,6 @@ describe('Riwayat/Jejak', () => {
         expect(screen.getAllByTestId('run-row').length).toBe(2);
         expect(screen.getByText(/Minggu konsisten/)).toBeInTheDocument();
         expect(screen.getByText(/Pas/)).toBeInTheDocument();
-    });
-
-    it('shows the snapshot totals (not the range-truncated bucket count) when a snapshot exists', () => {
-        // Only 1 of the week's runs falls inside rangeStart, but the WeeklySnapshot
-        // (computed independently of the range filter) says the week had 4 runs /
-        // 35.5 km — the header must agree with that, not the truncated bucket.
-        const runs = [run(101, 'Long run pelan', '2026-05-19T06:00:00')];
-        const snapshots = [
-            {
-                id: 1,
-                user_id: 1,
-                week_ending: '2026-05-24',
-                distance_km: 35.5,
-                runs: 4,
-                weekly_trimp: 320,
-                atl_7d: 44.5,
-                ctl_42d: 42,
-                form: -2.5,
-                form_status: 'optimal' as const,
-                avg_decoupling: 3.2,
-                monotony: 1.2,
-                strain: 384,
-                is_current_week: false,
-                is_chain_head: true,
-                recap_analysis: {
-                    id: 1,
-                    status: 'done' as const,
-                    content: 'Minggu ini kekumpul 35.5 km dari 4 sesi.',
-                    type: 'weekly_recap' as const,
-                    subject_type: 'weekly_snapshot',
-                    subject_id: 1,
-                    discriminator: null,
-                },
-                notification_retry_after_seconds: null,
-            },
-        ];
-        render(
-            <RunsIndex
-                runs={runs}
-                rangeFilter="8w"
-                rangeStart="2026-05-18"
-                weeklySnapshots={snapshots}
-            />,
-        );
-        expect(screen.getByText('4 run')).toBeInTheDocument();
-        expect(screen.getByText('35.5 km')).toBeInTheDocument();
-    });
-
-    it('shows the live bucket totals (not a stale snapshot) for the in-progress week', () => {
-        // The snapshot for the current week is recomputed by a queued listener,
-        // so right after a fresh sync it can lag behind the runs this request
-        // just fetched live. The header must reflect what's actually rendered.
-        const runs = [
-            run(101, 'Pagi', '2026-05-19T06:00:00'),
-            run(102, 'Sore', '2026-05-20T18:00:00'),
-        ];
-        const snapshots = [
-            {
-                id: 1,
-                user_id: 1,
-                week_ending: '2026-05-24',
-                distance_km: 5,
-                runs: 1,
-                weekly_trimp: 50,
-                atl_7d: 44.5,
-                ctl_42d: 42,
-                form: -2.5,
-                form_status: 'optimal' as const,
-                avg_decoupling: 3.2,
-                monotony: 1.2,
-                strain: 384,
-                is_current_week: true,
-                is_chain_head: false,
-                recap_analysis: {
-                    id: 1,
-                    status: 'pending' as const,
-                    content: null,
-                    type: 'weekly_recap' as const,
-                    subject_type: 'weekly_snapshot',
-                    subject_id: 1,
-                    discriminator: null,
-                },
-                notification_retry_after_seconds: null,
-            },
-        ];
-        render(
-            <RunsIndex
-                runs={runs}
-                rangeFilter="8w"
-                rangeStart="2026-04-13"
-                weeklySnapshots={snapshots}
-            />,
-        );
-        expect(screen.getByText('2 run')).toBeInTheDocument();
-        expect(screen.getByText('10.0 km')).toBeInTheDocument();
-    });
-
-    const doneWeekSnapshot = {
-        id: 7,
-        user_id: 1,
-        week_ending: '2026-05-24',
-        distance_km: 35.5,
-        runs: 4,
-        weekly_trimp: 320,
-        atl_7d: 44.5,
-        ctl_42d: 42,
-        form: -2.5,
-        form_status: 'optimal' as const,
-        avg_decoupling: 3.2,
-        monotony: 1.2,
-        strain: 384,
-        is_current_week: false,
-        is_chain_head: true,
-        recap_analysis: {
-            id: 1,
-            status: 'done' as const,
-            content: 'Minggu konsisten.',
-            type: 'weekly_recap' as const,
-            subject_type: 'weekly_snapshot',
-            subject_id: 7,
-            discriminator: null,
-        },
-        notification_retry_after_seconds: null,
-    };
-
-    it('shows a muted weekly recap Telegram button that nudges (no send) when not connected', () => {
-        // telegramConnected defaults to undefined (falsy) in beforeEach.
-        vi.mocked(router.post).mockReset();
-        render(
-            <RunsIndex
-                runs={[run(101, 'Pagi', '2026-05-19T06:00:00')]}
-                rangeFilter="1y"
-                rangeStart="2025-05-19"
-                weeklySnapshots={[doneWeekSnapshot]}
-            />,
-        );
-        fireEvent.click(screen.getByText('Kirim notifikasi'));
-        expect(router.post).not.toHaveBeenCalled();
-    });
-
-    it('force-sends the weekly recap when a channel is wired and the button is clicked', () => {
-        vi.mocked(router.post).mockReset();
-        setMockPage({
-            auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
-            flash: {},
-            demoLoginEnabled: false,
-            stravaSync: { state: 'ready', last_synced_at: '2026-01-01' },
-            telegramConnected: true,
-        });
-        render(
-            <RunsIndex
-                runs={[run(101, 'Pagi', '2026-05-19T06:00:00')]}
-                rangeFilter="1y"
-                rangeStart="2025-05-19"
-                weeklySnapshots={[doneWeekSnapshot]}
-            />,
-        );
-        fireEvent.click(screen.getByText('Kirim notifikasi'));
-        expect(router.post).toHaveBeenCalledWith(
-            '/rekap-mingguan/7/kirim',
-            {},
-            expect.objectContaining({ preserveScroll: true }),
-        );
-    });
-
-    it('maps every FormStatus value to a Temari pose (fresh / fatigued / overreaching / null)', () => {
-        const baseSnap = {
-            user_id: 1,
-            distance_km: 35.5,
-            runs: 4,
-            weekly_trimp: 320,
-            atl_7d: 44.5,
-            ctl_42d: 42,
-            form: -2.5,
-            avg_decoupling: 3.2,
-            monotony: 1.2,
-            strain: 384,
-            is_current_week: false,
-            is_chain_head: false,
-            recap_analysis: {
-                id: 1,
-                status: 'done' as const,
-                content: 'Recap',
-                type: 'weekly_recap' as const,
-                subject_type: 'weekly_snapshot',
-                subject_id: 1,
-                discriminator: null,
-            },
-            notification_retry_after_seconds: null,
-        };
-        // Four weekly buckets, one run + one matching snapshot per bucket, each
-        // snapshot using a different FormStatus value so every branch in
-        // poseForFormStatus fires.
-        const runs = [
-            run(101, 'Minggu A', '2026-05-19T06:00:00'),
-            run(102, 'Minggu B', '2026-05-12T06:00:00'),
-            run(103, 'Minggu C', '2026-05-05T06:00:00'),
-            run(104, 'Minggu D', '2026-04-28T06:00:00'),
-        ];
-        const snapshots = [
-            { ...baseSnap, id: 1, week_ending: '2026-05-24', form_status: 'fresh' as const },
-            { ...baseSnap, id: 2, week_ending: '2026-05-17', form_status: 'fatigued' as const },
-            { ...baseSnap, id: 3, week_ending: '2026-05-10', form_status: 'overreaching' as const },
-            { ...baseSnap, id: 4, week_ending: '2026-05-03', form_status: null },
-        ];
-        render(
-            <RunsIndex
-                runs={runs}
-                rangeFilter="1y"
-                rangeStart="2025-04-28"
-                weeklySnapshots={snapshots}
-            />,
-        );
-        expect(screen.getAllByTestId('run-row').length).toBe(4);
     });
 
     it('renders an orphans bucket when a run has no start_date_local', () => {
@@ -757,110 +530,6 @@ describe('Riwayat/Jejak', () => {
         expect(screen.queryByText(/Lagi lihat minggu/)).not.toBeInTheDocument();
     });
 
-    // Real filtering removes non-matching runs, so a week loses the context the
-    // old dimmed rows conveyed. The snapshot's own total names the gap.
-    describe('hidden-run count', () => {
-        const weekSnapshot = (runs: number | null, isCurrent = false) => [{
-            id: 1,
-            user_id: 1,
-            week_ending: '2026-05-24',
-            distance_km: 35.5,
-            runs,
-            weekly_trimp: 320,
-            atl_7d: 44.5,
-            ctl_42d: 42,
-            form: -2.5,
-            form_status: 'optimal' as const,
-            avg_decoupling: 3.2,
-            monotony: 1.2,
-            strain: 384,
-            is_current_week: isCurrent,
-            is_chain_head: true,
-            recap_analysis: {
-                id: 1,
-                status: 'done' as const,
-                content: 'Minggu konsisten.',
-                type: 'weekly_recap' as const,
-                subject_type: 'weekly_snapshot',
-                subject_id: 1,
-                discriminator: null,
-            },
-            notification_retry_after_seconds: null,
-        }];
-
-        it('names how many runs the filter hid in that week', () => {
-            render(
-                <RunsIndex
-                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
-                    rangeFilter="1y"
-                    moodFilter={['enteng']}
-                    rangeStart="2025-05-19"
-                    weeklySnapshots={weekSnapshot(4)}
-                />,
-            );
-
-            expect(screen.getByText(/3 lari lain di minggu ini gak cocok/)).toBeInTheDocument();
-            expect(screen.getByText('1 dari 4 run')).toBeInTheDocument();
-        });
-
-        it('says nothing when the filter hid nothing', () => {
-            render(
-                <RunsIndex
-                    runs={[run(101, 'A', '2026-05-19T06:00:00'), run(102, 'B', '2026-05-20T06:00:00')]}
-                    rangeFilter="1y"
-                    moodFilter={['enteng']}
-                    rangeStart="2025-05-19"
-                    weeklySnapshots={weekSnapshot(2)}
-                />,
-            );
-
-            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
-        });
-
-        it('says nothing when no filter is active', () => {
-            render(
-                <RunsIndex
-                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
-                    rangeFilter="1y"
-                    rangeStart="2025-05-19"
-                    weeklySnapshots={weekSnapshot(4)}
-                />,
-            );
-
-            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
-        });
-
-        // The in-progress week's snapshot is recomputed by a queued worker, so it
-        // can lag the live bucket and would report a bogus gap.
-        it('stays quiet for the in-progress week', () => {
-            render(
-                <RunsIndex
-                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
-                    rangeFilter="1y"
-                    moodFilter={['enteng']}
-                    rangeStart="2025-05-19"
-                    weeklySnapshots={weekSnapshot(4, true)}
-                />,
-            );
-
-            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
-        });
-
-        it('stays quiet when the snapshot has no run count', () => {
-            render(
-                <RunsIndex
-                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
-                    rangeFilter="1y"
-                    moodFilter={['enteng']}
-                    rangeStart="2025-05-19"
-                    weeklySnapshots={weekSnapshot(null)}
-                />,
-            );
-
-            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
-        });
-    });
-
     // Remembered, but never applied behind the user's back: landing on a
     // silently pre-filtered list reads as a history that lost runs.
     describe('resume last filter', () => {
@@ -868,7 +537,8 @@ describe('Riwayat/Jejak', () => {
 
         afterEach(() => window.localStorage.clear());
 
-        it('offers to resume a saved filter, naming what it would apply', () => {
+        it('offers a saved filter above the list, and applies it only when tapped', () => {
+            vi.mocked(router.get).mockReset();
             window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala', dist: '21up' }));
             render(
                 <RunsIndex
@@ -880,56 +550,14 @@ describe('Riwayat/Jejak', () => {
             );
 
             expect(screen.getByText(/Lanjutkan: Half ke atas · Nyala/)).toBeInTheDocument();
-        });
-
-        it('does not apply it until the user taps', () => {
-            vi.mocked(router.get).mockReset();
-            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
-            render(
-                <RunsIndex
-                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
-                    rangeFilter="8w"
-                    rangeStart="2026-04-13"
-                    weeklySnapshots={[]}
-                />,
-            );
-
             expect(router.get).not.toHaveBeenCalled();
 
             fireEvent.click(screen.getByText(/Lanjutkan:/));
-            expect(router.get).toHaveBeenCalledWith('/aktivitas', { mood: 'nyala' }, expect.anything());
-        });
-
-        it('hides the offer once a filter is active', () => {
-            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
-            render(
-                <RunsIndex
-                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
-                    rangeFilter="8w"
-                    moodFilter={['enteng']}
-                    rangeStart="2026-04-13"
-                    weeklySnapshots={[]}
-                />,
+            expect(router.get).toHaveBeenCalledWith(
+                '/aktivitas',
+                { mood: 'nyala', dist: '21up' },
+                expect.anything(),
             );
-
-            expect(screen.queryByText(/Lanjutkan:/)).not.toBeInTheDocument();
-        });
-
-        it('can be dismissed so it cannot nag', () => {
-            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
-            render(
-                <RunsIndex
-                    runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
-                    rangeFilter="8w"
-                    rangeStart="2026-04-13"
-                    weeklySnapshots={[]}
-                />,
-            );
-
-            fireEvent.click(screen.getByLabelText('Lupakan filter terakhir'));
-
-            expect(screen.queryByText(/Lanjutkan:/)).not.toBeInTheDocument();
-            expect(window.localStorage.getItem(KEY)).toBeNull();
         });
     });
 
