@@ -25,7 +25,7 @@ class AiPipelineHealth extends Card
 {
     use SumsPulseTotals;
 
-    public function render(): Renderable
+    public function render(AnalysisService $analyses): Renderable
     {
         $statusCounts = DB::table('ai_analyses')
             ->selectRaw('status, COUNT(*) as total')
@@ -45,7 +45,7 @@ class AiPipelineHealth extends Card
         $failed = (int) ($statusCounts[AnalysisStatus::Failed->value] ?? 0);
         $deadLettered = Analysis::query()->deadLettered()->count();
         $failedJobs = DB::table('failed_jobs')->count();
-        $pauseReason = app(AnalysisService::class)->pauseReason();
+        $pauseReason = $analyses->pauseReason();
 
         $statusBoxes = [
             ['label' => 'pending',     'count' => (int) ($statusCounts[AnalysisStatus::Pending->value] ?? 0),    'alert' => false],
