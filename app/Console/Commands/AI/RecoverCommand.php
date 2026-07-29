@@ -7,6 +7,7 @@ namespace App\Console\Commands\AI;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisSubjectMap;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -49,7 +50,7 @@ class RecoverCommand extends Command
     private function rearmDeadLettered(AnalysisService $service): int
     {
         $rows = Analysis::query()->deadLettered()->get();
-        $ownerIds = Analysis::ownerIdsForRows($rows);
+        $ownerIds = AnalysisSubjectMap::ownerIdsForRows($rows);
         $demoUserIds = User::query()->where('is_demo', true)->pluck('id')->flip();
 
         $rearmed = 0;

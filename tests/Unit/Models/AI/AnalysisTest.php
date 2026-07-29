@@ -2,11 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Models\Activity;
 use App\Models\AI\Analysis;
-use App\Models\PersonalRecord;
-use App\Models\RunCard;
-use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -157,67 +153,6 @@ it('deadLettered() is only Failed rows at or over the retry budget', function ()
     expect($ids)->toContain($dead->id)
         ->not->toContain($failedUnder->id)
         ->not->toContain($pendingMaxed->id); // Pending never dead-letters
-});
-
-it('ownerId resolves the owning user across every subject type', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    $card = RunCard::factory()->for($activity)->create();
-    $pr = PersonalRecord::factory()->for($user)->create();
-    $snap = WeeklySnapshot::factory()->for($user)->create();
-
-    $cases = [
-        [Activity::class, $activity->id],
-        [WeeklySnapshot::class, $snap->id],
-        [RunCard::class, $card->id],
-        [PersonalRecord::class, $pr->id],
-        // A `*_user_*` string subject type: subject_id IS the user id.
-        [AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id],
-    ];
-
-    foreach ($cases as [$subjectType, $subjectId]) {
-        $row = new Analysis(['subject_type' => $subjectType, 'subject_id' => $subjectId]);
-        expect($row->ownerId())->toBe($user->id, $subjectType);
-    }
-});
-
-it('ownerId is null when the subject row no longer exists', function (): void {
-    $row = new Analysis(['subject_type' => Activity::class, 'subject_id' => 999999]);
-    expect($row->ownerId())->toBeNull();
-});
-
-it('ownerIdsForRows batches owner resolution across mixed subject types', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    $snap = WeeklySnapshot::factory()->for($user)->create();
-
-    $rowActivity = Analysis::factory()->create(['subject_type' => Activity::class, 'subject_id' => $activity->id]);
-    $rowSnap = Analysis::factory()->create(['subject_type' => WeeklySnapshot::class, 'subject_id' => $snap->id]);
-
-    $owners = Analysis::ownerIdsForRows(Analysis::query()->whereKey([$rowActivity->id, $rowSnap->id])->get());
-
-    expect($owners[$rowActivity->id])->toBe($user->id)
-        ->and($owners[$rowSnap->id])->toBe($user->id);
-});
-
-it('ownerIdsForRows falls back to subject_id for an unmapped subject type', function (): void {
-    $user = User::factory()->create();
-    $row = Analysis::factory()->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-    ]);
-
-    $owners = Analysis::ownerIdsForRows(Analysis::query()->whereKey($row->id)->get());
-
-    expect($owners[$row->id])->toBe($user->id);
-});
-
-it('ownerIdsForRows maps to null when the subject row no longer exists', function (): void {
-    $row = Analysis::factory()->create(['subject_type' => Activity::class, 'subject_id' => 999999]);
-
-    $owners = Analysis::ownerIdsForRows(Analysis::query()->whereKey($row->id)->get());
-
-    expect($owners[$row->id])->toBeNull();
 });
 
 it('payloadsForSubjects reports the same retry_after_seconds as a per-row toPayload', function (): void {
