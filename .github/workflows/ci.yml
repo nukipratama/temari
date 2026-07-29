@@ -300,13 +300,13 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [backend-tests, frontend-tests, static-analysis, secret-scan, docs-citation-guard]
+    needs: [backend-tests, frontend-tests, static-analysis, build, secret-scan, docs-citation-guard]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require upstream jobs to have succeeded (or cleanly skipped)
         run: |
-          for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.static-analysis.result }}"; do
+          for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.static-analysis.result }}" "${{ needs.build.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
           for r in "${{ needs.secret-scan.result }}" "${{ needs.docs-citation-guard.result }}"; do
@@ -315,7 +315,7 @@ jobs:
 
   build:
     name: Build prod image
-    needs: ci-gate
+    needs: changes
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 30
