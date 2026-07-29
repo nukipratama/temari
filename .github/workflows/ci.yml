@@ -76,8 +76,8 @@ jobs:
         run: php scripts/check-doc-citations.php
 
   backend-tests:
-    needs: changes
-    if: ${{ needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main' }}
+    needs: [changes, secret-scan, docs-citation-guard]
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -185,8 +185,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-tests:
-    needs: changes
-    if: ${{ needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main' }}
+    needs: [changes, secret-scan, docs-citation-guard]
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -227,16 +227,12 @@ jobs:
 
       - name: Vitest
         run: |
-          # Same split as the backend Pest step above: the coverage gate is a
-          # merge gate, not a deploy gate. Re-running --coverage on the main
-          # push would only put instrumentation of 1500+ tests on the deploy
-          # critical path for an already-gated tree.
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Running Vitest with coverage (threshold gate)"
-            npm run test:coverage
-          else
             echo "Running Vitest without coverage"
             npm run test
+          else
+            echo "Running Vitest with coverage (threshold gate)"
+            npm run test:coverage
           fi
 
       - name: Vitest summary
@@ -268,8 +264,8 @@ jobs:
   # reliably catches new phpstan/rector/pint regressions. Pre-existing findings
   # are captured in phpstan-baseline.neon; this gate blocks anything NEW.
   static-analysis:
-    needs: changes
-    if: ${{ needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main' }}
+    needs: [changes, secret-scan, docs-citation-guard]
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -304,13 +300,13 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [backend-tests, frontend-tests, static-analysis, secret-scan, docs-citation-guard]
+    needs: [backend-tests, frontend-tests, static-analysis, build, secret-scan, docs-citation-guard]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require upstream jobs to have succeeded (or cleanly skipped)
         run: |
-          for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.static-analysis.result }}"; do
+          for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.static-analysis.result }}" "${{ needs.build.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
           for r in "${{ needs.secret-scan.result }}" "${{ needs.docs-citation-guard.result }}"; do
@@ -319,7 +315,8 @@ jobs:
 
   build:
     name: Build prod image
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [changes, secret-scan, docs-citation-guard]
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
