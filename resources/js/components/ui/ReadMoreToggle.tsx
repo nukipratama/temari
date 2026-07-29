@@ -1,7 +1,7 @@
 /**
  * Shared "Baca selengkapnya" / "Tutup" toggle used by clamped text blocks
- * (e.g. ExpandableQuote, SuggestionCard). Keeps the label copy and styling in
- * one place so the two callers can't drift.
+ * (e.g. ExpandableQuote). Keeps the label copy and styling in one place so
+ * callers can't drift.
  */
 export default function ReadMoreToggle({ expanded, onToggle }: Readonly<{ expanded: boolean; onToggle: () => void }>) {
     return (

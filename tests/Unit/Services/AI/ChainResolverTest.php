@@ -173,7 +173,7 @@ it('never reports a head regenerate for an unchained type', function (): void {
     $user = User::factory()->create();
 
     expect(chainResolver()->isHeadRegenerate($user, AnalysisType::CardFlavor, 1, null, chainDoneRow()))->toBeFalse()
-        ->and(chainResolver()->isHeadRegenerate($user, AnalysisType::BriefingSuggestion, $user->id, '2026-06-17', chainDoneRow()))->toBeFalse();
+        ->and(chainResolver()->isHeadRegenerate($user, AnalysisType::BriefingMascotVoice, $user->id, '2026-06-17', chainDoneRow()))->toBeFalse();
 });
 
 it('resumes the earliest unfilled weekly link and skips the Done ones', function (): void {

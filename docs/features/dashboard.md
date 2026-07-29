@@ -1,16 +1,15 @@
 ---
 title: Dashboard (Hari Ini)
-description: The home page — daily greeting, Temari's briefing, vitals, featured kartu, suggestion, last run, training load, goals
+description: The home page — daily greeting, Temari's daily voice, vitals, featured kartu, last run, training load, goals
 tags: [feature, dashboard]
 status: living
-reviewed: 2026-07-08
+reviewed: 2026-07-29
 code_refs:
   - resources/js/pages/HariIni.tsx
   - app/Http/Controllers/DashboardController.php
-  - resources/js/components/dashboard/KataTemariCompact.tsx
+  - resources/js/components/dashboard/KataTemariCard.tsx
   - resources/js/components/dashboard/VitalChips.tsx
   - resources/js/components/dashboard/FeaturedKartuPanel.tsx
-  - resources/js/components/dashboard/SuggestionCard.tsx
   - resources/js/components/dashboard/LastLariCard.tsx
   - resources/js/components/dashboard/KondisiCard.tsx
   - resources/js/components/dashboard/GoalsCard.tsx
@@ -18,13 +17,13 @@ code_refs:
 
 # Dashboard (Hari Ini)
 
-The app's home (`/`). It greets the runner by name, hands them Temari's read on the day, then stacks the day's vitals, this week's featured kartu, a session suggestion, the last run, training load, and the nearest goals. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [HariIni](resources/js/pages/HariIni.tsx) page.
+The app's home (`/`). It greets the runner by name, hands them Temari's read on the day, then stacks the day's vitals, this week's featured kartu, the last run, training load, and the nearest goals. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [HariIni](resources/js/pages/HariIni.tsx) page.
 
 **Navigation:** `route('dashboard')` → `/`. Named route: `dashboard`.
 
 ## System dependencies
 
-- **AI narration** — every voice block (greeting, briefing, suggestion, featured-kartu voice) is an `Analysis` row from the [[ai-pipeline]].
+- **AI narration** — every voice block (greeting, Temari's daily voice, featured-kartu voice) is an `Analysis` row from the [[ai-pipeline]].
 - **Training metrics** — `load` comes from `TrainingLoad::summary`. See [[training-load-metrics]].
 - **Gamification** — the featured kartu is picked by rarity rank. See [[gamification]].
 - **Dawn-shift** — surface tints drift by time of day via `useDawnShift`. See [[frontend-architecture]].
@@ -35,7 +34,9 @@ The app's home (`/`). It greets the runner by name, hands them Temari's read on 
 
 ## Kata Temari (briefing card)
 
-The headline's right rail is [KataTemariCompact](resources/js/components/dashboard/KataTemariCompact.tsx) — Temari's mascot beside "Kata Temari hari ini". The prose is an LLM block (`briefing.mascotVoice`) rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it shows the spinner / retry / "Baca ulang" states from the [[ai-pipeline]] and an `ExpandableQuote` for long text. The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — and it isn't one narrative but **three** independent Analysis rows: suggestion, mascot voice, and featured-kartu voice (the last keyed on a separate discriminator so re-picking the featured card doesn't rebill the other two). Each is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
+Directly under the headline sits [KataTemariCard](resources/js/components/dashboard/KataTemariCard.tsx) — Temari's mascot beside "Kata Temari hari ini". It renders **one** LLM block (`briefing.mascotVoice`) through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it shows the spinner / retry / "Baca ulang" states from the [[ai-pipeline]]. The text is parsed on `\n\n`: the first paragraph is the session title (display type), the rest is Temari's reasoning and her caveat. A weather chip from the last run and a "Saran lain" re-trigger (`useAnalysisTrigger`) sit under it. It renders whether or not the user has runs yet.
+
+That block used to be two separately billed calls (a mascot voice plus a session suggestion); they were merged into one voice so the dashboard speaks once. The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — **two** Analysis rows now: the daily voice and the featured-kartu voice (the latter keyed on a separate discriminator so re-picking the featured card doesn't rebill the other). Each is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
 
 ## Vital chips
 
@@ -45,9 +46,8 @@ The headline's right rail is [KataTemariCompact](resources/js/components/dashboa
 
 When there are runs, [FeaturedKartuPanel](resources/js/components/dashboard/FeaturedKartuPanel.tsx) wraps `FeaturedCardHero` + a full `Kartu`, picked client-side by `featuredCardFor(recentRuns, briefing.featuredCardId)`. Its voice line (`briefing.featuredKartuVoice`) is another `AnalysisStatus` block, here `onSky` and `allowReanalyze={false}`. The controller deliberately selects `summary_polyline` + `stream_summary` on `recentRuns` so this hero can draw the route, zone bar, and pace-shape. See [[cards-collection]].
 
-## The 3-up: suggestion, last run, kondisi
+## The 2-up: last run, kondisi
 
-- [SuggestionCard](resources/js/components/dashboard/SuggestionCard.tsx) — "Saran sesi dari Temari": an LLM `suggestion` block parsed into a bold title + body, plus a weather chip from the last run and a "Saran lain" re-trigger (`useAnalysisTrigger`).
 - [LastLariCard](resources/js/components/dashboard/LastLariCard.tsx) — the most recent run (`recentRuns[0]`) as a `LinkCard` to its detail page, with km / pace / TRIMP tiles and an optional post-run note one-liner (`lastRunNote`, from `PostRunNoteReader::forActivity`). Temari's pose comes from `poseForRun`.
 - [KondisiCard](resources/js/components/dashboard/KondisiCard.tsx) — training load read-out: **Fondasi** (CTL 42d), **Kelelahan** (ATL 7d), **Beban** (strain), **Variasi** (monotony), each with a plain-language hint. Links out to `/aktivitas`. See [[run-history]] for the weekly metrics this mirrors.
 
@@ -57,7 +57,7 @@ When there are runs, [FeaturedKartuPanel](resources/js/components/dashboard/Feat
 
 ## Empty state
 
-When `recentRuns.length === 0`, the page swaps everything below the headline for `EmptyRunsState` — connect Strava and run, see [[strava-connect]].
+When `recentRuns.length === 0`, the page swaps everything below the Kata Temari card for `EmptyRunsState` — connect Strava and run, see [[strava-connect]].
 
 ## Notes / gotchas
 

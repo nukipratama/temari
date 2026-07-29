@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Rarity;
-use App\Jobs\AI\AnalyzeBriefingJob;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -29,39 +29,30 @@ it('returns pending payloads on first compose and dispatches NO LLM jobs', funct
 
     $result = app(BriefingComposer::class)->compose($user, $asOf);
 
-    expect($result->suggestion['status'])->toBe(AnalysisStatus::Pending->value)
-        ->and($result->mascotVoice['status'])->toBe(AnalysisStatus::Pending->value)
-        ->and($result->suggestion['content'])->toBeNull()
+    expect($result->mascotVoice['status'])->toBe(AnalysisStatus::Pending->value)
         ->and($result->mascotVoice['content'])->toBeNull();
 
     // No LLM dispatch on page-load reads — analyses are user-triggered.
-    Bus::assertNotDispatched(AnalyzeBriefingJob::class);
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 it('returns stored content when analyses are done', function (): void {
     $user = User::factory()->create();
     $asOf = Carbon::parse('2026-05-18');
 
-    foreach ([
-        AnalysisType::BriefingSuggestion->value => 'Easy run aja dulu',
-        AnalysisType::BriefingMascotVoice->value => 'Aku liat kemarin lo lari santai, easy hari ini ya',
-    ] as $typeValue => $content) {
-        Analysis::factory()->done($content)->create([
-            'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-            'subject_id' => $user->id,
-            'analysis_type' => $typeValue,
-            'discriminator' => '2026-05-18',
-        ]);
-    }
+    Analysis::factory()->done('Aku liat kemarin lo lari santai, easy hari ini ya')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-18',
+    ]);
 
     $result = app(BriefingComposer::class)->compose($user, $asOf);
 
-    expect($result->suggestion['content'])->toBe('Easy run aja dulu')
-        ->and($result->suggestion['status'])->toBe(AnalysisStatus::Done->value)
-        ->and($result->mascotVoice['content'])->toBe('Aku liat kemarin lo lari santai, easy hari ini ya')
+    expect($result->mascotVoice['content'])->toBe('Aku liat kemarin lo lari santai, easy hari ini ya')
         ->and($result->mascotVoice['status'])->toBe(AnalysisStatus::Done->value);
 
-    Bus::assertNotDispatched(AnalyzeBriefingJob::class);
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 it('keys the featured kartu voice by the featured card id and exposes that id', function (): void {
@@ -96,26 +87,26 @@ it('exposes a null featured card id and a pending voice when the user has no car
         ->and($result->featuredKartuVoice['content'])->toBeNull();
 });
 
-it('does not re-dispatch when some pieces are done and others queued', function (): void {
+it('does not re-dispatch when the voice is done and the kartu voice still queued', function (): void {
     $user = User::factory()->create();
     $asOf = Carbon::parse('2026-05-18');
 
     Analysis::factory()->done('Pagi yang oke')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
     ]);
     Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-05-18',
+        'analysis_type' => AnalysisType::BriefingFeaturedKartuVoice,
+        'discriminator' => '7',
     ]);
 
     app(BriefingComposer::class)->compose($user, $asOf);
 
-    Bus::assertNotDispatched(AnalyzeBriefingJob::class);
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 it('labels the streak from days since the last run', function (string $lastRun, string $label): void {

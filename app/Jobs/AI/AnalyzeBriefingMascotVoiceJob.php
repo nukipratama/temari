@@ -9,9 +9,9 @@ use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Models\User;
 
 /**
- * Standalone row job for the "Kata Temari hari ini" mascot-voice line.
- * Separate from {@see AnalyzeBriefingJob} so retrying this surface doesn't
- * also re-spend LLM tokens on the briefing suggestion.
+ * Row job for the dashboard's daily Temari voice ("Kata Temari hari ini"): the
+ * single billed call that carries both the day's reading and the session it
+ * implies.
  */
 class AnalyzeBriefingMascotVoiceJob extends AnalyzeRowJob
 {

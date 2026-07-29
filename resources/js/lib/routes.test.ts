@@ -14,8 +14,8 @@ describe('aktivitasUrl', () => {
 
 describe('analysisTriggerUrl', () => {
     it('omits the query string when there is no discriminator', () => {
-        expect(analysisTriggerUrl({ type: 'briefing_suggestion', subject_id: 7, discriminator: null })).toBe(
-            '/api/analyses/briefing_suggestion/7/trigger',
+        expect(analysisTriggerUrl({ type: 'briefing_mascot_voice', subject_id: 7, discriminator: null })).toBe(
+            '/api/analyses/briefing_mascot_voice/7/trigger',
         );
     });
 
@@ -26,14 +26,14 @@ describe('analysisTriggerUrl', () => {
     });
 
     it('percent-encodes a discriminator carrying url-significant characters', () => {
-        expect(analysisTriggerUrl({ type: 'briefing_suggestion', subject_id: 1, discriminator: 'a b&c=d/e' })).toBe(
-            '/api/analyses/briefing_suggestion/1/trigger?discriminator=a%20b%26c%3Dd%2Fe',
+        expect(analysisTriggerUrl({ type: 'briefing_mascot_voice', subject_id: 1, discriminator: 'a b&c=d/e' })).toBe(
+            '/api/analyses/briefing_mascot_voice/1/trigger?discriminator=a%20b%26c%3Dd%2Fe',
         );
     });
 
     it('treats an empty discriminator as absent', () => {
-        expect(analysisTriggerUrl({ type: 'briefing_suggestion', subject_id: 5, discriminator: '' })).toBe(
-            '/api/analyses/briefing_suggestion/5/trigger',
+        expect(analysisTriggerUrl({ type: 'briefing_mascot_voice', subject_id: 5, discriminator: '' })).toBe(
+            '/api/analyses/briefing_mascot_voice/5/trigger',
         );
     });
 
@@ -42,12 +42,12 @@ describe('analysisTriggerUrl', () => {
             id: 999,
             status: 'done',
             content: null,
-            type: 'briefing_suggestion',
+            type: 'briefing_mascot_voice',
             subject_type: 'App\\Models\\Activity',
             subject_id: 12,
             discriminator: null,
         };
 
-        expect(analysisTriggerUrl(analysis)).toBe('/api/analyses/briefing_suggestion/12/trigger');
+        expect(analysisTriggerUrl(analysis)).toBe('/api/analyses/briefing_mascot_voice/12/trigger');
     });
 });

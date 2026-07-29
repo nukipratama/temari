@@ -160,7 +160,7 @@ class AnalysisService
         $this->dispatchRow(
             AnalysisType::BRIEFING_SUBJECT_TYPE,
             $user->id,
-            AnalysisType::BriefingSuggestion,
+            AnalysisType::BriefingMascotVoice,
             $discriminator,
             $invalidate,
             $delaySeconds,

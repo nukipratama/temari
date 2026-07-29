@@ -142,7 +142,7 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
 
     expect($copy)->toBe($expected);
 })->with([
-    'briefing suggestion' => [AnalysisType::BriefingSuggestion, "Tempo ringan, 35-45 menit.\n\nWarmup 10 menit santai, tempo 15-20 menit di zona 3 atas, terus cooldown. Jaga cadence di 175+, napas terengah-engah tapi masih bisa potong kalimat.\n\nYang perlu diperhatikan: kalau HR cepat naik padahal pelan, mundur ke run-walk 15-25 menit atau berhenti di cooldown. Cuaca terasa panas atau badan masih lemes, rest juga tidak rugi."],
+    'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, "Tempo ringan, 35-45 menit.\n\nRitme kamu kebaca stabil beberapa minggu ini dan belum ada sesi quality sejak minggu lalu, jadi hari ini aku rasa muat satu tempo. Warmup 10 menit santai, tempo 15-20 menit sedikit lebih cepat dari pace rata-ratamu, terus cooldown, cadence di 175+.\n\nYang perlu diperhatikan: kalau HR cepat naik padahal pelan, mundur ke run-walk 15-25 menit atau berhenti di cooldown. Cuaca terasa panas atau badan masih lemes, rest juga tidak rugi."],
     'run insight splits (no detail)' => [AnalysisType::RunInsightSplits, 'Splits-nya belum kebaca lengkap.'],
     'run insight zones (no detail)' => [AnalysisType::RunInsightZones, 'Distribusi zone-nya belum kebaca lengkap.'],
     'weekly recap' => [AnalysisType::WeeklyRecap, 'Minggu ini ritme kamu cukup teratur. Volume lari masuk akal, recovery juga keurus.'],

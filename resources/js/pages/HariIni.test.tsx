@@ -14,19 +14,10 @@ const briefing: BriefingResult = {
     vibeState: 'pumped',
     vibeLabel: 'Membara',
     vibeEmoji: '💥',
-    suggestion: {
-        id: 2,
-        status: 'done',
-        content: 'Tempo ringan, 35–45 menit.',
-        type: 'briefing_suggestion',
-        subject_type: 'briefing_user_day',
-        subject_id: 1,
-        discriminator: '2026-05-18',
-    },
     mascotVoice: {
         id: 4,
         status: 'done',
-        content: 'Dua lari terakhirmu negatif-split.',
+        content: 'Tempo ringan, 35–45 menit.\n\nDua lari terakhirmu negatif-split, jadi hari ini boleh naik tipis.',
         type: 'briefing_mascot_voice',
         subject_type: 'briefing_user_day',
         subject_id: 1,
@@ -169,7 +160,7 @@ describe('HariIni', () => {
         expect(screen.queryByText(/Kartu andalan dari Temari/)).not.toBeInTheDocument();
     });
 
-    it('shows the suggestion text', () => {
+    it('shows the session title of the merged Temari voice', () => {
         render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
         expect(screen.getByText(/Tempo ringan, 35–45 menit\./)).toBeInTheDocument();
     });
@@ -198,33 +189,32 @@ describe('HariIni', () => {
         expect(screen.getAllByText(/bukti kamu bisa lebih jauh/).length).toBeGreaterThan(0);
     });
 
-    it('renders without crashing when suggestion content is empty', () => {
+    it('renders without crashing when the Temari voice content is empty', () => {
         const emptyBriefing: BriefingResult = {
             ...briefing,
-            suggestion: { ...briefing.suggestion, content: '' },
+            mascotVoice: { ...briefing.mascotVoice, content: '' },
         };
         render(<HariIni briefing={emptyBriefing} load={load} snapshot={snapshot} recentRuns={[]} />);
         expect(screen.getByText(/Halo, Ada/)).toBeInTheDocument();
     });
 
-    it('renders the suggestion block but emits no content when the text is whitespace-only', () => {
-        // recentRuns present so the SuggestionCard (and thus SuggestionContent)
-        // actually mounts; whitespace-only content trims to zero parts -> null.
-        const blankSuggestion: BriefingResult = {
+    it('renders the Temari voice block but emits no content when the text is whitespace-only', () => {
+        // Whitespace-only content trims to zero parts -> null.
+        const blank: BriefingResult = {
             ...briefing,
-            suggestion: { ...briefing.suggestion, content: '\n\n   \n\n' },
+            mascotVoice: { ...briefing.mascotVoice, content: '\n\n   \n\n' },
         };
         render(
-            <HariIni briefing={blankSuggestion} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />,
+            <HariIni briefing={blank} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />,
         );
         // The section heading still renders; the body resolves to nothing.
-        expect(screen.getByText('Saran sesi dari Temari')).toBeInTheDocument();
+        expect(screen.getByText('Kata Temari hari ini')).toBeInTheDocument();
     });
 
-    it('renders the suggestion title-only when there is no body paragraph', () => {
+    it('renders the Temari voice title-only when there is no body paragraph', () => {
         const titleOnly: BriefingResult = {
             ...briefing,
-            suggestion: { ...briefing.suggestion, content: '“Lari santai aja hari ini.”' },
+            mascotVoice: { ...briefing.mascotVoice, content: '“Lari santai aja hari ini.”' },
         };
         render(
             <HariIni briefing={titleOnly} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />,
@@ -232,22 +222,14 @@ describe('HariIni', () => {
         expect(screen.getByText(/Lari santai aja hari ini\./)).toBeInTheDocument();
     });
 
-    it('toggles the Temari quote open/closed when the long-quote text overflows', () => {
+    it('renders the Temari voice unclamped, with no expand toggle', () => {
         const longText = 'a'.repeat(200);
         const longQuoteBriefing: BriefingResult = {
             ...briefing,
             mascotVoice: { ...briefing.mascotVoice, content: longText },
         };
         render(<HariIni briefing={longQuoteBriefing} load={load} snapshot={snapshot} recentRuns={[]} />);
-        const toggle = screen.getByRole('button', { name: 'Baca selengkapnya' });
-        fireEvent.click(toggle);
-        expect(screen.getByRole('button', { name: 'Tutup' })).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: 'Tutup' }));
-        expect(screen.getByRole('button', { name: 'Baca selengkapnya' })).toBeInTheDocument();
-    });
-
-    it('does not render the expand toggle for a short Temari quote', () => {
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[]} />);
+        expect(screen.getByText(longText)).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Baca selengkapnya' })).not.toBeInTheDocument();
     });
 
@@ -370,11 +352,11 @@ describe('HariIni', () => {
         await waitFor(() => expect(screen.getByRole('button', { name: 'Saran lain' })).toBeInTheDocument());
     });
 
-    it('renders the suggestion as a title + body when the text has two paragraphs', () => {
+    it('renders the Temari voice as a title + body when the text has two paragraphs', () => {
         const withBody: BriefingResult = {
             ...briefing,
-            suggestion: {
-                ...briefing.suggestion,
+            mascotVoice: {
+                ...briefing.mascotVoice,
                 content: 'Tempo ringan hari ini.\n\nJaga pace di zona 2 selama 40 menit.',
             },
         };

@@ -13,7 +13,7 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
         id: null,
         status: 'pending',
         content: null,
-        type: 'briefing_suggestion',
+        type: 'briefing_mascot_voice',
         is_zone_dependent: false,
         subject_type: 'briefing_user_day',
         subject_id: 1,

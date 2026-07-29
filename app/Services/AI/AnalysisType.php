@@ -7,7 +7,6 @@ namespace App\Services\AI;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBaseJob;
-use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingFeaturedKartuVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
@@ -23,7 +22,6 @@ use App\Models\WeeklySnapshot;
 
 enum AnalysisType: string
 {
-    case BriefingSuggestion = 'briefing_suggestion';
     case BriefingMascotVoice = 'briefing_mascot_voice';
     case BriefingFeaturedKartuVoice = 'briefing_featured_kartu_voice';
     case PostRunSpeech = 'post_run_speech';
@@ -58,9 +56,9 @@ enum AnalysisType: string
             self::RunInsightTechnical,
             self::RunInsightSplits,
             self::RunInsightZones => AnalyzeActivityJob::class,
-            // The three briefing surfaces are intentionally NOT grouped — each
+            // The two briefing surfaces are intentionally NOT grouped — each
             // has its own row job so one of them retrying never re-bills the
-            // other two.
+            // other.
             default => null,
         };
     }
@@ -89,7 +87,6 @@ enum AnalysisType: string
             self::RunInsightZones,
             self::CardFlavor,
             self::PrContext => AnalysisCadence::PerActivity,
-            self::BriefingSuggestion,
             self::BriefingMascotVoice,
             self::BriefingFeaturedKartuVoice => AnalysisCadence::Daily,
             self::WeeklyRecap => AnalysisCadence::Weekly,
@@ -103,7 +100,6 @@ enum AnalysisType: string
     public function jobClass(): string
     {
         return match ($this) {
-            self::BriefingSuggestion => AnalyzeBriefingJob::class,
             self::BriefingMascotVoice => AnalyzeBriefingMascotVoiceJob::class,
             self::BriefingFeaturedKartuVoice => AnalyzeBriefingFeaturedKartuVoiceJob::class,
             self::PostRunSpeech,
@@ -185,7 +181,6 @@ enum AnalysisType: string
     public function discriminatorRules(): array
     {
         return match ($this) {
-            self::BriefingSuggestion,
             self::BriefingMascotVoice => ['required', 'string', 'date_format:Y-m-d'],
             self::BriefingFeaturedKartuVoice => ['required', 'string', 'max:19', 'regex:/^[1-9][0-9]*$/'],
             self::PersonaSummary => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/'],
@@ -204,7 +199,6 @@ enum AnalysisType: string
     public function subjectType(): string
     {
         return match ($this) {
-            self::BriefingSuggestion,
             self::BriefingMascotVoice,
             self::BriefingFeaturedKartuVoice => self::BRIEFING_SUBJECT_TYPE,
             self::PostRunSpeech,

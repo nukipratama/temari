@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Bus;
 use App\Exceptions\AI\ContentFilterException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBaseJob;
-use App\Jobs\AI\AnalyzeBriefingJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
@@ -24,7 +23,6 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
-use App\Services\AI\Narrators\BriefingNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PersonaSummaryNarrator;
@@ -52,110 +50,6 @@ function rowOf(string $subjectType, int $subjectId, AnalysisType $type, ?string 
         'discriminator' => $discriminator,
     ]);
 }
-
-// ── AnalyzeBriefingJob (row) ──────────────────────────────────────────
-
-it('AnalyzeBriefingJob writes the briefing suggestion row Done', function (): void {
-    $user = User::factory()->create();
-    mockNarrator(BriefingNarrator::class, 'S');
-
-    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingSuggestion, '2026-05-18');
-    new AnalyzeBriefingJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->content)->toBe('S')
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
-});
-
-it('AnalyzeBriefingJob falls back to today when discriminator is null', function (): void {
-    Carbon::setTestNow('2026-05-19 12:00:00');
-    $user = User::factory()->create();
-    $mock = Mockery::mock(BriefingNarrator::class);
-    $mock->shouldReceive('generate')
-        ->withArgs(fn (User $u, Carbon $asOf): bool => $asOf->toDateString() === '2026-05-19')
-        ->andReturn('S');
-    app()->instance(BriefingNarrator::class, $mock);
-
-    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingSuggestion, null);
-    new AnalyzeBriefingJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->content)->toBe('S');
-    Carbon::setTestNow();
-});
-
-it('AnalyzeBriefingJob does not re-invoke the narrator when its row is already Done (no double-bill)', function (): void {
-    $user = User::factory()->create();
-
-    $row = Analysis::factory()->done('preexisting')->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
-        'discriminator' => '2026-05-18',
-    ]);
-
-    $mock = Mockery::mock(BriefingNarrator::class);
-    $mock->shouldNotReceive('generate');
-    app()->instance(BriefingNarrator::class, $mock);
-
-    new AnalyzeBriefingJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('preexisting');
-});
-
-it('AnalyzeBriefingJob falls back to rule-based content when generation content-filters', function (): void {
-    $user = User::factory()->create();
-
-    $mock = Mockery::mock(BriefingNarrator::class);
-    $mock->shouldReceive('generate')->andThrow(new ContentFilterException('content filtered'));
-    app()->instance(BriefingNarrator::class, $mock);
-
-    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingSuggestion, '2026-05-18');
-    new AnalyzeBriefingJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->not->toBeEmpty();
-});
-
-it('AnalyzeBriefingJob marks the row Failed without rethrowing when the user is missing', function (): void {
-    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, 99999, AnalysisType::BriefingSuggestion, '2026-05-18');
-
-    new AnalyzeBriefingJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
-});
-
-it('AnalyzeBriefingJob failed() marks a stranded row Failed', function (): void {
-    $user = User::factory()->create();
-
-    $suggestion = Analysis::factory()->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
-        'discriminator' => '2026-05-18',
-        'status' => AnalysisStatus::Processing,
-    ]);
-
-    new AnalyzeBriefingJob($suggestion->id)->failed(new RuntimeException('worker timeout'));
-
-    expect($suggestion->fresh()->status)->toBe(AnalysisStatus::Failed)
-        ->and($suggestion->fresh()->error)->toBe('worker timeout');
-});
-
-it('AnalyzeBriefingJob failed() spares a row that is already Done', function (): void {
-    $user = User::factory()->create();
-
-    $suggestion = Analysis::factory()->done('kept')->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingSuggestion,
-        'discriminator' => '2026-05-18',
-    ]);
-
-    new AnalyzeBriefingJob($suggestion->id)->failed(new RuntimeException('worker timeout'));
-
-    expect($suggestion->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($suggestion->fresh()->content)->toBe('kept');
-});
 
 // ── AnalyzeBriefingMascotVoiceJob (row) ──────────────────────────────
 
@@ -190,6 +84,73 @@ it('AnalyzeBriefingMascotVoiceJob marks the row Failed and rethrows when the use
         ->toThrow(ModelNotFoundException::class);
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+it('AnalyzeBriefingMascotVoiceJob does not re-invoke the narrator when its row is already Done (no double-bill)', function (): void {
+    $user = User::factory()->create();
+
+    $row = Analysis::factory()->done('preexisting')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-18',
+    ]);
+
+    $mock = Mockery::mock(BriefingMascotVoiceNarrator::class);
+    $mock->shouldNotReceive('generate');
+    app()->instance(BriefingMascotVoiceNarrator::class, $mock);
+
+    new AnalyzeBriefingMascotVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->toBe('preexisting');
+});
+
+it('AnalyzeBriefingMascotVoiceJob falls back to rule-based content when generation content-filters', function (): void {
+    $user = User::factory()->create();
+
+    $mock = Mockery::mock(BriefingMascotVoiceNarrator::class);
+    $mock->shouldReceive('generate')->andThrow(new ContentFilterException('content filtered'));
+    app()->instance(BriefingMascotVoiceNarrator::class, $mock);
+
+    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, '2026-05-18');
+    new AnalyzeBriefingMascotVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->not->toBeEmpty();
+});
+
+it('AnalyzeBriefingMascotVoiceJob failed() marks a stranded row Failed', function (): void {
+    $user = User::factory()->create();
+
+    $voice = Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-18',
+        'status' => AnalysisStatus::Processing,
+    ]);
+
+    new AnalyzeBriefingMascotVoiceJob($voice->id)->failed(new RuntimeException('worker timeout'));
+
+    expect($voice->fresh()->status)->toBe(AnalysisStatus::Failed)
+        ->and($voice->fresh()->error)->toBe('worker timeout');
+});
+
+it('AnalyzeBriefingMascotVoiceJob failed() spares a row that is already Done', function (): void {
+    $user = User::factory()->create();
+
+    $voice = Analysis::factory()->done('kept')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-18',
+    ]);
+
+    new AnalyzeBriefingMascotVoiceJob($voice->id)->failed(new RuntimeException('worker timeout'));
+
+    expect($voice->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($voice->fresh()->content)->toBe('kept');
 });
 
 // ── AnalyzeCardFlavorJob (row) ────────────────────────────────────────
@@ -457,7 +418,7 @@ it('AnalyzeMonthlyRecapJob does not advance when no later Pending month exists',
 it('sends every analyze job to the narration queue, whichever base it extends', function (): void {
     // Not configurable and not the dispatcher's business: a tool-calling run
     // needs the longer timeout only supervisor-ai gives it.
-    expect(new AnalyzeBriefingJob(1)->queue)->toBe(AnalyzeBaseJob::QUEUE)
+    expect(new AnalyzeBriefingMascotVoiceJob(1)->queue)->toBe(AnalyzeBaseJob::QUEUE)
         ->and(new AnalyzeActivityJob(1)->queue)->toBe(AnalyzeBaseJob::QUEUE)
         ->and(AnalyzeBaseJob::QUEUE)->toBe('ai');
 });

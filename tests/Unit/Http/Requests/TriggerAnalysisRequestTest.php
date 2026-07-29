@@ -45,18 +45,18 @@ it('authorizes the request (ownership is enforced in the controller)', function 
 
 it('folds the route segments into the validation payload', function (): void {
     $request = TriggerAnalysisRequest::create(
-        '/api/analyses/briefing_suggestion/7/trigger?discriminator=2026-05-18',
+        '/api/analyses/briefing_mascot_voice/7/trigger?discriminator=2026-05-18',
         'POST',
     );
     $request->setRouteResolver(fn () => new class () {
         public function parameter(string $key): ?string
         {
-            return ['type' => 'briefing_suggestion', 'subjectId' => '7'][$key] ?? null;
+            return ['type' => 'briefing_mascot_voice', 'subjectId' => '7'][$key] ?? null;
         }
     });
 
     expect($request->validationData())->toMatchArray([
-        'type' => 'briefing_suggestion',
+        'type' => 'briefing_mascot_voice',
         'subjectId' => '7',
         'discriminator' => '2026-05-18',
     ]);
@@ -75,8 +75,8 @@ it('accepts every known analysis type against its enum rule', function (): void 
 it('rejects an unknown type and a non-positive subjectId', function (): void {
     expect(triggerAnalysisPasses('nonsense', null))->toBeFalse()
         ->and(Validator::make(
-            ['type' => 'briefing_suggestion', 'subjectId' => 0],
-            triggerAnalysisRules('briefing_suggestion'),
+            ['type' => 'briefing_mascot_voice', 'subjectId' => 0],
+            triggerAnalysisRules('briefing_mascot_voice'),
         )->passes())->toBeFalse();
 });
 
@@ -94,7 +94,6 @@ it('stays permissive on the discriminator when the type is unknown, so the type 
 it('accepts the discriminator shape its own dispatch sites write', function (string $type, ?string $discriminator): void {
     expect(triggerAnalysisPasses($type, $discriminator))->toBeTrue();
 })->with([
-    'briefing suggestion day' => ['briefing_suggestion', '2026-05-18'],
     'briefing mascot voice day' => ['briefing_mascot_voice', '2026-05-18'],
     'featured kartu card id' => ['briefing_featured_kartu_voice', '42'],
     'persona summary ISO week' => ['persona_summary', '2026-W31'],
@@ -112,9 +111,9 @@ it('accepts the discriminator shape its own dispatch sites write', function (str
 it('rejects a novel or malformed discriminator', function (string $type, string $discriminator): void {
     expect(triggerAnalysisPasses($type, $discriminator))->toBeFalse();
 })->with([
-    'random string on a daily type' => ['briefing_suggestion', 'kEy9fQ2z'],
-    'over-long value on a daily type' => ['briefing_suggestion', str_repeat('x', 65)],
-    'a month where a day belongs' => ['briefing_suggestion', '2026-05'],
+    'random string on a daily type' => ['briefing_mascot_voice', 'kEy9fQ2z'],
+    'over-long value on a daily type' => ['briefing_mascot_voice', str_repeat('x', 65)],
+    'a month where a day belongs' => ['briefing_mascot_voice', '2026-05'],
     'a non-date on the mascot voice day' => ['briefing_mascot_voice', 'yesterday'],
     'a day where a month belongs' => ['monthly_recap', '2026-05-18'],
     'a day where an ISO week belongs' => ['persona_summary', '2026-05-18'],
@@ -146,7 +145,6 @@ it('rejects any discriminator on the types whose job ignores it', function (stri
 it('requires the discriminator on the types keyed by one', function (string $type): void {
     expect(triggerAnalysisPasses($type, null))->toBeFalse();
 })->with([
-    'briefing_suggestion',
     'briefing_mascot_voice',
     'persona_summary',
     'monthly_recap',

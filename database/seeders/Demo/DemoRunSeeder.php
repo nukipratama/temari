@@ -313,15 +313,9 @@ class DemoRunSeeder
                 type: AnalysisType::WeeklyRecap,
             );
         }
-        // Mirrors DailyBriefingCommand so the dashboard's suggestion card is
+        // Mirrors DailyBriefingCommand so the dashboard's Temari voice card is
         // filled and never renders "Belum dibaca".
         $this->analysisService->requestBriefing($user, $today);
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,
-            subjectId: $user->id,
-            type: AnalysisType::BriefingMascotVoice,
-            discriminator: $today,
-        );
         // The weekly-featured-card voice ("Kartu dari Temari minggu ini" on the
         // dashboard hero) has its own job and is never auto-requested by ingest,
         // so the demo must stage it here or the hero falls back to "Belum dibaca".

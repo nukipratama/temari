@@ -37,7 +37,6 @@ final readonly class RuleBasedNarrationFiller
         $seed = $this->seedFor($row);
 
         return match ($row->analysis_type) {
-            AnalysisType::BriefingSuggestion => $this->briefingSuggestion($seed),
             AnalysisType::BriefingMascotVoice => $this->briefingMascotVoice($seed),
             AnalysisType::BriefingFeaturedKartuVoice => $this->briefingFeaturedKartuVoice($seed),
             AnalysisType::PostRunSpeech => $this->postRunSpeech($seed),
@@ -70,24 +69,15 @@ final readonly class RuleBasedNarrationFiller
     }
 
 
-    private function briefingSuggestion(int $seed): string
-    {
-        return $this->select([
-            "Tempo ringan, 35-45 menit.\n\nWarmup 10 menit santai, tempo 15-20 menit di zona 3 atas, terus cooldown. Jaga cadence di 175+, napas terengah-engah tapi masih bisa potong kalimat.\n\nYang perlu diperhatikan: kalau HR cepat naik padahal pelan, mundur ke run-walk 15-25 menit atau berhenti di cooldown. Cuaca terasa panas atau badan masih lemes, rest juga tidak rugi.",
-            "Easy run, 30-40 menit.\n\nJaga pace di zona nyaman, napas masih bisa ngobrol. Cadence di 170+ biar langkah ringan, gak usah buru-buru.\n\nYang perlu diperhatikan: kalau kaki berat atau HR naik aneh di awal, mungkin recovery belum cukup. Mundur ke jalan cepat 20 menit gak apa-apa.",
-            "Long run santai, 8-12 km.\n\nPace conversational, jangan tergoda ngejar waktu. Bawa air kalau cuaca panas, istirahat sebentar di pertengahan gak masalah.\n\nYang perlu diperhatikan: jarak panjang butuh pace stabil. Kalau km 5 udah merasa dipaksa, potong jadi 6-8 km. Lebih baik pendek tapi rapi daripada panjang tapi berantakan.",
-        ], $seed);
-    }
-
     private function briefingMascotVoice(int $seed): string
     {
         return $this->select([
-            'Aku liat ritme kamu masih oke beberapa hari terakhir. Pertahanin pelan-pelan, gak usah dipaksa kalau lagi gak mood.',
-            'Beberapa hari ini kamu cukup konsisten. Lanjut santai aja, aku nemenin.',
-            'Ritme kamu kebaca stabil. Gak perlu ngoyo, yang penting jalan terus.',
-            'Aku perhatiin kamu jalan terus belakangan. Gak usah ngebut, rutin aja udah bagus.',
-            'Beberapa sesi terakhir kebaca rapi. Kalau hari ini mau rehat, aku ngerti kok.',
-            'Kamu lagi di jalur yang enak. Jaga ritmenya, sisanya ngalir sendiri.',
+            "Tempo ringan, 35-45 menit.\n\nRitme kamu kebaca stabil beberapa minggu ini dan belum ada sesi quality sejak minggu lalu, jadi hari ini aku rasa muat satu tempo. Warmup 10 menit santai, tempo 15-20 menit sedikit lebih cepat dari pace rata-ratamu, terus cooldown, cadence di 175+.\n\nYang perlu diperhatikan: kalau HR cepat naik padahal pelan, mundur ke run-walk 15-25 menit atau berhenti di cooldown. Cuaca terasa panas atau badan masih lemes, rest juga tidak rugi.",
+            "Easy run, 30-40 menit.\n\nDua sesi terakhirmu kebaca berat dan recovery-nya belum panjang, makanya aku taruh easy hari ini. Jaga di sekitar pace normalmu, napas masih bisa buat ngobrol, cadence di 170+ biar langkah gak berat.\n\nYang perlu diperhatikan: kalau kaki berat atau HR naik aneh di awal, itu tanda recovery belum kelar. Mundur ke jalan cepat 20 menit gak apa-apa.",
+            "Long run santai, 8-12 km.\n\nMinggu ini km kamu naik tipis dan konsisten, aku pikir enak ditutup satu sesi panjang. Pace conversational, jangan tergoda ngejar waktu, bawa air kalau cuaca panas.\n\nYang perlu diperhatikan: jarak panjang butuh pace stabil. Kalau km 5 udah kerasa dipaksa, potong jadi 6-8 km. Lebih baik pendek tapi rapi daripada panjang tapi berantakan.",
+            "Rest dulu hari ini.\n\nBeberapa hari terakhir kamu jalan terus tanpa jeda dan aku liat load-nya numpuk, jadi hari ini aku gak nyaranin lari. Mobility ringan atau jalan santai 20 menit udah cukup buat bikin kaki enteng lagi.\n\nYang perlu diperhatikan: kalau besok badan masih berat, tambah satu hari lagi. Rest itu bagian dari training, bukan bolos.",
+            "Easy run, 25-30 menit.\n\nKamu baru balik setelah beberapa hari absen, jadi aku mau mulai dari yang pendek dulu biar ritmenya kebentuk lagi. Pelan aja, effort by feel, gak usah liat pace sama sekali.\n\nYang perlu diperhatikan: godaan terbesar habis absen itu langsung ngebut. Kalau napas mulai berat sebelum menit 15, kurangi tempo atau selingi jalan.",
+            "Base run, 5-7 km.\n\nMinggu ini kamu udah konsisten dan kondisimu kebaca aman, jadi hari ini cukup jaga ritme yang udah jalan. Pace di sekitar rata-ratamu, satu blok stabil tanpa perlu ganti gigi.\n\nYang perlu diperhatikan: sesi begini gampang kepancing jadi tempo di tengah jalan. Kalau kepengin naik, simpan buat sesi berikutnya.",
         ], $seed);
     }
 
