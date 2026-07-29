@@ -75,6 +75,12 @@ it('builds the best-effort pace key from the window label', function (): void {
         ->and($summary->bestPace('20min'))->toBeNull();
 });
 
+it('reports a best-effort pace as null when absent, null, or not a string', function (): void {
+    expect(StreamSummary::fromArray([])->bestPace('5min'))->toBeNull()
+        ->and(StreamSummary::fromArray(['best_5min_pace' => null])->bestPace('5min'))->toBeNull()
+        ->and(StreamSummary::fromArray(['best_5min_pace' => 245])->bestPace('5min'))->toBeNull();
+});
+
 it('reads the per-km and partial-split rows, and null when the run carries neither', function (): void {
     $rows = [['km' => 1, 'pace' => '5:30']];
     $partial = ['distance_m' => 420, 'pace' => '5:10'];
