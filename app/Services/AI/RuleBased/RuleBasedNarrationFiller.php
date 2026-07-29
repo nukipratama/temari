@@ -10,6 +10,7 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
 
 /**
@@ -112,7 +113,7 @@ final readonly class RuleBasedNarrationFiller
         if ($detail === null) {
             return 'Selesai juga. Konsisten kayak gini yang aku suka.';
         }
-        $km = $detail->distance !== null ? number_format($detail->distance / 1000, 1) : '?';
+        $km = DistanceFormatter::kmString($detail->distance) ?? '?';
 
         $base = $this->select([
             "Lari {$km} km kelar. Pace-nya keangkut sampai akhir, bagus.",
@@ -241,7 +242,7 @@ final readonly class RuleBasedNarrationFiller
 
         $move = $card->special_move;
         $distance = $card->activity->detail?->distance;
-        $km = $distance !== null ? number_format((float) $distance / 1000, 1) : null;
+        $km = DistanceFormatter::kmString($distance !== null ? (float) $distance : null);
 
         $pool = self::FLAVOR_POOLS[$card->rarity->value];
         $templates = $km === null

@@ -13,6 +13,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\PastYouMatcher;
@@ -217,14 +218,24 @@ class RunController extends Controller
             return $loadedRuns;
         };
 
+        /** @var array{notes: array<int, array{oneline: string, mood: string}>, moods: array<int, string>}|null $loadedNotes */
+        $loadedNotes = null;
+        $loadNotes = function () use ($noteReader, $loadRuns, &$loadedNotes): array {
+            if ($loadedNotes === null) {
+                $loadedNotes = $noteReader->bundleFor($loadRuns()->pluck('id')->all());
+            }
+
+            return $loadedNotes;
+        };
+
         $currentWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
         return Inertia::render('Riwayat/Jejak', [
             'runs' => fn (): Collection => $loadRuns(),
-            'notes' => fn (): array => $noteReader->forActivities($loadRuns()->pluck('id')->all()),
+            'notes' => fn (): array => $loadNotes()['notes'],
             // Persisted post-run mood per run, so the list mascot matches the
             // backend mood even before the speech (and its note) is ready.
-            'moods' => fn (): array => $noteReader->moodsFor($loadRuns()->pluck('id')->all()),
+            'moods' => fn (): array => $loadNotes()['moods'],
             'rangeFilter' => $effectiveRange,
             'moodFilter' => $moodFilter,
             'distanceFilter' => $distanceFilter,
@@ -442,7 +453,7 @@ class RunController extends Controller
             'current' => self::summariseDetail($current, $currentPace),
             'pace_improvement_sec' => $paceImprovement,
             'hr_improvement_bpm' => $hrImprovement,
-            'total_km' => round((float) ($bounds->getAttribute('total_distance') ?? 0) / 1000, 1),
+            'total_km' => DistanceFormatter::km((float) ($bounds->getAttribute('total_distance') ?? 0)),
         ];
     }
 
@@ -454,7 +465,7 @@ class RunController extends Controller
         return [
             'date' => $detail->start_date_local?->toDateString(),
             'name' => $detail->name,
-            'distance_km' => $detail->distance !== null ? round((float) $detail->distance / 1000, 2) : null,
+            'distance_km' => DistanceFormatter::kmOrNull($detail->distance, DistanceFormatter::EXACT),
             'pace_sec_per_km' => $paceSec,
             'avg_hr' => $detail->average_heartrate !== null ? (float) $detail->average_heartrate : null,
         ];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
+use App\Services\Run\Metrics\DistanceFormatter;
 use NoDiscard;
 use App\Enums\PrCategory;
 use App\Models\Activity;
@@ -49,7 +50,7 @@ readonly class GamificationContext
 
     public function totalDistanceKm(): float
     {
-        return round($this->totalDistanceM / 1000, 1);
+        return DistanceFormatter::km($this->totalDistanceM);
     }
 
     #[NoDiscard]

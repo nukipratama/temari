@@ -180,7 +180,7 @@ class WeeklyAggregator
                 && $d->start_date_local->between($weekStart, $weekEnd),
         );
 
-        $distanceKm = round(((float) $weekDetails->sum('distance')) / 1000, 1);
+        $distanceKm = DistanceFormatter::km((float) $weekDetails->sum('distance'));
         $runs = $weekDetails->count();
         $movingTimeSec = (int) round((float) $weekDetails->sum('moving_time'));
         $avgDecoupling = $this->averageDecoupling($weekDetails);

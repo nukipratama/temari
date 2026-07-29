@@ -8,6 +8,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Story\MoodMix;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -52,8 +53,8 @@ final class MonthTotalsTool extends NoArgumentTool
         return [
             'month' => $this->month,
             'total_runs' => $details->count(),
-            'total_distance_km' => round((float) $details->sum('distance') / 1000, 1),
-            'longest_run_km' => round((float) $details->max('distance') / 1000, 2),
+            'total_distance_km' => DistanceFormatter::km((float) $details->sum('distance')),
+            'longest_run_km' => DistanceFormatter::km((float) $details->max('distance'), DistanceFormatter::EXACT),
             'pr_count' => PersonalRecord::query()
                 ->where('user_id', $this->user->id)
                 ->whereBetween('set_at', [$start, $end])
@@ -100,7 +101,7 @@ final class MonthTotalsTool extends NoArgumentTool
         ksort($buckets);
         $weeks = [];
         for ($i = 0; $i <= max(array_keys($buckets)); $i++) {
-            $weeks[] = round(($buckets[$i] ?? 0.0) / 1000, 1);
+            $weeks[] = DistanceFormatter::km($buckets[$i] ?? 0.0);
         }
 
         return $weeks;

@@ -12,6 +12,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\Run\PostRunNoteReader;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -102,6 +103,32 @@ it('keys ready notes by activity id and omits unready ones', function (): void {
     $notes = new PostRunNoteReader()->forActivities([$ready->id, $noSpeech->id, $noMood->id]);
 
     expect($notes)->toBe([$ready->id => ['oneline' => 'siap', 'mood' => 'nyala']]);
+});
+
+it('bundles notes and moods from a single story-line read', function (): void {
+    $ready = Activity::factory()->create();
+    StoryLine::factory()->for($ready)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'nyala']);
+    postRunSpeechFor($ready, AnalysisStatus::Done, 'siap');
+
+    $moodOnly = Activity::factory()->create();
+    StoryLine::factory()->for($moodOnly)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'lemes']);
+    postRunSpeechFor($moodOnly, AnalysisStatus::Pending, null);
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $bundle = new PostRunNoteReader()->bundleFor([$ready->id, $moodOnly->id]);
+
+    expect($bundle)->toBe([
+        'notes' => [$ready->id => ['oneline' => 'siap', 'mood' => 'nyala']],
+        'moods' => [$ready->id => 'nyala', $moodOnly->id => 'lemes'],
+    ])->and($queries)->toBe(2);
+});
+
+it('bundles empty maps for an empty batch', function (): void {
+    expect(new PostRunNoteReader()->bundleFor([]))->toBe(['notes' => [], 'moods' => []]);
 });
 
 it('ignores non-post-run story lines and non-Done speech in a batch', function (): void {

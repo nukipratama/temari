@@ -10,6 +10,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -94,7 +95,7 @@ class VerdictTimeline implements VerdictNarrator
                 moodFace: $this->moodFace($line->mood),
                 oneline: (string) $speechByActivity->get($line->activity_id),
                 startedAt: $detail->start_date_local,
-                distanceKm: round((float) ($detail->distance ?? 0) / 1000, 1),
+                distanceKm: DistanceFormatter::km((float) ($detail->distance ?? 0)),
                 intensity: $this->intensity($detail->trimp_edwards, $detail->moving_time),
             );
         }

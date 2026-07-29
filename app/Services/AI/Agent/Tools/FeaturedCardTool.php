@@ -6,6 +6,7 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Enums\Badge;
 use App\Models\RunCard;
+use App\Services\Run\Metrics\DistanceFormatter;
 
 /**
  * The card the briefing is featuring this week.
@@ -37,7 +38,7 @@ final class FeaturedCardTool extends NoArgumentTool
         return [
             'name' => $this->card->special_move,
             'rarity_label' => $this->card->rarity->label(),
-            'km' => $distance !== null ? round($distance / 1000, 1).'km' : '-',
+            'km' => $distance !== null ? DistanceFormatter::km($distance).'km' : '-',
             'tags' => array_slice(Badge::promptLabelsFor((array) ($this->card->badges ?? [])), 0, self::MAX_TAGS),
         ];
     }

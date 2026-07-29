@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Context;
 
+use App\Services\Run\Metrics\DistanceFormatter;
 use NoDiscard;
 use App\Models\ActivityDetail;
 use App\Services\Run\Metrics\StreamSummary;
@@ -72,7 +73,7 @@ final readonly class ActivityNarrationContext
      */
     public function distanceKm(int $precision): float
     {
-        return round(((float) ($this->distanceMeters ?? 0)) / 1000, $precision);
+        return DistanceFormatter::km((float) ($this->distanceMeters ?? 0), $precision);
     }
 
     /**
@@ -82,7 +83,7 @@ final readonly class ActivityNarrationContext
     public function distanceKmOrNull(int $precision): ?float
     {
         return $this->distanceMeters !== null
-            ? round($this->distanceMeters / 1000, $precision)
+            ? DistanceFormatter::km($this->distanceMeters, $precision)
             : null;
     }
 }

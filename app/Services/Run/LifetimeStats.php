@@ -6,6 +6,7 @@ namespace App\Services\Run;
 
 use App\Models\ActivityDetail;
 use App\Models\User;
+use App\Services\Run\Metrics\DistanceFormatter;
 use Illuminate\Support\Facades\Cache;
 
 use function is_string;
@@ -59,8 +60,8 @@ class LifetimeStats
 
         return [
             'total_runs' => $totalRuns,
-            'total_km' => round($totalDistanceMeters / 1000, 1),
-            'longest_km' => round($longestMeters / 1000, 2),
+            'total_km' => DistanceFormatter::km($totalDistanceMeters),
+            'longest_km' => DistanceFormatter::km($longestMeters, DistanceFormatter::EXACT),
             'first_run_at' => is_string($firstRunAt) ? $firstRunAt : $firstRunAt?->toIso8601String(),
         ];
     }

@@ -7,6 +7,7 @@ namespace App\Services\Run;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -104,7 +105,7 @@ class CalendarBuilder
 
         return [
             ...$base,
-            'distance_km' => round($totalDistance / 1000, 2),
+            'distance_km' => DistanceFormatter::km($totalDistance, DistanceFormatter::EXACT),
             'pace_sec_per_km' => $paceSecPerKm !== null ? round($paceSecPerKm, 0) : null,
             'avg_hr' => $hrWeight > 0 ? (int) round($hrWeighted / $hrWeight) : null,
             'trimp' => round($totalTrimp, 1),
