@@ -348,7 +348,7 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: [ci-gate, build]
+    needs: ci-gate
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: [self-hosted, homelab]
     permissions:
