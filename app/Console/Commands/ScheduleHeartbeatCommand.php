@@ -17,9 +17,11 @@ use Throwable;
  * healthcheck runs the same command with `--check` to assert that stamp is
  * still fresh.
  *
- * The durable `default` connection (noeviction) is deliberate: the `cache`
- * connection runs `allkeys-lru`, so an evicted key would read as a dead
- * scheduler.
+ * Two constraints the code cannot show: the stamp must live on the durable
+ * `default` connection (`cache` is allkeys-lru, and an evicted stamp reads as a
+ * dead scheduler), and it must not reuse the MySQL-backed
+ * {@see \App\Models\ScheduledTaskRun} heartbeat, since a Docker `CMD`
+ * healthcheck cannot depend on MySQL being up.
  */
 #[Signature('schedule:heartbeat {--check : Assert the stored heartbeat is fresh instead of writing one}')]
 #[Description('Stamp (or verify) the scheduler liveness heartbeat on the durable Redis connection.')]

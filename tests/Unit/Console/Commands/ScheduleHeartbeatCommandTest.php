@@ -20,6 +20,11 @@ function heartbeatRedisAged(?int $ageSeconds): MockInterface
     return $mock;
 }
 
+function heartbeatRedisUnreachable(): void
+{
+    Redis::shouldReceive('connection')->with('default')->andThrow(new RuntimeException('Connection refused'));
+}
+
 it('stamps the current timestamp with a TTL on the durable default connection', function (): void {
     Carbon::setTestNow('2026-07-29 10:00:00');
 
@@ -41,42 +46,32 @@ it('stamps the current timestamp with a TTL on the durable default connection', 
 });
 
 it('reports a redis outage on the write path instead of throwing a trace every minute', function (): void {
-    Redis::shouldReceive('connection')->with('default')->andThrow(new RuntimeException('Connection refused'));
+    heartbeatRedisUnreachable();
 
     $this->artisan('schedule:heartbeat')
         ->expectsOutputToContain('scheduler heartbeat NOT written: redis unreachable')
         ->assertFailed();
 });
 
-it('passes the check while the stamp is inside the staleness window', function (): void {
-    Redis::shouldReceive('connection')->with('default')
-        ->andReturn(heartbeatRedisAged(ScheduleHeartbeatCommand::STALE_AFTER_SECONDS));
-
-    $this->artisan('schedule:heartbeat', ['--check' => true])
-        ->expectsOutputToContain('scheduler heartbeat OK')
-        ->assertSuccessful();
-});
-
-it('fails the check on a stale stamp and says how old it is', function (): void {
-    $age = ScheduleHeartbeatCommand::STALE_AFTER_SECONDS + 73;
-
+it('checks a stored stamp of a given age', function (?int $age, string $expectedOutput, bool $succeeds): void {
     Redis::shouldReceive('connection')->with('default')->andReturn(heartbeatRedisAged($age));
 
-    $this->artisan('schedule:heartbeat', ['--check' => true])
-        ->expectsOutputToContain("scheduler heartbeat STALE: {$age}s old")
-        ->assertFailed();
-});
+    $result = $this->artisan('schedule:heartbeat', ['--check' => true])
+        ->expectsOutputToContain($expectedOutput);
 
-it('fails the check when no stamp exists at all', function (): void {
-    Redis::shouldReceive('connection')->with('default')->andReturn(heartbeatRedisAged(null));
-
-    $this->artisan('schedule:heartbeat', ['--check' => true])
-        ->expectsOutputToContain('scheduler heartbeat MISSING')
-        ->assertFailed();
-});
+    $succeeds ? $result->assertSuccessful() : $result->assertFailed();
+})->with([
+    'fresh stamp passes' => [ScheduleHeartbeatCommand::STALE_AFTER_SECONDS, 'scheduler heartbeat OK', true],
+    'stale stamp fails and reports its age' => [
+        ScheduleHeartbeatCommand::STALE_AFTER_SECONDS + 73,
+        'scheduler heartbeat STALE: '.(ScheduleHeartbeatCommand::STALE_AFTER_SECONDS + 73).'s old',
+        false,
+    ],
+    'missing stamp fails' => [null, 'scheduler heartbeat MISSING', false],
+]);
 
 it('fails the check with a distinct message when redis itself is unreachable', function (): void {
-    Redis::shouldReceive('connection')->with('default')->andThrow(new RuntimeException('Connection refused'));
+    heartbeatRedisUnreachable();
 
     $this->artisan('schedule:heartbeat', ['--check' => true])
         ->expectsOutputToContain('scheduler heartbeat UNKNOWN: redis unreachable')
