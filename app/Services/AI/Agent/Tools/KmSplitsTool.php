@@ -36,7 +36,7 @@ final class KmSplitsTool extends ActivityTool
     {
         $summary = $this->summary();
         /** @var list<array<string, mixed>> $perKm */
-        $perKm = is_array($summary['per_km'] ?? null) ? array_values($summary['per_km']) : [];
+        $perKm = array_values($summary->perKm() ?? []);
 
         [$fastest, $slowest] = self::extremes($perKm);
         $sampled = self::sample($perKm, $fastest, $slowest);
@@ -46,9 +46,9 @@ final class KmSplitsTool extends ActivityTool
             'omitted_km' => count($perKm) - count($sampled),
             'fastest_km' => $fastest === null ? null : ($perKm[$fastest]['km'] ?? null),
             'slowest_km' => $slowest === null ? null : ($perKm[$slowest]['km'] ?? null),
-            'finish_partial' => $summary['partial_split'] ?? null,
-            'negative_split' => $summary['negative_split'] ?? null,
-            'pace_consistency' => PaceConsistency::label($summary['pace_variability_sec'] ?? null),
+            'finish_partial' => $summary->partialSplit(),
+            'negative_split' => $summary->negativeSplit(),
+            'pace_consistency' => PaceConsistency::label($summary->paceVariabilitySec()),
         ];
     }
 

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Agent\Tools;
 
-use App\Services\Run\Metrics\StreamSummary;
-
 final class HrZonesTool extends ActivityTool
 {
     public function name(): string
@@ -25,8 +23,8 @@ final class HrZonesTool extends ActivityTool
         $summary = $this->summary();
 
         return [
-            'zone_pct' => StreamSummary::fromArray($summary)->zonePct(),
-            'time_in_zone_min' => $summary['time_in_zone_min'] ?? null,
+            'zone_pct' => $summary->zonePct(),
+            'time_in_zone_min' => $summary->zoneMinutes(),
             'trimp' => $this->detail->trimp_edwards,
         ];
     }

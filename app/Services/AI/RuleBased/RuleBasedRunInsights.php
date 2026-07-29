@@ -56,14 +56,14 @@ final readonly class RuleBasedRunInsights
 
     public function technical(ActivityDetail $detail): string
     {
-        $summary = $detail->streamSummary();
+        $summary = StreamSummary::fromArray($detail->stream_summary);
 
         $parts = [];
         $this->appendCadencePart($detail, $parts);
         $this->appendHrPart($detail, $parts);
         $this->appendDecouplingPart($detail, $summary, $parts);
         $this->appendElevationPart($detail, $parts);
-        if (PaceConsistency::isNotablyUneven($summary['pace_variability_sec'] ?? null)) {
+        if (PaceConsistency::isNotablyUneven($summary->paceVariabilitySec())) {
             $parts[] = 'pace agak bervariasi, coba jaga konsistensi';
         }
 
@@ -123,17 +123,15 @@ final readonly class RuleBasedRunInsights
     }
 
     /**
-     * @param  array<string, mixed>  $summary
      * @param  list<string>  $parts
      */
-    private function appendDecouplingPart(ActivityDetail $detail, array $summary, array &$parts): void
+    private function appendDecouplingPart(ActivityDetail $detail, StreamSummary $summary, array &$parts): void
     {
-        $raw = $summary['decoupling_pct'] ?? null;
-        if ($raw === null) {
+        $decoupling = $summary->decouplingPct();
+        if ($decoupling === null) {
             return;
         }
 
-        $decoupling = (float) $raw;
         $label = 'decoupling +' . number_format($decoupling, 1) . '%';
 
         if ($decoupling > self::DECOUPLING_HIGH) {
@@ -159,13 +157,13 @@ final readonly class RuleBasedRunInsights
 
     public function splits(ActivityDetail $detail): string
     {
-        $summary = $detail->streamSummary();
-        /** @var array<int, array{km: int, pace: string}>|null $perKm */
-        $perKm = $summary['per_km'] ?? null;
+        $summary = StreamSummary::fromArray($detail->stream_summary);
+        /** @var array<int, array{km: int, pace: string}> $perKm */
+        $perKm = $summary->perKm() ?? [];
 
         /** @var list<string> $parts */
         $parts = [];
-        if (is_array($perKm) && count($perKm) >= 2) {
+        if (count($perKm) >= 2) {
             $consistencyStated = $this->appendSplitDirectionPart($summary, $perKm, $parts);
             $this->appendKmRangePart($perKm, $parts);
             $this->appendVariabilityCommentPart($summary, $parts, $consistencyStated);
@@ -189,13 +187,12 @@ final readonly class RuleBasedRunInsights
      * Returns true when the note already asserted pace consistency, so the
      * variability layer can skip restating the same idea.
      *
-     * @param  array<string, mixed>  $summary
      * @param  array<int, array{km: int, pace: string}>  $perKm
      * @param  list<string>  $parts
      */
-    private function appendSplitDirectionPart(array $summary, array $perKm, array &$parts): bool
+    private function appendSplitDirectionPart(StreamSummary $summary, array $perKm, array &$parts): bool
     {
-        if (($summary['negative_split'] ?? null) === true) {
+        if ($summary->negativeSplit() === true) {
             $parts[] = 'negative split, paruh kedua lebih cepat dari awal';
 
             return false;
@@ -277,16 +274,15 @@ final readonly class RuleBasedRunInsights
     }
 
     /**
-     * @param  array<string, mixed>  $summary
      * @param  list<string>  $parts
      */
-    private function appendVariabilityCommentPart(array $summary, array &$parts, bool $consistencyStated): void
+    private function appendVariabilityCommentPart(StreamSummary $summary, array &$parts, bool $consistencyStated): void
     {
         if ($consistencyStated) {
             return;
         }
 
-        $raw = $summary['pace_variability_sec'] ?? null;
+        $raw = $summary->paceVariabilitySec();
         if (! PaceConsistency::isPraiseworthy($raw)) {
             return;
         }
@@ -301,13 +297,12 @@ final readonly class RuleBasedRunInsights
      * a finish, without treating it as a full km. Skipped when the run ends on a
      * whole km.
      *
-     * @param  array<string, mixed>  $summary
      * @param  list<string>  $parts
      */
-    private function appendFinishPart(array $summary, array &$parts): void
+    private function appendFinishPart(StreamSummary $summary, array &$parts): void
     {
-        $partial = $summary['partial_split'] ?? null;
-        if (! is_array($partial) || ! isset($partial['distance_m'], $partial['pace'])) {
+        $partial = $summary->partialSplit();
+        if ($partial === null || ! isset($partial['distance_m'], $partial['pace'])) {
             return;
         }
 
@@ -317,7 +312,7 @@ final readonly class RuleBasedRunInsights
 
     public function zones(ActivityDetail $detail): string
     {
-        $summary = $detail->streamSummary();
+        $summary = StreamSummary::fromArray($detail->stream_summary);
         $zonePct = $this->resolveZonePercentages($summary);
 
         if ($zonePct === []) {
@@ -336,7 +331,7 @@ final readonly class RuleBasedRunInsights
         }
 
         $easyPct = (float) ($zonePct['Z1'] ?? 0) + (float) ($zonePct['Z2'] ?? 0);
-        $hardPct = StreamSummary::fromArray($summary)->hardZoneShare();
+        $hardPct = $summary->hardZoneShare();
         $discipline = match (true) {
             $easyPct >= 80 => 'base building proper, mayoritas easy',
             $easyPct >= 60 => 'kombinasi easy dan moderate, seimbang',
@@ -356,18 +351,17 @@ final readonly class RuleBasedRunInsights
     }
 
     /**
-     * @param  array<string, mixed>  $summary
      * @return array<string, float>
      */
-    private function resolveZonePercentages(array $summary): array
+    private function resolveZonePercentages(StreamSummary $summary): array
     {
-        $zonePct = StreamSummary::fromArray($summary)->zonePct();
+        $zonePct = $summary->zonePct();
         if ($zonePct !== []) {
             return $zonePct;
         }
 
-        $zoneMin = $summary['time_in_zone_min'] ?? null;
-        if (! is_array($zoneMin)) {
+        $zoneMin = $summary->zoneMinutes();
+        if ($zoneMin === null) {
             return [];
         }
 
