@@ -249,8 +249,8 @@ export default function ZonaHR({
                     </p>
                     <div className="grid gap-3">
                         {ZONE_KEYS.map((key) => (
-                            <div key={key} className="grid grid-cols-[1fr_auto_auto] items-center gap-3">
-                                <Eyebrow as="span" token="micro" tone="ink-2">
+                            <div key={key} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3">
+                                <Eyebrow as="span" token="micro" tone="ink-2" className="truncate">
                                     {ZONE_LABEL[key]}
                                 </Eyebrow>
                                 <BoundaryInput
