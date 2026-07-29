@@ -32,7 +32,7 @@ it('dispatches briefing group and daily row types for each active user', functio
     $requestCalls = [];
 
     $service = Mockery::mock(AnalysisService::class);
-    $service->shouldReceive('requestBriefingGroup')
+    $service->shouldReceive('requestBriefing')
         ->once()
         ->andReturnUsing(function (User $u, string $discriminator) use (&$briefingGroupCalls): void {
             $briefingGroupCalls[] = ['user_id' => $u->id, 'discriminator' => $discriminator];
@@ -91,7 +91,7 @@ it('skips the demo user even with recent analyzed activity', function (): void {
     Activity::factory()->for($demo)->create(['analyzed_at' => Carbon::today()->subDays(1)]);
 
     $service = Mockery::mock(AnalysisService::class);
-    $service->shouldReceive('requestBriefingGroup')->once();
+    $service->shouldReceive('requestBriefing')->once();
     $service->shouldReceive('request')->times(2)->andReturn(new Analysis());
     $this->app->instance(AnalysisService::class, $service);
 
@@ -162,7 +162,7 @@ it('reports zero active users when no analyzed activities are recent', function 
     Activity::factory()->for($user)->create(['analyzed_at' => Carbon::today()->subDays(15)]);
 
     $service = Mockery::mock(AnalysisService::class);
-    $service->shouldNotReceive('requestBriefingGroup');
+    $service->shouldNotReceive('requestBriefing');
     $service->shouldNotReceive('request');
     $this->app->instance(AnalysisService::class, $service);
 

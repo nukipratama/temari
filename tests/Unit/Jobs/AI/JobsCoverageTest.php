@@ -53,41 +53,39 @@ function rowOf(string $subjectType, int $subjectId, AnalysisType $type, ?string 
     ]);
 }
 
-// ── AnalyzeBriefingJob (group) ────────────────────────────────────────
+// ── AnalyzeBriefingJob (row) ──────────────────────────────────────────
 
 it('AnalyzeBriefingJob writes the briefing suggestion row Done', function (): void {
     $user = User::factory()->create();
     mockNarrator(BriefingNarrator::class, 'S');
 
-    new AnalyzeBriefingJob($user->id, '2026-05-18')->handle(app(AnalysisService::class));
+    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingSuggestion, '2026-05-18');
+    new AnalyzeBriefingJob($row->id)->handle(app(AnalysisService::class));
 
-    $rows = Analysis::query()
-        ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
-        ->where('subject_id', $user->id)
-        ->where('discriminator', '2026-05-18')
-        ->get()
-        ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
-
-    expect($rows[AnalysisType::BriefingSuggestion->value]->content)->toBe('S')
-        ->and($rows[AnalysisType::BriefingSuggestion->value]->status)->toBe(AnalysisStatus::Done);
+    expect($row->fresh()->content)->toBe('S')
+        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
 });
 
 it('AnalyzeBriefingJob falls back to today when discriminator is null', function (): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
     $user = User::factory()->create();
-    mockNarrator(BriefingNarrator::class, 'S');
+    $mock = Mockery::mock(BriefingNarrator::class);
+    $mock->shouldReceive('generate')
+        ->withArgs(fn (User $u, Carbon $asOf): bool => $asOf->toDateString() === '2026-05-19')
+        ->andReturn('S');
+    app()->instance(BriefingNarrator::class, $mock);
 
-    new AnalyzeBriefingJob($user->id)->handle(app(AnalysisService::class));
+    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingSuggestion, null);
+    new AnalyzeBriefingJob($row->id)->handle(app(AnalysisService::class));
 
-    expect(Analysis::query()->where('subject_id', $user->id)->count())->toBe(1);
+    expect($row->fresh()->content)->toBe('S');
     Carbon::setTestNow();
 });
 
-it('AnalyzeBriefingJob does not re-invoke the narrator when its rows are already Done (no double-bill)', function (): void {
+it('AnalyzeBriefingJob does not re-invoke the narrator when its row is already Done (no double-bill)', function (): void {
     $user = User::factory()->create();
 
-    // Pre-seed the group row as Done so the idempotency guard short-circuits.
-    Analysis::factory()->done('preexisting')->create([
+    $row = Analysis::factory()->done('preexisting')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingSuggestion,
@@ -98,53 +96,35 @@ it('AnalyzeBriefingJob does not re-invoke the narrator when its rows are already
     $mock->shouldNotReceive('generate');
     app()->instance(BriefingNarrator::class, $mock);
 
-    new AnalyzeBriefingJob($user->id, '2026-05-18')->handle(app(AnalysisService::class));
+    new AnalyzeBriefingJob($row->id)->handle(app(AnalysisService::class));
 
-    $rows = Analysis::query()
-        ->where('subject_id', $user->id)
-        ->where('discriminator', '2026-05-18')
-        ->get();
-
-    expect($rows)->toHaveCount(1);
-    foreach ($rows as $row) {
-        expect($row->status)->toBe(AnalysisStatus::Done)
-            ->and($row->content)->toBe('preexisting');
-    }
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->toBe('preexisting');
 });
 
-it('AnalyzeBriefingJob falls back to rule-based content for every row when generation content-filters', function (): void {
+it('AnalyzeBriefingJob falls back to rule-based content when generation content-filters', function (): void {
     $user = User::factory()->create();
 
     $mock = Mockery::mock(BriefingNarrator::class);
     $mock->shouldReceive('generate')->andThrow(new ContentFilterException('content filtered'));
     app()->instance(BriefingNarrator::class, $mock);
 
-    new AnalyzeBriefingJob($user->id, '2026-05-18')->handle(app(AnalysisService::class));
+    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingSuggestion, '2026-05-18');
+    new AnalyzeBriefingJob($row->id)->handle(app(AnalysisService::class));
 
-    $rows = Analysis::query()
-        ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
-        ->where('subject_id', $user->id)
-        ->where('discriminator', '2026-05-18')
-        ->get();
-
-    expect($rows)->toHaveCount(1);
-    foreach ($rows as $row) {
-        expect($row->status)->toBe(AnalysisStatus::Done)
-            ->and($row->content)->not->toBeEmpty();
-    }
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->not->toBeEmpty();
 });
 
-it('AnalyzeBriefingJob marks all rows failed when user missing', function (): void {
-    new AnalyzeBriefingJob(99999, '2026-05-18')->handle(app(AnalysisService::class));
+it('AnalyzeBriefingJob marks the row Failed without rethrowing when the user is missing', function (): void {
+    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, 99999, AnalysisType::BriefingSuggestion, '2026-05-18');
 
-    $rows = Analysis::query()->where('subject_id', 99999)->get();
-    expect($rows)->toHaveCount(1);
-    foreach ($rows as $row) {
-        expect($row->status)->toBe(AnalysisStatus::Failed);
-    }
+    new AnalyzeBriefingJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
-it('AnalyzeBriefingJob failed() marks a stranded group row Failed', function (): void {
+it('AnalyzeBriefingJob failed() marks a stranded row Failed', function (): void {
     $user = User::factory()->create();
 
     $suggestion = Analysis::factory()->create([
@@ -155,13 +135,13 @@ it('AnalyzeBriefingJob failed() marks a stranded group row Failed', function ():
         'status' => AnalysisStatus::Processing,
     ]);
 
-    new AnalyzeBriefingJob($user->id, '2026-05-18')->failed(new RuntimeException('worker timeout'));
+    new AnalyzeBriefingJob($suggestion->id)->failed(new RuntimeException('worker timeout'));
 
     expect($suggestion->fresh()->status)->toBe(AnalysisStatus::Failed)
         ->and($suggestion->fresh()->error)->toBe('worker timeout');
 });
 
-it('AnalyzeBriefingJob failed() spares a group row that is already Done', function (): void {
+it('AnalyzeBriefingJob failed() spares a row that is already Done', function (): void {
     $user = User::factory()->create();
 
     $suggestion = Analysis::factory()->done('kept')->create([
@@ -171,7 +151,7 @@ it('AnalyzeBriefingJob failed() spares a group row that is already Done', functi
         'discriminator' => '2026-05-18',
     ]);
 
-    new AnalyzeBriefingJob($user->id, '2026-05-18')->failed(new RuntimeException('worker timeout'));
+    new AnalyzeBriefingJob($suggestion->id)->failed(new RuntimeException('worker timeout'));
 
     expect($suggestion->fresh()->status)->toBe(AnalysisStatus::Done)
         ->and($suggestion->fresh()->content)->toBe('kept');

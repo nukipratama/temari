@@ -5,44 +5,25 @@ declare(strict_types=1);
 namespace App\Jobs\AI;
 
 use App\Exceptions\AI\UnavailableException;
+use App\Models\AI\Analysis;
 use App\Models\User;
-use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\BriefingNarrator;
-use Illuminate\Support\Carbon;
-use Override;
 
-class AnalyzeBriefingJob extends AnalyzeGroupJob
+/**
+ * Standalone row job for the daily briefing suggestion, the sibling of
+ * {@see AnalyzeBriefingMascotVoiceJob} and
+ * {@see AnalyzeBriefingFeaturedKartuVoiceJob}: the three briefing surfaces share
+ * a subject type but each retries without re-spending LLM tokens on the others.
+ */
+class AnalyzeBriefingJob extends AnalyzeRowJob
 {
-    #[Override]
-    public static function groupedTypes(): array
+    protected function generateContent(Analysis $row): string
     {
-        return AnalysisType::groupedBy(self::class);
-    }
-
-    #[Override]
-    public static function subjectType(): string
-    {
-        return AnalysisType::BRIEFING_SUBJECT_TYPE;
-    }
-
-    #[Override]
-    protected function resolveSubject(int $id): User
-    {
-        $user = User::query()->find($id);
+        $user = User::query()->find($row->subject_id);
         if ($user === null) {
-            throw new UnavailableException("User {$id} not found");
+            throw new UnavailableException("User {$row->subject_id} not found");
         }
 
-        return $user;
-    }
-
-    #[Override]
-    protected function generateAll(mixed $subject): array
-    {
-        /** @var User $subject */
-        $asOf = $this->discriminator !== null ? Carbon::parse($this->discriminator) : Carbon::today();
-        return [
-            AnalysisType::BriefingSuggestion->value => app(BriefingNarrator::class)->generate($subject, $asOf),
-        ];
+        return app(BriefingNarrator::class)->generate($user, $this->discriminatorDate($row));
     }
 }

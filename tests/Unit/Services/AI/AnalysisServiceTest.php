@@ -241,16 +241,24 @@ it('activity group debounces — 3 sibling-type requests dispatch only one Analy
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
 });
 
-it('requestBriefingGroup creates the suggestion row and dispatches one AnalyzeBriefingJob', function (): void {
+it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefingJob', function (): void {
     $user = User::factory()->create();
 
-    $this->service->requestBriefingGroup($user, '2026-05-18');
+    $this->service->requestBriefing($user, '2026-05-18');
 
-    // Mascot voice is split into its own row job — not in this group anymore.
+    // Mascot voice and featured-kartu voice are dispatched by their own callers.
     expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(1);
+
+    $row = Analysis::query()
+        ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::BriefingSuggestion)
+        ->where('discriminator', '2026-05-18')
+        ->firstOrFail();
+
     Bus::assertDispatched(
         AnalyzeBriefingJob::class,
-        fn (AnalyzeBriefingJob $job): bool => $job->subjectId === $user->id && $job->discriminator === '2026-05-18',
+        fn (AnalyzeBriefingJob $job): bool => $job->analysisId === $row->id,
     );
 });
 
@@ -572,11 +580,11 @@ it('does not create a duplicate weekly_recap row when re-requested', function ()
             ->count())->toBe(1);
 });
 
-it('does not create a duplicate briefing-group row when re-requested', function (): void {
+it('does not create a duplicate briefing row when re-requested', function (): void {
     $user = User::factory()->create();
 
-    $this->service->requestBriefingGroup($user, '2026-05-18');
-    $this->service->requestBriefingGroup($user, '2026-05-18');
+    $this->service->requestBriefing($user, '2026-05-18');
+    $this->service->requestBriefing($user, '2026-05-18');
 
     expect(Analysis::query()
         ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
