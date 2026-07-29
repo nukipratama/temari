@@ -7,6 +7,7 @@ namespace App\Services\Run\Story;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Services\Geo\PolylineProjector;
+use App\Services\Run\Metrics\DistanceFormatter;
 use Imagick;
 use ImagickPixel;
 
@@ -305,7 +306,7 @@ SVG;
             return '0';
         }
 
-        $km = number_format($distanceMeters / 1000, 2, '.', '');
+        $km = number_format(DistanceFormatter::km($distanceMeters, DistanceFormatter::EXACT), 2, '.', '');
 
         return rtrim(rtrim($km, '0'), '.');
     }

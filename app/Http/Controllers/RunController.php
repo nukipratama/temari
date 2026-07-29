@@ -13,6 +13,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\PostRunNoteReader;
 use App\Services\Run\Story\PastYouMatcher;
@@ -442,7 +443,7 @@ class RunController extends Controller
             'current' => self::summariseDetail($current, $currentPace),
             'pace_improvement_sec' => $paceImprovement,
             'hr_improvement_bpm' => $hrImprovement,
-            'total_km' => round((float) ($bounds->getAttribute('total_distance') ?? 0) / 1000, 1),
+            'total_km' => DistanceFormatter::km((float) ($bounds->getAttribute('total_distance') ?? 0)),
         ];
     }
 
@@ -454,7 +455,7 @@ class RunController extends Controller
         return [
             'date' => $detail->start_date_local?->toDateString(),
             'name' => $detail->name,
-            'distance_km' => $detail->distance !== null ? round((float) $detail->distance / 1000, 2) : null,
+            'distance_km' => DistanceFormatter::kmOrNull($detail->distance, DistanceFormatter::EXACT),
             'pace_sec_per_km' => $paceSec,
             'avg_hr' => $detail->average_heartrate !== null ? (float) $detail->average_heartrate : null,
         ];

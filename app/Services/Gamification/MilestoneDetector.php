@@ -7,6 +7,7 @@ namespace App\Services\Gamification;
 use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
 
 /**
@@ -102,7 +103,7 @@ class MilestoneDetector
             $milestones[] = [
                 'kind' => 'longest_ever',
                 'label' => 'Lari terjauh sampai sekarang',
-                'body' => sprintf('%.2f km, melampaui rekor jarak kamu sebelumnya.', $distanceMeters / 1000),
+                'body' => sprintf('%.2f km, melampaui rekor jarak kamu sebelumnya.', DistanceFormatter::km($distanceMeters, DistanceFormatter::EXACT)),
                 'priority' => 90,
             ];
         }

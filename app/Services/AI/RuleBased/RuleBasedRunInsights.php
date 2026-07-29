@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\RuleBased;
 
 use App\Models\ActivityDetail;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\StreamSummary;
 
@@ -306,7 +307,7 @@ final readonly class RuleBasedRunInsights
             return;
         }
 
-        $km = number_format((float) $partial['distance_m'] / 1000, 1);
+        $km = DistanceFormatter::kmString((float) $partial['distance_m']);
         $parts[] = "sisa {$km} km ditutup di {$partial['pace']}";
     }
 

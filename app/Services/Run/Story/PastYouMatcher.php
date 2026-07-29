@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Services\Run\Metrics\DistanceFormatter;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -147,7 +148,7 @@ class PastYouMatcher
             'pace_diff_sec' => $match['pace_diff_sec'],
             'time_diff_sec' => $match['time_diff_sec'],
             'hr_diff_bpm' => $match['hr_diff_bpm'],
-            'past_km' => round((float) ($past->distance ?? 0) / 1000, 1),
+            'past_km' => DistanceFormatter::km((float) ($past->distance ?? 0)),
             'past_date' => $past->start_date_local?->toDateString(),
         ];
     }

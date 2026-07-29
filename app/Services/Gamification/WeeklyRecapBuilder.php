@@ -7,6 +7,7 @@ namespace App\Services\Gamification;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\DistanceFormatter;
 use Illuminate\Support\Carbon;
 
 /**
@@ -120,7 +121,7 @@ readonly class WeeklyRecapBuilder
             'rarity' => $best->rarity->value,
             'special_move' => $best->special_move,
             'mood' => $mood !== null ? (string) $mood : null,
-            'distance_km' => $detail?->distance !== null ? round($detail->distance / 1000, 2) : null,
+            'distance_km' => DistanceFormatter::kmOrNull($detail?->distance, DistanceFormatter::EXACT),
             'polyline' => $detail?->summary_polyline,
             'date' => $detail?->start_date_local?->toDateString(),
         ];

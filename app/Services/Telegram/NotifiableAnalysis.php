@@ -9,6 +9,7 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PaceFormatter;
 use Illuminate\Support\Carbon;
@@ -177,7 +178,7 @@ class NotifiableAnalysis
 
         $parts = [];
         if ($detail->distance !== null) {
-            $parts[] = number_format($detail->distance / 1000, 2) . ' km';
+            $parts[] = DistanceFormatter::kmString($detail->distance, DistanceFormatter::EXACT) . ' km';
         }
         if ($detail->moving_time !== null) {
             $parts[] = $this->formatDuration($detail->moving_time);
@@ -295,7 +296,7 @@ class NotifiableAnalysis
     /** Metres to a short "8,2K" label: km at 1 decimal, id comma, trailing ",0" dropped (5000 → "5K"). */
     private function shortDistance(int $meters): string
     {
-        $rounded = number_format(round($meters / 1000, 1), 1, ',', '.');
+        $rounded = number_format(DistanceFormatter::km((float) $meters), 1, ',', '.');
 
         return rtrim(rtrim($rounded, '0'), ',') . 'K';
     }
