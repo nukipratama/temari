@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import Eyebrow from '@/components/ui/Eyebrow';
 import LinkCard from '@/components/ui/LinkCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StatTile from '@/components/ui/StatTile';
@@ -37,14 +38,14 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
                         {run.name ?? 'Lari'}
                     </div>
                     {dateUpper && (
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
+                        <Eyebrow tone="ink-2" className="mt-1 flex flex-wrap items-center gap-x-2">
                             <span>{dateUpper}</span>
                             {timeLabel && <><span aria-hidden>·</span><span>{timeLabel}</span></>}
                             {note && <><span aria-hidden>·</span><MoodChip mood={note.mood} size="sm" /></>}
-                        </div>
+                        </Eyebrow>
                     )}
                     {(locationShort || weatherLabel) && (
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono font-bold text-[11px] uppercase tracking-[0.1em] text-ink-2">
+                        <Eyebrow tracking="0.1" tone="ink-2" className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             {locationShort && (
 <span className="inline-flex items-center gap-1">
     <Icon icon="mdi:map-marker-outline" width={11} height={11} aria-hidden />
@@ -53,7 +54,7 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
                             )}
                             {locationShort && weatherLabel && <span aria-hidden>·</span>}
                             {weatherLabel && <span>{weatherLabel}</span>}
-                        </div>
+                        </Eyebrow>
                     )}
                 </div>
             </div>
@@ -74,9 +75,9 @@ export default function LastLariCard({ run, pose, note }: Readonly<{ run: Activi
                     <p className="min-w-0">{renderBold(note.oneline)}</p>
                 </div>
             )}
-            <span className="mt-auto font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-horizon-deep">
+            <Eyebrow as="span" tracking="0.12" weight="semibold" tone="horizon-deep" className="mt-auto">
                 Lihat detail lari →
-            </span>
+            </Eyebrow>
         </LinkCard>
     );
 }

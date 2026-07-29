@@ -2,6 +2,7 @@ import { Link, usePage, usePoll } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { useEffect } from 'react';
 import Card from '@/components/ui/Card';
+import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import Temari from '@/components/temari/Temari';
@@ -80,9 +81,9 @@ export default function EmptyRunsState() {
             <div className="flex flex-col items-center gap-5 text-center">
                 <Temari pose="reading" size={140} />
                 <div>
-                    <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
+                    <Eyebrow tracking="0.18" tone="horizon" className="mb-3">
                         {hero.eyebrow}
-                    </div>
+                    </Eyebrow>
                     <h2 className="font-display text-display-sm text-ink">{hero.headline}</h2>
                     <p className="mx-auto mt-3 max-w-sm font-display text-quote-sm italic leading-relaxed text-ink-2">
                         &ldquo;{hero.copy}&rdquo;

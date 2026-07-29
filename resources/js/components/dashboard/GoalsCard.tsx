@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import Eyebrow from '@/components/ui/Eyebrow';
 import LinkCard from '@/components/ui/LinkCard';
 import SectionLabel from '@/components/ui/SectionLabel';
 import ProgressBar from '@/components/ui/ProgressBar';
@@ -36,9 +37,9 @@ export default function GoalsCard() {
                                     <span className="font-sans text-sm font-semibold tabular-nums text-ink">
                                         {formatGoalNumber(goal.current)}<span className="text-ink-3">/</span>{formatGoalNumber(goal.target)}
                                     </span>
-                                    <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-3">
+                                    <Eyebrow as="span" tracking="0.1" weight="semibold" tone="ink-3">
                                         {goal.unit}
-                                    </span>
+                                    </Eyebrow>
                                 </div>
                                 <ProgressBar
                                     value={ratio}

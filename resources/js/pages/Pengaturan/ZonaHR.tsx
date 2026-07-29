@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import BackLink from '@/components/ui/BackLink';
 import Card from '@/components/ui/Card';
+import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -246,9 +247,9 @@ export default function ZonaHR({
                     <div className="grid gap-3">
                         {ZONE_KEYS.map((key) => (
                             <div key={key} className="grid grid-cols-[1fr_auto_auto] items-center gap-3">
-                                <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-2">
+                                <Eyebrow as="span" tracking="0.12" weight="none" tone="ink-2">
                                     {ZONE_LABEL[key]}
-                                </span>
+                                </Eyebrow>
                                 <BoundaryInput
                                     label={`${key} batas bawah`}
                                     testId={`zone-${key}-lo`}
@@ -313,9 +314,9 @@ function NumberField({ label, suffix, value, error, onChange }: Readonly<NumberF
     const errorId = useId();
     return (
         <label className="block">
-            <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+            <Eyebrow as="span" tracking="0.12" weight="none" tone="ink-3" className="mb-1.5 block">
                 {label}
-            </span>
+            </Eyebrow>
             <span className="flex items-center gap-2 rounded-xl border border-cream-deep bg-cream px-4 py-2.5 focus-within:border-horizon">
                 <input
                     type="number"

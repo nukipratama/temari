@@ -12,6 +12,7 @@ import {
 import { MOOD_FILL, MOOD_LABEL, moodSigilColor } from '@/lib/mood';
 import RouteGlyph from '@/components/card/RouteGlyph';
 import ZoneBar from '@/components/card/ZoneBar';
+import Eyebrow from '@/components/ui/Eyebrow';
 import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
 import type { CSSProperties } from 'react';
 
@@ -208,7 +209,7 @@ export default function Kartu({
                     <span className={cn('font-collectible font-bold tabular-nums leading-none', RARITY_TEXT[rarity], SIZE_KM[size])}>
                         {km}
                     </span>
-                    <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-cream">km</span>
+                    <Eyebrow as="span" size="9" tracking="0.12" weight="none" tone="cream">km</Eyebrow>
                 </div>
 
                 {/* Badges — centred row below the KM hero. */}
@@ -349,7 +350,7 @@ function StatGrid({ stats, durasi }: Readonly<{ stats: KartuStats | undefined; d
         <dl className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5 text-center">
             {cells.map((cell) => (
                 <div key={cell.label} className="min-w-0">
-                    <dt className="font-mono text-[8px] uppercase tracking-[0.1em] text-cream">{cell.label}</dt>
+                    <Eyebrow as="dt" size="8" weight="none" tone="cream">{cell.label}</Eyebrow>
                     <dd className="truncate font-mono text-[12px] font-semibold tabular-nums text-cream">{cell.value}</dd>
                 </div>
             ))}

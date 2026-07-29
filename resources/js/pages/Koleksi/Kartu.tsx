@@ -5,6 +5,7 @@ import MotionLink from '@/components/MotionLink';
 import ConfettiBurst from '@/components/ConfettiBurst';
 import Card from '@/components/ui/Card';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
+import Eyebrow from '@/components/ui/Eyebrow';
 import Kartu from '@/components/card/Kartu';
 import KartuMount from '@/components/card/KartuMount';
 import FeaturedCardHero from '@/components/card/FeaturedCardHero';
@@ -218,9 +219,9 @@ function RarityFilter({
 }>) {
     return (
         <nav aria-label="Filter kartu" className="mt-8 flex flex-wrap items-center gap-2">
-            <span className="mr-1.5 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
+            <Eyebrow as="span" tone="ink-2" className="mr-1.5">
                 Tingkat
-            </span>
+            </Eyebrow>
             <FilterPill href="/kartu" label="Semua" active={selected === null} dot={null} />
             {RARITY_ORDER.map((r) => (
                 <FilterPill
@@ -357,9 +358,9 @@ function LegendaryTease() {
                 ?
             </div>
             <div className="flex-1">
-                <div className="mb-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-rarity-legendary">
+                <Eyebrow tracking="0.16" className="mb-1.5 text-rarity-legendary">
                     ★ Legendaris · belum kebuka
-                </div>
+                </Eyebrow>
                 <p className="font-display text-sm italic leading-relaxed text-ink-2">
                     Kartu paling langka. Kebuka pas satu lari numpukin banyak hal kece sekaligus: PR, makin
                     ngebut di paruh kedua, lari jauh, plus badge-badge kamu.

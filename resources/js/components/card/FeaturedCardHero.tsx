@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { Icon } from '@iconify/react';
+import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PillLink from '@/components/ui/PillLink';
 import { type KartuStats } from '@/components/card/Kartu';
@@ -56,23 +57,23 @@ export default function FeaturedCardHero({
             <HeroPanel className="min-h-[300px] lg:px-14 lg:py-12">
                 {/* Left copy — kept clear of the bleeding card on desktop. */}
                 <div className="relative lg:max-w-[58%]">
-                    <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
+                    <Eyebrow tracking="0.2" tone="horizon" className="mb-3">
                         {eyebrow}
-                    </div>
+                    </Eyebrow>
                     <h2 className="font-display text-display-xl text-cream">
                         <em className="italic text-horizon">{name}</em>
                     </h2>
-                    <div className="mt-3 font-mono text-[13px] font-bold uppercase tracking-[0.12em] text-cream/85">
+                    <Eyebrow size="13" tracking="0.12" className="mt-3 text-cream/85">
                         {catchLine}
-                    </div>
+                    </Eyebrow>
 
                     {cells.length > 0 && (
                         <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3">
                             {cells.map((cell) => (
                                 <div key={cell.label}>
-                                    <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-on-sky">
+                                    <Eyebrow as="dt" size="10" tracking="0.12" weight="none" tone="ink-on-sky">
                                         {cell.label}
-                                    </dt>
+                                    </Eyebrow>
                                     <dd className="font-mono text-[15px] font-semibold tabular-nums text-cream">
                                         {cell.value}
                                     </dd>

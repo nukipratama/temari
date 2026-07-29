@@ -2,6 +2,7 @@ import { motion, useMotionValue, useTransform } from 'framer-motion';
 import type { KeyboardEvent } from 'react';
 import { cn } from '@/lib/cn';
 import { BunnyGlyph } from '@/components/BrandMark';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { RARITY_HEX } from '@/lib/runcard';
 import type { Rarity } from '@/types/inertia';
 
@@ -128,9 +129,9 @@ export default function PackWrapper({ rarity, onOpen, className }: Readonly<Pack
                 Tarik <span aria-hidden>→</span>
             </span>
 
-            <div className="absolute inset-x-0 bottom-5 text-center font-mono text-[11px] uppercase tracking-[0.14em] text-ink/60">
+            <Eyebrow weight="none" className="absolute inset-x-0 bottom-5 text-center text-ink/60">
                 Tarik atau ketuk buat buka
-            </div>
+            </Eyebrow>
         </motion.div>
     );
 }

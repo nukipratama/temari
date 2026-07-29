@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react';
 import { appLayout } from '@/layouts/appLayout';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import Card from '@/components/ui/Card';
+import Eyebrow from '@/components/ui/Eyebrow';
 import ProgressBar from '@/components/ui/ProgressBar';
 import SectionLabel from '@/components/ui/SectionLabel';
 import PageContainer from '@/components/ui/PageContainer';
@@ -141,9 +142,9 @@ function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
                         <span className="text-ink-3">/</span>
                         {formatGoalNumber(goal.target)}
                     </span>
-                    <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-3">
+                    <Eyebrow as="span" tracking="0.1" weight="semibold" tone="ink-3">
                         {goal.unit}
-                    </span>
+                    </Eyebrow>
                 </div>
                 <ProgressBar
                     value={ratio}

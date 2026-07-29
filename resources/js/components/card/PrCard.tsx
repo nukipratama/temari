@@ -1,4 +1,5 @@
 import Card from '@/components/ui/Card';
+import Eyebrow from '@/components/ui/Eyebrow';
 import LinkCard from '@/components/ui/LinkCard';
 import { aktivitasUrl } from '@/lib/routes';
 
@@ -31,14 +32,14 @@ export default function PrCard({
 }: Readonly<PrCardProps>) {
     const body = (
         <>
-            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-horizon-deep">
+            <Eyebrow tracking="0.16" tone="horizon-deep">
                 {category}
-            </div>
+            </Eyebrow>
             <div className={TIME_CLASS[size]}>{time}</div>
             {runName && <div className="font-sans text-xs text-ink-2">{runName}</div>}
-            <div className="font-mono font-bold text-[11px] uppercase tracking-[0.12em] text-ink-2">
+            <Eyebrow tracking="0.12" tone="ink-2">
                 {setAt}
-            </div>
+            </Eyebrow>
         </>
     );
 

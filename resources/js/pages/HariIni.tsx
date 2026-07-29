@@ -3,6 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 import { appLayout } from '@/layouts/appLayout';
 import { type TemariPose } from '@/components/temari/TemariProto';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
+import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import KataTemariCompact from '@/components/dashboard/KataTemariCompact';
 import VitalChips from '@/components/dashboard/VitalChips';
@@ -60,9 +61,9 @@ export default function HariIni({
                 {/* HEADLINE */}
                 <header className="grid grid-cols-1 items-end gap-9 lg:grid-cols-[1.4fr_1fr]">
                     <div>
-                        <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-2">
+                        <Eyebrow tracking="0.18" tone="ink-2" className="mb-3.5">
                             {dateLine}
-                        </div>
+                        </Eyebrow>
                         <h1 className="font-display text-display-2xl text-ink">
                             Halo, {firstName}<br />
                             <span className="italic text-horizon">{vibeSubtitle}</span>

@@ -1,3 +1,4 @@
+import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 
@@ -28,9 +29,9 @@ export default function MilestoneStrip({
             )}
         >
             <div className="flex flex-wrap items-center gap-4">
-                <div className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-horizon">
+                <Eyebrow tone="horizon">
                     ★ Target berikutnya
-                </div>
+                </Eyebrow>
                 <div className="font-display text-headline-sm text-cream">
                     Sub-<em className="italic">{targetLabel}</em> di {distanceLabel}
                 </div>

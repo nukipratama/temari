@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { appLayout } from '@/layouts/appLayout';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
+import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PersonaBar, { type PersonaSlice } from '@/components/PersonaBar';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -72,9 +73,9 @@ export default function Aku({
             <Head title="Aku" />
             <PageContainer>
                 <header className="mb-8">
-                    <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-ink-2 lg:text-xs">
+                    <Eyebrow tracking="0.18" tone="ink-2" className="mb-3.5 lg:text-xs">
                         {eyebrowParts.join(' · ')}
-                    </div>
+                    </Eyebrow>
                     <h1 className="font-display text-display-lg text-ink">
                         {firstName ? `${firstName} Runner,` : 'Aku,'}<br />
                         <em className="italic text-horizon-deep">ceritanya.</em>
@@ -180,7 +181,7 @@ function ProgressionSection({
         <Card as="section" padding="lg" className="mt-4">
             {tabs.length > 1 && (
                 <div className="mb-6 flex flex-wrap items-center gap-2" role="tablist" aria-label="Pilih jarak">
-                    <span className="mr-1 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">Jarak</span>
+                    <Eyebrow as="span" tone="ink-2" className="mr-1">Jarak</Eyebrow>
                     {tabs.map((c) => (
                         <button
                             key={c}

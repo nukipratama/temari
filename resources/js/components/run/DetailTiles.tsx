@@ -1,4 +1,5 @@
 import Card from '@/components/ui/Card';
+import Eyebrow from '@/components/ui/Eyebrow';
 import MetricExplainer from '@/components/MetricExplainer';
 import type { MetricKey } from '@/lib/metricGlossary';
 import { cn } from '@/lib/cn';
@@ -79,10 +80,10 @@ export default function DetailTiles({
                     key={t.label}
                     className="rounded-xl border border-cream-deep bg-cream px-4 py-3.5"
                 >
-                    <div className="mb-1.5 inline-flex items-center gap-1 font-mono font-bold text-[11px] uppercase tracking-[0.14em] text-ink-2">
+                    <Eyebrow tone="ink-2" className="mb-1.5 inline-flex items-center gap-1">
                         {t.label}
                         {t.metricKey && <MetricExplainer metricKey={t.metricKey} size="xs" />}
-                    </div>
+                    </Eyebrow>
                     <div
                         className={cn(
                             'font-sans font-bold leading-none tabular-nums tracking-[-0.01em] text-[22px]',

@@ -4,6 +4,7 @@ import { appLayout } from '@/layouts/appLayout';
 import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/JourneyStrip';
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import Card from '@/components/ui/Card';
+import Eyebrow from '@/components/ui/Eyebrow';
 import PillButton from '@/components/ui/PillButton';
 import PageHero from '@/components/ui/PageHero';
 import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
@@ -170,9 +171,9 @@ function RankedList({
         <Card as="section" padding="none" className="overflow-hidden shadow-sm">
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
                 <div className="font-display text-lg italic text-ink">{label}</div>
-                <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                <Eyebrow tracking="0.12" weight="none" tone="ink-3">
                     {runs.length} lari · diurutkan
-                </div>
+                </Eyebrow>
             </header>
             <div>
                 {runs.map((activity) => (

@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
 import { motion, useDragControls } from 'framer-motion';
 import { useCallback, useRef, useState } from 'react';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';
@@ -197,9 +198,9 @@ export default function RiwayatFilter<V extends string, B extends string = strin
                     </div>
                     {(totalActive > 0 || onReset) && (
                         <div className="flex items-center justify-between border-b border-line/60 px-3 py-2">
-                            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
+                            <Eyebrow as="span" tone="ink-2">
                                 Filter
-                            </span>
+                            </Eyebrow>
                             {totalActive > 0 && onReset && (
                                 <button
                                     type="button"
@@ -227,9 +228,9 @@ export default function RiwayatFilter<V extends string, B extends string = strin
 function RangeSectionView<V extends string>({ section }: Readonly<{ section: RangeSection<V> }>) {
     return (
         <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
-            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
+            <Eyebrow tone="ink-2" className="mb-2">
                 Rentang waktu
-            </div>
+            </Eyebrow>
             <div className="flex flex-col gap-1">
                 {section.options.map((opt) => {
                     const active = opt.value === section.value;
@@ -261,9 +262,9 @@ function RangeSectionView<V extends string>({ section }: Readonly<{ section: Ran
 function MoodSectionView({ section }: Readonly<{ section: MoodSection }>) {
     return (
         <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
-            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
+            <Eyebrow tone="ink-2" className="mb-2">
                 Mood
-            </div>
+            </Eyebrow>
             <div className="grid grid-cols-2 gap-1">
                 {section.options.map(({ mood, label, swatchClass }) => {
                     const active = section.selected.has(mood);
@@ -305,9 +306,9 @@ function SearchSectionView({ section }: Readonly<{ section: SearchSection }>) {
 
     return (
         <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
-            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
+            <Eyebrow tone="ink-2" className="mb-2">
                 Cari nama lari
-            </div>
+            </Eyebrow>
             <div className="relative">
                 <Icon
                     icon="mdi:magnify"
@@ -347,9 +348,9 @@ function OptionListSectionView<T extends string>({
 }: Readonly<{ title: string; section: { value: T | null; options: ReadonlyArray<{ value: T; label: string; hint?: string }>; onSelect: (value: T) => void } }>) {
     return (
         <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
-            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2">
+            <Eyebrow tone="ink-2" className="mb-2">
                 {title}
-            </div>
+            </Eyebrow>
             <div className="flex flex-col gap-1">
                 {section.options.map((opt) => {
                     const active = opt.value === section.value;

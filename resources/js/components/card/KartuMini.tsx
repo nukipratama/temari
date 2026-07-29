@@ -8,6 +8,7 @@ import {
     RARITY_TEXT,
 } from '@/lib/runcard';
 import RouteGlyph from '@/components/card/RouteGlyph';
+import Eyebrow from '@/components/ui/Eyebrow';
 import Temari from '@/components/temari/Temari';
 import { moodSigilColor } from '@/lib/mood';
 import type { CardEdition, Mood, Rarity } from '@/types/inertia';
@@ -79,9 +80,9 @@ export default function KartuMini({
                     <span aria-hidden className={cn('text-[8px] leading-none', RARITY_TEXT[rarity])}>
                         {RARITY_SYMBOL[rarity]}
                     </span>
-                    <span className={cn('font-mono text-[8px] font-bold uppercase tracking-[0.12em]', RARITY_TEXT[rarity])}>
+                    <Eyebrow as="span" size="8" tracking="0.12" className={RARITY_TEXT[rarity]}>
                         {RARITY_LABELS[rarity]}
-                    </span>
+                    </Eyebrow>
                 </div>
                 <div className="mt-0.5 line-clamp-2 font-collectible text-[12px] font-semibold uppercase leading-[1.06] tracking-[0.01em] text-cream">
                     {name}

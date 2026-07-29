@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { appLayout } from '@/layouts/appLayout';
 import Chip from '@/components/ui/Chip';
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
+import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -105,18 +106,18 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                             <TemariProto pose="proud" size={220} equipped={previewEquipped} animate />
                         </div>
                         <div>
-                            <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-horizon">
+                            <Eyebrow tracking="0.18" tone="horizon" className="mb-3">
                                 ★ Yang lagi dipake
-                            </div>
+                            </Eyebrow>
                             <h2 className="mb-5 font-display text-display-md text-cream">
                                 <em className="italic text-horizon">Lagi pake yang ini.</em>
                             </h2>
                             <ul className="grid gap-2 sm:grid-cols-2">
                                 {SLOT_ORDER.map((slot) => (
                                     <li key={slot} className="flex items-center justify-between rounded-xl bg-cream/[0.06] px-4 py-3">
-                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-on-sky">
+                                        <Eyebrow as="span" weight="none" tone="ink-on-sky">
                                             {SLOT_LABEL[slot]}
-                                        </span>
+                                        </Eyebrow>
                                         <span className="font-display text-base italic text-cream">
                                             {equippedLabelFor(slot, equipped, items)}
                                         </span>

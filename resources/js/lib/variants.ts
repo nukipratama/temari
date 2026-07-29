@@ -153,6 +153,48 @@ export const iconButtonVariants = cva(
     },
 );
 
+export const eyebrowVariants = cva('font-mono uppercase', {
+    variants: {
+        size: {
+            '8': 'text-[8px]',
+            '9': 'text-[9px]',
+            '10': 'text-[10px]',
+            '11': 'text-[11px]',
+            '12': 'text-[12px]',
+            '13': 'text-[13px]',
+            xs: 'text-xs',
+            sm: 'text-sm',
+        },
+        tracking: {
+            '0.06': 'tracking-[0.06em]',
+            '0.1': 'tracking-[0.1em]',
+            '0.12': 'tracking-[0.12em]',
+            '0.14': 'tracking-[0.14em]',
+            '0.16': 'tracking-[0.16em]',
+            '0.18': 'tracking-[0.18em]',
+            '0.2': 'tracking-[0.2em]',
+        },
+        weight: {
+            bold: 'font-bold',
+            semibold: 'font-semibold',
+            none: '',
+        },
+        tone: {
+            'ink-2': 'text-ink-2',
+            'ink-3': 'text-ink-3',
+            horizon: 'text-horizon',
+            'horizon-deep': 'text-horizon-deep',
+            'ink-on-sky': 'text-ink-on-sky',
+            cream: 'text-cream',
+        },
+    },
+    defaultVariants: {
+        size: '11',
+        tracking: '0.14',
+        weight: 'bold',
+    },
+});
+
 /**
  * Rarity → border + corner-flag scale. Mirrors RARITY_BORDER (lib/runcard.ts)
  * plus the per-component flag treatments in card/Kartu.tsx (RARITY_FLAG_BG)
