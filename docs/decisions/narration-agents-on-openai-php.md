@@ -6,6 +6,8 @@ status: accepted
 reviewed: 2026-07-27
 code_refs:
   - app/Services/AI/StructuredChatCaller.php
+  - app/Services/AI/Agent/AgentLoop.php
+  - app/Services/AI/AzureFailureMapper.php
   - app/Services/AI/Agent/AgentBudget.php
   - app/Services/AI/Agent/AgentToolbox.php
   - app/Services/AI/Agent/AgentTool.php
@@ -29,9 +31,9 @@ Doing that needs tool calling, and the plan was to migrate the LLM layer to `lar
 
 `Gateway/OpenAi/Concerns/ParsesTextResponses.php`, which the Azure provider reuses, maps `'incomplete' => FinishReason::Length` unconditionally and never reads `incomplete_details.reason`; `parseTextResponse` then discards the raw payload, so `Meta` keeps only provider, model and citations. Azure's **output-side content filter** — an HTTP 200 marked `incomplete` with reason `content_filter` and an empty body — would arrive indistinguishable from ordinary token truncation. The caller would apply the token-bump retry, get filtered again, and fail the block — the same bug we fixed once already, returning as a randomly flaky narrator.
 
-The migration was never a prerequisite for tools. `Tool/FunctionTool.php`, `Output/OutputFunctionToolCall.php`, `Input/FunctionToolCallOutput.php` and `CreateResponseIncompleteDetails.php` all exist on the current client, so the agent loop is buildable with the filter detection at [StructuredChatCaller::isOutputContentFiltered()](app/Services/AI/StructuredChatCaller.php) intact.
+The migration was never a prerequisite for tools. `Tool/FunctionTool.php`, `Output/OutputFunctionToolCall.php`, `Input/FunctionToolCallOutput.php` and `CreateResponseIncompleteDetails.php` all exist on the current client, so the agent loop is buildable with the filter detection at [AzureFailureMapper::isOutputContentFiltered()](app/Services/AI/AzureFailureMapper.php) intact.
 
-The loop lives in the existing seam rather than beside it ([`converse()`](app/Services/AI/StructuredChatCaller.php)), so the content-filter strip-retry, the truncation retry, the exception taxonomy, the config circuit breaker and metering apply to an agent run exactly as they do to a one-shot call. A narrator without a toolbox still issues exactly one request.
+The loop lives in the existing seam rather than beside it ([`converse()`](app/Services/AI/Agent/AgentLoop.php)), so the content-filter strip-retry, the truncation retry, the exception taxonomy, the config circuit breaker and metering apply to an agent run exactly as they do to a one-shot call. A narrator without a toolbox still issues exactly one request.
 
 Three properties are deliberate:
 

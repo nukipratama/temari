@@ -5,21 +5,13 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Exceptions\AI\ContentFilterException;
-use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Services\AI\Agent\AgentBudget;
-use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\AgentLoop;
 use App\Services\AI\Narrators\NarratorContinuity;
 use Illuminate\Support\Facades\Log;
 use JsonException;
-use OpenAI\Exceptions\ErrorException;
-use OpenAI\Exceptions\RateLimitException;
-use OpenAI\Exceptions\ServerException;
-use OpenAI\Exceptions\TransporterException;
 use OpenAI\Responses\Responses\CreateResponse;
-use OpenAI\Responses\Responses\Output\OutputFunctionToolCall;
-use Psr\Http\Message\ResponseInterface;
-use Throwable;
 
 /**
  * Thin shared wrapper around the Azure OpenAI Responses API call. Handles the
@@ -44,7 +36,7 @@ final readonly class StructuredChatCaller
     public function __construct(
         private AzureOpenAIClient $azure,
         private TokenUsageRecorder $usageRecorder,
-        private AzureConfigCircuitBreaker $configBreaker,
+        private AgentLoop $loop,
     ) {
     }
 
@@ -102,7 +94,7 @@ final readonly class StructuredChatCaller
 
         try {
             try {
-                [$response, $input] = $this->converse($kind, $payload, $toolbox, $budget, $startedAt);
+                [$response, $input] = $this->loop->converse($kind, $payload, $toolbox, $budget, $startedAt);
             } catch (ContentFilterException $e) {
                 // A stored continuity line fed back as input can trip Azure's filter.
                 // Strip the continuity keys and retry once against the clean context;
@@ -123,7 +115,7 @@ final readonly class StructuredChatCaller
                     'stripped_keys' => $strippedKeys,
                 ]);
 
-                [$response, $input] = $this->converse($kind, $payload, $toolbox, $budget, $startedAt);
+                [$response, $input] = $this->loop->converse($kind, $payload, $toolbox, $budget, $startedAt);
             }
 
             // Truncated structured output is unparseable, so retry once at a higher
@@ -139,9 +131,7 @@ final readonly class StructuredChatCaller
                         'retry_max_output_tokens' => $retryMaxTokens,
                     ]);
                     $effectiveMaxTokens = $retryMaxTokens;
-                    $payload = self::forcedAnswerPayload($payload, $input, $effectiveMaxTokens);
-                    $response = $this->createResponse($kind, $payload, $startedAt);
-                    $budget->recordStep(...self::usageOf($response));
+                    $response = $this->loop->forceAnswer($kind, $payload, $input, $effectiveMaxTokens, $budget, $startedAt);
                 }
             }
 
@@ -233,272 +223,6 @@ final readonly class StructuredChatCaller
         );
     }
 
-    /**
-     * Take the model's turn until it stops asking for tools, and return both the
-     * answering response and the conversation that produced it.
-     *
-     * Without a toolbox this is one request, which is every narrator that has
-     * not been given tools yet.
-     *
-     * Termination is guaranteed twice over: the budget forbids tools once a
-     * ceiling is hit, and a turn that was already forbidden them is returned
-     * whatever it says. A capped run answers from what it managed to read
-     * rather than failing — the user gets narration either way.
-     *
-     * @param  array<string, mixed>  $payload
-     * @return array{0: CreateResponse, 1: list<array<string, mixed>>}
-     */
-    private function converse(
-        string $kind,
-        array $payload,
-        ?AgentToolbox $toolbox,
-        AgentBudget $budget,
-        float $startedAt,
-    ): array {
-        /** @var list<array<string, mixed>> $input */
-        $input = $payload['input'];
-
-        if ($toolbox === null) {
-            $response = $this->createResponse($kind, $payload, $startedAt);
-            $budget->recordStep(...self::usageOf($response));
-
-            return [$response, $input];
-        }
-
-        while (true) {
-            $toolsAllowed = $budget->allowsToolStep();
-            $payload['input'] = $input;
-            $payload['tool_choice'] = $toolsAllowed ? 'auto' : 'none';
-
-            $response = $this->createResponse($kind, $payload, $startedAt);
-            $budget->recordStep(...self::usageOf($response));
-
-            $calls = self::functionCalls($response);
-            if ($calls === [] || ! $toolsAllowed) {
-                return [$response, $input];
-            }
-
-            foreach ($calls as $call) {
-                $input[] = $call->toArray();
-                $input[] = [
-                    'type' => 'function_call_output',
-                    'call_id' => $call->callId,
-                    'output' => $toolbox->invoke($call->name, $call->arguments),
-                ];
-            }
-
-            Log::info('narrator.ai.tool_step', [
-                'kind' => $kind,
-                'step' => $budget->steps(),
-                'tools' => array_map(fn (OutputFunctionToolCall $call): string => $call->name, $calls),
-            ]);
-
-            if (! $budget->allowsToolStep()) {
-                Log::warning('narrator.ai.agent_capped', [
-                    'kind' => $kind,
-                    'reason' => $budget->exhaustedReason(),
-                    'steps' => $budget->steps(),
-                    'total_tokens' => $budget->totalTokens(),
-                ]);
-            }
-        }
-    }
-
-    /**
-     * The function calls the model asked for this turn, if any.
-     *
-     * @return list<OutputFunctionToolCall>
-     */
-    private static function functionCalls(CreateResponse $response): array
-    {
-        return array_values(array_filter(
-            $response->output,
-            fn (object $item): bool => $item instanceof OutputFunctionToolCall,
-        ));
-    }
-
-    /**
-     * The turn's usage, in the order {@see AgentBudget::recordStep()} takes it.
-     *
-     * The last two are breakdowns the provider reports alongside the totals:
-     * cached input (billed at a discount) and reasoning output (billed at the
-     * full output rate). Both are absent on responses that carry neither.
-     *
-     * @return array{0: int, 1: int, 2: int, 3: int, 4: int} input, output, total, cached, reasoning
-     */
-    private static function usageOf(CreateResponse $response): array
-    {
-        return [
-            (int) ($response->usage->inputTokens ?? 0),
-            (int) ($response->usage->outputTokens ?? 0),
-            (int) ($response->usage->totalTokens ?? 0),
-            (int) ($response->usage->inputTokensDetails->cachedTokens ?? 0),
-            (int) ($response->usage->outputTokensDetails->reasoningTokens ?? 0),
-        ];
-    }
-
-    /**
-     * The payload replayed when the run must answer now: the conversation so
-     * far, a raised token cap, and no further tools.
-     *
-     * @param  array<string, mixed>  $payload
-     * @param  list<array<string, mixed>>  $input
-     * @return array<string, mixed>
-     */
-    private static function forcedAnswerPayload(array $payload, array $input, int $maxTokens): array
-    {
-        $payload['input'] = $input;
-        $payload['max_output_tokens'] = $maxTokens;
-        if (isset($payload['tools'])) {
-            $payload['tool_choice'] = 'none';
-        }
-
-        return $payload;
-    }
-
-    /**
-     * Issue one Responses API request, mapping any Azure failure into the
-     * caller's transient/terminal exception taxonomy.
-     *
-     * @param  array<string, mixed>  $payload
-     */
-    private function createResponse(string $kind, array $payload, float $startedAt): CreateResponse
-    {
-        try {
-            $response = $this->azure->client()->responses()->create($payload);
-        } catch (Throwable $e) {
-            Log::warning('narrator.ai.call', [
-                'kind' => $kind,
-                'status' => 'fail',
-                'error' => $e->getMessage(),
-                'latency_ms' => self::latencyMs($startedAt),
-            ]);
-
-            // A wrong API key (401/403) or wrong base URL/host (DNS/connection)
-            // is a config/auth failure: count it toward the Azure config breaker
-            // so a persistent misconfig trips and generation pauses cleanly (rows
-            // stay Pending) instead of burning the retry budget on every row.
-            if (self::isConfigAuthFailure($e)) {
-                $this->configBreaker->recordFailure();
-            }
-
-            throw self::mapAzureThrowable($e);
-        }
-
-        // The call reached Azure and authenticated, so any prior config-failure
-        // streak is stale: reset the breaker (fast no-op when already closed).
-        $this->configBreaker->recordSuccess();
-
-        // Output-side filtering returns HTTP 200 with an empty body rather than
-        // throwing a content_filter error, so it would otherwise decode as
-        // non-JSON and dead-letter. Map it to the same ContentFilterException as
-        // input-side so it flows through the strip-retry + rule-based fallback.
-        if (self::isOutputContentFiltered($response)) {
-            throw new ContentFilterException('Azure OpenAI call failed: output filtered by content management policy');
-        }
-
-        return $response;
-    }
-
-    /**
-     * Whether $e is an Azure *config/auth* failure: a permanent 401/403 (wrong
-     * API key / deployment access) or a connection/DNS/timeout failure (wrong
-     * base URL/host). These feed the config circuit breaker; a single one is
-     * still transient, the breaker's consecutive-failure streak is what
-     * distinguishes a persistent misconfig from a one-off blip.
-     */
-    private static function isConfigAuthFailure(Throwable $e): bool
-    {
-        if ($e instanceof ErrorException && in_array($e->getStatusCode(), [401, 403], true)) {
-            return true;
-        }
-
-        return $e instanceof TransporterException;
-    }
-
-    /**
-     * Classify an Azure OpenAI throwable. Rate-limit (429), server error (5xx),
-     * and connection/timeout failures are transient and should let the queue
-     * retry; everything else is terminal and fails the row.
-     */
-    private static function mapAzureThrowable(Throwable $e): Throwable
-    {
-        $message = 'Azure OpenAI call failed: '.$e->getMessage();
-
-        // A content-filter rejection is an input-driven terminal 400: retrying
-        // the same prompt just re-trips the filter. Surface the distinct type so
-        // the caller can strip continuity context and retry, and the job can
-        // degrade to rule-based content instead of dead-lettering.
-        if (self::isContentFilter($e)) {
-            return new ContentFilterException($message, previous: $e);
-        }
-
-        $response = self::transientResponse($e);
-
-        if ($response === false) {
-            return new UnavailableException($message, previous: $e);
-        }
-
-        return new TransientUpstreamException(
-            $message,
-            $response !== null ? self::retryAfterSeconds($response) : null,
-            $e,
-        );
-    }
-
-    /**
-     * Whether $e is an Azure content-filter rejection. Detected primarily by the
-     * error code (`content_filter`), with a defensive substring fallback on the
-     * message for the prose forms Azure sometimes returns without the code.
-     */
-    private static function isContentFilter(Throwable $e): bool
-    {
-        if (! $e instanceof ErrorException) {
-            return false;
-        }
-
-        if ($e->getErrorCode() === 'content_filter') {
-            return true;
-        }
-
-        $message = strtolower($e->getMessage());
-
-        return str_contains($message, 'content management policy')
-            || str_contains($message, 'content_filter');
-    }
-
-    /**
-     * Resolve whether $e is a transient upstream failure, returning its HTTP
-     * response (for `Retry-After`), `null` when transient but response-less
-     * (connection/timeout), or `false` when the failure is terminal.
-     */
-    private static function transientResponse(Throwable $e): ResponseInterface|null|false
-    {
-        if ($e instanceof RateLimitException || $e instanceof ServerException) {
-            return $e->response;
-        }
-
-        if ($e instanceof ErrorException && ($e->getStatusCode() === 429 || $e->getStatusCode() >= 500)) {
-            return $e->response;
-        }
-
-        // TransporterException = connection refused / DNS / read timeout: transient
-        // but response-less. Anything else is a terminal (permanent) failure.
-        return $e instanceof TransporterException ? null : false;
-    }
-
-    /**
-     * Read Azure's `Retry-After` header (delta-seconds form) if present.
-     */
-    private static function retryAfterSeconds(ResponseInterface $response): ?int
-    {
-        $header = trim($response->getHeaderLine('Retry-After'));
-        if ($header === '' || ! ctype_digit($header)) {
-            return null;
-        }
-
-        return (int) $header;
-    }
 
     private static function isTruncated(CreateResponse $response): bool
     {
@@ -506,16 +230,6 @@ final readonly class StructuredChatCaller
             && $response->incompleteDetails?->reason === 'max_output_tokens';
     }
 
-    /**
-     * Whether Azure filtered the *output*: a 200 response marked incomplete with
-     * an explicit content_filter reason, the output-side twin of the thrown
-     * input-side content_filter 400.
-     */
-    private static function isOutputContentFiltered(CreateResponse $response): bool
-    {
-        return $response->status === 'incomplete'
-            && $response->incompleteDetails?->reason === 'content_filter';
-    }
 
     /**
      * @param  array<string, mixed>  $decoded

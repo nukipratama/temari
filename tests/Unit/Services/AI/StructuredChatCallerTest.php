@@ -12,6 +12,7 @@ use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Services\AI\Narrators\NarratorContinuity;
 use App\Models\AI\TokenUsage;
+use App\Services\AI\Agent\AgentLoop;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
@@ -209,7 +210,7 @@ it('does not record usage when Azure call fails', function (): void {
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
     $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
 
-    $caller = new StructuredChatCaller($azure, app(TokenUsageRecorder::class), app(AzureConfigCircuitBreaker::class));
+    $caller = new StructuredChatCaller($azure, app(TokenUsageRecorder::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class)));
 
     expect(fn () => $caller->call('briefing', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class);
@@ -227,7 +228,7 @@ it('routes the per-kind client and records the resolved deployment', function ()
     $azure->shouldReceive('deploymentFor')->with('briefing')->andReturn('gpt-4o-briefing');
     $azure->shouldReceive('client')->andReturn($client);
 
-    new StructuredChatCaller($azure, app(TokenUsageRecorder::class), app(AzureConfigCircuitBreaker::class))
+    new StructuredChatCaller($azure, app(TokenUsageRecorder::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class)))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
     expect(TokenUsage::query()->first()->model)->toBe('gpt-4o-briefing');
@@ -427,6 +428,22 @@ it('retries truncation at most once and surfaces the still-truncated second resp
 
     // Only two responses were queued; a third call would throw "No fake responses left".
     expect($payload)->toBe(['headline' => 'two']);
+});
+
+it('records the truncated first turn when the higher-cap retry itself blows up', function (): void {
+    $caller = callerWithResponses([
+        fakeAzureResponse(json_encode(['headline' => 'partial'], JSON_THROW_ON_ERROR), 'incomplete', 'max_output_tokens', 80, 200),
+        new RuntimeException('upstream blew up on the retry'),
+    ]);
+
+    expect(fn () => $caller->call('briefing', 'sys', [], 'schema', ['headline'], new ChatCallOptions(maxTokens: 200)))
+        ->toThrow(UnavailableException::class);
+
+    $row = TokenUsage::query()->first();
+    expect($row)->not->toBeNull()
+        ->and($row->prompt_tokens)->toBe(80)
+        ->and($row->completion_tokens)->toBe(200)
+        ->and($row->steps)->toBe(1);
 });
 
 // ── content-filter: distinct terminal type + continuity-strip retry ───

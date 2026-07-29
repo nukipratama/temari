@@ -5,6 +5,7 @@ use OpenAI\Responses\Meta\MetaInformation;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Agent\AgentLoop;
 use App\Services\AI\Agent\AgentTool;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
@@ -174,7 +175,11 @@ function fakeStructuredCaller(ClientFake $client, string $deployment = 'gpt-test
     $azure->shouldReceive('client')->andReturn($client);
     $azure->shouldReceive('deploymentFor')->andReturn($deployment);
 
-    return new StructuredChatCaller($azure, app(TokenUsageRecorder::class), app(AzureConfigCircuitBreaker::class));
+    return new StructuredChatCaller(
+        $azure,
+        app(TokenUsageRecorder::class),
+        new AgentLoop($azure, app(AzureConfigCircuitBreaker::class)),
+    );
 }
 
 /**
