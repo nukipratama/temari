@@ -313,7 +313,7 @@ describe('WeekSection', () => {
             );
         });
 
-        it('offers no send while the recap narration is not done yet', () => {
+        it('offers no send while the narration is pending, and keeps the rule-based fallback visible so the block is not empty', () => {
             render(
                 <WeekSection
                     bucket={bucket()}
@@ -336,7 +336,6 @@ describe('WeekSection', () => {
             );
 
             expect(screen.queryByText('Kirim notifikasi')).not.toBeInTheDocument();
-            // The rule-based fallback keeps the block from looking empty.
             expect(screen.getByText(/Minggu ini kamu lari 4x sejauh 35.5 km/)).toBeInTheDocument();
         });
 

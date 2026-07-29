@@ -21,6 +21,9 @@ const FORM_CHIP_CLASS: Record<FormStatus, string> = {
     overreaching: 'bg-mood-lemes/15 text-mood-lemes',
 };
 
+const MONOTONY_ALERT_AT = 1.5;
+const DECOUPLING_ALERT_PCT_AT = 8;
+
 interface WeekSectionProps {
     bucket: WeekBucket;
     snapshot: WeeklySnapshotWithRecap | null;
@@ -130,8 +133,8 @@ function WeeklyStatusChips({ snapshot }: Readonly<{ snapshot: WeeklySnapshotWith
     // Monotony ≥ 1.5 and decoupling ≥ 8% are the runner-relevant alarm thresholds.
     // Below those, render the chip in the neutral cream tone so the row doesn't
     // light up with semantic color when nothing is wrong.
-    const monotonyAlert = snapshot.monotony !== null && snapshot.monotony >= 1.5;
-    const decouplingAlert = snapshot.avg_decoupling !== null && snapshot.avg_decoupling >= 8;
+    const monotonyAlert = snapshot.monotony !== null && snapshot.monotony >= MONOTONY_ALERT_AT;
+    const decouplingAlert = snapshot.avg_decoupling !== null && snapshot.avg_decoupling >= DECOUPLING_ALERT_PCT_AT;
     return (
         <>
             {snapshot.atl_7d !== null && (

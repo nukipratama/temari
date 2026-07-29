@@ -8,18 +8,11 @@ import { RANGE_FILTER_OPTIONS, labelFor, type RangeFilterValue } from '@/pages/R
 
 interface InlineNoteProps {
     icon: string;
-    /** The note's sentence. */
     children: ReactNode;
-    /** Optional trailing control, e.g. the way out of the scope the note describes. */
     action?: ReactNode;
     className?: string;
 }
 
-/**
- * One-line explanation of why the list below is not the plain full history:
- * a cream-deep strip with an icon, a sentence, and optionally one way out.
- * Every reason Jejak narrows or truncates its list speaks in this same voice.
- */
 export default function InlineNote({ icon, children, action, className }: Readonly<InlineNoteProps>) {
     return (
         <Card tone="cream-deep" padding="sm" className={cn('flex items-center gap-2.5', className)}>

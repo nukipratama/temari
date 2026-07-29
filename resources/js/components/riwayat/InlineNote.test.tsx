@@ -42,8 +42,7 @@ describe('RangeWidenedNote', () => {
         expect(screen.getByText(/Rentang diperlebar otomatis ke Setahun penuh/)).toBeInTheDocument();
     });
 
-    // Widened all the way there is no "range" left to name, so the copy changes.
-    it('says it is showing everything when widened to the full history', () => {
+    it('names no range at all when widened to the full history', () => {
         render(<RangeWidenedNote rangeFilter="all" />);
 
         expect(screen.getByText(/Menampilkan semua lari kamu/)).toBeInTheDocument();

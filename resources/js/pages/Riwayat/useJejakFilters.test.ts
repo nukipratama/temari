@@ -59,8 +59,7 @@ function hookProps(overrides: Partial<Parameters<typeof useJejakFilters>[0]> = {
 }
 
 describe('filterQuery', () => {
-    // Defaults are omitted so the common unfiltered view stays a clean /aktivitas.
-    it('omits every default so the unfiltered view is a bare url', () => {
+    it('omits every default so the unfiltered view is a bare /aktivitas', () => {
         expect(filterQuery(state())).toEqual({});
     });
 
@@ -189,7 +188,6 @@ describe('useJejakFilters', () => {
         expect(result.current.chips).toEqual([]);
     });
 
-    // The range alone is not "a filter" — it is the default browse window.
     it.each([
         ['mood', { moodFilter: ['enteng' as Mood] }],
         ['distance', { distanceFilter: '21up' as const }],
@@ -201,8 +199,13 @@ describe('useJejakFilters', () => {
         expect(result.current.anyFilterActive).toBe(true);
     });
 
-    // Ranking globally is a mode switch, not a re-ordering.
-    it('switches to the ranked mode for a non-default sort', () => {
+    it('does not count a widened range on its own as an active filter', () => {
+        const { result } = renderHook(() => useJejakFilters(hookProps({ rangeFilter: '1y' })));
+
+        expect(result.current.anyFilterActive).toBe(false);
+    });
+
+    it('switches to the ranked mode, not a re-ordering, for a non-default sort', () => {
         const { result } = renderHook(() => useJejakFilters(hookProps({ sortMode: 'longest' })));
 
         expect(result.current.ranked).toBe(true);
@@ -242,18 +245,14 @@ describe('useJejakFilters', () => {
         ]);
     });
 
-    // Every chip drops its own axis and leaves the others alone, so a narrowed
-    // list can be widened one reason at a time.
     it.each([
-        // Removing the week scope hands the range back its say in the URL.
         ['week:2026-05-17', { range: '1y', mood: 'nyala', dist: '21up', q: 'tempo', sort: 'longest' }],
-        // A week scope pins its own window, so the range was never in the URL.
         ['range:1y', { week: '2026-05-17', mood: 'nyala', dist: '21up', q: 'tempo', sort: 'longest' }],
         ['sort:longest', { week: '2026-05-17', mood: 'nyala', dist: '21up', q: 'tempo' }],
         ['dist:21up', { week: '2026-05-17', mood: 'nyala', q: 'tempo', sort: 'longest' }],
         ['mood:nyala', { week: '2026-05-17', dist: '21up', q: 'tempo', sort: 'longest' }],
         ['search', { week: '2026-05-17', mood: 'nyala', dist: '21up', sort: 'longest' }],
-    ])('drops the %s chip and keeps the rest of the filter', (key, expected) => {
+    ])('drops the %s chip and keeps every other axis in the url', (key, expected) => {
         vi.mocked(router.get).mockReset();
         const { result } = renderHook(() =>
             useJejakFilters(

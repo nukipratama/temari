@@ -187,7 +187,6 @@ export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
     return buckets;
 }
 
-/** The server-applied filter props the hook derives everything else from. */
 interface JejakFilterProps {
     runs: ReadonlyArray<RunWithDetail>;
     weeklySnapshots: ReadonlyArray<WeeklySnapshotWithRecap>;
@@ -199,18 +198,12 @@ interface JejakFilterProps {
     weekFilter: string | null;
 }
 
-/** The one-tap offer to pick up the filter the user last used. */
 interface ResumeOffer {
     summary: string;
     apply: () => void;
     dismiss: () => void;
 }
 
-/**
- * Every derivation Jejak makes from its server-applied filter props: the week
- * buckets, the popover's section props, the active-filter chips, and the resume
- * offer. The page itself stays composition.
- */
 export function useJejakFilters({
     runs,
     weeklySnapshots,

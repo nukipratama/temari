@@ -9,8 +9,7 @@ describe('ResumeFilterChip', () => {
         expect(screen.getByText(/Lanjutkan: Half ke atas · Nyala/)).toBeInTheDocument();
     });
 
-    // An offer, never an auto-apply: nothing happens until the user taps.
-    it('resumes only when tapped', () => {
+    it('never resumes on its own, only when tapped', () => {
         const onResume = vi.fn();
         render(<ResumeFilterChip summary="Nyala" onResume={onResume} onDismiss={vi.fn()} />);
 
