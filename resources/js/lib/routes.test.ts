@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { aktivitasUrl } from './routes';
+import { aktivitasUrl, analysisTriggerUrl } from './routes';
+import type { AnalysisPayload } from '@/types/inertia';
 
 describe('aktivitasUrl', () => {
     it('reads activity_id from a row that carries it', () => {
@@ -8,5 +9,45 @@ describe('aktivitasUrl', () => {
 
     it('reads id from an Activity', () => {
         expect(aktivitasUrl({ id: 99 })).toBe('/aktivitas/99');
+    });
+});
+
+describe('analysisTriggerUrl', () => {
+    it('omits the query string when there is no discriminator', () => {
+        expect(analysisTriggerUrl({ type: 'briefing_suggestion', subject_id: 7, discriminator: null })).toBe(
+            '/api/analyses/briefing_suggestion/7/trigger',
+        );
+    });
+
+    it('appends the discriminator as an encoded query parameter', () => {
+        expect(analysisTriggerUrl({ type: 'weekly_recap', subject_id: 3, discriminator: '2026-05-19' })).toBe(
+            '/api/analyses/weekly_recap/3/trigger?discriminator=2026-05-19',
+        );
+    });
+
+    it('percent-encodes a discriminator carrying url-significant characters', () => {
+        expect(analysisTriggerUrl({ type: 'briefing_suggestion', subject_id: 1, discriminator: 'a b&c=d/e' })).toBe(
+            '/api/analyses/briefing_suggestion/1/trigger?discriminator=a%20b%26c%3Dd%2Fe',
+        );
+    });
+
+    it('treats an empty discriminator as absent', () => {
+        expect(analysisTriggerUrl({ type: 'briefing_suggestion', subject_id: 5, discriminator: '' })).toBe(
+            '/api/analyses/briefing_suggestion/5/trigger',
+        );
+    });
+
+    it('addresses the subject, never the analysis row id', () => {
+        const analysis: AnalysisPayload = {
+            id: 999,
+            status: 'done',
+            content: null,
+            type: 'briefing_suggestion',
+            subject_type: 'App\\Models\\Activity',
+            subject_id: 12,
+            discriminator: null,
+        };
+
+        expect(analysisTriggerUrl(analysis)).toBe('/api/analyses/briefing_suggestion/12/trigger');
     });
 });
