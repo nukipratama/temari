@@ -14,13 +14,23 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Push a maintainer Telegram alert when an AI-critical scheduled command fails,
-// so a dead scheduler surfaces as a push instead of silently taking down
-// background narration/recovery for days.
+// so a broken command surfaces as a push instead of silently taking down
+// background narration/recovery for days. Only fires for commands that actually
+// run — a scheduler that never runs anything is covered by the heartbeat below.
 $alertOnFailure = static function (Event $event, string $command): Event {
     return $event->onFailure(static function () use ($command): void {
         app(MaintainerAlerter::class)->schedulerFailed($command);
     });
 };
+
+// Every minute: stamp a liveness timestamp on the durable Redis so the scheduler
+// container's healthcheck (`schedule:heartbeat --check`) can tell a live
+// schedule:work from a dead or wedged one. Deliberately no withoutOverlapping —
+// the write is one idempotent SETEX, and the scheduler mutex would take a lock
+// on the evictable cache store every minute for nothing. No $alertOnFailure
+// either: while Redis is down this would fail every 60s, and the alerter's own
+// cooldown is Redis-backed.
+Schedule::command('schedule:heartbeat')->everyMinute();
 
 // 00:01: daily kickoff for active users (last 7 days) — briefing set (headline,
 // suggestion, mascot voice, featured kartu voice, greeting) + trend caption.

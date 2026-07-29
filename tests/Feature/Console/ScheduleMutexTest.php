@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Console\Commands\ScheduleHeartbeatCommand;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 
@@ -34,6 +35,22 @@ it('schedules the failed_jobs retention prune', function (): void {
 
     expect($event)->not->toBeNull('queue:prune-failed is not scheduled')
         ->and($event->command)->toContain('--hours=168');
+});
+
+/**
+ * The scheduler container's healthcheck asserts the heartbeat is younger than
+ * ScheduleHeartbeatCommand::STALE_AFTER_SECONDS, so the beat must stay on an
+ * every-minute cadence and must not carry an overlap lock (the scheduler mutex
+ * lives on the evictable cache store). Drop either and the healthcheck flaps.
+ */
+it('schedules the liveness heartbeat every minute without an overlap lock', function (): void {
+    $events = collect(app(Schedule::class)->events());
+    $event = $events->first(fn (Event $e): bool => str_contains((string) $e->command, 'schedule:heartbeat'));
+
+    expect($event)->not->toBeNull('schedule:heartbeat must be scheduled')
+        ->and($event->expression)->toBe('* * * * *', 'schedule:heartbeat must run every minute')
+        ->and($event->withoutOverlapping)->toBeFalse('schedule:heartbeat must not take the cache-backed scheduler mutex')
+        ->and(ScheduleHeartbeatCommand::STALE_AFTER_SECONDS)->toBeGreaterThan(60, 'the staleness window needs headroom over the one-minute cadence');
 });
 
 /**
