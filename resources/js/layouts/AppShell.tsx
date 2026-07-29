@@ -7,6 +7,7 @@ import TopNav from '@/components/TopNav';
 import MobileTopBar from '@/components/MobileTopBar';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import ErrorBanner from '@/components/ErrorBanner';
+import FlashNotice from '@/components/FlashNotice';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
@@ -59,6 +60,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
             <MobileTopBar />
 
             <ErrorBanner />
+            <FlashNotice />
             <StravaZoneReconnectBanner />
             <AiOutageBanner />
             <StravaPausedBanner />
