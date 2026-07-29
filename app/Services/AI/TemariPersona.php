@@ -20,7 +20,7 @@ final class TemariPersona
 {
     /**
      * Canonical Daybreak mood gloss, shared across narrators that need to
-     * spell it out (e.g. {@see \App\Services\AI\Narrators\PersonaSummaryNarrator}).
+     * spell it out (e.g. {@see \App\Services\AI\Narrators\AkuProfileVoiceNarrator}).
      * Keep this the single source of truth so mood meanings never diverge
      * between prompts.
      */

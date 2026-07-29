@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\ProgressionSeriesBuilder;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\Narrators\PersonaSummaryNarrator;
+use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -32,7 +32,7 @@ class ProfileController extends Controller
 
     public function __invoke(
         Request $request,
-        PersonaSummaryNarrator $personaNarrator,
+        AkuProfileVoiceNarrator $profileVoiceNarrator,
         ProgressionSeriesBuilder $progressionSeriesBuilder,
         LifetimeStats $lifetimeStats,
     ): Response {
@@ -61,8 +61,7 @@ class ProfileController extends Controller
                 'total_km' => $lifetime['total_km'],
                 'longest_run_km' => $lifetime['longest_km'],
             ],
-            'personaMix' => $personaNarrator->personaMix($user),
-            'personaSummary' => $this->resolvePersonaSummary($user),
+            'personaMix' => $profileVoiceNarrator->personaMix($user),
             'profileVoice' => $this->resolveProfileVoice($user),
             'progressionByCategory' => $progressionByCategory,
         ]);
@@ -71,32 +70,18 @@ class ProfileController extends Controller
     /**
      * @return array{id: int|null, status: string, content: string|null, type: string, subject_type: string, subject_id: int, discriminator: string|null}
      */
-    private function resolvePersonaSummary(User $user): array
-    {
-        // Cache the persona summary per ISO week — moods don't shift by the
-        // hour, and the narrator pulls 12 weeks of history regardless.
-        $discriminator = Carbon::now()->isoFormat('GGGG-[W]WW');
-        $subjectType = AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE;
-
-        $row = Analysis::query()
-            ->forSubject($subjectType, $user->id, AnalysisType::PersonaSummary, $discriminator)
-            ->first();
-
-        return Analysis::toPayload($row, AnalysisType::PersonaSummary, $subjectType, $user->id, $discriminator);
-    }
-
-    /**
-     * @return array{id: int|null, status: string, content: string|null, type: string, subject_type: string, subject_id: int, discriminator: string|null}
-     */
     private function resolveProfileVoice(User $user): array
     {
+        // Cache the voice per ISO week — the mood mix behind it doesn't shift by
+        // the hour, and the narrator pulls 12 weeks of history regardless.
+        $discriminator = Carbon::now()->isoFormat('GGGG-[W]WW');
         $subjectType = AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE;
 
         $row = Analysis::query()
-            ->forSubject($subjectType, $user->id, AnalysisType::AkuProfileVoice)
+            ->forSubject($subjectType, $user->id, AnalysisType::AkuProfileVoice, $discriminator)
             ->first();
 
-        return Analysis::toPayload($row, AnalysisType::AkuProfileVoice, $subjectType, $user->id);
+        return Analysis::toPayload($row, AnalysisType::AkuProfileVoice, $subjectType, $user->id, $discriminator);
     }
 
     /**

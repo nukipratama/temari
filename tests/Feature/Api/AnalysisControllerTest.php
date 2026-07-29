@@ -641,7 +641,7 @@ it('does not dispatch a billed job for a novel discriminator', function (string 
     'random key on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=kEy9fQ2z'],
     'wrong shape on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=2026-05'],
     'wrong shape on the monthly recap' => ['/api/analyses/monthly_recap/{id}/trigger?discriminator=2026-05-18'],
-    'wrong shape on the persona summary' => ['/api/analyses/persona_summary/{id}/trigger?discriminator=2026-05-18'],
+    'wrong shape on the Aku profile voice' => ['/api/analyses/aku_profile_voice/{id}/trigger?discriminator=2026-05-18'],
     'missing card id on the featured kartu voice' => ['/api/analyses/briefing_featured_kartu_voice/{id}/trigger'],
 ]);
 
@@ -649,7 +649,7 @@ it('does not dispatch a billed job when a discriminator is sent to a type whose 
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/aku_profile_voice/{$user->id}/trigger?discriminator=kEy9fQ2z")
+        ->postJson("/api/analyses/weekly_recap/{$user->id}/trigger?discriminator=kEy9fQ2z")
         ->assertStatus(422)
         ->assertJsonValidationErrors('discriminator');
 

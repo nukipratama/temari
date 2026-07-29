@@ -39,7 +39,7 @@ function expectDemoDateKeyedNarrationDone(User $user): void
     $cases = [
         [AnalysisType::BRIEFING_SUBJECT_TYPE, AnalysisType::BriefingMascotVoice, $today],
         [AnalysisType::BRIEFING_SUBJECT_TYPE, AnalysisType::BriefingMascotVoice, $today],
-        [AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, AnalysisType::PersonaSummary, $week],
+        [AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, AnalysisType::AkuProfileVoice, $week],
     ];
 
     foreach ($cases as [$subjectType, $type, $discriminator]) {

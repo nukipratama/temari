@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\LifetimeStats;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -78,7 +80,9 @@ it('ships no fitness prop even when the user has a VDOT-eligible PR', function (
         ->assertInertia(fn (Assert $page) => $page->missing('fitness'));
 });
 
-it('exposes personaMix derived from StoryLine moods + personaSummary payload', function (): void {
+it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoice payload', function (): void {
+    Carbon::setTestNow('2026-05-18 09:00:00');
+
     $user = User::factory()->create();
     $a = Activity::factory()->for($user)->analyzed()->create();
     StoryLine::factory()->for($user)->create([
@@ -90,12 +94,48 @@ it('exposes personaMix derived from StoryLine moods + personaSummary payload', f
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Aku')
+            ->missing('personaSummary')
             ->has('personaMix', 1)
             ->where('personaMix.0.mood', 'nyala')
             ->where('personaMix.0.percent', 100)
-            ->has('personaSummary')
-            ->where('personaSummary.type', 'persona_summary')
-            ->where('personaSummary.subject_type', 'persona_summary_user'));
+            ->has('profileVoice')
+            ->where('profileVoice.type', 'aku_profile_voice')
+            ->where('profileVoice.subject_type', 'aku_profile_voice_user')
+            ->where('profileVoice.discriminator', '2026-W21'));
+
+    Carbon::setTestNow();
+});
+
+it('resolves the row the weekly kickoff wrote for the current ISO week', function (): void {
+    // Monday 2026-05-18 is ISO week 2026-W21, and the row the page must find is
+    // the one WeeklyProfileCommand keys with that same week.
+    Carbon::setTestNow('2026-05-18 09:00:00');
+
+    $user = User::factory()->create();
+    Analysis::factory()->done('Kamu tipe yang sabar ngebangun base.')->create([
+        'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::AkuProfileVoice,
+        'discriminator' => '2026-W21',
+    ]);
+    // Last week's row and the pre-merge unkeyed row must both stay out of the way.
+    foreach (['2026-W20', null] as $stale) {
+        Analysis::factory()->done('Bacaan lama.')->create([
+            'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::AkuProfileVoice,
+            'discriminator' => $stale,
+        ]);
+    }
+
+    $this->actingAs($user)->get('/profil')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('profileVoice.status', 'done')
+            ->where('profileVoice.content', 'Kamu tipe yang sabar ngebangun base.')
+            ->where('profileVoice.discriminator', '2026-W21'));
+
+    Carbon::setTestNow();
 });
 
 it('serves the hero stats from LifetimeStats, keeping 1dp total km and 2dp longest run', function (): void {

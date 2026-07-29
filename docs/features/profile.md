@@ -21,7 +21,7 @@ The "Aku" page (`/profil`) is the runner's about-me: who they are, how Temari se
 
 ## System dependencies
 
-- **AI narration** — `profileVoice` (`AkuProfileVoice`) and `personaSummary` (`PersonaSummary`) are `Analysis` rows from the [[ai-pipeline]].
+- **AI narration** — `profileVoice` (`AkuProfileVoice`) is an `Analysis` row from the [[ai-pipeline]]. It is the page's only narrated block.
 - **Gamification** — the `PersonalRecord` rows behind the progression charts come from [[gamification]].
 - **Settings** — the Telegram toggles, HR-zone entry, and account deletion moved to the [[settings]] hub; Aku links to it.
 - **Data model** — `PersonalRecord` shape in [[data-model]].
@@ -30,7 +30,7 @@ The "Aku" page (`/profil`) is the runner's about-me: who they are, how Temari se
 
 The header eyebrow is built from first-run date and months-since-first-run, over an "{firstName} Runner, ceritanya." headline. Below it a `HeroPanel` pairs the [Temari](resources/js/components/temari/Temari.tsx) mascot (pose `proud`) with **"★ Kata Temari tentang kamu"** — the AI profile voice (`profileVoice`), rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) `onSky` as an italic quote. Two chips below show Strava status (`identity.strava_connected`) and "Gabung sejak …".
 
-Server side, `ProfileController::resolveProfileVoice` looks up the `AkuProfileVoice` analysis with **no discriminator** (one row per user) and returns `Analysis::toPayload`. Note: this voice is intentionally manual/"stale by design" — the numbers on the page are live, but the prose only refreshes on "Baca ulang". See [[recaps]] and [[ai-pipeline]].
+This is the merged Aku voice: it reads who the runner is from their 12-week mood mix and backs that reading with their lifetime numbers, in one billed call ([AkuProfileVoiceNarrator](app/Services/AI/Narrators/AkuProfileVoiceNarrator.php) carries `get_persona_mix` alongside `get_lifetime_stats`, `get_training_paces` and `get_progression_signal`). Server side, `ProfileController::resolveProfileVoice` looks up the `AkuProfileVoice` analysis keyed by **ISO week** (`isoFormat('GGGG-[W]WW')`) and returns `Analysis::toPayload`. The numbers on the page are live; the prose is refreshed once a week by `ai:weekly-profile` (`invalidate: false`, so the week key is the refresh) or on demand via "Baca ulang". See [[recaps]] and [[ai-pipeline]].
 
 ## Stats trio
 
@@ -40,9 +40,7 @@ Sharing `/kalender`'s cache means the totals can trail a just-ingested run by up
 
 ## Persona — 12 minggu terakhir
 
-The "Persona" section renders [PersonaBar](resources/js/components/PersonaBar.tsx): a single stacked bar of mood slices (`personaMix`), each colored by `MOOD_FILL`, with a legend of `MOOD_LABEL` + percent. The mix comes from `PersonaSummaryNarrator::personaMix($user)`. Below the bar, an optional `personaSummary` AnalysisStatus block narrates the mix in Temari's voice.
-
-`ProfileController::resolvePersonaSummary` keys this analysis by **ISO week** (`isoFormat('GGGG-[W]WW')`) as its discriminator — moods don't shift hourly, so the narration is cached per week even though the narrator pulls 12 weeks of history. Empty mix → PersonaBar shows "Belum ada cukup lari buat baca personamu."
+The "Persona" section renders [PersonaBar](resources/js/components/PersonaBar.tsx): a single stacked bar of mood slices (`personaMix`), each colored by `MOOD_FILL`, with a legend of `MOOD_LABEL` + percent. The mix comes from `AkuProfileVoiceNarrator::personaMix($user)`. The bar carries no narration block of its own: the mix is narrated once, in the hero voice above. Empty mix → PersonaBar shows "Belum ada cukup lari buat baca personamu."
 
 ## Perjalanan (progression)
 
@@ -60,6 +58,6 @@ Aku no longer carries a settings entry point. The Telegram notification panel an
 
 ## Notes / gotchas
 
-- `profileVoice` has **no discriminator** (one analysis per user, refreshed manually); `personaSummary` is **per-ISO-week**. Don't confuse the two cache keys.
+- `profileVoice` is keyed **per ISO week**, and `ProfileController` must compute that key the same way `WeeklyProfileCommand` and `DemoRunSeeder` do, or the page resolves nothing and falls back to "Belum dibaca Temari."
 - The mascot here renders via the shared [Temari](resources/js/components/temari/Temari.tsx) wrapper, so any equipped accessory shows up automatically.
-- Both voice blocks lean on the same [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) state machine as the rest of the app — see [[ai-pipeline]] and [[data-model]] (`Analysis`, `PersonalRecord`).
+- The voice block leans on the same [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) state machine as the rest of the app — see [[ai-pipeline]] and [[data-model]] (`Analysis`, `PersonalRecord`).

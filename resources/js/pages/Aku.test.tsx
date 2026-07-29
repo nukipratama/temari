@@ -54,23 +54,14 @@ describe('Aku', () => {
         expect(screen.queryByText(/Notifikasi Telegram, zona HR/)).not.toBeInTheDocument();
     });
 
-    it('renders the persona bar + summary when personaMix is provided', () => {
+    it('renders the persona bar without a narration block of its own', () => {
         const mix = [
             { mood: 'enteng' as const, count: 22, percent: 34.9 },
             { mood: 'adem' as const, count: 21, percent: 33.3 },
         ];
-        const summary = {
-            id: 1,
-            status: 'done' as const,
-            content: 'Larimu konsisten dan pintar menjaga ritme.',
-            type: 'persona_summary' as const,
-            subject_type: 'persona_summary_user',
-            subject_id: 1,
-            discriminator: null,
-        };
-        render(<Aku identity={identity} stats={stats} personaMix={mix} personaSummary={summary} />);
+        render(<Aku identity={identity} stats={stats} personaMix={mix} />);
         expect(screen.getByText(/Persona/)).toBeInTheDocument();
-        expect(screen.getByText(/konsisten dan pintar/)).toBeInTheDocument();
+        expect(screen.queryByText(/Belum dibaca Temari/)).not.toBeInTheDocument();
     });
 
     it('renders the progression section when progressionByCategory is provided', () => {
@@ -134,9 +125,9 @@ describe('Aku', () => {
             status: 'done' as const,
             content: 'Kamu makin konsisten tiap minggu.',
             type: 'aku_profile_voice' as const,
-            subject_type: 'user',
+            subject_type: 'aku_profile_voice_user',
             subject_id: 1,
-            discriminator: null,
+            discriminator: '2026-W21',
         };
         render(<Aku identity={identity} stats={stats} profileVoice={profileVoice} />);
         expect(screen.getByText(/Kamu makin konsisten tiap minggu/)).toBeInTheDocument();

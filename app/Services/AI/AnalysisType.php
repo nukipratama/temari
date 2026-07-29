@@ -12,7 +12,6 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
-use App\Jobs\AI\AnalyzePersonaSummaryJob;
 use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
@@ -31,12 +30,10 @@ enum AnalysisType: string
     case WeeklyRecap = 'weekly_recap';
     case PrContext = 'pr_context';
     case CardFlavor = 'card_flavor';
-    case PersonaSummary = 'persona_summary';
     case AkuProfileVoice = 'aku_profile_voice';
     case MonthlyRecap = 'monthly_recap';
 
     public const string BRIEFING_SUBJECT_TYPE = 'briefing_user_day';
-    public const string PERSONA_SUMMARY_SUBJECT_TYPE = 'persona_summary_user';
     public const string AKU_PROFILE_VOICE_SUBJECT_TYPE = 'aku_profile_voice_user';
     public const string MONTHLY_RECAP_SUBJECT_TYPE = 'monthly_recap_user_month';
 
@@ -91,7 +88,6 @@ enum AnalysisType: string
             self::BriefingFeaturedKartuVoice => AnalysisCadence::Daily,
             self::WeeklyRecap => AnalysisCadence::Weekly,
             self::MonthlyRecap => AnalysisCadence::Monthly,
-            self::PersonaSummary,
             self::AkuProfileVoice => AnalysisCadence::OnDemand,
         };
     }
@@ -109,7 +105,6 @@ enum AnalysisType: string
             self::WeeklyRecap => AnalyzeWeeklyRecapJob::class,
             self::PrContext => AnalyzePrContextJob::class,
             self::CardFlavor => AnalyzeCardFlavorJob::class,
-            self::PersonaSummary => AnalyzePersonaSummaryJob::class,
             self::AkuProfileVoice => AnalyzeAkuProfileVoiceJob::class,
             self::MonthlyRecap => AnalyzeMonthlyRecapJob::class,
         };
@@ -169,7 +164,7 @@ enum AnalysisType: string
      * - featured kartu: the RunCard id. Never null — BriefingComposer only emits
      *   the block once a card is picked, and a null id would bill the narrator's
      *   "no card yet" line under a second cooldown key.
-     * - PersonaSummary: the ISO week key WeeklyProfileCommand + ProfileController use.
+     * - AkuProfileVoice: the ISO week key WeeklyProfileCommand + ProfileController use.
      * - `Y-m` months: MonthlyRecapCommand, CalendarController.
      * - every other type keys off subject_id alone and its job ignores the
      *   discriminator, so a non-null value is rejected outright.
@@ -183,7 +178,7 @@ enum AnalysisType: string
         return match ($this) {
             self::BriefingMascotVoice => ['required', 'string', 'date_format:Y-m-d'],
             self::BriefingFeaturedKartuVoice => ['required', 'string', 'max:19', 'regex:/^[1-9][0-9]*$/'],
-            self::PersonaSummary => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/'],
+            self::AkuProfileVoice => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/'],
             self::MonthlyRecap => ['required', 'string', 'date_format:Y-m'],
             self::PostRunSpeech,
             self::RunInsightTechnical,
@@ -191,8 +186,7 @@ enum AnalysisType: string
             self::RunInsightZones,
             self::WeeklyRecap,
             self::PrContext,
-            self::CardFlavor,
-            self::AkuProfileVoice => ['prohibited'],
+            self::CardFlavor => ['prohibited'],
         };
     }
 
@@ -208,7 +202,6 @@ enum AnalysisType: string
             self::WeeklyRecap => WeeklySnapshot::class,
             self::PrContext => PersonalRecord::class,
             self::CardFlavor => RunCard::class,
-            self::PersonaSummary => self::PERSONA_SUMMARY_SUBJECT_TYPE,
             self::AkuProfileVoice => self::AKU_PROFILE_VOICE_SUBJECT_TYPE,
             self::MonthlyRecap => self::MONTHLY_RECAP_SUBJECT_TYPE,
         };

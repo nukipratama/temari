@@ -57,7 +57,6 @@ class SelfHealer
             + $this->resumePrContext()
             + $this->resumeSingleRowType(AnalysisType::BriefingMascotVoice)
             + $this->resumeSingleRowType(AnalysisType::BriefingFeaturedKartuVoice)
-            + $this->resumeSingleRowType(AnalysisType::PersonaSummary)
             + $this->resumeSingleRowType(AnalysisType::AkuProfileVoice);
     }
 
@@ -228,11 +227,10 @@ class SelfHealer
 
     /**
      * Single-row-per-user narration types with no chain/group of their own:
-     * BriefingMascotVoice, BriefingFeaturedKartuVoice, PersonaSummary,
-     * AkuProfileVoice. Each is dispatched only at
-     * its own kickoff (daily briefing / weekly profile) with no other scheduled
-     * recovery, so a capped-Pending or transiently-Failed row would sit stuck
-     * without this sweep. subject_id is the user id directly for all of these
+     * BriefingMascotVoice, BriefingFeaturedKartuVoice, AkuProfileVoice. Each is
+     * dispatched only at its own kickoff (daily briefing / weekly profile) with
+     * no other scheduled recovery, so a capped-Pending or transiently-Failed row
+     * would sit stuck without this sweep. subject_id is the user id directly for all of these
      * types, so no join is needed to scope by user. Stalled + budget-bounded;
      * demo excluded; re-dispatched against the stalled row's own discriminator
      * (not recomputed) so a resumed BriefingFeaturedKartuVoice still targets the

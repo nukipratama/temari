@@ -36,7 +36,7 @@ function analysesForEverySubjectShape(User $user): void
         [AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice],
         ['daily_greeting_user_day', $user->id, AnalysisType::BriefingMascotVoice],
         ['trend_caption_user_day', $user->id, AnalysisType::BriefingMascotVoice],
-        [AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, $user->id, AnalysisType::PersonaSummary],
+        ['persona_summary_user', $user->id, AnalysisType::BriefingMascotVoice],
         [AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::AkuProfileVoice],
         [AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap],
     ] as [$subjectType, $subjectId, $type]) {

@@ -44,7 +44,6 @@ interface AkuProps {
     identity: IdentityPayload;
     stats: StatsPayload;
     personaMix?: PersonaSlice[];
-    personaSummary?: AnalysisPayload;
     profileVoice?: AnalysisPayload;
     progressionByCategory?: Record<string, ProgressionSeries> | null;
 }
@@ -53,7 +52,6 @@ export default function Aku({
     identity,
     stats,
     personaMix = [],
-    personaSummary,
     profileVoice,
     progressionByCategory = null,
 }: Readonly<AkuProps>) {
@@ -131,19 +129,8 @@ export default function Aku({
 
                 <section className="mt-10">
                     <SectionLabel>Persona · 12 minggu terakhir</SectionLabel>
-                    <Card className="flex flex-col gap-5">
+                    <Card>
                         <PersonaBar mix={personaMix} />
-                        {personaSummary && (
-                            <AnalysisStatus
-                                analysis={personaSummary}
-                                inertiaReloadProps={['personaSummary']}
-                                renderContent={(text) => (
-                                    <p className="font-display text-quote-md italic text-ink-2">
-                                        “{renderBold(stripEdgeQuotes(text))}”
-                                    </p>
-                                )}
-                            />
-                        )}
                     </Card>
                 </section>
 

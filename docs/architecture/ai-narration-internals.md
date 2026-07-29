@@ -58,7 +58,7 @@ The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string �
 
 ### The profile narrators
 
-Profile voice, persona summary and PR context complete the set, and all three send an **empty context** — unlike the recaps there was not even a continuity line to keep, since none of them are chained. Their arithmetic moved with them: lifetime stats and the favourite-time bucket, the persona mood mix with its recent-vs-earlier split, and the progression signal were private methods on the narrators and are tools now.
+Profile voice and PR context complete the set, and both send an **empty context** — unlike the recaps there was not even a continuity line to keep, since neither is chained. Their arithmetic moved with them: lifetime stats and the favourite-time bucket, the persona mood mix with its recent-vs-earlier split, and the progression signal were private methods on the narrators and are tools now. The persona read was a separately billed narrator of its own until it was merged into the profile voice, which now carries [PersonaMixTool](app/Services/AI/Agent/Tools/PersonaMixTool.php) beside its own three.
 
 Every narrator now reads rather than receives. What remains in any context is only ever one of two things: a value the *call* carries (post-run speech's `mood`, the daily greeting's `vibe`), or the continuity line.
 

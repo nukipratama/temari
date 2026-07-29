@@ -456,17 +456,16 @@ it('re-kicks the earliest stalled single-row block per user with invalidate:fals
 })->with([
     'BriefingMascotVoice' => [AnalysisType::BriefingMascotVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '2026-05-18'],
     'BriefingFeaturedKartuVoice' => [AnalysisType::BriefingFeaturedKartuVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '42'],
-    'PersonaSummary' => [AnalysisType::PersonaSummary, AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, '2026-W21'],
-    'AkuProfileVoice' => [AnalysisType::AkuProfileVoice, AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, null],
+    'AkuProfileVoice' => [AnalysisType::AkuProfileVoice, AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, '2026-W21'],
 ]);
 
 it('skips a demo user for a single-row type so the resume net never auto-bills it', function (): void {
     $demo = User::factory()->demo()->create();
     Analysis::factory()->create([
-        'subject_type' => AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
         'subject_id' => $demo->id,
-        'analysis_type' => AnalysisType::PersonaSummary,
-        'discriminator' => '2026-05-18',
+        'analysis_type' => AnalysisType::AkuProfileVoice,
+        'discriminator' => '2026-W21',
         'status' => AnalysisStatus::Pending,
     ]);
 

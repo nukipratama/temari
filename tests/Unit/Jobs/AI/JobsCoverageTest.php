@@ -10,7 +10,6 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
-use App\Jobs\AI\AnalyzePersonaSummaryJob;
 use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
@@ -25,7 +24,6 @@ use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
-use App\Services\AI\Narrators\PersonaSummaryNarrator;
 use App\Services\AI\Narrators\PrContextNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -306,25 +304,6 @@ it('AnalyzeMonthlyRecapJob does not advance into the still-open current month', 
 
     expect($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
     Carbon::setTestNow();
-});
-
-// ── AnalyzePersonaSummaryJob (row) ────────────────────────────────────
-
-it('AnalyzePersonaSummaryJob returns summary', function (): void {
-    $user = User::factory()->create();
-    mockNarrator(PersonaSummaryNarrator::class, 'persona narrative');
-
-    $row = rowOf(AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, $user->id, AnalysisType::PersonaSummary);
-    new AnalyzePersonaSummaryJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->content)->toBe('persona narrative');
-});
-
-it('AnalyzePersonaSummaryJob fails when user missing', function (): void {
-    $row = rowOf(AnalysisType::PERSONA_SUMMARY_SUBJECT_TYPE, 99999, AnalysisType::PersonaSummary);
-    new AnalyzePersonaSummaryJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 // ── AnalyzeAkuProfileVoiceJob (row) ───────────────────────────────────
