@@ -5,7 +5,7 @@
 // Pages are discovered from `artisan route:list` (see lib.mjs) — nothing hardcoded.
 import { rmSync } from 'node:fs';
 import { chromium } from 'playwright';
-import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes, SHOT, EXT } from './lib.mjs';
+import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes, fullPageScreenshot, SHOT, EXT } from './lib.mjs';
 
 // Each run lands in its own dir keyed by date + execution time. Prior batches are
 // cleared first, so only the latest sweep is kept (stale screenshots aren't needed):
@@ -36,7 +36,7 @@ for (const vp of selected) {
   console.log(`\n=== ${vp} (${def.viewport.width}x${def.viewport.height}) ===`);
   // Guest login page first, then authenticate and discover the rest.
   await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
-  await page.screenshot({ path: `${dir}/00-login-full.${EXT}`, fullPage: true, ...SHOT });
+  await fullPageScreenshot(page, `${dir}/00-login-full.${EXT}`, SHOT);
   await login(page);
   await dismissReveal(page);
   const routes = await discoverPageRoutes(page);
@@ -53,7 +53,7 @@ for (const vp of selected) {
       await page.waitForTimeout(800);
       const idx = String(i).padStart(2, '0');
       await page.screenshot({ path: `${dir}/${idx}-${name}-viewport.${EXT}`, fullPage: false, ...SHOT });
-      await page.screenshot({ path: `${dir}/${idx}-${name}-full.${EXT}`, fullPage: true, ...SHOT });
+      await fullPageScreenshot(page, `${dir}/${idx}-${name}-full.${EXT}`, SHOT);
       console.log(`  shot ${idx}-${name} (${path})`);
       i++;
     } catch (e) {

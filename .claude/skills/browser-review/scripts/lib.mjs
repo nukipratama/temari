@@ -77,6 +77,25 @@ export async function dismissReveal(page) {
   }
 }
 
+// Chromium can't rasterize a screenshot taller than ~32,767 physical pixels —
+// past that it doesn't throw, it silently writes a 0-byte file. A long
+// unpaginated list (e.g. /aktivitas with enough seeded runs) times deviceScaleFactor
+// 3 on mobile crosses that with room to spare. Guard it explicitly instead of
+// shipping a broken capture with no failure signal.
+const MAX_CANVAS_PX = 32000;
+
+export async function fullPageScreenshot(page, path, shotOpts) {
+  const dpr = await page.evaluate(() => window.devicePixelRatio);
+  const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+  const physical = scrollHeight * dpr;
+  if (physical > MAX_CANVAS_PX) {
+    console.log(`  SKIP full-page shot: ${scrollHeight}px x ${dpr}dpr = ${Math.round(physical)}px physical exceeds Chromium's ~32,767px cap`);
+    return false;
+  }
+  await page.screenshot({ path, fullPage: true, ...shotOpts });
+  return true;
+}
+
 // URI patterns that are not screenshotable pages (apis, webhooks, auth handshakes, assets).
 const SKIP = [
   /^api\//, /^auth\//, /^strava\/(webhook|sync)/, /^logout$/, /^client-errors$/,
