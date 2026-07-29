@@ -1,6 +1,6 @@
 ---
 title: Deployment & runtime
-description: Multi-stage FrankenPHP/Octane image, the loopback-only prod compose stack behind a Cloudflare Tunnel, Redis DB partitioning, and the GitHub Actions build/migrate/roll/rollback flow on a single homelab host
+description: Multi-stage FrankenPHP/Octane image built on a hosted runner and pushed to GHCR, the loopback-only prod compose stack behind a Cloudflare Tunnel, Redis DB partitioning, and the GitHub Actions pull/migrate/roll/rollback flow on a single homelab host
 tags: [architecture, infra]
 status: living
 reviewed: 2026-07-29
@@ -17,7 +17,7 @@ code_refs:
 
 # Deployment & runtime
 
-How Temari is built into an image, run as a compose stack, and continuously deployed to **one self-hosted homelab host** on every push to `main`. The host sits behind an existing Cloudflare Tunnel; nothing in this repo provisions the tunnel itself. Start here before touching the [Dockerfile](Dockerfile), [compose.prod.yaml](compose.prod.yaml), or the deploy job in [.github/workflows/ci.yml](.github/workflows/ci.yml).
+How Temari is built into an image, run as a compose stack, and continuously deployed to **one self-hosted homelab host** on every push to `main`. The image is *built* on a GitHub-hosted runner and pulled from GHCR; only the run stack lives on the homelab. The host sits behind an existing Cloudflare Tunnel; nothing in this repo provisions the tunnel itself. Start here before touching the [Dockerfile](Dockerfile), [compose.prod.yaml](compose.prod.yaml), or the build/deploy jobs in [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ## The image (multi-stage)
 
@@ -64,12 +64,20 @@ Two Redis instances, each addressed by DB number ([config/database.php](config/d
 
 Session cookie name and the Redis/cache key prefixes are pinned to **fixed literals** (`SESSION_COOKIE`, `REDIS_PREFIX`, `CACHE_PREFIX`) instead of being derived from `APP_NAME`, so a cosmetic name/tagline edit can't rename the cookie or shift every key prefix and log everyone out. See [[fixed-session-cookie]].
 
+## Where the image is built
+
+The `build` job ([.github/workflows/ci.yml:309](.github/workflows/ci.yml)) runs on `ubuntu-latest`, gated by the same `push`-to-`main` condition as `deploy` but with no `needs`, so it builds in parallel with the test jobs. It pushes `ghcr.io/<owner>/<repo>/app:<git-sha>` using the job's own `GITHUB_TOKEN` widened to `packages: write` — **no new repository secret**. Layer cache is a registry cache (`cache-from`/`cache-to` on a `:buildcache` tag in the same GHCR package), not `type=gha`: the Actions cache is one 10 GB per-repo LRU that the hot composer and `node_modules` entries would evict a ~1 GB image cache out of between deploys.
+
+This exists because the build used to run *inside* the deploy job on the homelab runner, putting a five-stage `docker build` on the same four cores that serve live prod traffic. The secondary win is an offsite image history: the host only ever held `:latest`/`:previous` locally, so recovering further back than one deploy meant rebuilding from the commit.
+
+> **Unverified in prod.** The GHCR split has never run against the real homelab host. The first deploy after it merges should be watched: GHCR package permissions, `ghcr.io` egress from the host, and the pull's effect on deploy wall-clock are all untested assumptions.
+
 ## How a deploy runs
 
-The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on the `[self-hosted, homelab]` runner, only on `push` to `main`, after `ci-gate` (lint + pest + vitest + secret-scan) passes. `concurrency: deploy-prod` with `cancel-in-progress: false` serializes deploys. In order:
+The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on the `[self-hosted, homelab]` runner, only on `push` to `main`, after `ci-gate` (lint + pest + vitest + secret-scan) **and** `build` pass. `concurrency: deploy-prod` with `cancel-in-progress: false` serializes deploys. In order:
 
 1. Tag current `:latest` → `:previous` (rollback target).
-2. `compose build app`; bring up mysql + redis with `--wait` (cold-start safe — a fresh box self-bootstraps).
+2. Pull `ghcr.io/<owner>/<repo>/app:<git-sha>` (token widened to `packages: read`) and re-tag it locally as `temari/app:latest`; bring up mysql + redis with `--wait` (cold-start safe — a fresh box self-bootstraps). Every later step resolves the image through that local tag via the `x-app-image` anchor in [compose.prod.yaml](compose.prod.yaml), so nothing downstream is registry-aware.
 3. Tag the new image with the git SHA.
 4. **Backup** the app DB and the analytics schema to `/var/lib/temari-backups` (gzip, `pipefail`-guarded, tiny-dump check skipped only when the schema is genuinely empty).
 5. **Quiesce** scheduler + horizon (SIGTERM, kept down) so no scheduled command/job is mid-run during the roll.
@@ -90,20 +98,22 @@ Write schema changes as **expand/contract split across two deploys**:
 
 The heavier alternative is wrapping the migrate step in `artisan down` (a maintenance-mode blip on every deploy); expand/contract avoids that blip and keeps the still-live old code safe against the new schema, so prefer it. See the deploy order in [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
-Note what this does **not** buy: the roll itself is not zero-downtime. There is one `app` container on one loopback port and no second replica, and step 7 is a plain `up -d --no-deps app horizon pulse` ([.github/workflows/ci.yml:424](.github/workflows/ci.yml)) — compose stops the old container and starts the new one in place, so requests are refused for the second or two that takes. The `/up` healthcheck at step 9 polls the container that already replaced the old one; it verifies the new image booted, it does not gate a cutover. Expand/contract is what keeps that window a brief connection refusal instead of a wall of 500s.
+Note what this does **not** buy: the roll itself is not zero-downtime. There is one `app` container on one loopback port and no second replica, and step 7 is a plain `up -d --no-deps app horizon pulse` ([.github/workflows/ci.yml:457](.github/workflows/ci.yml)) — compose stops the old container and starts the new one in place, so requests are refused for the second or two that takes. The `/up` healthcheck at step 9 polls the container that already replaced the old one; it verifies the new image booted, it does not gate a cutover. Expand/contract is what keeps that window a brief connection refusal instead of a wall of 500s.
 
 ## Rollback
 
-A failed deploy **tries to roll itself back first**. The `Roll back on failure` step ([.github/workflows/ci.yml:468](.github/workflows/ci.yml)) runs under `if: failure()`: it restarts the quiesced scheduler/horizon/pulse, re-tags `:previous` → `:latest`, rolls the containers back and re-polls `/up`. `Alert on deploy failure` ([.github/workflows/ci.yml:493](.github/workflows/ci.yml)) then pushes a `deploy:alert` to Telegram either way. So a red deploy usually means prod is already back on the previous image — check the alert before intervening by hand.
+A failed deploy **tries to roll itself back first**. The `Roll back on failure` step ([.github/workflows/ci.yml:498](.github/workflows/ci.yml)) runs under `if: failure()`: it restarts the quiesced scheduler/horizon/pulse, re-tags `:previous` → `:latest`, rolls the containers back and re-polls `/up`. `Alert on deploy failure` ([.github/workflows/ci.yml:523](.github/workflows/ci.yml)) then pushes a `deploy:alert` to Telegram either way. So a red deploy usually means prod is already back on the previous image — check the alert before intervening by hand.
 
-**It refuses to auto-roll when a migration ran this deploy.** `Detect pending migrations` ([.github/workflows/ci.yml:402](.github/workflows/ci.yml)) runs `migrate:status --pending=1` on both connections before migrating and records `MIGRATIONS_APPLIED`. When that is `true` — including when it is *unset*, which it defaults to, so an early failure fails safe — the rollback step deliberately stops and prints a manual-recovery error instead. Re-tagging the image would put old code against a new schema, which is the one thing expand/contract cannot protect against if the migration was destructive. Recover with the `Rollback prod` workflow plus `./scripts/restore-db.sh <backup>`.
+**It refuses to auto-roll when a migration ran this deploy.** `Detect pending migrations` ([.github/workflows/ci.yml:437](.github/workflows/ci.yml)) runs `migrate:status --pending=1` on both connections before migrating and records `MIGRATIONS_APPLIED`. When that is `true` — including when it is *unset*, which it defaults to, so an early failure fails safe — the rollback step deliberately stops and prints a manual-recovery error instead. Re-tagging the image would put old code against a new schema, which is the one thing expand/contract cannot protect against if the migration was destructive. Recover with the `Rollback prod` workflow plus `./scripts/restore-db.sh <backup>`.
 
 Neither path has ever fired in prod, so treat both as untested.
 
-**Overruns reach that failure path by design.** Timeouts are set per *step* (build, both dumps, both migrates, and the two failure-path steps) rather than only on the job, because a job-level timeout is a *cancellation* and GitHub skips every `if: failure()` step when one trips — an overrun would otherwise strand a half-deployed stack with no rollback, no alert and no summary. The job cap is a last-resort backstop sitting above the sum of the step caps. Every `curl` in the deploy and rollback workflows carries `--max-time` for the same reason: a worker that accepts a connection but never answers would otherwise hang a retry loop past the backstop.
+**Overruns reach that failure path by design.** Timeouts are set per *step* (the image pull, both dumps, both migrates, and the two failure-path steps) rather than only on the job, because a job-level timeout is a *cancellation* and GitHub skips every `if: failure()` step when one trips — an overrun would otherwise strand a half-deployed stack with no rollback, no alert and no summary. The job cap is a last-resort backstop sitting above the sum of the step caps. Every `curl` in the deploy and rollback workflows carries `--max-time` for the same reason: a worker that accepts a connection but never answers would otherwise hang a retry loop past the backstop.
 
 ### Manual rollback
 
 Every successful deploy leaves `temari/app:previous` and `temari/app:<git-sha>` on the host. To roll back the most recent deploy by hand, re-tag `:previous` → `:latest`, `up -d --no-deps app horizon scheduler`, and `horizon:terminate`. The full commands and the `/opt/temari/.env` setup table live in the Deployment section of [README.md](README.md).
 
-**You can only go back one deploy.** There is no retention window holding a range of older SHAs to pick from: the prune step runs `if: always()` on every deploy and deletes every `temari/app` tag except `:latest`, `:previous` and the SHA just deployed ([.github/workflows/ci.yml:505](.github/workflows/ci.yml)). So the host holds exactly two recoverable images — current and one back — and the SHA tag of any older commit is already gone. To recover further back, rebuild from that commit.
+The `Rollback prod` workflow ([.github/workflows/rollback.yml](.github/workflows/rollback.yml)) is **deliberately registry-unaware**: it only inspects and re-tags local `temari/app` images. Building on a hosted runner does not change that, because the deploy still lands `temari/app:latest` as a local tag on the host and still tags the outgoing one `:previous` before it does. Keep it that way — a rollback that has to reach the network is a rollback that can fail when the network is why you're rolling back.
+
+**On the host you can still only go back one deploy.** The prune step runs `if: always()` on every deploy and deletes every `temari/app` tag except `:latest`, `:previous` and the SHA just deployed ([.github/workflows/ci.yml:535](.github/workflows/ci.yml)), so the host holds exactly two recoverable images. What is new is that GHCR keeps a `:<git-sha>` per deploy, so recovering further back is now a `docker pull ghcr.io/<owner>/<repo>/app:<sha>` + local re-tag instead of a rebuild from source.

@@ -178,7 +178,7 @@ The Strava redirect URL is derived from `APP_URL` + the `auth.strava.callback` r
 
 In **Cloudflare Zero Trust → tunnel → Public Hostnames**, route `<your-domain>` to `http://localhost:7001`.
 
-After both are in place, merging the PR triggers the first deploy: mysql initializes its volume with `MYSQL_ROOT_PASSWORD`, the app image builds, migrations run, containers come up, healthcheck passes. Subsequent deploys are fully automatic.
+After both are in place, merging the PR triggers the first deploy: mysql initializes its volume with `MYSQL_ROOT_PASSWORD`, the app image is built on a GitHub-hosted runner and pulled onto the host from GHCR, migrations run, containers come up, healthcheck passes. Subsequent deploys are fully automatic.
 
 ### Rollback
 
