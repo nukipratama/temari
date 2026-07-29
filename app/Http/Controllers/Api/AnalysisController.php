@@ -15,7 +15,7 @@ use App\Services\AI\AnalysisSubjectAuthorizer;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\ChainResolver;
 use App\Services\AI\RecapPeriod;
-use App\Services\Run\Ingest\ActivityPipeline;
+use App\Services\Run\Metrics\SummaryRecomputer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,7 +25,7 @@ class AnalysisController extends Controller
     public function trigger(
         TriggerAnalysisRequest $request,
         AnalysisService $service,
-        ActivityPipeline $pipeline,
+        SummaryRecomputer $summaries,
         ChainResolver $chains,
         string $type,
         int $subjectId,
@@ -95,10 +95,7 @@ class AnalysisController extends Controller
             && $analysisType->subjectType() === Activity::class
             && $user->runnerProfile !== null
         ) {
-            $activity = Activity::with(['detail', 'stream'])->find($subjectId);
-            if ($activity !== null) {
-                $pipeline->recomputeSummary($activity);
-            }
+            $summaries->recomputeFromStoredStreams($subjectId);
         }
 
         // Resume = forward-fill only: dispatch the earliest unfilled link without
