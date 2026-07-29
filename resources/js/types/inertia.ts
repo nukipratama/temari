@@ -151,6 +151,9 @@ export interface StreamSummaryPerKm {
 /** % of moving time spent in each HR zone, keyed Z1..Z5. Absent for no-HR runs. */
 export type ZonePct = Partial<Record<'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5', number>>;
 
+/** Minutes of moving time spent in each HR zone, keyed Z1..Z5. Absent for no-HR runs. */
+export type ZoneMinutes = Partial<Record<'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5', number>>;
+
 /** The trailing sub-km "sisa" segment. Display/narrative-only — never a full km
  *  and never in per_km (which stays full-km for card stats & AI). Absent for
  *  runs that end on a whole km. */
@@ -161,12 +164,40 @@ export interface StreamSummaryPartial {
     avg_cadence_spm?: number | null;
 }
 
+/** Windows the producer writes a `best_<window>_pace` key for (StreamAnalysis::BEST_EFFORT_WINDOWS). */
+export type BestEffortWindow = '30s' | '1min' | '3min' | '5min' | '10min' | '20min' | '30min' | '60min';
+
+/** Share of moving time below / within / above the step-rate band. */
+export type CadenceDistributionPct = Partial<Record<'<165' | '165-175' | '>175', number>>;
+
+/** Mirrors `StreamAnalysis::compute()` — every key is omitted (never null) when
+ *  the stream it derives from is missing or too short. */
 export interface StreamSummary {
     per_km?: StreamSummaryPerKm[];
     partial_split?: StreamSummaryPartial | null;
     negative_split?: boolean;
+    pace_variability_sec?: number;
+    hr_drift_bpm?: number;
+    cadence_drop_spm?: number;
     time_in_zone_pct?: ZonePct;
-    [key: string]: unknown;
+    time_in_zone_min?: ZoneMinutes;
+    decoupling_pct?: number;
+    cadence_distribution_pct?: CadenceDistributionPct;
+    optimal_cadence_pct?: number;
+    max_grade_pct?: number;
+    climb_time_pct?: number;
+    gap_pace?: string;
+    descent_m?: number;
+    stopped_time_sec?: number;
+    stop_count?: number;
+    best_30s_pace?: string;
+    best_1min_pace?: string;
+    best_3min_pace?: string;
+    best_5min_pace?: string;
+    best_10min_pace?: string;
+    best_20min_pace?: string;
+    best_30min_pace?: string;
+    best_60min_pace?: string;
 }
 
 export interface ActivityDetail {
@@ -178,6 +209,9 @@ export interface ActivityDetail {
     moving_time: number | null;
     total_elevation_gain?: number | null;
     average_heartrate: number | null;
+    max_heartrate?: number | null;
+    /** Strava ships rpm (one leg); doubled for the spm the UI shows. */
+    average_cadence?: number | null;
     trimp_edwards: number | null;
     workout_type?: number | null;
     location_name?: string | null;
@@ -241,16 +275,34 @@ export interface TrainingLoad {
     strain: number;
 }
 
+/** One `weekly_snapshots` row, shipped whole (`WeeklySnapshot::toArray()`). */
 export interface WeeklySnapshot {
     id: number;
     user_id: number;
     week_ending: string;
-    runs: number;
+    runs: number | null;
     distance_km: number | null;
+    moving_time_sec?: number | null;
+    weekly_trimp: number | null;
     ctl_42d: number | null;
     atl_7d: number | null;
     form: number | null;
+    form_status: FormStatus | null;
     avg_decoupling: number | null;
+    monotony: number | null;
+    strain: number | null;
+}
+
+/** A snapshot decorated by RunController::decorateSnapshot with its recap
+ *  narration and the flags the Jejak week list renders it with. */
+export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
+    /** True for the in-progress week, whose recap waits for the weekly scheduler. */
+    is_current_week: boolean;
+    /** True for the latest completed week, the only chain link that may regenerate. */
+    is_chain_head: boolean;
+    recap_analysis: AnalysisPayload;
+    /** Remaining Telegram-send cooldown for this week's recap, or null. */
+    notification_retry_after_seconds: number | null;
 }
 
 export interface PersonalRecord {

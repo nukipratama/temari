@@ -145,6 +145,7 @@ describe('Riwayat/Jejak', () => {
         const snapshots = [
             {
                 id: 1,
+                user_id: 1,
                 week_ending: '2026-05-24',
                 distance_km: 35.5,
                 runs: 4,
@@ -191,6 +192,7 @@ describe('Riwayat/Jejak', () => {
         const snapshots = [
             {
                 id: 1,
+                user_id: 1,
                 week_ending: '2026-05-24',
                 distance_km: 35.5,
                 runs: 4,
@@ -239,6 +241,7 @@ describe('Riwayat/Jejak', () => {
         const snapshots = [
             {
                 id: 1,
+                user_id: 1,
                 week_ending: '2026-05-24',
                 distance_km: 5,
                 runs: 1,
@@ -278,6 +281,7 @@ describe('Riwayat/Jejak', () => {
 
     const doneWeekSnapshot = {
         id: 7,
+        user_id: 1,
         week_ending: '2026-05-24',
         distance_km: 35.5,
         runs: 4,
@@ -345,6 +349,7 @@ describe('Riwayat/Jejak', () => {
 
     it('maps every FormStatus value to a Temari pose (fresh / fatigued / overreaching / null)', () => {
         const baseSnap = {
+            user_id: 1,
             distance_km: 35.5,
             runs: 4,
             weekly_trimp: 320,
@@ -757,6 +762,7 @@ describe('Riwayat/Jejak', () => {
     describe('hidden-run count', () => {
         const weekSnapshot = (runs: number | null, isCurrent = false) => [{
             id: 1,
+            user_id: 1,
             week_ending: '2026-05-24',
             distance_km: 35.5,
             runs,

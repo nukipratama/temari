@@ -21,17 +21,7 @@ beforeEach(() => {
     });
 });
 
-const detail: ActivityDetail & {
-    stream_summary?: Record<string, unknown> | null;
-    max_heartrate?: number | null;
-    average_cadence?: number | null;
-    weather_temp_c?: number | null;
-    weather_humidity_pct?: number | null;
-    weather_rain_detected?: boolean | null;
-    weather_wind_speed_kmh?: number | null;
-    weather_wind_gust_kmh?: number | null;
-    weather_wind_direction_deg?: number | null;
-} = {
+const detail: ActivityDetail = {
     id: 11,
     activity_id: 99,
     name: 'Morning Run',
@@ -42,7 +32,6 @@ const detail: ActivityDetail & {
     average_heartrate: 150,
     trimp_edwards: 70,
     stream_summary: {
-        zone_pct: { Z1: 10, Z2: 60, Z3: 20, Z4: 8, Z5: 2 },
         per_km: [
             { km: 1, pace: '6:00', avg_hr: 150, avg_cadence_spm: 170 },
             { km: 2, pace: '5:45', avg_hr: 155, avg_cadence_spm: 173 },
@@ -436,12 +425,12 @@ describe('Runs/Show', () => {
         expect(screen.queryByText(/wajar, tadi panas/)).not.toBeInTheDocument();
     });
 
-    it('skips the decoupling tile when its value is non-numeric (no "NaN%")', () => {
+    it('skips the decoupling tile when its value is not a finite number (no "NaN%")', () => {
         const garbled = {
             ...detail,
             stream_summary: {
                 ...(detail.stream_summary ?? {}),
-                decoupling_pct: 'oops',
+                decoupling_pct: Number.NaN,
             },
         };
         renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: garbled }, detail: garbled });
