@@ -7,6 +7,7 @@ reviewed: 2026-06-20
 code_refs:
   - app/Services/Run/Ingest/StreamAnalysis.php
   - app/Services/Run/Ingest/ActivityPipeline.php
+  - app/Services/Run/Metrics/SummaryRecomputer.php
   - app/Models/ActivityDetail.php
   - app/Models/User.php
   - resources/js/types/inertia.ts
@@ -21,7 +22,7 @@ Strava ships a run as raw per-sample streams (time, distance, heartrate, cadence
 
 The [[run-ingest-pipeline]] fetches streams and calls [compute](app/Services/Run/Ingest/StreamAnalysis.php#L32) inside [computeAndStoreSummary](app/Services/Run/Ingest/ActivityPipeline.php#L237). The result is persisted on the run's [ActivityDetail](app/Models/ActivityDetail.php) (JSON-cast `stream_summary` column, see [casts](app/Models/ActivityDetail.php#L140)); a `null` blob means "no usable streams" (treadmill / manual run). The same step also derives Edwards TRIMP from the zone minutes and stores it alongside ([store](app/Services/Run/Ingest/ActivityPipeline.php#L257)). See [[training-load-metrics]].
 
-Recompute is forward-only and Strava-free: [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L274) re-runs the analysis over the already-stored streams with the user's *current* zones, so a zones change (or a "Baca ulang") refreshes the blob without re-ingesting.
+Recompute is forward-only and Strava-free: [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L387) re-runs the analysis over the already-stored streams with the user's *current* zones, so a zones change (or a "Baca ulang") refreshes the blob without re-ingesting. The AI side never reaches into the pipeline for it: [AnalysisController::trigger](app/Http/Controllers/Api/AnalysisController.php) goes through [SummaryRecomputer](app/Services/Run/Metrics/SummaryRecomputer.php), a one-method seam that owns the activity load.
 
 ## How HR zones come in
 
