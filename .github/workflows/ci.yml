@@ -76,8 +76,8 @@ jobs:
         run: php scripts/check-doc-citations.php
 
   backend-tests:
-    needs: changes
-    if: ${{ needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main' }}
+    needs: [changes, secret-scan, docs-citation-guard]
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -185,8 +185,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-tests:
-    needs: changes
-    if: ${{ needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main' }}
+    needs: [changes, secret-scan, docs-citation-guard]
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -264,8 +264,8 @@ jobs:
   # reliably catches new phpstan/rector/pint regressions. Pre-existing findings
   # are captured in phpstan-baseline.neon; this gate blocks anything NEW.
   static-analysis:
-    needs: changes
-    if: ${{ needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main' }}
+    needs: [changes, secret-scan, docs-citation-guard]
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -315,8 +315,8 @@ jobs:
 
   build:
     name: Build prod image
-    needs: changes
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [changes, secret-scan, docs-citation-guard]
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
