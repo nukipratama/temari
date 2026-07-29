@@ -10,11 +10,13 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Models\RunnerProfile;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\SummaryRecomputer;
 use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -695,4 +697,50 @@ it('still dispatches a real billed job for a non-demo user on the same block', f
         ->assertSuccessful();
 
     Bus::assertDispatched(AnalyzeBriefingJob::class);
+});
+
+// ── trigger → zone recompute: the branch that reads the user's CURRENT zones ──
+
+it('recomputes the stream summary when a zone-dependent run block is re-triggered', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+
+    $recomputer = Mockery::mock(SummaryRecomputer::class);
+    $recomputer->shouldReceive('recomputeFromStoredStreams')->once()->with($activity->id);
+    app()->instance(SummaryRecomputer::class, $recomputer);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/run_insight_zones/{$activity->id}/trigger")
+        ->assertSuccessful();
+});
+
+it('skips the recompute when the user has no custom profile, since the stored summary already used the defaults', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+
+    $recomputer = Mockery::mock(SummaryRecomputer::class);
+    $recomputer->shouldNotReceive('recomputeFromStoredStreams');
+    app()->instance(SummaryRecomputer::class, $recomputer);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/run_insight_zones/{$activity->id}/trigger")
+        ->assertSuccessful();
+});
+
+it('skips the recompute for a block whose narration does not depend on zones', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+
+    $recomputer = Mockery::mock(SummaryRecomputer::class);
+    $recomputer->shouldNotReceive('recomputeFromStoredStreams');
+    app()->instance(SummaryRecomputer::class, $recomputer);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/run_insight_technical/{$activity->id}/trigger")
+        ->assertSuccessful();
 });
