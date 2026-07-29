@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo } from 'react';
 import { cn } from '@/lib/cn';
-import EmptyState from '@/components/ui/EmptyState';
+import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
 
@@ -162,9 +162,10 @@ export default function ProgressionChart({
 
     if (weeks.length === 0) {
         return (
-            <EmptyState className={cn('py-10', className)}>
-                Belum cukup lari di jarak ini buat narik garis progresi.
-            </EmptyState>
+            <EmptyPanel
+                title="Belum cukup lari di jarak ini buat narik garis progresi."
+                className={cn('py-10', className)}
+            />
         );
     }
 

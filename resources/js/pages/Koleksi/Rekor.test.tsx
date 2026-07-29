@@ -46,9 +46,23 @@ beforeEach(() => {
 });
 
 describe('Koleksi/Rekor', () => {
-    it('shows the empty state when no PRs exist', () => {
+    it('shows the empty state when no PRs exist, with a sync CTA', () => {
         render(<KoleksiRekor personalRecords={[]} />);
         expect(screen.getByText(/Belum ada PR/)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Sambungin Strava/i })).toBeInTheDocument();
+    });
+
+    it('hides the sync CTA on the empty state while a sync is already running', () => {
+        setMockPage({
+            auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
+            flash: {},
+            demoLoginEnabled: false,
+            stravaSync: { state: 'syncing', last_synced_at: null },
+        });
+        render(<KoleksiRekor personalRecords={[]} />);
+        expect(screen.getByText(/Belum ada PR/)).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Sambungin Strava/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /sync/i })).not.toBeInTheDocument();
     });
 
     it('renders the hero scoreboard for the highest distance PR', () => {

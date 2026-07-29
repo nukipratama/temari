@@ -5,6 +5,7 @@ import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/Jour
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import EmptyPanel from '@/components/ui/EmptyPanel';
 import PillButton from '@/components/ui/PillButton';
 import PageHero from '@/components/ui/PageHero';
 import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
@@ -218,15 +219,20 @@ function EmptyState() {
     // per connection state; the sync button is hidden while a sync is already
     // running (nothing for the user to do but wait).
     return (
-        <Card tone="empty" padding="lg" className="flex flex-col items-center text-center">
-            <Temari pose="excited" size={128} animate />
-            <p className="mt-4 font-display text-2xl italic text-ink-2">{line}</p>
-            <p className="mt-2 font-sans text-sm text-ink-2">{sub}</p>
-            {state !== 'syncing' && <StravaSyncButton state={state} className="mt-4" />}
-            <BackLink href="/" tone="accent" className="mt-4">
-                Kembali ke Hari Ini
-            </BackLink>
-        </Card>
+        <EmptyPanel
+            pose="excited"
+            title={line}
+            body={sub}
+            action={
+                <>
+                    {state !== 'syncing' && <StravaSyncButton state={state} className="mt-4" />}
+                    <BackLink href="/" tone="accent" className="mt-4">
+                        Kembali ke Hari Ini
+                    </BackLink>
+                </>
+            }
+            className="flex flex-col items-center"
+        />
     );
 }
 

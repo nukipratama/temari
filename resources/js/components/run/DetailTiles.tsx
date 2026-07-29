@@ -1,4 +1,4 @@
-import Card from '@/components/ui/Card';
+import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
 import MetricExplainer from '@/components/MetricExplainer';
 import type { MetricKey } from '@/lib/metricGlossary';
@@ -66,11 +66,7 @@ export default function DetailTiles({
     }
 
     if (tiles.length === 0) {
-        return (
-            <Card tone="empty" padding="lg" className="text-center font-display text-base italic text-ink-2">
-                Detail teknis-nya belum kebaca.
-            </Card>
-        );
+        return <EmptyPanel title="Detail teknis-nya belum kebaca." className="" />;
     }
 
     return (
