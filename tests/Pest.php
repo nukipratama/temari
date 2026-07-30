@@ -43,6 +43,10 @@ pest()->beforeEach(function (): void {
     // queue (so the flush never actually pulls/resets it) must not leave a
     // stale count behind for the next test's dead-letter assertions.
     Cache::forget('ai.dead_letter.window_count');
+    // Same for the global aiPaused shared-prop cache — a test that mocks
+    // AnalysisService::generationPaused() must not read a stale answer cached
+    // by a previous test's mock.
+    Cache::forget('ai-paused');
     // Pest CI skips `npm run build`; neutralize @vite() so Inertia roots render.
     $this->withoutVite();
 

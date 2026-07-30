@@ -10,6 +10,7 @@ import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
+import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
@@ -63,6 +64,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
             <FlashNotice />
             <StravaZoneReconnectBanner />
             <AiOutageBanner />
+            <AiCatchingUpBanner />
             <StravaPausedBanner />
 
             {/* Deliberately unkeyed and unanimated. A `key` here forced React to

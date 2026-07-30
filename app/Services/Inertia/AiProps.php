@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Inertia;
 
+use App\Jobs\AI\AnalyzeActivityJob;
+use App\Models\Activity;
+use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
 use App\Support\SharedPropCacheKey;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * The narration-pipeline signal the whole app can see.
@@ -28,6 +33,7 @@ final readonly class AiProps
     {
         return [
             'aiPaused' => fn (): bool => $this->aiPausedFor($user),
+            'aiCatchingUp' => fn (): bool => $this->aiCatchingUpFor($user),
         ];
     }
 
@@ -49,6 +55,36 @@ final readonly class AiProps
         return SharedPropCacheKey::AiPaused->remember(
             null,
             fn (): bool => $this->analyses->generationPaused(),
+        );
+    }
+
+    /**
+     * Whether this user has at least one synced activity still waiting on its
+     * per-activity narration (a backfill chain hasn't reached it yet, or a
+     * failed attempt is still under retry budget), so the UI can show a soft
+     * "still catching up" reassurance instead of an empty-looking run. A
+     * dead-lettered row (retry budget exhausted, needs a manual re-arm on
+     * /ai-usage) is deliberately excluded — it will not resolve on its own, so
+     * counting it here would make the banner a false promise. Skipped
+     * entirely while generation is globally paused: {@see self::aiPausedFor()}
+     * already explains that case.
+     */
+    private function aiCatchingUpFor(?User $user): bool
+    {
+        if ($user === null || $this->aiPausedFor($user)) {
+            return false;
+        }
+
+        return SharedPropCacheKey::AiCatchingUp->remember(
+            $user->id,
+            fn (): bool => Analysis::query()
+                ->where('subject_type', Activity::class)
+                ->whereIn('analysis_type', array_column(AnalyzeActivityJob::groupedTypes(), 'value'))
+                ->whereIn('subject_id', Activity::query()->where('user_id', $user->id)->select('id'))
+                ->where(fn (Builder $q) => $q
+                    ->whereIn('status', [AnalysisStatus::Queued, AnalysisStatus::Processing])
+                    ->orWhere(fn (Builder $q2) => $q2->stalled()))
+                ->exists(),
         );
     }
 }

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import ErrorBanner from '@/components/ErrorBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import AiOutageBanner from '@/components/AiOutageBanner';
+import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
@@ -20,6 +21,7 @@ export default function BareShell({ children }: Readonly<BareShellProps>) {
             <ErrorBanner />
             <StravaZoneReconnectBanner />
             <AiOutageBanner />
+            <AiCatchingUpBanner />
             <StravaPausedBanner />
             {children}
         </div>

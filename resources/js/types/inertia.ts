@@ -89,6 +89,8 @@ export interface SharedProps {
     stravaZoneScopeMissing?: boolean;
     /** True when LLM narration is globally paused, so the UI can show a soft "Temari lagi istirahat" banner. */
     aiPaused?: boolean;
+    /** True when the auth user has an activity still waiting on its per-activity narration, so the UI can show a soft "still catching up" banner. */
+    aiCatchingUp?: boolean;
     /** True when the Strava kill-switch is off, so every manual sync affordance hides behind a soft "lagi dijeda" banner. */
     stravaPaused?: boolean;
     /** Inertia's shared validation/error bag, keyed by field (e.g. `strava`). */
