@@ -11,6 +11,7 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Gamification\UnlockEngine;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PersonalRecords
 {
@@ -172,27 +173,34 @@ class PersonalRecords
 
     private function updateIfFaster(Activity $activity, PrCategory $category, float $value, Carbon $setAt): bool
     {
-        $existing = PersonalRecord::query()
-            ->where('user_id', $activity->user_id)
-            ->where('category', $category->value)
-            ->first();
+        // Locked read + write in one transaction: two activities for the same
+        // user can be ingested concurrently on different workers, and a plain
+        // check-then-act here let both pass the "no existing PR" check and
+        // race each other into the user_id+category unique constraint.
+        return DB::transaction(function () use ($activity, $category, $value, $setAt): bool {
+            $existing = PersonalRecord::query()
+                ->where('user_id', $activity->user_id)
+                ->where('category', $category->value)
+                ->lockForUpdate()
+                ->first();
 
-        if ($existing !== null && $value >= $existing->value_sec) {
-            return false;
-        }
+            if ($existing !== null && $value >= $existing->value_sec) {
+                return false;
+            }
 
-        PersonalRecord::query()->updateOrCreate(
-            [
-                'user_id' => $activity->user_id,
-                'category' => $category,
-            ],
-            [
-                'value_sec' => $value,
-                'activity_id' => $activity->id,
-                'set_at' => $setAt,
-            ],
-        );
+            PersonalRecord::query()->updateOrCreate(
+                [
+                    'user_id' => $activity->user_id,
+                    'category' => $category,
+                ],
+                [
+                    'value_sec' => $value,
+                    'activity_id' => $activity->id,
+                    'set_at' => $setAt,
+                ],
+            );
 
-        return true;
+            return true;
+        });
     }
 }

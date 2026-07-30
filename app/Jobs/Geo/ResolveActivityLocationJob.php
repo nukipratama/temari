@@ -6,6 +6,7 @@ namespace App\Jobs\Geo;
 
 use App\Models\ActivityDetail;
 use App\Services\Geo\NominatimResolver;
+use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -16,11 +17,18 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 2;
+    /**
+     * The WithoutOverlapping lock caps this at 1 job/sec cluster-wide, and
+     * NominatimResolver swallows every request exception into a null return
+     * rather than throwing — so a fixed $tries counts lock-contention releases
+     * against the same tiny budget as real failures. A bulk backfill queues
+     * far more than a couple of jobs behind the lock, so retry on a time
+     * window instead: it survives the queue backlog and still self-heals via
+     * the hourly geo:backfill-locations catch-up if it ever runs out.
+     */
+    private const int RETRY_WINDOW_MINUTES = 20;
 
-    public int $backoff = 60;
-
-    public int $uniqueFor = 600;
+    public int $uniqueFor = self::RETRY_WINDOW_MINUTES * 60;
 
     public function __construct(public readonly int $activityDetailId)
     {
@@ -29,6 +37,11 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
     public function uniqueId(): string
     {
         return (string) $this->activityDetailId;
+    }
+
+    public function retryUntil(): DateTimeInterface
+    {
+        return now()->addMinutes(self::RETRY_WINDOW_MINUTES);
     }
 
     /**
