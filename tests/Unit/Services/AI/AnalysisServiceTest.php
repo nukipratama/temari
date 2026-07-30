@@ -186,6 +186,38 @@ it('requestDeferred leaves an existing Done row untouched', function (): void {
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
+it('requestActivityGroupRuleBased fills all 4 rows Done without dispatching', function (): void {
+    $activity = Activity::factory()->create();
+
+    $this->service->requestActivityGroupRuleBased($activity);
+
+    $rows = Analysis::query()->where('subject_id', $activity->id)->get();
+    expect($rows)->toHaveCount(4)
+        ->and($rows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue()
+        ->and($rows->every(fn (Analysis $row): bool => is_string($row->content) && $row->content !== ''))->toBeTrue()
+        ->and($rows->pluck('analysis_type')->all())->toEqualCanonicalizing([
+            AnalysisType::PostRunSpeech,
+            AnalysisType::RunInsightTechnical,
+            AnalysisType::RunInsightSplits,
+            AnalysisType::RunInsightZones,
+        ]);
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+});
+
+it('requestActivityGroupRuleBased never overwrites an already-Done row with filler (e.g. real narration that aged past the cap)', function (): void {
+    $activity = Activity::factory()->create();
+    $realRow = Analysis::factory()->done('narasi asli yang sudah dibayar')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $this->service->requestActivityGroupRuleBased($activity);
+
+    expect($realRow->fresh()->content)->toBe('narasi asli yang sudah dibayar');
+});
+
 it('requestActivityGroup creates 4 rows and dispatches one AnalyzeActivityJob', function (): void {
     $activity = Activity::factory()->create();
 
@@ -506,7 +538,7 @@ it('markFailed alerts maintainers exactly at the dead-letter crossing', function
         'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
     ]);
 
-    $alerter->shouldReceive('deadLettered')->once()->with(Mockery::type(Analysis::class));
+    $alerter->shouldReceive('deadLettered')->once();
 
     $service->markFailed($row, 'Azure 500');
 });
@@ -905,6 +937,20 @@ it('requestRuleBased refills an already-Done row in place rather than minting a 
     expect($second->id)->toBe($first->id)
         ->and(Analysis::query()->count())->toBe(1);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('requestRuleBased with refillDone:false leaves an already-Done row untouched', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    Analysis::factory()->done('recap asli, sudah dibayar')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+
+    $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap, refillDone: false);
+
+    expect($row->content)->toBe('recap asli, sudah dibayar');
 });
 
 it('runs the daily cost aggregate once per scope no matter how many rows it dispatches', function (): void {

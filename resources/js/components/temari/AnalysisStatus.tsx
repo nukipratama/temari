@@ -198,23 +198,21 @@ export default function AnalysisStatus({
         );
     }
 
+    // A plain Pending block (synced but not narrated yet, from any entrypoint)
+    // renders nothing — the chain/self-heal/backfill sweep reaches it on its
+    // own, and a visible "not narrated yet" state reads as broken. A window-
+    // gated block (awaitingSchedule) is a different, intentional case — it
+    // explains why the recap isn't out yet, so it keeps its own message.
+    if (!awaitingSchedule) {
+        return null;
+    }
+
     return (
         <div className="flex flex-col gap-1.5">
             <span className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}>
-                <Icon icon={awaitingSchedule ? 'mdi:clock-outline' : 'mdi:sparkles-outline'} aria-hidden />
-                <span>{awaitingSchedule ? awaitingScheduleLabel : 'Belum dibaca Temari.'}</span>
+                <Icon icon="mdi:clock-outline" aria-hidden />
+                <span>{awaitingScheduleLabel}</span>
             </span>
-            {canTrigger && (
-                <button
-                    type="button"
-                    onClick={trigger}
-                    disabled={pending}
-                    className="focus-ring inline-flex items-center self-start gap-1 rounded-full bg-leaf-deep text-cream text-xs px-3 py-1 font-semibold transition hover:opacity-90 disabled:opacity-50"
-                >
-                    <Icon icon="mdi:auto-awesome" aria-hidden />
-                    <span>Minta Temari bacain</span>
-                </button>
-            )}
         </div>
     );
 }

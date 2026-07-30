@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillStagger;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Support\Facades\Log;
@@ -68,7 +69,7 @@ class AnalyzeMonthlyRecapJob extends AnalyzeRowJob
                 subjectId: (int) $row->subject_id,
                 type: AnalysisType::MonthlyRecap,
                 discriminator: $next,
-                delaySeconds: (int) config('ai.backfill_stagger_seconds', 360),
+                delaySeconds: app(BackfillStagger::class)->delayFor((int) $row->subject_id),
                 invalidate: false,
             );
         } catch (Throwable $e) {

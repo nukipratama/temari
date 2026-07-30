@@ -284,6 +284,16 @@ it('sweeps one earliest stalled weekly link per user', function (): void {
     expect($links->pluck('subjectId')->all())->toEqualCanonicalizing([$mineEarliest->id, $theirs->id]);
 });
 
+it('carries week_ending in the stalled weekly link\'s discriminator so a caller can age-check it', function (): void {
+    $user = User::factory()->create();
+    $stalled = chainWeek($user, '2026-05-31', AnalysisStatus::Failed);
+
+    $link = chainResolver()->stalledWeeklyLinkPerUser()->first();
+
+    expect($link?->subjectId)->toBe($stalled->id)
+        ->and($link?->discriminator)->toBe('2026-05-31');
+});
+
 it('never sweeps a weekly link that a demo user, an open week, an empty week or a settled status owns', function (): void {
     $demo = User::factory()->demo()->create();
     chainWeek($demo, '2026-06-07', AnalysisStatus::Pending);

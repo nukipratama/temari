@@ -7,11 +7,14 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentLoop;
 use App\Services\AI\Agent\AgentTool;
+use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\TokenUsageRecorder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
 use Mockery\MockInterface;
@@ -33,6 +36,17 @@ pest()->extend(TestCase::class)->in('Feature', 'Unit');
 
 pest()->beforeEach(function (): void {
     Http::preventStrayRequests();
+    // The local Azure call throttle shares one rate-limit bucket across every
+    // call; clear it so one test's calls never count against the next.
+    RateLimiter::clear('azure-openai-calls');
+    // Same for the dead-letter alert coalescing window — a test that fakes the
+    // queue (so the flush never actually pulls/resets it) must not leave a
+    // stale count behind for the next test's dead-letter assertions.
+    Cache::forget('ai.dead_letter.window_count');
+    // Same for the global aiPaused shared-prop cache — a test that mocks
+    // AnalysisService::generationPaused() must not read a stale answer cached
+    // by a previous test's mock.
+    Cache::forget('ai-paused');
     // Pest CI skips `npm run build`; neutralize @vite() so Inertia roots render.
     $this->withoutVite();
 
@@ -178,7 +192,7 @@ function fakeStructuredCaller(ClientFake $client, string $deployment = 'gpt-test
     return new StructuredChatCaller(
         $azure,
         app(TokenUsageRecorder::class),
-        new AgentLoop($azure, app(AzureConfigCircuitBreaker::class)),
+        new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)),
     );
 }
 
@@ -195,7 +209,13 @@ function captureAnalysisServiceRequests(array &$captured): AnalysisService
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('request')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'delaySeconds', 'invalidate');
+            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'delaySeconds', 'invalidate') + ['ruleBased' => false];
+
+            return new Analysis();
+        });
+    $service->shouldReceive('requestRuleBased')
+        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$captured): Analysis {
+            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator') + ['delaySeconds' => null, 'invalidate' => null, 'ruleBased' => true];
 
             return new Analysis();
         });

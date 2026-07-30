@@ -15,14 +15,11 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\BackfillStagger;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
-use Carbon\CarbonInterface;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Owns the post-ingest AI analysis fan-out. Queued so it runs in its own job,
@@ -31,15 +28,10 @@ use Illuminate\Support\Facades\Log;
  */
 class DispatchPostRunAnalysis implements ShouldQueue
 {
-    private const string BACKFILL_SLOT_CACHE_PREFIX = 'ai.backfill.next-slot:';
-
-    private const string BACKFILL_SLOT_LOCK_PREFIX = 'ai.backfill.lock:';
-
-    private const int BACKFILL_SLOT_CACHE_TTL_HOURS = 2;
-
     public function __construct(
         private readonly AnalysisService $analysisService,
         private readonly WeeklyAggregator $weeklyAggregator,
+        private readonly BackfillStagger $backfillStagger,
     ) {
     }
 
@@ -52,16 +44,17 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         $user = $activity->user;
         $detail = $activity->detail;
-
-        $this->requestPrContext($activity);
-        $this->requestCardFlavor($activity);
+        $tooOld = $this->isTooOldForRealNarration($detail);
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
-        $delaySec = $isBackfill ? $this->backfillDelaySeconds($activity) : 0;
+        $delaySec = $isBackfill ? $this->backfillStagger->delayFor($activity->user_id) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
 
-        $this->dispatchActivityGroup($activity, $isBackfill, $delaySec);
+        $this->requestPrContext($activity, $tooOld, $delaySec);
+        $this->requestCardFlavor($activity, $tooOld, $delaySec);
+
+        $this->dispatchActivityGroup($activity, $isBackfill, $tooOld, $delaySec);
 
         // Daily cadence: when the ingested run is today's, refresh the whole
         // daily AI set so each block narrates with every run done so far today.
@@ -108,7 +101,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * narrator reads the live PR row at job time, so a still-pending row
      * narrates the LATEST value regardless of how many beats preceded it.
      */
-    private function requestPrContext(Activity $activity): void
+    private function requestPrContext(Activity $activity, bool $tooOld, int $delaySec): void
     {
         $prIds = PersonalRecord::query()
             ->where('activity_id', $activity->id)
@@ -116,25 +109,49 @@ class DispatchPostRunAnalysis implements ShouldQueue
             ->pluck('id');
 
         foreach ($prIds as $prId) {
+            if ($tooOld) {
+                $this->analysisService->requestRuleBased(
+                    subjectOrType: PersonalRecord::class,
+                    subjectId: (int) $prId,
+                    type: AnalysisType::PrContext,
+                    refillDone: false,
+                );
+
+                continue;
+            }
+
             $this->analysisService->request(
                 subjectOrType: PersonalRecord::class,
                 subjectId: (int) $prId,
                 type: AnalysisType::PrContext,
+                delaySeconds: $delaySec,
                 invalidate: false,
             );
         }
     }
 
-    private function requestCardFlavor(Activity $activity): void
+    private function requestCardFlavor(Activity $activity, bool $tooOld, int $delaySec): void
     {
         $card = $activity->runCard;
         if ($card === null) {
             return;
         }
 
+        if ($tooOld) {
+            $this->analysisService->requestRuleBased(
+                subjectOrType: RunCard::class,
+                subjectId: $card->id,
+                type: AnalysisType::CardFlavor,
+                refillDone: false,
+            );
+
+            return;
+        }
+
         $this->analysisService->request(
             subjectOrType: RunCard::class,
             subjectId: $card->id,
+            delaySeconds: $delaySec,
             type: AnalysisType::CardFlavor,
             invalidate: true,
         );
@@ -158,6 +175,23 @@ class DispatchPostRunAnalysis implements ShouldQueue
     }
 
     /**
+     * An activity older than `ai.backfill_max_age_days` gets the deterministic
+     * rule-based filler instead of a real LLM call — nobody's checking back on
+     * narration for a year-old run, and it keeps every chain's depth bounded.
+     */
+    private function isTooOldForRealNarration(ActivityDetail $detail): bool
+    {
+        $startedAt = $detail->start_date_local;
+        if ($startedAt === null) {
+            return false;
+        }
+
+        $maxAgeDays = (int) config('ai.backfill_max_age_days');
+
+        return Carbon::now()->diffInDays($startedAt, absolute: true) >= $maxAgeDays;
+    }
+
+    /**
      * Backfilled (old) runs stage their narration group Pending and let the
      * chain narrate them one activity at a time, oldest first: each ingest
      * stages its own group, and the kickoff dispatches the user's earliest
@@ -167,9 +201,27 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * (fresh) runs keep the existing single immediate dispatch + graceful
      * prev-lookup (the prior activity is already Done).
      */
-    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, int $delaySec): void
+    /**
+     * A fresh (non-backfill) ingest still joins the chain instead of firing
+     * immediately when an older link for this user is already unresolved —
+     * otherwise a live run can narrate ahead of an in-progress backfill,
+     * both racing it for Azure calls and breaking the connected story's
+     * chronological continuity (today's run would reference the wrong
+     * "previous" narrative). The fast path (dispatchActivityGroup's steady-
+     * state branch) is reserved for the common case: the chain is already
+     * caught up.
+     */
+    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, bool $tooOld, int $delaySec): void
     {
-        if (! $isBackfill) {
+        if ($tooOld) {
+            $this->analysisService->requestActivityGroupRuleBased($activity);
+
+            return;
+        }
+
+        $hasUnfinishedOlderLink = AnalyzeActivityJob::earliestPendingActivityForUser($activity->user_id) !== null;
+
+        if (! $isBackfill && ! $hasUnfinishedOlderLink) {
             $this->maybeRefreshActivityGroup($activity);
 
             return;
@@ -231,59 +283,4 @@ class DispatchPostRunAnalysis implements ShouldQueue
         return ($speech->cooldownRemaining() ?? 0) <= 0;
     }
 
-    /**
-     * A backfilled cascade gets staggered behind any other backfilled cascades
-     * queued in the last 2 hours for this user.
-     */
-    private function backfillDelaySeconds(Activity $activity): int
-    {
-        $staggerSec = max(1, (int) config('ai.backfill_stagger_seconds', 360));
-
-        // The slot read-modify-write must be atomic per user: two concurrent
-        // backfill listeners for the same user would otherwise read the same slot
-        // and both dispatch at delay 0, collapsing the stagger into a burst. A
-        // per-user lock serialises the reservation. On the (effectively
-        // impossible) lock timeout, fall back to immediate dispatch rather than
-        // blocking the queued listener.
-        try {
-            [$delaySec, $slotAt] = Cache::lock(self::BACKFILL_SLOT_LOCK_PREFIX.$activity->user_id, 10)
-                ->block(3, fn (): array => $this->reserveBackfillSlot($activity->user_id, $staggerSec));
-        } catch (LockTimeoutException) {
-            Log::warning('ai.backfill.lock_timeout', ['user_id' => $activity->user_id]);
-
-            return 0;
-        }
-
-        if ($delaySec > 0) {
-            Log::info('ai.backfill.queued', [
-                'activity_id' => $activity->id,
-                'user_id' => $activity->user_id,
-                'delay_sec' => $delaySec,
-                'slot_at' => $slotAt->toIso8601String(),
-            ]);
-        }
-
-        return $delaySec;
-    }
-
-    /**
-     * Reserve the next staggered slot for a user under the held lock: read the
-     * current slot, take it (or now if none/expired), and advance the stored
-     * slot by the stagger window.
-     *
-     * @return array{0: int, 1: CarbonInterface}  the delay in seconds and the reserved slot
-     */
-    private function reserveBackfillSlot(int $userId, int $staggerSec): array
-    {
-        $key = self::BACKFILL_SLOT_CACHE_PREFIX.$userId;
-        $now = Carbon::now();
-
-        $cached = Cache::get($key);
-        $slotAt = ($cached instanceof CarbonInterface && $cached->gt($now)) ? $cached : $now->copy();
-        $delaySec = (int) $now->diffInSeconds($slotAt, absolute: true);
-
-        Cache::put($key, $slotAt->copy()->addSeconds($staggerSec), $now->copy()->addHours(self::BACKFILL_SLOT_CACHE_TTL_HOURS));
-
-        return [$delaySec, $slotAt];
-    }
 }

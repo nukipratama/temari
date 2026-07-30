@@ -93,14 +93,27 @@ class AnalysisService
      * and no notification fans out. The demo login is public and a manual
      * trigger deliberately fires past the cost ceiling, so the demo account's
      * "Baca ulang" resolves here and can never bill Azure.
+     *
+     * $refillDone controls whether an already-Done row gets overwritten: the
+     * demo "Baca ulang" trigger wants true (its content is rule-based to begin
+     * with, so refilling in place is a no-op it can rely on), but a caller
+     * filling in a too-old-for-the-LLM backfill row must pass false — that row
+     * can legitimately already hold real, billed-for narration (e.g. a Strava
+     * resync of an activity that aged past the backfill cap since it was first
+     * narrated), which must never be silently clobbered with filler prose.
      */
     public function requestRuleBased(
         Model|string $subjectOrType,
         int $subjectId,
         AnalysisType $type,
         ?string $discriminator = null,
+        bool $refillDone = true,
     ): Analysis {
         $row = $this->requestDeferred($subjectOrType, $subjectId, $type, $discriminator);
+
+        if (! $refillDone && $row->status === AnalysisStatus::Done) {
+            return $row;
+        }
 
         $this->withoutDispatching(function () use ($row): void {
             $this->markDone($row, app(RuleBasedNarrationFiller::class)->fillFor($row));
@@ -138,6 +151,19 @@ class AnalysisService
     public function requestActivityGroup(Activity $activity, bool $invalidate = false, ?int $delaySeconds = null): void
     {
         $this->dispatchGroup(AnalyzeActivityJob::class, $activity->id, null, $invalidate, $delaySeconds);
+    }
+
+    /**
+     * Fill the whole per-activity narration group with the deterministic
+     * rule-based filler instead of dispatching a real LLM chain — for
+     * activities past `ai.backfill_max_age_days`, the same loop shape as
+     * {@see self::requestActivityGroupDeferred()}, filling instead of staging.
+     */
+    public function requestActivityGroupRuleBased(Activity $activity): void
+    {
+        foreach (AnalyzeActivityJob::groupedTypes() as $type) {
+            $this->requestRuleBased(AnalyzeActivityJob::subjectType(), $activity->id, $type, refillDone: false);
+        }
     }
 
     /**
@@ -228,7 +254,7 @@ class AnalysisService
         // failed attempt. A manual re-arm (attempts -> 0) re-opens the budget, so a
         // later re-exhaustion is a genuine new dead-letter and alerts again.
         if ($row->attempts >= Analysis::MAX_SELF_HEAL_ATTEMPTS) {
-            $this->alerter->deadLettered($row);
+            $this->alerter->deadLettered();
         }
     }
 

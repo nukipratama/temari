@@ -7,6 +7,7 @@ use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
+use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\Activity;
@@ -16,6 +17,7 @@ use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\BackfillStagger;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\MaterialFingerprint;
@@ -281,6 +283,59 @@ it('backfill kickoff dispatches the user earliest Pending group, not the just-in
     Carbon::setTestNow();
 });
 
+it('staggers card_flavor and pr_context by the same backfill delay as the activity group', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    config()->set('ai.backfill_stagger_seconds', 100);
+
+    // First backfilled ingest reserves the immediate (0-delay) slot for this user.
+    $first = analyzedActivity('2026-05-01 06:00:00');
+    fire($first);
+
+    Bus::fake();
+    // Second backfilled ingest for the same user gets staggered behind the first.
+    $activity = analyzedActivity('2026-05-02 06:00:00', $first->user_id);
+    RunCard::factory()->create(['activity_id' => $activity->id]);
+    PersonalRecord::factory()->for($activity->user)->create([
+        'category' => '5km',
+        'activity_id' => $activity->id,
+    ]);
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class, fn (AnalyzeCardFlavorJob $job): bool => $job->delay === 100);
+    Bus::assertDispatched(AnalyzePrContextJob::class, fn (AnalyzePrContextJob $job): bool => $job->delay === 100);
+    Carbon::setTestNow();
+});
+
+it('fills an activity older than the backfill depth cap rule-based (group + card + pr context), no real dispatch', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    config()->set('ai.backfill_max_age_days', 365);
+    // Well over 365 days before 2026-06-10.
+    $activity = analyzedActivity('2025-01-01 06:00:00');
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+    $pr = PersonalRecord::factory()->for($activity->user)->create([
+        'category' => '5km',
+        'activity_id' => $activity->id,
+    ]);
+
+    fire($activity);
+
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
+
+    $groupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->get();
+    expect($groupRows)->toHaveCount(4)
+        ->and($groupRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue();
+
+    $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
+    expect($cardRow->status)->toBe(AnalysisStatus::Done);
+
+    $prRow = Analysis::query()->forSubject(PersonalRecord::class, $pr->id, AnalysisType::PrContext)->firstOrFail();
+    expect($prRow->status)->toBe(AnalysisStatus::Done);
+
+    Carbon::setTestNow();
+});
+
 it('steady-state (fresh run) dispatches the activity group immediately', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $fresh = analyzedActivity('2026-06-10 06:00:00');
@@ -288,6 +343,37 @@ it('steady-state (fresh run) dispatches the activity group immediately', functio
     fire($fresh);
 
     Bus::assertDispatched(
+        AnalyzeActivityJob::class,
+        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $fresh->id,
+    );
+    Carbon::setTestNow();
+});
+
+it('a live (non-backfill) run joins the chain instead of jumping ahead when an older link is unresolved', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    // An older run already staged Pending (e.g. an in-progress backfill).
+    $older = analyzedActivity('2026-05-10 06:00:00');
+    app(AnalysisService::class)->requestActivityGroupDeferred($older);
+
+    Bus::fake();
+    // A live (fresh, non-backfill) run comes in while that older link is still unresolved.
+    $fresh = analyzedActivity('2026-06-10 06:00:00', $older->user_id);
+    fire($fresh);
+
+    // Staged (joins the chain), not dispatched directly.
+    $freshRow = Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $fresh->id)
+        ->where('analysis_type', AnalysisType::PostRunSpeech)
+        ->firstOrFail();
+    expect($freshRow->status)->toBe(AnalysisStatus::Pending);
+
+    // The chain re-kicks the older, still-earliest link — not the fresh run.
+    Bus::assertDispatched(
+        AnalyzeActivityJob::class,
+        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $older->id,
+    );
+    Bus::assertNotDispatched(
         AnalyzeActivityJob::class,
         fn (AnalyzeActivityJob $job): bool => $job->subjectId === $fresh->id,
     );
@@ -423,7 +509,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
     $activity = analyzedActivity();
     $weekly = Mockery::mock(WeeklyAggregator::class);
     $weekly->shouldReceive('rebuildForwardFrom')->once()->andReturnNull();
-    $listener = new DispatchPostRunAnalysis(app(AnalysisService::class), $weekly);
+    $listener = new DispatchPostRunAnalysis(app(AnalysisService::class), $weekly, app(BackfillStagger::class));
 
     $listener->handle(new ActivityIngested($activity->id));
 

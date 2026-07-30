@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Cache;
  */
 enum SharedPropCacheKey: string
 {
+    case AiCatchingUp = 'ai-catching-up';
     case AiPaused = 'ai-paused';
     case EquippedAccessories = 'equipped-accessories';
     case GoalsSummary = 'goals-summary';
@@ -62,6 +63,14 @@ enum SharedPropCacheKey: string
     private const int AI_PAUSED_SECONDS = 60;
 
     /**
+     * TTL for the per-user "narration still catching up" signal. Backfill
+     * chains advance one link at a time, so this moves faster than the
+     * settings-shaped signals below but still doesn't need to be query-fresh
+     * for a soft reassurance banner.
+     */
+    private const int AI_CATCHING_UP_SECONDS = 120;
+
+    /**
      * TTL for the global Strava-pause signal, which reads the `strava.enabled`
      * kill-switch from the app_config control plane on every page load. A flip
      * on /pulse busts the key, so the TTL is only a safety net.
@@ -95,6 +104,7 @@ enum SharedPropCacheKey: string
     public function ttl(): int
     {
         return match ($this) {
+            self::AiCatchingUp => self::AI_CATCHING_UP_SECONDS,
             self::AiPaused => self::AI_PAUSED_SECONDS,
             self::StravaPaused => self::STRAVA_PAUSED_SECONDS,
             self::GoalsSummary => self::GOALS_SUMMARY_SECONDS,

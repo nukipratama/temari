@@ -90,9 +90,9 @@ describe('AnalysisStatus', () => {
         expect(screen.getByRole('button', { name: /Coba lagi/ })).toBeInTheDocument();
     });
 
-    it('renders the empty-state trigger when status is pending with no content', () => {
-        render(<AnalysisStatus analysis={payload({ status: 'pending' })} />);
-        expect(screen.getByRole('button', { name: /Minta Temari bacain/ })).toBeInTheDocument();
+    it('renders nothing when status is pending with no content', () => {
+        const { container } = render(<AnalysisStatus analysis={payload({ status: 'pending' })} />);
+        expect(container).toBeEmptyDOMElement();
     });
 
     it('shows the "belum tersedia" note and no trigger when awaitingSchedule (current week)', () => {
@@ -289,15 +289,15 @@ describe('AnalysisStatus', () => {
             expect(screen.getByRole('button', { name: /Coba lagi/ })).toBeInTheDocument();
         });
 
-        it('still shows the empty-state trigger on a pending chained block even when not head', () => {
-            render(
+        it('renders nothing on a pending chained block even when not head', () => {
+            const { container } = render(
                 <AnalysisStatus
                     analysis={payload({ status: 'pending', type: 'weekly_recap' })}
                     chained
                     isChainHead={false}
                 />,
             );
-            expect(screen.getByRole('button', { name: /Minta Temari bacain/ })).toBeInTheDocument();
+            expect(container).toBeEmptyDOMElement();
         });
 
         it('standalone (non-chained) done block keeps "Baca ulang" regardless of isChainHead', () => {

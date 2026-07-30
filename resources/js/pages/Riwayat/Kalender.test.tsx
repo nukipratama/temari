@@ -264,7 +264,7 @@ describe('Kalender', () => {
             expect(screen.queryByText(/Catatan Temari/)).not.toBeInTheDocument();
         });
 
-        it('shows the empty / resume state when a past month is not yet narrated', () => {
+        it('keeps the card heading but renders no narration/trigger when a past month is not yet narrated', () => {
             render(
                 <Kalender
                     {...BASE_PROPS}
@@ -273,8 +273,9 @@ describe('Kalender', () => {
                     monthlyRecap={makeRecap({ status: 'pending', content: null, id: null })}
                 />,
             );
-            expect(screen.getByText('Belum dibaca Temari.')).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Minta Temari bacain/ })).toBeInTheDocument();
+            expect(screen.getByText(/Catatan Temari/)).toBeInTheDocument();
+            expect(screen.queryByText('Belum dibaca Temari.')).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
         });
 
         it('suppresses every trigger on the still-open current month and reads "belum tersedia"', () => {

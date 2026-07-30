@@ -38,7 +38,7 @@ it('narrates every completed week not yet Done, oldest first, with staggered del
     $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
 
     $this->artisan('ai:weekly-recap')
-        ->expectsOutputToContain('Dispatched weekly recap for 3 snapshots (through week ending 2026-05-17)')
+        ->expectsOutputToContain('Dispatched weekly recap for 3 snapshots (0 filled rule-based) through week ending 2026-05-17')
         ->assertSuccessful();
 
     // Chronological order (oldest first) with index * stagger delays.
@@ -114,6 +114,32 @@ it('narrates a Failed and a far-back historical week (resume safety net)', funct
     $this->artisan('ai:weekly-recap')->assertSuccessful();
 
     expect(array_column($captured, 'subjectId'))->toBe([$farBack->id, $recent->id]);
+
+    Carbon::setTestNow();
+});
+
+it('fills a week older than the backfill depth cap rule-based instead of a real LLM dispatch', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+    config()->set('ai.backfill_max_age_days', 365);
+
+    $user = User::factory()->create();
+    // 2025-01-05 is well over 365 days before 2026-05-18.
+    $tooOld = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2025-01-05', 'runs' => 2]);
+    $recent = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    $this->artisan('ai:weekly-recap')
+        ->expectsOutputToContain('Dispatched weekly recap for 1 snapshots (1 filled rule-based) through week ending 2026-05-17')
+        ->assertSuccessful();
+
+    $ruleBased = collect($captured)->firstWhere('subjectId', $tooOld->id);
+    $real = collect($captured)->firstWhere('subjectId', $recent->id);
+
+    expect($ruleBased['ruleBased'])->toBeTrue()
+        ->and($ruleBased['delaySeconds'])->toBeNull()
+        ->and($real['ruleBased'])->toBeFalse();
 
     Carbon::setTestNow();
 });

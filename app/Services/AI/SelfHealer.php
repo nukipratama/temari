@@ -36,6 +36,15 @@ class SelfHealer
      */
     private const int NONCASCADING_DRAIN_BATCH = 10;
 
+    /**
+     * Spacing between successive real dispatches within one sweep run, so an
+     * hourly sweep spreads its batch instead of firing every resumed link at
+     * once. Sweep-internal fairness only — much smaller than the multi-minute
+     * backfill stagger, since the proactive Azure rate limiter is the actual
+     * backstop against a burst.
+     */
+    private const int SWEEP_SPACING_SECONDS = 5;
+
     public function __construct(
         private readonly AnalysisService $service,
         private readonly ChainResolver $chains,
@@ -75,6 +84,7 @@ class SelfHealer
     private function resumePerActivity(): int
     {
         $resumed = 0;
+        $index = 0;
         $service = $this->service;
 
         Activity::query()
@@ -89,14 +99,26 @@ class SelfHealer
             })
             ->distinct()
             ->select('activities.user_id')
-            ->chunkById(100, function ($users) use ($service, &$resumed): void {
+            ->chunkById(100, function ($users) use ($service, &$resumed, &$index): void {
+                $oldestReal = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'));
+
                 foreach ($users as $row) {
                     $earliest = AnalyzeActivityJob::earliestStalledActivityForUser((int) $row->user_id);
                     if ($earliest === null) {
                         continue;
                     }
-                    $service->requestActivityGroup($earliest, invalidate: false);
+
+                    $startedAt = $earliest->detail?->start_date_local;
+                    if ($startedAt !== null && $startedAt->lt($oldestReal)) {
+                        $service->requestActivityGroupRuleBased($earliest);
+                        $resumed++;
+
+                        continue;
+                    }
+
+                    $service->requestActivityGroup($earliest, invalidate: false, delaySeconds: $index * self::SWEEP_SPACING_SECONDS);
                     $resumed++;
+                    $index++;
                 }
             }, 'activities.user_id', 'user_id');
 
@@ -129,14 +151,29 @@ class SelfHealer
     private function resumeWeekly(): int
     {
         $links = $this->chains->stalledWeeklyLinkPerUser();
+        $oldestReal = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->toDateString();
+        $index = 0;
 
         foreach ($links as $link) {
+            // discriminator carries week_ending here (see ChainResolver::stalledWeeklyLinkPerUser).
+            if ($link->discriminator !== null && $link->discriminator < $oldestReal) {
+                $this->service->requestRuleBased(
+                    subjectOrType: WeeklySnapshot::class,
+                    subjectId: $link->subjectId,
+                    type: AnalysisType::WeeklyRecap,
+                );
+
+                continue;
+            }
+
             $this->service->request(
                 subjectOrType: WeeklySnapshot::class,
                 subjectId: $link->subjectId,
                 type: AnalysisType::WeeklyRecap,
+                delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
                 invalidate: false,
             );
+            $index++;
         }
 
         return $links->count();
@@ -145,15 +182,30 @@ class SelfHealer
     private function resumeMonthly(): int
     {
         $links = $this->chains->stalledMonthlyLinkPerUser();
+        $oldestRealMonth = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->format('Y-m');
+        $index = 0;
 
         foreach ($links as $link) {
+            if ($link->discriminator !== null && $link->discriminator < $oldestRealMonth) {
+                $this->service->requestRuleBased(
+                    subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                    subjectId: $link->subjectId,
+                    type: AnalysisType::MonthlyRecap,
+                    discriminator: $link->discriminator,
+                );
+
+                continue;
+            }
+
             $this->service->request(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                 subjectId: $link->subjectId,
                 type: AnalysisType::MonthlyRecap,
                 discriminator: $link->discriminator,
+                delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
                 invalidate: false,
             );
+            $index++;
         }
 
         return $links->count();
@@ -182,14 +234,13 @@ class SelfHealer
             ->groupBy('user_id')
             ->flatMap(fn ($rows) => $rows->take(self::NONCASCADING_DRAIN_BATCH));
 
-        foreach ($toResume as $row) {
-            $this->service->request(
-                subjectOrType: RunCard::class,
-                subjectId: (int) $row->subject_id,
-                type: AnalysisType::CardFlavor,
-                invalidate: false,
-            );
-        }
+        $toResume->values()->each(fn ($row, int $index) => $this->service->request(
+            subjectOrType: RunCard::class,
+            subjectId: (int) $row->subject_id,
+            type: AnalysisType::CardFlavor,
+            delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
+            invalidate: false,
+        ));
 
         return $toResume->count();
     }
@@ -213,14 +264,13 @@ class SelfHealer
             ->groupBy('user_id')
             ->flatMap(fn ($rows) => $rows->take(self::NONCASCADING_DRAIN_BATCH));
 
-        foreach ($toResume as $row) {
-            $this->service->request(
-                subjectOrType: PersonalRecord::class,
-                subjectId: (int) $row->subject_id,
-                type: AnalysisType::PrContext,
-                invalidate: false,
-            );
-        }
+        $toResume->values()->each(fn ($row, int $index) => $this->service->request(
+            subjectOrType: PersonalRecord::class,
+            subjectId: (int) $row->subject_id,
+            type: AnalysisType::PrContext,
+            delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
+            invalidate: false,
+        ));
 
         return $toResume->count();
     }
@@ -257,15 +307,14 @@ class SelfHealer
             ->get(['subject_id', 'discriminator'])
             ->unique('subject_id');
 
-        foreach ($earliestPerUser as $row) {
-            $this->service->request(
-                subjectOrType: $type->subjectType(),
-                subjectId: (int) $row->subject_id,
-                type: $type,
-                discriminator: $row->discriminator,
-                invalidate: false,
-            );
-        }
+        $earliestPerUser->values()->each(fn ($row, int $index) => $this->service->request(
+            subjectOrType: $type->subjectType(),
+            subjectId: (int) $row->subject_id,
+            type: $type,
+            discriminator: $row->discriminator,
+            delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
+            invalidate: false,
+        ));
 
         return $earliestPerUser->count();
     }

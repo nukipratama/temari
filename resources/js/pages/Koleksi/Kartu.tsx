@@ -191,7 +191,7 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
             polyline={kartuProps.polyline}
             ctaHref={aktivitasUrl(featured)}
             voice={
-                featured.flavor_analysis && (
+                featured.flavor_analysis && featured.flavor_analysis.status !== 'pending' && (
                     <AnalysisStatus
                         analysis={featured.flavor_analysis}
                         inertiaReloadProps={['featuredCard']}
