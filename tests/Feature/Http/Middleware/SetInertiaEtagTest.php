@@ -2,22 +2,39 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
-use Inertia\Inertia;
 
 uses(RefreshDatabase::class);
+
+/**
+ * The asset version the middleware will actually compare against. Inertia's
+ * `Middleware::handle()` only (re)binds the `Inertia::version()` closure at
+ * the start of a request it processes — calling the `Inertia::getVersion()`
+ * facade outside that cycle reads whatever the *previous* request left
+ * behind (or nothing, before any request has run), so it silently drifts
+ * from the real value the moment a local `npm run build` populates
+ * `public/build/manifest.json` (absent in CI, present on a dev machine that's
+ * run a build). Resolving it the same way the middleware does keeps this
+ * deterministic in both environments.
+ */
+function currentInertiaVersion(): string
+{
+    return (string) app(HandleInertiaRequests::class)->version(Request::create('/'));
+}
 
 /**
  * A full Inertia page visit (no partial headers), optionally revalidating.
  */
 function etagVisit(string $url, ?string $ifNoneMatch = null): TestResponse
 {
-    $headers = ['X-Inertia' => 'true', 'X-Inertia-Version' => (string) Inertia::getVersion()];
+    $headers = ['X-Inertia' => 'true', 'X-Inertia-Version' => currentInertiaVersion()];
 
     if ($ifNoneMatch !== null) {
         $headers['If-None-Match'] = $ifNoneMatch;
@@ -109,7 +126,7 @@ it('never serves a stale flash from a 304', function (): void {
     $this->actingAs($user);
 
     $flashed = $this->withSession(['success' => 'Sinkron jalan.'])
-        ->get('/kalender', ['X-Inertia' => 'true', 'X-Inertia-Version' => (string) Inertia::getVersion()])
+        ->get('/kalender', ['X-Inertia' => 'true', 'X-Inertia-Version' => currentInertiaVersion()])
         ->assertSuccessful();
 
     expect($flashed->getContent())->toContain('Sinkron jalan.');
@@ -128,7 +145,7 @@ it('keeps a partial reload out of every cache and leaves it untagged', function 
 
     $response = $this->actingAs($user)->get("/aktivitas/{$activity->id}", [
         'X-Inertia' => 'true',
-        'X-Inertia-Version' => (string) Inertia::getVersion(),
+        'X-Inertia-Version' => currentInertiaVersion(),
         'X-Inertia-Partial-Component' => 'Runs/Show',
         'X-Inertia-Partial-Data' => 'speechAnalysis',
     ])->assertSuccessful();
