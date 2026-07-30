@@ -144,7 +144,7 @@ function HeroScoreboard({
                     <div className="flex justify-center">
                         <Temari pose="glow" size={160} />
                     </div>
-                    {pr.context_analysis && (
+                    {pr.context_analysis && pr.context_analysis.status !== 'pending' && (
                         <div className="rounded-2xl border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">
                             <AnalysisStatus
                                 analysis={pr.context_analysis}

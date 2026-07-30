@@ -22,14 +22,16 @@ export default function FeaturedKartuPanel({
             polyline={featured.polyline}
             ctaHref={aktivitasUrl({ activity_id: featured.activityId })}
             voice={
-                <AnalysisStatus
-                    analysis={featuredKartuVoice}
-                    inertiaReloadProps={['briefing']}
-                    showTimestamp={false}
-                    allowReanalyze={false}
-                    onSky
-                    renderContent={(text) => <ExpandableQuote text={text} onSky />}
-                />
+                featuredKartuVoice.status !== 'pending' && (
+                    <AnalysisStatus
+                        analysis={featuredKartuVoice}
+                        inertiaReloadProps={['briefing']}
+                        showTimestamp={false}
+                        allowReanalyze={false}
+                        onSky
+                        renderContent={(text) => <ExpandableQuote text={text} onSky />}
+                    />
+                )
             }
             card={
                 <Kartu

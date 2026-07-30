@@ -31,9 +31,10 @@ describe('RingkasanCard', () => {
         expect(screen.queryByText('ignored')).not.toBeInTheDocument();
     });
 
-    it('keeps the manual trigger for a past week with no narration yet', () => {
+    it('hides the manual trigger but keeps the fallback prose for a past week with no narration yet', () => {
         render(<RingkasanCard analysis={baseAnalysis()} fallback="fallback" />);
-        expect(screen.getByRole('button', { name: /Minta Temari bacain/ })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
+        expect(screen.getByText('fallback')).toBeInTheDocument();
     });
 
     it('suppresses the trigger and labels the fallback as a preview for the current week', () => {
