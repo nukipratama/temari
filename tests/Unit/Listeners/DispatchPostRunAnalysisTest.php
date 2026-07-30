@@ -7,6 +7,7 @@ use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
+use App\Jobs\AI\AnalyzePrContextJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\Activity;
@@ -279,6 +280,30 @@ it('backfill kickoff dispatches the user earliest Pending group, not the just-in
         AnalyzeActivityJob::class,
         fn (AnalyzeActivityJob $job): bool => $job->subjectId === $older->id,
     );
+    Carbon::setTestNow();
+});
+
+it('staggers card_flavor and pr_context by the same backfill delay as the activity group', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    config()->set('ai.backfill_stagger_seconds', 100);
+
+    // First backfilled ingest reserves the immediate (0-delay) slot for this user.
+    $first = analyzedActivity('2026-05-01 06:00:00');
+    fire($first);
+
+    Bus::fake();
+    // Second backfilled ingest for the same user gets staggered behind the first.
+    $activity = analyzedActivity('2026-05-02 06:00:00', $first->user_id);
+    RunCard::factory()->create(['activity_id' => $activity->id]);
+    PersonalRecord::factory()->for($activity->user)->create([
+        'category' => '5km',
+        'activity_id' => $activity->id,
+    ]);
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class, fn (AnalyzeCardFlavorJob $job): bool => $job->delay === 100);
+    Bus::assertDispatched(AnalyzePrContextJob::class, fn (AnalyzePrContextJob $job): bool => $job->delay === 100);
     Carbon::setTestNow();
 });
 

@@ -46,13 +46,13 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $detail = $activity->detail;
         $tooOld = $this->isTooOldForRealNarration($detail);
 
-        $this->requestPrContext($activity, $tooOld);
-        $this->requestCardFlavor($activity, $tooOld);
-
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
         $delaySec = $isBackfill ? $this->backfillStagger->delayFor($activity->user_id) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
+
+        $this->requestPrContext($activity, $tooOld, $delaySec);
+        $this->requestCardFlavor($activity, $tooOld, $delaySec);
 
         $this->dispatchActivityGroup($activity, $isBackfill, $tooOld, $delaySec);
 
@@ -101,7 +101,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * narrator reads the live PR row at job time, so a still-pending row
      * narrates the LATEST value regardless of how many beats preceded it.
      */
-    private function requestPrContext(Activity $activity, bool $tooOld): void
+    private function requestPrContext(Activity $activity, bool $tooOld, int $delaySec): void
     {
         $prIds = PersonalRecord::query()
             ->where('activity_id', $activity->id)
@@ -123,12 +123,13 @@ class DispatchPostRunAnalysis implements ShouldQueue
                 subjectOrType: PersonalRecord::class,
                 subjectId: (int) $prId,
                 type: AnalysisType::PrContext,
+                delaySeconds: $delaySec,
                 invalidate: false,
             );
         }
     }
 
-    private function requestCardFlavor(Activity $activity, bool $tooOld): void
+    private function requestCardFlavor(Activity $activity, bool $tooOld, int $delaySec): void
     {
         $card = $activity->runCard;
         if ($card === null) {
@@ -148,6 +149,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $this->analysisService->request(
             subjectOrType: RunCard::class,
             subjectId: $card->id,
+            delaySeconds: $delaySec,
             type: AnalysisType::CardFlavor,
             invalidate: true,
         );
