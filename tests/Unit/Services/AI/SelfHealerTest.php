@@ -40,14 +40,14 @@ function captureResumeRequests(array &$captured): AnalysisService
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('request')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'invalidate') + ['ruleBased' => false];
+            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'delaySeconds', 'invalidate') + ['ruleBased' => false];
 
             return new Analysis();
         });
     // Per-activity chains advance through the group helper, not request().
     $service->shouldReceive('requestActivityGroup')
         ->andReturnUsing(function (Activity $activity, bool $invalidate = false, ?int $delaySeconds = null) use (&$captured): void {
-            $captured[] = ['subjectOrType' => Activity::class, 'subjectId' => $activity->id, 'type' => AnalysisType::PostRunSpeech, 'discriminator' => null, 'invalidate' => $invalidate, 'ruleBased' => false];
+            $captured[] = ['subjectOrType' => Activity::class, 'subjectId' => $activity->id, 'type' => AnalysisType::PostRunSpeech, 'discriminator' => null, 'delaySeconds' => $delaySeconds, 'invalidate' => $invalidate, 'ruleBased' => false];
         });
     $service->shouldReceive('requestRuleBased')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$captured): Analysis {
@@ -239,6 +239,47 @@ it('resumes both weekly and monthly chains in one sweep', function (): void {
         ->toContain(AnalysisType::MonthlyRecap);
 });
 
+it('spaces successive weekly resumes across users within one sweep', function (): void {
+    $userA = User::factory()->create();
+    $userB = User::factory()->create();
+    foreach ([$userA, $userB] as $user) {
+        $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
+        Analysis::factory()->create([
+            'subject_type' => WeeklySnapshot::class,
+            'subject_id' => $snap->id,
+            'analysis_type' => AnalysisType::WeeklyRecap,
+            'discriminator' => null,
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(2);
+
+    expect(array_column($captured, 'delaySeconds'))->toEqualCanonicalizing([0, 5]);
+});
+
+it('spaces successive monthly resumes across users within one sweep', function (): void {
+    $userA = User::factory()->create();
+    $userB = User::factory()->create();
+    foreach ([$userA, $userB] as $user) {
+        Analysis::factory()->create([
+            'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::MonthlyRecap,
+            'discriminator' => '2026-04',
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(2);
+
+    expect(array_column($captured, 'delaySeconds'))->toEqualCanonicalizing([0, 5]);
+});
+
 it('re-kicks the earliest Pending per-activity group per user', function (): void {
     $user = User::factory()->create();
     $earliest = pendingActivityChainLink($user, '2026-05-01 06:00:00');
@@ -253,6 +294,19 @@ it('re-kicks the earliest Pending per-activity group per user', function (): voi
         ->and($captured[0]['subjectOrType'])->toBe(Activity::class)
         ->and($captured[0]['subjectId'])->toBe($earliest->id)
         ->and($captured[0]['invalidate'])->toBeFalse();
+});
+
+it('spaces successive per-activity resumes across users within one sweep', function (): void {
+    $userA = User::factory()->create();
+    $userB = User::factory()->create();
+    pendingActivityChainLink($userA, '2026-05-01 06:00:00');
+    pendingActivityChainLink($userB, '2026-05-01 06:00:00');
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(2);
+
+    expect(array_column($captured, 'delaySeconds'))->toEqualCanonicalizing([0, 5]);
 });
 
 it('fills a stalled per-activity link older than the backfill depth cap rule-based instead of resuming it', function (): void {
@@ -311,7 +365,8 @@ it('batches multiple stalled CardFlavor rows per user, capped at the drain batch
     expect(selfHealer(captureResumeRequests($captured))->run())->toBe(10);
 
     expect($captured)->toHaveCount(10)
-        ->and(collect($captured)->pluck('type')->unique()->all())->toBe([AnalysisType::CardFlavor]);
+        ->and(collect($captured)->pluck('type')->unique()->all())->toBe([AnalysisType::CardFlavor])
+        ->and(array_column($captured, 'delaySeconds'))->toEqualCanonicalizing(range(0, 45, 5));
 });
 
 it('batches multiple stalled PrContext rows per user', function (): void {
@@ -527,6 +582,26 @@ it('re-kicks the earliest stalled single-row block per user with invalidate:fals
     'BriefingFeaturedKartuVoice' => [AnalysisType::BriefingFeaturedKartuVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '42'],
     'AkuProfileVoice' => [AnalysisType::AkuProfileVoice, AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE, '2026-W21'],
 ]);
+
+it('spaces successive single-row-type resumes across users within one sweep', function (): void {
+    $userA = User::factory()->create();
+    $userB = User::factory()->create();
+    foreach ([$userA, $userB] as $user) {
+        Analysis::factory()->create([
+            'subject_type' => AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::AkuProfileVoice,
+            'discriminator' => '2026-W21',
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(2);
+
+    expect(array_column($captured, 'delaySeconds'))->toEqualCanonicalizing([0, 5]);
+});
 
 it('skips a demo user for a single-row type so the resume net never auto-bills it', function (): void {
     $demo = User::factory()->demo()->create();
