@@ -14,6 +14,7 @@ use App\Services\AI\RecapPeriod;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 #[Signature('ai:monthly-recap')]
@@ -25,6 +26,7 @@ class MonthlyRecapCommand extends Command
         // The latest fully-closed month (last month). The current, still-running
         // month is excluded so a recap never narrates an incomplete month.
         $lastClosedMonth = RecapPeriod::lastClosedMonth();
+        $oldestRealMonth = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->format('Y-m');
 
         $stagger = (int) config('ai.backfill_stagger_seconds', 360);
 
@@ -33,15 +35,29 @@ class MonthlyRecapCommand extends Command
         $userIds = User::query()->notDemo()->pluck('id');
 
         $dispatched = 0;
+        $ruleFilled = 0;
         foreach ($userIds as $userId) {
             $months = $this->completedMonthsNotDone((int) $userId, $lastClosedMonth);
+
+            // Months older than the backfill depth cap never get a real LLM
+            // call — rule-based fill instead, same as the per-activity cap.
+            $tooOld = $months->filter(fn (string $month): bool => $month < $oldestRealMonth)->values();
+            $narratable = $months->reject(fn (string $month): bool => $month < $oldestRealMonth)->values();
+
+            $tooOld->each(fn (string $month) => $service->requestRuleBased(
+                subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                subjectId: (int) $userId,
+                type: AnalysisType::MonthlyRecap,
+                discriminator: $month,
+            ));
+            $ruleFilled += $tooOld->count();
 
             // Oldest month first so the connected story narrates in chronological
             // order: the kickoff dispatches the earliest link and the job chain
             // (AnalyzeMonthlyRecapJob) walks forward to each successor once its
             // predecessor is Done. invalidate:false never re-bills a Done recap,
             // so this doubles as a daily resume safety net for stalled links.
-            $months->each(function (string $month, int $index) use ($service, $userId, $stagger): void {
+            $narratable->each(function (string $month, int $index) use ($service, $userId, $stagger): void {
                 $service->request(
                     subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                     subjectId: (int) $userId,
@@ -52,10 +68,10 @@ class MonthlyRecapCommand extends Command
                 );
             });
 
-            $dispatched += $months->count();
+            $dispatched += $narratable->count();
         }
 
-        $this->info("Dispatched monthly recap for {$dispatched} months (through {$lastClosedMonth}).");
+        $this->info("Dispatched monthly recap for {$dispatched} months ({$ruleFilled} filled rule-based) through {$lastClosedMonth}.");
 
         return self::SUCCESS;
     }

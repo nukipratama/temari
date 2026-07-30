@@ -52,16 +52,17 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         $user = $activity->user;
         $detail = $activity->detail;
+        $tooOld = $this->isTooOldForRealNarration($detail);
 
-        $this->requestPrContext($activity);
-        $this->requestCardFlavor($activity);
+        $this->requestPrContext($activity, $tooOld);
+        $this->requestCardFlavor($activity, $tooOld);
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
         $delaySec = $isBackfill ? $this->backfillDelaySeconds($activity) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
 
-        $this->dispatchActivityGroup($activity, $isBackfill, $delaySec);
+        $this->dispatchActivityGroup($activity, $isBackfill, $tooOld, $delaySec);
 
         // Daily cadence: when the ingested run is today's, refresh the whole
         // daily AI set so each block narrates with every run done so far today.
@@ -108,7 +109,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * narrator reads the live PR row at job time, so a still-pending row
      * narrates the LATEST value regardless of how many beats preceded it.
      */
-    private function requestPrContext(Activity $activity): void
+    private function requestPrContext(Activity $activity, bool $tooOld): void
     {
         $prIds = PersonalRecord::query()
             ->where('activity_id', $activity->id)
@@ -116,6 +117,16 @@ class DispatchPostRunAnalysis implements ShouldQueue
             ->pluck('id');
 
         foreach ($prIds as $prId) {
+            if ($tooOld) {
+                $this->analysisService->requestRuleBased(
+                    subjectOrType: PersonalRecord::class,
+                    subjectId: (int) $prId,
+                    type: AnalysisType::PrContext,
+                );
+
+                continue;
+            }
+
             $this->analysisService->request(
                 subjectOrType: PersonalRecord::class,
                 subjectId: (int) $prId,
@@ -125,10 +136,20 @@ class DispatchPostRunAnalysis implements ShouldQueue
         }
     }
 
-    private function requestCardFlavor(Activity $activity): void
+    private function requestCardFlavor(Activity $activity, bool $tooOld): void
     {
         $card = $activity->runCard;
         if ($card === null) {
+            return;
+        }
+
+        if ($tooOld) {
+            $this->analysisService->requestRuleBased(
+                subjectOrType: RunCard::class,
+                subjectId: $card->id,
+                type: AnalysisType::CardFlavor,
+            );
+
             return;
         }
 
@@ -158,6 +179,23 @@ class DispatchPostRunAnalysis implements ShouldQueue
     }
 
     /**
+     * An activity older than `ai.backfill_max_age_days` gets the deterministic
+     * rule-based filler instead of a real LLM call — nobody's checking back on
+     * narration for a year-old run, and it keeps every chain's depth bounded.
+     */
+    private function isTooOldForRealNarration(ActivityDetail $detail): bool
+    {
+        $startedAt = $detail->start_date_local;
+        if ($startedAt === null) {
+            return false;
+        }
+
+        $maxAgeDays = (int) config('ai.backfill_max_age_days');
+
+        return Carbon::now()->diffInDays($startedAt, absolute: true) >= $maxAgeDays;
+    }
+
+    /**
      * Backfilled (old) runs stage their narration group Pending and let the
      * chain narrate them one activity at a time, oldest first: each ingest
      * stages its own group, and the kickoff dispatches the user's earliest
@@ -167,8 +205,14 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * (fresh) runs keep the existing single immediate dispatch + graceful
      * prev-lookup (the prior activity is already Done).
      */
-    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, int $delaySec): void
+    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, bool $tooOld, int $delaySec): void
     {
+        if ($tooOld) {
+            $this->analysisService->requestActivityGroupRuleBased($activity);
+
+            return;
+        }
+
         if (! $isBackfill) {
             $this->maybeRefreshActivityGroup($activity);
 

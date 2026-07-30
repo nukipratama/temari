@@ -90,11 +90,22 @@ class SelfHealer
             ->distinct()
             ->select('activities.user_id')
             ->chunkById(100, function ($users) use ($service, &$resumed): void {
+                $oldestReal = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'));
+
                 foreach ($users as $row) {
                     $earliest = AnalyzeActivityJob::earliestStalledActivityForUser((int) $row->user_id);
                     if ($earliest === null) {
                         continue;
                     }
+
+                    $startedAt = $earliest->detail?->start_date_local;
+                    if ($startedAt !== null && $startedAt->lt($oldestReal)) {
+                        $service->requestActivityGroupRuleBased($earliest);
+                        $resumed++;
+
+                        continue;
+                    }
+
                     $service->requestActivityGroup($earliest, invalidate: false);
                     $resumed++;
                 }
@@ -129,8 +140,20 @@ class SelfHealer
     private function resumeWeekly(): int
     {
         $links = $this->chains->stalledWeeklyLinkPerUser();
+        $oldestReal = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->toDateString();
 
         foreach ($links as $link) {
+            // discriminator carries week_ending here (see ChainResolver::stalledWeeklyLinkPerUser).
+            if ($link->discriminator !== null && $link->discriminator < $oldestReal) {
+                $this->service->requestRuleBased(
+                    subjectOrType: WeeklySnapshot::class,
+                    subjectId: $link->subjectId,
+                    type: AnalysisType::WeeklyRecap,
+                );
+
+                continue;
+            }
+
             $this->service->request(
                 subjectOrType: WeeklySnapshot::class,
                 subjectId: $link->subjectId,
@@ -145,8 +168,20 @@ class SelfHealer
     private function resumeMonthly(): int
     {
         $links = $this->chains->stalledMonthlyLinkPerUser();
+        $oldestRealMonth = Carbon::now()->subDays((int) config('ai.backfill_max_age_days'))->format('Y-m');
 
         foreach ($links as $link) {
+            if ($link->discriminator !== null && $link->discriminator < $oldestRealMonth) {
+                $this->service->requestRuleBased(
+                    subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                    subjectId: $link->subjectId,
+                    type: AnalysisType::MonthlyRecap,
+                    discriminator: $link->discriminator,
+                );
+
+                continue;
+            }
+
             $this->service->request(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                 subjectId: $link->subjectId,

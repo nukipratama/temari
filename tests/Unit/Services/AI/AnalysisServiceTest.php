@@ -186,6 +186,24 @@ it('requestDeferred leaves an existing Done row untouched', function (): void {
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
+it('requestActivityGroupRuleBased fills all 4 rows Done without dispatching', function (): void {
+    $activity = Activity::factory()->create();
+
+    $this->service->requestActivityGroupRuleBased($activity);
+
+    $rows = Analysis::query()->where('subject_id', $activity->id)->get();
+    expect($rows)->toHaveCount(4)
+        ->and($rows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue()
+        ->and($rows->every(fn (Analysis $row): bool => is_string($row->content) && $row->content !== ''))->toBeTrue()
+        ->and($rows->pluck('analysis_type')->all())->toEqualCanonicalizing([
+            AnalysisType::PostRunSpeech,
+            AnalysisType::RunInsightTechnical,
+            AnalysisType::RunInsightSplits,
+            AnalysisType::RunInsightZones,
+        ]);
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+});
+
 it('requestActivityGroup creates 4 rows and dispatches one AnalyzeActivityJob', function (): void {
     $activity = Activity::factory()->create();
 

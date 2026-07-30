@@ -48,7 +48,7 @@ it('narrates every completed month not yet Done, oldest first, with staggered de
     $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
 
     $this->artisan('ai:monthly-recap')
-        ->expectsOutputToContain('Dispatched monthly recap for 3 months (through 2026-05).')
+        ->expectsOutputToContain('Dispatched monthly recap for 3 months (0 filled rule-based) through 2026-05.')
         ->assertSuccessful();
 
     expect($captured)->toHaveCount(3)
@@ -74,7 +74,7 @@ it('excludes the demo user (monthly is real-users-only)', function (): void {
     $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
 
     $this->artisan('ai:monthly-recap')
-        ->expectsOutputToContain('Dispatched monthly recap for 1 months (through 2026-05).')
+        ->expectsOutputToContain('Dispatched monthly recap for 1 months (0 filled rule-based) through 2026-05.')
         ->assertSuccessful();
 
     expect(array_column($captured, 'subjectId'))->toBe([$real->id]);
@@ -124,6 +124,30 @@ it('narrates a Failed and a far-back historical month (resume safety net)', func
     Carbon::setTestNow();
 });
 
+it('fills a month older than the backfill depth cap rule-based instead of a real LLM dispatch', function (): void {
+    Carbon::setTestNow('2026-06-17 05:30:00'); // last closed month = 2026-05
+    config()->set('ai.backfill_max_age_days', 365);
+
+    $user = User::factory()->create();
+    runInMonth($user, '2025-01'); // well over 365 days before 2026-06-17
+    runInMonth($user, '2026-05');
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    $this->artisan('ai:monthly-recap')
+        ->expectsOutputToContain('Dispatched monthly recap for 1 months (1 filled rule-based) through 2026-05.')
+        ->assertSuccessful();
+
+    $ruleBased = collect($captured)->firstWhere('discriminator', '2025-01');
+    $real = collect($captured)->firstWhere('discriminator', '2026-05');
+
+    expect($ruleBased['ruleBased'])->toBeTrue()
+        ->and($real['ruleBased'])->toBeFalse();
+
+    Carbon::setTestNow();
+});
+
 it('dispatches nothing when nobody ran a completed month', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
 
@@ -136,7 +160,7 @@ it('dispatches nothing when nobody ran a completed month', function (): void {
     $this->app->instance(AnalysisService::class, $service);
 
     $this->artisan('ai:monthly-recap')
-        ->expectsOutputToContain('Dispatched monthly recap for 0 months (through 2026-05).')
+        ->expectsOutputToContain('Dispatched monthly recap for 0 months (0 filled rule-based) through 2026-05.')
         ->assertSuccessful();
 
     Carbon::setTestNow();

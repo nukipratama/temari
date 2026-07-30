@@ -281,6 +281,35 @@ it('backfill kickoff dispatches the user earliest Pending group, not the just-in
     Carbon::setTestNow();
 });
 
+it('fills an activity older than the backfill depth cap rule-based (group + card + pr context), no real dispatch', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    config()->set('ai.backfill_max_age_days', 365);
+    // Well over 365 days before 2026-06-10.
+    $activity = analyzedActivity('2025-01-01 06:00:00');
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+    $pr = PersonalRecord::factory()->for($activity->user)->create([
+        'category' => '5km',
+        'activity_id' => $activity->id,
+    ]);
+
+    fire($activity);
+
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
+
+    $groupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->get();
+    expect($groupRows)->toHaveCount(4)
+        ->and($groupRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue();
+
+    $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
+    expect($cardRow->status)->toBe(AnalysisStatus::Done);
+
+    $prRow = Analysis::query()->forSubject(PersonalRecord::class, $pr->id, AnalysisType::PrContext)->firstOrFail();
+    expect($prRow->status)->toBe(AnalysisStatus::Done);
+
+    Carbon::setTestNow();
+});
+
 it('steady-state (fresh run) dispatches the activity group immediately', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $fresh = analyzedActivity('2026-06-10 06:00:00');

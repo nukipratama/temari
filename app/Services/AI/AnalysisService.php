@@ -141,6 +141,19 @@ class AnalysisService
     }
 
     /**
+     * Fill the whole per-activity narration group with the deterministic
+     * rule-based filler instead of dispatching a real LLM chain — for
+     * activities past `ai.backfill_max_age_days`, the same loop shape as
+     * {@see self::requestActivityGroupDeferred()}, filling instead of staging.
+     */
+    public function requestActivityGroupRuleBased(Activity $activity): void
+    {
+        foreach (AnalyzeActivityJob::groupedTypes() as $type) {
+            $this->requestRuleBased(AnalyzeActivityJob::subjectType(), $activity->id, $type);
+        }
+    }
+
+    /**
      * Stage the per-activity narration group as Pending without dispatching, the
      * group analogue of {@see self::requestDeferred()}. Backfilled (old)
      * activities stage their group here so the chain narrates them one activity

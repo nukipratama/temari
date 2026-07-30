@@ -71,6 +71,10 @@ class ChainResolver
      * narrates the still-running current week on incomplete data (the weekly
      * kickoff owns first-narration). Demo is excluded so it never auto-bills.
      *
+     * The returned link's `discriminator` carries `week_ending` (unused
+     * otherwise for weekly links) so a caller can age-check against the
+     * backfill depth cap without a second query.
+     *
      * @return Collection<int, ChainLink>
      */
     public function stalledWeeklyLinkPerUser(): Collection
@@ -84,9 +88,9 @@ class ChainResolver
             ->where('weekly_snapshots.week_ending', '<=', RecapPeriod::lastClosedWeekEnding())
             ->whereIn('weekly_snapshots.user_id', User::query()->notDemo()->select('id'))
             ->orderBy('weekly_snapshots.week_ending')
-            ->get(['ai_analyses.subject_id', 'weekly_snapshots.user_id'])
+            ->get(['ai_analyses.subject_id', 'weekly_snapshots.user_id', 'weekly_snapshots.week_ending'])
             ->unique('user_id')
-            ->map(fn (Analysis $row): ChainLink => new ChainLink((int) $row->subject_id))
+            ->map(fn (Analysis $row): ChainLink => new ChainLink((int) $row->subject_id, (string) $row->getAttribute('week_ending')))
             ->values();
     }
 

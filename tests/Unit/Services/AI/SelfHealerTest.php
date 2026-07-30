@@ -40,14 +40,24 @@ function captureResumeRequests(array &$captured): AnalysisService
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('request')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'invalidate');
+            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'invalidate') + ['ruleBased' => false];
 
             return new Analysis();
         });
     // Per-activity chains advance through the group helper, not request().
     $service->shouldReceive('requestActivityGroup')
         ->andReturnUsing(function (Activity $activity, bool $invalidate = false, ?int $delaySeconds = null) use (&$captured): void {
-            $captured[] = ['subjectOrType' => Activity::class, 'subjectId' => $activity->id, 'type' => AnalysisType::PostRunSpeech, 'discriminator' => null, 'invalidate' => $invalidate];
+            $captured[] = ['subjectOrType' => Activity::class, 'subjectId' => $activity->id, 'type' => AnalysisType::PostRunSpeech, 'discriminator' => null, 'invalidate' => $invalidate, 'ruleBased' => false];
+        });
+    $service->shouldReceive('requestRuleBased')
+        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$captured): Analysis {
+            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator') + ['invalidate' => null, 'ruleBased' => true];
+
+            return new Analysis();
+        });
+    $service->shouldReceive('requestActivityGroupRuleBased')
+        ->andReturnUsing(function (Activity $activity) use (&$captured): void {
+            $captured[] = ['subjectOrType' => Activity::class, 'subjectId' => $activity->id, 'type' => AnalysisType::PostRunSpeech, 'discriminator' => null, 'invalidate' => null, 'ruleBased' => true];
         });
 
     return $service;
@@ -115,6 +125,28 @@ it('re-kicks the earliest Pending weekly link per user with invalidate:false', f
         ->and($captured[0]['invalidate'])->toBeFalse();
 });
 
+it('fills a stalled weekly link older than the backfill depth cap rule-based instead of resuming it', function (): void {
+    config()->set('ai.backfill_max_age_days', 365);
+    $user = User::factory()->create();
+    // 2025-01-05 is well over 365 days before the pinned "now" (2026-06-17).
+    $tooOld = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2025-01-05', 'runs' => 2]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $tooOld->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1);
+
+    expect($captured)->toHaveCount(1)
+        ->and($captured[0]['subjectId'])->toBe($tooOld->id)
+        ->and($captured[0]['ruleBased'])->toBeTrue();
+});
+
 it('skips a demo user so the resume net never auto-bills its weekly LLM', function (): void {
     $demo = User::factory()->demo()->create();
     $snap = WeeklySnapshot::factory()->for($demo)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
@@ -158,6 +190,28 @@ it('re-kicks the earliest Pending monthly link per user with invalidate:false', 
         ->and($captured[0]['invalidate'])->toBeFalse();
 });
 
+it('fills a stalled monthly link older than the backfill depth cap rule-based instead of resuming it', function (): void {
+    config()->set('ai.backfill_max_age_days', 365);
+    $user = User::factory()->create();
+    // 2025-01 is well over 365 days before the pinned "now" (2026-06-17).
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2025-01',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1);
+
+    expect($captured)->toHaveCount(1)
+        ->and($captured[0]['subjectId'])->toBe($user->id)
+        ->and($captured[0]['discriminator'])->toBe('2025-01')
+        ->and($captured[0]['ruleBased'])->toBeTrue();
+});
+
 it('resumes both weekly and monthly chains in one sweep', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
@@ -199,6 +253,21 @@ it('re-kicks the earliest Pending per-activity group per user', function (): voi
         ->and($captured[0]['subjectOrType'])->toBe(Activity::class)
         ->and($captured[0]['subjectId'])->toBe($earliest->id)
         ->and($captured[0]['invalidate'])->toBeFalse();
+});
+
+it('fills a stalled per-activity link older than the backfill depth cap rule-based instead of resuming it', function (): void {
+    config()->set('ai.backfill_max_age_days', 365);
+    $user = User::factory()->create();
+    // Well over 365 days before the pinned "now" (2026-06-17).
+    $tooOld = pendingActivityChainLink($user, '2025-01-01 06:00:00');
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1);
+
+    expect($captured)->toHaveCount(1)
+        ->and($captured[0]['subjectId'])->toBe($tooOld->id)
+        ->and($captured[0]['ruleBased'])->toBeTrue();
 });
 
 it('re-kicks the earliest stalled CardFlavor per user with invalidate:false', function (): void {
