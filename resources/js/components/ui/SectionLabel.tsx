@@ -34,7 +34,7 @@ export default function SectionLabel({
                 className,
             )}
         >
-            {dot && <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />}
+            {dot && <span aria-hidden className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClass)} />}
             <span>{children}</span>
             {!dot && <span aria-hidden className="h-px flex-1 bg-current opacity-20" />}
         </div>

@@ -472,7 +472,14 @@ function TodayCell({ cell, quote }: Readonly<{ cell: CalendarCell; quote: string
     const inner = (
         <>
             <div className="flex items-center justify-between gap-1 lg:items-start lg:gap-2">
-                <span className="text-xs font-bold tabular-nums text-cream lg:text-lg">{cell.day}</span>
+                <span className="inline-flex items-center gap-1 text-xs font-bold tabular-nums text-cream lg:text-lg">
+                    {cell.day}
+                    {/* Below lg, "Hari ini" is hidden and the navy fill is the only
+                        chrome difference from a highlighted/selected cell — add a
+                        small persistent marker so "today" isn't signaled by color
+                        alone. */}
+                    <span aria-hidden className="h-1 w-1 rounded-full bg-horizon lg:hidden" />
+                </span>
                 {hasRun && cell.mood && (
                     <span aria-hidden className={cn('h-1.5 w-1.5 shrink-0 rounded-full lg:hidden', MOOD_FILL[cell.mood])} title={MOOD_LABEL[cell.mood]} />
                 )}

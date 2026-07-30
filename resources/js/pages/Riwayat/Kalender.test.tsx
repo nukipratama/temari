@@ -141,6 +141,14 @@ describe('Kalender', () => {
         expect(screen.getByText('Hari ini')).toBeInTheDocument();
     });
 
+    it('marks today with a persistent dot next to the day number, not color alone', () => {
+        // The "Hari ini" text is lg-only; below that breakpoint the navy fill
+        // would otherwise be the sole signal that a cell is today.
+        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        const dayNumber = screen.getByText('7');
+        expect(dayNumber.querySelector('[aria-hidden]')).not.toBeNull();
+    });
+
     it('renders today\'s storyline quote in the today cell when provided', () => {
         render(
             <Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} todayQuote="Form pas — sesi tempo cocok." />,
