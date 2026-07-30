@@ -8,6 +8,7 @@ use App\Exceptions\AI\UnavailableException;
 use App\Services\AI\Agent\AgentBudget;
 use App\Services\AI\Agent\AgentLoop;
 use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use GuzzleHttp\Psr7\Response as Psr7Response;
@@ -29,7 +30,7 @@ function agentLoopWith(array $responses): array
     $breaker->shouldReceive('recordSuccess')->andReturnNull();
     $breaker->shouldReceive('recordFailure')->andReturnNull();
 
-    return [new AgentLoop($azure, $breaker), $client, $breaker];
+    return [new AgentLoop($azure, $breaker, new AzureCallThrottle()), $client, $breaker];
 }
 
 /**
@@ -150,6 +151,20 @@ it('keeps the turns it already billed when a later turn throws', function (): vo
 
     expect($budget->steps())->toBe(1)
         ->and($budget->totalTokens())->toBe(120);
+});
+
+it('blocks on the local throttle before every Azure call', function (): void {
+    $client = new ClientFake([fakeAzureResponse('{}'), fakeAzureResponse('{}')]);
+    $azure = Mockery::mock(AzureOpenAIClient::class);
+    $azure->shouldReceive('client')->andReturn($client);
+    $breaker = Mockery::mock(AzureConfigCircuitBreaker::class);
+    $breaker->shouldReceive('recordSuccess')->andReturnNull();
+    $throttle = Mockery::mock(AzureCallThrottle::class);
+    $throttle->shouldReceive('block')->twice();
+    $loop = new AgentLoop($azure, $breaker, $throttle);
+
+    $loop->converse('briefing', agentLoopPayload(), null, agentLoopBudget(), microtime(true));
+    $loop->converse('briefing', agentLoopPayload(), null, agentLoopBudget(), microtime(true));
 });
 
 // ── the forced answer (truncation replay) ─────────────────────────────

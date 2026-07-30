@@ -32,4 +32,10 @@ return [
     // rule-based filler instead of a real LLM call — nobody's checking back
     // on narration for a year-old run, and it keeps backfill depth bounded.
     'backfill_max_age_days' => (int) env('AI_BACKFILL_MAX_AGE_DAYS', 365),
+
+    // Local ceiling on outbound Azure OpenAI calls, checked before every
+    // request so concurrent workers self-throttle instead of firehosing
+    // Azure and eating 429s. No documented Azure quota exists to size this
+    // against — start conservative, raise if logs show headroom.
+    'azure_calls_per_minute' => (int) env('AI_AZURE_CALLS_PER_MINUTE', 15),
 ];

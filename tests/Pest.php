@@ -7,11 +7,13 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentLoop;
 use App\Services\AI\Agent\AgentTool;
+use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\TokenUsageRecorder;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
 use Mockery\MockInterface;
@@ -33,6 +35,9 @@ pest()->extend(TestCase::class)->in('Feature', 'Unit');
 
 pest()->beforeEach(function (): void {
     Http::preventStrayRequests();
+    // The local Azure call throttle shares one rate-limit bucket across every
+    // call; clear it so one test's calls never count against the next.
+    RateLimiter::clear('azure-openai-calls');
     // Pest CI skips `npm run build`; neutralize @vite() so Inertia roots render.
     $this->withoutVite();
 
@@ -178,7 +183,7 @@ function fakeStructuredCaller(ClientFake $client, string $deployment = 'gpt-test
     return new StructuredChatCaller(
         $azure,
         app(TokenUsageRecorder::class),
-        new AgentLoop($azure, app(AzureConfigCircuitBreaker::class)),
+        new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)),
     );
 }
 

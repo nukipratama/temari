@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent;
 
 use App\Exceptions\AI\ContentFilterException;
+use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureFailureMapper;
 use App\Services\AI\AzureOpenAIClient;
@@ -24,6 +25,7 @@ final readonly class AgentLoop
     public function __construct(
         private AzureOpenAIClient $azure,
         private AzureConfigCircuitBreaker $configBreaker,
+        private AzureCallThrottle $throttle,
     ) {
     }
 
@@ -121,6 +123,8 @@ final readonly class AgentLoop
      */
     private function createResponse(string $kind, array $payload, AgentBudget $budget, float $startedAt): CreateResponse
     {
+        $this->throttle->block();
+
         try {
             $response = $this->azure->client()->responses()->create($payload);
         } catch (Throwable $e) {
