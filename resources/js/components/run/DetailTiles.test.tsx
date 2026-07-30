@@ -108,6 +108,20 @@ describe('DetailTiles', () => {
         expect(screen.queryByText('DECOUPLING')).not.toBeInTheDocument();
     });
 
+    it('spans the last tile across both columns when the tile count is odd', () => {
+        // AVG HR + MAX HR + CADENCE, no grade/decoupling data — 3 tiles, an odd
+        // count that would otherwise strand CADENCE alone in the 2-column grid.
+        renderTiles({}, {});
+        expect(screen.getByText('CADENCE').closest('div.rounded-xl')).toHaveClass('col-span-2');
+        expect(screen.getByText('AVG HR').closest('div.rounded-xl')).not.toHaveClass('col-span-2');
+    });
+
+    it('does not span the last tile when the tile count is even', () => {
+        // Default fixture yields 4 tiles (AVG HR, MAX HR, CADENCE, DECOUPLING).
+        renderTiles();
+        expect(screen.getByText('DECOUPLING').closest('div.rounded-xl')).not.toHaveClass('col-span-2');
+    });
+
     it('renders the empty card when the run carries no technical numbers', () => {
         renderTiles(
             { average_heartrate: null, max_heartrate: null, average_cadence: null },

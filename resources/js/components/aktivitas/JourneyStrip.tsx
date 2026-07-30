@@ -57,22 +57,34 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                     <span
                         className={cn(
                             'tabular-nums',
-                            pace_improvement_sec > 0 ? 'text-leaf-deep' : 'text-ember-deep',
+                            pace_improvement_sec === 0 ? 'text-ink-2' : pace_improvement_sec > 0 ? 'text-leaf-deep' : 'text-ember-deep',
                         )}
                     >
-                        {Math.abs(Math.round(pace_improvement_sec))} detik/km{' '}
-                        {pace_improvement_sec > 0 ? 'lebih cepat' : 'lebih lambat'}
+                        {pace_improvement_sec === 0 ? (
+                            'Pace sama dengan lari pertama'
+                        ) : (
+                            <>
+                                {Math.abs(Math.round(pace_improvement_sec))} detik/km{' '}
+                                {pace_improvement_sec > 0 ? 'lebih cepat' : 'lebih lambat'}
+                            </>
+                        )}
                     </span>
                 )}
                 {hr_improvement_bpm !== null && (
                     <span
                         className={cn(
                             'tabular-nums',
-                            hr_improvement_bpm > 0 ? 'text-leaf-deep' : 'text-ember-deep',
+                            hr_improvement_bpm === 0 ? 'text-ink-2' : hr_improvement_bpm > 0 ? 'text-leaf-deep' : 'text-ember-deep',
                         )}
                     >
-                        {Math.abs(Math.round(hr_improvement_bpm))} bpm{' '}
-                        {hr_improvement_bpm > 0 ? 'lebih rendah' : 'lebih tinggi'}
+                        {hr_improvement_bpm === 0 ? (
+                            'HR sama dengan lari pertama'
+                        ) : (
+                            <>
+                                {Math.abs(Math.round(hr_improvement_bpm))} bpm{' '}
+                                {hr_improvement_bpm > 0 ? 'lebih rendah' : 'lebih tinggi'}
+                            </>
+                        )}
                     </span>
                 )}
             </div>

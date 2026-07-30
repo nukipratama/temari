@@ -14,7 +14,7 @@ const TABS = [
     id: "jejak" as const,
     label: "Jejak",
     href: "/aktivitas",
-    icon: "mdi:arrow-top-right",
+    icon: "mdi:shoe-print",
   },
   {
     id: "kalender" as const,

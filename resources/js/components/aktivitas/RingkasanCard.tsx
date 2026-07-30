@@ -56,8 +56,16 @@ export default function RingkasanCard({
                     )}
                 />
             </div>
+            {/* awaitingSchedule already shows its own "belum tersedia" line above;
+                stacking the fallback stat sentence right after it with no framing
+                read as a contradiction ("not ready yet" immediately followed by
+                the actual summary). Label it explicitly as a preview instead of
+                dropping it, so the card still never looks empty. */}
             {analysis.status !== 'done' && (
-                <p className="mt-2 text-sm leading-relaxed text-ink-2">{fallback}</p>
+                <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                    {awaitingSchedule && <span className="font-semibold text-ink-3">Sementara ini: </span>}
+                    {fallback}
+                </p>
             )}
         </section>
     );

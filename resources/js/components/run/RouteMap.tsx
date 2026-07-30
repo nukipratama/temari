@@ -77,7 +77,7 @@ export default function RouteMap({ polyline, distanceKm }: Readonly<RouteMapProp
                     className="absolute inset-0 z-[1000] flex items-end justify-center bg-transparent p-3"
                 >
                     <span className="rounded-full bg-ink/70 px-3 py-1.5 text-label-micro text-cream backdrop-blur-sm">
-                        Ketuk untuk interaktif
+                        Aktifkan peta
                     </span>
                 </button>
             )}

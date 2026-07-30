@@ -36,11 +36,14 @@ describe('RingkasanCard', () => {
         expect(screen.getByRole('button', { name: /Minta Temari bacain/ })).toBeInTheDocument();
     });
 
-    it('suppresses the trigger and shows "belum tersedia" for the current week', () => {
+    it('suppresses the trigger and labels the fallback as a preview for the current week', () => {
         render(<RingkasanCard analysis={baseAnalysis()} fallback="fallback" awaitingSchedule />);
         expect(screen.getByText(/Rekap minggu ini belum tersedia/)).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
-        // Fallback prose still renders alongside the pending note.
+        // Still visible (never-empty intent preserved) but framed as a preview
+        // instead of stacking unlabeled under "belum tersedia" — that read as a
+        // contradiction (not ready yet, immediately followed by the summary).
+        expect(screen.getByText('Sementara ini:')).toBeInTheDocument();
         expect(screen.getByText('fallback')).toBeInTheDocument();
     });
 });

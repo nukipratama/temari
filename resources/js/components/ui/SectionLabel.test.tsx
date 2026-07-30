@@ -22,6 +22,9 @@ describe('SectionLabel', () => {
         expect(dot).not.toBeNull();
         expect(dot).toHaveClass('rounded-full');
         expect(dot).toHaveClass('bg-ink-3');
+        // shrink-0: a long sibling label (e.g. "Kesiapan") must not squeeze this
+        // fixed-size dot toward 0 width in a narrow flex row.
+        expect(dot).toHaveClass('shrink-0');
         // no trailing divider (flex-1 rule)
         expect(container.querySelector('.flex-1')).toBeNull();
         // dot eyebrow runs at the micro tier

@@ -31,18 +31,18 @@ export default function KoleksiTabs({ active, activeCount, className }: Readonly
     const navRef = useRef<HTMLElement>(null);
 
     // The tab row scrolls horizontally on narrow screens; bring the active tab
-    // into view on mount so a later tab (e.g. "Target") isn't clipped off-screen.
+    // fully into view on mount so a later tab (e.g. "Target") isn't clipped
+    // off-screen. `scrollIntoView({ inline: 'nearest' })` accounts for both
+    // edges of the tab (label + count badge) — a manual scrollLeft += based
+    // only on the left edge could still leave the right edge (and the count
+    // badge) clipped, or push an earlier tab off-screen on the left.
     useEffect(() => {
         const nav = navRef.current;
         if (!nav) {
             return;
         }
         const activeEl = nav.querySelector<HTMLElement>('[aria-current="page"]');
-        if (activeEl) {
-            const navRect = nav.getBoundingClientRect();
-            const elRect = activeEl.getBoundingClientRect();
-            nav.scrollLeft += elRect.left - navRect.left - 16;
-        }
+        activeEl?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
     }, [active]);
 
     return (

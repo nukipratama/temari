@@ -180,6 +180,10 @@ globalThis.ResizeObserver = class ResizeObserver {
     disconnect = vi.fn();
 };
 
+// jsdom has no layout engine, so scrollIntoView isn't implemented at all
+// (not even as a no-op) — calling it throws "is not a function".
+Element.prototype.scrollIntoView = vi.fn();
+
 // react-chartjs-2 needs canvas — stub Chart components.
 vi.mock('react-chartjs-2', () => ({
     Line: () => createElement('div', { 'data-testid': 'line-chart' }),
