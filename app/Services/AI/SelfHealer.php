@@ -234,17 +234,13 @@ class SelfHealer
             ->groupBy('user_id')
             ->flatMap(fn ($rows) => $rows->take(self::NONCASCADING_DRAIN_BATCH));
 
-        $index = 0;
-        foreach ($toResume as $row) {
-            $this->service->request(
-                subjectOrType: RunCard::class,
-                subjectId: (int) $row->subject_id,
-                type: AnalysisType::CardFlavor,
-                delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
-                invalidate: false,
-            );
-            $index++;
-        }
+        $toResume->values()->each(fn ($row, int $index) => $this->service->request(
+            subjectOrType: RunCard::class,
+            subjectId: (int) $row->subject_id,
+            type: AnalysisType::CardFlavor,
+            delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
+            invalidate: false,
+        ));
 
         return $toResume->count();
     }
@@ -268,17 +264,13 @@ class SelfHealer
             ->groupBy('user_id')
             ->flatMap(fn ($rows) => $rows->take(self::NONCASCADING_DRAIN_BATCH));
 
-        $index = 0;
-        foreach ($toResume as $row) {
-            $this->service->request(
-                subjectOrType: PersonalRecord::class,
-                subjectId: (int) $row->subject_id,
-                type: AnalysisType::PrContext,
-                delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
-                invalidate: false,
-            );
-            $index++;
-        }
+        $toResume->values()->each(fn ($row, int $index) => $this->service->request(
+            subjectOrType: PersonalRecord::class,
+            subjectId: (int) $row->subject_id,
+            type: AnalysisType::PrContext,
+            delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
+            invalidate: false,
+        ));
 
         return $toResume->count();
     }
@@ -315,18 +307,14 @@ class SelfHealer
             ->get(['subject_id', 'discriminator'])
             ->unique('subject_id');
 
-        $index = 0;
-        foreach ($earliestPerUser as $row) {
-            $this->service->request(
-                subjectOrType: $type->subjectType(),
-                subjectId: (int) $row->subject_id,
-                type: $type,
-                discriminator: $row->discriminator,
-                delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
-                invalidate: false,
-            );
-            $index++;
-        }
+        $earliestPerUser->values()->each(fn ($row, int $index) => $this->service->request(
+            subjectOrType: $type->subjectType(),
+            subjectId: (int) $row->subject_id,
+            type: $type,
+            discriminator: $row->discriminator,
+            delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
+            invalidate: false,
+        ));
 
         return $earliestPerUser->count();
     }

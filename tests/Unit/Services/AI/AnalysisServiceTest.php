@@ -204,6 +204,20 @@ it('requestActivityGroupRuleBased fills all 4 rows Done without dispatching', fu
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });
 
+it('requestActivityGroupRuleBased never overwrites an already-Done row with filler (e.g. real narration that aged past the cap)', function (): void {
+    $activity = Activity::factory()->create();
+    $realRow = Analysis::factory()->done('narasi asli yang sudah dibayar')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $this->service->requestActivityGroupRuleBased($activity);
+
+    expect($realRow->fresh()->content)->toBe('narasi asli yang sudah dibayar');
+});
+
 it('requestActivityGroup creates 4 rows and dispatches one AnalyzeActivityJob', function (): void {
     $activity = Activity::factory()->create();
 
@@ -923,6 +937,20 @@ it('requestRuleBased refills an already-Done row in place rather than minting a 
     expect($second->id)->toBe($first->id)
         ->and(Analysis::query()->count())->toBe(1);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('requestRuleBased with refillDone:false leaves an already-Done row untouched', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    Analysis::factory()->done('recap asli, sudah dibayar')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+
+    $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap, refillDone: false);
+
+    expect($row->content)->toBe('recap asli, sudah dibayar');
 });
 
 it('runs the daily cost aggregate once per scope no matter how many rows it dispatches', function (): void {

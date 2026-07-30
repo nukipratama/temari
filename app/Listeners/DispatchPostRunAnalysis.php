@@ -114,6 +114,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
                     subjectOrType: PersonalRecord::class,
                     subjectId: (int) $prId,
                     type: AnalysisType::PrContext,
+                    refillDone: false,
                 );
 
                 continue;
@@ -141,6 +142,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
                 subjectOrType: RunCard::class,
                 subjectId: $card->id,
                 type: AnalysisType::CardFlavor,
+                refillDone: false,
             );
 
             return;
