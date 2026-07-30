@@ -16,6 +16,7 @@ use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\BackfillStagger;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\MaterialFingerprint;
@@ -483,7 +484,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
     $activity = analyzedActivity();
     $weekly = Mockery::mock(WeeklyAggregator::class);
     $weekly->shouldReceive('rebuildForwardFrom')->once()->andReturnNull();
-    $listener = new DispatchPostRunAnalysis(app(AnalysisService::class), $weekly);
+    $listener = new DispatchPostRunAnalysis(app(AnalysisService::class), $weekly, app(BackfillStagger::class));
 
     $listener->handle(new ActivityIngested($activity->id));
 
