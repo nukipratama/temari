@@ -205,6 +205,16 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * (fresh) runs keep the existing single immediate dispatch + graceful
      * prev-lookup (the prior activity is already Done).
      */
+    /**
+     * A fresh (non-backfill) ingest still joins the chain instead of firing
+     * immediately when an older link for this user is already unresolved —
+     * otherwise a live run can narrate ahead of an in-progress backfill,
+     * both racing it for Azure calls and breaking the connected story's
+     * chronological continuity (today's run would reference the wrong
+     * "previous" narrative). The fast path (dispatchActivityGroup's steady-
+     * state branch) is reserved for the common case: the chain is already
+     * caught up.
+     */
     private function dispatchActivityGroup(Activity $activity, bool $isBackfill, bool $tooOld, int $delaySec): void
     {
         if ($tooOld) {
@@ -213,7 +223,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
             return;
         }
 
-        if (! $isBackfill) {
+        $hasUnfinishedOlderLink = AnalyzeActivityJob::earliestPendingActivityForUser($activity->user_id) !== null;
+
+        if (! $isBackfill && ! $hasUnfinishedOlderLink) {
             $this->maybeRefreshActivityGroup($activity);
 
             return;

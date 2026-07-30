@@ -323,6 +323,37 @@ it('steady-state (fresh run) dispatches the activity group immediately', functio
     Carbon::setTestNow();
 });
 
+it('a live (non-backfill) run joins the chain instead of jumping ahead when an older link is unresolved', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    // An older run already staged Pending (e.g. an in-progress backfill).
+    $older = analyzedActivity('2026-05-10 06:00:00');
+    app(AnalysisService::class)->requestActivityGroupDeferred($older);
+
+    Bus::fake();
+    // A live (fresh, non-backfill) run comes in while that older link is still unresolved.
+    $fresh = analyzedActivity('2026-06-10 06:00:00', $older->user_id);
+    fire($fresh);
+
+    // Staged (joins the chain), not dispatched directly.
+    $freshRow = Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $fresh->id)
+        ->where('analysis_type', AnalysisType::PostRunSpeech)
+        ->firstOrFail();
+    expect($freshRow->status)->toBe(AnalysisStatus::Pending);
+
+    // The chain re-kicks the older, still-earliest link — not the fresh run.
+    Bus::assertDispatched(
+        AnalyzeActivityJob::class,
+        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $older->id,
+    );
+    Bus::assertNotDispatched(
+        AnalyzeActivityJob::class,
+        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $fresh->id,
+    );
+    Carbon::setTestNow();
+});
+
 /** Seed a fully-narrated (Done) per-run analysis group with a given stored fingerprint. */
 function narratedGroup(Activity $activity, ?string $fingerprint): void
 {
