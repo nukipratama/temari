@@ -101,7 +101,7 @@ export default function Aku({
                                     showTimestamp={false}
                                     onSky
                                     renderContent={(text) => (
-                                        <p className="font-display text-base italic leading-relaxed text-cream">
+                                        <p className="font-sans text-base leading-relaxed text-cream">
                                             &ldquo;{renderBold(stripEdgeQuotes(text))}&rdquo;
                                         </p>
                                     )}
@@ -119,6 +119,22 @@ export default function Aku({
                                 )}
                             </div>
                         </div>
+                        {/* Anchors the row's far right on desktop, where the quote's
+                            natural width otherwise leaves the hero looking empty. */}
+                        {identity.member_since && (
+                            <div className="hidden shrink-0 self-center text-right lg:ml-auto lg:block">
+                                <Eyebrow token="micro" tone="ink-on-sky" className="text-right">
+                                    Bareng Temari sejak
+                                </Eyebrow>
+                                <p className="mt-1 font-display text-headline-sm text-cream">
+                                    {formatShortDateId(identity.member_since)}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="mb-6">
+                        <SectionLabel onSky size="micro">Persona · 12 minggu terakhir</SectionLabel>
+                        <PersonaBar mix={personaMix} onSky />
                     </div>
                     <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 justify-items-center">
                         <StatTile tone="plainSky" size="md" align="center" label="Total km" value={stats.total_km.toFixed(1)} unit="km" />
@@ -126,13 +142,6 @@ export default function Aku({
                         <StatTile tone="plainSky" size="md" align="center" label="Lari terjauh" value={stats.longest_run_km.toFixed(2)} unit="km" />
                     </div>
                 </HeroPanel>
-
-                <section className="mt-10">
-                    <SectionLabel>Persona · 12 minggu terakhir</SectionLabel>
-                    <Card>
-                        <PersonaBar mix={personaMix} />
-                    </Card>
-                </section>
 
                 {progressionByCategory && Object.keys(progressionByCategory).length > 0 && (
                     <ProgressionSection byCategory={progressionByCategory} />
@@ -165,7 +174,7 @@ function ProgressionSection({
     const label = PR_CATEGORY_LABELS[series.category] ?? series.category;
 
     return (
-        <Card as="section" padding="lg" className="mt-4">
+        <Card as="section" padding="lg" className="mt-10">
             {tabs.length > 1 && (
                 <div className="mb-6 flex flex-wrap items-center gap-2" role="tablist" aria-label="Pilih jarak">
                     <Eyebrow as="span" token="micro" tone="ink-2" className="mr-1">Jarak</Eyebrow>

@@ -3,8 +3,8 @@ import { Icon } from '@iconify/react';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PillLink from '@/components/ui/PillLink';
+import RouteGlyph from '@/components/card/RouteGlyph';
 import { type KartuStats } from '@/components/card/Kartu';
-import { cn } from '@/lib/cn';
 import { RARITY_LABELS, RARITY_SYMBOL, badgeEmblem, badgeName } from '@/lib/runcard';
 import type { Rarity } from '@/types/inertia';
 
@@ -25,14 +25,11 @@ interface FeaturedCardHeroProps {
     voice?: ReactNode;
     ctaHref: string;
     ctaLabel?: string;
-    /** The pre-built <Kartu> (pass with `w-full`) — bleeds past the frame on lg, unless `compact`. */
+    /** The pre-built <Kartu> (pass with `w-full`) — bleeds past the frame on lg. */
     card: ReactNode;
-    /** Drops the forced min-height and the frame-breaking bleed graphic, sizing
-     * the card inline within the panel instead — for callers that don't want
-     * this hero to dominate the page it sits on (e.g. Hari Ini, which already
-     * has its own hero above this one). Default false preserves the original
-     * "one card, made the star" treatment. */
-    compact?: boolean;
+    /** The run's GPS route (Google-encoded polyline) — drawn as a faint oversized
+     *  watermark filling the gap between the copy column and the card on desktop. */
+    polyline?: string | null;
 }
 
 /**
@@ -54,7 +51,7 @@ export default function FeaturedCardHero({
     ctaHref,
     ctaLabel = 'Lihat aktivitas',
     card,
-    compact = false,
+    polyline,
 }: Readonly<FeaturedCardHeroProps>) {
     const catchLine = `${RARITY_SYMBOL[rarity]} ${RARITY_LABELS[rarity]} · ${km} KM`;
     const cells = statCells(stats, durasi);
@@ -62,7 +59,20 @@ export default function FeaturedCardHero({
 
     return (
         <div className="relative my-8">
-            <HeroPanel className={cn(!compact && 'min-h-[300px]', 'lg:px-14 lg:py-12')}>
+            <HeroPanel className="flex min-h-[300px] flex-col justify-center lg:px-14 lg:py-12">
+                {/* The run's real route, oversized and faint — fills the desktop gap
+                    between the copy column and the bleeding card instead of leaving
+                    it empty. Behind the copy in paint order (source order, both
+                    positioned) so the text stays legible over it. */}
+                {polyline && (
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-y-6 left-[44%] right-[340px] hidden opacity-[0.16] lg:block"
+                    >
+                        <RouteGlyph polyline={polyline} rarity={rarity} distanceKm={Number.parseFloat(km)} />
+                    </div>
+                )}
+
                 {/* Left copy — kept clear of the bleeding card on desktop. */}
                 <div className="relative lg:max-w-[58%]">
                     <Eyebrow token="hero" tone="horizon" className="mb-3">
@@ -113,23 +123,18 @@ export default function FeaturedCardHero({
                     </PillLink>
                 </div>
 
-                {/* Mobile: the card lives on the navy hero panel, below the copy.
-                    `compact` keeps it inline at every width instead of switching
-                    to the frame-breaking bleed treatment on desktop. */}
-                <div className={cn('mt-6 flex justify-center', !compact && 'lg:hidden')}>
+                {/* Mobile: the card lives on the navy hero panel, below the copy. */}
+                <div className="mt-6 flex justify-center lg:hidden">
                     <div className="w-full max-w-[300px]">{card}</div>
                 </div>
             </HeroPanel>
 
-            {/* The frame-breaker — desktop only, skipped entirely when `compact`.
-                Pinned right, taller than the panel via negative top/bottom so it
-                bleeds past the top/bottom edge. Callers pass the Kartu with
-                `w-full`; the slot sets the size. */}
-            {!compact && (
-                <div className="pointer-events-none absolute -bottom-6 -top-6 right-10 hidden items-center lg:flex">
-                    <div className="w-[300px]">{card}</div>
-                </div>
-            )}
+            {/* The frame-breaker — desktop only. Pinned right, taller than the
+                panel via negative top/bottom so it bleeds past the top/bottom
+                edge. Callers pass the Kartu with `w-full`; the slot sets the size. */}
+            <div className="pointer-events-none absolute -bottom-6 -top-6 right-10 hidden items-center lg:flex">
+                <div className="w-[300px]">{card}</div>
+            </div>
         </div>
     );
 }

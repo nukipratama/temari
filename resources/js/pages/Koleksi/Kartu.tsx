@@ -188,6 +188,7 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
             stats={kartuProps.stats}
             durasi={kartuProps.durasi}
             badges={kartuProps.badges}
+            polyline={kartuProps.polyline}
             ctaHref={aktivitasUrl(featured)}
             voice={
                 featured.flavor_analysis && (
