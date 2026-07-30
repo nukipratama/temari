@@ -1,5 +1,4 @@
 import { Icon } from '@iconify/react';
-import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import SectionLabel from '@/components/ui/SectionLabel';
 import Temari from '@/components/temari/Temari';
@@ -7,6 +6,7 @@ import { type TemariPose } from '@/components/temari/TemariProto';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
+import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { formatWeather } from '@/pages/HariIni/helpers';
@@ -19,7 +19,7 @@ import type { ActivityDetail, BriefingResult } from '@/types/inertia';
  *    `whitespace-pre-line` so paragraph breaks survive.
  * Falls back to a single paragraph if the LLM didn't follow the format.
  */
-function VoiceContent({ text }: Readonly<{ text: string }>) {
+function VoiceContent({ text, onSky = false }: Readonly<{ text: string; onSky?: boolean }>) {
     const parts = text.split(/\n\n+/).map((s) => s.trim()).filter(Boolean);
     if (parts.length === 0) {
         return null;
@@ -30,11 +30,11 @@ function VoiceContent({ text }: Readonly<{ text: string }>) {
 
     return (
         <div className="space-y-2.5">
-            <h3 className="font-display text-display-xs leading-tight tracking-[-0.01em] text-ink">
+            <h3 className={cn('font-display text-display-xs leading-tight tracking-[-0.01em]', onSky ? 'text-cream' : 'text-ink')}>
                 {renderBold(title)}
             </h3>
             {body !== '' && (
-                <p className="whitespace-pre-line font-sans text-sm leading-relaxed text-ink-2">
+                <p className={cn('whitespace-pre-line font-sans text-sm leading-relaxed', onSky ? 'text-ink-on-sky' : 'text-ink-2')}>
                     {renderBold(body)}
                 </p>
             )}
@@ -63,19 +63,20 @@ export default function KataTemariCard({ briefing, pose, lastRun }: Readonly<{ b
         : null;
 
     return (
-        <Card padding="lg" as="section" className="flex items-start gap-3.5">
+        <div className="flex items-start gap-3.5">
             <Temari pose={pose} size={48} animate={false} />
             <div className="flex min-w-0 flex-1 flex-col gap-3">
-                <SectionLabel dot className="mb-0">Kata Temari hari ini</SectionLabel>
+                <SectionLabel dot onSky className="mb-0">Kata Temari hari ini</SectionLabel>
                 <AnalysisStatus
                     analysis={briefing.mascotVoice}
                     inertiaReloadProps={['briefing']}
                     allowReanalyze={false}
-                    renderContent={(text) => <VoiceContent text={text} />}
+                    onSky
+                    renderContent={(text) => <VoiceContent text={text} onSky />}
                 />
                 {weatherChipLabel && (
                     <div className="flex flex-wrap gap-1.5">
-                        <Chip>{weatherChipLabel}</Chip>
+                        <Chip tone="onSky">{weatherChipLabel}</Chip>
                     </div>
                 )}
                 {!paused && (
@@ -85,7 +86,7 @@ export default function KataTemariCard({ briefing, pose, lastRun }: Readonly<{ b
                             onClick={trigger}
                             disabled={pending || cooling}
                             aria-label={cooldownAriaLabel(cooldownRemaining, 'minta saran lain')}
-                            className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
+                            className="focus-ring-on-sky rounded inline-flex items-center self-start gap-1 text-xs text-ink-on-sky hover:text-cream transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-on-sky"
                         >
                             <Icon icon="mdi:auto-awesome" aria-hidden />
                             <span>{label}</span>
@@ -93,6 +94,6 @@ export default function KataTemariCard({ briefing, pose, lastRun }: Readonly<{ b
                     </div>
                 )}
             </div>
-        </Card>
+        </div>
     );
 }
