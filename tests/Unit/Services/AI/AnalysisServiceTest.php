@@ -524,7 +524,7 @@ it('markFailed alerts maintainers exactly at the dead-letter crossing', function
         'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
     ]);
 
-    $alerter->shouldReceive('deadLettered')->once()->with(Mockery::type(Analysis::class));
+    $alerter->shouldReceive('deadLettered')->once();
 
     $service->markFailed($row, 'Azure 500');
 });

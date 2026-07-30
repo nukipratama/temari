@@ -241,7 +241,7 @@ class AnalysisService
         // failed attempt. A manual re-arm (attempts -> 0) re-opens the budget, so a
         // later re-exhaustion is a genuine new dead-letter and alerts again.
         if ($row->attempts >= Analysis::MAX_SELF_HEAL_ATTEMPTS) {
-            $this->alerter->deadLettered($row);
+            $this->alerter->deadLettered();
         }
     }
 

@@ -12,6 +12,7 @@ use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\TokenUsageRecorder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Socialite\Facades\Socialite;
@@ -38,6 +39,10 @@ pest()->beforeEach(function (): void {
     // The local Azure call throttle shares one rate-limit bucket across every
     // call; clear it so one test's calls never count against the next.
     RateLimiter::clear('azure-openai-calls');
+    // Same for the dead-letter alert coalescing window — a test that fakes the
+    // queue (so the flush never actually pulls/resets it) must not leave a
+    // stale count behind for the next test's dead-letter assertions.
+    Cache::forget('ai.dead_letter.window_count');
     // Pest CI skips `npm run build`; neutralize @vite() so Inertia roots render.
     $this->withoutVite();
 

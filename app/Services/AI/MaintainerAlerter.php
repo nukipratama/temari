@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
-use App\Models\AI\Analysis;
+use App\Jobs\AI\FlushDeadLetterAlertJob;
 use App\Models\TelegramConnection;
 use App\Services\Telegram\TelegramClient;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -24,6 +25,18 @@ use Throwable;
  */
 class MaintainerAlerter
 {
+    /**
+     * Coalescing window for dead-letter alerts: every dead-letter within this
+     * many seconds of the first one in a window shares its eventual flush,
+     * instead of each firing its own Telegram push.
+     */
+    private const int DEAD_LETTER_WINDOW_SECONDS = 120;
+
+    /** Delay before the coalesced window is flushed into one summary message. */
+    private const int DEAD_LETTER_FLUSH_DELAY_SECONDS = 90;
+
+    private const string DEAD_LETTER_WINDOW_CACHE_KEY = 'ai.dead_letter.window_count';
+
     public function __construct(
         private readonly TelegramClient $telegram,
         private readonly AppConfig $config,
@@ -33,13 +46,38 @@ class MaintainerAlerter
     /**
      * A block just crossed into dead-letter (ai:self-heal gave up after burning
      * the retry budget). Fired from {@see AnalysisService::markFailed()} only at
-     * the crossing (attempts reaching MAX), so it pushes once per dead-letter, not
-     * once per failed attempt.
+     * the crossing (attempts reaching MAX). Coalesces into one summary push per
+     * window instead of one per dead-letter — a rate-limit storm can dead-letter
+     * many blocks within seconds, which used to flood every admin's Telegram.
+     * Cache::add() only succeeds for the first dead-letter in a window, which is
+     * what schedules the flush; every dead-letter (first or not) increments the
+     * count the flush eventually reads.
      */
-    public function deadLettered(Analysis $row): void
+    public function deadLettered(): void
     {
+        $isFirstInWindow = Cache::add(self::DEAD_LETTER_WINDOW_CACHE_KEY, 0, self::DEAD_LETTER_WINDOW_SECONDS);
+        Cache::increment(self::DEAD_LETTER_WINDOW_CACHE_KEY);
+
+        if ($isFirstInWindow) {
+            FlushDeadLetterAlertJob::dispatch()->delay(self::DEAD_LETTER_FLUSH_DELAY_SECONDS);
+        }
+    }
+
+    /**
+     * Send the coalesced dead-letter count as one summary message, called by
+     * {@see \App\Jobs\AI\FlushDeadLetterAlertJob}. Pull (get + forget) is atomic,
+     * so a dead-letter landing between the read and the send finds the key
+     * absent again and schedules its own future flush rather than being lost.
+     */
+    public function flushDeadLetterWindow(): void
+    {
+        $count = (int) Cache::pull(self::DEAD_LETTER_WINDOW_CACHE_KEY, 0);
+        if ($count < 1) {
+            return;
+        }
+
         $this->broadcast(
-            "Ada blok AI yang nyerah setelah dicoba berkali-kali: {$row->analysis_type->value}. "
+            "{$count} blok AI nyerah dalam beberapa menit terakhir. "
             .'Buka /ai-usage buat coba lagi manual ya.',
         );
     }

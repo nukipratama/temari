@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-use App\Models\AI\Analysis;
+use App\Jobs\AI\FlushDeadLetterAlertJob;
 use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
-use App\Services\AI\AnalysisType;
 use App\Services\AI\MaintainerAlerter;
 use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Services\Telegram\TelegramClient;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Config;
 
 uses(RefreshDatabase::class);
@@ -48,9 +48,7 @@ it('pushes a dead-letter alert to every admin chat', function (): void {
     $client->shouldReceive('sendMessage')->once()->with(1001, Mockery::pattern('/nyerah/'));
     $client->shouldReceive('sendMessage')->once()->with(1002, Mockery::pattern('/nyerah/'));
 
-    $row = Analysis::factory()->failed()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
-
-    app(MaintainerAlerter::class)->deadLettered($row);
+    app(MaintainerAlerter::class)->deadLettered();
 });
 
 it('is a no-op when Telegram is unconfigured', function (): void {
@@ -60,8 +58,7 @@ it('is a no-op when Telegram is unconfigured', function (): void {
 
     $client->shouldNotReceive('sendMessage');
 
-    $row = Analysis::factory()->failed()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
-    app(MaintainerAlerter::class)->deadLettered($row);
+    app(MaintainerAlerter::class)->deadLettered();
 });
 
 it('skips non-admins and revoked connections', function (): void {
@@ -80,8 +77,7 @@ it('skips non-admins and revoked connections', function (): void {
 
     $client->shouldReceive('sendMessage')->once()->with(2003, Mockery::any());
 
-    $row = Analysis::factory()->failed()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
-    app(MaintainerAlerter::class)->deadLettered($row);
+    app(MaintainerAlerter::class)->deadLettered();
 });
 
 it('alerts on a pause transition and stores the reason, then stays quiet when unchanged', function (): void {
@@ -135,9 +131,7 @@ it('swallows a send failure so an alert never fails its caller', function (): vo
 
     $client->shouldReceive('sendMessage')->andThrow(new TelegramApiException('blocked', 403));
 
-    $row = Analysis::factory()->failed()->make(['analysis_type' => AnalysisType::WeeklyRecap]);
-
-    expect(fn () => app(MaintainerAlerter::class)->deadLettered($row))->not->toThrow(Throwable::class);
+    expect(fn () => app(MaintainerAlerter::class)->deadLettered())->not->toThrow(Throwable::class);
 });
 
 /**
@@ -159,9 +153,7 @@ it('still alerts an admin who has muted the Telegram channel', function (): void
     $client = fakeTelegram();
     $client->shouldReceive('sendMessage')->once()->with(4321, Mockery::type('string'));
 
-    app(MaintainerAlerter::class)->deadLettered(
-        Analysis::factory()->create(['analysis_type' => AnalysisType::WeeklyRecap]),
-    );
+    app(MaintainerAlerter::class)->deadLettered();
 });
 
 it('still respects an unconfigured bot token, mute or not', function (): void {
@@ -172,7 +164,53 @@ it('still respects an unconfigured bot token, mute or not', function (): void {
     $client = fakeTelegram();
     $client->shouldNotReceive('sendMessage');
 
-    app(MaintainerAlerter::class)->deadLettered(
-        Analysis::factory()->create(['analysis_type' => AnalysisType::WeeklyRecap]),
-    );
+    app(MaintainerAlerter::class)->deadLettered();
+});
+
+it('coalesces a burst of dead-letters into exactly one delayed flush job', function (): void {
+    Bus::fake();
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->deadLettered();
+    $alerter->deadLettered();
+    $alerter->deadLettered();
+
+    Bus::assertDispatchedTimes(FlushDeadLetterAlertJob::class, 1);
+    Bus::assertDispatched(FlushDeadLetterAlertJob::class, fn (FlushDeadLetterAlertJob $job): bool => $job->delay === 90);
+});
+
+it('flushDeadLetterWindow sends one summary message carrying the coalesced count', function (): void {
+    Bus::fake();
+    $client = fakeTelegram();
+    adminWithChat(7001);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->deadLettered();
+    $alerter->deadLettered();
+    $alerter->deadLettered();
+
+    $client->shouldReceive('sendMessage')->once()->with(7001, Mockery::pattern('/^3 blok AI nyerah/'));
+
+    $alerter->flushDeadLetterWindow();
+});
+
+it('flushDeadLetterWindow is a no-op when nothing is pending in the window', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(7002);
+
+    $client->shouldNotReceive('sendMessage');
+
+    app(MaintainerAlerter::class)->flushDeadLetterWindow();
+});
+
+it('a dead-letter after a flush schedules its own new flush instead of being lost', function (): void {
+    Bus::fake();
+    $alerter = app(MaintainerAlerter::class);
+
+    $alerter->deadLettered();
+    $alerter->flushDeadLetterWindow();
+
+    $alerter->deadLettered();
+
+    Bus::assertDispatchedTimes(FlushDeadLetterAlertJob::class, 2);
 });
