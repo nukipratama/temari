@@ -67,4 +67,16 @@ describe('FeaturedCardHero', () => {
         render(<FeaturedCardHero {...baseProps} voice={<span>Temari bilang halo</span>} />);
         expect(screen.getByText('Temari bilang halo')).toBeInTheDocument();
     });
+
+    it('renders the card twice (inline mobile + bleeding desktop) with a forced min-height by default', () => {
+        const { container } = render(<FeaturedCardHero {...baseProps} />);
+        expect(screen.getAllByTestId('kartu')).toHaveLength(2);
+        expect(container.querySelector('.min-h-\\[300px\\]')).not.toBeNull();
+    });
+
+    it('renders the card once inline, without the bleed graphic or forced min-height when compact', () => {
+        const { container } = render(<FeaturedCardHero {...baseProps} compact />);
+        expect(screen.getAllByTestId('kartu')).toHaveLength(1);
+        expect(container.querySelector('.min-h-\\[300px\\]')).toBeNull();
+    });
 });

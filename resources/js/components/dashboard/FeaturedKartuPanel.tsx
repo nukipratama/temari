@@ -20,6 +20,7 @@ export default function FeaturedKartuPanel({
             durasi={featured.durasi}
             badges={featured.badges}
             ctaHref={aktivitasUrl({ activity_id: featured.activityId })}
+            compact
             voice={
                 <AnalysisStatus
                     analysis={featuredKartuVoice}
