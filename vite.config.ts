@@ -20,12 +20,12 @@ export default defineConfig({
         // charts/maps/animation doesn't pull the whole bundle. Without this
         // they all land in one large vendor chunk.
         //
-        // `advancedChunks`, not `manualChunks`: Rolldown collapses a
+        // `codeSplitting` groups, not `manualChunks`: Rolldown collapses a
         // manualChunks function into one group at priority 0, so its branches
         // cannot outrank each other, and `includeDependenciesRecursively`
         // (default true) then sweeps React into whichever vendor group reaches
         // it first. Explicit groups give react-vendor a priority that wins.
-        advancedChunks: {
+        codeSplitting: {
           groups: [
             {
               name: "react-vendor",

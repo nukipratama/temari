@@ -68,15 +68,13 @@ describe('FeaturedCardHero', () => {
         expect(screen.getByText('Temari bilang halo')).toBeInTheDocument();
     });
 
-    it('renders the card twice (inline mobile + bleeding desktop) with a forced min-height by default', () => {
-        const { container } = render(<FeaturedCardHero {...baseProps} />);
-        expect(screen.getAllByTestId('kartu')).toHaveLength(2);
-        expect(container.querySelector('.min-h-\\[300px\\]')).not.toBeNull();
+    it('renders the route watermark when a polyline is provided', () => {
+        const { container } = render(<FeaturedCardHero {...baseProps} polyline="abc123" />);
+        expect(container.querySelector('[data-variant="route"]')).not.toBeNull();
     });
 
-    it('renders the card once inline, without the bleed graphic or forced min-height when compact', () => {
-        const { container } = render(<FeaturedCardHero {...baseProps} compact />);
-        expect(screen.getAllByTestId('kartu')).toHaveLength(1);
-        expect(container.querySelector('.min-h-\\[300px\\]')).toBeNull();
+    it('omits the route watermark when no polyline is provided', () => {
+        const { container } = render(<FeaturedCardHero {...baseProps} />);
+        expect(container.querySelector('[data-variant="route"]')).toBeNull();
     });
 });

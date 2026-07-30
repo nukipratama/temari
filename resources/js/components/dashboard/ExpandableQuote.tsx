@@ -7,7 +7,7 @@ export default function ExpandableQuote({ text, onSky = false }: Readonly<{ text
     const [expanded, setExpanded] = useState(false);
     return (
         <div>
-            <p className={cn('whitespace-pre-line font-display text-base italic leading-relaxed', onSky ? 'text-cream' : 'text-ink', !expanded && 'line-clamp-3')}>
+            <p className={cn('whitespace-pre-line font-sans text-base leading-relaxed', onSky ? 'text-cream' : 'text-ink', !expanded && 'line-clamp-3')}>
                 {/* stripEdgeQuotes: narration that opens by quoting a card name
                     ("Full Send" sekali seumur…) would otherwise collide with this
                     decorative frame and render as a doubled opening quote. */}

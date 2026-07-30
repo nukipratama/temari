@@ -64,6 +64,26 @@ describe('Aku', () => {
         expect(screen.queryByText(/Belum dibaca Temari/)).not.toBeInTheDocument();
     });
 
+    // The persona bar moved into the hero panel (it's the data behind "Kata
+    // Temari"'s read on you) instead of its own section below — a standalone
+    // <section class="mt-10"> would mean it slipped back out of the hero.
+    it('renders the persona bar inside the hero panel, not a separate section below it', () => {
+        const mix = [{ mood: 'nyala' as const, count: 3, percent: 100 }];
+        render(<Aku identity={identity} stats={stats} personaMix={mix} />);
+        expect(screen.getByText(/Persona/).closest('section')).toBeNull();
+    });
+
+    it('shows the "Bareng Temari sejak" join date when member_since is present', () => {
+        render(<Aku identity={identity} stats={stats} />);
+        expect(screen.getByText('Bareng Temari sejak')).toBeInTheDocument();
+        expect(screen.getByText('12 Agu 2024')).toBeInTheDocument();
+    });
+
+    it('omits the join-date block when member_since is missing', () => {
+        render(<Aku identity={{ ...identity, member_since: null }} stats={stats} />);
+        expect(screen.queryByText('Bareng Temari sejak')).not.toBeInTheDocument();
+    });
+
     it('renders the progression section when progressionByCategory is provided', () => {
         render(
             <Aku

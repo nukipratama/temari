@@ -30,4 +30,25 @@ describe('PersonaBar', () => {
         const segment = container.querySelector('[aria-label="Enteng 25%"]');
         expect(segment).toHaveStyle({ width: '25%' });
     });
+
+    it('shows a sky-glass nudge (not the cream EmptyPanel) when onSky and there is no mix data', () => {
+        const { container } = render(<PersonaBar mix={[]} onSky />);
+        expect(screen.getByText('Belum ada cukup lari buat baca personamu.')).toBeInTheDocument();
+        expect(container.querySelector('.backdrop-blur')).not.toBeNull();
+    });
+
+    it('flips the legend to cream/ink-on-sky tones when onSky', () => {
+        render(
+            <PersonaBar onSky mix={[{ mood: 'nyala', count: 3, percent: 60 }]} />,
+        );
+        expect(screen.getByText('Nyala')).toHaveClass('text-cream');
+        expect(screen.getByText('60.0%')).toHaveClass('text-ink-on-sky');
+    });
+
+    it('rings the bar track for contrast against the hero panel when onSky', () => {
+        const { container } = render(
+            <PersonaBar onSky mix={[{ mood: 'nyala', count: 1, percent: 100 }]} />,
+        );
+        expect(container.querySelector('.rounded-full')).toHaveClass('ring-cream/15');
+    });
 });
