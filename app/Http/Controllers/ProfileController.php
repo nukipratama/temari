@@ -13,7 +13,6 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\Narrators\AkuProfileVoiceNarrator;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Carbon;
 use App\Enums\PrCategory;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -74,7 +73,7 @@ class ProfileController extends Controller
     {
         // Cache the voice per ISO week — the mood mix behind it doesn't shift by
         // the hour, and the narrator pulls 12 weeks of history regardless.
-        $discriminator = Carbon::now()->isoFormat('GGGG-[W]WW');
+        $discriminator = AnalysisType::currentIsoWeek();
         $subjectType = AnalysisType::AKU_PROFILE_VOICE_SUBJECT_TYPE;
 
         $row = Analysis::query()

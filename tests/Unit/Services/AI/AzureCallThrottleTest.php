@@ -48,9 +48,24 @@ it('throws TransientUpstreamException once the block cap is exceeded under susta
     });
 
     expect(fn () => $throttle->block())->toThrow(TransientUpstreamException::class);
-    // The 30s block cap is exhausted by one capped sleep before giving up —
-    // fast and deterministic regardless of the real decay window's length.
-    expect($sleeps)->toHaveCount(1)->and($sleeps[0])->toBe(30);
+    // The 60s RateLimiter decay window is shorter than the 90s default block
+    // cap, so it takes two capped sleeps (60, then the remaining 30) to
+    // exhaust the cap before giving up — fast and deterministic regardless of
+    // the real decay window's length.
+    expect($sleeps)->toBe([60, 30]);
+});
+
+it('respects a configured block cap', function (): void {
+    config(['ai.azure_calls_per_minute' => 1, 'ai.azure_block_cap_seconds' => 45]);
+    RateLimiter::hit('azure-openai-calls', 60); // consume the only slot, never freed
+
+    $sleeps = [];
+    $throttle = new AzureCallThrottle(function (int $seconds) use (&$sleeps): void {
+        $sleeps[] = $seconds;
+    });
+
+    expect(fn () => $throttle->block())->toThrow(TransientUpstreamException::class);
+    expect($sleeps)->toHaveCount(1)->and($sleeps[0])->toBe(45);
 });
 
 it('carries the last observed availableIn as retryAfterSeconds so the job release delay is informed', function (): void {

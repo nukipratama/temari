@@ -62,6 +62,15 @@ class DispatchPostRunAnalysis implements ShouldQueue
         // re-ingesting old days never re-bills.
         $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
 
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::AkuProfileVoice->subjectType(),
+            subjectId: $user->id,
+            type: AnalysisType::AkuProfileVoice,
+            discriminator: AnalysisType::currentIsoWeek(),
+            delaySeconds: $delaySec,
+            invalidate: false,
+        );
+
         if ($detail->start_date_local === null) {
             return;
         }

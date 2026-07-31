@@ -7,6 +7,7 @@ use App\Jobs\AI\AnalyzeAkuProfileVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Services\AI\AnalysisCadence;
 use App\Services\AI\AnalysisType;
+use Illuminate\Support\Carbon;
 
 it('pins the exact case list, so adding or retiring a type is a deliberate edit', function (): void {
     expect(array_column(AnalysisType::cases(), 'value'))->toBe([
@@ -127,3 +128,12 @@ it('requires the date shape each keyed type dispatches with', function (Analysis
     'aku profile voice is an ISO week' => [AnalysisType::AkuProfileVoice, 'regex:/^\d{4}-W\d{2}$/'],
     'featured kartu is a card id' => [AnalysisType::BriefingFeaturedKartuVoice, 'regex:/^[1-9][0-9]*$/'],
 ]);
+
+it('formats currentIsoWeek to the discriminator shape AkuProfileVoice requires', function (): void {
+    Carbon::setTestNow('2026-05-19 12:00:00');
+
+    expect(AnalysisType::currentIsoWeek())->toBe('2026-W21')
+        ->and(AnalysisType::currentIsoWeek())->toMatch('/^\d{4}-W\d{2}$/');
+
+    Carbon::setTestNow();
+});
