@@ -19,7 +19,7 @@ The home/hub for the knowledge base. README explains how to *operate* the app; t
 
 ## What it is
 
-A personal running companion: it connects to Strava, ingests each run, computes proper running metrics, turns runs into collectible gamified cards, and narrates them with an AI mascot ("Temari") in an Indonesian-first voice. It is **not** a Strava clone — the gimmick (cards, vibes, mascot narration) is the point, layered on a correct run-tracker core.
+A personal running companion: it connects to Strava, ingests each run, computes proper running metrics, turns runs into collectible gamified cards, and narrates them with an AI mascot ("Temari") in an Indonesian-first voice. The gimmick (cards, vibes, mascot narration) is the point, layered on a correct run-tracker core — but user-facing surfaces and narration inputs aren't mutually exclusive: any running metric shown directly to the runner (VDOT, threshold pace, training paces, …) can still be something Temari reads and speaks to.
 
 ## Core design principles
 
