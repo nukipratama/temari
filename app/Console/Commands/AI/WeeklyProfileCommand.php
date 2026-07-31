@@ -30,7 +30,7 @@ class WeeklyProfileCommand extends Command
         // window), so the rolling week-key is itself the weekly regen: a new week
         // creates a fresh row, and invalidate:false never re-bills the row a
         // mid-week "Baca ulang" already filled.
-        $isoWeek = Carbon::now()->isoFormat('GGGG-[W]WW');
+        $isoWeek = AnalysisType::currentIsoWeek();
 
         $activeUserIds = Activity::query()
             ->where('analyzed_at', '>=', Carbon::today()->subDays(7))

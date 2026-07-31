@@ -18,6 +18,7 @@ use App\Models\Activity;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
+use Illuminate\Support\Carbon;
 
 enum AnalysisType: string
 {
@@ -205,5 +206,10 @@ enum AnalysisType: string
             self::AkuProfileVoice => self::AKU_PROFILE_VOICE_SUBJECT_TYPE,
             self::MonthlyRecap => self::MONTHLY_RECAP_SUBJECT_TYPE,
         };
+    }
+
+    public static function currentIsoWeek(): string
+    {
+        return Carbon::now()->isoFormat('GGGG-[W]WW');
     }
 }
