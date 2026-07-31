@@ -69,7 +69,7 @@ it('requires auth', function (): void {
     $this->get('/profil')->assertRedirect('/login');
 });
 
-it('ships no fitness prop even when the user has a VDOT-eligible PR', function (): void {
+it('includes training_paces derived from VDOT when the user has a qualifying PR', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create([
         'category' => '5km',
@@ -77,7 +77,19 @@ it('ships no fitness prop even when the user has a VDOT-eligible PR', function (
     ]);
 
     $this->actingAs($user)->get('/profil')
-        ->assertInertia(fn (Assert $page) => $page->missing('fitness'));
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('fitness.training_paces.easy')
+            ->has('fitness.training_paces.marathon')
+            ->has('fitness.training_paces.threshold')
+            ->has('fitness.training_paces.interval'));
+});
+
+it('reports null training_paces when the user has no VDOT-eligible PR', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/profil')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('fitness', null));
 });
 
 it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoice payload', function (): void {

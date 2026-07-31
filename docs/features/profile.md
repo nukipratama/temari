@@ -11,6 +11,9 @@ code_refs:
   - resources/js/components/temari/AnalysisStatus.tsx
   - resources/js/components/koleksi/ProgressionChart.tsx
   - resources/js/components/temari/Temari.tsx
+  - app/Services/Run/Metrics/VdotEstimator.php
+  - app/Services/Run/Metrics/ThresholdEstimator.php
+  - app/Services/Run/Metrics/TrainingPaceCalculator.php
 ---
 
 # Profile (Aku)
@@ -38,6 +41,12 @@ Three `StatCard`s: **Total km**, **Total lari**, **Lari terjauh**. The controlle
 
 Sharing `/kalender`'s cache means the totals can trail a just-ingested run by up to the TTL, the same window `/kalender` has always had.
 
+## Fitness — VDOT, threshold pace & training paces
+
+When the runner has a VDOT-eligible PR, the hero stat grid grows two more tiles (**VDOT**, **Threshold pace**, `explainerKey`s `vdot`/`threshold_pace`) and a "Latihan · pace target" card renders below the hero panel with four tiles — **Easy**, **Marathon**, **Tempo**, **Interval** — each a pace-per-km via `formatPace`. `ProfileController::fitness` builds the `fitness` prop from [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php)`::estimate`, [ThresholdEstimator](app/Services/Run/Metrics/ThresholdEstimator.php)`::estimate` and [TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php)`::fromVdotResult`; `fitness` is `null` (and the extra tiles don't render) when the user has no VDOT-eligible PR yet.
+
+These are the same estimators [AkuProfileVoiceNarrator](app/Services/AI/Narrators/AkuProfileVoiceNarrator.php) calls via [TrainingPacesTool](app/Services/AI/Agent/Tools/TrainingPacesTool.php) to narrate pace targets in prose — the numbers reach the user both ways, tabulated here and spoken in the hero voice above.
+
 ## Persona — 12 minggu terakhir
 
 The "Persona" section renders [PersonaBar](resources/js/components/PersonaBar.tsx): a single stacked bar of mood slices (`personaMix`), each colored by `MOOD_FILL`, with a legend of `MOOD_LABEL` + percent. The mix comes from `AkuProfileVoiceNarrator::personaMix($user)`. The bar carries no narration block of its own: the mix is narrated once, in the hero voice above. Empty mix → PersonaBar shows "Belum ada cukup lari buat baca personamu."
@@ -49,8 +58,6 @@ When `progressionByCategory` is non-empty, a tabbed section (5K / 10K / HM / FM)
 ## Not on this page
 
 PRs and accessories are **not** rendered here — Aku shows no PR cards and no accessory strip. The full PR list lives at `/rekor` ([[records]]) and the unlock catalog at `/aksesori` ([[targets-accessories]]).
-
-Neither is **training science**. Aku used to render a raw VDOT tile, a threshold-pace tile, and a four-tile "Latihan · pace target" block; all three are gone and `ProfileController` no longer ships a `fitness` prop. The estimators behind them ([VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php), [ThresholdEstimator](app/Services/Run/Metrics/ThresholdEstimator.php), [TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php)) are untouched and still feed narration: [AkuProfileVoiceNarrator](app/Services/AI/Narrators/AkuProfileVoiceNarrator.php) carries [TrainingPacesTool](app/Services/AI/Agent/Tools/TrainingPacesTool.php) in its toolbox, so Temari fetches these numbers and speaks them when they matter instead of the page tabulating them unprompted. Training science is an input to the voice, not a destination ([[DESIGN]]).
 
 ## Pengaturan
 

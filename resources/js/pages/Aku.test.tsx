@@ -103,11 +103,34 @@ describe('Aku', () => {
         expect(screen.getByTestId('progression-chart')).toBeInTheDocument();
     });
 
-    it('renders no VDOT, threshold pace or Latihan pace block', () => {
+    it('renders no VDOT, threshold pace or Latihan pace block when fitness is absent', () => {
         render(<Aku identity={identity} stats={stats} />);
         expect(screen.queryByText('VDOT')).not.toBeInTheDocument();
         expect(screen.queryByText('Threshold pace')).not.toBeInTheDocument();
         expect(screen.queryByText(/Latihan/)).not.toBeInTheDocument();
+    });
+
+    it('renders VDOT, threshold pace and the Latihan pace-target block when fitness is provided', () => {
+        render(
+            <Aku
+                identity={identity}
+                stats={stats}
+                fitness={{
+                    vdot: 52.3,
+                    threshold_pace_sec: 258,
+                    threshold_confidence: 'high',
+                    training_paces: { easy: 330, marathon: 285, threshold: 258, interval: 240 },
+                }}
+            />,
+        );
+        expect(screen.getByText('VDOT')).toBeInTheDocument();
+        expect(screen.getByText('52.3')).toBeInTheDocument();
+        expect(screen.getByText('Threshold pace')).toBeInTheDocument();
+        expect(screen.getByText(/Latihan/)).toBeInTheDocument();
+        expect(screen.getByText('Easy')).toBeInTheDocument();
+        expect(screen.getByText('Marathon')).toBeInTheDocument();
+        expect(screen.getByText('Tempo')).toBeInTheDocument();
+        expect(screen.getByText('Interval')).toBeInTheDocument();
     });
 
     // The Strava zone reconnect banner is shell chrome, not page content: it

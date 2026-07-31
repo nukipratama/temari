@@ -14,7 +14,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
 import PageContainer from '@/components/ui/PageContainer';
 import ProgressionChart from '@/components/koleksi/ProgressionChart';
-import { formatDurationHMS, formatShortDateId, monthsSinceId } from '@/lib/pace';
+import { formatDurationHMS, formatPace, formatShortDateId, monthsSinceId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
@@ -40,12 +40,27 @@ interface ProgressionSeries {
     goal_sec: number | null;
 }
 
+interface TrainingPaces {
+    easy: number;
+    marathon: number;
+    threshold: number;
+    interval: number;
+}
+
+interface FitnessPayload {
+    vdot: number | null;
+    threshold_pace_sec: number | null;
+    threshold_confidence: string | null;
+    training_paces: TrainingPaces | null;
+}
+
 interface AkuProps {
     identity: IdentityPayload;
     stats: StatsPayload;
     personaMix?: PersonaSlice[];
     profileVoice?: AnalysisPayload;
     progressionByCategory?: Record<string, ProgressionSeries> | null;
+    fitness?: FitnessPayload | null;
 }
 
 export default function Aku({
@@ -54,6 +69,7 @@ export default function Aku({
     personaMix = [],
     profileVoice,
     progressionByCategory = null,
+    fitness = null,
 }: Readonly<AkuProps>) {
     const { auth, stravaSync } = usePage<SharedProps>().props;
     const sharedUser = auth.user;
@@ -136,12 +152,40 @@ export default function Aku({
                         <SectionLabel onSky size="micro">Persona · 12 minggu terakhir</SectionLabel>
                         <PersonaBar mix={personaMix} onSky />
                     </div>
-                    <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 justify-items-center">
+                    <div className="grid grid-cols-2 gap-5 sm:grid-cols-5 justify-items-center">
                         <StatTile tone="plainSky" size="md" align="center" label="Total km" value={stats.total_km.toFixed(1)} unit="km" />
                         <StatTile tone="plainSky" size="md" align="center" label="Total lari" value={stats.total_runs.toString()} unit="lari" />
                         <StatTile tone="plainSky" size="md" align="center" label="Lari terjauh" value={stats.longest_run_km.toFixed(2)} unit="km" />
+                        {fitness?.vdot != null && (
+                            <StatTile tone="plainSky" size="md" align="center" label="VDOT" value={fitness.vdot.toFixed(1)} explainerKey="vdot" />
+                        )}
+                        {fitness?.threshold_pace_sec != null && (
+                            <StatTile
+                                tone="plainSky"
+                                size="md"
+                                align="center"
+                                label="Threshold pace"
+                                value={formatPace(fitness.threshold_pace_sec)}
+                                unit="/km"
+                                explainerKey="threshold_pace"
+                            />
+                        )}
                     </div>
                 </HeroPanel>
+
+                {fitness?.training_paces && (
+                    <section className="mt-10">
+                        <SectionLabel>Latihan · pace target</SectionLabel>
+                        <Card className="mt-3">
+                            <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+                                <StatTile tone="cream" size="sm" align="center" label="Easy" value={formatPace(fitness.training_paces.easy)} unit="/km" explainerKey="pace_easy" />
+                                <StatTile tone="cream" size="sm" align="center" label="Marathon" value={formatPace(fitness.training_paces.marathon)} unit="/km" explainerKey="pace_marathon" />
+                                <StatTile tone="cream" size="sm" align="center" label="Tempo" value={formatPace(fitness.training_paces.threshold)} unit="/km" explainerKey="pace_tempo" />
+                                <StatTile tone="cream" size="sm" align="center" label="Interval" value={formatPace(fitness.training_paces.interval)} unit="/km" explainerKey="pace_interval" />
+                            </div>
+                        </Card>
+                    </section>
+                )}
 
                 {progressionByCategory && Object.keys(progressionByCategory).length > 0 && (
                     <ProgressionSection byCategory={progressionByCategory} />
