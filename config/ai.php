@@ -38,4 +38,10 @@ return [
     // Azure and eating 429s. No documented Azure quota exists to size this
     // against — start conservative, raise if logs show headroom.
     'azure_calls_per_minute' => (int) env('AI_AZURE_CALLS_PER_MINUTE', 15),
+
+    // How long a worker waits for a local throttle slot (above) before giving
+    // up and spending a retry attempt. The `ai` queue's own Horizon supervisor
+    // timeout is 300s, sized for a tool-calling narrator's several Azure round
+    // trips — this must stay safely under that with generation room to spare.
+    'azure_block_cap_seconds' => (int) env('AI_AZURE_BLOCK_CAP_SECONDS', 90),
 ];

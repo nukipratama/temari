@@ -24,13 +24,6 @@ class AzureCallThrottle
 {
     private const string KEY = 'azure-openai-calls';
 
-    /**
-     * At the default 15/min, a slot opens roughly every 4s, so this
-     * comfortably covers a couple of workers briefly overlapping without
-     * tying up a worker anywhere near the queue's job timeout.
-     */
-    private const int BLOCK_CAP_SECONDS = 30;
-
     /** @var callable(int): void */
     private $sleeper;
 
@@ -45,19 +38,20 @@ class AzureCallThrottle
     public function block(): void
     {
         $maxPerMinute = max(1, (int) config('ai.azure_calls_per_minute'));
+        $blockCapSeconds = max(1, (int) config('ai.azure_block_cap_seconds'));
         $waited = 0;
 
         while (! RateLimiter::attempt(self::KEY, $maxPerMinute, fn (): bool => true, 60)) {
             $availableIn = RateLimiter::availableIn(self::KEY);
 
-            if ($waited >= self::BLOCK_CAP_SECONDS) {
+            if ($waited >= $blockCapSeconds) {
                 throw new TransientUpstreamException(
                     'Locally throttled before calling Azure OpenAI.',
                     retryAfterSeconds: $availableIn,
                 );
             }
 
-            $sleepSeconds = max(1, min($availableIn, self::BLOCK_CAP_SECONDS - $waited));
+            $sleepSeconds = max(1, min($availableIn, $blockCapSeconds - $waited));
             ($this->sleeper)($sleepSeconds);
             $waited += $sleepSeconds;
         }
