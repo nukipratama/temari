@@ -186,6 +186,57 @@ Code quality (pint/phpstan/rector/tsc) runs on **pre-commit**; coverage runs in 
 - After changing a PHP enum exposed to TS: `./vendor/bin/sail artisan typescript:enums` (`--check` mirrors CI).
 - Local UI/demo data (deterministic, no LLM tokens, no Strava HTTP): `./vendor/bin/sail artisan demo:seed`. Idempotent, re-run any time to converge. It only upserts the current blueprint set, so to purge rows from retired blueprints do a full reset: `./vendor/bin/sail artisan migrate:fresh` then `demo:seed`.
 
+## Parallel worktrees & stacked PRs
+
+Running 2-3 Claude Code agents concurrently, each in its own `git worktree`, is safe — Compose
+derives its project name (containers/network/volumes) from the checkout's **directory basename**,
+and `compose.yaml` has no hardcoded `name:`/`COMPOSE_PROJECT_NAME`, so every worktree already gets
+its own isolated stack for free. The only real collision is **fixed host ports**
+(`.env.example`'s `APP_PORT`/`VITE_PORT`/`FORWARD_DB_PORT`/`FORWARD_REDIS_PORT`), which two
+worktrees would both try to bind off an unmodified `.env`. No changes needed to `compose.yaml` or
+`.githooks/pre-commit` — the pre-commit hook's `docker compose ps` check already resolves per-cwd
+correctly.
+
+Workflow: `EnterWorktree name=<slice>` → `./scripts/worktree-setup.sh <slot 1|2|3>` (its own
+`APP_PORT`/`VITE_PORT` off a static slot table — main stays 7001/7002, slots use 701x/702x — and
+`FORWARD_DB_PORT`/`FORWARD_REDIS_PORT` set to `0`, an ephemeral host port, since DB/Redis are only
+ever reached via `sail mysql`/`sail artisan tinker` execing into the container, never from the
+host) → `vendor/` is empty on a fresh worktree, so `vendor/bin/sail` doesn't exist yet: bring the
+stack up and install once with plain `docker compose up -d` /
+`docker compose exec -T app composer install`, then `./vendor/bin/sail npm ci` (`sail` works for
+everything from here on) → normal fast-feedback ladder → `ExitWorktree action=remove|keep`. That's
+enough to *run the automated suites* (they self-initialize their own `mysql_test`/`redis_test`) —
+to actually *load a page in a browser*, also run `sail artisan key:generate` (`.env.example` ships
+`APP_KEY` empty) and `sail artisan migrate`, plus `sail npm run dev` (or `npm run build`).
+
+**Three fresh-worktree gotchas**, none concurrency-specific: a fresh `npm ci` can hit `EACCES`
+because the `node_modules` named volume is created root-owned on first boot — one-time fix
+`docker compose exec -u root app chown -R www-data:www-data node_modules` (also printed by
+`worktree-setup.sh`). A missing `APP_KEY` (see above) 500s every page with `MissingAppKeyException`
+until `key:generate` runs. And if several worktrees cold-install at the same moment, one can
+occasionally fail mid-extraction on a transient bind-mount visibility race — just retry once.
+
+The Docker image (`temari/dev`) and its build cache are shared across worktrees on purpose (plain
+local tag, not project-scoped) — only pass `--build` again if a worktree's slice actually touches
+`Dockerfile`/PHP extensions, so two worktrees don't race an in-flight rebuild. Each worktree gets
+its own full DB/Redis stack rather than sharing one — cheap (dev-tuned, tmpfs test DBs), and
+sharing would let one agent's `migrate:fresh`/paratest run wipe or lock schema state another
+agent's test run depends on mid-flight.
+
+**Sequential (dependency-wave) slices** — when wave N+1 must branch off wave N's *unmerged* code —
+don't fit plain parallel worktrees (`EnterWorktree`'s base ref is `origin/main` by default). Branch
+manually instead: `git worktree add .claude/worktrees/<name> wave1-branch`, then
+`EnterWorktree path=.claude/worktrees/<name>` to adopt it for cleanup tracking. This is the one
+case where GitHub's native **stacked PRs** (public preview since 2026-07-30, `gh extension install
+github/gh-stack`) are worth reaching for: each layer's PR targets the layer below instead of
+`main`, and merging a lower layer auto-cascades the merge/rebase of everything above. Don't reach
+for it otherwise — most PRs in this repo are small, independent, and based directly off `main`;
+stacking a truly independent slice just adds process for no payoff. It's also free on CI: every
+job except `deploy` in `ci.yml` runs on hosted `ubuntu-latest`, and `deploy` only fires on
+`push: branches: [main]` — a stack's intermediate branches never touch the shared 4-core homelab
+runner. Merging an N-deep stack does mean N sequential prod deploys back-to-back (queued via
+`deploy-prod`'s concurrency group, not parallel) — expected, not a CI misfire.
+
 ## Inspecting real state
 
 No MCP server; use the toolchain directly. Prefer these over guessing:
