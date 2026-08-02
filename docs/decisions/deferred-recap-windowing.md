@@ -28,7 +28,7 @@ We decided to **stage the recap row on ingest but defer its LLM narration to a s
 - On ingest, [`AnalysisService::requestDeferred`](app/Services/AI/AnalysisService.php) upserts the WeeklyRecap / MonthlyRecap row as `Pending` (a `firstOrCreate`) without dispatching, filling, or invalidating. This is the windowed-cadence path; [AnalysisCadence](app/Services/AI/AnalysisCadence.php) marks these `Weekly` / `Monthly`.
 - The single billed narration comes from a scheduled command. [WeeklyRecapCommand](app/Console/Commands/AI/WeeklyRecapCommand.php) (`ai:weekly-recap`) and [MonthlyRecapCommand](app/Console/Commands/AI/MonthlyRecapCommand.php) (`ai:monthly-recap`) narrate every completed period whose recap is not yet `Done`, oldest first. Both cap at the latest **fully-closed** period (`RecapPeriod::lastClosedWeekEnding()` / `lastClosedMonth()`), so the still-running current period is never narrated on incomplete data.
 - Schedule ([routes/console.php](routes/console.php)): `ai:weekly-recap` runs `weeklyOn(1, '00:01')` (Monday 00:01); `ai:monthly-recap` runs `monthlyOn(1, '05:45')` (1st of month).
-- On-demand narration of the still-open current period is also blocked: [AnalysisController](app/Http/Controllers/Api/AnalysisController.php) `isStillOpenRecapPeriod()` returns the inert row unchanged for a recap whose week/month hasn't closed (and the UI hides the trigger for it).
+- On-demand narration of the still-open current period is also blocked: [`AnalysisService::isStillOpenRecapPeriod`](app/Services/AI/AnalysisService.php) makes [AnalysisController](app/Http/Controllers/Api/AnalysisController.php) return the inert row unchanged for a recap whose week/month hasn't closed (and the UI hides the trigger for it).
 
 ## Consequences
 

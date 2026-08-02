@@ -797,6 +797,32 @@ it('skips the recompute when the user has no custom profile, since the stored su
         ->assertSuccessful();
 });
 
+it('skips the recompute for a zone-dependent recap whose subject is not a run', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create();
+
+    // The weekly recap is zone-dependent but keyed by a WeeklySnapshot id, so a
+    // recompute here would target an unrelated activity id.
+    $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+    Analysis::factory()->failed()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+
+    $recomputer = Mockery::mock(SummaryRecomputer::class);
+    $recomputer->shouldNotReceive('recomputeFromStoredStreams');
+    app()->instance(SummaryRecomputer::class, $recomputer);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/weekly_recap/{$snap->id}/trigger")
+        ->assertOk();
+
+    Carbon::setTestNow();
+});
+
 it('skips the recompute for a block whose narration does not depend on zones', function (): void {
     $user = User::factory()->create();
     RunnerProfile::factory()->for($user)->create();

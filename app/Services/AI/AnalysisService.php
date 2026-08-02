@@ -11,6 +11,7 @@ use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Telegram\NotificationEligibility;
@@ -43,6 +44,7 @@ class AnalysisService
         private readonly NotificationEligibility $eligibility,
         private readonly AzureConfigCircuitBreaker $configBreaker,
         private readonly MaintainerAlerter $alerter,
+        private readonly ChainResolver $chains,
     ) {
     }
 
@@ -503,6 +505,74 @@ class AnalysisService
         // Without this the job could run before — or be orphaned by a rollback
         // of — the Analysis row it targets. A no-op when not in a txn.
         $pending->afterCommit();
+    }
+
+    /**
+     * Whether the trigger targets the still-running current recap period (this
+     * week or this month). Its row is staged Pending but must never be narrated
+     * on demand — it would describe an incomplete period — so the caller returns
+     * the row unchanged and lets the scheduled command narrate it once the period
+     * closes. Only the windowed recap kinds can be open; every other type is
+     * always narratable on demand.
+     */
+    public function isStillOpenRecapPeriod(AnalysisType $type, int $subjectId, ?string $discriminator): bool
+    {
+        return match ($type) {
+            AnalysisType::MonthlyRecap => $discriminator !== null
+                && $discriminator > RecapPeriod::lastClosedMonth(),
+            AnalysisType::WeeklyRecap => WeeklySnapshot::query()
+                ->whereKey($subjectId)
+                ->where('week_ending', '>', RecapPeriod::lastClosedWeekEnding())
+                ->exists(),
+            default => false,
+        };
+    }
+
+    /**
+     * Whether this user's trigger must be served from the deterministic filler
+     * ({@see self::requestRuleBased()}) rather than the LLM. The demo login is
+     * public, so callers must ask this ahead of the pause, chain-resume and
+     * zone-recompute paths, which only exist to shape a billed narration.
+     */
+    public function shouldServeRuleBased(User $user): bool
+    {
+        return $user->is_demo;
+    }
+
+    /**
+     * Whether a chained click must resume the chain forward instead of narrating
+     * the clicked row in isolation. Only a head regenerate (a Done row that IS
+     * the chain head) re-narrates itself; every other chained click, including a
+     * Done mid-history row reached by a hand-crafted POST, resumes, so
+     * re-narrating mid-history never desyncs the later blocks that quoted its old
+     * narrative. A resumed dispatch forward-fills only and must pass
+     * `invalidate: false`, or already-Done siblings of the resumed group are
+     * flipped back to Pending and re-billed.
+     */
+    public function shouldResumeChain(
+        User $user,
+        AnalysisType $type,
+        int $subjectId,
+        ?string $discriminator,
+        ?Analysis $existing,
+    ): bool {
+        return $type->isChained()
+            && ! $this->chains->isHeadRegenerate($user, $type, $subjectId, $discriminator, $existing);
+    }
+
+    /**
+     * Whether a manual re-trigger must first recompute the run's stream summary
+     * from the already-stored streams (no Strava calls), so the regenerated
+     * narration reflects the user's current zones. Only per-activity blocks carry
+     * a recomputable stream summary — the weekly and monthly recaps are
+     * zone-dependent too, but keyed by a snapshot/user id — and without a custom
+     * profile the stored summary already used the config defaults.
+     */
+    public function shouldRecomputeZoneSummary(User $user, AnalysisType $type): bool
+    {
+        return $type->isZoneDependent()
+            && $type->subjectType() === Activity::class
+            && $user->runnerProfile !== null;
     }
 
     /**
