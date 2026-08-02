@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TriggerAnalysisRequest;
+use App\Http\Resources\AnalysisResource;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
@@ -159,9 +160,7 @@ class AnalysisController extends Controller
 
     private function payload(?Analysis $row, AnalysisType $type, int $subjectId, ?string $discriminator): JsonResponse
     {
-        return response()->json(
-            Analysis::toPayload($row, $type, $type->subjectType(), $subjectId, $discriminator),
-        );
+        return response()->json(AnalysisResource::make($row, $type, $subjectId, $discriminator));
     }
 
     private function unknownType(): JsonResponse

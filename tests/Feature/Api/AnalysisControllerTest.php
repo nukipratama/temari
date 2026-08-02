@@ -125,6 +125,24 @@ it('authorizes post-run speech only for the activity owner', function (): void {
     Bus::assertDispatched(AnalyzeActivityJob::class);
 });
 
+it('responds with the flat payload shape at the top level, not a resource-wrapped "data" envelope', function (): void {
+    $user = User::factory()->create();
+    Analysis::factory()->done('content here')->create([
+        'subject_id' => $user->id,
+        'discriminator' => '2026-05-18',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->getJson("/api/analyses/briefing_mascot_voice/{$user->id}?discriminator=2026-05-18")
+        ->assertSuccessful();
+
+    expect(array_keys($response->json()))->toEqualCanonicalizing([
+        'id', 'status', 'content', 'type', 'is_zone_dependent',
+        'subject_type', 'subject_id', 'discriminator', 'attempts',
+        'generated_at', 'retry_after_seconds',
+    ]);
+});
+
 it('returns the current state via GET show', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done('content here')->create([
