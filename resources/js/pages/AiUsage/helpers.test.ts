@@ -1,6 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
-import { fmt, formatCost, formatDayLabel, formatDayLabelShort, navigate, presetHref, PRESETS } from './helpers';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+    fmt,
+    formatCost,
+    formatDayLabel,
+    formatDayLabelShort,
+    navigate,
+    presetHref,
+    PRESETS,
+} from './helpers';
 
 beforeEach(() => {
     vi.mocked(router.get).mockClear();
@@ -25,7 +34,12 @@ describe('formatCost', () => {
 
 describe('navigate', () => {
     it('sends absolute from/to for a custom window', () => {
-        navigate({ range: 'custom', from: '2026-05-01', to: '2026-05-19', kind: null });
+        navigate({
+            range: 'custom',
+            from: '2026-05-01',
+            to: '2026-05-19',
+            kind: null,
+        });
 
         expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
@@ -35,7 +49,12 @@ describe('navigate', () => {
     });
 
     it('sends the relative token instead of dates for a preset range', () => {
-        navigate({ range: '7d', from: '2026-05-01', to: '2026-05-19', kind: null });
+        navigate({
+            range: '7d',
+            from: '2026-05-01',
+            to: '2026-05-19',
+            kind: null,
+        });
 
         expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
@@ -45,7 +64,12 @@ describe('navigate', () => {
     });
 
     it('carries the kind filter when one is set', () => {
-        navigate({ range: '7d', from: '2026-05-01', to: '2026-05-19', kind: 'briefing' });
+        navigate({
+            range: '7d',
+            from: '2026-05-01',
+            to: '2026-05-19',
+            kind: 'briefing',
+        });
 
         expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
@@ -61,13 +85,21 @@ describe('presetHref', () => {
     });
 
     it('preserves the active kind filter', () => {
-        expect(presetHref('7d', 'briefing')).toBe('/ai-usage?range=7d&kind=briefing');
+        expect(presetHref('7d', 'briefing')).toBe(
+            '/ai-usage?range=7d&kind=briefing',
+        );
     });
 });
 
 describe('PRESETS', () => {
     it('offers the five relative windows in shortest-first order', () => {
-        expect(PRESETS.map((p) => p.token)).toEqual(['today', '7d', '30d', 'month', 'all']);
+        expect(PRESETS.map((p) => p.token)).toEqual([
+            'today',
+            '7d',
+            '30d',
+            'month',
+            'all',
+        ]);
     });
 });
 

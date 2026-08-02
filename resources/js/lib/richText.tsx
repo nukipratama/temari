@@ -30,7 +30,9 @@ export function stripEdgeQuotes(text: string): string {
     }
     const close = open === '“' ? '”' : open;
     const closeIdx = trimmed.indexOf(close, 1);
-    return closeIdx === -1 ? trimmed.slice(1) : trimmed.slice(1, closeIdx) + trimmed.slice(closeIdx + 1);
+    return closeIdx === -1
+        ? trimmed.slice(1)
+        : trimmed.slice(1, closeIdx) + trimmed.slice(closeIdx + 1);
 }
 
 export function renderBold(text: string): ReactNode {

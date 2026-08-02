@@ -1,11 +1,17 @@
+import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
-import WeekSection from './WeekSection';
-import { makeUser, setMockPage } from '@/test/setup';
-import { run } from '@/pages/Riwayat/runFixture';
-import type { WeekBucket, RunWithDetail } from '@/pages/Riwayat/useJejakFilters';
+
+import type {
+    WeekBucket,
+    RunWithDetail,
+} from '@/pages/Riwayat/useJejakFilters';
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
+
+import { run } from '@/pages/Riwayat/runFixture';
+import { makeUser, setMockPage } from '@/test/setup';
+
+import WeekSection from './WeekSection';
 
 vi.mock('@/components/run/RunListRow', () => ({
     default: ({ detail }: { detail: { name: string } }) => (
@@ -13,7 +19,9 @@ vi.mock('@/components/run/RunListRow', () => ({
     ),
 }));
 
-function recapAnalysis(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
+function recapAnalysis(
+    overrides: Partial<AnalysisPayload> = {},
+): AnalysisPayload {
     return {
         id: 1,
         status: 'done',
@@ -37,7 +45,9 @@ function bucket(runs: RunWithDetail[] = [run(101, 'Pagi')]): WeekBucket {
     };
 }
 
-function snapshot(overrides: Partial<WeeklySnapshotWithRecap> = {}): WeeklySnapshotWithRecap {
+function snapshot(
+    overrides: Partial<WeeklySnapshotWithRecap> = {},
+): WeeklySnapshotWithRecap {
     return {
         id: 7,
         user_id: 1,
@@ -113,7 +123,12 @@ describe('WeekSection', () => {
         render(
             <WeekSection
                 bucket={bucket([run(101, 'Pagi'), run(102, 'Sore')])}
-                snapshot={snapshot({ distance_km: 5, runs: 1, weekly_trimp: 50, is_current_week: true })}
+                snapshot={snapshot({
+                    distance_km: 5,
+                    runs: 1,
+                    weekly_trimp: 50,
+                    is_current_week: true,
+                })}
                 notes={{}}
                 moods={{}}
                 filtered={false}
@@ -131,7 +146,12 @@ describe('WeekSection', () => {
             fatigued: 'Mulai capek',
             overreaching: 'Kelewatan',
         };
-        for (const status of ['fresh', 'optimal', 'fatigued', 'overreaching'] as const) {
+        for (const status of [
+            'fresh',
+            'optimal',
+            'fatigued',
+            'overreaching',
+        ] as const) {
             const { unmount } = render(
                 <WeekSection
                     bucket={bucket()}
@@ -181,8 +201,12 @@ describe('WeekSection', () => {
             />,
         );
 
-        expect(screen.getByText('2.10').parentElement).toHaveClass('bg-mood-lemes/15');
-        expect(screen.getByText('9.4%').parentElement).toHaveClass('bg-mood-lemes/15');
+        expect(screen.getByText('2.10').parentElement).toHaveClass(
+            'bg-mood-lemes/15',
+        );
+        expect(screen.getByText('9.4%').parentElement).toHaveClass(
+            'bg-mood-lemes/15',
+        );
     });
 
     // Real filtering removes non-matching runs, so a week loses the context the
@@ -199,7 +223,9 @@ describe('WeekSection', () => {
                 />,
             );
 
-            expect(screen.getByText(/3 lari lain di minggu ini gak cocok/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/3 lari lain di minggu ini gak cocok/),
+            ).toBeInTheDocument();
             expect(screen.getByText('1 dari 4 run')).toBeInTheDocument();
         });
 
@@ -214,7 +240,9 @@ describe('WeekSection', () => {
                 />,
             );
 
-            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+            expect(
+                screen.queryByText(/gak cocok sama filternya/),
+            ).not.toBeInTheDocument();
         });
 
         it('says nothing when no filter is active', () => {
@@ -228,7 +256,9 @@ describe('WeekSection', () => {
                 />,
             );
 
-            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+            expect(
+                screen.queryByText(/gak cocok sama filternya/),
+            ).not.toBeInTheDocument();
         });
 
         // The in-progress week's snapshot is recomputed by a queued worker, so it
@@ -244,7 +274,9 @@ describe('WeekSection', () => {
                 />,
             );
 
-            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+            expect(
+                screen.queryByText(/gak cocok sama filternya/),
+            ).not.toBeInTheDocument();
         });
 
         it('stays quiet when the snapshot has no run count', () => {
@@ -258,7 +290,9 @@ describe('WeekSection', () => {
                 />,
             );
 
-            expect(screen.queryByText(/gak cocok sama filternya/)).not.toBeInTheDocument();
+            expect(
+                screen.queryByText(/gak cocok sama filternya/),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -313,7 +347,10 @@ describe('WeekSection', () => {
                     bucket={bucket()}
                     snapshot={snapshot({
                         is_current_week: true,
-                        recap_analysis: recapAnalysis({ status: 'pending', content: null }),
+                        recap_analysis: recapAnalysis({
+                            status: 'pending',
+                            content: null,
+                        }),
                     })}
                     notes={{}}
                     moods={{}}
@@ -321,8 +358,12 @@ describe('WeekSection', () => {
                 />,
             );
 
-            expect(screen.queryByText('Kirim notifikasi')).not.toBeInTheDocument();
-            expect(screen.getByText(/Minggu ini kamu lari 4x sejauh 35.5 km/)).toBeInTheDocument();
+            expect(
+                screen.queryByText('Kirim notifikasi'),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.getByText(/Minggu ini kamu lari 4x sejauh 35.5 km/),
+            ).toBeInTheDocument();
         });
 
         it('falls back to a plain nudge when the snapshot has no numbers to quote', () => {
@@ -335,7 +376,10 @@ describe('WeekSection', () => {
                         form: null,
                         form_status: null,
                         is_current_week: true,
-                        recap_analysis: recapAnalysis({ status: 'pending', content: null }),
+                        recap_analysis: recapAnalysis({
+                            status: 'pending',
+                            content: null,
+                        }),
                     })}
                     notes={{}}
                     moods={{}}
@@ -343,7 +387,9 @@ describe('WeekSection', () => {
                 />,
             );
 
-            expect(screen.getByText(/Belum ada data minggu ini, sabar ya/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Belum ada data minggu ini, sabar ya/),
+            ).toBeInTheDocument();
         });
     });
 });

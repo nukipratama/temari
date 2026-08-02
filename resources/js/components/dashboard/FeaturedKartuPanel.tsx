@@ -1,10 +1,11 @@
-import Kartu from '@/components/card/Kartu';
-import FeaturedCardHero from '@/components/card/FeaturedCardHero';
-import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
-import { aktivitasUrl } from '@/lib/routes';
 import type { FeaturedCard } from '@/pages/HariIni/helpers';
 import type { AnalysisPayload } from '@/types/inertia';
+
+import FeaturedCardHero from '@/components/card/FeaturedCardHero';
+import Kartu from '@/components/card/Kartu';
+import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
+import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import { aktivitasUrl } from '@/lib/routes';
 
 export default function FeaturedKartuPanel({
     featured,
@@ -29,7 +30,9 @@ export default function FeaturedKartuPanel({
                         showTimestamp={false}
                         allowReanalyze={false}
                         onSky
-                        renderContent={(text) => <ExpandableQuote text={text} onSky />}
+                        renderContent={(text) => (
+                            <ExpandableQuote text={text} onSky />
+                        )}
                     />
                 )
             }

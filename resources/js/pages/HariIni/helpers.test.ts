@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+
+import type { ActivityDetail, Rarity } from '@/types/inertia';
+
 import {
     MOOD_UPPER,
     atlHint,
@@ -14,9 +17,11 @@ import {
     strainHint,
     vibeSubtitleFor,
 } from './helpers';
-import type { ActivityDetail, Rarity } from '@/types/inertia';
 
-function runWith(overrides: Partial<ActivityDetail>, cardOverrides?: { rarity?: Rarity; id?: number; special_move?: string }): ActivityDetail {
+function runWith(
+    overrides: Partial<ActivityDetail>,
+    cardOverrides?: { rarity?: Rarity; id?: number; special_move?: string },
+): ActivityDetail {
     return {
         id: overrides.id ?? 1,
         activity_id: overrides.activity_id ?? 99,
@@ -29,17 +34,18 @@ function runWith(overrides: Partial<ActivityDetail>, cardOverrides?: { rarity?: 
         ...overrides,
         activity: cardOverrides
             ? {
-                id: 99,
-                user_id: 1,
-                analyzed_at: '2026-05-20',
-                run_card: {
-                    id: cardOverrides.id ?? 7,
-                    activity_id: 99,
-                    rarity: cardOverrides.rarity ?? 'common',
-                    special_move: cardOverrides.special_move ?? 'Langkah Mantap',
-                    badges: ['negative_split'],
-                },
-            }
+                  id: 99,
+                  user_id: 1,
+                  analyzed_at: '2026-05-20',
+                  run_card: {
+                      id: cardOverrides.id ?? 7,
+                      activity_id: 99,
+                      rarity: cardOverrides.rarity ?? 'common',
+                      special_move:
+                          cardOverrides.special_move ?? 'Langkah Mantap',
+                      badges: ['negative_split'],
+                  },
+              }
             : undefined,
     } as ActivityDetail;
 }
@@ -62,12 +68,18 @@ describe('vibeSubtitleFor', () => {
 
 describe('featuredCardFor', () => {
     it('returns null when the featured card id is null', () => {
-        const run = runWith({}, { id: 7, rarity: 'epic', special_move: 'Some Move' });
+        const run = runWith(
+            {},
+            { id: 7, rarity: 'epic', special_move: 'Some Move' },
+        );
         expect(featuredCardFor([run], null)).toBeNull();
     });
 
     it('returns null when no run matches the featured card id', () => {
-        const run = runWith({}, { id: 7, rarity: 'epic', special_move: 'Some Move' });
+        const run = runWith(
+            {},
+            { id: 7, rarity: 'epic', special_move: 'Some Move' },
+        );
         expect(featuredCardFor([run], 999)).toBeNull();
     });
 
@@ -93,9 +105,17 @@ describe('kartuStripItem', () => {
     });
 
     it('returns a strip item with rarity + key derived from card id', () => {
-        const run = runWith({}, { id: 42, rarity: 'rare', special_move: 'Cool Move' });
+        const run = runWith(
+            {},
+            { id: 42, rarity: 'rare', special_move: 'Cool Move' },
+        );
         const item = kartuStripItem(run);
-        expect(item).toMatchObject({ key: 'card-42', cardId: 42, name: 'Cool Move', rarity: 'rare' });
+        expect(item).toMatchObject({
+            key: 'card-42',
+            cardId: 42,
+            name: 'Cool Move',
+            rarity: 'rare',
+        });
     });
 });
 
@@ -133,8 +153,9 @@ describe('shortenLocation', () => {
     });
 
     it('keeps only the first two comma-separated segments', () => {
-        expect(shortenLocation('Senayan, Jakarta Pusat, DKI Jakarta, Indonesia'))
-            .toBe('Senayan, Jakarta Pusat');
+        expect(
+            shortenLocation('Senayan, Jakarta Pusat, DKI Jakarta, Indonesia'),
+        ).toBe('Senayan, Jakarta Pusat');
     });
 
     it('skips empty segments', () => {
@@ -149,8 +170,11 @@ describe('districtFromLocation', () => {
     });
 
     it('returns the district (2nd segment), skipping the venue', () => {
-        expect(districtFromLocation('Gelora Bung Karno, Jakarta Pusat, DKI Jakarta, Indonesia'))
-            .toBe('Jakarta Pusat');
+        expect(
+            districtFromLocation(
+                'Gelora Bung Karno, Jakarta Pusat, DKI Jakarta, Indonesia',
+            ),
+        ).toBe('Jakarta Pusat');
     });
 
     it('falls back to the only segment when there is no district', () => {

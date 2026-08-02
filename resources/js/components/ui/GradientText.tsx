@@ -11,11 +11,18 @@ interface GradientTextProps {
 }
 
 const PRESET_GRADIENT: Record<GradientPreset, string> = {
-    horizon: 'linear-gradient(180deg, var(--color-horizon-deep), var(--color-citrus))',
-    'cream-sun': 'linear-gradient(180deg, var(--color-cream), oklch(85% 0.10 50))',
+    horizon:
+        'linear-gradient(180deg, var(--color-horizon-deep), var(--color-citrus))',
+    'cream-sun':
+        'linear-gradient(180deg, var(--color-cream), oklch(85% 0.10 50))',
 };
 
-export default function GradientText({ preset, fontSize, className, children }: Readonly<GradientTextProps>) {
+export default function GradientText({
+    preset,
+    fontSize,
+    className,
+    children,
+}: Readonly<GradientTextProps>) {
     const style: CSSProperties = {
         fontSize,
         background: PRESET_GRADIENT[preset],
@@ -24,5 +31,9 @@ export default function GradientText({ preset, fontSize, className, children }: 
         backgroundClip: 'text',
         color: 'transparent',
     };
-    return <span className={className} style={style}>{children}</span>;
+    return (
+        <span className={className} style={style}>
+            {children}
+        </span>
+    );
 }

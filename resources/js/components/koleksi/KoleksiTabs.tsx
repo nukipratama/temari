@@ -1,6 +1,7 @@
-import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { Link } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
+
 import { cn } from '@/lib/cn';
 
 export type KoleksiTab = 'kartu' | 'rekor' | 'aksesori' | 'target';
@@ -23,11 +24,20 @@ interface KoleksiTabsProps {
 const TABS: ReadonlyArray<TabItem> = [
     { id: 'kartu', label: 'Kartu', href: '/kartu', icon: 'mdi:cards-outline' },
     { id: 'rekor', label: 'Rekor', href: '/rekor', icon: 'mdi:trophy-outline' },
-    { id: 'aksesori', label: 'Aksesori', href: '/aksesori', icon: 'mdi:tshirt-crew-outline' },
+    {
+        id: 'aksesori',
+        label: 'Aksesori',
+        href: '/aksesori',
+        icon: 'mdi:tshirt-crew-outline',
+    },
     { id: 'target', label: 'Target', href: '/target', icon: 'mdi:target' },
 ];
 
-export default function KoleksiTabs({ active, activeCount, className }: Readonly<KoleksiTabsProps>) {
+export default function KoleksiTabs({
+    active,
+    activeCount,
+    className,
+}: Readonly<KoleksiTabsProps>) {
     const navRef = useRef<HTMLElement>(null);
 
     // The tab row scrolls horizontally on narrow screens; bring the active tab
@@ -41,12 +51,21 @@ export default function KoleksiTabs({ active, activeCount, className }: Readonly
         if (!nav) {
             return;
         }
-        const activeEl = nav.querySelector<HTMLElement>('[aria-current="page"]');
+        const activeEl = nav.querySelector<HTMLElement>(
+            '[aria-current="page"]',
+        );
         activeEl?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
     }, [active]);
 
     return (
-        <nav ref={navRef} aria-label="Sub-tab" className={cn('scrollbar-hide flex gap-1.5 overflow-x-auto', className)}>
+        <nav
+            ref={navRef}
+            aria-label="Sub-tab"
+            className={cn(
+                'scrollbar-hide flex gap-1.5 overflow-x-auto',
+                className,
+            )}
+        >
             {TABS.map((tab) => {
                 const isActive = active === tab.id;
                 return (
@@ -61,13 +80,20 @@ export default function KoleksiTabs({ active, activeCount, className }: Readonly
                                 : 'bg-transparent text-ink-2 hover:bg-sky/[0.06]',
                         )}
                     >
-                        <Icon icon={tab.icon} width={14} height={14} aria-hidden />
+                        <Icon
+                            icon={tab.icon}
+                            width={14}
+                            height={14}
+                            aria-hidden
+                        />
                         {tab.label}
-                        {isActive && activeCount != null && activeCount !== '' && (
-                            <span className="rounded-full bg-horizon/25 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-[0.06em] text-horizon">
-                                {activeCount}
-                            </span>
-                        )}
+                        {isActive &&
+                            activeCount != null &&
+                            activeCount !== '' && (
+                                <span className="rounded-full bg-horizon/25 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-[0.06em] text-horizon">
+                                    {activeCount}
+                                </span>
+                            )}
                     </Link>
                 );
             })}

@@ -1,14 +1,16 @@
-import { AnimatePresence, motion } from 'framer-motion';
-import { usePage } from '@inertiajs/react';
-import { useRef, type ReactNode } from 'react';
 import { Icon } from '@iconify/react';
-import { cn } from '@/lib/cn';
-import { useModal } from '@/hooks/useModal';
-import PillButton from '@/components/ui/PillButton';
+import { usePage } from '@inertiajs/react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useRef, type ReactNode } from 'react';
+
+import type { SharedProps } from '@/types/inertia';
+
 import TemariProto, { type TemariPose } from '@/components/temari/TemariProto';
+import PillButton from '@/components/ui/PillButton';
+import { useModal } from '@/hooks/useModal';
+import { cn } from '@/lib/cn';
 import { serverToEquipped } from '@/lib/equippedAccessories';
 import { iconButtonVariants } from '@/lib/variants';
-import type { SharedProps } from '@/types/inertia';
 
 interface TemariNudgeModalProps {
     open: boolean;
@@ -47,8 +49,11 @@ export default function TemariNudgeModal({
 }: Readonly<TemariNudgeModalProps>) {
     const panelRef = useRef<HTMLDivElement>(null);
 
-    const equippedAccessories = usePage<SharedProps>().props.equippedAccessories;
-    const equipped = equippedAccessories ? serverToEquipped(equippedAccessories) : null;
+    const equippedAccessories =
+        usePage<SharedProps>().props.equippedAccessories;
+    const equipped = equippedAccessories
+        ? serverToEquipped(equippedAccessories)
+        : null;
 
     useModal(open, panelRef, onClose);
 
@@ -64,7 +69,10 @@ export default function TemariNudgeModal({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="fixed inset-0 z-[51] flex items-center justify-center p-4"
-                    style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)' }}
+                    style={{
+                        background: 'rgba(0,0,0,0.5)',
+                        backdropFilter: 'blur(6px)',
+                    }}
                 >
                     <motion.div
                         key="temari-nudge-panel"
@@ -90,24 +98,51 @@ export default function TemariNudgeModal({
                         </div>
 
                         <div className="flex flex-col items-center gap-4 px-6 pb-6 pt-1 text-center">
-                            <TemariProto pose={pose} size={120} equipped={equipped} animate />
-                            <h2 id="temari-nudge-title" className="font-display text-2xl tracking-tight text-ink">
+                            <TemariProto
+                                pose={pose}
+                                size={120}
+                                equipped={equipped}
+                                animate
+                            />
+                            <h2
+                                id="temari-nudge-title"
+                                className="font-display text-2xl tracking-tight text-ink"
+                            >
                                 {title}
                             </h2>
-                            <p className="font-sans text-sm leading-relaxed text-ink-2">{body}</p>
+                            <p className="font-sans text-sm leading-relaxed text-ink-2">
+                                {body}
+                            </p>
                         </div>
 
                         <div className="flex flex-col gap-2 border-t border-cream-deep bg-cream px-5 py-4">
                             <PillButton
                                 tone="sky"
                                 onClick={onPrimary}
-                                className={cn('w-full justify-center py-3.5 font-semibold', primaryClassName)}
+                                className={cn(
+                                    'w-full justify-center py-3.5 font-semibold',
+                                    primaryClassName,
+                                )}
                             >
-                                <Icon icon={primaryIcon} width={16} height={16} aria-hidden />
+                                <Icon
+                                    icon={primaryIcon}
+                                    width={16}
+                                    height={16}
+                                    aria-hidden
+                                />
                                 {primaryLabel}
                             </PillButton>
-                            <PillButton tone="ghost" onClick={onClose} className="w-full justify-center">
-                                <Icon icon="mdi:close" width={16} height={16} aria-hidden />
+                            <PillButton
+                                tone="ghost"
+                                onClick={onClose}
+                                className="w-full justify-center"
+                            >
+                                <Icon
+                                    icon="mdi:close"
+                                    width={16}
+                                    height={16}
+                                    aria-hidden
+                                />
                                 {secondaryLabel}
                             </PillButton>
                         </div>

@@ -17,7 +17,8 @@ export const cardVariants = cva('', {
         tone: {
             cream: 'rounded-2xl border border-line bg-surface-card',
             'cream-deep': 'rounded-2xl border border-line bg-cream-deep',
-            'sky-glass': 'rounded-2xl border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
+            'sky-glass':
+                'rounded-2xl border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
             empty: 'rounded-2xl border border-dashed border-cream-deep bg-cream/40',
         },
         padding: {
@@ -46,7 +47,8 @@ export const pillButtonVariants = cva(
                 horizon: 'bg-horizon text-sky hover:bg-horizon-deep',
                 sky: 'bg-sky text-cream hover:bg-sky-deep',
                 ghost: 'bg-transparent text-ink border-[1.5px] border-ink/[0.18] hover:border-ink-2',
-                outline: 'bg-cream border-[1.5px] border-cream-deep text-ink-2 hover:border-ink-3 hover:text-ink',
+                outline:
+                    'bg-cream border-[1.5px] border-cream-deep text-ink-2 hover:border-ink-3 hover:text-ink',
             },
             size: {
                 sm: 'px-3.5 py-2 text-[13px]',

@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
 import polylineCodec from '@mapbox/polyline';
 import { latLngBounds } from 'leaflet';
+import { useMemo, useState } from 'react';
 import { MapContainer, Polyline, TileLayer } from 'react-leaflet';
+
 import { DAYBREAK } from '@/lib/chartTokens';
 // leaflet.css lives in resources/css/app.css (@import). Importing it here would race
 // the lazy-load and leave tiles unpositioned on first render.
@@ -12,7 +13,10 @@ interface RouteMapProps {
     distanceKm?: string;
 }
 
-export default function RouteMap({ polyline, distanceKm }: Readonly<RouteMapProps>) {
+export default function RouteMap({
+    polyline,
+    distanceKm,
+}: Readonly<RouteMapProps>) {
     const [active, setActive] = useState(false);
     const positions = useMemo<Array<[number, number]>>(
         () => polylineCodec.decode(polyline) as Array<[number, number]>,
@@ -27,7 +31,9 @@ export default function RouteMap({ polyline, distanceKm }: Readonly<RouteMapProp
         );
     }
 
-    const mapLabel = distanceKm ? `Peta rute lari, ${distanceKm} km` : 'Peta rute lari';
+    const mapLabel = distanceKm
+        ? `Peta rute lari, ${distanceKm} km`
+        : 'Peta rute lari';
 
     // `isolate` confines Leaflet's internal pane/control z-indexes (up to ~1000)
     // to this box so they don't paint over the fixed bottom nav. `role="img"` sits
@@ -59,10 +65,20 @@ export default function RouteMap({ polyline, distanceKm }: Readonly<RouteMapProp
                                server returns an error; surfaces a console hint
                                if the map still won't load. */
                             tileerror: (e) =>
-                                console.warn('[RouteMap] tile load failed', e.tile?.src ?? '(no src)'),
+                                console.warn(
+                                    '[RouteMap] tile load failed',
+                                    e.tile?.src ?? '(no src)',
+                                ),
                         }}
                     />
-                    <Polyline positions={positions} pathOptions={{ color: DAYBREAK.leaf, weight: 4, opacity: 0.9 }} />
+                    <Polyline
+                        positions={positions}
+                        pathOptions={{
+                            color: DAYBREAK.leaf,
+                            weight: 4,
+                            opacity: 0.9,
+                        }}
+                    />
                 </MapContainer>
             </div>
             {/* A swipe starting on the map pans it instead of scrolling the page (Leaflet
@@ -84,4 +100,3 @@ export default function RouteMap({ polyline, distanceKm }: Readonly<RouteMapProp
         </div>
     );
 }
-

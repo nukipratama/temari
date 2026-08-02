@@ -1,21 +1,29 @@
+import type { StreamSummaryPartial, StreamSummaryPerKm } from '@/types/inertia';
+
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import { formatKm, formatPace } from '@/lib/pace';
 import { computeBarWidth, paceSecOf } from '@/lib/splits';
-import type { StreamSummaryPartial, StreamSummaryPerKm } from '@/types/inertia';
 
 export default function SplitsTable({
     rows,
     partial,
     className,
-}: Readonly<{ rows: StreamSummaryPerKm[]; partial?: StreamSummaryPartial | null; className?: string }>) {
+}: Readonly<{
+    rows: StreamSummaryPerKm[];
+    partial?: StreamSummaryPartial | null;
+    className?: string;
+}>) {
     const paces = rows
         .map((r) => paceSecOf(r))
         .filter((s): s is number => s != null && Number.isFinite(s));
     const fastest = paces.length > 0 ? Math.min(...paces) : null;
-    const fastestKm = fastest != null ? rows.find((r) => paceSecOf(r) === fastest)?.km ?? null : null;
+    const fastestKm =
+        fastest != null
+            ? (rows.find((r) => paceSecOf(r) === fastest)?.km ?? null)
+            : null;
     const slowestSec = paces.length > 0 ? Math.max(...paces) : null;
 
     // Stable, collision-proof keys baked here — km for full splits, positional for
@@ -32,14 +40,17 @@ export default function SplitsTable({
                 {fastest != null && fastestKm != null && (
                     <p className="font-display text-sm italic text-ink-2">
                         Paling kenceng di km {fastestKm},{' '}
-                        <span className="font-semibold text-horizon-deep">{formatPace(fastest)}/km</span>
+                        <span className="font-semibold text-horizon-deep">
+                            {formatPace(fastest)}/km
+                        </span>
                     </p>
                 )}
             </header>
             {/* One dense chart at every width (HR + cadence columns fold away on phones);
                 the binary bar color needs a one-line key once the card affordance is gone. */}
             <p className="mb-3 text-label-micro text-ink-3">
-                Batang oranye = km tercepat, gelap = lainnya{partial ? ', putus-putus = sisa' : ''}.
+                Batang oranye = km tercepat, gelap = lainnya
+                {partial ? ', putus-putus = sisa' : ''}.
             </p>
 
             <div className="flex flex-col gap-1">
@@ -65,7 +76,10 @@ export default function SplitsTable({
                             </Eyebrow>
                             <div className="h-2.5 overflow-hidden rounded bg-sky/[0.06] lg:h-3">
                                 <div
-                                    className={cn('h-full rounded', isFast ? 'bg-horizon' : 'bg-sky')}
+                                    className={cn(
+                                        'h-full rounded',
+                                        isFast ? 'bg-horizon' : 'bg-sky',
+                                    )}
                                     style={{ width: `${pctWidth}%` }}
                                 />
                             </div>
@@ -91,7 +105,9 @@ export default function SplitsTable({
 // muted with a dashed, empty (non-comparative) bar and detached by a hairline so
 // a glance reads "outside the scale, not ranked against the full kms" — its
 // normalized pace must never be compared head-to-head with a full km.
-function SplitPartialRow({ partial }: Readonly<{ partial: StreamSummaryPartial }>) {
+function SplitPartialRow({
+    partial,
+}: Readonly<{ partial: StreamSummaryPartial }>) {
     return (
         <div className="-mx-3 mt-1 grid grid-cols-[34px_1fr_56px] items-center gap-2.5 rounded-lg border-t border-cream-deep px-3 py-2 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3 lg:py-2.5">
             <div className="font-mono text-[11px] uppercase tracking-[0.02em] text-ink-3">

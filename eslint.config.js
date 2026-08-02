@@ -1,6 +1,7 @@
 import tseslint from 'typescript-eslint';
 import eslintReact from '@eslint-react/eslint-plugin';
 import reactHooks from 'eslint-plugin-react-hooks';
+import perfectionist from 'eslint-plugin-perfectionist';
 
 export default tseslint.config(
     { ignores: ['public/**', 'vendor/**', 'node_modules/**', 'bootstrap/**'] },
@@ -10,10 +11,18 @@ export default tseslint.config(
         extends: [eslintReact.configs['recommended-typescript']],
         plugins: {
             'react-hooks': reactHooks,
+            perfectionist,
         },
         rules: {
             'react-hooks/rules-of-hooks': 'error',
             'react-hooks/exhaustive-deps': 'warn',
+            'perfectionist/sort-imports': [
+                'error',
+                {
+                    type: 'natural',
+                    order: 'asc',
+                },
+            ],
             // Block stair-stepped px chains; prefer text-display-* / text-headline-* tokens.
             'no-restricted-syntax': [
                 'error',

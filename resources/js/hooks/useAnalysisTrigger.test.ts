@@ -1,8 +1,10 @@
+import { router } from '@inertiajs/react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
-import { triggerAnalysis, useAnalysisTrigger } from './useAnalysisTrigger';
+
 import type { AnalysisPayload } from '@/types/inertia';
+
+import { triggerAnalysis, useAnalysisTrigger } from './useAnalysisTrigger';
 
 const fetchMock = vi.fn();
 
@@ -51,7 +53,10 @@ describe('useAnalysisTrigger', () => {
     });
 
     it('encodes discriminator into query string', async () => {
-        fetchMock.mockResolvedValue({ ok: true, json: async () => payload({ status: 'queued' }) });
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => payload({ status: 'queued' }),
+        });
 
         const { result } = renderHook(() =>
             useAnalysisTrigger(payload({ discriminator: '2026-05-19' }), []),
@@ -64,7 +69,11 @@ describe('useAnalysisTrigger', () => {
     });
 
     it('sets status=failed and captures error when fetch !ok', async () => {
-        fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+        fetchMock.mockResolvedValue({
+            ok: false,
+            status: 500,
+            json: async () => ({}),
+        });
 
         const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
         await act(async () => {
@@ -75,9 +84,18 @@ describe('useAnalysisTrigger', () => {
     });
 
     it('restores the server status without an error when a paused trigger is refused with 409', async () => {
-        fetchMock.mockResolvedValue({ ok: false, status: 409, json: async () => payload() });
+        fetchMock.mockResolvedValue({
+            ok: false,
+            status: 409,
+            json: async () => payload(),
+        });
 
-        const { result } = renderHook(() => useAnalysisTrigger(payload({ status: 'done', content: 'narasi lama' }), ['briefing']));
+        const { result } = renderHook(() =>
+            useAnalysisTrigger(
+                payload({ status: 'done', content: 'narasi lama' }),
+                ['briefing'],
+            ),
+        );
         await act(async () => {
             await result.current.trigger();
         });
@@ -89,9 +107,14 @@ describe('useAnalysisTrigger', () => {
     });
 
     it('reloads inertia props when reload list is provided', async () => {
-        fetchMock.mockResolvedValue({ ok: true, json: async () => payload({ status: 'queued' }) });
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => payload({ status: 'queued' }),
+        });
 
-        const { result } = renderHook(() => useAnalysisTrigger(payload(), ['briefing']));
+        const { result } = renderHook(() =>
+            useAnalysisTrigger(payload(), ['briefing']),
+        );
         await act(async () => {
             await result.current.trigger();
         });
@@ -111,7 +134,10 @@ describe('useAnalysisTrigger', () => {
     });
 
     it('fails gracefully (no crash) on a malformed response body', async () => {
-        fetchMock.mockResolvedValue({ ok: true, json: async () => ({ unexpected: 'shape' }) });
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => ({ unexpected: 'shape' }),
+        });
 
         const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
         await act(async () => {
@@ -125,7 +151,10 @@ describe('useAnalysisTrigger', () => {
     it('rejects a body whose retry_after_seconds is the wrong type', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => ({ status: 'queued', retry_after_seconds: 'soon' }),
+            json: async () => ({
+                status: 'queued',
+                retry_after_seconds: 'soon',
+            }),
         });
 
         const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
@@ -138,20 +167,26 @@ describe('useAnalysisTrigger', () => {
 
     it('falls back to empty CSRF when meta tag is missing', async () => {
         document.head.innerHTML = '';
-        fetchMock.mockResolvedValue({ ok: true, json: async () => payload({ status: 'queued' }) });
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => payload({ status: 'queued' }),
+        });
 
         const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
         await act(async () => {
             await result.current.trigger();
         });
         const init = fetchMock.mock.calls[0][1] as RequestInit;
-        expect((init.headers as Record<string, string>)['X-CSRF-TOKEN']).toBe('');
+        expect((init.headers as Record<string, string>)['X-CSRF-TOKEN']).toBe(
+            '',
+        );
     });
 
     it('polls router.reload with exponential backoff while status is queued, stops on done', async () => {
         vi.useFakeTimers();
         const { rerender } = renderHook(
-            ({ p }: { p: AnalysisPayload }) => useAnalysisTrigger(p, ['briefing']),
+            ({ p }: { p: AnalysisPayload }) =>
+                useAnalysisTrigger(p, ['briefing']),
             { initialProps: { p: payload({ status: 'queued' }) } },
         );
 
@@ -169,7 +204,8 @@ describe('useAnalysisTrigger', () => {
 
         // Re-rendering with status=done removes the subscriber → no further polls.
         rerender({ p: payload({ status: 'done', content: 'ok' }) });
-        const callsBeforeFinalAdvance = vi.mocked(router.reload).mock.calls.length;
+        const callsBeforeFinalAdvance = vi.mocked(router.reload).mock.calls
+            .length;
         await act(async () => {
             vi.advanceTimersByTime(60_000);
         });
@@ -240,7 +276,9 @@ describe('useAnalysisTrigger', () => {
         // Slot A subscribes, then polls to the max-attempts give-up. Give-up
         // removes A from the registry but A's subscriber is still mounted.
         const { unmount: unmountStale } = renderHook(() =>
-            useAnalysisTrigger(payload({ status: 'queued', subject_id: 1 }), ['briefing']),
+            useAnalysisTrigger(payload({ status: 'queued', subject_id: 1 }), [
+                'briefing',
+            ]),
         );
         await act(async () => {
             vi.advanceTimersByTime(20 * 60 * 1000);
@@ -248,7 +286,9 @@ describe('useAnalysisTrigger', () => {
 
         // A fresh subscriber registers a NEW slot B under the same reload key.
         const { unmount: unmountB } = renderHook(() =>
-            useAnalysisTrigger(payload({ status: 'queued', subject_id: 2 }), ['briefing']),
+            useAnalysisTrigger(payload({ status: 'queued', subject_id: 2 }), [
+                'briefing',
+            ]),
         );
 
         // Unmounting the stale hook retires slot A. WITHOUT the guard this would
@@ -259,7 +299,9 @@ describe('useAnalysisTrigger', () => {
         // C subscribes to the same key: with the guard it shares B; without it,
         // it creates a second slot polling the same props in parallel.
         renderHook(() =>
-            useAnalysisTrigger(payload({ status: 'queued', subject_id: 3 }), ['briefing']),
+            useAnalysisTrigger(payload({ status: 'queued', subject_id: 3 }), [
+                'briefing',
+            ]),
         );
 
         vi.mocked(router.reload).mockClear();
@@ -269,20 +311,29 @@ describe('useAnalysisTrigger', () => {
 
         // A single shared slot polls to its 30-attempt cap (~30 reloads); a
         // duplicate slot would roughly double that.
-        expect(vi.mocked(router.reload).mock.calls.length).toBeLessThanOrEqual(32);
+        expect(vi.mocked(router.reload).mock.calls.length).toBeLessThanOrEqual(
+            32,
+        );
         unmountB();
     });
 
     it('shares a single polling slot across multiple hook instances with the same reload set', async () => {
         vi.useFakeTimers();
         const { unmount: unmountA } = renderHook(() =>
-            useAnalysisTrigger(payload({ status: 'queued', subject_id: 1 }), ['briefing']),
+            useAnalysisTrigger(payload({ status: 'queued', subject_id: 1 }), [
+                'briefing',
+            ]),
         );
         const { unmount: unmountB } = renderHook(() =>
-            useAnalysisTrigger(payload({ status: 'queued', subject_id: 2 }), ['briefing']),
+            useAnalysisTrigger(payload({ status: 'queued', subject_id: 2 }), [
+                'briefing',
+            ]),
         );
         const { unmount: unmountC } = renderHook(() =>
-            useAnalysisTrigger(payload({ status: 'processing', subject_id: 3 }), ['briefing']),
+            useAnalysisTrigger(
+                payload({ status: 'processing', subject_id: 3 }),
+                ['briefing'],
+            ),
         );
 
         // One shared slot fires once per tick, not three.
@@ -294,11 +345,14 @@ describe('useAnalysisTrigger', () => {
         // Unmount two of the three subscribers — slot still polls for the survivor.
         unmountA();
         unmountB();
-        const callsBeforeSurvivorTick = vi.mocked(router.reload).mock.calls.length;
+        const callsBeforeSurvivorTick = vi.mocked(router.reload).mock.calls
+            .length;
         await act(async () => {
             vi.advanceTimersByTime(20_000);
         });
-        expect(vi.mocked(router.reload).mock.calls.length).toBeGreaterThan(callsBeforeSurvivorTick);
+        expect(vi.mocked(router.reload).mock.calls.length).toBeGreaterThan(
+            callsBeforeSurvivorTick,
+        );
 
         // All unmounted → slot retires, no further polls.
         unmountC();
@@ -311,7 +365,14 @@ describe('useAnalysisTrigger', () => {
 
     it('initializes retryAfterSeconds from the prop', () => {
         const { result } = renderHook(() =>
-            useAnalysisTrigger(payload({ status: 'done', content: 'x', retry_after_seconds: 123 }), []),
+            useAnalysisTrigger(
+                payload({
+                    status: 'done',
+                    content: 'x',
+                    retry_after_seconds: 123,
+                }),
+                [],
+            ),
         );
         expect(result.current.retryAfterSeconds).toBe(123);
     });
@@ -319,7 +380,12 @@ describe('useAnalysisTrigger', () => {
     it('updates retryAfterSeconds from the POST response without waiting for a prop sync', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => payload({ status: 'done', content: 'x', retry_after_seconds: 270 }),
+            json: async () =>
+                payload({
+                    status: 'done',
+                    content: 'x',
+                    retry_after_seconds: 270,
+                }),
         });
 
         const { result } = renderHook(() =>
@@ -342,7 +408,13 @@ describe('useAnalysisTrigger', () => {
         expect(result.current.retryAfterSeconds).toBeNull();
 
         await act(async () => {
-            rerender({ p: payload({ status: 'done', content: 'x', retry_after_seconds: 88 }) });
+            rerender({
+                p: payload({
+                    status: 'done',
+                    content: 'x',
+                    retry_after_seconds: 88,
+                }),
+            });
         });
 
         expect(result.current.retryAfterSeconds).toBe(88);
@@ -351,21 +423,40 @@ describe('useAnalysisTrigger', () => {
     it('clears retryAfterSeconds when the cooldown expires server-side (prop → null)', async () => {
         const { result, rerender } = renderHook(
             ({ p }: { p: AnalysisPayload }) => useAnalysisTrigger(p, []),
-            { initialProps: { p: payload({ status: 'done', content: 'x', retry_after_seconds: 60 }) } },
+            {
+                initialProps: {
+                    p: payload({
+                        status: 'done',
+                        content: 'x',
+                        retry_after_seconds: 60,
+                    }),
+                },
+            },
         );
         expect(result.current.retryAfterSeconds).toBe(60);
 
         await act(async () => {
-            rerender({ p: payload({ status: 'done', content: 'x', retry_after_seconds: null }) });
+            rerender({
+                p: payload({
+                    status: 'done',
+                    content: 'x',
+                    retry_after_seconds: null,
+                }),
+            });
         });
 
         expect(result.current.retryAfterSeconds).toBeNull();
     });
 
     it('debounces rapid trigger() calls within 2s window', async () => {
-        fetchMock.mockResolvedValue({ ok: true, json: async () => payload({ status: 'queued' }) });
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => payload({ status: 'queued' }),
+        });
 
-        const { result } = renderHook(() => useAnalysisTrigger(payload({ status: 'done', content: 'x' }), []));
+        const { result } = renderHook(() =>
+            useAnalysisTrigger(payload({ status: 'done', content: 'x' }), []),
+        );
 
         await act(async () => {
             await result.current.trigger();
@@ -380,12 +471,20 @@ describe('useAnalysisTrigger', () => {
 
     it('pauses polling when document is hidden, resumes on visibility change', async () => {
         vi.useFakeTimers();
-        const visibilityDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden');
+        const visibilityDescriptor = Object.getOwnPropertyDescriptor(
+            Document.prototype,
+            'hidden',
+        );
         let hidden = false;
-        Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+        Object.defineProperty(document, 'hidden', {
+            configurable: true,
+            get: () => hidden,
+        });
 
         try {
-            renderHook(() => useAnalysisTrigger(payload({ status: 'queued' }), ['briefing']));
+            renderHook(() =>
+                useAnalysisTrigger(payload({ status: 'queued' }), ['briefing']),
+            );
 
             await act(async () => {
                 vi.advanceTimersByTime(3000);
@@ -410,7 +509,9 @@ describe('useAnalysisTrigger', () => {
             await act(async () => {
                 vi.advanceTimersByTime(20_000);
             });
-            expect(vi.mocked(router.reload).mock.calls.length).toBeGreaterThanOrEqual(3);
+            expect(
+                vi.mocked(router.reload).mock.calls.length,
+            ).toBeGreaterThanOrEqual(3);
         } finally {
             if (visibilityDescriptor) {
                 Object.defineProperty(document, 'hidden', visibilityDescriptor);
@@ -423,7 +524,9 @@ describe('useAnalysisTrigger', () => {
         const next = payload({ status: 'queued', id: 7 });
         fetchMock.mockResolvedValue({ ok: true, json: async () => next });
 
-        const { result } = renderHook(() => useAnalysisTrigger(payload(), [], { onUpdate }));
+        const { result } = renderHook(() =>
+            useAnalysisTrigger(payload(), [], { onUpdate }),
+        );
         await act(async () => {
             await result.current.trigger();
         });
@@ -436,19 +539,35 @@ describe('triggerAnalysis', () => {
         const response = { ok: true } as Response;
         fetchMock.mockResolvedValue(response);
 
-        await expect(triggerAnalysis(payload({ subject_id: 8, discriminator: '2026-05-19' }))).resolves.toBe(response);
+        await expect(
+            triggerAnalysis(
+                payload({ subject_id: 8, discriminator: '2026-05-19' }),
+            ),
+        ).resolves.toBe(response);
 
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-        expect(url).toBe('/api/analyses/briefing_mascot_voice/8/trigger?discriminator=2026-05-19');
+        expect(url).toBe(
+            '/api/analyses/briefing_mascot_voice/8/trigger?discriminator=2026-05-19',
+        );
         expect(init.method).toBe('POST');
         expect(init.credentials).toBe('same-origin');
-        expect((init.headers as Record<string, string>)['X-CSRF-TOKEN']).toBe('test-token');
-        expect((init.headers as Record<string, string>)['X-Requested-With']).toBe('XMLHttpRequest');
+        expect((init.headers as Record<string, string>)['X-CSRF-TOKEN']).toBe(
+            'test-token',
+        );
+        expect(
+            (init.headers as Record<string, string>)['X-Requested-With'],
+        ).toBe('XMLHttpRequest');
     });
 
     it('issues the same request the hook does, so the bulk control cannot drift from it', async () => {
-        fetchMock.mockResolvedValue({ ok: true, json: async () => payload({ status: 'queued' }) });
-        const analysis = payload({ subject_id: 8, discriminator: '2026-05-19' });
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => payload({ status: 'queued' }),
+        });
+        const analysis = payload({
+            subject_id: 8,
+            discriminator: '2026-05-19',
+        });
 
         const { result } = renderHook(() => useAnalysisTrigger(analysis, []));
         await act(async () => {

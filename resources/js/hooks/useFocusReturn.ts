@@ -17,7 +17,10 @@ export function useFocusReturn(isOpen: boolean): void {
         const previouslyFocused = document.activeElement as HTMLElement | null;
 
         return () => {
-            if (previouslyFocused !== null && typeof previouslyFocused.focus === 'function') {
+            if (
+                previouslyFocused !== null &&
+                typeof previouslyFocused.focus === 'function'
+            ) {
                 previouslyFocused.focus();
             }
         };

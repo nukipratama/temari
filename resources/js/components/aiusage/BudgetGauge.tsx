@@ -1,21 +1,32 @@
+import type { Budget } from '@/pages/AiUsage/types';
+
 import Card from '@/components/ui/Card';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { formatCost } from '@/pages/AiUsage/helpers';
-import type { Budget } from '@/pages/AiUsage/types';
 
 export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
     const { todayCost, dailyCeiling, currency } = budget;
     const hasCeiling = dailyCeiling !== null && dailyCeiling > 0;
     const ratio = hasCeiling ? todayCost / dailyCeiling : 0;
     const overBudget = hasCeiling && ratio > 1;
-    const caveat = 'Estimasi memakai harga list price dari config, bukan tagihan final.';
+    const caveat =
+        'Estimasi memakai harga list price dari config, bukan tagihan final.';
 
     return (
-        <Card as="section" tone="cream" padding="md" className="mt-6 bg-surface-elev">
+        <Card
+            as="section"
+            tone="cream"
+            padding="md"
+            className="mt-6 bg-surface-elev"
+        >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-label-micro text-ink-2">Anggaran Hari Ini</span>
+                <span className="text-label-micro text-ink-2">
+                    Anggaran Hari Ini
+                </span>
                 <span className="text-sm text-ink-2">
-                    <span className="font-semibold text-ink">{formatCost(todayCost, currency)}</span>
+                    <span className="font-semibold text-ink">
+                        {formatCost(todayCost, currency)}
+                    </span>
                     {hasCeiling ? (
                         <>
                             {' / '}
@@ -35,12 +46,15 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
                     className="mt-3"
                 />
             ) : (
-                <p className="mt-3 text-xs text-ink-3">Tidak ada batas harian yang disetel.</p>
+                <p className="mt-3 text-xs text-ink-3">
+                    Tidak ada batas harian yang disetel.
+                </p>
             )}
 
             {overBudget && (
                 <p className="mt-2 text-xs font-semibold text-mood-lemes">
-                    Melewati batas harian sebesar {formatCost(todayCost - dailyCeiling, currency)}.
+                    Melewati batas harian sebesar{' '}
+                    {formatCost(todayCost - dailyCeiling, currency)}.
                 </p>
             )}
 

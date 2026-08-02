@@ -1,14 +1,19 @@
-import { Link, usePage, usePoll } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { Link, usePage, usePoll } from '@inertiajs/react';
 import { useEffect } from 'react';
+
+import type { SharedProps, StravaSyncState } from '@/types/inertia';
+
+import StravaSyncButton from '@/components/StravaSyncButton';
+import Temari from '@/components/temari/Temari';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
-import StravaSyncButton from '@/components/StravaSyncButton';
-import Temari from '@/components/temari/Temari';
-import type { SharedProps, StravaSyncState } from '@/types/inertia';
 
-const HERO: Record<StravaSyncState, { eyebrow: string; headline: string; copy: string }> = {
+const HERO: Record<
+    StravaSyncState,
+    { eyebrow: string; headline: string; copy: string }
+> = {
     disconnected: {
         eyebrow: '★ Belum nyambung',
         headline: 'Sambungin Strava dulu',
@@ -84,7 +89,9 @@ export default function EmptyRunsState() {
                     <Eyebrow token="hero" tone="horizon" className="mb-3">
                         {hero.eyebrow}
                     </Eyebrow>
-                    <h2 className="font-display text-display-sm text-ink">{hero.headline}</h2>
+                    <h2 className="font-display text-display-sm text-ink">
+                        {hero.headline}
+                    </h2>
                     <p className="mx-auto mt-3 max-w-sm font-display text-quote-sm italic leading-relaxed text-ink-2">
                         &ldquo;{hero.copy}&rdquo;
                     </p>
@@ -110,10 +117,19 @@ export default function EmptyRunsState() {
                                 <Icon icon={icon} width={16} height={16} />
                             </span>
                             <div className="min-w-0 flex-1">
-                                <div className="text-[13px] font-semibold text-ink">{title}</div>
-                                <div className="mt-0.5 font-mono text-[11px] text-ink-3">{desc}</div>
+                                <div className="text-[13px] font-semibold text-ink">
+                                    {title}
+                                </div>
+                                <div className="mt-0.5 font-mono text-[11px] text-ink-3">
+                                    {desc}
+                                </div>
                             </div>
-                            <span aria-hidden className="font-mono text-[14px] text-ink-3">›</span>
+                            <span
+                                aria-hidden
+                                className="font-mono text-[14px] text-ink-3"
+                            >
+                                ›
+                            </span>
                         </Link>
                     ))}
                 </div>

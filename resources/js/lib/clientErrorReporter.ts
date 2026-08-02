@@ -17,7 +17,11 @@ const seen = new Set<string>();
 let sent = 0;
 
 export function reportClientError(payload: ClientErrorPayload): void {
-    const key = `${payload.message}::${payload.componentStack ?? payload.stack ?? ''}`.slice(0, 500);
+    const key =
+        `${payload.message}::${payload.componentStack ?? payload.stack ?? ''}`.slice(
+            0,
+            500,
+        );
     if (sent >= MAX_REPORTS || seen.has(key)) {
         return;
     }
@@ -27,12 +31,16 @@ export function reportClientError(payload: ClientErrorPayload): void {
     try {
         void fetch('/client-errors', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
             body: JSON.stringify({
                 message: payload.message.slice(0, 1000),
                 stack: payload.stack?.slice(0, MAX_TRACE_CHARS) ?? null,
                 url: payload.url ?? window.location.href,
-                componentStack: payload.componentStack?.slice(0, MAX_TRACE_CHARS) ?? null,
+                componentStack:
+                    payload.componentStack?.slice(0, MAX_TRACE_CHARS) ?? null,
             }),
             keepalive: true,
         });
@@ -51,12 +59,18 @@ export function installGlobalErrorReporting(): void {
         });
     });
 
-    window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
-        const reason = event.reason as { message?: string; stack?: string } | undefined;
-        reportClientError({
-            message: reason?.message ? `Unhandled rejection: ${reason.message}` : 'Unhandled promise rejection',
-            stack: reason?.stack ?? null,
-            url: window.location.href,
-        });
-    });
+    window.addEventListener(
+        'unhandledrejection',
+        (event: PromiseRejectionEvent) => {
+            const reason = event.reason as
+                { message?: string; stack?: string } | undefined;
+            reportClientError({
+                message: reason?.message
+                    ? `Unhandled rejection: ${reason.message}`
+                    : 'Unhandled promise rejection',
+                stack: reason?.stack ?? null,
+                url: window.location.href,
+            });
+        },
+    );
 }

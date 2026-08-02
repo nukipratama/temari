@@ -1,5 +1,5 @@
-import type { EquippedAccessories } from '@/types/inertia';
 import type { TemariEquipped } from '@/components/temari/TemariProto';
+import type { EquippedAccessories } from '@/types/inertia';
 
 /**
  * Canonical unlock keys from config/temari_unlocks.php. Shared by the mascot's
@@ -39,7 +39,9 @@ export const ACCESSORY_KEYS = {
  * key off — one per slot, so the mascot shows exactly what the user equipped
  * (not every accessory they've unlocked).
  */
-export function equippedToKeys(equipped: EquippedAccessories | null | undefined): string[] {
+export function equippedToKeys(
+    equipped: EquippedAccessories | null | undefined,
+): string[] {
     if (!equipped) {
         return [];
     }
@@ -174,9 +176,12 @@ const SLOT_PREFIXES = [
     'aura',
 ] as const;
 
-type SlotName = typeof SLOT_PREFIXES[number];
+type SlotName = (typeof SLOT_PREFIXES)[number];
 
-const SLOT_MAPPER: Record<SlotName, (key: string) => TemariEquipped[keyof TemariEquipped]> = {
+const SLOT_MAPPER: Record<
+    SlotName,
+    (key: string) => TemariEquipped[keyof TemariEquipped]
+> = {
     ikat_kepala: (key) => mapHeadband(key),
     medal: (key) => mapMedal(key),
     kaus: (key) => mapKaus(key),

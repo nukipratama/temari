@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { CTA, MOOD_EMOJI } from './copy';
 
 describe('copy constants', () => {

@@ -1,7 +1,26 @@
+import type {
+    ActivityDetail,
+    Mood,
+    Rarity,
+    RunCard,
+    ZonePct,
+} from '@/types/inertia';
+
 import { moodFromActivity } from '@/lib/moodFromActivity';
-import { formatDurationHMS, formatKm, formatNaiveRelativeId, formatShortWeekdayDateId, parseNaiveLocalDate } from '@/lib/pace';
-import { RARITY_LABELS, buildCardStats, paceShapeFromDetail, zonePctFromDetail, type CardStatStrings } from '@/lib/runcard';
-import type { ActivityDetail, Mood, Rarity, RunCard, ZonePct } from '@/types/inertia';
+import {
+    formatDurationHMS,
+    formatKm,
+    formatNaiveRelativeId,
+    formatShortWeekdayDateId,
+    parseNaiveLocalDate,
+} from '@/lib/pace';
+import {
+    RARITY_LABELS,
+    buildCardStats,
+    paceShapeFromDetail,
+    zonePctFromDetail,
+    type CardStatStrings,
+} from '@/lib/runcard';
 
 export interface FeaturedCard {
     cardId: number;
@@ -30,7 +49,11 @@ export interface StripItem {
     polyline: string | null;
 }
 
-function toFeaturedCard(r: ActivityDetail, card: RunCard, mood?: Mood | null): FeaturedCard {
+function toFeaturedCard(
+    r: ActivityDetail,
+    card: RunCard,
+    mood?: Mood | null,
+): FeaturedCard {
     return {
         cardId: card.id,
         activityId: r.activity_id,
@@ -38,7 +61,8 @@ function toFeaturedCard(r: ActivityDetail, card: RunCard, mood?: Mood | null): F
         subtitle: `${RARITY_LABELS[card.rarity]} · ${formatNaiveRelativeId(r.start_date_local)}`,
         km: formatKm(r.distance),
         durasi: r.moving_time != null ? formatDurationHMS(r.moving_time) : '—',
-        trimp: r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',
+        trimp:
+            r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',
         rarity: card.rarity,
         mood: mood ?? moodFromActivity(r),
         badges: (card.badges ?? []).slice(0, 3),
@@ -61,7 +85,8 @@ export function featuredCardFor(
     if (cardId == null) return null;
     for (const r of runs) {
         const card = r.activity?.run_card;
-        if (card?.id === cardId) return toFeaturedCard(r, card, moods[r.activity_id] ?? null);
+        if (card?.id === cardId)
+            return toFeaturedCard(r, card, moods[r.activity_id] ?? null);
     }
     return null;
 }
@@ -107,7 +132,10 @@ export function formatIdDateUpper(iso: string | null): string {
 
 export function shortenLocation(name: string | null): string | null {
     if (name === null || name === '') return null;
-    const parts = name.split(',').map((s) => s.trim()).filter(Boolean);
+    const parts = name
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
     if (parts.length === 0) return null;
     return parts.length === 1 ? parts[0] : `${parts[0]}, ${parts[1]}`;
 }
@@ -119,12 +147,19 @@ export function shortenLocation(name: string | null): string | null {
  */
 export function districtFromLocation(name: string | null): string | null {
     if (name === null || name === '') return null;
-    const parts = name.split(',').map((s) => s.trim()).filter(Boolean);
+    const parts = name
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
     if (parts.length === 0) return null;
     return parts[1] ?? parts[0];
 }
 
-export function formatWeather(tempC: number | null, humidityPct: number | null, rain: boolean | null): string | null {
+export function formatWeather(
+    tempC: number | null,
+    humidityPct: number | null,
+    rain: boolean | null,
+): string | null {
     const bits: string[] = [];
     if (tempC !== null) bits.push(`${Math.round(tempC)}°C`);
     if (humidityPct !== null) bits.push(`${Math.round(humidityPct)}%`);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { PR_CATEGORY_LABELS, formatPrValue } from './pr';
 
 describe('PR_CATEGORY_LABELS', () => {

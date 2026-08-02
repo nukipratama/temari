@@ -1,11 +1,18 @@
 import { router } from '@inertiajs/react';
 import { useCallback, useMemo } from 'react';
+
+import type {
+    Activity,
+    ActivityDetail,
+    Mood,
+    WeeklySnapshotWithRecap,
+} from '@/types/inertia';
+
 import { type ActiveChip } from '@/components/riwayat/ActiveFilterChips';
 import { type RangeOption } from '@/components/riwayat/RiwayatFilter';
 import { useLastFilter } from '@/hooks/useLastFilter';
 import { MOOD_FILTER_OPTIONS, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
 import { formatIdDate, isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
-import type { Activity, ActivityDetail, Mood, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 export type RunWithDetail = Activity & { detail: ActivityDetail };
 
@@ -28,14 +35,22 @@ export type SortMode = 'newest' | 'longest' | 'fastest';
  * make sense in date order, so ranking globally drops the week grouping and
  * renders one flat list. `newest` is the grouped browse view.
  */
-export const SORT_OPTIONS: ReadonlyArray<{ value: SortMode; label: string; hint: string }> = [
+export const SORT_OPTIONS: ReadonlyArray<{
+    value: SortMode;
+    label: string;
+    hint: string;
+}> = [
     { value: 'newest', label: 'Terbaru dulu', hint: 'per minggu' },
     { value: 'longest', label: 'Paling jauh', hint: 'peringkat' },
     { value: 'fastest', label: 'Paling ngebut', hint: 'peringkat' },
 ];
 
 /** Cut at the distances runners think in, not at even numbers. */
-export const DISTANCE_OPTIONS: ReadonlyArray<{ value: DistanceBand; label: string; hint: string }> = [
+export const DISTANCE_OPTIONS: ReadonlyArray<{
+    value: DistanceBand;
+    label: string;
+    hint: string;
+}> = [
     { value: '0-5', label: 'Di bawah 5K', hint: '<5' },
     { value: '5-10', label: '5K sampai 10K', hint: '5-10' },
     { value: '10-21', label: '10K sampai half', hint: '10-21' },
@@ -49,7 +64,21 @@ export const DISTANCE_OPTIONS: ReadonlyArray<{ value: DistanceBand; label: strin
  * /aktivitas" case never happens.
  */
 const DEFAULT_RANGE: RangeFilterValue = '8w';
-const RANGE_RELOAD_PROPS = ['runs', 'rangeFilter', 'moodFilter', 'distanceFilter', 'sortMode', 'weekFilter', 'rangeStart', 'rangeAutoWidened', 'runsTruncated', 'maxRuns', 'weeklySnapshots', 'notes', 'moods'];
+const RANGE_RELOAD_PROPS = [
+    'runs',
+    'rangeFilter',
+    'moodFilter',
+    'distanceFilter',
+    'sortMode',
+    'weekFilter',
+    'rangeStart',
+    'rangeAutoWidened',
+    'runsTruncated',
+    'maxRuns',
+    'weeklySnapshots',
+    'notes',
+    'moods',
+];
 
 /** Every filter the page owns, in one shape so callers can change one field. */
 export interface FilterState {
@@ -68,13 +97,20 @@ export const DEFAULT_SORT: SortMode = 'newest';
  * unfiltered view stays a clean `/aktivitas`, and moods are serialised in
  * MOOD_ORDER so the same selection always produces the same shareable link.
  */
-export function filterQuery({ range, moods, distance, sort, week }: FilterState): Record<string, string> {
+export function filterQuery({
+    range,
+    moods,
+    distance,
+    sort,
+    week,
+}: FilterState): Record<string, string> {
     const query: Record<string, string> = {};
     // A week scope pins its own window, so carrying `range` alongside it would
     // be noise in the URL.
     if (week !== null) query.week = week;
     else if (range !== DEFAULT_RANGE) query.range = range;
-    if (moods.size > 0) query.mood = MOOD_ORDER.filter((m) => moods.has(m)).join(',');
+    if (moods.size > 0)
+        query.mood = MOOD_ORDER.filter((m) => moods.has(m)).join(',');
     if (distance !== null) query.dist = distance;
     if (sort !== DEFAULT_SORT) query.sort = sort;
 
@@ -88,11 +124,16 @@ export function hrefWithFilters(state: FilterState): string {
 }
 
 /** Looks up an option's label by value, falling back to the raw value itself. */
-export function labelFor(options: ReadonlyArray<{ value: string; label: string }>, value: string): string {
+export function labelFor(
+    options: ReadonlyArray<{ value: string; label: string }>,
+    value: string,
+): string {
     return options.find((o) => o.value === value)?.label ?? value;
 }
 
-export const RANGE_FILTER_OPTIONS: ReadonlyArray<RangeOption<RangeFilterValue>> = [
+export const RANGE_FILTER_OPTIONS: ReadonlyArray<
+    RangeOption<RangeFilterValue>
+> = [
     { value: '8w', label: '2 bulan terakhir', hint: '8w' },
     { value: '12w', label: '3 bulan terakhir', hint: '12w' },
     { value: '6m', label: 'Setengah tahun', hint: '6m' },
@@ -118,8 +159,11 @@ export function summariseQuery(query: Record<string, string>): string | null {
         parts.push(labelFor(DISTANCE_OPTIONS, query.dist));
     }
     if (query.mood) {
-        const moods = query.mood.split(',').filter((m): m is Mood => MOOD_ORDER.includes(m as Mood));
-        if (moods.length > 0) parts.push(moods.map((m) => MOOD_LABEL[m]).join(', '));
+        const moods = query.mood
+            .split(',')
+            .filter((m): m is Mood => MOOD_ORDER.includes(m as Mood));
+        if (moods.length > 0)
+            parts.push(moods.map((m) => MOOD_LABEL[m]).join(', '));
     }
 
     return parts.length > 0 ? parts.join(' · ') : null;
@@ -164,8 +208,10 @@ export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
             ordered.push(key);
         }
         bucket.runs.push(row);
-        if (row.detail.distance !== null) bucket.totalKm += row.detail.distance / 1000;
-        if (row.detail.trimp_edwards !== null) bucket.totalTrimp += row.detail.trimp_edwards;
+        if (row.detail.distance !== null)
+            bucket.totalKm += row.detail.distance / 1000;
+        if (row.detail.trimp_edwards !== null)
+            bucket.totalTrimp += row.detail.trimp_edwards;
     }
 
     const buckets = ordered.map((k) => byKey.get(k)!);
@@ -176,8 +222,14 @@ export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
             weekEnding: 'orphans',
             label: 'Tanpa tanggal',
             runs: orphans,
-            totalKm: orphans.reduce((acc, r) => acc + (r.detail.distance ?? 0) / 1000, 0),
-            totalTrimp: orphans.reduce((acc, r) => acc + (r.detail.trimp_edwards ?? 0), 0),
+            totalKm: orphans.reduce(
+                (acc, r) => acc + (r.detail.distance ?? 0) / 1000,
+                0,
+            ),
+            totalTrimp: orphans.reduce(
+                (acc, r) => acc + (r.detail.trimp_edwards ?? 0),
+                0,
+            ),
         });
     }
 
@@ -212,7 +264,8 @@ export function useJejakFilters({
     const buckets = useMemo<WeekBucket[]>(() => groupByWeek(runs), [runs]);
     const snapshotsByWeek = useMemo(() => {
         const map = new Map<string, WeeklySnapshotWithRecap>();
-        for (const snap of weeklySnapshots) map.set(snap.week_ending.slice(0, 10), snap);
+        for (const snap of weeklySnapshots)
+            map.set(snap.week_ending.slice(0, 10), snap);
         return map;
     }, [weeklySnapshots]);
 
@@ -256,7 +309,10 @@ export function useJejakFilters({
 
     const selectDistance = useCallback(
         // Tapping the active band clears it, so the popover needs no extra "any" row.
-        (band: DistanceBand) => visitWithFilters({ distance: band === distanceFilter ? null : band }),
+        (band: DistanceBand) =>
+            visitWithFilters({
+                distance: band === distanceFilter ? null : band,
+            }),
         [distanceFilter, visitWithFilters],
     );
 
@@ -281,7 +337,8 @@ export function useJejakFilters({
         () => ({
             value: rangeFilter,
             options: RANGE_FILTER_OPTIONS,
-            hrefFor: (r: RangeFilterValue) => hrefWithFilters({ ...current, range: r }),
+            hrefFor: (r: RangeFilterValue) =>
+                hrefWithFilters({ ...current, range: r }),
             only: RANGE_RELOAD_PROPS,
         }),
         [rangeFilter, current],
@@ -303,7 +360,11 @@ export function useJejakFilters({
         [distanceFilter, selectDistance],
     );
     const sortSection = useMemo(
-        () => ({ value: sortMode, options: SORT_OPTIONS, onSelect: selectSort }),
+        () => ({
+            value: sortMode,
+            options: SORT_OPTIONS,
+            onSelect: selectSort,
+        }),
         [sortMode, selectSort],
     );
 
@@ -321,15 +382,27 @@ export function useJejakFilters({
         }
         if (rangeFilter !== DEFAULT_RANGE) {
             const label = labelFor(RANGE_FILTER_OPTIONS, rangeFilter);
-            list.push({ key: `range:${rangeFilter}`, label, onRemove: () => visitWithFilters({ range: DEFAULT_RANGE }) });
+            list.push({
+                key: `range:${rangeFilter}`,
+                label,
+                onRemove: () => visitWithFilters({ range: DEFAULT_RANGE }),
+            });
         }
         if (sortMode !== DEFAULT_SORT) {
             const label = labelFor(SORT_OPTIONS, sortMode);
-            list.push({ key: `sort:${sortMode}`, label, onRemove: () => visitWithFilters({ sort: DEFAULT_SORT }) });
+            list.push({
+                key: `sort:${sortMode}`,
+                label,
+                onRemove: () => visitWithFilters({ sort: DEFAULT_SORT }),
+            });
         }
         if (distanceFilter !== null) {
             const label = labelFor(DISTANCE_OPTIONS, distanceFilter);
-            list.push({ key: `dist:${distanceFilter}`, label, onRemove: () => visitWithFilters({ distance: null }) });
+            list.push({
+                key: `dist:${distanceFilter}`,
+                label,
+                onRemove: () => visitWithFilters({ distance: null }),
+            });
         }
         for (const mood of MOOD_ORDER.filter((m) => selectedMoods.has(m))) {
             list.push({
@@ -344,7 +417,14 @@ export function useJejakFilters({
         }
 
         return list;
-    }, [weekFilter, rangeFilter, sortMode, distanceFilter, selectedMoods, visitWithFilters]);
+    }, [
+        weekFilter,
+        rangeFilter,
+        sortMode,
+        distanceFilter,
+        selectedMoods,
+        visitWithFilters,
+    ]);
 
     // Remembered, but never applied behind the user's back — see useLastFilter.
     const { resumable, forget } = useLastFilter(filterQuery(current));

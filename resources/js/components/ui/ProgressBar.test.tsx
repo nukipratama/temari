@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import ProgressBar from './ProgressBar';
 
 describe('ProgressBar', () => {
@@ -19,14 +20,23 @@ describe('ProgressBar', () => {
 
     it('clamps values above 1 and below 0', () => {
         const { rerender } = render(<ProgressBar value={2} ariaLabel="x" />);
-        expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
+        expect(screen.getByRole('progressbar')).toHaveAttribute(
+            'aria-valuenow',
+            '100',
+        );
         rerender(<ProgressBar value={-1} ariaLabel="x" />);
-        expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+        expect(screen.getByRole('progressbar')).toHaveAttribute(
+            'aria-valuenow',
+            '0',
+        );
     });
 
     it('treats NaN as 0', () => {
         render(<ProgressBar value={Number.NaN} ariaLabel="x" />);
-        expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+        expect(screen.getByRole('progressbar')).toHaveAttribute(
+            'aria-valuenow',
+            '0',
+        );
     });
 
     it.each([

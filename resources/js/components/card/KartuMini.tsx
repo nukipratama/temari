@@ -1,4 +1,12 @@
+import type { CSSProperties } from 'react';
+
+import type { CardEdition, Mood, Rarity } from '@/types/inertia';
+
+import RouteGlyph from '@/components/card/RouteGlyph';
+import Temari from '@/components/temari/Temari';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
+import { moodSigilColor } from '@/lib/mood';
 import {
     RARITY_BORDER,
     RARITY_HEX,
@@ -7,12 +15,6 @@ import {
     RARITY_SYMBOL,
     RARITY_TEXT,
 } from '@/lib/runcard';
-import RouteGlyph from '@/components/card/RouteGlyph';
-import Eyebrow from '@/components/ui/Eyebrow';
-import Temari from '@/components/temari/Temari';
-import { moodSigilColor } from '@/lib/mood';
-import type { CardEdition, Mood, Rarity } from '@/types/inertia';
-import type { CSSProperties } from 'react';
 
 interface KartuMiniProps {
     name: string;
@@ -46,9 +48,13 @@ export default function KartuMini({
     const artStyle: CSSProperties = {
         background: [
             `radial-gradient(ellipse at 30% 26%, ${rarityHex}30 0%, ${rarityHex}12 42%, transparent 70%)`,
-            moodColor ? `radial-gradient(ellipse at 82% 84%, ${moodColor}22 0%, transparent 60%)` : '',
+            moodColor
+                ? `radial-gradient(ellipse at 82% 84%, ${moodColor}22 0%, transparent 60%)`
+                : '',
             `linear-gradient(to bottom, #fcf9f3, var(--color-cream-deep))`,
-        ].filter(Boolean).join(', '),
+        ]
+            .filter(Boolean)
+            .join(', '),
     };
 
     return (
@@ -63,24 +69,52 @@ export default function KartuMini({
             )}
         >
             {/* ART WINDOW */}
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[8px]" style={artStyle}>
+            <div
+                className="relative aspect-[4/3] w-full overflow-hidden rounded-[8px]"
+                style={artStyle}
+            >
                 {polyline != null && polyline !== '' && (
                     <div className="absolute inset-0">
-                        <RouteGlyph rarity={rarity} color={rarityHex} polyline={polyline} />
+                        <RouteGlyph
+                            rarity={rarity}
+                            color={rarityHex}
+                            polyline={polyline}
+                        />
                     </div>
                 )}
-                <span aria-hidden className="pointer-events-none absolute bottom-0.5 right-0.5">
-                    <Temari pose={RARITY_POSE[rarity]} size={26} animate={false} dropShadow={false} />
+                <span
+                    aria-hidden
+                    className="pointer-events-none absolute bottom-0.5 right-0.5"
+                >
+                    <Temari
+                        pose={RARITY_POSE[rarity]}
+                        size={26}
+                        animate={false}
+                        dropShadow={false}
+                    />
                 </span>
             </div>
 
             {/* STAT BLOCK */}
             <div className="px-1.5 pt-1 pb-0.5 text-cream">
                 <div className="flex items-center gap-1">
-                    <span aria-hidden className={cn('text-[8px] leading-none', RARITY_TEXT[rarity])}>
+                    <span
+                        aria-hidden
+                        className={cn(
+                            'text-[8px] leading-none',
+                            RARITY_TEXT[rarity],
+                        )}
+                    >
                         {RARITY_SYMBOL[rarity]}
                     </span>
-                    <Eyebrow as="span" token="micro" className={cn('text-[8px] tracking-[0.12em]', RARITY_TEXT[rarity])}>
+                    <Eyebrow
+                        as="span"
+                        token="micro"
+                        className={cn(
+                            'text-[8px] tracking-[0.12em]',
+                            RARITY_TEXT[rarity],
+                        )}
+                    >
                         {RARITY_LABELS[rarity]}
                     </Eyebrow>
                 </div>
@@ -90,7 +124,9 @@ export default function KartuMini({
                 {(edition != null || (date != null && date !== '')) && (
                     <div className="mt-0.5 font-mono text-[9px] tabular-nums leading-tight text-ink-on-sky">
                         {edition != null && (
-                            <span>#{edition.index}/{edition.total}</span>
+                            <span>
+                                #{edition.index}/{edition.total}
+                            </span>
                         )}
                         {edition != null && date != null && date !== '' && (
                             <span className="mx-1 opacity-40">·</span>

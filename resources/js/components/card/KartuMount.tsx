@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+
 import { cn } from '@/lib/cn';
 
 /**
@@ -8,13 +9,24 @@ import { cn } from '@/lib/cn';
  * cream page background. The glow itself lives on the Kartu's own border
  * (`.kartu-glow`, tinted per rarity) — this mount stays a plain, unlit frame.
  */
-export default function KartuMount({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
+export default function KartuMount({
+    children,
+    className,
+}: Readonly<{ children: ReactNode; className?: string }>) {
     return (
         <div
-            className={cn('relative flex w-full items-center justify-center overflow-hidden rounded-3xl p-3', className)}
-            style={{ background: 'linear-gradient(165deg, var(--color-sky-deep), var(--color-sky-2))' }}
+            className={cn(
+                'relative flex w-full items-center justify-center overflow-hidden rounded-3xl p-3',
+                className,
+            )}
+            style={{
+                background:
+                    'linear-gradient(165deg, var(--color-sky-deep), var(--color-sky-2))',
+            }}
         >
-            <div className="relative w-full rounded-2xl shadow-2xl">{children}</div>
+            <div className="relative w-full rounded-2xl shadow-2xl">
+                {children}
+            </div>
         </div>
     );
 }

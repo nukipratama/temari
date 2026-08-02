@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { useCooldownCountdown } from './useCooldownCountdown';
 
 describe('useCooldownCountdown', () => {
@@ -12,7 +13,9 @@ describe('useCooldownCountdown', () => {
     });
 
     it('clamps null / negative initial values to zero', () => {
-        const { result: nullish } = renderHook(() => useCooldownCountdown(null));
+        const { result: nullish } = renderHook(() =>
+            useCooldownCountdown(null),
+        );
         expect(nullish.current).toBe(0);
 
         const { result: negative } = renderHook(() => useCooldownCountdown(-5));
@@ -54,9 +57,12 @@ describe('useCooldownCountdown', () => {
     });
 
     it('restarts the countdown when initialSeconds changes', () => {
-        const { result, rerender } = renderHook(({ s }) => useCooldownCountdown(s), {
-            initialProps: { s: 2 },
-        });
+        const { result, rerender } = renderHook(
+            ({ s }) => useCooldownCountdown(s),
+            {
+                initialProps: { s: 2 },
+            },
+        );
         expect(result.current).toBe(2);
 
         act(() => {

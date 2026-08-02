@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { hapticCommit, hapticTap } from './haptics';
 
 function stubVibrate(impl: (pattern: number) => boolean) {
     const spy = vi.fn(impl);
-    Object.defineProperty(navigator, 'vibrate', { value: spy, configurable: true, writable: true });
+    Object.defineProperty(navigator, 'vibrate', {
+        value: spy,
+        configurable: true,
+        writable: true,
+    });
 
     return spy;
 }

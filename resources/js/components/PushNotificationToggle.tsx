@@ -1,11 +1,14 @@
-import { usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
+
+import type { SharedProps } from '@/types/inertia';
+
+import DemoBlockedModal from '@/components/DemoBlockedModal';
 import PillButton from '@/components/ui/PillButton';
 import SettingsRow from '@/components/ui/SettingsRow';
 import Toggle from '@/components/ui/Toggle';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
-import DemoBlockedModal from '@/components/DemoBlockedModal';
 import {
     currentSubscription,
     isIosNonSafari,
@@ -14,7 +17,6 @@ import {
     subscribe,
     unsubscribe,
 } from '@/lib/webPush';
-import type { SharedProps } from '@/types/inertia';
 
 type PushState =
     | 'loading'
@@ -41,7 +43,10 @@ type PushState =
 export default function PushNotificationToggle({
     muted = false,
     onMuteChange,
-}: Readonly<{ muted?: boolean; onMuteChange?: (muted: boolean) => void }> = {}) {
+}: Readonly<{
+    muted?: boolean;
+    onMuteChange?: (muted: boolean) => void;
+}> = {}) {
     const publicKey = usePage<SharedProps>().props.webPushPublicKey ?? '';
     const { open, setOpen, guard } = useDemoGuard();
     const [state, setState] = useState<PushState>('loading');
@@ -54,7 +59,11 @@ export default function PushNotificationToggle({
             return;
         }
         if (!isStandalone()) {
-            setState(isIosNonSafari() ? 'needs-install-other' : 'needs-install-safari');
+            setState(
+                isIosNonSafari()
+                    ? 'needs-install-other'
+                    : 'needs-install-safari',
+            );
             return;
         }
         if (Notification.permission === 'denied') {
@@ -84,7 +93,10 @@ export default function PushNotificationToggle({
                 setState('subscribed');
                 setStatus('Notifikasi HP aktif.');
             } catch (error) {
-                if (error instanceof Error && error.message === 'permission-denied') {
+                if (
+                    error instanceof Error &&
+                    error.message === 'permission-denied'
+                ) {
                     setState('denied');
                     setStatus('');
                 } else {
@@ -151,11 +163,20 @@ export default function PushNotificationToggle({
             />
             {subscribed && onMuteChange !== undefined && (
                 <div className="-mt-1 pl-11">
-                    <PushAction state={state} busy={busy} onSubscribe={runSubscribe} onUnsubscribe={runUnsubscribe} />
+                    <PushAction
+                        state={state}
+                        busy={busy}
+                        onSubscribe={runSubscribe}
+                        onUnsubscribe={runUnsubscribe}
+                    />
                 </div>
             )}
             {status !== '' && (
-                <p role="status" aria-live="polite" className="px-2 pb-1 text-[12px] text-ink-3">
+                <p
+                    role="status"
+                    aria-live="polite"
+                    className="px-2 pb-1 text-[12px] text-ink-3"
+                >
                     {status}
                 </p>
             )}
@@ -196,22 +217,49 @@ function PushAction({
     switch (state) {
         case 'stale':
             return (
-                <PillButton tone="horizon" disabled={busy} onClick={onSubscribe}>
-                    <Icon icon="mdi:bell-cog-outline" width={14} height={14} aria-hidden />
+                <PillButton
+                    tone="horizon"
+                    disabled={busy}
+                    onClick={onSubscribe}
+                >
+                    <Icon
+                        icon="mdi:bell-cog-outline"
+                        width={14}
+                        height={14}
+                        aria-hidden
+                    />
                     Perbaiki
                 </PillButton>
             );
         case 'subscribed':
             return (
-                <PillButton tone="outline" disabled={busy} onClick={onUnsubscribe}>
-                    <Icon icon="mdi:bell-off-outline" width={14} height={14} aria-hidden />
+                <PillButton
+                    tone="outline"
+                    disabled={busy}
+                    onClick={onUnsubscribe}
+                >
+                    <Icon
+                        icon="mdi:bell-off-outline"
+                        width={14}
+                        height={14}
+                        aria-hidden
+                    />
                     Matikan
                 </PillButton>
             );
         case 'ready':
             return (
-                <PillButton tone="horizon" disabled={busy} onClick={onSubscribe}>
-                    <Icon icon="mdi:bell-ring-outline" width={14} height={14} aria-hidden />
+                <PillButton
+                    tone="horizon"
+                    disabled={busy}
+                    onClick={onSubscribe}
+                >
+                    <Icon
+                        icon="mdi:bell-ring-outline"
+                        width={14}
+                        height={14}
+                        aria-hidden
+                    />
                     Nyalakan
                 </PillButton>
             );

@@ -1,7 +1,7 @@
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { formatShortDateTimeId, formatPace } from '@/lib/pace';
 import { cn } from '@/lib/cn';
+import { formatShortDateTimeId, formatPace } from '@/lib/pace';
 
 interface ActivitySummary {
     date: string | null;
@@ -32,10 +32,19 @@ interface JourneyStripProps {
  * Hides when the user only has one activity since the comparison is
  * meaningless.
  */
-export default function JourneyStrip({ match, className }: Readonly<JourneyStripProps>) {
+export default function JourneyStrip({
+    match,
+    className,
+}: Readonly<JourneyStripProps>) {
     if (match === null) return null;
 
-    const { first, current, pace_improvement_sec, hr_improvement_bpm, total_km } = match;
+    const {
+        first,
+        current,
+        pace_improvement_sec,
+        hr_improvement_bpm,
+        total_km,
+    } = match;
 
     return (
         <Card as="section" padding="lg" className={className}>
@@ -43,11 +52,18 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                 Kamu vs Lari Pertama Kamu
             </Eyebrow>
             <p className="mt-2 font-sans text-sm leading-relaxed text-ink">
-                Total <span className="font-semibold text-horizon-deep">{total_km.toFixed(1)} km</span> kekumpul sejak lari pertama
+                Total{' '}
+                <span className="font-semibold text-horizon-deep">
+                    {total_km.toFixed(1)} km
+                </span>{' '}
+                kekumpul sejak lari pertama
                 {first.date && (
                     <>
                         {' '}
-                        di <span className="font-semibold">{formatShortDateTimeId(first.date)}</span>
+                        di{' '}
+                        <span className="font-semibold">
+                            {formatShortDateTimeId(first.date)}
+                        </span>
                     </>
                 )}
                 .
@@ -57,15 +73,22 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                     <span
                         className={cn(
                             'tabular-nums',
-                            pace_improvement_sec === 0 ? 'text-ink-2' : pace_improvement_sec > 0 ? 'text-leaf-deep' : 'text-ember-deep',
+                            pace_improvement_sec === 0
+                                ? 'text-ink-2'
+                                : pace_improvement_sec > 0
+                                  ? 'text-leaf-deep'
+                                  : 'text-ember-deep',
                         )}
                     >
                         {pace_improvement_sec === 0 ? (
                             'Pace sama dengan lari pertama'
                         ) : (
                             <>
-                                {Math.abs(Math.round(pace_improvement_sec))} detik/km{' '}
-                                {pace_improvement_sec > 0 ? 'lebih cepat' : 'lebih lambat'}
+                                {Math.abs(Math.round(pace_improvement_sec))}{' '}
+                                detik/km{' '}
+                                {pace_improvement_sec > 0
+                                    ? 'lebih cepat'
+                                    : 'lebih lambat'}
                             </>
                         )}
                     </span>
@@ -74,7 +97,11 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                     <span
                         className={cn(
                             'tabular-nums',
-                            hr_improvement_bpm === 0 ? 'text-ink-2' : hr_improvement_bpm > 0 ? 'text-leaf-deep' : 'text-ember-deep',
+                            hr_improvement_bpm === 0
+                                ? 'text-ink-2'
+                                : hr_improvement_bpm > 0
+                                  ? 'text-leaf-deep'
+                                  : 'text-ember-deep',
                         )}
                     >
                         {hr_improvement_bpm === 0 ? (
@@ -82,7 +109,9 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
                         ) : (
                             <>
                                 {Math.abs(Math.round(hr_improvement_bpm))} bpm{' '}
-                                {hr_improvement_bpm > 0 ? 'lebih rendah' : 'lebih tinggi'}
+                                {hr_improvement_bpm > 0
+                                    ? 'lebih rendah'
+                                    : 'lebih tinggi'}
                             </>
                         )}
                     </span>
@@ -94,13 +123,27 @@ export default function JourneyStrip({ match, className }: Readonly<JourneyStrip
     );
 }
 
-function PaceLine({ label, summary, className }: Readonly<{ label: string; summary: ActivitySummary; className?: string }>) {
-    const paceLabel = summary.pace_sec_per_km !== null ? formatPace(summary.pace_sec_per_km) : null;
+function PaceLine({
+    label,
+    summary,
+    className,
+}: Readonly<{ label: string; summary: ActivitySummary; className?: string }>) {
+    const paceLabel =
+        summary.pace_sec_per_km !== null
+            ? formatPace(summary.pace_sec_per_km)
+            : null;
     return (
-        <p className={cn('mt-3 text-[12px] leading-relaxed text-ink-2', className)}>
+        <p
+            className={cn(
+                'mt-3 text-[12px] leading-relaxed text-ink-2',
+                className,
+            )}
+        >
             <span className="font-semibold text-ink">{label}:</span>{' '}
             {summary.name ?? 'Lari'}{' '}
-            {summary.distance_km !== null && <>· {summary.distance_km.toFixed(2)} km </>}
+            {summary.distance_km !== null && (
+                <>· {summary.distance_km.toFixed(2)} km </>
+            )}
             {paceLabel && <>· pace {paceLabel}/km</>}
         </p>
     );

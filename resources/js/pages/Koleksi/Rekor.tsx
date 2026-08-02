@@ -1,25 +1,32 @@
-import { type ReactNode } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { aktivitasUrl } from '@/lib/routes';
-import { appLayout } from '@/layouts/appLayout';
-import Chip from '@/components/ui/Chip';
-import CollectionHeader from '@/components/koleksi/CollectionHeader';
-import Eyebrow from '@/components/ui/Eyebrow';
-import EmptyPanel from '@/components/ui/EmptyPanel';
-import HeroPanel from '@/components/ui/HeroPanel';
-import MilestoneStrip from '@/components/koleksi/MilestoneStrip';
+import { type ReactNode } from 'react';
+
+import type {
+    AnalysisPayload,
+    PersonalRecord,
+    SharedProps,
+    StravaSyncState,
+} from '@/types/inertia';
+
 import PrCard from '@/components/card/PrCard';
-import SectionLabel from '@/components/ui/SectionLabel';
+import CollectionHeader from '@/components/koleksi/CollectionHeader';
+import MilestoneStrip from '@/components/koleksi/MilestoneStrip';
 import SplitsSparkline from '@/components/run/SplitsSparkline';
-import Temari from '@/components/temari/Temari';
-import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import StravaSyncButton from '@/components/StravaSyncButton';
-import PageContainer from '@/components/ui/PageContainer';
-import { formatNaiveIdDate } from '@/lib/pace';
-import { renderBold, stripEdgeQuotes } from '@/lib/richText';
-import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
+import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import Temari from '@/components/temari/Temari';
+import Chip from '@/components/ui/Chip';
+import EmptyPanel from '@/components/ui/EmptyPanel';
+import Eyebrow from '@/components/ui/Eyebrow';
 import GradientText from '@/components/ui/GradientText';
-import type { AnalysisPayload, PersonalRecord, SharedProps, StravaSyncState } from '@/types/inertia';
+import HeroPanel from '@/components/ui/HeroPanel';
+import PageContainer from '@/components/ui/PageContainer';
+import SectionLabel from '@/components/ui/SectionLabel';
+import { appLayout } from '@/layouts/appLayout';
+import { formatNaiveIdDate } from '@/lib/pace';
+import { PR_CATEGORY_LABELS, formatPrValue } from '@/lib/pr';
+import { renderBold, stripEdgeQuotes } from '@/lib/richText';
+import { aktivitasUrl } from '@/lib/routes';
 
 interface ExtendedPR extends Omit<PersonalRecord, 'activity'> {
     value_sec: number;
@@ -44,7 +51,14 @@ interface RekorProps {
     featuredExtras?: FeaturedExtras | null;
 }
 
-const DISTANCE_CATEGORIES = ['1km', '5km', '10km', '15km', 'half_marathon', 'marathon'] as const;
+const DISTANCE_CATEGORIES = [
+    '1km',
+    '5km',
+    '10km',
+    '15km',
+    'half_marathon',
+    'marathon',
+] as const;
 
 const DISTANCE_ORDER: Record<(typeof DISTANCE_CATEGORIES)[number], number> = {
     '1km': 1,
@@ -68,11 +82,31 @@ export default function KoleksiRekor({
     featuredExtras = null,
 }: Readonly<RekorProps>) {
     const distancePRs = personalRecords
-        .filter((p) => DISTANCE_CATEGORIES.includes(p.category as (typeof DISTANCE_CATEGORIES)[number]))
-        .sort((a, b) => DISTANCE_ORDER[b.category as (typeof DISTANCE_CATEGORIES)[number]] - DISTANCE_ORDER[a.category as (typeof DISTANCE_CATEGORIES)[number]]);
+        .filter((p) =>
+            DISTANCE_CATEGORIES.includes(
+                p.category as (typeof DISTANCE_CATEGORIES)[number],
+            ),
+        )
+        .sort(
+            (a, b) =>
+                DISTANCE_ORDER[
+                    b.category as (typeof DISTANCE_CATEGORIES)[number]
+                ] -
+                DISTANCE_ORDER[
+                    a.category as (typeof DISTANCE_CATEGORIES)[number]
+                ],
+        );
     const pacePRs = personalRecords
-        .filter((p) => !DISTANCE_CATEGORIES.includes(p.category as (typeof DISTANCE_CATEGORIES)[number]))
-        .sort((a, b) => (PACE_ORDER[a.category] ?? 0) - (PACE_ORDER[b.category] ?? 0));
+        .filter(
+            (p) =>
+                !DISTANCE_CATEGORIES.includes(
+                    p.category as (typeof DISTANCE_CATEGORIES)[number],
+                ),
+        )
+        .sort(
+            (a, b) =>
+                (PACE_ORDER[a.category] ?? 0) - (PACE_ORDER[b.category] ?? 0),
+        );
     const featured = distancePRs[0] ?? personalRecords[0] ?? null;
 
     const eyebrow = `Koleksi · ${personalRecords.length} rekor · ${distancePRs.length} jarak · ${pacePRs.length} pace`;
@@ -98,7 +132,6 @@ export default function KoleksiRekor({
                 {distancePRs.length > 0 && <TrophyWall records={distancePRs} />}
 
                 {pacePRs.length > 0 && <PaceTicker records={pacePRs} />}
-
             </PageContainer>
         </>
     );
@@ -144,39 +177,47 @@ function HeroScoreboard({
                     <div className="flex justify-center">
                         <Temari pose="glow" size={160} />
                     </div>
-                    {pr.context_analysis && pr.context_analysis.status !== 'pending' && (
-                        <div className="rounded-2xl border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">
-                            <AnalysisStatus
-                                analysis={pr.context_analysis}
-                                inertiaReloadProps={['personalRecords']}
-                                allowReanalyze={false}
-                                showTimestamp={false}
-                                renderContent={(text) => (
-                                    <p className="font-display text-quote-lg italic text-cream">
-                                        “{renderBold(stripEdgeQuotes(text))}”
-                                    </p>
-                                )}
-                            />
-                        </div>
-                    )}
+                    {pr.context_analysis &&
+                        pr.context_analysis.status !== 'pending' && (
+                            <div className="rounded-2xl border border-cream/[0.12] bg-cream/[0.06] px-5 py-4 backdrop-blur">
+                                <AnalysisStatus
+                                    analysis={pr.context_analysis}
+                                    inertiaReloadProps={['personalRecords']}
+                                    allowReanalyze={false}
+                                    showTimestamp={false}
+                                    renderContent={(text) => (
+                                        <p className="font-display text-quote-lg italic text-cream">
+                                            “{renderBold(stripEdgeQuotes(text))}
+                                            ”
+                                        </p>
+                                    )}
+                                />
+                            </div>
+                        )}
                 </div>
             </div>
             <div className="relative mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <Caption label="Tipe" value={runName} />
-                <Caption label="Hari" value={formatNaiveIdDate(pr.set_at, 'long')} />
+                <Caption
+                    label="Hari"
+                    value={formatNaiveIdDate(pr.set_at, 'long')}
+                />
                 <Caption
                     label="Tempat"
                     value={
-                        location ?? (
-                            pr.activity_id ? (
-                                <Link
-                                    href={aktivitasUrl({ activity_id: pr.activity_id })}
-                                    className="focus-ring-on-sky rounded text-cream underline-offset-2 hover:underline"
-                                >
-                                    Lihat detail lari
-                                </Link>
-                            ) : '—'
-                        )
+                        location ??
+                        (pr.activity_id ? (
+                            <Link
+                                href={aktivitasUrl({
+                                    activity_id: pr.activity_id,
+                                })}
+                                className="focus-ring-on-sky rounded text-cream underline-offset-2 hover:underline"
+                            >
+                                Lihat detail lari
+                            </Link>
+                        ) : (
+                            '—'
+                        ))
                     }
                 />
                 {tempo != null && (
@@ -186,7 +227,11 @@ function HeroScoreboard({
                     />
                 )}
             </div>
-            <SplitsSparkline paceSec={splits} partialPaceSec={partialPace} className="relative mt-5" />
+            <SplitsSparkline
+                paceSec={splits}
+                partialPaceSec={partialPace}
+                className="relative mt-5"
+            />
             {targetSec != null && deltaSec != null && deltaSec > 0 && (
                 <MilestoneStrip
                     targetSec={targetSec}
@@ -199,13 +244,18 @@ function HeroScoreboard({
     );
 }
 
-function Caption({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
+function Caption({
+    label,
+    value,
+}: Readonly<{ label: string; value: ReactNode }>) {
     return (
         <div>
             <Eyebrow token="micro" tone="ink-on-sky" className="mb-1.5">
                 {label}
             </Eyebrow>
-            <div className="font-sans text-sm font-medium leading-tight text-cream">{value}</div>
+            <div className="font-sans text-sm font-medium leading-tight text-cream">
+                {value}
+            </div>
         </div>
     );
 }
@@ -216,7 +266,8 @@ function TrophyWall({ records }: Readonly<{ records: ExtendedPR[] }>) {
             <header className="mb-4 flex items-baseline justify-between">
                 <div className="flex items-baseline gap-3">
                     <h2 className="font-display text-headline-md text-ink">
-                        Trophy wall · <em className="italic text-horizon-deep">jarak</em>
+                        Trophy wall ·{' '}
+                        <em className="italic text-horizon-deep">jarak</em>
                     </h2>
                     <Chip tone="horizon">{records.length} PR</Chip>
                 </div>
@@ -243,7 +294,11 @@ function Medallion({ pr }: Readonly<{ pr: ExtendedPR }>) {
     );
 }
 
-const PACE_FILLER_KEYS = ['pace-filler-a', 'pace-filler-b', 'pace-filler-c'] as const;
+const PACE_FILLER_KEYS = [
+    'pace-filler-a',
+    'pace-filler-b',
+    'pace-filler-c',
+] as const;
 
 function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
     return (
@@ -251,7 +306,10 @@ function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
             <header className="mb-4 flex items-baseline justify-between">
                 <div className="flex items-baseline gap-3">
                     <h2 className="font-display text-headline-md text-ink">
-                        Pace ticker · <em className="italic text-rarity-rare">best efforts</em>
+                        Pace ticker ·{' '}
+                        <em className="italic text-rarity-rare">
+                            best efforts
+                        </em>
                     </h2>
                     <Chip>{records.length} PR</Chip>
                 </div>
@@ -269,8 +327,15 @@ function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
                     {records.map((r) => (
                         <PaceCell key={r.id} pr={r} />
                     ))}
-                    {PACE_FILLER_KEYS.slice(0, (4 - (records.length % 4)) % 4).map((k) => (
-                        <div key={k} aria-hidden className="rounded-xl bg-sky/10" />
+                    {PACE_FILLER_KEYS.slice(
+                        0,
+                        (4 - (records.length % 4)) % 4,
+                    ).map((k) => (
+                        <div
+                            key={k}
+                            aria-hidden
+                            className="rounded-xl bg-sky/10"
+                        />
                     ))}
                 </div>
             </div>
@@ -312,7 +377,11 @@ function EmptyState() {
         <EmptyPanel
             title="Belum ada PR."
             body="Sync Strava kamu, Temari otomatis nyatet rekor yang kepecahin."
-            action={state !== 'syncing' && <StravaSyncButton state={state} className="mt-4" />}
+            action={
+                state !== 'syncing' && (
+                    <StravaSyncButton state={state} className="mt-4" />
+                )
+            }
             className="mt-8"
         />
     );

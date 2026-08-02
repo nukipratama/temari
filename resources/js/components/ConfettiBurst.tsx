@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
+
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 interface Particle {
@@ -14,7 +15,14 @@ interface Particle {
 
 // Daybreak palette spread (leaf, ember, citrus, horizon, citrus-deep, mumet).
 // Mirrors app.css @theme; Chart/SVG-style particle fills can't read CSS vars.
-const COLORS = ['#6B8E6F', '#C4623F', '#D9B23A', '#E8A076', '#B8941E', '#7B5BB6'];
+const COLORS = [
+    '#6B8E6F',
+    '#C4623F',
+    '#D9B23A',
+    '#E8A076',
+    '#B8941E',
+    '#7B5BB6',
+];
 
 interface ConfettiBurstProps {
     /** Each unique key triggers a new burst. */
@@ -29,10 +37,14 @@ interface ConfettiBurstProps {
  * Viewport-wide confetti burst. Mounts when `burstKey` changes from null;
  * auto-unmounts after `durationMs`. Reduced-motion users get a silent no-op.
  */
-export default function ConfettiBurst({ burstKey, count = 30, durationMs = 2500 }: Readonly<ConfettiBurstProps>) {
+export default function ConfettiBurst({
+    burstKey,
+    count = 30,
+    durationMs = 2500,
+}: Readonly<ConfettiBurstProps>) {
     const reduced = useReducedMotion();
-    const [activeKey, setActiveKey] = useState<string | number | null>(
-        () => (burstKey !== null && !reduced ? burstKey : null),
+    const [activeKey, setActiveKey] = useState<string | number | null>(() =>
+        burstKey !== null && !reduced ? burstKey : null,
     );
     const [lastKey, setLastKey] = useState(burstKey);
 
@@ -80,9 +92,22 @@ export default function ConfettiBurst({ burstKey, count = 30, durationMs = 2500 
             {particles.map((p) => (
                 <motion.span
                     key={p.id}
-                    initial={{ x: `${p.x}vw`, y: `${p.y}vh`, rotate: p.rotate, opacity: 1 }}
-                    animate={{ y: '110vh', rotate: p.rotate + 360, opacity: [1, 1, 0] }}
-                    transition={{ duration: p.duration, delay: p.delay, ease: 'easeIn' }}
+                    initial={{
+                        x: `${p.x}vw`,
+                        y: `${p.y}vh`,
+                        rotate: p.rotate,
+                        opacity: 1,
+                    }}
+                    animate={{
+                        y: '110vh',
+                        rotate: p.rotate + 360,
+                        opacity: [1, 1, 0],
+                    }}
+                    transition={{
+                        duration: p.duration,
+                        delay: p.delay,
+                        ease: 'easeIn',
+                    }}
                     style={{
                         position: 'absolute',
                         background: p.color,

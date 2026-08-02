@@ -1,16 +1,18 @@
-import { Head } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { appLayout } from '@/layouts/appLayout';
+import { Head } from '@inertiajs/react';
+
+import type { Rarity } from '@/types/inertia';
+
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
+import PageContainer from '@/components/ui/PageContainer';
 import ProgressBar from '@/components/ui/ProgressBar';
 import SectionLabel from '@/components/ui/SectionLabel';
-import PageContainer from '@/components/ui/PageContainer';
+import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { formatGoalNumber, goalProgressRatio } from '@/lib/goalProgress';
 import { RARITY_TEXT } from '@/lib/runcard';
-import type { Rarity } from '@/types/inertia';
 
 interface Goal {
     id: string;
@@ -39,7 +41,14 @@ const SLOT_LABEL: Record<string, string> = {
     aura: 'Aura',
 };
 
-const SLOT_ORDER = ['medal', 'ikat_kepala', 'kaus', 'celana', 'sepatu', 'aura'] as const;
+const SLOT_ORDER = [
+    'medal',
+    'ikat_kepala',
+    'kaus',
+    'celana',
+    'sepatu',
+    'aura',
+] as const;
 
 const SLOT_ICONS: Record<string, string> = {
     medal: 'mdi:medal',
@@ -50,7 +59,11 @@ const SLOT_ICONS: Record<string, string> = {
     aura: 'mdi:blur',
 };
 
-export default function Target({ goals, completedCount, totalCount }: Readonly<TargetProps>) {
+export default function Target({
+    goals,
+    completedCount,
+    totalCount,
+}: Readonly<TargetProps>) {
     const eyebrow = `Koleksi · ${completedCount} / ${totalCount} target tercapai`;
 
     const goalsBySlot: Record<string, Goal[]> = Object.fromEntries(
@@ -79,7 +92,12 @@ export default function Target({ goals, completedCount, totalCount }: Readonly<T
                         <section key={slot} className="mt-8">
                             <SectionLabel>
                                 <span className="inline-flex items-center gap-2">
-                                    <Icon icon={SLOT_ICONS[slot]} width={14} height={14} aria-hidden />
+                                    <Icon
+                                        icon={SLOT_ICONS[slot]}
+                                        width={14}
+                                        height={14}
+                                        aria-hidden
+                                    />
                                     {SLOT_LABEL[slot]}
                                 </span>
                             </SectionLabel>

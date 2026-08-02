@@ -1,9 +1,11 @@
-import { router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { router } from '@inertiajs/react';
 import { useState } from 'react';
-import { cn } from '@/lib/cn';
-import StravaAction from '@/components/StravaAction';
+
 import type { StravaSyncState } from '@/types/inertia';
+
+import StravaAction from '@/components/StravaAction';
+import { cn } from '@/lib/cn';
 
 interface StravaSyncButtonProps {
     state: StravaSyncState;
@@ -20,7 +22,10 @@ interface StravaSyncButtonProps {
  * The "Sync now" branch is wrapped in {@link StravaAction}; the connect link is
  * not, since OAuth still completes while the kill-switch is off.
  */
-export default function StravaSyncButton({ state, className }: Readonly<StravaSyncButtonProps>) {
+export default function StravaSyncButton({
+    state,
+    className,
+}: Readonly<StravaSyncButtonProps>) {
     const [pending, setPending] = useState(false);
 
     if (state === 'disconnected' || state === 'revoked') {

@@ -1,13 +1,18 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import FlashNotice from './FlashNotice';
+
 import { setMockPage } from '@/test/setup';
+
+import FlashNotice from './FlashNotice';
 
 const base = { auth: { user: null }, demoLoginEnabled: false } as const;
 
 describe('FlashNotice', () => {
     it('renders nothing when no flash is set', () => {
-        setMockPage({ ...base, flash: { success: null, error: null, info: null } });
+        setMockPage({
+            ...base,
+            flash: { success: null, error: null, info: null },
+        });
         const { container } = render(<FlashNotice />);
         expect(container.firstChild).toBeNull();
     });
@@ -19,25 +24,42 @@ describe('FlashNotice', () => {
     });
 
     it('surfaces an info flash politely', () => {
-        setMockPage({ ...base, flash: { info: 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.' } });
+        setMockPage({
+            ...base,
+            flash: {
+                info: 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.',
+            },
+        });
         render(<FlashNotice />);
-        expect(screen.getByRole('status')).toHaveTextContent('Tarikan dari Strava lagi dijeda sebentar');
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Tarikan dari Strava lagi dijeda sebentar',
+        );
     });
 
     it('surfaces a success flash politely', () => {
-        setMockPage({ ...base, flash: { success: 'Zona HR kamu udah kesimpen.' } });
+        setMockPage({
+            ...base,
+            flash: { success: 'Zona HR kamu udah kesimpen.' },
+        });
         render(<FlashNotice />);
-        expect(screen.getByRole('status')).toHaveTextContent('Zona HR kamu udah kesimpen.');
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Zona HR kamu udah kesimpen.',
+        );
     });
 
     it('surfaces an error flash assertively', () => {
         setMockPage({ ...base, flash: { error: 'Gagal narik dari Strava.' } });
         render(<FlashNotice />);
-        expect(screen.getByRole('alert')).toHaveTextContent('Gagal narik dari Strava.');
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Gagal narik dari Strava.',
+        );
     });
 
     it('shows one banner only, error first, when several flashes are set at once', () => {
-        setMockPage({ ...base, flash: { error: 'Gagal.', info: 'Dijeda.', success: 'Kesimpen.' } });
+        setMockPage({
+            ...base,
+            flash: { error: 'Gagal.', info: 'Dijeda.', success: 'Kesimpen.' },
+        });
         render(<FlashNotice />);
         expect(screen.getAllByRole('alert')).toHaveLength(1);
         expect(screen.queryByText('Dijeda.')).not.toBeInTheDocument();
@@ -51,35 +73,55 @@ describe('FlashNotice', () => {
     });
 
     it('dismisses when the close button is clicked', () => {
-        setMockPage({ ...base, flash: { info: 'Nyalakan notifikasi dulu ya.' } });
+        setMockPage({
+            ...base,
+            flash: { info: 'Nyalakan notifikasi dulu ya.' },
+        });
         render(<FlashNotice />);
         fireEvent.click(screen.getByLabelText('Tutup'));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
     it('stays dismissed when a partial reload replays the same flash', () => {
-        setMockPage({ ...base, flash: { info: 'Barusan udah dikirim. Tunggu sebentar ya.' } });
+        setMockPage({
+            ...base,
+            flash: { info: 'Barusan udah dikirim. Tunggu sebentar ya.' },
+        });
         const { rerender } = render(<FlashNotice />);
         fireEvent.click(screen.getByLabelText('Tutup'));
 
-        setMockPage({ ...base, flash: { info: 'Barusan udah dikirim. Tunggu sebentar ya.' } });
+        setMockPage({
+            ...base,
+            flash: { info: 'Barusan udah dikirim. Tunggu sebentar ya.' },
+        });
         rerender(<FlashNotice />);
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
     it('re-shows for a fresh flash after a prior dismissal', () => {
-        setMockPage({ ...base, flash: { info: 'Nyalakan notifikasi dulu ya.' } });
+        setMockPage({
+            ...base,
+            flash: { info: 'Nyalakan notifikasi dulu ya.' },
+        });
         const { rerender } = render(<FlashNotice />);
         fireEvent.click(screen.getByLabelText('Tutup'));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
-        setMockPage({ ...base, flash: { success: 'Aku kirim notifikasi tes ya.' } });
+        setMockPage({
+            ...base,
+            flash: { success: 'Aku kirim notifikasi tes ya.' },
+        });
         rerender(<FlashNotice />);
-        expect(screen.getByRole('status')).toHaveTextContent('Aku kirim notifikasi tes ya.');
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Aku kirim notifikasi tes ya.',
+        );
     });
 
     it('clears itself when the next navigation carries no flash', () => {
-        setMockPage({ ...base, flash: { success: 'Zona kamu udah disinkron ulang dari Strava.' } });
+        setMockPage({
+            ...base,
+            flash: { success: 'Zona kamu udah disinkron ulang dari Strava.' },
+        });
         const { rerender, container } = render(<FlashNotice />);
         expect(screen.getByRole('status')).toBeInTheDocument();
 

@@ -1,11 +1,15 @@
+import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Icon } from '@iconify/react';
+
 import type { SharedProps } from '@/types/inertia';
 
 type FlashTone = 'error' | 'info' | 'success';
 
-const TONES: Record<FlashTone, { icon: string; role: 'alert' | 'status'; frame: string; glyph: string }> = {
+const TONES: Record<
+    FlashTone,
+    { icon: string; role: 'alert' | 'status'; frame: string; glyph: string }
+> = {
     error: {
         icon: 'mdi:alert-circle-outline',
         role: 'alert',
@@ -37,7 +41,10 @@ const ORDER: readonly FlashTone[] = ['error', 'info', 'success'];
  */
 export default function FlashNotice() {
     const { flash } = usePage<SharedProps>().props;
-    const tone = ORDER.find((key) => typeof flash?.[key] === 'string' && flash[key] !== '') ?? null;
+    const tone =
+        ORDER.find(
+            (key) => typeof flash?.[key] === 'string' && flash[key] !== '',
+        ) ?? null;
     const message = tone === null ? null : (flash?.[tone] ?? null);
     const [dismissed, setDismissed] = useState(false);
     const [lastMessage, setLastMessage] = useState(message);
@@ -61,8 +68,16 @@ export default function FlashNotice() {
                 role={style.role}
                 className={`mx-auto flex max-w-page-2xl items-start gap-3 rounded-2xl border px-4 py-3 ${style.frame}`}
             >
-                <Icon icon={style.icon} width={20} height={20} className={`mt-0.5 shrink-0 ${style.glyph}`} aria-hidden />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-ink">{message}</p>
+                <Icon
+                    icon={style.icon}
+                    width={20}
+                    height={20}
+                    className={`mt-0.5 shrink-0 ${style.glyph}`}
+                    aria-hidden
+                />
+                <p className="flex-1 font-sans text-sm leading-relaxed text-ink">
+                    {message}
+                </p>
                 <button
                     type="button"
                     onClick={() => setDismissed(true)}

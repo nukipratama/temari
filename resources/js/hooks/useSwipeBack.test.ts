@@ -1,7 +1,9 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useSwipeBack } from './useSwipeBack';
+
 import { isStandalone } from '@/lib/webPush';
+
+import { useSwipeBack } from './useSwipeBack';
 
 vi.mock('@/lib/webPush', () => ({ isStandalone: vi.fn() }));
 
@@ -9,7 +11,13 @@ vi.mock('@/lib/webPush', () => ({ isStandalone: vi.fn() }));
  * jsdom ships no Touch/TouchEvent constructors, so the listeners are fed
  * minimal shaped events instead.
  */
-function touch(type: string, x: number, y: number, target: Element = document.body, timeStamp = 0) {
+function touch(
+    type: string,
+    x: number,
+    y: number,
+    target: Element = document.body,
+    timeStamp = 0,
+) {
     const event = new Event(type, { bubbles: true });
     const list = [{ clientX: x, clientY: y }];
     Object.defineProperties(event, {
@@ -40,7 +48,10 @@ describe('useSwipeBack', () => {
         }));
         back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
         vi.spyOn(window.history, 'length', 'get').mockReturnValue(4);
-        Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+        Object.defineProperty(window, 'innerWidth', {
+            value: 390,
+            configurable: true,
+        });
 
         const main = document.createElement('div');
         main.id = 'main-content';
@@ -91,7 +102,9 @@ describe('useSwipeBack', () => {
             scrollWidth: { value: 900 },
             clientWidth: { value: 300 },
         });
-        vi.spyOn(window, 'getComputedStyle').mockReturnValue({ overflowX: 'auto' } as CSSStyleDeclaration);
+        vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+            overflowX: 'auto',
+        } as CSSStyleDeclaration);
         document.body.append(strip);
 
         renderHook(() => useSwipeBack());
@@ -103,7 +116,7 @@ describe('useSwipeBack', () => {
         strip.remove();
     });
 
-    it('stays disarmed in a browser tab rather than fighting Safari\'s own edge swipe', () => {
+    it("stays disarmed in a browser tab rather than fighting Safari's own edge swipe", () => {
         vi.mocked(isStandalone).mockReturnValue(false);
         renderHook(() => useSwipeBack());
         swipe(8, 300, { elapsed: 2000 });

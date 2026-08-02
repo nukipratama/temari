@@ -1,9 +1,22 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
-import RunsShow from './Show';
+import {
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+
+import type {
+    ActivityDetail,
+    AnalysisPayload,
+    StoryLine,
+} from '@/types/inertia';
+
 import { setMockPage } from '@/test/setup';
-import type { ActivityDetail, AnalysisPayload, StoryLine } from '@/types/inertia';
+
+import RunsShow from './Show';
 
 // RouteMap is lazy()-loaded and wraps real leaflet/react-leaflet/@mapbox/polyline
 // (see its own dedicated test file for those stubs). Stub it here too so the
@@ -78,7 +91,9 @@ const storyLine: StoryLine = {
     for_date: null,
 };
 
-function speechAnalysis(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
+function speechAnalysis(
+    overrides: Partial<AnalysisPayload> = {},
+): AnalysisPayload {
     return {
         id: 1,
         status: 'done',
@@ -91,7 +106,10 @@ function speechAnalysis(overrides: Partial<AnalysisPayload> = {}): AnalysisPaylo
     };
 }
 
-function insight(type: AnalysisPayload['type'], status: AnalysisPayload['status'] = 'pending'): AnalysisPayload {
+function insight(
+    type: AnalysisPayload['type'],
+    status: AnalysisPayload['status'] = 'pending',
+): AnalysisPayload {
     return {
         id: null,
         status,
@@ -111,7 +129,10 @@ const insightDefaults = {
 
 function renderShow(
     overrides: Partial<Parameters<typeof RunsShow>[0]> = {},
-    { telegramConnected = false, stravaPaused = false }: { telegramConnected?: boolean; stravaPaused?: boolean } = {},
+    {
+        telegramConnected = false,
+        stravaPaused = false,
+    }: { telegramConnected?: boolean; stravaPaused?: boolean } = {},
 ) {
     // telegramConnected is now a shared Inertia prop, read via usePage.
     setMockPage({
@@ -151,18 +172,41 @@ describe('Runs/Show', () => {
     });
 
     it('shows the relative-effort sub-line under the TRIMP tile when banded', () => {
-        renderShow({ relativeEffort: { trimp: 98, baseline: 70, ratio: 1.4, band: 'well_above' } });
-        expect(screen.getByText('lebih berat dari biasanya')).toBeInTheDocument();
+        renderShow({
+            relativeEffort: {
+                trimp: 98,
+                baseline: 70,
+                ratio: 1.4,
+                band: 'well_above',
+            },
+        });
+        expect(
+            screen.getByText('lebih berat dari biasanya'),
+        ).toBeInTheDocument();
     });
 
     it('shows no relative-effort sub-line when the baseline is too thin (null band)', () => {
-        renderShow({ relativeEffort: { trimp: 98, baseline: null, ratio: null, band: null } });
+        renderShow({
+            relativeEffort: {
+                trimp: 98,
+                baseline: null,
+                ratio: null,
+                band: null,
+            },
+        });
         expect(screen.queryByText(/dari biasanya/)).not.toBeInTheDocument();
     });
 
     it('feeds the detail tiles from the stream summary', () => {
         renderShow({
-            detail: { ...detail, stream_summary: { ...detail.stream_summary, max_grade_pct: 11, gap_pace: '5:20' } },
+            detail: {
+                ...detail,
+                stream_summary: {
+                    ...detail.stream_summary,
+                    max_grade_pct: 11,
+                    gap_pace: '5:20',
+                },
+            },
         });
         expect(screen.getByText('TANJAKAN')).toBeInTheDocument();
         expect(screen.getByText('GAP')).toBeInTheDocument();
@@ -184,7 +228,10 @@ describe('Runs/Show', () => {
 
     it('renders the literal hero time even when serialized with a UTC Z', () => {
         renderShow({
-            detail: { ...detail, start_date_local: '2026-06-09T06:52:54.000000Z' },
+            detail: {
+                ...detail,
+                start_date_local: '2026-06-09T06:52:54.000000Z',
+            },
         });
         expect(screen.getByText('9 Jun 2026 · 06.52')).toBeInTheDocument();
     });
@@ -227,8 +274,12 @@ describe('Runs/Show', () => {
             await act(async () => {
                 fireEvent.click(screen.getByText('Buka ulang kartu'));
             });
-            expect(await screen.findByText(/Gagal buka ulang kartu/)).toBeInTheDocument();
-            expect(router.reload).not.toHaveBeenCalledWith({ only: ['pendingReveal'] });
+            expect(
+                await screen.findByText(/Gagal buka ulang kartu/),
+            ).toBeInTheDocument();
+            expect(router.reload).not.toHaveBeenCalledWith({
+                only: ['pendingReveal'],
+            });
         } finally {
             globalThis.fetch = original;
         }
@@ -244,8 +295,14 @@ describe('Runs/Show', () => {
             await act(async () => {
                 fireEvent.click(screen.getByText('Buka ulang kartu'));
             });
-            await waitFor(() => expect(router.reload).toHaveBeenCalledWith({ only: ['pendingReveal'] }));
-            expect(screen.queryByText(/Gagal buka ulang kartu/)).not.toBeInTheDocument();
+            await waitFor(() =>
+                expect(router.reload).toHaveBeenCalledWith({
+                    only: ['pendingReveal'],
+                }),
+            );
+            expect(
+                screen.queryByText(/Gagal buka ulang kartu/),
+            ).not.toBeInTheDocument();
         } finally {
             globalThis.fetch = original;
         }
@@ -265,7 +322,15 @@ describe('Runs/Show', () => {
 
     it('omits the splits section when the run has neither full kms nor a partial', () => {
         const noSplits = { ...detail, stream_summary: { decoupling_pct: 4.5 } };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noSplits }, detail: noSplits });
+        renderShow({
+            activity: {
+                id: 99,
+                user_id: 1,
+                analyzed_at: '2026-05-10',
+                detail: noSplits,
+            },
+            detail: noSplits,
+        });
         expect(screen.queryByText('Splits per km')).not.toBeInTheDocument();
     });
 
@@ -273,7 +338,9 @@ describe('Runs/Show', () => {
         renderShow({
             detail: {
                 ...detail,
-                stream_summary: { partial_split: { distance_m: 800, pace: '5:00' } },
+                stream_summary: {
+                    partial_split: { distance_m: 800, pace: '5:00' },
+                },
             },
         });
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
@@ -294,13 +361,29 @@ describe('Runs/Show', () => {
 
     it('falls back to "Lari" when detail.name is null', () => {
         const noName = { ...detail, name: null };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noName }, detail: noName });
+        renderShow({
+            activity: {
+                id: 99,
+                user_id: 1,
+                analyzed_at: '2026-05-10',
+                detail: noName,
+            },
+            detail: noName,
+        });
         expect(screen.getAllByText(/Lari/).length).toBeGreaterThan(0);
     });
 
     it('handles null distance/moving_time gracefully (dash in hero stats)', () => {
         const noDist = { ...detail, distance: null, moving_time: null };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: noDist }, detail: noDist });
+        renderShow({
+            activity: {
+                id: 99,
+                user_id: 1,
+                analyzed_at: '2026-05-10',
+                detail: noDist,
+            },
+            detail: noDist,
+        });
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
 
@@ -321,8 +404,18 @@ describe('Runs/Show', () => {
             trimp_edwards: null,
             weather_temp_c: null,
         };
-        renderShow({ activity: { id: 99, user_id: 1, analyzed_at: '2026-05-10', detail: bare }, detail: bare });
-        expect(screen.getByText(/Detail teknis-nya belum kebaca/)).toBeInTheDocument();
+        renderShow({
+            activity: {
+                id: 99,
+                user_id: 1,
+                analyzed_at: '2026-05-10',
+                detail: bare,
+            },
+            detail: bare,
+        });
+        expect(
+            screen.getByText(/Detail teknis-nya belum kebaca/),
+        ).toBeInTheDocument();
     });
 
     it('resyncs the activity from Strava when the Resync button is clicked', () => {
@@ -332,13 +425,19 @@ describe('Runs/Show', () => {
         expect(router.post).toHaveBeenCalledWith(
             '/aktivitas/99/resync',
             {},
-            expect.objectContaining({ preserveScroll: true, onStart: expect.any(Function), onFinish: expect.any(Function) }),
+            expect.objectContaining({
+                preserveScroll: true,
+                onStart: expect.any(Function),
+                onFinish: expect.any(Function),
+            }),
         );
     });
 
     it('hides the Resync button entirely while the Strava kill-switch is off', () => {
         renderShow({}, { stravaPaused: true });
-        expect(screen.queryByText('Resync dari Strava')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Resync dari Strava'),
+        ).not.toBeInTheDocument();
     });
 
     it('disables the Resync button and shows a pending label while the request is in flight', () => {
@@ -347,7 +446,9 @@ describe('Runs/Show', () => {
             options?.onStart?.({} as never);
         });
         renderShow();
-        const button = screen.getByText('Resync dari Strava').closest('button')!;
+        const button = screen
+            .getByText('Resync dari Strava')
+            .closest('button')!;
         fireEvent.click(button);
         expect(button).toBeDisabled();
         expect(button).toHaveTextContent('Lagi narik…');
@@ -367,7 +468,11 @@ describe('Runs/Show', () => {
         expect(router.post).toHaveBeenCalledWith(
             '/aktivitas/99/kirim',
             {},
-            expect.objectContaining({ preserveScroll: true, onStart: expect.any(Function), onFinish: expect.any(Function) }),
+            expect.objectContaining({
+                preserveScroll: true,
+                onStart: expect.any(Function),
+                onFinish: expect.any(Function),
+            }),
         );
     });
 

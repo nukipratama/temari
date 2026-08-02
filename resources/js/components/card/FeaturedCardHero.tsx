@@ -1,12 +1,19 @@
-import { type ReactNode } from 'react';
 import { Icon } from '@iconify/react';
+import { type ReactNode } from 'react';
+
+import type { Rarity } from '@/types/inertia';
+
+import { type KartuStats } from '@/components/card/Kartu';
+import RouteGlyph from '@/components/card/RouteGlyph';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PillLink from '@/components/ui/PillLink';
-import RouteGlyph from '@/components/card/RouteGlyph';
-import { type KartuStats } from '@/components/card/Kartu';
-import { RARITY_LABELS, RARITY_SYMBOL, badgeEmblem, badgeName } from '@/lib/runcard';
-import type { Rarity } from '@/types/inertia';
+import {
+    RARITY_LABELS,
+    RARITY_SYMBOL,
+    badgeEmblem,
+    badgeName,
+} from '@/lib/runcard';
 
 interface FeaturedCardHeroProps {
     /** Mono eyebrow above the name, e.g. "★ Kartu andalan dari Temari". */
@@ -69,7 +76,11 @@ export default function FeaturedCardHero({
                         aria-hidden
                         className="pointer-events-none absolute inset-y-6 left-[44%] right-[340px] hidden opacity-[0.16] lg:block"
                     >
-                        <RouteGlyph polyline={polyline} rarity={rarity} distanceKm={Number.parseFloat(km)} />
+                        <RouteGlyph
+                            polyline={polyline}
+                            rarity={rarity}
+                            distanceKm={Number.parseFloat(km)}
+                        />
                     </div>
                 )}
 
@@ -89,7 +100,11 @@ export default function FeaturedCardHero({
                         <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3">
                             {cells.map((cell) => (
                                 <div key={cell.label}>
-                                    <Eyebrow as="dt" token="micro" tone="ink-on-sky">
+                                    <Eyebrow
+                                        as="dt"
+                                        token="micro"
+                                        tone="ink-on-sky"
+                                    >
                                         {cell.label}
                                     </Eyebrow>
                                     <dd className="font-mono text-[15px] font-semibold tabular-nums text-cream">
@@ -118,7 +133,12 @@ export default function FeaturedCardHero({
                         <div className="mt-4 max-w-md text-sm">{voice}</div>
                     )}
                     <PillLink href={ctaHref} onSky className="mt-6">
-                        <Icon icon="mdi:run" width={16} height={16} aria-hidden />
+                        <Icon
+                            icon="mdi:run"
+                            width={16}
+                            height={16}
+                            aria-hidden
+                        />
                         {ctaLabel}
                     </PillLink>
                 </div>
@@ -140,7 +160,10 @@ export default function FeaturedCardHero({
 }
 
 /** Present-only PACE · HR · CADENCE · DURASI · BEST cells (mirrors Kartu's StatGrid). */
-function statCells(stats: KartuStats | undefined, durasi: string | undefined): Array<{ label: string; value: string }> {
+function statCells(
+    stats: KartuStats | undefined,
+    durasi: string | undefined,
+): Array<{ label: string; value: string }> {
     const raw: Array<{ label: string; value: string | undefined }> = [
         { label: 'PACE', value: stats?.pace },
         { label: 'HR', value: stats?.hr },
@@ -148,5 +171,8 @@ function statCells(stats: KartuStats | undefined, durasi: string | undefined): A
         { label: 'DURASI', value: durasi },
         { label: 'BEST', value: stats?.fastestKm },
     ];
-    return raw.filter((c): c is { label: string; value: string } => c.value != null && c.value !== '' && c.value !== '—');
+    return raw.filter(
+        (c): c is { label: string; value: string } =>
+            c.value != null && c.value !== '' && c.value !== '—',
+    );
 }

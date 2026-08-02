@@ -1,8 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { MOOD_FACE, MOOD_FILL, MOOD_FILTER_OPTIONS, MOOD_HINT, MOOD_LABEL, MOOD_ORDER, moodRing, moodSigilColor, moodToken } from './mood';
+
 import type { Mood } from '@/types/inertia';
 
-const ALL_MOODS: Mood[] = ['nyala', 'enteng', 'lemes', 'oleng', 'mumet', 'adem'];
+import {
+    MOOD_FACE,
+    MOOD_FILL,
+    MOOD_FILTER_OPTIONS,
+    MOOD_HINT,
+    MOOD_LABEL,
+    MOOD_ORDER,
+    moodRing,
+    moodSigilColor,
+    moodToken,
+} from './mood';
+
+const ALL_MOODS: Mood[] = [
+    'nyala',
+    'enteng',
+    'lemes',
+    'oleng',
+    'mumet',
+    'adem',
+];
 
 describe('mood', () => {
     it('exposes a face emoji for every mood', () => {
@@ -14,7 +33,9 @@ describe('mood', () => {
     describe('MOOD_ORDER', () => {
         it('lists every mood exactly once', () => {
             const byName = (a: Mood, b: Mood) => a.localeCompare(b);
-            expect([...MOOD_ORDER].sort(byName)).toEqual([...ALL_MOODS].sort(byName));
+            expect([...MOOD_ORDER].sort(byName)).toEqual(
+                [...ALL_MOODS].sort(byName),
+            );
         });
     });
 
@@ -28,7 +49,9 @@ describe('mood', () => {
 
     describe('MOOD_FILTER_OPTIONS', () => {
         it('follows MOOD_ORDER and carries the label, hint and swatch of each mood', () => {
-            expect(MOOD_FILTER_OPTIONS.map((o) => o.mood)).toEqual([...MOOD_ORDER]);
+            expect(MOOD_FILTER_OPTIONS.map((o) => o.mood)).toEqual([
+                ...MOOD_ORDER,
+            ]);
             MOOD_FILTER_OPTIONS.forEach((option) => {
                 expect(option.label).toBe(MOOD_LABEL[option.mood]);
                 expect(option.hint).toBe(MOOD_HINT[option.mood]);
@@ -38,9 +61,12 @@ describe('mood', () => {
     });
 
     describe('moodToken', () => {
-        it.each(ALL_MOODS.map((m) => [m, m] as [Mood, Mood]))('passes through %s', (mood, token) => {
-            expect(moodToken(mood)).toBe(token);
-        });
+        it.each(ALL_MOODS.map((m) => [m, m] as [Mood, Mood]))(
+            'passes through %s',
+            (mood, token) => {
+                expect(moodToken(mood)).toBe(token);
+            },
+        );
     });
 
     describe('moodSigilColor', () => {

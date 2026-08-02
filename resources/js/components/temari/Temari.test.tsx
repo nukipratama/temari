@@ -1,6 +1,8 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
 import { setMockPage } from '@/test/setup';
+
 import Temari from './Temari';
 
 // Capture the props TemariProto receives so we can assert what the wrapper
@@ -18,11 +20,15 @@ describe('Temari', () => {
         setMockPage({ equippedAccessories: null });
         render(<Temari pose="proud" size={100} />);
         expect(protoSpy).toHaveBeenCalledWith(
-            expect.objectContaining({ pose: 'proud', size: 100, equipped: null }),
+            expect.objectContaining({
+                pose: 'proud',
+                size: 100,
+                equipped: null,
+            }),
         );
     });
 
-    it("maps the server-side equipped payload to TemariEquipped variants", () => {
+    it('maps the server-side equipped payload to TemariEquipped variants', () => {
         setMockPage({
             equippedAccessories: {
                 ikat_kepala: 'accessory.ikat_kepala_legendaris',

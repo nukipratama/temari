@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import MobileBottomNav from './MobileBottomNav';
+
 import { setMockPage } from '@/test/setup';
+
+import MobileBottomNav from './MobileBottomNav';
 
 describe('MobileBottomNav', () => {
     it('renders all four primary tabs with their labels', () => {
@@ -17,13 +19,21 @@ describe('MobileBottomNav', () => {
         render(<MobileBottomNav />);
         const link = screen.getByText('Koleksi').closest('a')!;
         expect(link).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByText('Hari Ini').closest('a')).not.toHaveAttribute('aria-current');
+        expect(screen.getByText('Hari Ini').closest('a')).not.toHaveAttribute(
+            'aria-current',
+        );
     });
 
     it('links each tab to its target path', () => {
         render(<MobileBottomNav />);
-        expect(screen.getByText('Riwayat').closest('a')).toHaveAttribute('href', '/aktivitas');
-        expect(screen.getByText('Aku').closest('a')).toHaveAttribute('href', '/profil');
+        expect(screen.getByText('Riwayat').closest('a')).toHaveAttribute(
+            'href',
+            '/aktivitas',
+        );
+        expect(screen.getByText('Aku').closest('a')).toHaveAttribute(
+            'href',
+            '/profil',
+        );
     });
 
     // ink-on-sky is the design system's muted tone for dark sky panels; the
@@ -31,8 +41,12 @@ describe('MobileBottomNav', () => {
     it('tints inactive tabs with the readable on-sky muted tone', () => {
         setMockPage({}, '/kartu');
         render(<MobileBottomNav />);
-        expect(screen.getByText('Koleksi').closest('a')).toHaveClass('text-horizon');
-        expect(screen.getByText('Aku').closest('a')).toHaveClass('text-ink-on-sky');
+        expect(screen.getByText('Koleksi').closest('a')).toHaveClass(
+            'text-horizon',
+        );
+        expect(screen.getByText('Aku').closest('a')).toHaveClass(
+            'text-ink-on-sky',
+        );
     });
 
     // Native tab bars scroll to top when you tap the tab you are already on.
@@ -45,7 +59,10 @@ describe('MobileBottomNav', () => {
         render(<MobileBottomNav />);
 
         const link = screen.getByText('Koleksi').closest('a')!;
-        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        const event = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+        });
         link.dispatchEvent(event);
 
         expect(event.defaultPrevented).toBe(true);
@@ -59,7 +76,10 @@ describe('MobileBottomNav', () => {
         render(<MobileBottomNav />);
 
         const link = screen.getByText('Aku').closest('a')!;
-        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        const event = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+        });
         link.dispatchEvent(event);
 
         expect(event.defaultPrevented).toBe(false);
@@ -81,9 +101,12 @@ describe('MobileBottomNav', () => {
         setMockPage({}, '/kartu');
         render(<MobileBottomNav />);
 
-        screen.getByText('Koleksi').closest('a')!.dispatchEvent(
-            new MouseEvent('click', { bubbles: true, cancelable: true }),
-        );
+        screen
+            .getByText('Koleksi')
+            .closest('a')!
+            .dispatchEvent(
+                new MouseEvent('click', { bubbles: true, cancelable: true }),
+            );
 
         expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'auto' });
     });

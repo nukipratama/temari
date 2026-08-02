@@ -17,7 +17,10 @@ const COMMIT_MS = 18;
 function vibrate(pattern: number): void {
     // `vibrate` is absent on iOS Safari and can throw in an embedded webview,
     // so both the capability check and the call itself are guarded.
-    if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
+    if (
+        typeof navigator === 'undefined' ||
+        typeof navigator.vibrate !== 'function'
+    ) {
         return;
     }
 

@@ -1,8 +1,10 @@
 import { Link } from '@inertiajs/react';
 import { type ReactNode } from 'react';
+
+import type { PillTone } from '@/components/ui/PillButton';
+
 import { cn } from '@/lib/cn';
 import { pillButtonVariants } from '@/lib/variants';
-import type { PillTone } from '@/components/ui/PillButton';
 
 interface PillLinkProps {
     href: string;

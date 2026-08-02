@@ -1,11 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { appLayout } from './appLayout';
+
 import { makeUser, setMockPage } from '@/test/setup';
+
+import { appLayout } from './appLayout';
 
 describe('appLayout', () => {
     it('wraps the page in the full shell', () => {
-        setMockPage({ auth: { user: makeUser() }, flash: {}, demoLoginEnabled: false });
+        setMockPage({
+            auth: { user: makeUser() },
+            flash: {},
+            demoLoginEnabled: false,
+        });
         render(appLayout(<p>page body</p>));
 
         expect(screen.getByText('page body')).toBeInTheDocument();

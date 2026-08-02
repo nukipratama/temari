@@ -1,11 +1,20 @@
-import { type ReactNode } from 'react';
 import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
-import { RATE_LIMITED_ERROR, useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
-import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
+import { type ReactNode } from 'react';
+
+import type { AnalysisPayload, SharedProps } from '@/types/inertia';
+
+import {
+    RATE_LIMITED_ERROR,
+    useAnalysisTrigger,
+} from '@/hooks/useAnalysisTrigger';
+import {
+    cooldownAriaLabel,
+    useCooldownCountdown,
+} from '@/hooks/useCooldownCountdown';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
-import type { AnalysisPayload, SharedProps } from '@/types/inertia';
+
 import UnavailableNote from './UnavailableNote';
 
 export type AnalysisStatusSize = 'sm' | 'md';
@@ -25,7 +34,9 @@ function hasStaleZones(
         return false;
     }
 
-    return new Date(generatedAt).getTime() < new Date(hrZonesChangedAt).getTime();
+    return (
+        new Date(generatedAt).getTime() < new Date(hrZonesChangedAt).getTime()
+    );
 }
 
 function StaleZonesBadge() {
@@ -103,7 +114,15 @@ export default function AnalysisStatus({
     chained = false,
     isChainHead = false,
 }: Readonly<Props>) {
-    const { status, pending, error, retryAfterSeconds, pollingRetired, paused, trigger } = useAnalysisTrigger(analysis, inertiaReloadProps);
+    const {
+        status,
+        pending,
+        error,
+        retryAfterSeconds,
+        pollingRetired,
+        paused,
+        trigger,
+    } = useAnalysisTrigger(analysis, inertiaReloadProps);
     const canTrigger = allowReanalyze && !awaitingSchedule && !paused;
     // A Done block may regenerate ("Baca ulang") in standalone mode, but in a
     // chain only the head may, so regenerating mid-history can't desync later
@@ -118,15 +137,25 @@ export default function AnalysisStatus({
 
     if (effectiveStatus === 'done' && content !== null) {
         const cooling = cooldownRemaining > 0;
-        const staleZones = hasStaleZones(analysis.is_zone_dependent, analysis.generated_at, hrZonesChangedAt);
+        const staleZones = hasStaleZones(
+            analysis.is_zone_dependent,
+            analysis.generated_at,
+            hrZonesChangedAt,
+        );
         return (
             <div className="flex flex-col gap-1">
-                <div className={`${TEXT_SIZE[size]} whitespace-pre-line text-ink`}>
-                    {renderContent ? renderContent(content) : renderBold(content)}
+                <div
+                    className={`${TEXT_SIZE[size]} whitespace-pre-line text-ink`}
+                >
+                    {renderContent
+                        ? renderContent(content)
+                        : renderBold(content)}
                 </div>
                 {staleZones && <StaleZonesBadge />}
                 {showTimestamp && analysis.generated_at && (
-                    <span className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}>
+                    <span
+                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}
+                    >
                         Dibuat {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
@@ -135,11 +164,18 @@ export default function AnalysisStatus({
                         type="button"
                         onClick={trigger}
                         disabled={cooling || pending}
-                        aria-label={cooldownAriaLabel(cooldownRemaining, 'baca ulang')}
+                        aria-label={cooldownAriaLabel(
+                            cooldownRemaining,
+                            'baca ulang',
+                        )}
                         className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-ink-3 hover:text-leaf-deep disabled:hover:text-ink-3'}`}
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
-                        <span>{cooling ? formatDurationHMS(cooldownRemaining) : 'Baca ulang'}</span>
+                        <span>
+                            {cooling
+                                ? formatDurationHMS(cooldownRemaining)
+                                : 'Baca ulang'}
+                        </span>
                     </button>
                 )}
                 {rateLimited && <RateLimitedNote />}
@@ -153,7 +189,9 @@ export default function AnalysisStatus({
         if (pollingRetired && !pending) {
             return (
                 <div className="flex flex-col gap-1.5">
-                    <span className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}>
+                    <span
+                        className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}
+                    >
                         <Icon icon="mdi:clock-outline" aria-hidden />
                         <span>Masih diproses, muat ulang nanti ya.</span>
                     </span>
@@ -162,15 +200,25 @@ export default function AnalysisStatus({
         }
         const skeletonBg = onSky ? 'skeleton-on-sky' : 'skeleton';
         return (
-            <div className={`flex flex-col gap-3 ${TEXT_SIZE[size]}`} role="status" aria-live="polite">
+            <div
+                className={`flex flex-col gap-3 ${TEXT_SIZE[size]}`}
+                role="status"
+                aria-live="polite"
+            >
                 <span className="sr-only">Lagi dipikirin Temari…</span>
                 <div className="flex flex-col gap-1.5">
                     {SKELETON_WIDTHS.map((width) => (
-                        <div key={width} className={`h-[1.625em] rounded ${width} ${skeletonBg}`} aria-hidden />
+                        <div
+                            key={width}
+                            className={`h-[1.625em] rounded ${width} ${skeletonBg}`}
+                            aria-hidden
+                        />
                     ))}
                 </div>
                 {attempts > 1 && (
-                    <span className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}>
+                    <span
+                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}
+                    >
                         Percobaan {attempts}
                     </span>
                 )}
@@ -209,7 +257,9 @@ export default function AnalysisStatus({
 
     return (
         <div className="flex flex-col gap-1.5">
-            <span className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}>
+            <span
+                className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}
+            >
                 <Icon icon="mdi:clock-outline" aria-hidden />
                 <span>{awaitingScheduleLabel}</span>
             </span>

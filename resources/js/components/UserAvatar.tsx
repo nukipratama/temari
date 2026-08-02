@@ -8,7 +8,12 @@ interface UserAvatarProps {
     className?: string;
 }
 
-export default function UserAvatar({ name, avatarUrl, size = 'md', className }: Readonly<UserAvatarProps>) {
+export default function UserAvatar({
+    name,
+    avatarUrl,
+    size = 'md',
+    className,
+}: Readonly<UserAvatarProps>) {
     const sizeClass = size === 'sm' ? 'h-8 w-8' : 'h-9 w-9';
     const fontClass = size === 'sm' ? 'text-[15px]' : 'text-[17px]';
 
@@ -17,7 +22,11 @@ export default function UserAvatar({ name, avatarUrl, size = 'md', className }: 
             <img
                 src={avatarUrl}
                 alt=""
-                className={cn(sizeClass, 'rounded-full object-cover', className)}
+                className={cn(
+                    sizeClass,
+                    'rounded-full object-cover',
+                    className,
+                )}
             />
         );
     }

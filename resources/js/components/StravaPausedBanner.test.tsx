@@ -1,9 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import StravaPausedBanner from './StravaPausedBanner';
+
 import { setMockPage } from '@/test/setup';
 
-const base = { auth: { user: null }, flash: {}, demoLoginEnabled: false } as const;
+import StravaPausedBanner from './StravaPausedBanner';
+
+const base = {
+    auth: { user: null },
+    flash: {},
+    demoLoginEnabled: false,
+} as const;
 
 describe('StravaPausedBanner', () => {
     it('renders nothing while Strava is enabled', () => {

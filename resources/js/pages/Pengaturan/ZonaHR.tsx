@@ -1,16 +1,17 @@
-import { Head, router, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useId, useState } from 'react';
-import { appLayout } from '@/layouts/appLayout';
-import { cn } from '@/lib/cn';
-import { usePendingPost } from '@/hooks/usePendingPost';
+
+import StravaAction from '@/components/StravaAction';
 import BackLink from '@/components/ui/BackLink';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
-import StravaAction from '@/components/StravaAction';
+import { usePendingPost } from '@/hooks/usePendingPost';
+import { appLayout } from '@/layouts/appLayout';
+import { cn } from '@/lib/cn';
 
 const ZONE_KEYS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 type ZoneKey = (typeof ZONE_KEYS)[number];
@@ -32,18 +33,23 @@ const ZONE_LABEL: Record<ZoneKey, string> = {
 
 type ZoneSource = 'default' | 'strava' | 'manual';
 
-const SOURCE_INFO: Record<ZoneSource, { icon: string; iconClass: string; label: string; description: string }> = {
+const SOURCE_INFO: Record<
+    ZoneSource,
+    { icon: string; iconClass: string; label: string; description: string }
+> = {
     default: {
         icon: 'mdi:tune-variant',
         iconClass: 'text-ink-3',
         label: 'Zona standar',
-        description: 'Sekarang masih pakai zona standar. Bikin punyamu sendiri di bawah.',
+        description:
+            'Sekarang masih pakai zona standar. Bikin punyamu sendiri di bawah.',
     },
     strava: {
         icon: 'mdi:cloud-check-variant-outline',
         iconClass: 'text-leaf-deep',
         label: 'Disinkron dari Strava',
-        description: 'Zona ini disinkron otomatis dari Strava. Ubah manual di bawah kalau mau atur sendiri.',
+        description:
+            'Zona ini disinkron otomatis dari Strava. Ubah manual di bawah kalau mau atur sendiri.',
     },
     manual: {
         icon: 'mdi:pencil-outline',
@@ -82,7 +88,9 @@ interface ZonaHRProps {
  */
 export function deriveZones(maxHr: number, restingHr: number): HrZones {
     const reserve = maxHr - restingHr;
-    const los = ZONE_BREAKPOINTS.map((pct) => Math.round(restingHr + pct * reserve));
+    const los = ZONE_BREAKPOINTS.map((pct) =>
+        Math.round(restingHr + pct * reserve),
+    );
 
     const zones = {} as HrZones;
     ZONE_KEYS.forEach((key, index) => {
@@ -109,7 +117,11 @@ export default function ZonaHR({
     const isDirty =
         maxHr !== profile.max_hr ||
         restingHr !== profile.resting_hr ||
-        ZONE_KEYS.some((key) => zones[key].lo !== profile.hr_zones[key].lo || zones[key].hi !== profile.hr_zones[key].hi);
+        ZONE_KEYS.some(
+            (key) =>
+                zones[key].lo !== profile.hr_zones[key].lo ||
+                zones[key].hi !== profile.hr_zones[key].hi,
+        );
 
     const pageProps = usePage<{ errors?: Record<string, string> }>().props;
     const errors = pageProps.errors ?? {};
@@ -122,19 +134,27 @@ export default function ZonaHR({
     };
 
     const editBoundary = (key: ZoneKey, field: keyof Zone, value: number) => {
-        setZones((prev) => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+        setZones((prev) => ({
+            ...prev,
+            [key]: { ...prev[key], [field]: value },
+        }));
     };
 
     // Reset and resync change the zones server-side, so hard-refresh afterwards
     // to re-seed the whole form from the new profile — simpler and more robust
     // than reconciling this page's local state against the incoming props.
     const resetToDefault = () => {
-        router.delete('/pengaturan/zona', { onSuccess: () => window.location.reload() });
+        router.delete('/pengaturan/zona', {
+            onSuccess: () => window.location.reload(),
+        });
     };
 
-    const [resyncing, resyncFromStrava] = usePendingPost('/pengaturan/zona/sinkron-strava', {
-        onSuccess: () => window.location.reload(),
-    });
+    const [resyncing, resyncFromStrava] = usePendingPost(
+        '/pengaturan/zona/sinkron-strava',
+        {
+            onSuccess: () => window.location.reload(),
+        },
+    );
 
     const canShowResync = canSyncFromStrava && source === 'manual';
 
@@ -144,7 +164,10 @@ export default function ZonaHR({
             {
                 max_hr: maxHr,
                 resting_hr: restingHr,
-                zones: ZONE_KEYS.map((key) => ({ lo: zones[key].lo, hi: zones[key].hi })),
+                zones: ZONE_KEYS.map((key) => ({
+                    lo: zones[key].lo,
+                    hi: zones[key].hi,
+                })),
             },
             {
                 preserveScroll: true,
@@ -162,7 +185,10 @@ export default function ZonaHR({
                     {/* Now points at the real parent. It used to read as a trail
                         ("Aku · Pengaturan") while hrefing straight to /profil,
                         skipping the page it came from. */}
-                    <BackLink href="/pengaturan" className="mb-4 hidden lg:inline-flex">
+                    <BackLink
+                        href="/pengaturan"
+                        className="mb-4 hidden lg:inline-flex"
+                    >
                         Pengaturan
                     </BackLink>
                     <h1 className="font-display italic text-display-md text-ink">
@@ -178,32 +204,61 @@ export default function ZonaHR({
                                 width={13}
                                 height={13}
                                 aria-hidden
-                                className={cn('shrink-0', SOURCE_INFO[source].iconClass)}
+                                className={cn(
+                                    'shrink-0',
+                                    SOURCE_INFO[source].iconClass,
+                                )}
                             />
                             {SOURCE_INFO[source].label}
                         </span>
                         {source === 'strava' && stravaSyncedLabel && (
-                            <span className="text-meta">· terakhir sinkron {stravaSyncedLabel}</span>
+                            <span className="text-meta">
+                                · terakhir sinkron {stravaSyncedLabel}
+                            </span>
                         )}
                     </div>
                     {source !== 'default' && (
                         <div className="mt-4 flex flex-wrap items-center gap-3">
                             {canShowResync && (
                                 <StravaAction>
-                                    <PillButton tone="outline" size="sm" onClick={resyncFromStrava} disabled={resyncing}>
+                                    <PillButton
+                                        tone="outline"
+                                        size="sm"
+                                        onClick={resyncFromStrava}
+                                        disabled={resyncing}
+                                    >
                                         <Icon
-                                            icon={resyncing ? 'mdi:loading' : 'mdi:sync'}
+                                            icon={
+                                                resyncing
+                                                    ? 'mdi:loading'
+                                                    : 'mdi:sync'
+                                            }
                                             width={14}
                                             height={14}
-                                            className={resyncing ? 'animate-spin' : undefined}
+                                            className={
+                                                resyncing
+                                                    ? 'animate-spin'
+                                                    : undefined
+                                            }
                                             aria-hidden
                                         />
-                                        {resyncing ? 'Lagi narik…' : 'Sinkron ulang dari Strava'}
+                                        {resyncing
+                                            ? 'Lagi narik…'
+                                            : 'Sinkron ulang dari Strava'}
                                     </PillButton>
                                 </StravaAction>
                             )}
-                            <PillButton tone="outline" size="sm" onClick={resetToDefault}>
-                                <Icon icon="mdi:backup-restore" width={14} height={14} aria-hidden />
+                            <PillButton
+                                tone="outline"
+                                size="sm"
+                                onClick={resetToDefault}
+                            >
+                                <Icon
+                                    icon="mdi:backup-restore"
+                                    width={14}
+                                    height={14}
+                                    aria-hidden
+                                />
                                 Balik ke zona standar
                             </PillButton>
                         </div>
@@ -230,14 +285,24 @@ export default function ZonaHR({
                     </div>
 
                     <div className="mt-5 flex flex-wrap items-center gap-3">
-                        <PillButton tone="outline" size="sm" onClick={applyDerived}>
-                            <Icon icon="mdi:calculator-variant-outline" width={14} height={14} aria-hidden />
+                        <PillButton
+                            tone="outline"
+                            size="sm"
+                            onClick={applyDerived}
+                        >
+                            <Icon
+                                icon="mdi:calculator-variant-outline"
+                                width={14}
+                                height={14}
+                                aria-hidden
+                            />
                             Hitung otomatis dari Max & Resting
                         </PillButton>
                     </div>
                     <p className="mt-3 max-w-xl font-sans text-xs leading-relaxed text-ink-3">
-                        Aku pakai rumus %HRR (Karvonen) sebagai titik awal: ngitung zona dari detak
-                        jantung istirahat sama maksimalmu. Kalau kamu udah punya angka sendiri, tinggal
+                        Aku pakai rumus %HRR (Karvonen) sebagai titik awal:
+                        ngitung zona dari detak jantung istirahat sama
+                        maksimalmu. Kalau kamu udah punya angka sendiri, tinggal
                         ubah manual di bawah.
                     </p>
                 </Card>
@@ -245,12 +310,21 @@ export default function ZonaHR({
                 <Card as="section" padding="lg" className="mt-6">
                     <SectionLabel>Zona kamu</SectionLabel>
                     <p className="mb-4 font-sans text-xs text-ink-3">
-                        Tiap batas atas harus sama dengan batas bawah zona berikutnya, biar nggak ada celah.
+                        Tiap batas atas harus sama dengan batas bawah zona
+                        berikutnya, biar nggak ada celah.
                     </p>
                     <div className="grid gap-3">
                         {ZONE_KEYS.map((key) => (
-                            <div key={key} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3">
-                                <Eyebrow as="span" token="micro" tone="ink-2" className="truncate">
+                            <div
+                                key={key}
+                                className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3"
+                            >
+                                <Eyebrow
+                                    as="span"
+                                    token="micro"
+                                    tone="ink-2"
+                                    className="truncate"
+                                >
                                     {ZONE_LABEL[key]}
                                 </Eyebrow>
                                 <BoundaryInput
@@ -258,7 +332,9 @@ export default function ZonaHR({
                                     testId={`zone-${key}-lo`}
                                     value={zones[key].lo}
                                     invalid={hasZoneError}
-                                    describedBy={hasZoneError ? zonesErrorId : undefined}
+                                    describedBy={
+                                        hasZoneError ? zonesErrorId : undefined
+                                    }
                                     onChange={(v) => editBoundary(key, 'lo', v)}
                                 />
                                 {key === 'Z5' ? (
@@ -276,16 +352,27 @@ export default function ZonaHR({
                                         testId={`zone-${key}-hi`}
                                         value={zones[key].hi}
                                         invalid={hasZoneError}
-                                        describedBy={hasZoneError ? zonesErrorId : undefined}
-                                        onChange={(v) => editBoundary(key, 'hi', v)}
+                                        describedBy={
+                                            hasZoneError
+                                                ? zonesErrorId
+                                                : undefined
+                                        }
+                                        onChange={(v) =>
+                                            editBoundary(key, 'hi', v)
+                                        }
                                     />
                                 )}
                             </div>
                         ))}
                     </div>
                     {hasZoneError && (
-                        <p id={zonesErrorId} role="alert" className="mt-3 font-sans text-xs text-ember-deep">
-                            Ada zona yang belum nyambung. Cek lagi batas atas dan bawahnya.
+                        <p
+                            id={zonesErrorId}
+                            role="alert"
+                            className="mt-3 font-sans text-xs text-ember-deep"
+                        >
+                            Ada zona yang belum nyambung. Cek lagi batas atas
+                            dan bawahnya.
                         </p>
                     )}
                 </Card>
@@ -295,8 +382,17 @@ export default function ZonaHR({
                 </p>
 
                 <div className="mt-5">
-                    <PillButton tone="sky" onClick={submit} disabled={processing || !isDirty}>
-                        <Icon icon="mdi:content-save-outline" width={16} height={16} aria-hidden />
+                    <PillButton
+                        tone="sky"
+                        onClick={submit}
+                        disabled={processing || !isDirty}
+                    >
+                        <Icon
+                            icon="mdi:content-save-outline"
+                            width={16}
+                            height={16}
+                            aria-hidden
+                        />
                         Simpan zona
                     </PillButton>
                 </div>
@@ -313,11 +409,22 @@ interface NumberFieldProps {
     onChange: (value: number) => void;
 }
 
-function NumberField({ label, suffix, value, error, onChange }: Readonly<NumberFieldProps>) {
+function NumberField({
+    label,
+    suffix,
+    value,
+    error,
+    onChange,
+}: Readonly<NumberFieldProps>) {
     const errorId = useId();
     return (
         <label className="block">
-            <Eyebrow as="span" token="micro" tone="ink-3" className="mb-1.5 block">
+            <Eyebrow
+                as="span"
+                token="micro"
+                tone="ink-3"
+                className="mb-1.5 block"
+            >
                 {label}
             </Eyebrow>
             <span className="flex items-center gap-2 rounded-xl border border-cream-deep bg-cream px-4 py-2.5 focus-within:border-horizon">
@@ -328,13 +435,23 @@ function NumberField({ label, suffix, value, error, onChange }: Readonly<NumberF
                     aria-invalid={error ? true : undefined}
                     aria-describedby={error ? errorId : undefined}
                     value={Number.isNaN(value) ? '' : value}
-                    onChange={(e) => onChange(Number.parseInt(e.target.value, 10))}
+                    onChange={(e) =>
+                        onChange(Number.parseInt(e.target.value, 10))
+                    }
                     className="w-full bg-transparent font-mono text-base font-semibold tabular-nums text-ink outline-none"
                 />
-                {suffix && <span className="font-mono text-[11px] text-ink-3">{suffix}</span>}
+                {suffix && (
+                    <span className="font-mono text-[11px] text-ink-3">
+                        {suffix}
+                    </span>
+                )}
             </span>
             {error && (
-                <span id={errorId} role="alert" className="mt-1 block font-sans text-xs text-ember-deep">
+                <span
+                    id={errorId}
+                    role="alert"
+                    className="mt-1 block font-sans text-xs text-ember-deep"
+                >
                     {error}
                 </span>
             )}
@@ -351,7 +468,14 @@ interface BoundaryInputProps {
     onChange: (value: number) => void;
 }
 
-function BoundaryInput({ label, testId, value, invalid, describedBy, onChange }: Readonly<BoundaryInputProps>) {
+function BoundaryInput({
+    label,
+    testId,
+    value,
+    invalid,
+    describedBy,
+    onChange,
+}: Readonly<BoundaryInputProps>) {
     return (
         <input
             type="number"

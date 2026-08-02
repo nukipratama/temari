@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+
 import ZoneBar from './ZoneBar';
 
 describe('ZoneBar', () => {
     it('renders a segment per present zone with a percentage title', () => {
-        const { container } = render(<ZoneBar zonePct={{ Z1: 20, Z2: 50, Z3: 30 }} />);
+        const { container } = render(
+            <ZoneBar zonePct={{ Z1: 20, Z2: 50, Z3: 30 }} />,
+        );
         expect(container.querySelector('[title="Z1: 20%"]')).not.toBeNull();
         expect(container.querySelector('[title="Z2: 50%"]')).not.toBeNull();
         expect(container.querySelector('[title="Z3: 30%"]')).not.toBeNull();

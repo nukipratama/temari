@@ -1,4 +1,5 @@
 import { cva, type VariantProps } from 'class-variance-authority';
+
 import { cn } from '@/lib/cn';
 
 /**
@@ -20,20 +21,27 @@ const progressTrackVariants = cva('overflow-hidden rounded-full', {
     },
 });
 
-const progressFillVariants = cva('h-full rounded-full transition-all duration-500', {
-    variants: {
-        tone: {
-            horizon: 'bg-horizon',
-            sky: 'bg-sky',
+const progressFillVariants = cva(
+    'h-full rounded-full transition-all duration-500',
+    {
+        variants: {
+            tone: {
+                horizon: 'bg-horizon',
+                sky: 'bg-sky',
+            },
+        },
+        defaultVariants: {
+            tone: 'horizon',
         },
     },
-    defaultVariants: {
-        tone: 'horizon',
-    },
-});
+);
 
-type ProgressSize = NonNullable<VariantProps<typeof progressTrackVariants>['size']>;
-type ProgressTone = NonNullable<VariantProps<typeof progressFillVariants>['tone']>;
+type ProgressSize = NonNullable<
+    VariantProps<typeof progressTrackVariants>['size']
+>;
+type ProgressTone = NonNullable<
+    VariantProps<typeof progressFillVariants>['tone']
+>;
 
 interface ProgressBarProps {
     /** Fill ratio, `0`..`1`. Clamped into range. */
@@ -71,7 +79,10 @@ export default function ProgressBar({
             aria-label={ariaLabel}
             className={cn(progressTrackVariants({ size }), className)}
         >
-            <div className={progressFillVariants({ tone })} style={{ width: `${pct}%` }} />
+            <div
+                className={progressFillVariants({ tone })}
+                style={{ width: `${pct}%` }}
+            />
         </div>
     );
 }

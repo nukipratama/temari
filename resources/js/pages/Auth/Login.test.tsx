@@ -1,20 +1,32 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import Login from './Login';
+
 import { formMock, setMockPage } from '@/test/setup';
+
+import Login from './Login';
 
 describe('Login', () => {
     it('shows the Strava CTA with the given URL', () => {
         render(<Login authStravaUrl="/auth/strava/redirect" />);
-        const strava = screen.getByText(/Sambungkan dengan Strava/).closest('a');
+        const strava = screen
+            .getByText(/Sambungkan dengan Strava/)
+            .closest('a');
         expect(strava?.getAttribute('href')).toBe('/auth/strava/redirect');
     });
 
     it('appends the deep-link ?from to the Strava CTA when present', () => {
-        render(<Login authStravaUrl="/auth/strava/redirect" from="/aktivitas/5?tab=splits" />);
-        const strava = screen.getByText(/Sambungkan dengan Strava/).closest('a');
+        render(
+            <Login
+                authStravaUrl="/auth/strava/redirect"
+                from="/aktivitas/5?tab=splits"
+            />,
+        );
+        const strava = screen
+            .getByText(/Sambungkan dengan Strava/)
+            .closest('a');
         expect(strava?.getAttribute('href')).toBe(
-            '/auth/strava/redirect?from=' + encodeURIComponent('/aktivitas/5?tab=splits'),
+            '/auth/strava/redirect?from=' +
+                encodeURIComponent('/aktivitas/5?tab=splits'),
         );
     });
 
@@ -51,11 +63,17 @@ describe('Login', () => {
     it('clicking play starts the intro and hides the overlay', async () => {
         const userEvent = (await import('@testing-library/user-event')).default;
         // jsdom does not implement media playback — stub play() so the handler runs.
-        const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+        const playSpy = vi
+            .spyOn(HTMLMediaElement.prototype, 'play')
+            .mockResolvedValue();
         render(<Login authStravaUrl="/x" />);
-        await userEvent.setup().click(screen.getByLabelText('Putar video intro'));
+        await userEvent
+            .setup()
+            .click(screen.getByLabelText('Putar video intro'));
         expect(playSpy).toHaveBeenCalled();
-        expect(screen.queryByLabelText('Putar video intro')).not.toBeInTheDocument();
+        expect(
+            screen.queryByLabelText('Putar video intro'),
+        ).not.toBeInTheDocument();
         playSpy.mockRestore();
     });
 
@@ -69,15 +87,23 @@ describe('Login', () => {
 
     it('shows a real sample Kartu as concrete proof of the product', () => {
         render(<Login authStravaUrl="/x" />);
-        expect(screen.getByText('Ini kartu beneran, bukan mockup')).toBeInTheDocument();
-        expect(screen.getByRole('img', { name: '10K Subuh' })).toBeInTheDocument();
+        expect(
+            screen.getByText('Ini kartu beneran, bukan mockup'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('img', { name: '10K Subuh' }),
+        ).toBeInTheDocument();
     });
 
     it('keeps the play overlay visible when play() is rejected', async () => {
         const userEvent = (await import('@testing-library/user-event')).default;
-        const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(new Error('blocked'));
+        const playSpy = vi
+            .spyOn(HTMLMediaElement.prototype, 'play')
+            .mockRejectedValue(new Error('blocked'));
         render(<Login authStravaUrl="/x" />);
-        await userEvent.setup().click(screen.getByLabelText('Putar video intro'));
+        await userEvent
+            .setup()
+            .click(screen.getByLabelText('Putar video intro'));
         expect(playSpy).toHaveBeenCalled();
         expect(screen.getByLabelText('Putar video intro')).toBeInTheDocument();
         playSpy.mockRestore();
@@ -85,10 +111,16 @@ describe('Login', () => {
 
     it('shows the play overlay again once the video ends', async () => {
         const userEvent = (await import('@testing-library/user-event')).default;
-        const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+        const playSpy = vi
+            .spyOn(HTMLMediaElement.prototype, 'play')
+            .mockResolvedValue();
         const { container } = render(<Login authStravaUrl="/x" />);
-        await userEvent.setup().click(screen.getByLabelText('Putar video intro'));
-        expect(screen.queryByLabelText('Putar video intro')).not.toBeInTheDocument();
+        await userEvent
+            .setup()
+            .click(screen.getByLabelText('Putar video intro'));
+        expect(
+            screen.queryByLabelText('Putar video intro'),
+        ).not.toBeInTheDocument();
 
         fireEvent.ended(container.querySelector('video')!);
         expect(screen.getByLabelText('Putar video intro')).toBeInTheDocument();

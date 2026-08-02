@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { MOOD_VARIANTS, variantFor } from './temariMoodVariants';
+
 import type { Mood } from '@/types/inertia';
 
-const ALL_MOODS: Mood[] = ['nyala', 'enteng', 'lemes', 'oleng', 'mumet', 'adem'];
+import { MOOD_VARIANTS, variantFor } from './temariMoodVariants';
+
+const ALL_MOODS: Mood[] = [
+    'nyala',
+    'enteng',
+    'lemes',
+    'oleng',
+    'mumet',
+    'adem',
+];
 
 describe('temariMoodVariants', () => {
     it('exposes a variant for every mood', () => {

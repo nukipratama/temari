@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { MOOD_TO_POSE, VIBE_TO_POSE, poseForFormStatus, poseForRun } from './temariPose';
+
 import type { ActivityDetail } from '@/types/inertia';
+
+import {
+    MOOD_TO_POSE,
+    VIBE_TO_POSE,
+    poseForFormStatus,
+    poseForRun,
+} from './temariPose';
 
 function runWith(overrides: Partial<ActivityDetail>): ActivityDetail {
     return {
@@ -39,12 +46,22 @@ describe('VIBE_TO_POSE', () => {
 
 describe('poseForRun', () => {
     it('maps moodFromActivity output to a Temari pose', () => {
-        const run = runWith({ trimp_edwards: 200, distance: 12_000, moving_time: 3_600, average_heartrate: 170 });
+        const run = runWith({
+            trimp_edwards: 200,
+            distance: 12_000,
+            moving_time: 3_600,
+            average_heartrate: 170,
+        });
         expect(poseForRun(run)).toBe('wobble');
     });
 
     it('short-circuits past moodFromActivity when a mood override is given', () => {
-        const run = runWith({ trimp_edwards: 200, distance: 12_000, moving_time: 3_600, average_heartrate: 170 });
+        const run = runWith({
+            trimp_edwards: 200,
+            distance: 12_000,
+            moving_time: 3_600,
+            average_heartrate: 170,
+        });
         expect(poseForRun(run, 'nyala')).toBe('proud');
     });
 });

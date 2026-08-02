@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { projectPolyline } from './route';
 
 const SAMPLE = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
 import ActiveFilterChips from './ActiveFilterChips';
 
 describe('ActiveFilterChips', () => {
@@ -19,8 +20,12 @@ describe('ActiveFilterChips', () => {
             />,
         );
 
-        expect(screen.getByRole('button', { name: 'Hapus filter Enteng' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Hapus filter Half ke atas' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Hapus filter Enteng' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Hapus filter Half ke atas' }),
+        ).toBeInTheDocument();
     });
 
     it('removes only the chip that was tapped', () => {
@@ -35,7 +40,9 @@ describe('ActiveFilterChips', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'Hapus filter Enteng' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Hapus filter Enteng' }),
+        );
 
         expect(removeA).toHaveBeenCalledOnce();
         expect(removeB).not.toHaveBeenCalled();
@@ -46,9 +53,14 @@ describe('ActiveFilterChips', () => {
     it('offers clear-all only beyond a single chip', () => {
         const onClearAll = vi.fn();
         const { rerender } = render(
-            <ActiveFilterChips chips={[{ key: 'a', label: 'Enteng', onRemove: vi.fn() }]} onClearAll={onClearAll} />,
+            <ActiveFilterChips
+                chips={[{ key: 'a', label: 'Enteng', onRemove: vi.fn() }]}
+                onClearAll={onClearAll}
+            />,
         );
-        expect(screen.queryByRole('button', { name: 'Hapus semua' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Hapus semua' }),
+        ).not.toBeInTheDocument();
 
         rerender(
             <ActiveFilterChips
@@ -74,6 +86,8 @@ describe('ActiveFilterChips', () => {
             />,
         );
 
-        expect(screen.queryByRole('button', { name: 'Hapus semua' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Hapus semua' }),
+        ).not.toBeInTheDocument();
     });
 });

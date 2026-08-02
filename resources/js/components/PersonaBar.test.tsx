@@ -1,11 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import PersonaBar from './PersonaBar';
 
 describe('PersonaBar', () => {
     it('shows the nudge message when there is no mix data', () => {
         render(<PersonaBar mix={[]} />);
-        expect(screen.getByText('Belum ada cukup lari buat baca personamu.')).toBeInTheDocument();
+        expect(
+            screen.getByText('Belum ada cukup lari buat baca personamu.'),
+        ).toBeInTheDocument();
     });
 
     it('renders a legend entry per mood with its label and percent', () => {
@@ -33,13 +36,18 @@ describe('PersonaBar', () => {
 
     it('shows a sky-glass nudge (not the cream EmptyPanel) when onSky and there is no mix data', () => {
         const { container } = render(<PersonaBar mix={[]} onSky />);
-        expect(screen.getByText('Belum ada cukup lari buat baca personamu.')).toBeInTheDocument();
+        expect(
+            screen.getByText('Belum ada cukup lari buat baca personamu.'),
+        ).toBeInTheDocument();
         expect(container.querySelector('.backdrop-blur')).not.toBeNull();
     });
 
     it('flips the legend to cream/ink-on-sky tones when onSky', () => {
         render(
-            <PersonaBar onSky mix={[{ mood: 'nyala', count: 3, percent: 60 }]} />,
+            <PersonaBar
+                onSky
+                mix={[{ mood: 'nyala', count: 3, percent: 60 }]}
+            />,
         );
         expect(screen.getByText('Nyala')).toHaveClass('text-cream');
         expect(screen.getByText('60.0%')).toHaveClass('text-ink-on-sky');
@@ -47,8 +55,13 @@ describe('PersonaBar', () => {
 
     it('rings the bar track for contrast against the hero panel when onSky', () => {
         const { container } = render(
-            <PersonaBar onSky mix={[{ mood: 'nyala', count: 1, percent: 100 }]} />,
+            <PersonaBar
+                onSky
+                mix={[{ mood: 'nyala', count: 1, percent: 100 }]}
+            />,
         );
-        expect(container.querySelector('.rounded-full')).toHaveClass('ring-cream/15');
+        expect(container.querySelector('.rounded-full')).toHaveClass(
+            'ring-cream/15',
+        );
     });
 });

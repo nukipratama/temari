@@ -1,6 +1,7 @@
-import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { Link } from '@inertiajs/react';
 import { type MouseEventHandler, type ReactNode } from 'react';
+
 import { cn } from '@/lib/cn';
 
 interface SettingsRowProps {
@@ -68,17 +69,26 @@ export default function SettingsRow({
                         {label}
                     </span>
                     {description !== undefined && (
-                        <span className="font-sans text-[12px] text-ink-3">{description}</span>
+                        <span className="font-sans text-[12px] text-ink-3">
+                            {description}
+                        </span>
                     )}
                 </span>
             </span>
             {control ?? (
-                <Icon icon="mdi:chevron-right" width={18} height={18} className="shrink-0 text-ink-3" aria-hidden />
+                <Icon
+                    icon="mdi:chevron-right"
+                    width={18}
+                    height={18}
+                    className="shrink-0 text-ink-3"
+                    aria-hidden
+                />
             )}
         </>
     );
 
-    const baseClasses = 'focus-ring -mx-2 flex items-center justify-between gap-3 rounded-xl p-2 text-left transition hover:bg-cream-deep/40';
+    const baseClasses =
+        'focus-ring -mx-2 flex items-center justify-between gap-3 rounded-xl p-2 text-left transition hover:bg-cream-deep/40';
     // Only the interactive branches get press feedback; the plain-<div> row
     // below is a static readout and must not pretend to be tappable.
     const tappableClasses = cn(baseClasses, 'pressable cursor-pointer');
@@ -114,7 +124,11 @@ export default function SettingsRow({
     if (onClick) {
         return (
             <>
-                <button type="button" onClick={onClick} className={cn(tappableClasses, 'w-full text-left')}>
+                <button
+                    type="button"
+                    onClick={onClick}
+                    className={cn(tappableClasses, 'w-full text-left')}
+                >
                     {content}
                 </button>
                 {children}

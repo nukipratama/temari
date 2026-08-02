@@ -1,4 +1,5 @@
 import Eyebrow from '@/components/ui/Eyebrow';
+
 import KoleksiTabs, { type KoleksiTab } from './KoleksiTabs';
 
 interface CollectionHeaderProps {

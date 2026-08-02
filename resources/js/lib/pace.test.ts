@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import {
     formatDayMonthYearId,
     formatDuration,
@@ -29,7 +30,7 @@ import {
 } from './pace';
 
 describe('formatPace', () => {
-    it("formats whole minutes as M'SS\"", () => {
+    it('formats whole minutes as M\'SS"', () => {
         expect(formatPace(360)).toBe('6:00');
     });
 
@@ -146,7 +147,9 @@ describe('formatNaiveIdDate', () => {
         // new Date() would read this as 2026-05-12T02:00Z and render 12 Mei in a
         // UTC runtime; the component parse must keep the wall-clock 11 Mei.
         expect(formatNaiveIdDate('2026-05-11T18:00:00-08:00')).toContain('11');
-        expect(formatNaiveIdDate('2026-05-11T18:00:00.000000Z')).toContain('11');
+        expect(formatNaiveIdDate('2026-05-11T18:00:00.000000Z')).toContain(
+            '11',
+        );
     });
 
     it('returns dash for null and non-parseable input', () => {
@@ -211,17 +214,23 @@ describe('formatRelativeId', () => {
     });
 
     it('returns days for under a week', () => {
-        const iso = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+        const iso = new Date(
+            now.getTime() - 3 * 24 * 60 * 60 * 1000,
+        ).toISOString();
         expect(formatRelativeId(iso, now)).toBe('3 hari lalu');
     });
 
     it('returns weeks for under five weeks', () => {
-        const iso = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
+        const iso = new Date(
+            now.getTime() - 14 * 24 * 60 * 60 * 1000,
+        ).toISOString();
         expect(formatRelativeId(iso, now)).toBe('2 minggu lalu');
     });
 
     it('falls back to short date for old timestamps', () => {
-        const iso = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString();
+        const iso = new Date(
+            now.getTime() - 60 * 24 * 60 * 60 * 1000,
+        ).toISOString();
         expect(formatRelativeId(iso, now)).toMatch(/\w+,\s\d{2}\s\w+/);
     });
 
@@ -236,10 +245,11 @@ describe('formatRelativeId', () => {
     });
 
     it('clamps a future / clock-skewed timestamp to "baru aja" (no negative units)', () => {
-        const future = new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString();
+        const future = new Date(
+            now.getTime() + 3 * 60 * 60 * 1000,
+        ).toISOString();
         expect(formatRelativeId(future, now)).toBe('baru aja');
     });
-
 });
 
 describe('formatNaiveRelativeId', () => {
@@ -247,7 +257,9 @@ describe('formatNaiveRelativeId', () => {
         // Wall clock 09:00 vs a local-now of 12:00 → 3 jam lalu. new Date() would
         // shift the -08:00 input to 17:00Z and clamp it to "baru aja" instead.
         const localNow = new Date(2026, 4, 20, 12, 0, 0);
-        expect(formatNaiveRelativeId('2026-05-20T09:00:00-08:00', localNow)).toBe('3 jam lalu');
+        expect(
+            formatNaiveRelativeId('2026-05-20T09:00:00-08:00', localNow),
+        ).toBe('3 jam lalu');
     });
 
     it('returns dash for null and non-parseable input', () => {
@@ -257,7 +269,9 @@ describe('formatNaiveRelativeId', () => {
 
     it('falls back to the naive short date for old timestamps', () => {
         const localNow = new Date(2026, 4, 20, 12, 0, 0);
-        expect(formatNaiveRelativeId('2026-01-02T06:30:00.000000Z', localNow)).toContain('2');
+        expect(
+            formatNaiveRelativeId('2026-01-02T06:30:00.000000Z', localNow),
+        ).toContain('2');
     });
 });
 
@@ -344,7 +358,9 @@ describe('formatShortDateTimeId', () => {
     });
 
     it('combines short date and naive wall-clock time', () => {
-        expect(formatShortDateTimeId('2026-06-09T06:52:00')).toBe('9 Jun 2026 · 06.52');
+        expect(formatShortDateTimeId('2026-06-09T06:52:00')).toBe(
+            '9 Jun 2026 · 06.52',
+        );
     });
 
     it('drops the time half for a date-only string', () => {
@@ -352,7 +368,9 @@ describe('formatShortDateTimeId', () => {
     });
 
     it('renders the as-recorded hour even with a trailing Z', () => {
-        expect(formatShortDateTimeId('2026-06-09T06:52:54.000000Z')).toBe('9 Jun 2026 · 06.52');
+        expect(formatShortDateTimeId('2026-06-09T06:52:54.000000Z')).toBe(
+            '9 Jun 2026 · 06.52',
+        );
     });
 });
 
@@ -369,7 +387,9 @@ describe('local-zone ISO date helpers', () => {
 
     it('isoStartOfMonthLocal returns the first of the current month', () => {
         const now = new Date();
-        expect(isoStartOfMonthLocal()).toBe(isoDateLocal(new Date(now.getFullYear(), now.getMonth(), 1)));
+        expect(isoStartOfMonthLocal()).toBe(
+            isoDateLocal(new Date(now.getFullYear(), now.getMonth(), 1)),
+        );
     });
 });
 

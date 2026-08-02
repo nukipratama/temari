@@ -1,7 +1,8 @@
+import type { AnalysisPayload } from '@/types/inertia';
+
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { cn } from '@/lib/cn';
 import { renderBold } from '@/lib/richText';
-import type { AnalysisPayload } from '@/types/inertia';
 
 interface RingkasanCardProps {
     analysis: AnalysisPayload;
@@ -52,7 +53,9 @@ export default function RingkasanCard({
                     isChainHead={isChainHead}
                     size="md"
                     renderContent={(content) => (
-                        <p className="text-sm leading-relaxed text-ink">{renderBold(content)}</p>
+                        <p className="text-sm leading-relaxed text-ink">
+                            {renderBold(content)}
+                        </p>
                     )}
                 />
             </div>
@@ -63,7 +66,11 @@ export default function RingkasanCard({
                 dropping it, so the card still never looks empty. */}
             {analysis.status !== 'done' && (
                 <p className="mt-2 text-sm leading-relaxed text-ink-2">
-                    {awaitingSchedule && <span className="font-semibold text-ink-3">Sementara ini: </span>}
+                    {awaitingSchedule && (
+                        <span className="font-semibold text-ink-3">
+                            Sementara ini:{' '}
+                        </span>
+                    )}
                     {fallback}
                 </p>
             )}

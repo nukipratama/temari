@@ -36,7 +36,9 @@ export default function PrCard({
                 {category}
             </Eyebrow>
             <div className={TIME_CLASS[size]}>{time}</div>
-            {runName && <div className="font-sans text-xs text-ink-2">{runName}</div>}
+            {runName && (
+                <div className="font-sans text-xs text-ink-2">{runName}</div>
+            )}
             <Eyebrow token="micro" tone="ink-2">
                 {setAt}
             </Eyebrow>
@@ -45,7 +47,11 @@ export default function PrCard({
 
     if (activityId !== null) {
         return (
-            <LinkCard href={aktivitasUrl({ activity_id: activityId })} padding={size === 'lg' ? 'lg' : 'md'} className={GAP_CLASS[size]}>
+            <LinkCard
+                href={aktivitasUrl({ activity_id: activityId })}
+                padding={size === 'lg' ? 'lg' : 'md'}
+                className={GAP_CLASS[size]}
+            >
                 {body}
             </LinkCard>
         );

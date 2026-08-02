@@ -1,9 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import StravaSyncBadge from './StravaSyncBadge';
+
 import type { StravaSync } from '@/types/inertia';
 
-function sync(state: StravaSync['state'], lastSyncedAt: string | null = null): StravaSync {
+import StravaSyncBadge from './StravaSyncBadge';
+
+function sync(
+    state: StravaSync['state'],
+    lastSyncedAt: string | null = null,
+): StravaSync {
     return { state, last_synced_at: lastSyncedAt };
 }
 
@@ -21,7 +26,9 @@ describe('StravaSyncBadge', () => {
     });
 
     it('renders an inert badge when ready', () => {
-        render(<StravaSyncBadge sync={sync('ready', '2026-07-04T00:00:00Z')} />);
+        render(
+            <StravaSyncBadge sync={sync('ready', '2026-07-04T00:00:00Z')} />,
+        );
         expect(screen.queryByRole('link')).not.toBeInTheDocument();
         expect(screen.getByText(/^Strava synced/)).toBeInTheDocument();
         expect(screen.getByLabelText(/^Strava synced/)).toBeInTheDocument();

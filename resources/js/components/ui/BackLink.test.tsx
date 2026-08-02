@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import BackLink from './BackLink';
 
 describe('BackLink', () => {
@@ -11,21 +12,37 @@ describe('BackLink', () => {
 
     it('uses the muted tint by default', () => {
         render(<BackLink href="/x">Balik</BackLink>);
-        expect(screen.getByRole('link', { name: /balik/i }).className).toMatch(/text-ink-2/);
+        expect(screen.getByRole('link', { name: /balik/i }).className).toMatch(
+            /text-ink-2/,
+        );
     });
 
     it('uses the accent tint for empty-state CTAs', () => {
-        render(<BackLink href="/" tone="accent">Kembali ke Hari Ini</BackLink>);
-        expect(screen.getByRole('link', { name: /kembali/i }).className).toMatch(/text-horizon-deep/);
+        render(
+            <BackLink href="/" tone="accent">
+                Kembali ke Hari Ini
+            </BackLink>,
+        );
+        expect(
+            screen.getByRole('link', { name: /kembali/i }).className,
+        ).toMatch(/text-horizon-deep/);
     });
 
     it('passes spacing className through', () => {
-        render(<BackLink href="/x" className="mb-6">Balik</BackLink>);
-        expect(screen.getByRole('link', { name: /balik/i }).className).toMatch(/mb-6/);
+        render(
+            <BackLink href="/x" className="mb-6">
+                Balik
+            </BackLink>,
+        );
+        expect(screen.getByRole('link', { name: /balik/i }).className).toMatch(
+            /mb-6/,
+        );
     });
 
     it('carries a keyboard focus ring', () => {
         render(<BackLink href="/x">Balik</BackLink>);
-        expect(screen.getByRole('link', { name: /balik/i }).className).toMatch(/focus-ring/);
+        expect(screen.getByRole('link', { name: /balik/i }).className).toMatch(
+            /focus-ring/,
+        );
     });
 });

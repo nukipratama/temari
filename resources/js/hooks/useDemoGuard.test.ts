@@ -1,7 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { useDemoGuard } from './useDemoGuard';
+
 import { makeUser, setMockPage } from '@/test/setup';
+
+import { useDemoGuard } from './useDemoGuard';
 
 describe('useDemoGuard', () => {
     it('runs the action straight away for a non-demo user', () => {

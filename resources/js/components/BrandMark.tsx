@@ -8,14 +8,22 @@ interface BrandMarkProps {
     wordmarkClassName?: string;
 }
 
-export default function BrandMark({ tone = 'ink', className, wordmarkClassName }: Readonly<BrandMarkProps>) {
+export default function BrandMark({
+    tone = 'ink',
+    className,
+    wordmarkClassName,
+}: Readonly<BrandMarkProps>) {
     const wordColor = tone === 'cream' ? 'text-cream' : 'text-ink';
 
     return (
         <div className={cn('flex items-center gap-2.5', className)}>
             <BunnyGlyph size={28} tone={tone} />
             <span
-                className={cn('font-mono font-bold leading-none tracking-[-0.02em]', wordColor, wordmarkClassName)}
+                className={cn(
+                    'font-mono font-bold leading-none tracking-[-0.02em]',
+                    wordColor,
+                    wordmarkClassName,
+                )}
                 style={{ fontSize: 20 }}
             >
                 Temari
@@ -24,7 +32,10 @@ export default function BrandMark({ tone = 'ink', className, wordmarkClassName }
     );
 }
 
-export function BunnyGlyph({ size, tone }: Readonly<{ size: number; tone: 'ink' | 'cream' }>) {
+export function BunnyGlyph({
+    size,
+    tone,
+}: Readonly<{ size: number; tone: 'ink' | 'cream' }>) {
     const isInk = tone === 'ink';
     const face = isInk ? 'var(--color-ink)' : 'var(--color-cream)';
     const blush = isInk ? 'var(--color-horizon)' : 'var(--color-horizon-deep)';
@@ -52,24 +63,78 @@ export function BunnyGlyph({ size, tone }: Readonly<{ size: number; tone: 'ink' 
                 </clipPath>
             </defs>
 
-            <ellipse cx="32" cy="8" rx="9" ry="16" fill={face} transform="rotate(-12 32 8)" />
-            <ellipse cx="68" cy="8" rx="9" ry="16" fill={face} transform="rotate(12 68 8)" />
-            <ellipse cx="32" cy="10" rx="4" ry="9" fill={`url(#${earGradId})`} transform="rotate(-12 32 10)" />
-            <ellipse cx="68" cy="10" rx="4" ry="9" fill={`url(#${earGradId})`} transform="rotate(12 68 10)" />
+            <ellipse
+                cx="32"
+                cy="8"
+                rx="9"
+                ry="16"
+                fill={face}
+                transform="rotate(-12 32 8)"
+            />
+            <ellipse
+                cx="68"
+                cy="8"
+                rx="9"
+                ry="16"
+                fill={face}
+                transform="rotate(12 68 8)"
+            />
+            <ellipse
+                cx="32"
+                cy="10"
+                rx="4"
+                ry="9"
+                fill={`url(#${earGradId})`}
+                transform="rotate(-12 32 10)"
+            />
+            <ellipse
+                cx="68"
+                cy="10"
+                rx="4"
+                ry="9"
+                fill={`url(#${earGradId})`}
+                transform="rotate(12 68 10)"
+            />
 
             <circle cx="50" cy="58" r="40" fill={face} />
             <g clipPath={`url(#${bodyClipId})`}>
-                <ellipse cx="38" cy="22" rx="36" ry="20" fill="white" opacity={highlightOpacity} />
+                <ellipse
+                    cx="38"
+                    cy="22"
+                    rx="36"
+                    ry="20"
+                    fill="white"
+                    opacity={highlightOpacity}
+                />
                 <rect x="10" y="40" width="80" height="14" fill={band} />
-                <rect x="10" y="51" width="80" height="3" fill="black" opacity="0.12" />
+                <rect
+                    x="10"
+                    y="51"
+                    width="80"
+                    height="3"
+                    fill="black"
+                    opacity="0.12"
+                />
             </g>
 
             <circle cx="38" cy="68" r="4.5" fill={features} />
             <circle cx="62" cy="68" r="4.5" fill={features} />
             {isInk && (
                 <>
-                    <circle cx="39.5" cy="66.5" r="1.3" fill="white" opacity="0.9" />
-                    <circle cx="63.5" cy="66.5" r="1.3" fill="white" opacity="0.9" />
+                    <circle
+                        cx="39.5"
+                        cy="66.5"
+                        r="1.3"
+                        fill="white"
+                        opacity="0.9"
+                    />
+                    <circle
+                        cx="63.5"
+                        cy="66.5"
+                        r="1.3"
+                        fill="white"
+                        opacity="0.9"
+                    />
                 </>
             )}
 

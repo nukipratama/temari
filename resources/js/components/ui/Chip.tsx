@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+
 import { cn } from '@/lib/cn';
 import { chipVariants } from '@/lib/variants';
 
@@ -11,7 +12,12 @@ interface ChipProps {
     className?: string;
 }
 
-export default function Chip({ children, tone = 'neutral', size = 'sm', className }: Readonly<ChipProps>) {
+export default function Chip({
+    children,
+    tone = 'neutral',
+    size = 'sm',
+    className,
+}: Readonly<ChipProps>) {
     return (
         <span className={cn(chipVariants({ tone, size }), className)}>
             {children}
