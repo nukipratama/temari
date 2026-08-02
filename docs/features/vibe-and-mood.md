@@ -8,7 +8,7 @@ code_refs:
   - app/Services/Run/Story/Vibe.php
   - app/Services/Run/Story/VibeMatrix.php
   - app/Services/Run/Story/Temari.php
-  - app/Services/Run/Story/FeaturedKartuResolver.php
+  - app/Actions/Run/Story/ResolveFeaturedKartuAction.php
   - app/Services/Run/Story/PastYouMatcher.php
   - app/Services/Run/Story/BriefingComposer.php
   - resources/js/lib/temariPose.ts
@@ -65,7 +65,7 @@ The bridge between the two systems is `moodForVibe` ([Temari.php:113](../../app/
 
 ## Featured kartu
 
-[FeaturedKartuResolver::resolve](../../app/Services/Run/Story/FeaturedKartuResolver.php) picks the one card the dashboard hero shows ("Kartu dari Temari"): scan the last few runs (window constant at [FeaturedKartuResolver.php:20](../../app/Services/Run/Story/FeaturedKartuResolver.php#L20)), keep the **highest [[cards-collection|rarity]]**, break ties toward the **most recent** run. Because the resolver is the single source of truth, the rendered card and its "Kata Temari" quote can never describe different cards — the briefing keys the quote's analysis row off the *card id*, not the day ([BriefingComposer.php:43](../../app/Services/Run/Story/BriefingComposer.php#L43)), so a fresh run sliding the pick re-fetches the matching voice. The client mirrors the same tie rule in `featuredCardFor`; see [[dashboard]].
+[ResolveFeaturedKartuAction::__invoke](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php) picks the one card the dashboard hero shows ("Kartu dari Temari"): scan the last few runs (window constant at [ResolveFeaturedKartuAction.php:21](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php#L21)), keep the **highest [[cards-collection|rarity]]**, break ties toward the **most recent** run. Because the resolver is the single source of truth, the rendered card and its "Kata Temari" quote can never describe different cards — the briefing keys the quote's analysis row off the *card id*, not the day ([BriefingComposer.php:43](../../app/Services/Run/Story/BriefingComposer.php#L43)), so a fresh run sliding the pick re-fetches the matching voice. The client mirrors the same tie rule in `featuredCardFor`; see [[dashboard]].
 
 ## Past-you matcher
 
