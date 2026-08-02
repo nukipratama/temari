@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Head, Link } from '@inertiajs/react';
-import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 
 import type { AnalysisPayload, Mood } from '@/types/inertia';
 
@@ -28,25 +28,21 @@ import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { aktivitasUrl } from '@/lib/routes';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
 
+import {
+    isFilteredOut,
+    useKalender,
+    type CalendarCell,
+    type WeekRow,
+} from './useKalender';
+
+export { dominantMoodOf, type CalendarCell } from './useKalender';
+
 /** The monthly recap payload plus the chain-head flag the controller adds. */
 export type MonthlyRecap = AnalysisPayload & {
     is_chain_head: boolean;
     /** Remaining Telegram-send cooldown for this month's recap, or null. */
     notification_retry_after_seconds: number | null;
 };
-
-export interface CalendarCell {
-    date: string;
-    day: number;
-    is_current_month: boolean;
-    is_today: boolean;
-    distance_km: number | null;
-    pace_sec_per_km: number | null;
-    avg_hr: number | null;
-    trimp: number | null;
-    mood: Mood | null;
-    activity_id: number | null;
-}
 
 interface LifetimeStats {
     total_runs: number;
@@ -64,14 +60,6 @@ interface KalenderProps {
     lifetime?: LifetimeStats;
     todayQuote?: string | null;
     monthlyRecap?: MonthlyRecap;
-}
-
-interface WeekRow {
-    weekStart: string;
-    weekNumber: number;
-    days: CalendarCell[];
-    totalKm: number;
-    runCount: number;
 }
 
 const WEEKDAY_LABELS = [
@@ -95,21 +83,14 @@ export default function Kalender({
     todayQuote = null,
     monthlyRecap,
 }: Readonly<KalenderProps>) {
-    const weeks = useMemo<WeekRow[]>(() => chunkIntoWeeks(cells), [cells]);
-    const dominantMood = useMemo(() => dominantMoodOf(cells), [cells]);
-    const isCurrentMonth = month === todayMonth;
-    const [moodFilter, setMoodFilter] = useState<ReadonlySet<Mood>>(
-        () => new Set(),
-    );
-    const toggleMood = useCallback((mood: Mood) => {
-        setMoodFilter((prev) => {
-            const next = new Set(prev);
-            if (next.has(mood)) next.delete(mood);
-            else next.add(mood);
-            return next;
-        });
-    }, []);
-    const resetFilter = useCallback(() => setMoodFilter(new Set()), []);
+    const {
+        weeks,
+        dominantMood,
+        isCurrentMonth,
+        moodFilter,
+        toggleMood,
+        resetFilter,
+    } = useKalender({ cells, month, todayMonth });
 
     return (
         <>
@@ -193,36 +174,6 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
             {['Riwayat', ...stats].join(' · ')}
         </Eyebrow>
     );
-}
-
-/**
- * The mood Temari wears on the month's recap: the most frequent run mood among
- * the viewed month's own days (padding days from adjacent months are excluded).
- * Ties resolve by {@link MOOD_ORDER} so the pick is deterministic. Null when the
- * month has no runs, letting the card fall back to a neutral pose.
- */
-export function dominantMoodOf(
-    cells: ReadonlyArray<CalendarCell>,
-): Mood | null {
-    const counts = new Map<Mood, number>();
-    for (const cell of cells) {
-        if (!cell.is_current_month || cell.mood === null) {
-            continue;
-        }
-        counts.set(cell.mood, (counts.get(cell.mood) ?? 0) + 1);
-    }
-
-    let dominant: Mood | null = null;
-    let topCount = 0;
-    for (const mood of MOOD_ORDER) {
-        const count = counts.get(mood) ?? 0;
-        if (count > topCount) {
-            topCount = count;
-            dominant = mood;
-        }
-    }
-
-    return dominant;
 }
 
 /**
@@ -398,20 +349,6 @@ function WeekRowView({
                 />
             ))}
         </div>
-    );
-}
-
-/**
- * Precomputed in the parent so toggling the mood filter passes a stable boolean
- * to each memoized cell, letting React skip cells whose dimmed state is unchanged.
- */
-function isFilteredOut(
-    cell: CalendarCell,
-    moodFilter: ReadonlySet<Mood>,
-): boolean {
-    return (
-        moodFilter.size > 0 &&
-        (cell.mood === null || !moodFilter.has(cell.mood))
     );
 }
 
@@ -672,34 +609,6 @@ function Legend({ className }: Readonly<{ className?: string }>) {
             ))}
         </div>
     );
-}
-
-function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
-    const weeks: WeekRow[] = [];
-    for (let i = 0; i < cells.length; i += 7) {
-        const days = cells.slice(i, i + 7);
-        if (days.length === 0) continue;
-        let totalKm = 0;
-        let runCount = 0;
-        for (const day of days) {
-            if (
-                day.distance_km !== null &&
-                day.distance_km > 0 &&
-                day.is_current_month
-            ) {
-                totalKm += day.distance_km;
-                runCount += 1;
-            }
-        }
-        weeks.push({
-            weekStart: days[0].date,
-            weekNumber: weeks.length + 1,
-            days,
-            totalKm,
-            runCount,
-        });
-    }
-    return weeks;
 }
 
 Kalender.layout = appLayout;
