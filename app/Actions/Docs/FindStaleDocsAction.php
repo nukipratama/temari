@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Docs;
+namespace App\Actions\Docs;
 
 use DateTimeInterface;
 use Carbon\CarbonImmutable;
@@ -19,16 +19,14 @@ use Throwable;
  * The citation guard ([scripts/check-doc-citations.php]) proves a note points at
  * code that still exists; this proves a note was looked at since that code last
  * moved. It can't read prose for truth, so a flag means "re-check", not "wrong".
- *
- * Git access is injected as a callable so the logic is testable without a repo.
  */
-class DocStalenessChecker
+class FindStaleDocsAction
 {
     /**
      * @param  callable(string): ?CarbonImmutable  $lastCommittedAt  resolves a repo-relative code path to its last commit time (null when untracked / unknown)
      * @return list<array{doc: string, reviewed: CarbonImmutable, staleRefs: list<array{path: string, committedAt: CarbonImmutable}>}>
      */
-    public function findStale(string $docsDir, callable $lastCommittedAt): array
+    public function __invoke(string $docsDir, callable $lastCommittedAt): array
     {
         $findings = [];
 

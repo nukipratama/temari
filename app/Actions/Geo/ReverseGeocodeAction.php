@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Geo;
+namespace App\Actions\Geo;
 
+use App\Services\Geo\ResolvedLocation;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -11,7 +12,7 @@ use Throwable;
 
 // Nominatim TOS: 1 req/sec rate limit is enforced upstream by
 // ResolveActivityLocationJob's WithoutOverlapping lock, not here.
-class NominatimResolver
+class ReverseGeocodeAction
 {
     private const string URL = 'https://nominatim.openstreetmap.org/reverse';
 
@@ -19,7 +20,7 @@ class NominatimResolver
 
     private const int CACHE_TTL = 2_592_000; // 30 days
 
-    public function reverse(float $lat, float $lng): ?ResolvedLocation
+    public function __invoke(float $lat, float $lng): ?ResolvedLocation
     {
         $cacheKey = $this->cacheKey($lat, $lng);
 

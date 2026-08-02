@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Docs;
 
-use App\Services\Docs\DocStalenessChecker;
+use App\Actions\Docs\FindStaleDocsAction;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -15,9 +15,9 @@ use Symfony\Component\Process\Process;
 #[Description('Report docs/ notes whose cited code changed after the note was last reviewed.')]
 class StaleDocsCommand extends Command
 {
-    public function handle(DocStalenessChecker $checker): int
+    public function handle(FindStaleDocsAction $action): int
     {
-        $findings = $checker->findStale(base_path('docs'), $this->lastCommittedAt(...));
+        $findings = $action(base_path('docs'), $this->lastCommittedAt(...));
 
         if ($findings === []) {
             $this->info('docs:stale — every note is fresh (no cited code changed since its reviewed date).');

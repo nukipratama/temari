@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Strava;
 
-use App\Services\Strava\StravaWebhookProbe;
+use App\Actions\Strava\ProbeStravaWebhookAction;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -91,7 +91,7 @@ class WebhookSubscribeCommand extends Command
 
         // Strava synchronously GETs the callback during create and subscribes
         // only if it echoes the challenge; the probe replays that handshake.
-        $probe = app(StravaWebhookProbe::class)->probe($callbackUrl, (string) $verifyToken);
+        $probe = app(ProbeStravaWebhookAction::class)($callbackUrl, (string) $verifyToken);
         if (! $probe['passed']) {
             $this->error("Self-verify failed ({$probe['status']}): the callback did not echo the challenge.");
             $this->line('Response: '.$probe['detail']);
