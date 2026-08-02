@@ -64,24 +64,23 @@ readonly class GoalResolver
         /** @var array<string, array{title: string, description: string, slot: string, metric: string, metric_key?: string, target: int|float, unit: string}> $goalsCatalog */
         $goalsCatalog = (array) config('temari_goals', []);
 
-        $goals = [];
-        foreach ($goalsCatalog as $id => $goal) {
-            $current = $this->currentValue($ctx, $goal['metric'], $goal['metric_key'] ?? '');
+        return array_values(collect($goalsCatalog)
+            ->map(function (array $goal, string $id) use ($ctx, $unlockedKeys, $unlocksCatalog): array {
+                $current = $this->currentValue($ctx, $goal['metric'], $goal['metric_key'] ?? '');
 
-            $goals[] = [
-                'id' => $id,
-                'title' => $goal['title'],
-                'description' => $goal['description'],
-                'slot' => $goal['slot'],
-                'rarity' => $this->rarityForKey($id, $unlocksCatalog),
-                'current' => min($current, $goal['target']),
-                'target' => $goal['target'],
-                'unit' => $goal['unit'],
-                'is_completed' => \in_array($id, $unlockedKeys, true),
-            ];
-        }
-
-        return $goals;
+                return [
+                    'id' => $id,
+                    'title' => $goal['title'],
+                    'description' => $goal['description'],
+                    'slot' => $goal['slot'],
+                    'rarity' => $this->rarityForKey($id, $unlocksCatalog),
+                    'current' => min($current, $goal['target']),
+                    'target' => $goal['target'],
+                    'unit' => $goal['unit'],
+                    'is_completed' => \in_array($id, $unlockedKeys, true),
+                ];
+            })
+            ->all());
     }
 
     private function currentValue(GamificationContext $ctx, string $metric, string $metricKey): int|float

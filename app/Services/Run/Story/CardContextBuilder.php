@@ -15,10 +15,8 @@ use Illuminate\Support\Facades\DB;
  *
  * The first-run / first-bracket / weekly-consistency counts are folded into one
  * conditional aggregate: they scan the same per-user rows and differ only in
- * predicate. The first-run count keeps the AnalyzedScope's `analyzed_at` filter,
- * which excludes un-analyzed stubs so a sync backlog cannot suppress the
- * "PertamaKali" badge on the real first run; the first-bracket count deliberately
- * ignores that filter, as the query it replaces did.
+ * predicate. See {@see self::historyCounts()} for the per-count analyzed_at
+ * treatment.
  */
 final class CardContextBuilder
 {
@@ -54,6 +52,10 @@ final class CardContextBuilder
     }
 
     /**
+     * Raw query builder, not Activity::query(): AnalyzedScope would apply
+     * `analyzed_at IS NOT NULL` to the whole row set, but other_at_bracket_any_status
+     * must also count un-analyzed stubs, unlike the other two columns.
+     *
      * @return array{other_activities: int, other_at_bracket: int, week_runs: int}
      */
     private function historyCounts(Activity $activity, ?float $bracket, ?Carbon $startDate): array
@@ -65,9 +67,9 @@ final class CardContextBuilder
             ->leftJoin('activity_details', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $activity->user_id)
             ->selectRaw(
-                'SUM(CASE WHEN activities.id <> ? AND activities.analyzed_at IS NOT NULL THEN 1 ELSE 0 END) as other_activities, '
-                .'SUM(CASE WHEN activities.id <> ? AND activity_details.distance >= ? THEN 1 ELSE 0 END) as other_at_bracket, '
-                .'SUM(CASE WHEN activities.analyzed_at IS NOT NULL AND activity_details.start_date_local BETWEEN ? AND ? THEN 1 ELSE 0 END) as week_runs',
+                'SUM(CASE WHEN activities.id <> ? AND activities.analyzed_at IS NOT NULL THEN 1 ELSE 0 END) as other_analyzed_activities, '
+                .'SUM(CASE WHEN activities.id <> ? AND activity_details.distance >= ? THEN 1 ELSE 0 END) as other_at_bracket_any_status, '
+                .'SUM(CASE WHEN activities.analyzed_at IS NOT NULL AND activity_details.start_date_local BETWEEN ? AND ? THEN 1 ELSE 0 END) as analyzed_week_runs',
                 [
                     $activity->id,
                     $activity->id,
@@ -79,9 +81,9 @@ final class CardContextBuilder
             ->first();
 
         return [
-            'other_activities' => (int) ($row['other_activities'] ?? 0),
-            'other_at_bracket' => (int) ($row['other_at_bracket'] ?? 0),
-            'week_runs' => (int) ($row['week_runs'] ?? 0),
+            'other_activities' => (int) ($row['other_analyzed_activities'] ?? 0),
+            'other_at_bracket' => (int) ($row['other_at_bracket_any_status'] ?? 0),
+            'week_runs' => (int) ($row['analyzed_week_runs'] ?? 0),
         ];
     }
 

@@ -29,17 +29,13 @@ class ThresholdEstimator
             ->whereNotNull('stream_summary')
             ->get();
 
-        $paces = [];
-        foreach ($details as $detail) {
-            $summary = StreamSummary::fromArray($detail->streamSummary());
-            if (! $this->isHardSession($summary)) {
-                continue;
-            }
-            $bestSustained = $this->bestSustainedPace($summary);
-            if ($bestSustained !== null) {
-                $paces[] = $bestSustained;
-            }
-        }
+        $paces = $details
+            ->map(fn (ActivityDetail $detail): StreamSummary => StreamSummary::fromArray($detail->streamSummary()))
+            ->filter(fn (StreamSummary $summary): bool => $this->isHardSession($summary))
+            ->map(fn (StreamSummary $summary): ?float => $this->bestSustainedPace($summary))
+            ->filter(fn (?float $pace): bool => $pace !== null)
+            ->values()
+            ->all();
 
         if ($paces === []) {
             return null;

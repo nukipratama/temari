@@ -7,8 +7,10 @@ namespace App\Livewire\Pulse;
 use Illuminate\Database\Query\Builder;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Models\Activity;
+use App\Models\Analytics\StravaSyncLog;
+use App\Models\StravaConnection;
+use App\Models\User;
 use Illuminate\Contracts\Support\Renderable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 use Laravel\Pulse\Livewire\Card;
 
@@ -28,13 +30,13 @@ class StravaHealth extends Card
     {
         $now = now();
 
-        $connections = DB::table('strava_connections')
+        $connections = StravaConnection::query()
             ->selectRaw('SUM(CASE WHEN revoked_at IS NOT NULL THEN 1 ELSE 0 END) AS revoked')
             ->selectRaw('SUM(CASE WHEN revoked_at IS NULL AND token_expires_at < ? THEN 1 ELSE 0 END) AS token_expired', [$now])
             ->selectRaw('SUM(CASE WHEN revoked_at IS NULL AND token_expires_at >= ? THEN 1 ELSE 0 END) AS active', [$now])
             ->first();
 
-        $stranded = DB::table('activities')
+        $stranded = Activity::withStubs()
             ->whereNull('analyzed_at')
             ->where('detail_fail_count', '<', Activity::MAX_DETAIL_FETCH_ATTEMPTS)
             ->count();
@@ -88,8 +90,7 @@ class StravaHealth extends Card
      */
     private function perUserSyncHistory(): array
     {
-        $latestSyncs = DB::connection('analytics')
-            ->table('strava_sync_logs')
+        $latestSyncs = StravaSyncLog::query()
             ->select('user_id', 'status', 'synced_at', 'rate_limit_15min_remaining', 'rate_limit_daily_remaining')
             ->whereIn(
                 'id',
@@ -102,11 +103,9 @@ class StravaHealth extends Card
             ->get()
             ->keyBy('user_id');
 
-        $activeUserIds = DB::table('strava_connections')
-            ->whereNull('revoked_at')
-            ->pluck('user_id');
+        $activeUserIds = StravaConnection::active()->pluck('user_id');
 
-        $userNames = DB::table('users')
+        $userNames = User::query()
             ->whereIn('id', $activeUserIds)
             ->pluck('name', 'id');
 
@@ -117,7 +116,7 @@ class StravaHealth extends Card
             $rows[] = [
                 'user_id' => (int) $userId,
                 'user_name' => (string) ($userNames[$userId] ?? "User {$userId}"),
-                'last_sync' => $sync->synced_at ?? null,
+                'last_sync' => $sync?->synced_at?->toDateTimeString(),
                 'status' => $sync->status ?? 'pending',
                 // strava_sync_logs.status only ever gets 'success', 'error',
                 // 'revoked', or 'deleted' written (SyncOrchestrator, User model);
@@ -139,8 +138,7 @@ class StravaHealth extends Card
      */
     private function globalRateLimit(): array
     {
-        $latest = DB::connection('analytics')
-            ->table('strava_sync_logs')
+        $latest = StravaSyncLog::query()
             ->orderByDesc('id')
             ->first(['rate_limit_15min_remaining', 'rate_limit_daily_remaining']);
 

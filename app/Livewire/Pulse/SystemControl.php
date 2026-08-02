@@ -10,7 +10,6 @@ use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Contracts\Support\Renderable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 use Laravel\Pulse\Livewire\Card;
 
@@ -48,7 +47,7 @@ class SystemControl extends Card
 
         // One scan of `activities`: pending (retryable) vs stranded (gave up).
         $max = Activity::MAX_DETAIL_FETCH_ATTEMPTS;
-        $backlog = DB::table('activities')
+        $backlog = Activity::withStubs()
             ->whereNull('analyzed_at')
             ->selectRaw('SUM(detail_fail_count < ?) AS pending', [$max])
             ->selectRaw('SUM(detail_fail_count >= ?) AS stranded', [$max])
