@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Configure a linked git worktree's .env so its Sail stack can run alongside
-# the main checkout's (and other worktrees') without port collisions.
-#
 #   ./scripts/worktree-setup.sh <slot: 1|2|3>
 #
 # Run once per worktree, right after `git worktree add` / EnterWorktree. See
@@ -25,8 +22,6 @@ esac
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-# Linked worktrees resolve --git-common-dir to the main checkout's .git; the
-# main checkout resolves it to its own ".git". Refuse to touch main's .env.
 if [ "$(git rev-parse --git-common-dir)" = ".git" ]; then
   echo "worktree-setup: this is the main checkout, not a linked worktree — refusing to touch its .env" >&2
   exit 1
@@ -45,24 +40,21 @@ set_env_var() {
 set_env_var APP_PORT "$APP_PORT"
 set_env_var VITE_PORT "$VITE_PORT"
 set_env_var APP_URL "http://localhost:${APP_PORT}"
-# Host port 0 = "assign any free ephemeral port". DB/Redis are never reached
-# from the host here (sail mysql / sail artisan tinker exec into the
-# container), so there's nothing to pin these to — just avoid the collision.
 set_env_var FORWARD_DB_PORT 0
 set_env_var FORWARD_REDIS_PORT 0
 
+docker compose up -d
+docker compose exec -u root app chown -R www-data:www-data node_modules /var/cache/composer /var/cache/npm
+
 cat <<EOF
 worktree-setup: slot $1 configured — APP_PORT=$APP_PORT, VITE_PORT=$VITE_PORT.
+Stack is up; composer/npm caches are shared across worktrees, so installs
+after the first one should be faster.
 
 Next (vendor/ is empty on a fresh worktree, so vendor/bin/sail doesn't exist
-yet — bring the stack up and install once with plain docker compose first):
-  docker compose up -d
+yet — install once with plain docker compose first):
   docker compose exec -T app composer install
   ./vendor/bin/sail npm ci             # sail works from here on
-
-If npm ci fails with EACCES: the node_modules named volume is created
-root-owned on first boot. One-time fix:
-  docker compose exec -u root app chown -R www-data:www-data node_modules
 
 To actually load pages in a browser (not just run the automated test suites,
 which use their own self-initializing mysql_test/redis_test and don't need
