@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use App\Actions\Gamification\DetectActivityMilestonesAction;
 use App\Events\ActivityIngested;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
@@ -11,7 +12,6 @@ use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
 use App\Services\Run\Metrics\PersonalRecords;
-use App\Services\Gamification\MilestoneDetector;
 use App\Services\Run\Metrics\HeartRateZones;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -52,7 +52,7 @@ class ActivityPipeline
         private readonly RunCardFactory $cardFactory,
         private readonly Temari $temari,
         private readonly WeeklyAggregator $weeklyAggregator,
-        private readonly MilestoneDetector $milestoneDetector,
+        private readonly DetectActivityMilestonesAction $milestoneDetector,
         private readonly AppConfig $config,
     ) {
     }
@@ -156,7 +156,7 @@ class ActivityPipeline
             // Story layer must run after PR detection — Temari mood reads PR rows.
             $this->cardFactory->build($activity, $detailModel);
             $this->temari->postRunLine($activity, $detailModel);
-            $this->milestoneDetector->detect($activity, $detailModel, $newPrCategories);
+            ($this->milestoneDetector)($activity, $detailModel, $newPrCategories);
         });
 
         // After commit only: a story-layer throw rolled the whole block back, so

@@ -13,8 +13,8 @@ them rather than re-copying, since copies drift.
 
 Backend logic is split by domain under `app/Services/`:
 - **AI/** — narrators + the Analysis pipeline (see *AI narration pipeline* below).
-- **Run/** — ingest (Strava activity → `ActivityDetail` + streams), metrics (`TrainingLoad`, `PersonalRecords`, VDOT/threshold estimators, `WeeklyAggregator`, `MilestoneDetector`), and story (`Vibe`, `Temari`, `BriefingComposer`, `RunCardFactory`).
-- **Gamification/** — `UnlockEngine`, `EquippedAccessories`, `GoalResolver`, `WeeklyRecapBuilder`.
+- **Run/** — ingest (Strava activity → `ActivityDetail` + streams), metrics (`TrainingLoad`, `PersonalRecords`, VDOT/threshold estimators, `WeeklyAggregator`), and story (`Vibe`, `Temari`, `BriefingComposer`, `RunCardFactory`).
+- **Gamification/** — `EquippedAccessories`, `GoalResolver`, `WeeklyRecapBuilder` (plus `DetectActivityMilestonesAction` and `GrantEligibleUnlocksAction` under `app/Actions/Gamification/`).
 - **Strava/** — OAuth client, activity fetch, webhook + sync orchestration.
 - **Geo/** — polyline encode/decode + Nominatim reverse-geocode (`app/Jobs/Geo/` resolves location names).
 - **Weather/** — Open-Meteo snapshot attached per activity.

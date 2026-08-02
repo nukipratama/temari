@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\Badge;
 use App\Enums\Rarity;
+use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Models\Activity;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\UserUnlock;
-use App\Services\Gamification\UnlockEngine;
 use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Session;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->engine = app(UnlockEngine::class);
+    $this->engine = new GrantEligibleUnlocksAction();
 });
 
 it('returns empty when nothing has been earned yet', function (): void {
@@ -26,14 +26,14 @@ it('returns empty when nothing has been earned yet', function (): void {
     // ever reaching its UserUnlock::insert() write.
     $user = User::factory()->make(['id' => 1]);
 
-    expect($this->engine->grantEligible($user))->toBe([]);
+    expect(($this->engine)($user))->toBe([]);
 });
 
 it('grants accessory.medal_pertama on first PR', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
-    $granted = $this->engine->grantEligible($user);
+    $granted = ($this->engine)($user);
 
     expect($granted)->toContain('accessory.medal_pertama')
         ->and(UserUnlock::query()->where('user_id', $user->id)->pluck('unlock_key')->all())
@@ -44,8 +44,8 @@ it('is idempotent — re-running does not duplicate the unlock', function (): vo
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
-    $this->engine->grantEligible($user);
-    $second = $this->engine->grantEligible($user);
+    ($this->engine)($user);
+    $second = ($this->engine)($user);
 
     expect($second)->toBe([])
         ->and(UserUnlock::query()->where('user_id', $user->id)->count())->toBe(1);
@@ -62,7 +62,7 @@ it('short-circuits once every accessory has been unlocked', function (): void {
         ]);
     }
 
-    expect($this->engine->grantEligible($user))->toBe([]);
+    expect(($this->engine)($user))->toBe([]);
 });
 
 it('grants medal_emas once five PRs are recorded', function (): void {
@@ -75,7 +75,7 @@ it('grants medal_emas once five PRs are recorded', function (): void {
         ['category' => 'half_marathon'],
     ))->create();
 
-    expect($this->engine->grantEligible($user))
+    expect(($this->engine)($user))
         ->toContain('accessory.medal_emas');
 });
 
@@ -87,7 +87,7 @@ it('grants ikat_kepala_legendaris from a Legendaris run card', function (): void
         'rarity' => Rarity::Legendary,
     ]);
 
-    expect($this->engine->grantEligible($user))
+    expect(($this->engine)($user))
         ->toContain('accessory.ikat_kepala_legendaris');
 });
 
@@ -101,7 +101,7 @@ it('grants ikat_kepala_epik after three Epik run cards', function (): void {
         ]);
     }
 
-    expect($this->engine->grantEligible($user))
+    expect(($this->engine)($user))
         ->toContain('accessory.ikat_kepala_epik');
 });
 
@@ -115,7 +115,7 @@ it('grants aura_angin after three lawan_angin badge cards', function (): void {
         ]);
     }
 
-    expect($this->engine->grantEligible($user))
+    expect(($this->engine)($user))
         ->toContain('accessory.aura_angin');
 });
 
@@ -128,7 +128,7 @@ it('flashes a toast payload to the session when a session is active', function (
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
-    $this->engine->grantEligible($user);
+    ($this->engine)($user);
 
     $flashed = Session::get('unlock');
     expect($flashed)->toBeArray()
@@ -144,7 +144,7 @@ it('skips the flash when the unlock has no config entry', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
-    $this->engine->grantEligible($user);
+    ($this->engine)($user);
 
     expect(Session::get('unlock'))->toBeNull();
 });
@@ -158,7 +158,7 @@ it('falls back to the key + default icon when the config entry omits name and ic
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create();
 
-    $this->engine->grantEligible($user);
+    ($this->engine)($user);
 
     expect(Session::get('unlock'))->toBe([
         'unlock_key' => 'accessory.medal_pertama',

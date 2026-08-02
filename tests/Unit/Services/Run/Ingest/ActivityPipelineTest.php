@@ -13,7 +13,7 @@ use App\Models\StravaConnection;
 use App\Models\WeeklySnapshot;
 use App\Events\ActivityIngested;
 use App\Jobs\Geo\ResolveActivityLocationJob;
-use App\Services\Gamification\MilestoneDetector;
+use App\Actions\Gamification\DetectActivityMilestonesAction;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
@@ -769,8 +769,8 @@ it('rolls back analyzed_at and skips the cascade when the story layer throws', f
 
     // The last story step throws deterministically; card + story line already ran
     // inside the transaction, so the whole block (incl. analyzed_at) must roll back.
-    $this->mock(MilestoneDetector::class)
-        ->shouldReceive('detect')->andThrow(new RuntimeException('boom'));
+    $this->mock(DetectActivityMilestonesAction::class)
+        ->shouldReceive('__invoke')->andThrow(new RuntimeException('boom'));
 
     expect(fn () => app(ActivityPipeline::class)->ingest($activity))
         ->toThrow(RuntimeException::class, 'boom');

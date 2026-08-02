@@ -12,8 +12,8 @@ code_refs:
   - app/Services/Run/Story/RarityScorer.php
   - app/Services/Run/Story/SpecialMoves.php
   - app/Services/Run/Story/Temari.php
-  - app/Services/Gamification/MilestoneDetector.php
-  - app/Services/Gamification/UnlockEngine.php
+  - app/Actions/Gamification/DetectActivityMilestonesAction.php
+  - app/Actions/Gamification/GrantEligibleUnlocksAction.php
   - app/Services/Gamification/GoalResolver.php
   - app/Models/RunCard.php
   - app/Models/UserUnlock.php
@@ -55,7 +55,7 @@ The result persists to the `run_cards` table via [RunCard](../../app/Models/RunC
 
 ## Milestones
 
-[MilestoneDetector](../../app/Services/Gamification/MilestoneDetector.php) (`detect(...)`) fires the one-off celebration moments when an activity is newly ingested: first-ever distance bracket, first-ever pace, a PR, a new longest run. It is idempotent — guarded by a `milestones_detected_at` marker so re-ingesting the same activity never re-fires the confetti.
+[DetectActivityMilestonesAction](../../app/Actions/Gamification/DetectActivityMilestonesAction.php) fires the one-off celebration moments when an activity is newly ingested: first-ever distance bracket, first-ever pace, a PR, a new longest run. It is idempotent — guarded by a `milestones_detected_at` marker so re-ingesting the same activity never re-fires the confetti.
 
 ## Personal records
 
@@ -63,7 +63,7 @@ A PR is written by `app/Services/Run/Metrics/PersonalRecords` via `updateOrCreat
 
 ## Unlocks & accessories
 
-[UnlockEngine](../../app/Services/Gamification/UnlockEngine.php) (`grantEligible(User): list<string>`) recomputes and persists which accessories a user has earned — medals, ikat_kepala, kaus, celana, sepatu, aura — from PR counts, rarity/badge collection, distance milestones and streaks. It is idempotent and is called after a PR is detected, after the weekly aggregation, and when a card reaches an elite rarity. Grants land in `user_unlocks` via [UserUnlock](../../app/Models/UserUnlock.php) (`unlock_key`, `unlocked_at`, `equipped`, `metadata`).
+[GrantEligibleUnlocksAction](../../app/Actions/Gamification/GrantEligibleUnlocksAction.php) (`__invoke(User): list<string>`) recomputes and persists which accessories a user has earned — medals, ikat_kepala, kaus, celana, sepatu, aura — from PR counts, rarity/badge collection, distance milestones and streaks. It is idempotent and is called after a PR is detected, after the weekly aggregation, and when a card reaches an elite rarity. Grants land in `user_unlocks` via [UserUnlock](../../app/Models/UserUnlock.php) (`unlock_key`, `unlocked_at`, `equipped`, `metadata`).
 
 [GoalResolver](../../app/Services/Gamification/GoalResolver.php) (`forUser()`, `completedCount()`, `closestToCompletion()`) computes progress toward *every* unlock in the catalog — current vs target — to feed the [[targets-accessories]] progress bars, including the ones not yet earned.
 

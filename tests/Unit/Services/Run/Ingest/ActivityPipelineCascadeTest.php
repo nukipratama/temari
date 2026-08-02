@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Gamification\DetectActivityMilestonesAction;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzePrContextJob;
@@ -9,7 +10,6 @@ use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
-use App\Services\Gamification\MilestoneDetector;
 use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -83,9 +83,9 @@ it('queues no AI job from inside the ingest transaction', function (): void {
 it('dispatches nothing when the ingest transaction rolls back', function (): void {
     $activity = ingestSeed();
 
-    $milestones = Mockery::mock(MilestoneDetector::class);
-    $milestones->shouldReceive('detect')->andThrow(new RuntimeException('story layer blew up'));
-    $this->app->instance(MilestoneDetector::class, $milestones);
+    $milestones = Mockery::mock(DetectActivityMilestonesAction::class);
+    $milestones->shouldReceive('__invoke')->andThrow(new RuntimeException('story layer blew up'));
+    $this->app->instance(DetectActivityMilestonesAction::class, $milestones);
 
     expect(fn (): mixed => app(ActivityPipeline::class)->ingest($activity))
         ->toThrow(RuntimeException::class);

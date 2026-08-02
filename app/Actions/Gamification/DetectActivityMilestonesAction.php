@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Gamification;
+namespace App\Actions\Gamification;
 
 use App\Enums\PrCategory;
 use App\Models\Activity;
@@ -14,17 +14,8 @@ use App\Services\Run\Metrics\PaceCalculator;
 /**
  * Picks out "first-ever" / PR / longest-ever moments from a freshly-ingested
  * activity so the Dashboard can celebrate them with a banner.
- *
- * Idempotent: an activity that already has `milestones_detected_at` set is
- * skipped, so re-syncs don't re-fire the celebration. The detector caches
- * its result on `activity.milestone_payload` (JSON list) which the dismiss
- * endpoint nulls out when the user taps "tutup".
- *
- * Chronological correctness: "first ever" is judged by `start_date_local`,
- * not Activity.id — users backfilling a year of Strava history sync in
- * arbitrary order, and ID-based first-ever would mis-fire on every row.
  */
-class MilestoneDetector
+class DetectActivityMilestonesAction
 {
     /** Pace thresholds in seconds-per-km, sorted descending (slowest first). */
     private const array PACE_THRESHOLDS_SEC = [
@@ -41,7 +32,7 @@ class MilestoneDetector
      * @param  list<string>  $newPrCategories  Categories returned by PersonalRecords::detectAndStore for this activity.
      * @return list<array{kind: string, label: string, body: string, priority: int}>
      */
-    public function detect(Activity $activity, ActivityDetail $detail, array $newPrCategories = []): array
+    public function __invoke(Activity $activity, ActivityDetail $detail, array $newPrCategories = []): array
     {
         if ($activity->milestones_detected_at !== null) {
             return $this->cachedPayload($activity);
@@ -116,9 +107,6 @@ class MilestoneDetector
 
         $paceFloat = PaceCalculator::secPerKm((float) $distanceMeters, $detail->moving_time);
         if ($paceFloat !== null) {
-            // Compare the raw seconds-per-km against the threshold, matching the
-            // prior-run whereRaw check: a 7:00.4/km run (420.4s) must not claim a
-            // sub-7:00 milestone through rounding down to 420.
             $paceMilestone = $this->firstEverPace($activity, $detail, $paceFloat);
             if ($paceMilestone !== null) {
                 $milestones[] = $paceMilestone;
@@ -132,6 +120,8 @@ class MilestoneDetector
 
     private function longestEverBefore(Activity $activity, ActivityDetail $detail): ?float
     {
+        // Ordered by start_date_local, not Activity.id: Strava history can sync
+        // out of chronological order (e.g. a year-long backfill).
         return ActivityDetail::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $activity->user_id)->where('id', '!=', $activity->id))
             ->where('start_date_local', '<', $detail->start_date_local)
@@ -177,9 +167,6 @@ class MilestoneDetector
      */
     private function firstEverPace(Activity $activity, ActivityDetail $detail, float $paceSecPerKm): ?array
     {
-        // Keep the fastest (smallest) threshold the pace beats, not the first. The
-        // list is slowest-first, so iterating without breaking lands on the tightest
-        // tier crossed, mirroring firstEverDistance()'s largest-distance logic.
         $thresholdMatched = null;
         foreach (self::PACE_THRESHOLDS_SEC as $threshold) {
             if ($paceSecPerKm <= $threshold) {

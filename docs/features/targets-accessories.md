@@ -21,7 +21,7 @@ Two sides of the same loop: **Target** (`/target`) shows what you're working tow
 
 ## System dependencies
 
-- **Gamification** — goals are computed by `GoalResolver`; unlocks are granted by `UnlockEngine` during [[gamification]].
+- **Gamification** — goals are computed by `GoalResolver`; unlocks are granted by `GrantEligibleUnlocksAction` during [[gamification]].
 - **Temari mascot** — the live preview hero uses `TemariProto` to render equipped gear; see [[temari-mascot]].
 - **Data model** — `UserUnlock`, `RunnerProfile` shapes in [[data-model]].
 

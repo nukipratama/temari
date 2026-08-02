@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
-use App\Services\Gamification\UnlockEngine;
 use App\Services\Run\Metrics\StreamSummary;
 
 class RunCardFactory
 {
     public function __construct(
         private readonly SpecialMoves $specialMoves,
-        private readonly UnlockEngine $unlockEngine,
+        private readonly GrantEligibleUnlocksAction $unlockEngine,
         private readonly CardContextBuilder $contextBuilder,
         private readonly BadgeEvaluator $badgeEvaluator,
         private readonly RarityScorer $rarityScorer,
@@ -61,7 +61,7 @@ class RunCardFactory
         );
 
         if (in_array($card->rarity, [Rarity::Epic, Rarity::Legendary], strict: true)) {
-            $this->unlockEngine->grantEligible($activity->user);
+            ($this->unlockEngine)($activity->user);
         }
 
         if ($card->rarity->rank() > $previousRarityRank) {
