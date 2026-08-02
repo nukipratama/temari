@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Actions\Run\Story\ResolveFeaturedKartuAction;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
@@ -16,7 +17,7 @@ class BriefingComposer
         private readonly Vibe $vibe,
         private readonly TrainingLoad $trainingLoad,
         private readonly Temari $temari,
-        private readonly FeaturedKartuResolver $featuredKartu,
+        private readonly ResolveFeaturedKartuAction $featuredKartu,
     ) {
     }
 
@@ -37,7 +38,7 @@ class BriefingComposer
         // The featured-kartu voice keys off the card it describes (not the day),
         // so the hero card and its quote stay in lockstep even as new runs slide
         // the pick. No featured card -> no row, and the panel shows its empty state.
-        $featuredCard = $this->featuredKartu->resolve($user);
+        $featuredCard = ($this->featuredKartu)($user);
         $featuredDiscriminator = $featuredCard !== null ? (string) $featuredCard->id : null;
         $featuredKartuVoice = $featuredDiscriminator !== null
             ? $this->existingRow($user, AnalysisType::BriefingFeaturedKartuVoice, $subjectType, $featuredDiscriminator)

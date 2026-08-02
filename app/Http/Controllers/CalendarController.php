@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use Throwable;
+use App\Actions\Run\BuildCalendarCellsAction;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
-use App\Services\Run\CalendarBuilder;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\PostRunNoteReader;
 use Illuminate\Http\Request;
@@ -28,7 +28,7 @@ use Inertia\Response;
 class CalendarController extends Controller
 {
     public function __construct(
-        private readonly CalendarBuilder $calendarBuilder,
+        private readonly BuildCalendarCellsAction $calendarBuilder,
         private readonly LifetimeStats $lifetimeStats,
         private readonly PostRunNoteReader $noteReader,
     ) {
@@ -70,7 +70,7 @@ class CalendarController extends Controller
             'prevMonth' => $monthStart->copy()->subMonthNoOverflow()->format('Y-m'),
             'nextMonth' => $monthStart->copy()->addMonthNoOverflow()->format('Y-m'),
             'todayMonth' => Carbon::today()->format('Y-m'),
-            'cells' => $this->calendarBuilder->buildCells($user, $gridStart, $gridEnd, $monthStart, $monthEnd),
+            'cells' => ($this->calendarBuilder)($user, $gridStart, $gridEnd, $monthStart, $monthEnd),
             'lifetime' => $this->lifetimeStats->forUser($user),
             'todayQuote' => $this->noteReader->speechForToday($user->id),
             'monthlyRecap' => [

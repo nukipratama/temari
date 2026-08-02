@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\AI;
 
+use App\Actions\Run\Story\ResolveFeaturedKartuAction;
 use App\Models\Activity;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
-use App\Services\Run\Story\FeaturedKartuResolver;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -18,7 +18,7 @@ use Illuminate\Support\Carbon;
 #[Description('Dispatch the daily briefing set for each active user (last 7 days)')]
 class DailyBriefingCommand extends Command
 {
-    public function handle(AnalysisService $service, FeaturedKartuResolver $featuredKartu): int
+    public function handle(AnalysisService $service, ResolveFeaturedKartuAction $featuredKartu): int
     {
         $today = Carbon::today()->toDateString();
 
@@ -36,7 +36,7 @@ class DailyBriefingCommand extends Command
             // The featured-kartu voice keys off the card id, so it regenerates
             // exactly when the featured pick changes (and never re-bills while it
             // stays the same), instead of once per day against a moving pick.
-            $featuredCard = $featuredKartu->resolve($user);
+            $featuredCard = $featuredKartu($user);
             if ($featuredCard !== null) {
                 $service->request(
                     subjectOrType: AnalysisType::BriefingFeaturedKartuVoice->subjectType(),

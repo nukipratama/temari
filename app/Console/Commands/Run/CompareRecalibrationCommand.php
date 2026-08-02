@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Run;
 
+use App\Actions\Run\Story\BuildCardContextAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
@@ -11,7 +12,6 @@ use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Story\BadgeEvaluator;
-use App\Services\Run\Story\CardContextBuilder;
 use App\Services\Run\Story\RarityScorer;
 use App\Services\Run\Story\SpecialMoves;
 use Illuminate\Console\Attributes\Description;
@@ -33,7 +33,7 @@ class CompareRecalibrationCommand extends Command
 {
     public function __construct(
         private readonly StreamAnalysis $streamAnalysis,
-        private readonly CardContextBuilder $contextBuilder,
+        private readonly BuildCardContextAction $contextBuilder,
         private readonly BadgeEvaluator $badgeEvaluator,
         private readonly RarityScorer $rarityScorer,
         private readonly SpecialMoves $specialMoves,
@@ -127,7 +127,7 @@ class CompareRecalibrationCommand extends Command
         $tallies['decoupling']['recomputed'] += $recomputed->hasDecouplingPct() ? 1 : 0;
 
         $card = RunCard::query()->where('activity_id', $activity->id)->first();
-        $context = $this->contextBuilder->for($activity, $detail);
+        $context = ($this->contextBuilder)($activity, $detail);
         $badges = $this->badgeEvaluator->evaluate($detail, $recomputed, $context);
         $score = $this->rarityScorer->score(
             $detail,

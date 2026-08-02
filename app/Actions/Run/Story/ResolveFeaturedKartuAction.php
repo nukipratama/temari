@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Run\Story;
+namespace App\Actions\Run\Story;
 
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
@@ -16,11 +16,11 @@ use Illuminate\Database\Eloquent\Builder;
  * narration key off this one pick, so the displayed card and the "Kata Temari"
  * quote can never describe different cards.
  */
-class FeaturedKartuResolver
+class ResolveFeaturedKartuAction
 {
     private const int WINDOW = 8;
 
-    public function resolve(User $user): ?RunCard
+    public function __invoke(User $user): ?RunCard
     {
         $details = ActivityDetail::query()
             ->whereHas('activity', fn (Builder $q): Builder => $q->where('user_id', $user->id))

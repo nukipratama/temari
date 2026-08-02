@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Actions\Run\Story\BuildCardContextAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunnerProfile;
 use App\Models\User;
 use App\Services\Run\Story\CardContext;
-use App\Services\Run\Story\CardContextBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +31,7 @@ function cardContextSubject(User $user, array $attributes = []): array
 
 function cardContextFor(Activity $activity, ActivityDetail $detail): CardContext
 {
-    return app(CardContextBuilder::class)->for($activity, $detail);
+    return app(BuildCardContextAction::class)($activity, $detail);
 }
 
 it('flags the first run ever when the user has no other activity', function (): void {

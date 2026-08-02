@@ -7,7 +7,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Models\User;
-use App\Services\Run\Story\FeaturedKartuResolver;
+use App\Actions\Run\Story\ResolveFeaturedKartuAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -27,7 +27,7 @@ function resolverRunWithCard(User $user, Rarity $rarity, Carbon $when, ?float $d
 it('returns null when the user has no cards', function (): void {
     $user = User::factory()->create();
 
-    expect(app(FeaturedKartuResolver::class)->resolve($user))->toBeNull();
+    expect(app(ResolveFeaturedKartuAction::class)($user))->toBeNull();
 });
 
 it('picks the highest rarity card over more recent lower-rarity ones', function (): void {
@@ -35,7 +35,7 @@ it('picks the highest rarity card over more recent lower-rarity ones', function 
     resolverRunWithCard($user, Rarity::Common, Carbon::today());
     $legendary = resolverRunWithCard($user, Rarity::Legendary, Carbon::today()->subDay());
 
-    expect(app(FeaturedKartuResolver::class)->resolve($user)?->id)->toBe($legendary->id);
+    expect(app(ResolveFeaturedKartuAction::class)($user)?->id)->toBe($legendary->id);
 });
 
 it('breaks a rarity tie toward the most recent run', function (): void {
@@ -43,7 +43,7 @@ it('breaks a rarity tie toward the most recent run', function (): void {
     resolverRunWithCard($user, Rarity::Epic, Carbon::today()->subDays(3));
     $recentEpic = resolverRunWithCard($user, Rarity::Epic, Carbon::today()->subDay());
 
-    expect(app(FeaturedKartuResolver::class)->resolve($user)?->id)->toBe($recentEpic->id);
+    expect(app(ResolveFeaturedKartuAction::class)($user)?->id)->toBe($recentEpic->id);
 });
 
 it('skips analyzed runs that have no card', function (): void {
@@ -52,7 +52,7 @@ it('skips analyzed runs that have no card', function (): void {
     ActivityDetail::factory()->for($cardless)->create(['start_date_local' => Carbon::today()]);
     $carded = resolverRunWithCard($user, Rarity::Rare, Carbon::today()->subDay());
 
-    expect(app(FeaturedKartuResolver::class)->resolve($user)?->id)->toBe($carded->id);
+    expect(app(ResolveFeaturedKartuAction::class)($user)?->id)->toBe($carded->id);
 });
 
 it('only considers the last 8 runs by date', function (): void {
@@ -63,5 +63,5 @@ it('only considers the last 8 runs by date', function (): void {
         resolverRunWithCard($user, Rarity::Common, Carbon::today()->subDays($i));
     }
 
-    expect(app(FeaturedKartuResolver::class)->resolve($user)?->rarity)->toBe(Rarity::Common);
+    expect(app(ResolveFeaturedKartuAction::class)($user)?->rarity)->toBe(Rarity::Common);
 });
