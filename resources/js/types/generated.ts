@@ -2,72 +2,13 @@
 // Regenerate after changing any backed PHP enum; CI fails if stale.
 
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-export const RARITY_VALUES = [
-    'common',
-    'uncommon',
-    'rare',
-    'epic',
-    'legendary',
-] as const;
+export const RARITY_VALUES = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
 
-export type PrCategory =
-    | '1km'
-    | '5km'
-    | '10km'
-    | '15km'
-    | 'half_marathon'
-    | 'marathon'
-    | 'best_5min'
-    | 'best_10min'
-    | 'best_20min'
-    | 'best_30min'
-    | 'best_60min';
-export const PR_CATEGORY_VALUES = [
-    '1km',
-    '5km',
-    '10km',
-    '15km',
-    'half_marathon',
-    'marathon',
-    'best_5min',
-    'best_10min',
-    'best_20min',
-    'best_30min',
-    'best_60min',
-] as const;
+export type PrCategory = '1km' | '5km' | '10km' | '15km' | 'half_marathon' | 'marathon' | 'best_5min' | 'best_10min' | 'best_20min' | 'best_30min' | 'best_60min';
+export const PR_CATEGORY_VALUES = ['1km', '5km', '10km', '15km', 'half_marathon', 'marathon', 'best_5min', 'best_10min', 'best_20min', 'best_30min', 'best_60min'] as const;
 
-export type AnalysisStatus =
-    'pending' | 'queued' | 'processing' | 'done' | 'failed';
-export const ANALYSIS_STATUS_VALUES = [
-    'pending',
-    'queued',
-    'processing',
-    'done',
-    'failed',
-] as const;
+export type AnalysisStatus = 'pending' | 'queued' | 'processing' | 'done' | 'failed';
+export const ANALYSIS_STATUS_VALUES = ['pending', 'queued', 'processing', 'done', 'failed'] as const;
 
-export type AnalysisType =
-    | 'briefing_mascot_voice'
-    | 'briefing_featured_kartu_voice'
-    | 'post_run_speech'
-    | 'run_insight_technical'
-    | 'run_insight_splits'
-    | 'run_insight_zones'
-    | 'weekly_recap'
-    | 'pr_context'
-    | 'card_flavor'
-    | 'aku_profile_voice'
-    | 'monthly_recap';
-export const ANALYSIS_TYPE_VALUES = [
-    'briefing_mascot_voice',
-    'briefing_featured_kartu_voice',
-    'post_run_speech',
-    'run_insight_technical',
-    'run_insight_splits',
-    'run_insight_zones',
-    'weekly_recap',
-    'pr_context',
-    'card_flavor',
-    'aku_profile_voice',
-    'monthly_recap',
-] as const;
+export type AnalysisType = 'briefing_mascot_voice' | 'briefing_featured_kartu_voice' | 'post_run_speech' | 'run_insight_technical' | 'run_insight_splits' | 'run_insight_zones' | 'weekly_recap' | 'pr_context' | 'card_flavor' | 'aku_profile_voice' | 'monthly_recap';
+export const ANALYSIS_TYPE_VALUES = ['briefing_mascot_voice', 'briefing_featured_kartu_voice', 'post_run_speech', 'run_insight_technical', 'run_insight_splits', 'run_insight_zones', 'weekly_recap', 'pr_context', 'card_flavor', 'aku_profile_voice', 'monthly_recap'] as const;
