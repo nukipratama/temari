@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { mdiBundle } from './iconBundle';
 
 // Raw source of every app .ts/.tsx (not the modules), so we can scan for the

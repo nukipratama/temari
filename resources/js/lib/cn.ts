@@ -13,7 +13,12 @@ import { extendTailwindMerge } from 'tailwind-merge';
 const twMerge = extendTailwindMerge({
     extend: {
         classGroups: {
-            'font-size': ['text-label-small', 'text-label-micro', 'text-label-hero', 'text-stat-fluid'],
+            'font-size': [
+                'text-label-small',
+                'text-label-micro',
+                'text-label-hero',
+                'text-stat-fluid',
+            ],
         },
     },
 });
@@ -25,6 +30,8 @@ const twMerge = extendTailwindMerge({
  * utilities (e.g. text-ink, mood-*) aren't in tailwind-merge's groups, so they
  * pass through untouched — same as a plain join.
  */
-export function cn(...classes: Array<string | false | null | undefined>): string {
+export function cn(
+    ...classes: Array<string | false | null | undefined>
+): string {
     return twMerge(classes.filter(Boolean).join(' '));
 }

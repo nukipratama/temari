@@ -1,9 +1,10 @@
+import type { MetricKey } from '@/lib/metricGlossary';
+import type { ActivityDetail, StreamSummary } from '@/types/inertia';
+
+import MetricExplainer from '@/components/MetricExplainer';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
-import MetricExplainer from '@/components/MetricExplainer';
-import type { MetricKey } from '@/lib/metricGlossary';
 import { cn } from '@/lib/cn';
-import type { ActivityDetail, StreamSummary } from '@/types/inertia';
 
 // Mirrors the "hot run" threshold used across the backend narration (e.g.
 // RunCardFactory, Story/Temari) so the frontend softens the same runs the
@@ -25,23 +26,49 @@ export default function DetailTiles({
     const tiles: DetailTile[] = [];
 
     if (detail.average_heartrate != null) {
-        tiles.push({ label: 'AVG HR', value: `${Math.round(detail.average_heartrate)}`, sub: 'bpm' });
+        tiles.push({
+            label: 'AVG HR',
+            value: `${Math.round(detail.average_heartrate)}`,
+            sub: 'bpm',
+        });
     }
     if (detail.max_heartrate != null) {
-        tiles.push({ label: 'MAX HR', value: `${detail.max_heartrate}`, sub: 'bpm' });
+        tiles.push({
+            label: 'MAX HR',
+            value: `${detail.max_heartrate}`,
+            sub: 'bpm',
+        });
     }
     if (detail.average_cadence != null) {
-        tiles.push({ label: 'CADENCE', value: `${Math.round(detail.average_cadence * 2)}`, sub: 'spm avg', metricKey: 'cadence' });
+        tiles.push({
+            label: 'CADENCE',
+            value: `${Math.round(detail.average_cadence * 2)}`,
+            sub: 'spm avg',
+            metricKey: 'cadence',
+        });
     }
     // Elevation gain (ASCENT) now lives in the hero stat row; only max-grade stays here.
     // Only when the run actually climbed, so a flat GPS run doesn't show a noisy 0%.
     // stream_summary is an untyped DB JSON blob; a corrupt or legacy row can
     // carry an unusable reading, which must not render as "NaN%".
     const maxGrade = Number(summary.max_grade_pct);
-    if (summary.max_grade_pct != null && Number.isFinite(maxGrade) && maxGrade >= 3) {
-        tiles.push({ label: 'TANJAKAN', value: `${maxGrade}%`, sub: 'tanjakan tercuram' });
+    if (
+        summary.max_grade_pct != null &&
+        Number.isFinite(maxGrade) &&
+        maxGrade >= 3
+    ) {
+        tiles.push({
+            label: 'TANJAKAN',
+            value: `${maxGrade}%`,
+            sub: 'tanjakan tercuram',
+        });
         if (summary.gap_pace != null) {
-            tiles.push({ label: 'GAP', value: summary.gap_pace, sub: '/km setara datar', metricKey: 'gap' });
+            tiles.push({
+                label: 'GAP',
+                value: summary.gap_pace,
+                sub: '/km setara datar',
+                metricKey: 'gap',
+            });
         }
     }
     const decoupling = Number(summary.decoupling_pct);
@@ -52,7 +79,9 @@ export default function DetailTiles({
         // applies to a positive drift, mirroring the backend's rule (RuleBasedInsightBuilder
         // decoupling > DECOUPLING_HIGH) — a large negative decoupling isn't HR drift at all,
         // so heat can't explain it away.
-        const wasHot = detail.weather_temp_c != null && detail.weather_temp_c >= HOT_TEMP_C;
+        const wasHot =
+            detail.weather_temp_c != null &&
+            detail.weather_temp_c >= HOT_TEMP_C;
         const heatExplainsIt = decoupling > 8 && wasHot;
         tiles.push({
             label: 'DECOUPLING',
@@ -66,7 +95,9 @@ export default function DetailTiles({
     }
 
     if (tiles.length === 0) {
-        return <EmptyPanel title="Detail teknis-nya belum kebaca." className="" />;
+        return (
+            <EmptyPanel title="Detail teknis-nya belum kebaca." className="" />
+        );
     }
 
     return (
@@ -78,12 +109,23 @@ export default function DetailTiles({
                         'rounded-xl border border-cream-deep bg-cream px-4 py-3.5',
                         // A lone trailing tile in this 2-column grid would otherwise
                         // waste half the row — span it across both columns instead.
-                        i === tiles.length - 1 && tiles.length % 2 === 1 && 'col-span-2',
+                        i === tiles.length - 1 &&
+                            tiles.length % 2 === 1 &&
+                            'col-span-2',
                     )}
                 >
-                    <Eyebrow token="micro" tone="ink-2" className="mb-1.5 inline-flex items-center gap-1">
+                    <Eyebrow
+                        token="micro"
+                        tone="ink-2"
+                        className="mb-1.5 inline-flex items-center gap-1"
+                    >
                         {t.label}
-                        {t.metricKey && <MetricExplainer metricKey={t.metricKey} size="xs" />}
+                        {t.metricKey && (
+                            <MetricExplainer
+                                metricKey={t.metricKey}
+                                size="xs"
+                            />
+                        )}
                     </Eyebrow>
                     <div
                         className={cn(
@@ -94,7 +136,9 @@ export default function DetailTiles({
                         {t.value}
                     </div>
                     {t.sub && (
-                        <div className="mt-1.5 font-sans text-[11px] leading-snug text-ink-3">{t.sub}</div>
+                        <div className="mt-1.5 font-sans text-[11px] leading-snug text-ink-3">
+                            {t.sub}
+                        </div>
                     )}
                 </div>
             ))}

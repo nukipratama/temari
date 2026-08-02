@@ -1,7 +1,8 @@
 import { lazy, Suspense, useMemo } from 'react';
-import { cn } from '@/lib/cn';
+
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Skeleton from '@/components/ui/Skeleton';
+import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
 
 // Chart.js core + its scale/element registration live inside this lazy module,
@@ -47,7 +48,9 @@ export default function ProgressionChart({
     category,
     className,
 }: Readonly<ProgressionChartProps>) {
-    const chartLabel = category ? `Grafik progresi waktu terbaik ${category}` : 'Grafik progresi waktu terbaik';
+    const chartLabel = category
+        ? `Grafik progresi waktu terbaik ${category}`
+        : 'Grafik progresi waktu terbaik';
     const firstIdx = timesSec.findIndex((t) => t != null);
     const lastIdx = lastDefinedIndex(timesSec);
     const summarySentence =
@@ -61,102 +64,129 @@ export default function ProgressionChart({
         return weeks.map((w) => (Date.parse(w) - baseMs) / 86_400_000);
     }, [weeks]);
 
-    const data = useMemo(() => ({
-        labels: weeks.map((w) => formatNaiveIdDate(w, 'short')),
-        datasets: [
-            {
-                label: 'Best time',
-                data: timesSec.map((t, i) => (t == null ? null : { x: xOffsets[i], y: t / 60 })),
-                borderColor: CHART_TOKENS.horizon,
-                // Vertical gradient area fill (denser near the line, fading to the axis)
-                // instead of a flat wash, so the chart reads as intentional, not a default.
-                backgroundColor: (ctx: { chart: { chartArea?: { top: number; bottom: number }; ctx: CanvasRenderingContext2D } }) => {
-                    const { chartArea, ctx: canvasCtx } = ctx.chart;
-                    if (!chartArea) return HORIZON_FILL_FLAT;
-                    const g = canvasCtx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                    g.addColorStop(0, HORIZON_FILL_TOP);
-                    g.addColorStop(1, HORIZON_FILL_BOTTOM);
-                    return g;
+    const data = useMemo(
+        () => ({
+            labels: weeks.map((w) => formatNaiveIdDate(w, 'short')),
+            datasets: [
+                {
+                    label: 'Best time',
+                    data: timesSec.map((t, i) =>
+                        t == null ? null : { x: xOffsets[i], y: t / 60 },
+                    ),
+                    borderColor: CHART_TOKENS.horizon,
+                    // Vertical gradient area fill (denser near the line, fading to the axis)
+                    // instead of a flat wash, so the chart reads as intentional, not a default.
+                    backgroundColor: (ctx: {
+                        chart: {
+                            chartArea?: { top: number; bottom: number };
+                            ctx: CanvasRenderingContext2D;
+                        };
+                    }) => {
+                        const { chartArea, ctx: canvasCtx } = ctx.chart;
+                        if (!chartArea) return HORIZON_FILL_FLAT;
+                        const g = canvasCtx.createLinearGradient(
+                            0,
+                            chartArea.top,
+                            0,
+                            chartArea.bottom,
+                        );
+                        g.addColorStop(0, HORIZON_FILL_TOP);
+                        g.addColorStop(1, HORIZON_FILL_BOTTOM);
+                        return g;
+                    },
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    pointBackgroundColor: CHART_TOKENS.horizonDeep,
+                    pointBorderColor: CHART_TOKENS.cream,
+                    pointBorderWidth: 1.5,
+                    tension: 0.32,
+                    fill: true,
+                    spanGaps: true,
                 },
-                borderWidth: 2.5,
-                pointRadius: 4,
-                pointBackgroundColor: CHART_TOKENS.horizonDeep,
-                pointBorderColor: CHART_TOKENS.cream,
-                pointBorderWidth: 1.5,
-                tension: 0.32,
-                fill: true,
-                spanGaps: true,
-            },
-            ...(goalSec
-                ? [
-                      {
-                          label: 'Goal',
-                          // Flat line spanning the full time range (2 points, not one
-                          // per week) so its x still aligns with the time-scaled axis.
-                          data: xOffsets.length > 0
-                              ? [
-                                    { x: xOffsets[0], y: goalSec / 60 },
-                                    { x: xOffsets.at(-1)!, y: goalSec / 60 },
-                                ]
-                              : [],
-                          borderColor: CHART_TOKENS.citrus,
-                          backgroundColor: 'transparent',
-                          borderDash: [6, 6],
-                          borderWidth: 1.5,
-                          pointRadius: 0,
-                          tension: 0,
-                          fill: false,
-                      },
-                  ]
-                : []),
-        ],
-    }), [weeks, timesSec, goalSec, xOffsets]);
+                ...(goalSec
+                    ? [
+                          {
+                              label: 'Goal',
+                              // Flat line spanning the full time range (2 points, not one
+                              // per week) so its x still aligns with the time-scaled axis.
+                              data:
+                                  xOffsets.length > 0
+                                      ? [
+                                            { x: xOffsets[0], y: goalSec / 60 },
+                                            {
+                                                x: xOffsets.at(-1)!,
+                                                y: goalSec / 60,
+                                            },
+                                        ]
+                                      : [],
+                              borderColor: CHART_TOKENS.citrus,
+                              backgroundColor: 'transparent',
+                              borderDash: [6, 6],
+                              borderWidth: 1.5,
+                              pointRadius: 0,
+                              tension: 0,
+                              fill: false,
+                          },
+                      ]
+                    : []),
+            ],
+        }),
+        [weeks, timesSec, goalSec, xOffsets],
+    );
 
     const options = useMemo(() => {
         const xMin = xOffsets.length > 0 ? xOffsets[0] : 0;
         const lastX = xOffsets.length > 0 ? xOffsets.at(-1)! : 0;
         const xMax = lastX > xMin ? lastX : xMin + 1;
         return {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    title: (items: Array<{ dataIndex: number }>) => {
-                        const i = items[0]?.dataIndex ?? 0;
-                        return weeks[i] ? formatNaiveIdDate(weeks[i], 'short') : '';
-                    },
-                    label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
-                        const v = ctx.parsed.y;
-                        if (v == null) return '';
-                        return `${ctx.dataset.label}: ${formatDurationHMS(Math.round(v * 60))}`;
-                    },
-                },
-            },
-        },
-        scales: {
-            x: {
-                type: 'linear' as const,
-                min: xMin,
-                max: xMax,
-                grid: { display: false },
-                // Date labels collide on narrow phones; the date lives in the tooltip instead.
-                ticks: { display: false },
-            },
-            y: {
-                reverse: true,
-                grid: { color: GRID_LINE },
-                ticks: {
-                    color: CHART_TOKENS.ink2,
-                    font: { size: 12 },
-                    callback: (val: number | string) => {
-                        const v = typeof val === 'number' ? val : Number(val);
-                        return Number.isFinite(v) ? formatDurationHMS(Math.round(v * 60)) : String(val);
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: (items: Array<{ dataIndex: number }>) => {
+                            const i = items[0]?.dataIndex ?? 0;
+                            return weeks[i]
+                                ? formatNaiveIdDate(weeks[i], 'short')
+                                : '';
+                        },
+                        label: (ctx: {
+                            dataset: { label?: string };
+                            parsed: { y: number | null };
+                        }) => {
+                            const v = ctx.parsed.y;
+                            if (v == null) return '';
+                            return `${ctx.dataset.label}: ${formatDurationHMS(Math.round(v * 60))}`;
+                        },
                     },
                 },
             },
-        },
+            scales: {
+                x: {
+                    type: 'linear' as const,
+                    min: xMin,
+                    max: xMax,
+                    grid: { display: false },
+                    // Date labels collide on narrow phones; the date lives in the tooltip instead.
+                    ticks: { display: false },
+                },
+                y: {
+                    reverse: true,
+                    grid: { color: GRID_LINE },
+                    ticks: {
+                        color: CHART_TOKENS.ink2,
+                        font: { size: 12 },
+                        callback: (val: number | string) => {
+                            const v =
+                                typeof val === 'number' ? val : Number(val);
+                            return Number.isFinite(v)
+                                ? formatDurationHMS(Math.round(v * 60))
+                                : String(val);
+                        },
+                    },
+                },
+            },
         };
     }, [weeks, xOffsets]);
 
@@ -170,9 +200,15 @@ export default function ProgressionChart({
     }
 
     return (
-        <div role="img" aria-label={`${chartLabel}. ${summarySentence}`} className={cn('h-[260px] sm:h-[300px]', className)}>
+        <div
+            role="img"
+            aria-label={`${chartLabel}. ${summarySentence}`}
+            className={cn('h-[260px] sm:h-[300px]', className)}
+        >
             <span className="sr-only">{summarySentence}</span>
-            <Suspense fallback={<Skeleton className="h-full w-full rounded-xl" />}>
+            <Suspense
+                fallback={<Skeleton className="h-full w-full rounded-xl" />}
+            >
                 <Line data={data} options={options} />
             </Suspense>
         </div>

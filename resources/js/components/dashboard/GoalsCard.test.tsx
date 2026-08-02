@@ -1,11 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import GoalsCard from './GoalsCard';
-import { makeUser, setMockPage } from '@/test/setup';
+
 import type { GoalsSummary } from '@/types/inertia';
 
+import { makeUser, setMockPage } from '@/test/setup';
+
+import GoalsCard from './GoalsCard';
+
 beforeEach(() => {
-    setMockPage({ auth: { user: makeUser() }, flash: {}, demoLoginEnabled: false });
+    setMockPage({
+        auth: { user: makeUser() },
+        flash: {},
+        demoLoginEnabled: false,
+    });
 });
 
 describe('GoalsCard', () => {
@@ -30,9 +37,27 @@ describe('GoalsCard', () => {
             total: 3,
             completed: 1,
             closest: [
-                { id: 'g1', title: 'Lari 100 KM bulan ini', current: 100, target: 100, unit: 'km' },
-                { id: 'g2', title: 'Half marathon', current: 12.5, target: 21.1, unit: 'km' },
-                { id: 'g3', title: 'Target kosong', current: 0, target: 0, unit: 'sesi' },
+                {
+                    id: 'g1',
+                    title: 'Lari 100 KM bulan ini',
+                    current: 100,
+                    target: 100,
+                    unit: 'km',
+                },
+                {
+                    id: 'g2',
+                    title: 'Half marathon',
+                    current: 12.5,
+                    target: 21.1,
+                    unit: 'km',
+                },
+                {
+                    id: 'g3',
+                    title: 'Target kosong',
+                    current: 0,
+                    target: 0,
+                    unit: 'sesi',
+                },
             ],
         };
         setMockPage({
@@ -45,17 +70,31 @@ describe('GoalsCard', () => {
         expect(screen.getByText('Target terdekat')).toBeInTheDocument();
         expect(screen.getByText('Lari 100 KM bulan ini')).toBeInTheDocument();
         expect(screen.getByText('Half marathon')).toBeInTheDocument();
-        expect(screen.getByText((_, el) => el?.textContent === '100/100')).toBeInTheDocument();
-        expect(screen.getByText((_, el) => el?.textContent === '12.5/21.1')).toBeInTheDocument();
+        expect(
+            screen.getByText((_, el) => el?.textContent === '100/100'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText((_, el) => el?.textContent === '12.5/21.1'),
+        ).toBeInTheDocument();
         // target 0 -> "0/0", no divide-by-zero NaN.
-        expect(screen.getByText((_, el) => el?.textContent === '0/0')).toBeInTheDocument();
+        expect(
+            screen.getByText((_, el) => el?.textContent === '0/0'),
+        ).toBeInTheDocument();
     });
 
     it('gives each progress bar a meaningful accessible name', () => {
         const goalsSummary: GoalsSummary = {
             total: 1,
             completed: 0,
-            closest: [{ id: 'g1', title: 'Lari 100 KM bulan ini', current: 40, target: 100, unit: 'km' }],
+            closest: [
+                {
+                    id: 'g1',
+                    title: 'Lari 100 KM bulan ini',
+                    current: 40,
+                    target: 100,
+                    unit: 'km',
+                },
+            ],
         };
         setMockPage({
             auth: { user: makeUser() },
@@ -64,6 +103,10 @@ describe('GoalsCard', () => {
             goalsSummary,
         });
         render(<GoalsCard />);
-        expect(screen.getByRole('progressbar', { name: 'Lari 100 KM bulan ini: 40/100 km' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('progressbar', {
+                name: 'Lari 100 KM bulan ini: 40/100 km',
+            }),
+        ).toBeInTheDocument();
     });
 });

@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import Skeleton from './Skeleton';
 
 describe('Skeleton', () => {
@@ -11,7 +12,9 @@ describe('Skeleton', () => {
     });
 
     it('applies caller-supplied sizing classes', () => {
-        const { container } = render(<Skeleton className="h-[180px] rounded-xl" />);
+        const { container } = render(
+            <Skeleton className="h-[180px] rounded-xl" />,
+        );
         expect(container.firstElementChild).toHaveClass('h-[180px]');
         expect(container.firstElementChild).toHaveClass('rounded-xl');
     });

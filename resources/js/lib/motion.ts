@@ -115,16 +115,16 @@ export type FidgetPattern = {
 };
 
 export const FIDGET_PATTERNS: ReadonlyArray<FidgetPattern> = [
-    { rotate: [0, -6, 8, -3, 0] },                       // head shake (assertive)
-    { rotate: [0, 10, 10, 0], y: [0, -2, -2, 0] },       // tilt right & hold
-    { rotate: [0, -10, -10, 0], y: [0, -2, -2, 0] },     // tilt left & hold
-    { y: [0, -16, 0] },                                   // mini hop
-    { scale: [1, 1.12, 1] },                              // pop
-    { x: [0, -6, 6, 0] },                                 // sideways wiggle
-    { rotate: [0, 4, -4, 4, 0], y: [0, -3, 0] },         // bobble (head shake + small hop)
+    { rotate: [0, -6, 8, -3, 0] }, // head shake (assertive)
+    { rotate: [0, 10, 10, 0], y: [0, -2, -2, 0] }, // tilt right & hold
+    { rotate: [0, -10, -10, 0], y: [0, -2, -2, 0] }, // tilt left & hold
+    { y: [0, -16, 0] }, // mini hop
+    { scale: [1, 1.12, 1] }, // pop
+    { x: [0, -6, 6, 0] }, // sideways wiggle
+    { rotate: [0, 4, -4, 4, 0], y: [0, -3, 0] }, // bobble (head shake + small hop)
     { y: [0, -6, -10, -6, 0], scale: [1, 1.04, 1.06, 1.04, 1] }, // stretch reach-up
-    { y: [0, -10, 0, -10, 0] },                          // double-hop (warm-up)
-    { rotate: [0, -3, 3, 0], y: [0, 2, -8, 0] },         // crouch-then-pop
+    { y: [0, -10, 0, -10, 0] }, // double-hop (warm-up)
+    { rotate: [0, -3, 3, 0], y: [0, 2, -8, 0] }, // crouch-then-pop
 ];
 
 export const pressShrink = { scale: 0.97 };

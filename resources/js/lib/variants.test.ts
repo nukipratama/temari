@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import {
     cardVariants,
     chipVariants,
@@ -160,7 +161,9 @@ describe('filterOptionVariants', () => {
 
     it('stretches a row full width but not a mood tile', () => {
         expect(filterOptionVariants({ layout: 'row' })).toContain('w-full');
-        expect(filterOptionVariants({ layout: 'mood' })).not.toContain('w-full');
+        expect(filterOptionVariants({ layout: 'mood' })).not.toContain(
+            'w-full',
+        );
     });
 
     it('carries the shared focus-ring in its base', () => {
@@ -172,18 +175,28 @@ describe('rarityVariants', () => {
     it.each(['common', 'uncommon', 'rare', 'epic', 'legendary'] as const)(
         'maps rarity %s to a border token',
         (rarity) => {
-            expect(rarityVariants.border({ rarity })).toContain(`border-rarity-${rarity}`);
+            expect(rarityVariants.border({ rarity })).toContain(
+                `border-rarity-${rarity}`,
+            );
         },
     );
 
     it('maps rarity to a flag background + readable text tone', () => {
-        expect(rarityVariants.flag({ rarity: 'legendary' })).toContain('bg-rarity-legendary');
-        expect(rarityVariants.flag({ rarity: 'legendary' })).toContain('text-ink');
-        expect(rarityVariants.flag({ rarity: 'common' })).toContain('text-cream');
+        expect(rarityVariants.flag({ rarity: 'legendary' })).toContain(
+            'bg-rarity-legendary',
+        );
+        expect(rarityVariants.flag({ rarity: 'legendary' })).toContain(
+            'text-ink',
+        );
+        expect(rarityVariants.flag({ rarity: 'common' })).toContain(
+            'text-cream',
+        );
     });
 
     it('maps rarity to a top-border corner flag', () => {
-        expect(rarityVariants.corner({ rarity: 'rare' })).toContain('border-t-rarity-rare');
+        expect(rarityVariants.corner({ rarity: 'rare' })).toContain(
+            'border-t-rarity-rare',
+        );
     });
 
     it('defaults to epic across all three slots', () => {

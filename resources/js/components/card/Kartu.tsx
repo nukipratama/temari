@@ -1,4 +1,12 @@
+import type { CSSProperties } from 'react';
+
+import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
+
+import RouteGlyph from '@/components/card/RouteGlyph';
+import ZoneBar from '@/components/card/ZoneBar';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
+import { MOOD_FILL, MOOD_LABEL, moodSigilColor } from '@/lib/mood';
 import {
     BADGE_ABILITY,
     RARITY_BORDER,
@@ -9,12 +17,6 @@ import {
     badgeEmblem,
     badgeName,
 } from '@/lib/runcard';
-import { MOOD_FILL, MOOD_LABEL, moodSigilColor } from '@/lib/mood';
-import RouteGlyph from '@/components/card/RouteGlyph';
-import ZoneBar from '@/components/card/ZoneBar';
-import Eyebrow from '@/components/ui/Eyebrow';
-import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
-import type { CSSProperties } from 'react';
 
 /** Secondary telemetry shown in the stat block. */
 export interface KartuStats {
@@ -124,7 +126,10 @@ export default function Kartu({
     const rarityHex = RARITY_HEX[rarity];
 
     const moodColor = moodSigilColor(mood);
-    const rootStyle = { '--rarity': rarityHex, '--glow-strength': GLOW_STRENGTH } as CSSProperties;
+    const rootStyle = {
+        '--rarity': rarityHex,
+        '--glow-strength': GLOW_STRENGTH,
+    } as CSSProperties;
     const nameGlow = nameGlowFor(rarity);
 
     // Pearl art-window backdrop — mirrors the canvas share card: a rarity tier
@@ -160,10 +165,19 @@ export default function Kartu({
                 EditionMark onto the card's top-left RarityChip, rendering as
                 "BERKESAN4". The floor keeps the art visible and the two corner
                 marks apart at any width. */}
-            <div className="relative min-h-[30%] flex-1 overflow-hidden rounded-[11px]" style={artStyle}>
+            <div
+                className="relative min-h-[30%] flex-1 overflow-hidden rounded-[11px]"
+                style={artStyle}
+            >
                 {/* Route hero */}
                 <div className="absolute inset-0">
-                    <RouteGlyph rarity={rarity} color={rarityHex} polyline={polyline} paceShape={paceShape} distanceKm={Number.parseFloat(km)} />
+                    <RouteGlyph
+                        rarity={rarity}
+                        color={rarityHex}
+                        polyline={polyline}
+                        paceShape={paceShape}
+                        distanceKm={Number.parseFloat(km)}
+                    />
                 </div>
 
                 {/* Edition mark hugs the art window's own bottom-left corner
@@ -191,7 +205,12 @@ export default function Kartu({
                 every tier (name, KM, badges, stat grid, zone bar) so the grid /
                 featured / detail cards all mirror the share card; only the scale
                 differs by size. */}
-            <div className={cn('px-2 pb-1.5 text-center text-cream', isFull ? 'pt-2' : 'pt-1.5')}>
+            <div
+                className={cn(
+                    'px-2 pb-1.5 text-center text-cream',
+                    isFull ? 'pt-2' : 'pt-1.5',
+                )}
+            >
                 {/* Special-move name (rarity now floats on the art window) */}
                 <div
                     className={cn(
@@ -206,10 +225,23 @@ export default function Kartu({
 
                 {/* KM hero, centred */}
                 <div className="mt-1 flex items-baseline justify-center gap-1">
-                    <span className={cn('font-collectible font-bold tabular-nums leading-none', RARITY_TEXT[rarity], SIZE_KM[size])}>
+                    <span
+                        className={cn(
+                            'font-collectible font-bold tabular-nums leading-none',
+                            RARITY_TEXT[rarity],
+                            SIZE_KM[size],
+                        )}
+                    >
                         {km}
                     </span>
-                    <Eyebrow as="span" token="micro" tone="cream" className="text-[9px] tracking-[0.12em] font-normal">km</Eyebrow>
+                    <Eyebrow
+                        as="span"
+                        token="micro"
+                        tone="cream"
+                        className="text-[9px] tracking-[0.12em] font-normal"
+                    >
+                        km
+                    </Eyebrow>
                 </div>
 
                 {/* Badges — centred row below the KM hero. */}
@@ -231,7 +263,11 @@ export default function Kartu({
                     {/* HR-zone effort bar — bare (no Z1..Z5 legend), matching the share
                         card's rounded legendless bar. */}
                     {zonePct != null && (
-                        <ZoneBar zonePct={zonePct} showLegend={false} className="mt-1.5" />
+                        <ZoneBar
+                            zonePct={zonePct}
+                            showLegend={false}
+                            className="mt-1.5"
+                        />
                     )}
                 </div>
             </div>
@@ -243,7 +279,10 @@ export default function Kartu({
 // window's `overflow-hidden` clips them to its radius, so they fill the corner
 // completely (no pearl sliver) and read as truly stuck to the corner. Opaque
 // background + bumped sizes for legibility.
-function RarityChip({ rarity, compact = false }: Readonly<{ rarity: Rarity; compact?: boolean }>) {
+function RarityChip({
+    rarity,
+    compact = false,
+}: Readonly<{ rarity: Rarity; compact?: boolean }>) {
     return (
         <span
             className={cn(
@@ -254,12 +293,22 @@ function RarityChip({ rarity, compact = false }: Readonly<{ rarity: Rarity; comp
             {/* The set symbol is dropped on the compact grid tile to buy width for
                 the longest rarity name; the border color still tags the tier. */}
             {!compact && (
-                <span aria-hidden className={cn('text-[12px] leading-none', RARITY_TEXT[rarity])}>{RARITY_SYMBOL[rarity]}</span>
+                <span
+                    aria-hidden
+                    className={cn(
+                        'text-[12px] leading-none',
+                        RARITY_TEXT[rarity],
+                    )}
+                >
+                    {RARITY_SYMBOL[rarity]}
+                </span>
             )}
             <span
                 className={cn(
                     'font-sans font-bold uppercase',
-                    compact ? 'text-[8px] tracking-[0.02em]' : 'text-[11px] tracking-[0.04em]',
+                    compact
+                        ? 'text-[8px] tracking-[0.02em]'
+                        : 'text-[11px] tracking-[0.04em]',
                     RARITY_TEXT[rarity],
                 )}
             >
@@ -278,7 +327,11 @@ function EditionMark({ edition }: Readonly<{ edition: CardEdition }>) {
     );
 }
 
-function TRIMPBadge({ trimp, mood, compact = false }: Readonly<{ trimp: string | number; mood: Mood; compact?: boolean }>) {
+function TRIMPBadge({
+    trimp,
+    mood,
+    compact = false,
+}: Readonly<{ trimp: string | number; mood: Mood; compact?: boolean }>) {
     return (
         <span
             className={cn(
@@ -288,11 +341,18 @@ function TRIMPBadge({ trimp, mood, compact = false }: Readonly<{ trimp: string |
         >
             <span
                 aria-label={`Vibe ${MOOD_LABEL[mood]}`}
-                className={cn('shrink-0 rounded-full', MOOD_FILL[mood], compact ? 'h-2.5 w-2.5' : 'h-3 w-3')}
+                className={cn(
+                    'shrink-0 rounded-full',
+                    MOOD_FILL[mood],
+                    compact ? 'h-2.5 w-2.5' : 'h-3 w-3',
+                )}
             />
             <span
                 aria-hidden
-                className={cn('font-sans font-extrabold tabular-nums text-cream', compact ? 'text-[11px]' : 'text-[13px]')}
+                className={cn(
+                    'font-sans font-extrabold tabular-nums text-cream',
+                    compact ? 'text-[11px]' : 'text-[13px]',
+                )}
             >
                 {trimp}
             </span>
@@ -303,7 +363,11 @@ function TRIMPBadge({ trimp, mood, compact = false }: Readonly<{ trimp: string |
 function BadgePip({ slug }: Readonly<{ slug: string }>) {
     return (
         <span
-            title={BADGE_ABILITY[slug] ? badgeName(slug) + ' · ' + BADGE_ABILITY[slug] : badgeName(slug)}
+            title={
+                BADGE_ABILITY[slug]
+                    ? badgeName(slug) + ' · ' + BADGE_ABILITY[slug]
+                    : badgeName(slug)
+            }
             className="inline-flex items-center gap-0.5 rounded-full bg-cream/10 px-1.5 py-0.5 font-mono text-[10px] text-cream"
         >
             <span aria-hidden>{badgeEmblem(slug)}</span>
@@ -315,10 +379,16 @@ function BadgePip({ slug }: Readonly<{ slug: string }>) {
 /** Epic+ names get a rarity-tinted glow; lower tiers stay flat cream. */
 function nameGlowFor(rarity: Rarity): CSSProperties {
     if (rarity === 'legendary') {
-        return { textShadow: '0 0 14px color-mix(in oklab, var(--rarity) 75%, transparent)' };
+        return {
+            textShadow:
+                '0 0 14px color-mix(in oklab, var(--rarity) 75%, transparent)',
+        };
     }
     if (rarity === 'epic') {
-        return { textShadow: '0 0 10px color-mix(in oklab, var(--rarity) 60%, transparent)' };
+        return {
+            textShadow:
+                '0 0 10px color-mix(in oklab, var(--rarity) 60%, transparent)',
+        };
     }
     return {};
 }
@@ -328,7 +398,10 @@ function nameGlowFor(rarity: Rarity): CSSProperties {
  * Each cell only renders when its source value is present (no "—" filler), so the
  * block stays honest and fills with substance rather than padding.
  */
-function StatGrid({ stats, durasi }: Readonly<{ stats: KartuStats | undefined; durasi: string }>) {
+function StatGrid({
+    stats,
+    durasi,
+}: Readonly<{ stats: KartuStats | undefined; durasi: string }>) {
     const cells: Array<{ label: string; value: string }> = [];
     const push = (label: string, value: string | undefined) => {
         if (value != null && value !== '' && value !== '—') {
@@ -350,8 +423,17 @@ function StatGrid({ stats, durasi }: Readonly<{ stats: KartuStats | undefined; d
         <dl className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5 text-center">
             {cells.map((cell) => (
                 <div key={cell.label} className="min-w-0">
-                    <Eyebrow as="dt" token="micro" tone="cream" className="text-[8px] tracking-[0.14em] font-normal">{cell.label}</Eyebrow>
-                    <dd className="truncate font-mono text-[12px] font-semibold tabular-nums text-cream">{cell.value}</dd>
+                    <Eyebrow
+                        as="dt"
+                        token="micro"
+                        tone="cream"
+                        className="text-[8px] tracking-[0.14em] font-normal"
+                    >
+                        {cell.label}
+                    </Eyebrow>
+                    <dd className="truncate font-mono text-[12px] font-semibold tabular-nums text-cream">
+                        {cell.value}
+                    </dd>
                 </div>
             ))}
         </dl>

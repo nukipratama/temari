@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { useLastFilter } from './useLastFilter';
 
 const KEY = 'temari:riwayat:last-filter';
@@ -33,7 +34,10 @@ describe('useLastFilter', () => {
 
     it('remembers the filter the user is currently looking at', () => {
         renderHook(() => useLastFilter({ mood: 'lemes', dist: '0-5' }));
-        expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ mood: 'lemes', dist: '0-5' });
+        expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({
+            mood: 'lemes',
+            dist: '0-5',
+        });
     });
 
     // Clearing filters is exactly when the previous one might be wanted back, so
@@ -41,7 +45,9 @@ describe('useLastFilter', () => {
     it('does not erase the memory when the user clears their filters', () => {
         window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
         renderHook(() => useLastFilter({}));
-        expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ mood: 'nyala' });
+        expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({
+            mood: 'nyala',
+        });
     });
 
     it('forgets on demand so the offer cannot nag', () => {
@@ -67,7 +73,10 @@ describe('useLastFilter', () => {
     });
 
     it('drops non-string entries from a tampered value', () => {
-        window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala', evil: { a: 1 } }));
+        window.localStorage.setItem(
+            KEY,
+            JSON.stringify({ mood: 'nyala', evil: { a: 1 } }),
+        );
         const { result } = renderHook(() => useLastFilter({}));
         expect(result.current.resumable).toEqual({ mood: 'nyala' });
     });
@@ -78,7 +87,9 @@ describe('useLastFilter', () => {
             throw new Error('QuotaExceededError');
         });
 
-        expect(() => renderHook(() => useLastFilter({ mood: 'nyala' }))).not.toThrow();
+        expect(() =>
+            renderHook(() => useLastFilter({ mood: 'nyala' })),
+        ).not.toThrow();
     });
 
     it('survives storage that throws on read', () => {

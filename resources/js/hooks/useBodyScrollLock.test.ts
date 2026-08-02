@@ -1,5 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import { useBodyScrollLock } from './useBodyScrollLock';
 
 describe('useBodyScrollLock', () => {
@@ -17,9 +18,12 @@ describe('useBodyScrollLock', () => {
     });
 
     it('unlocks when the flag flips back to false', () => {
-        const { rerender } = renderHook(({ active }) => useBodyScrollLock(active), {
-            initialProps: { active: true },
-        });
+        const { rerender } = renderHook(
+            ({ active }) => useBodyScrollLock(active),
+            {
+                initialProps: { active: true },
+            },
+        );
         expect(document.body.style.overflow).toBe('hidden');
 
         rerender({ active: false });

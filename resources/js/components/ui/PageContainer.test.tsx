@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import PageContainer from './PageContainer';
 
 describe('PageContainer', () => {
@@ -17,7 +18,9 @@ describe('PageContainer', () => {
     });
 
     it('merges caller className', () => {
-        const { container } = render(<PageContainer className="pb-24">x</PageContainer>);
+        const { container } = render(
+            <PageContainer className="pb-24">x</PageContainer>,
+        );
         expect(container.firstChild).toHaveClass(/pb-24/);
     });
 

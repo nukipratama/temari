@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
 import LinkCard from './LinkCard';
 
 describe('LinkCard', () => {
@@ -17,13 +18,23 @@ describe('LinkCard', () => {
     });
 
     it('passes className through', () => {
-        const { container } = render(<LinkCard href="/x" className="custom-extra">x</LinkCard>);
-        expect((container.firstChild as HTMLElement).className).toMatch(/custom-extra/);
+        const { container } = render(
+            <LinkCard href="/x" className="custom-extra">
+                x
+            </LinkCard>,
+        );
+        expect((container.firstChild as HTMLElement).className).toMatch(
+            /custom-extra/,
+        );
     });
 
     it('fires onClick when clicked', () => {
         const onClick = vi.fn();
-        render(<LinkCard href="/x" onClick={onClick}>hello</LinkCard>);
+        render(
+            <LinkCard href="/x" onClick={onClick}>
+                hello
+            </LinkCard>,
+        );
         fireEvent.click(screen.getByText('hello'));
         expect(onClick).toHaveBeenCalledOnce();
     });

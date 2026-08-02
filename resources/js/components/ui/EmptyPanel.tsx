@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import Card from '@/components/ui/Card';
-import Temari from '@/components/temari/Temari';
+
 import type { TemariPose } from '@/components/temari/TemariProto';
+
+import Temari from '@/components/temari/Temari';
+import Card from '@/components/ui/Card';
 import { cn } from '@/lib/cn';
 
 interface EmptyPanelProps {
@@ -20,9 +22,18 @@ export default function EmptyPanel({
     className,
 }: Readonly<EmptyPanelProps>) {
     return (
-        <Card tone="empty" padding="lg" className={cn('text-center', className)}>
+        <Card
+            tone="empty"
+            padding="lg"
+            className={cn('text-center', className)}
+        >
             {pose && <Temari pose={pose} size={128} animate />}
-            <p className={cn('font-display italic text-2xl text-ink-2', pose && 'mt-4')}>
+            <p
+                className={cn(
+                    'font-display italic text-2xl text-ink-2',
+                    pose && 'mt-4',
+                )}
+            >
                 {title}
             </p>
             {body && (

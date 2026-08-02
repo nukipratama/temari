@@ -20,7 +20,8 @@ interface Options {
 
 function canTrackGaze(): boolean {
     if (typeof globalThis.matchMedia !== 'function') return false;
-    if (globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    if (globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches)
+        return false;
     return globalThis.matchMedia('(pointer: fine)').matches;
 }
 
@@ -31,7 +32,10 @@ function canTrackGaze(): boolean {
  * the cursor is outside `range + falloff`, or when `prefers-reduced-motion`
  * is set.
  */
-export function useGaze(ref: RefObject<HTMLElement | null>, options: Options = {}): Gaze {
+export function useGaze(
+    ref: RefObject<HTMLElement | null>,
+    options: Options = {},
+): Gaze {
     const { range = 220, falloff = 160, enabled = true } = options;
     const [gaze, setGaze] = useState<Gaze>(ZERO);
     const rafRef = useRef(0);
@@ -56,12 +60,15 @@ export function useGaze(ref: RefObject<HTMLElement | null>, options: Options = {
                 return;
             }
 
-            const strength = dist > range ? Math.max(0, 1 - (dist - range) / falloff) : 1;
+            const strength =
+                dist > range ? Math.max(0, 1 - (dist - range) / falloff) : 1;
             // Quantize to 2 decimals so sub-pixel cursor jitter doesn't trigger
             // a re-render of the whole mascot tree on each mousemove.
             const nx = Math.round((dx / dist) * strength * 100) / 100;
             const ny = Math.round((dy / dist) * strength * 100) / 100;
-            setGaze((prev) => (prev.x === nx && prev.y === ny ? prev : { x: nx, y: ny }));
+            setGaze((prev) =>
+                prev.x === nx && prev.y === ny ? prev : { x: nx, y: ny },
+            );
         };
 
         const onMove = (e: MouseEvent) => {

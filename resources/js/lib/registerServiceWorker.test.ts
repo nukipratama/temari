@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { registerServiceWorker } from './registerServiceWorker';
 
 function stubServiceWorker(register: () => Promise<unknown>) {
@@ -54,7 +55,9 @@ describe('registerServiceWorker', () => {
     // Insecure origin, private mode, or a policy block: nothing in the UI
     // depends on this succeeding.
     it('swallows a rejected registration', async () => {
-        const register = vi.fn().mockRejectedValue(new Error('insecure origin'));
+        const register = vi
+            .fn()
+            .mockRejectedValue(new Error('insecure origin'));
         stubServiceWorker(register);
 
         registerServiceWorker();

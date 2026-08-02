@@ -19,7 +19,11 @@ type BadgeNavigator = Navigator & {
 };
 
 export function syncAppBadgeOnVisible(): void {
-    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator) || !('setAppBadge' in navigator)) {
+    if (
+        typeof navigator === 'undefined' ||
+        !('serviceWorker' in navigator) ||
+        !('setAppBadge' in navigator)
+    ) {
         return;
     }
 
@@ -33,7 +37,9 @@ export function syncAppBadgeOnVisible(): void {
         void navigator.serviceWorker.ready
             .then((registration) => registration.getNotifications())
             .then((notifications) =>
-                notifications.length > 0 ? badgeNavigator.setAppBadge?.(notifications.length) : badgeNavigator.clearAppBadge?.(),
+                notifications.length > 0
+                    ? badgeNavigator.setAppBadge?.(notifications.length)
+                    : badgeNavigator.clearAppBadge?.(),
             )
             .catch(() => undefined);
     };

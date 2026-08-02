@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import KartuMini from './KartuMini';
+
 import type { Rarity } from '@/types/inertia';
+
+import KartuMini from './KartuMini';
 
 const SAMPLE_POLYLINE = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';
 
@@ -12,17 +14,24 @@ describe('KartuMini', () => {
         expect(screen.getByText('18 Mei')).toBeInTheDocument();
     });
 
-    it.each(['common', 'uncommon', 'rare', 'epic', 'legendary'] satisfies Rarity[])(
-        'renders for rarity %s',
-        (rarity) => {
-            render(<KartuMini name="x" rarity={rarity} />);
-            expect(screen.getByText('x')).toBeInTheDocument();
-        },
-    );
+    it.each([
+        'common',
+        'uncommon',
+        'rare',
+        'epic',
+        'legendary',
+    ] satisfies Rarity[])('renders for rarity %s', (rarity) => {
+        render(<KartuMini name="x" rarity={rarity} />);
+        expect(screen.getByText('x')).toBeInTheDocument();
+    });
 
     it('draws a route thumbnail when a polyline is present', () => {
-        const { container } = render(<KartuMini name="x" polyline={SAMPLE_POLYLINE} />);
-        expect(container.querySelector('[data-variant="route"]')).not.toBeNull();
+        const { container } = render(
+            <KartuMini name="x" polyline={SAMPLE_POLYLINE} />,
+        );
+        expect(
+            container.querySelector('[data-variant="route"]'),
+        ).not.toBeNull();
     });
 
     it('renders the edition mark when provided', () => {
@@ -31,7 +40,13 @@ describe('KartuMini', () => {
     });
 
     it('joins edition and date with a separator when both are provided', () => {
-        render(<KartuMini name="x" date="18 Mei" edition={{ index: 2, total: 5 }} />);
+        render(
+            <KartuMini
+                name="x"
+                date="18 Mei"
+                edition={{ index: 2, total: 5 }}
+            />,
+        );
         expect(screen.getByText('#2/5')).toBeInTheDocument();
         expect(screen.getByText('18 Mei')).toBeInTheDocument();
         expect(screen.getByText('·')).toBeInTheDocument();

@@ -7,22 +7,10 @@ import type { Mood } from '@/types/inertia';
 // and floating ambient particles (sparkles / hearts / droplets / ZZZ).
 
 export type MoodAccessory =
-    | 'medal'
-    | 'flag'
-    | 'towel'
-    | 'bottle'
-    | 'question'
-    | 'nightcap'
-    | null;
+    'medal' | 'flag' | 'towel' | 'bottle' | 'question' | 'nightcap' | null;
 
 export type MoodParticles =
-    | 'sparkles'
-    | 'hearts'
-    | 'droplets'
-    | 'lines'
-    | 'stars'
-    | 'zzz'
-    | null;
+    'sparkles' | 'hearts' | 'droplets' | 'lines' | 'stars' | 'zzz' | null;
 
 export interface MoodVariant {
     /** Hex for the headband, wristband, inner-ear, and tail pom-pom. */

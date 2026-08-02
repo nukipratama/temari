@@ -1,9 +1,12 @@
+import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
-import KoleksiAksesori from './Aksesori';
-import { setMockPage } from '@/test/setup';
+
 import type { EquippedAccessories } from '@/types/inertia';
+
+import { setMockPage } from '@/test/setup';
+
+import KoleksiAksesori from './Aksesori';
 
 type Slot = 'medal' | 'ikat_kepala' | 'kaus' | 'celana' | 'sepatu' | 'aura';
 
@@ -16,7 +19,12 @@ const emptyEquipped: EquippedAccessories = {
     aura: null,
 };
 
-function item(unlock_key: string, slot: Slot, unlocked: boolean, equipped: boolean) {
+function item(
+    unlock_key: string,
+    slot: Slot,
+    unlocked: boolean,
+    equipped: boolean,
+) {
     return {
         unlock_key,
         slot,
@@ -32,7 +40,9 @@ function item(unlock_key: string, slot: Slot, unlocked: boolean, equipped: boole
 
 beforeEach(() => {
     setMockPage({
-        auth: { user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null } },
+        auth: {
+            user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null },
+        },
         flash: {},
         demoLoginEnabled: false,
     });
@@ -75,7 +85,10 @@ describe('Koleksi/Aksesori', () => {
         render(
             <KoleksiAksesori
                 items={[item('accessory.medal_pertama', 'medal', true, true)]}
-                equipped={{ ...emptyEquipped, medal: 'accessory.medal_pertama' }}
+                equipped={{
+                    ...emptyEquipped,
+                    medal: 'accessory.medal_pertama',
+                }}
             />,
         );
         // The equipped panel and the card both render the name
@@ -87,7 +100,10 @@ describe('Koleksi/Aksesori', () => {
         render(
             <KoleksiAksesori
                 items={[item('accessory.aura_pemanasan', 'aura', true, true)]}
-                equipped={{ ...emptyEquipped, aura: 'accessory.aura_pemanasan' }}
+                equipped={{
+                    ...emptyEquipped,
+                    aura: 'accessory.aura_pemanasan',
+                }}
             />,
         );
         // The equipped panel and the card both render the name
@@ -100,12 +116,7 @@ describe('Koleksi/Aksesori', () => {
         const items = [
             item('accessory.ikat_kepala_epik', 'ikat_kepala', true, false),
         ];
-        render(
-            <KoleksiAksesori
-                items={items}
-                equipped={emptyEquipped}
-            />,
-        );
+        render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
         fireEvent.click(screen.getByText('Pasang'));
         expect(router.post).toHaveBeenCalledWith(
             '/api/aksesori/equip',
@@ -116,29 +127,37 @@ describe('Koleksi/Aksesori', () => {
 
     it('renders the default preview (no slot variant) for unknown unlock keys', () => {
         const items = [item('accessory.sepatu_basic', 'sepatu', true, false)];
-        render(
-            <KoleksiAksesori
-                items={items}
-                equipped={emptyEquipped}
-            />,
-        );
+        render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
         expect(screen.getByText('accessory.sepatu_basic')).toBeInTheDocument();
     });
 
     it('toggles the locked items list when the "belum kebuka" button is clicked', () => {
         const items = [
             item('accessory.ikat_kepala_epik', 'ikat_kepala', true, false),
-            item('accessory.ikat_kepala_legendaris', 'ikat_kepala', false, false),
+            item(
+                'accessory.ikat_kepala_legendaris',
+                'ikat_kepala',
+                false,
+                false,
+            ),
             item('accessory.medal_pertama', 'medal', false, false),
         ];
         render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
         // Each slot section has its own toggle + locked-item wrapper, so scope
         // both to the ikat_kepala section rather than the first "belum kebuka"
         // button in the document (medal's section also has one).
-        const section = screen.getByText('accessory.ikat_kepala_legendaris').closest('section');
-        const btn = section && Array.from(section.querySelectorAll('button')).find((b) => /belum kebuka/.test(b.textContent ?? ''));
+        const section = screen
+            .getByText('accessory.ikat_kepala_legendaris')
+            .closest('section');
+        const btn =
+            section &&
+            Array.from(section.querySelectorAll('button')).find((b) =>
+                /belum kebuka/.test(b.textContent ?? ''),
+            );
         // The locked-item wrapper is hidden on mobile until toggled ("hidden sm:contents").
-        const lockedWrapper = screen.getByText('accessory.ikat_kepala_legendaris').closest('article')?.parentElement;
+        const lockedWrapper = screen
+            .getByText('accessory.ikat_kepala_legendaris')
+            .closest('article')?.parentElement;
         expect(lockedWrapper?.className).toBe('hidden sm:contents');
 
         fireEvent.click(btn ?? document.body);

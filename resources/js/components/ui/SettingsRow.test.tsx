@@ -1,5 +1,6 @@
 import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+
 import SettingsRow from './SettingsRow';
 
 describe('SettingsRow', () => {
@@ -10,12 +11,7 @@ describe('SettingsRow', () => {
     };
 
     it('renders a link row with icon and description', () => {
-        render(
-            <SettingsRow
-                {...defaultProps}
-                href='/test-link'
-            />
-        );
+        render(<SettingsRow {...defaultProps} href="/test-link" />);
         expect(screen.getByText(defaultProps.label)).toBeInTheDocument();
         expect(screen.getByText(defaultProps.description)).toBeInTheDocument();
         const link = screen.getByText(defaultProps.label).closest('a');
@@ -27,8 +23,8 @@ describe('SettingsRow', () => {
         render(
             <SettingsRow
                 {...defaultProps}
-                externalHref='https://example.com'
-            />
+                externalHref="https://example.com"
+            />,
         );
         expect(screen.getByText(defaultProps.label)).toBeInTheDocument();
         const link = screen.getByRole('link');
@@ -38,12 +34,9 @@ describe('SettingsRow', () => {
     it('renders a button row with onClick handler and children', () => {
         const onClick = vi.fn();
         render(
-            <SettingsRow
-                {...defaultProps}
-                onClick={onClick}
-            >
+            <SettingsRow {...defaultProps} onClick={onClick}>
                 <span>Child Element</span>
-            </SettingsRow>
+            </SettingsRow>,
         );
         expect(screen.getByText(defaultProps.label)).toBeInTheDocument();
         const button = screen.getByText(defaultProps.label).closest('button')!;

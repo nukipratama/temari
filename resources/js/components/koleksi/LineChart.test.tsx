@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
 import { Chart as ChartJS } from 'chart.js';
+import { describe, expect, it } from 'vitest';
+
 import LineChart from './LineChart';
 
 describe('LineChart', () => {

@@ -1,5 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
 import { useFocusTrap } from './useFocusTrap';
 
 let panel: HTMLDivElement;
@@ -32,7 +33,9 @@ function makeRef() {
 }
 
 function pressTab(shiftKey = false) {
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true }));
+    document.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true }),
+    );
 }
 
 describe('useFocusTrap', () => {

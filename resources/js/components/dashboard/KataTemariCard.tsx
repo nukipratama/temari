@@ -1,16 +1,21 @@
 import { Icon } from '@iconify/react';
+
+import type { ActivityDetail, BriefingResult } from '@/types/inertia';
+
+import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import Temari from '@/components/temari/Temari';
+import { type TemariPose } from '@/components/temari/TemariProto';
 import Card from '@/components/ui/Card';
 import Chip from '@/components/ui/Chip';
 import SectionLabel from '@/components/ui/SectionLabel';
-import Temari from '@/components/temari/Temari';
-import { type TemariPose } from '@/components/temari/TemariProto';
-import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
-import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
+import {
+    cooldownAriaLabel,
+    useCooldownCountdown,
+} from '@/hooks/useCooldownCountdown';
 import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { formatWeather } from '@/pages/HariIni/helpers';
-import type { ActivityDetail, BriefingResult } from '@/types/inertia';
 
 /**
  * Renders the day's Temari voice as a structured 2-part block:
@@ -20,7 +25,10 @@ import type { ActivityDetail, BriefingResult } from '@/types/inertia';
  * Falls back to a single paragraph if the LLM didn't follow the format.
  */
 function VoiceContent({ text }: Readonly<{ text: string }>) {
-    const parts = text.split(/\n\n+/).map((s) => s.trim()).filter(Boolean);
+    const parts = text
+        .split(/\n\n+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
     if (parts.length === 0) {
         return null;
     }
@@ -42,8 +50,19 @@ function VoiceContent({ text }: Readonly<{ text: string }>) {
     );
 }
 
-export default function KataTemariCard({ briefing, pose, lastRun }: Readonly<{ briefing: BriefingResult; pose: TemariPose; lastRun: ActivityDetail | null }>) {
-    const { trigger, pending, retryAfterSeconds, paused } = useAnalysisTrigger(briefing.mascotVoice, ['briefing']);
+export default function KataTemariCard({
+    briefing,
+    pose,
+    lastRun,
+}: Readonly<{
+    briefing: BriefingResult;
+    pose: TemariPose;
+    lastRun: ActivityDetail | null;
+}>) {
+    const { trigger, pending, retryAfterSeconds, paused } = useAnalysisTrigger(
+        briefing.mascotVoice,
+        ['briefing'],
+    );
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const cooling = cooldownRemaining > 0;
 
@@ -56,15 +75,17 @@ export default function KataTemariCard({ briefing, pose, lastRun }: Readonly<{ b
 
     const weatherChipLabel = lastRun
         ? formatWeather(
-            lastRun.weather_temp_c ?? null,
-            lastRun.weather_humidity_pct ?? null,
-            lastRun.weather_rain_detected ?? null,
-        )
+              lastRun.weather_temp_c ?? null,
+              lastRun.weather_humidity_pct ?? null,
+              lastRun.weather_rain_detected ?? null,
+          )
         : null;
 
     return (
         <Card as="section" padding="md" className="flex h-full flex-col gap-3">
-            <SectionLabel dot className="mb-0">Kata Temari hari ini</SectionLabel>
+            <SectionLabel dot className="mb-0">
+                Kata Temari hari ini
+            </SectionLabel>
             <div className="flex items-start gap-3">
                 <Temari pose={pose} size={48} animate={false} />
                 <div className="min-w-0 flex-1">
@@ -86,7 +107,10 @@ export default function KataTemariCard({ briefing, pose, lastRun }: Readonly<{ b
                     type="button"
                     onClick={trigger}
                     disabled={pending || cooling}
-                    aria-label={cooldownAriaLabel(cooldownRemaining, 'minta saran lain')}
+                    aria-label={cooldownAriaLabel(
+                        cooldownRemaining,
+                        'minta saran lain',
+                    )}
                     className="focus-ring mt-auto rounded inline-flex items-center self-start gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
                 >
                     <Icon icon="mdi:auto-awesome" aria-hidden />

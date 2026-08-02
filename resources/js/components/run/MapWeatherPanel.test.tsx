@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import MapWeatherPanel from './MapWeatherPanel';
+
 import type { ActivityDetail } from '@/types/inertia';
+
+import MapWeatherPanel from './MapWeatherPanel';
 
 // RouteMap is lazy()-loaded and wraps real leaflet/react-leaflet/@mapbox/polyline
 // (see its own dedicated test file for those stubs). Stub it here too so the
@@ -39,25 +41,42 @@ describe('MapWeatherPanel', () => {
     });
 
     it('renders nothing above the map when there is neither temp nor location', () => {
-        render(<MapWeatherPanel detail={detail({ weather_temp_c: null, location_name: null })} />);
+        render(
+            <MapWeatherPanel
+                detail={detail({ weather_temp_c: null, location_name: null })}
+            />,
+        );
         expect(screen.queryByText(/lembab/)).not.toBeInTheDocument();
         expect(screen.queryByText('Senayan')).not.toBeInTheDocument();
     });
 
     it('hides the humidity line when the reading is missing', () => {
-        render(<MapWeatherPanel detail={detail({ weather_humidity_pct: null })} />);
+        render(
+            <MapWeatherPanel detail={detail({ weather_humidity_pct: null })} />,
+        );
         expect(screen.getByText(/32°/)).toBeInTheDocument();
         expect(screen.queryByText(/lembab/)).not.toBeInTheDocument();
     });
 
     it('keeps a single-segment location on one line', () => {
-        render(<MapWeatherPanel detail={detail({ location_name: 'Senayan' })} />);
+        render(
+            <MapWeatherPanel detail={detail({ location_name: 'Senayan' })} />,
+        );
         expect(screen.getByText('Senayan')).toBeInTheDocument();
     });
 
     it('splits a 4-segment location into place + province,country lines (no truncation)', () => {
-        render(<MapWeatherPanel detail={detail({ location_name: 'Gelora Bung Karno, Jakarta Pusat, DKI Jakarta, Indonesia' })} />);
-        expect(screen.getByText('Gelora Bung Karno, Jakarta Pusat')).toBeInTheDocument();
+        render(
+            <MapWeatherPanel
+                detail={detail({
+                    location_name:
+                        'Gelora Bung Karno, Jakarta Pusat, DKI Jakarta, Indonesia',
+                })}
+            />,
+        );
+        expect(
+            screen.getByText('Gelora Bung Karno, Jakarta Pusat'),
+        ).toBeInTheDocument();
         expect(screen.getByText('DKI Jakarta, Indonesia')).toBeInTheDocument();
     });
 
@@ -67,46 +86,83 @@ describe('MapWeatherPanel', () => {
     });
 
     it('renders the wind row when weather_wind_speed_kmh is present', () => {
-        render(<MapWeatherPanel detail={detail({ weather_wind_speed_kmh: 18 })} />);
+        render(
+            <MapWeatherPanel detail={detail({ weather_wind_speed_kmh: 18 })} />,
+        );
         expect(screen.getByText(/18 km\/j/)).toBeInTheDocument();
         expect(screen.queryByText(/gust/)).not.toBeInTheDocument();
     });
 
     it('shows the gust reading when it clears the 8 km/j delta threshold', () => {
-        render(<MapWeatherPanel detail={detail({ weather_wind_speed_kmh: 18, weather_wind_gust_kmh: 30 })} />);
+        render(
+            <MapWeatherPanel
+                detail={detail({
+                    weather_wind_speed_kmh: 18,
+                    weather_wind_gust_kmh: 30,
+                })}
+            />,
+        );
         expect(screen.getByText(/gust 30/)).toBeInTheDocument();
     });
 
     it('hides the gust reading when it is within the 8 km/j delta threshold', () => {
-        render(<MapWeatherPanel detail={detail({ weather_wind_speed_kmh: 18, weather_wind_gust_kmh: 24 })} />);
+        render(
+            <MapWeatherPanel
+                detail={detail({
+                    weather_wind_speed_kmh: 18,
+                    weather_wind_gust_kmh: 24,
+                })}
+            />,
+        );
         expect(screen.getByText(/18 km\/j/)).toBeInTheDocument();
         expect(screen.queryByText(/gust/)).not.toBeInTheDocument();
     });
 
     it('rotates the direction arrow to the recorded bearing', () => {
         const { container } = render(
-            <MapWeatherPanel detail={detail({ weather_wind_speed_kmh: 18, weather_wind_direction_deg: 135 })} />,
+            <MapWeatherPanel
+                detail={detail({
+                    weather_wind_speed_kmh: 18,
+                    weather_wind_direction_deg: 135,
+                })}
+            />,
         );
-        expect(container.querySelector('[style*="rotate(135deg)"]')).not.toBeNull();
+        expect(
+            container.querySelector('[style*="rotate(135deg)"]'),
+        ).not.toBeNull();
     });
 
     it('hides the map area when no polyline is present', () => {
-        const { container } = render(<MapWeatherPanel detail={detail({ summary_polyline: null })} />);
-        expect(container.querySelector('.skeleton, .skeleton-on-sky')).toBeNull();
+        const { container } = render(
+            <MapWeatherPanel detail={detail({ summary_polyline: null })} />,
+        );
+        expect(
+            container.querySelector('.skeleton, .skeleton-on-sky'),
+        ).toBeNull();
     });
 
     it('hides the map area when the polyline is an empty string', () => {
-        const { container } = render(<MapWeatherPanel detail={detail({ summary_polyline: '' })} />);
-        expect(container.querySelector('.skeleton, .skeleton-on-sky')).toBeNull();
+        const { container } = render(
+            <MapWeatherPanel detail={detail({ summary_polyline: '' })} />,
+        );
+        expect(
+            container.querySelector('.skeleton, .skeleton-on-sky'),
+        ).toBeNull();
     });
 
     it('shows the map suspense fallback when a polyline IS present', () => {
-        const { container } = render(<MapWeatherPanel detail={detail({ summary_polyline: 'abc123' })} />);
-        expect(container.querySelector('.skeleton, .skeleton-on-sky')).not.toBeNull();
+        const { container } = render(
+            <MapWeatherPanel detail={detail({ summary_polyline: 'abc123' })} />,
+        );
+        expect(
+            container.querySelector('.skeleton, .skeleton-on-sky'),
+        ).not.toBeNull();
     });
 
     it('passes the className through to the wrapper', () => {
-        const { container } = render(<MapWeatherPanel detail={detail()} className="flex" />);
+        const { container } = render(
+            <MapWeatherPanel detail={detail()} className="flex" />,
+        );
         expect(container.firstElementChild).toHaveClass('flex');
     });
 });

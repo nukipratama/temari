@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
-import { cn } from '@/lib/cn';
-import { BunnyGlyph } from '@/components/BrandMark';
-import { projectPolyline } from '@/lib/route';
+
 import type { Rarity } from '@/types/inertia';
+
+import { BunnyGlyph } from '@/components/BrandMark';
+import { cn } from '@/lib/cn';
+import { projectPolyline } from '@/lib/route';
 
 interface RouteGlyphProps {
     /** Google-encoded route polyline. Drawn as a static path when present. */
@@ -31,16 +33,34 @@ const MAX_BARS = 16;
  *
  * Variants are tagged via `data-variant` for tests and styling.
  */
-export default function RouteGlyph({ polyline, paceShape, rarity, color, distanceKm, className }: Readonly<RouteGlyphProps>) {
+export default function RouteGlyph({
+    polyline,
+    paceShape,
+    rarity,
+    color,
+    distanceKm,
+    className,
+}: Readonly<RouteGlyphProps>) {
     const stroke = color ?? `var(--color-rarity-${rarity})`;
     const fill = color
         ? `color-mix(in oklab, ${color} 14%, transparent)`
         : `color-mix(in oklab, var(--color-rarity-${rarity}) 14%, transparent)`;
 
-    const route = useMemo(() => projectPolyline(polyline, VB_W, VB_H, PAD, MAX_POINTS), [polyline]);
+    const route = useMemo(
+        () => projectPolyline(polyline, VB_W, VB_H, PAD, MAX_POINTS),
+        [polyline],
+    );
     if (route !== null) {
-        const d = route.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
-        const strokeWidth = distanceKm != null && Number.isFinite(distanceKm) ? Math.max(2.2, 3.8 - Math.log2(Math.max(distanceKm, 1)) * 0.5) : 3.8;
+        const d = route.points
+            .map(
+                (p, i) =>
+                    `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`,
+            )
+            .join(' ');
+        const strokeWidth =
+            distanceKm != null && Number.isFinite(distanceKm)
+                ? Math.max(2.2, 3.8 - Math.log2(Math.max(distanceKm, 1)) * 0.5)
+                : 3.8;
         return (
             <svg
                 aria-hidden
@@ -93,9 +113,15 @@ export default function RouteGlyph({ polyline, paceShape, rarity, color, distanc
         <div
             aria-hidden
             data-variant="glyph"
-            className={cn('relative flex h-full w-full items-center justify-center overflow-hidden', className)}
+            className={cn(
+                'relative flex h-full w-full items-center justify-center overflow-hidden',
+                className,
+            )}
         >
-            <span className="absolute inset-0 opacity-[0.1]" style={{ backgroundColor: stroke }} />
+            <span
+                className="absolute inset-0 opacity-[0.1]"
+                style={{ backgroundColor: stroke }}
+            />
             <span className="relative opacity-50">
                 <BunnyGlyph size={56} tone="ink" />
             </span>
@@ -107,12 +133,17 @@ export default function RouteGlyph({ polyline, paceShape, rarity, color, distanc
  * Bucket per-km paces into up to MAX_BARS bars (faster = taller), mirroring the
  * SplitsSparkline shape logic. Returns null when there's no pace data.
  */
-function barsFor(paceShape?: ReadonlyArray<number> | null): Array<{ x: number; w: number; h: number; best: boolean }> | null {
+function barsFor(
+    paceShape?: ReadonlyArray<number> | null,
+): Array<{ x: number; w: number; h: number; best: boolean }> | null {
     if (paceShape == null || paceShape.length === 0) {
         return null;
     }
 
-    const bucketSize = paceShape.length <= MAX_BARS ? 1 : Math.ceil(paceShape.length / MAX_BARS);
+    const bucketSize =
+        paceShape.length <= MAX_BARS
+            ? 1
+            : Math.ceil(paceShape.length / MAX_BARS);
     const buckets: number[] = [];
     for (let i = 0; i < paceShape.length; i += bucketSize) {
         const chunk = paceShape.slice(i, i + bucketSize);

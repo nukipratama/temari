@@ -1,11 +1,15 @@
 import { Icon } from '@iconify/react';
 import { useState } from 'react';
-import PillButton from '@/components/ui/PillButton';
+
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import EnableNotificationsModal from '@/components/EnableNotificationsModal';
-import { usePendingPost } from '@/hooks/usePendingPost';
+import PillButton from '@/components/ui/PillButton';
+import {
+    cooldownAriaLabel,
+    useCooldownCountdown,
+} from '@/hooks/useCooldownCountdown';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
-import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
+import { usePendingPost } from '@/hooks/usePendingPost';
 import { formatDurationHMS } from '@/lib/pace';
 
 /**
@@ -27,7 +31,11 @@ export default function SendNotificationButton({
     url,
     retryAfterSeconds,
     reachable = true,
-}: Readonly<{ url: string; retryAfterSeconds?: number | null; reachable?: boolean }>) {
+}: Readonly<{
+    url: string;
+    retryAfterSeconds?: number | null;
+    reachable?: boolean;
+}>) {
     const [sending, send] = usePendingPost(url, { preserveScroll: true });
     const { open, setOpen, guard } = useDemoGuard();
     const [enableOpen, setEnableOpen] = useState(false);
@@ -47,7 +55,10 @@ export default function SendNotificationButton({
                     <Icon icon="mdi:send" width={15} height={15} aria-hidden />
                     Kirim notifikasi
                 </PillButton>
-                <EnableNotificationsModal open={enableOpen} onClose={() => setEnableOpen(false)} />
+                <EnableNotificationsModal
+                    open={enableOpen}
+                    onClose={() => setEnableOpen(false)}
+                />
             </>
         );
     }
@@ -67,7 +78,10 @@ export default function SendNotificationButton({
                 disabled={sending || cooling}
                 className="disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={() => guard(send)}
-                aria-label={cooldownAriaLabel(cooldownRemaining, 'kirim notifikasi')}
+                aria-label={cooldownAriaLabel(
+                    cooldownRemaining,
+                    'kirim notifikasi',
+                )}
             >
                 <Icon
                     icon={sending ? 'mdi:loading' : 'mdi:send'}

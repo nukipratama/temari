@@ -3,7 +3,10 @@ import type { CSSProperties } from 'react';
 // Ember-orange radial glow used as a decorative atmospheric backdrop behind
 // hero panels. Callers handle absolute positioning + size; this only owns
 // the rgba/falloff formula so the magic number isn't pasted at every site.
-export function emberGlowStyle(intensity = 0.3, falloff = '70%'): CSSProperties {
+export function emberGlowStyle(
+    intensity = 0.3,
+    falloff = '70%',
+): CSSProperties {
     return {
         background: `radial-gradient(circle, rgba(232,160,118,${intensity}) 0%, transparent ${falloff})`,
     };
@@ -19,7 +22,9 @@ export const GLOW_COLORS = {
 
 /** Generic radial glow from an RGB color. */
 export function glowStyle(
-    r: number, g: number, b: number,
+    r: number,
+    g: number,
+    b: number,
     intensity = 0.3,
     falloff = '70%',
 ): CSSProperties {
@@ -42,6 +47,7 @@ export function noiseFilterStyle(): CSSProperties {
  *  mimicking the first light of dawn breaking through the sky gradient. */
 export function dawnRayStyle(): CSSProperties {
     return {
-        background: 'linear-gradient(160deg, transparent 25%, rgba(232,160,118,0.09) 42%, rgba(255,246,235,0.06) 50%, rgba(232,160,118,0.09) 58%, transparent 75%)',
+        background:
+            'linear-gradient(160deg, transparent 25%, rgba(232,160,118,0.09) 42%, rgba(255,246,235,0.06) 50%, rgba(232,160,118,0.09) 58%, transparent 75%)',
     };
 }

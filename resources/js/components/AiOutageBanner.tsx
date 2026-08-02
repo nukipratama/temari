@@ -1,5 +1,6 @@
-import { usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { usePage } from '@inertiajs/react';
+
 import type { SharedProps } from '@/types/inertia';
 
 /**
@@ -21,9 +22,16 @@ export default function AiOutageBanner() {
     return (
         <div className="px-4 pt-4 lg:px-8">
             <div className="mx-auto flex max-w-page-2xl items-start gap-3 rounded-2xl border border-line bg-surface-sunken px-4 py-3">
-                <Icon icon="mdi:sleep" width={20} height={20} className="mt-0.5 shrink-0 text-ink-3" aria-hidden />
+                <Icon
+                    icon="mdi:sleep"
+                    width={20}
+                    height={20}
+                    className="mt-0.5 shrink-0 text-ink-3"
+                    aria-hidden
+                />
                 <p className="flex-1 font-sans text-sm leading-relaxed text-ink">
-                    Temari lagi istirahat sebentar. Narasinya nggak ilang kok, nyusul otomatis pas dia balik.
+                    Temari lagi istirahat sebentar. Narasinya nggak ilang kok,
+                    nyusul otomatis pas dia balik.
                 </p>
             </div>
         </div>

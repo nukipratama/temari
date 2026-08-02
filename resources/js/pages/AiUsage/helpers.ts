@@ -1,5 +1,7 @@
 import { router } from '@inertiajs/react';
+
 import { formatMonthDayId, formatWeekdayDayId } from '@/lib/pace';
+
 import type { RangeToken } from './types';
 
 const numberFmt = new Intl.NumberFormat('id-ID');
@@ -24,7 +26,17 @@ export function formatCost(amount: number, currency: string): string {
  * token (resolved server-side, never stale); a custom Dari/Sampai window
  * travels as absolute `from`/`to`.
  */
-export function navigate({ range, from, to, kind }: { range: RangeToken; from: string; to: string; kind: string | null }): void {
+export function navigate({
+    range,
+    from,
+    to,
+    kind,
+}: {
+    range: RangeToken;
+    from: string;
+    to: string;
+    kind: string | null;
+}): void {
     const params: Record<string, string> = {};
     if (range === 'custom') {
         params.from = from;
@@ -35,7 +47,10 @@ export function navigate({ range, from, to, kind }: { range: RangeToken; from: s
     if (kind !== null) {
         params.kind = kind;
     }
-    router.get('/ai-usage', params, { preserveState: true, preserveScroll: true });
+    router.get('/ai-usage', params, {
+        preserveState: true,
+        preserveScroll: true,
+    });
 }
 
 /** Build a durable, date-free preset href that preserves the active kind filter. */

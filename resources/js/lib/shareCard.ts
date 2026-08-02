@@ -1,8 +1,9 @@
+import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
+
 import { DAYBREAK, hrZone } from '@/lib/chartTokens';
+import { moodSigilColor } from '@/lib/mood';
 import { projectPolyline } from '@/lib/route';
 import { RARITY_HEX, RARITY_LABELS, RARITY_SYMBOL } from '@/lib/runcard';
-import { moodSigilColor } from '@/lib/mood';
-import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
 
 const HR_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 
@@ -120,12 +121,21 @@ const PALETTE: Palette = {
     quote: 'rgba(246,241,232,0.88)',
 };
 
-function paintBackground(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+function paintBackground(
+    ctx: CanvasRenderingContext2D,
+    w: number,
+    h: number,
+): void {
     ctx.fillStyle = C.skyDeep;
     ctx.fillRect(0, 0, w, h);
 }
 
-function paintGlow(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+function paintGlow(
+    ctx: CanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    r: number,
+): void {
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
     g.addColorStop(0, 'rgba(232,160,118,0.34)');
     g.addColorStop(0.66, 'rgba(232,160,118,0)');
@@ -135,7 +145,14 @@ function paintGlow(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: num
     ctx.fill();
 }
 
-function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+function roundRectPath(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number,
+): void {
     const radius = Math.min(r, w / 2, h / 2);
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -149,7 +166,10 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
 /** Rounded rectangle with independent per-corner radii, for corner-attached chips. */
 function roundRectPathCorners(
     ctx: CanvasRenderingContext2D,
-    x: number, y: number, w: number, h: number,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
     radii: { tl: number; tr: number; br: number; bl: number },
 ): void {
     const { tl, tr, br, bl } = radii;
@@ -173,7 +193,12 @@ function roundRectPathCorners(
  * surrounding backdrop — rounded corners reveal the same navy, so it reads
  * as a full-bleed card rather than a floating one.
  */
-function drawCardFrame(ctx: CanvasRenderingContext2D, w: number, h: number, rarityCol: string): void {
+function drawCardFrame(
+    ctx: CanvasRenderingContext2D,
+    w: number,
+    h: number,
+    rarityCol: string,
+): void {
     const border = 12;
     const radius = 44;
     roundRectPath(ctx, 0, 0, w, h, radius);
@@ -183,7 +208,14 @@ function drawCardFrame(ctx: CanvasRenderingContext2D, w: number, h: number, rari
     ctx.strokeStyle = rarityCol;
     ctx.shadowColor = rarityCol;
     ctx.shadowBlur = BORDER_GLOW_BLUR;
-    roundRectPath(ctx, border / 2, border / 2, w - border, h - border, radius - border / 2);
+    roundRectPath(
+        ctx,
+        border / 2,
+        border / 2,
+        w - border,
+        h - border,
+        radius - border / 2,
+    );
     ctx.stroke();
     ctx.shadowBlur = 0;
 }
@@ -206,7 +238,13 @@ function drawRoute(
     glow = false,
     distanceKm?: number | null,
 ): boolean {
-    const projected = projectPolyline(polyline, box.w, box.h, lineWidth * 1.5, 240);
+    const projected = projectPolyline(
+        polyline,
+        box.w,
+        box.h,
+        lineWidth * 1.5,
+        240,
+    );
     if (projected === null) {
         return false;
     }
@@ -215,7 +253,12 @@ function drawRoute(
     // template's own base width instead of copying its literal 3.8/2.2/0.5.
     const strokeWidth =
         distanceKm != null && Number.isFinite(distanceKm)
-            ? Math.max(lineWidth * (2.2 / 3.8), lineWidth - Math.log2(Math.max(distanceKm, 1)) * (lineWidth * (0.5 / 3.8)))
+            ? Math.max(
+                  lineWidth * (2.2 / 3.8),
+                  lineWidth -
+                      Math.log2(Math.max(distanceKm, 1)) *
+                          (lineWidth * (0.5 / 3.8)),
+              )
             : lineWidth;
 
     ctx.save();
@@ -247,7 +290,11 @@ function drawRoute(
     return true;
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+function wrapText(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    maxWidth: number,
+): string[] {
     const words = text.split(/\s+/);
     const lines: string[] = [];
     let line = '';
@@ -316,13 +363,18 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 // instead of re-encoding and re-decoding the SVG.
 const bunnyCache: Record<string, HTMLImageElement> = {};
 
-async function loadBunny(tone: 'ink' | 'cream', bandHex: string = C.horizon): Promise<HTMLImageElement | null> {
+async function loadBunny(
+    tone: 'ink' | 'cream',
+    bandHex: string = C.horizon,
+): Promise<HTMLImageElement | null> {
     const key = `${tone}:${bandHex}`;
     if (bunnyCache[key]) {
         return bunnyCache[key];
     }
     try {
-        const img = await loadImage(`data:image/svg+xml;utf8,${encodeURIComponent(bunnySvg(tone, bandHex))}`);
+        const img = await loadImage(
+            `data:image/svg+xml;utf8,${encodeURIComponent(bunnySvg(tone, bandHex))}`,
+        );
         bunnyCache[key] = img;
         return img;
     } catch {
@@ -331,7 +383,12 @@ async function loadBunny(tone: 'ink' | 'cream', bandHex: string = C.horizon): Pr
 }
 
 /** Star + rarity word pill. Returns its height so callers can flow below it. */
-function drawRarityFlag(ctx: CanvasRenderingContext2D, x: number, y: number, rarity: string): number {
+function drawRarityFlag(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    rarity: string,
+): number {
     const label = `★ ${(RARITY_LABELS[rarity as keyof typeof RARITY_LABELS] ?? rarity).toUpperCase()}`;
     ctx.font = '700 30px "JetBrains Mono"';
     ctx.letterSpacing = '3px';
@@ -351,7 +408,13 @@ function drawRarityFlag(ctx: CanvasRenderingContext2D, x: number, y: number, rar
 }
 
 /** Brand lockup (bunny + wordmark) right-aligned to `rightX`. */
-function drawBrand(ctx: CanvasRenderingContext2D, rightX: number, y: number, isDark: boolean, bunny: HTMLImageElement | null): void {
+function drawBrand(
+    ctx: CanvasRenderingContext2D,
+    rightX: number,
+    y: number,
+    isDark: boolean,
+    bunny: HTMLImageElement | null,
+): void {
     const size = 52;
     const gap = 14;
     ctx.font = '700 38px "JetBrains Mono"';
@@ -382,9 +445,10 @@ interface DrawCtx {
 /** Bottom-left mono date stamp, shared by the poster and angka templates. */
 function drawDateFooter(d: DrawCtx): void {
     const { ctx, h, cfg, pal } = d;
-    const parts = [cfg.kartu.date?.replace('\n', ' · '), cfg.kartu.weather].filter(
-        (part): part is string => part != null && part !== '',
-    );
+    const parts = [
+        cfg.kartu.date?.replace('\n', ' · '),
+        cfg.kartu.weather,
+    ].filter((part): part is string => part != null && part !== '');
     if (parts.length === 0) {
         return;
     }
@@ -401,14 +465,22 @@ function drawDateFooter(d: DrawCtx): void {
 function ruteBlockSectionCount(k: ShareKartuData, story: boolean): number {
     const cells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
     return (
-        2 // name + KM always render
-        + (cells.length > 0 ? 1 : 0)
-        + (story && k.tags.length > 0 ? 1 : 0)
+        2 + // name + KM always render
+        (cells.length > 0 ? 1 : 0) +
+        (story && k.tags.length > 0 ? 1 : 0)
     );
 }
 
 /** Name in italic Fraunces, up to 2 lines. Returns the block's new bottom edge. */
-function ruteNameRow(ctx: CanvasRenderingContext2D, k: ShareKartuData, pal: Palette, w: number, story: boolean, draw: boolean, y: number): number {
+function ruteNameRow(
+    ctx: CanvasRenderingContext2D,
+    k: ShareKartuData,
+    pal: Palette,
+    w: number,
+    story: boolean,
+    draw: boolean,
+    y: number,
+): number {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     ctx.font = `italic 600 ${story ? 88 : 64}px "Fraunces"`;
@@ -426,7 +498,17 @@ function ruteNameRow(ctx: CanvasRenderingContext2D, k: ShareKartuData, pal: Pale
 }
 
 /** KM hero + "KM" suffix + edition, left-aligned. Returns the row's bottom edge. */
-function ruteKmRow(ctx: CanvasRenderingContext2D, k: ShareKartuData, pal: Palette, w: number, rarityCol: string, story: boolean, draw: boolean, y: number, gapBonus: number): number {
+function ruteKmRow(
+    ctx: CanvasRenderingContext2D,
+    k: ShareKartuData,
+    pal: Palette,
+    w: number,
+    rarityCol: string,
+    story: boolean,
+    draw: boolean,
+    y: number,
+    gapBonus: number,
+): number {
     y += (story ? 24 : 12) + gapBonus;
     const kmSize = story ? 190 : 128;
     if (draw) {
@@ -444,14 +526,26 @@ function ruteKmRow(ctx: CanvasRenderingContext2D, k: ShareKartuData, pal: Palett
             ctx.font = '600 48px "Oswald"';
             ctx.fillStyle = pal.meta;
             ctx.textAlign = 'right';
-            ctx.fillText(`#${k.edition.index}/${k.edition.total}`, w - PAD, y + kmSize * 0.5);
+            ctx.fillText(
+                `#${k.edition.index}/${k.edition.total}`,
+                w - PAD,
+                y + kmSize * 0.5,
+            );
         }
     }
     return y + kmSize * 0.8;
 }
 
 /** Stat row (single row for feed, up to 2 for story). Returns the row's bottom edge. */
-function ruteStatGridRow(ctx: CanvasRenderingContext2D, k: ShareKartuData, w: number, story: boolean, draw: boolean, y: number, gapBonus: number): number {
+function ruteStatGridRow(
+    ctx: CanvasRenderingContext2D,
+    k: ShareKartuData,
+    w: number,
+    story: boolean,
+    draw: boolean,
+    y: number,
+    gapBonus: number,
+): number {
     const cells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
     if (cells.length === 0) {
         return y;
@@ -460,11 +554,23 @@ function ruteStatGridRow(ctx: CanvasRenderingContext2D, k: ShareKartuData, w: nu
     if (draw) {
         drawHeroStatGrid(ctx, cells, PAD, y, w - PAD * 2, story);
     }
-    return y + Math.ceil(cells.length / 3) * (story ? HERO_STAT_ROW_H.story : HERO_STAT_ROW_H.feed);
+    return (
+        y +
+        Math.ceil(cells.length / 3) *
+            (story ? HERO_STAT_ROW_H.story : HERO_STAT_ROW_H.feed)
+    );
 }
 
 /** Badges row — story only, so the tall 9:16's lower third carries the run's tags. */
-function ruteBadgesRow(ctx: CanvasRenderingContext2D, k: ShareKartuData, w: number, story: boolean, draw: boolean, y: number, gapBonus: number): number {
+function ruteBadgesRow(
+    ctx: CanvasRenderingContext2D,
+    k: ShareKartuData,
+    w: number,
+    story: boolean,
+    draw: boolean,
+    y: number,
+    gapBonus: number,
+): number {
     const tags = k.tags.slice(0, 4);
     if (!story || tags.length === 0) {
         return y;
@@ -474,7 +580,11 @@ function ruteBadgesRow(ctx: CanvasRenderingContext2D, k: ShareKartuData, w: numb
     const gap = 14;
     const padX = 20;
     ctx.font = `500 30px "JetBrains Mono"`;
-    const rows = packPillRows(measurePillSpecs(ctx, tags, k.tagEmojis, padX), w - PAD * 2, gap);
+    const rows = packPillRows(
+        measurePillSpecs(ctx, tags, k.tagEmojis, padX),
+        w - PAD * 2,
+        gap,
+    );
     if (draw) {
         drawBadgesRow(ctx, k, PAD, y, w - PAD * 2, story);
     }
@@ -482,7 +592,17 @@ function ruteBadgesRow(ctx: CanvasRenderingContext2D, k: ShareKartuData, w: numb
 }
 
 /** Measures or draws the whole rute text block (name → KM → stats → badges). */
-function drawRuteBlock(ctx: CanvasRenderingContext2D, k: ShareKartuData, pal: Palette, w: number, rarityCol: string, story: boolean, draw: boolean, y: number, gapBonus: number): number {
+function drawRuteBlock(
+    ctx: CanvasRenderingContext2D,
+    k: ShareKartuData,
+    pal: Palette,
+    w: number,
+    rarityCol: string,
+    story: boolean,
+    draw: boolean,
+    y: number,
+    gapBonus: number,
+): number {
     y = ruteNameRow(ctx, k, pal, w, story, draw, y);
     y = ruteKmRow(ctx, k, pal, w, rarityCol, story, draw, y, gapBonus);
     y = ruteStatGridRow(ctx, k, w, story, draw, y, gapBonus);
@@ -511,25 +631,60 @@ function drawRute(d: DrawCtx): void {
     const availableH = h - topOffset - bottomReserve;
     const routeGap = story ? 84 : 56; // fixed gap between the map and the text block
 
-    const measuredBlockH = drawRuteBlock(ctx, k, pal, w, rarityCol, story, false, 0, 0);
+    const measuredBlockH = drawRuteBlock(
+        ctx,
+        k,
+        pal,
+        w,
+        rarityCol,
+        story,
+        false,
+        0,
+        0,
+    );
     const maxRouteFrac = story ? 0.4 : 0.36;
-    const routeH = Math.min(Math.round(availableH * maxRouteFrac), availableH - routeGap - measuredBlockH);
+    const routeH = Math.min(
+        Math.round(availableH * maxRouteFrac),
+        availableH - routeGap - measuredBlockH,
+    );
     const slack = Math.max(0, availableH - routeH - routeGap - measuredBlockH);
     const gapBonus = slack / ruteBlockSectionCount(k, story);
 
     // The route is the hero: bolder and rarity-glowing so it lifts off the navy.
     const box = { x: PAD, y: topOffset, w: w - PAD * 2, h: routeH };
-    drawRoute(ctx, k.polyline, box, rarityCol, story ? 14 : 12, true, k.distanceKm);
+    drawRoute(
+        ctx,
+        k.polyline,
+        box,
+        rarityCol,
+        story ? 14 : 12,
+        true,
+        k.distanceKm,
+    );
 
-    drawRuteBlock(ctx, k, pal, w, rarityCol, story, true, box.y + box.h + routeGap, gapBonus);
+    drawRuteBlock(
+        ctx,
+        k,
+        pal,
+        w,
+        rarityCol,
+        story,
+        true,
+        box.y + box.h + routeGap,
+        gapBonus,
+    );
 
     drawDateFooter(d);
 }
 
 function drawHeroShimmer(
     ctx: CanvasRenderingContext2D,
-    cx: number, artY: number, cw: number, artH: number,
-    rarity: Rarity, rarityCol: string,
+    cx: number,
+    artY: number,
+    cw: number,
+    artH: number,
+    rarity: Rarity,
+    rarityCol: string,
 ): void {
     const g = ctx.createLinearGradient(cx, artY, cx + cw, artY + artH);
     if (rarity === 'legendary') {
@@ -582,9 +737,15 @@ function drawHeroArtBadges(
     // Top-left: rarity chip, square outer corner clipped flush into the window.
     ctx.font = '700 29px "Plus Jakarta Sans"';
     ctx.letterSpacing = '1px';
-    const rarText = RARITY_SYMBOL[k.rarity] + ' ' + RARITY_LABELS[k.rarity].toUpperCase();
+    const rarText =
+        RARITY_SYMBOL[k.rarity] + ' ' + RARITY_LABELS[k.rarity].toUpperCase();
     const rarW = ctx.measureText(rarText).width + pad * 2;
-    roundRectPathCorners(ctx, box.x, box.y, rarW, h, { tl: 0, tr: 0, br: innerR, bl: 0 });
+    roundRectPathCorners(ctx, box.x, box.y, rarW, h, {
+        tl: 0,
+        tr: 0,
+        br: innerR,
+        bl: 0,
+    });
     ctx.fillStyle = dark;
     ctx.fill();
     ctx.fillStyle = rarityCol;
@@ -597,7 +758,12 @@ function drawHeroArtBadges(
     const trimpText = String(k.trimp);
     const trimpW = ctx.measureText(trimpText).width + pad * 2 + 34;
     const tx = box.x + box.w - trimpW;
-    roundRectPathCorners(ctx, tx, box.y, trimpW, h, { tl: 0, tr: 0, br: 0, bl: innerR });
+    roundRectPathCorners(ctx, tx, box.y, trimpW, h, {
+        tl: 0,
+        tr: 0,
+        br: 0,
+        bl: innerR,
+    });
     ctx.fillStyle = dark;
     ctx.fill();
     ctx.beginPath();
@@ -611,10 +777,16 @@ function drawHeroArtBadges(
     // Bottom-left: edition number.
     if (k.edition) {
         ctx.font = '700 28px "Plus Jakarta Sans"';
-        const edText = '#' + String(k.edition.index) + '/' + String(k.edition.total);
+        const edText =
+            '#' + String(k.edition.index) + '/' + String(k.edition.total);
         const edW = ctx.measureText(edText).width + pad * 2;
         const ey = box.y + box.h - h;
-        roundRectPathCorners(ctx, box.x, ey, edW, h, { tl: 0, tr: innerR, br: 0, bl: 0 });
+        roundRectPathCorners(ctx, box.x, ey, edW, h, {
+            tl: 0,
+            tr: innerR,
+            br: 0,
+            bl: 0,
+        });
         ctx.fillStyle = dark;
         ctx.fill();
         ctx.fillStyle = C.cream;
@@ -650,8 +822,12 @@ function drawHeroArtWindow(
     // and partial so it doesn't tint the whole surface (which would mute the
     // same-hue route), plus a faint mood echo in the opposite corner for warmth.
     const tierGlow = ctx.createRadialGradient(
-        box.x + box.w * 0.3, box.y + box.h * 0.26, 0,
-        box.x + box.w * 0.3, box.y + box.h * 0.26, box.h * 0.85,
+        box.x + box.w * 0.3,
+        box.y + box.h * 0.26,
+        0,
+        box.x + box.w * 0.3,
+        box.y + box.h * 0.26,
+        box.h * 0.85,
     );
     tierGlow.addColorStop(0, rarityCol + '30');
     tierGlow.addColorStop(0.5, rarityCol + '12');
@@ -660,8 +836,12 @@ function drawHeroArtWindow(
     ctx.fillRect(box.x, box.y, box.w, box.h);
 
     const moodGlow = ctx.createRadialGradient(
-        box.x + box.w * 0.82, box.y + box.h * 0.84, 0,
-        box.x + box.w * 0.82, box.y + box.h * 0.84, box.h * 0.6,
+        box.x + box.w * 0.82,
+        box.y + box.h * 0.84,
+        0,
+        box.x + box.w * 0.82,
+        box.y + box.h * 0.84,
+        box.h * 0.6,
     );
     moodGlow.addColorStop(0, moodCol + '22');
     moodGlow.addColorStop(1, 'rgba(0,0,0,0)');
@@ -676,14 +856,28 @@ function drawHeroArtWindow(
         w: box.w * 0.86,
         h: box.h * 0.78,
     };
-    drawRoute(ctx, k.polyline, routeBox, rarityCol, story ? 18 : 15, true, k.distanceKm);
+    drawRoute(
+        ctx,
+        k.polyline,
+        routeBox,
+        rarityCol,
+        story ? 18 : 15,
+        true,
+        k.distanceKm,
+    );
     drawHeroShimmer(ctx, box.x, box.y, box.w, box.h, k.rarity, rarityCol);
 
     // Brand mark (bunny + wordmark), tucked into the map's bottom-right corner
     // instead of a big Temari mascot watermark — a quiet signature rather than
     // a character floating over the route.
     const brandPad = 20;
-    drawBrand(ctx, box.x + box.w - brandPad, box.y + box.h - 52 - brandPad, false, bunny);
+    drawBrand(
+        ctx,
+        box.x + box.w - brandPad,
+        box.y + box.h - 52 - brandPad,
+        false,
+        bunny,
+    );
 
     // Draw the corner chips INSIDE the clip so their square outer corners are
     // clipped to the window radius (fills the corner, no pearl sliver).
@@ -726,13 +920,16 @@ interface HeroBlock {
  */
 function heroBlockSectionCount(k: ShareKartuData, story: boolean): number {
     const statCells = story ? heroStatCells(k) : heroStatCells(k).slice(0, 3);
-    const hasContext = (k.location != null && k.location !== '') || k.wind != null || k.date != null;
+    const hasContext =
+        (k.location != null && k.location !== '') ||
+        k.wind != null ||
+        k.date != null;
     return (
-        2 // name + KM always render
-        + (k.tags.length > 0 ? 1 : 0)
-        + (statCells.length > 0 ? 1 : 0)
-        + (k.zonePct ? 1 : 0)
-        + (hasContext ? 1 : 0)
+        2 + // name + KM always render
+        (k.tags.length > 0 ? 1 : 0) +
+        (statCells.length > 0 ? 1 : 0) +
+        (k.zonePct ? 1 : 0) +
+        (hasContext ? 1 : 0)
     );
 }
 
@@ -766,7 +963,9 @@ function heroNameRow(s: HeroBlock, y: number): number {
     const lastBaseline = y + lineH * lines.length;
     if (draw) {
         ctx.fillStyle = C.cream;
-        lines.forEach((ln, i) => ctx.fillText(ln, box.x + box.w / 2, firstBaseline + i * lineH));
+        lines.forEach((ln, i) =>
+            ctx.fillText(ln, box.x + box.w / 2, firstBaseline + i * lineH),
+        );
     }
     ctx.letterSpacing = '0px';
     return lastBaseline + nameSize * 0.32;
@@ -808,7 +1007,12 @@ interface PillSpec {
 }
 
 /** Measure each tag (with its emoji emblem) into a pill spec for row-packing. */
-function measurePillSpecs(ctx: CanvasRenderingContext2D, tags: string[], tagEmojis: string[], padX: number): PillSpec[] {
+function measurePillSpecs(
+    ctx: CanvasRenderingContext2D,
+    tags: string[],
+    tagEmojis: string[],
+    padX: number,
+): PillSpec[] {
     return tags.map((tag, i) => {
         const label = (tagEmojis[i] ?? '✦') + ' ' + tag;
         return { label, w: ctx.measureText(label).width + padX * 2 };
@@ -817,7 +1021,11 @@ function measurePillSpecs(ctx: CanvasRenderingContext2D, tags: string[], tagEmoj
 
 /** Greedily wrap pills into rows that each fit within `maxWidth`, shared by the
  *  centred (hero) and left-aligned (route poster) badge layouts. */
-function packPillRows(pills: PillSpec[], maxWidth: number, gap: number): PillSpec[][] {
+function packPillRows(
+    pills: PillSpec[],
+    maxWidth: number,
+    gap: number,
+): PillSpec[][] {
     const rows: PillSpec[][] = [];
     let cur: PillSpec[] = [];
     let curW = 0;
@@ -847,12 +1055,17 @@ function heroBadgeClusterRow(s: HeroBlock, y: number): number {
     const pillH = story ? 56 : 46;
     const gap = story ? 12 : 10;
     const padX = 22;
-    const rows = packPillRows(measurePillSpecs(ctx, tags, k.tagEmojis, padX), box.w, gap);
+    const rows = packPillRows(
+        measurePillSpecs(ctx, tags, k.tagEmojis, padX),
+        box.w,
+        gap,
+    );
     y += (story ? 32 : 24) + (s.gapBonus ?? 0);
     if (draw) {
         let by = y;
         rows.forEach((row) => {
-            const rowW = row.reduce((sum, p) => sum + p.w, 0) + gap * (row.length - 1);
+            const rowW =
+                row.reduce((sum, p) => sum + p.w, 0) + gap * (row.length - 1);
             let bx = box.x + (box.w - rowW) / 2;
             row.forEach((p) => {
                 drawBadgePill(ctx, p.label, bx, by, p.w, pillH, padX);
@@ -878,7 +1091,11 @@ function heroStatGridRow(s: HeroBlock, y: number): number {
     if (draw) {
         drawHeroStatGrid(ctx, cells, box.x, y, box.w, story);
     }
-    return y + Math.ceil(cells.length / 3) * (story ? HERO_STAT_ROW_H.story : HERO_STAT_ROW_H.feed);
+    return (
+        y +
+        Math.ceil(cells.length / 3) *
+            (story ? HERO_STAT_ROW_H.story : HERO_STAT_ROW_H.feed)
+    );
 }
 
 function heroZoneBarRow(s: HeroBlock, y: number): number {
@@ -933,7 +1150,11 @@ function drawBadgesRow(
     const pillH = story ? 56 : 46;
     const gap = story ? 14 : 11;
     const padX = 20;
-    const rows = packPillRows(measurePillSpecs(ctx, tags, k.tagEmojis, padX), w, gap);
+    const rows = packPillRows(
+        measurePillSpecs(ctx, tags, k.tagEmojis, padX),
+        w,
+        gap,
+    );
     let by = y;
     rows.forEach((row) => {
         let x = left;
@@ -971,18 +1192,29 @@ function heroContextRow(s: HeroBlock, y: number): number {
         ctx.fillStyle = C.cream;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
-        ctx.fillText(truncateToWidth(ctx, parts.join('   '), box.w), box.x + box.w / 2, y);
+        ctx.fillText(
+            truncateToWidth(ctx, parts.join('   '), box.w),
+            box.x + box.w / 2,
+            y,
+        );
     }
     return y + (story ? 26 : 22);
 }
 
 /** Trim `text` (appending "…") until it fits `maxWidth` at the current font. */
-function truncateToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+function truncateToWidth(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    maxWidth: number,
+): string {
     if (ctx.measureText(text).width <= maxWidth) {
         return text;
     }
     let trimmed = text;
-    while (trimmed.length > 3 && ctx.measureText(trimmed + '…').width > maxWidth) {
+    while (
+        trimmed.length > 3 &&
+        ctx.measureText(trimmed + '…').width > maxWidth
+    ) {
         trimmed = trimmed.slice(0, -1);
     }
     return trimmed + '…';
@@ -994,7 +1226,9 @@ function truncateToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: 
  * power badge over the art window, so it isn't shown twice. Date moves to the
  * bottom context strip.
  */
-function heroStatCells(k: ShareKartuData): Array<{ label: string; value: string }> {
+function heroStatCells(
+    k: ShareKartuData,
+): Array<{ label: string; value: string }> {
     const raw: Array<{ label: string; value: string | null }> = [
         { label: 'PACE', value: k.pace ? k.pace + '/km' : null },
         { label: 'HR', value: k.hr },
@@ -1003,7 +1237,10 @@ function heroStatCells(k: ShareKartuData): Array<{ label: string; value: string 
         { label: 'BEST', value: k.fastestKm },
         { label: 'ELEVASI', value: k.ascent ?? null },
     ];
-    return raw.filter((c): c is { label: string; value: string } => c.value != null && c.value !== '' && c.value !== '—');
+    return raw.filter(
+        (c): c is { label: string; value: string } =>
+            c.value != null && c.value !== '' && c.value !== '—',
+    );
 }
 
 /** Row height of the stat grid, shared by every caller that needs to know how
@@ -1129,10 +1366,21 @@ function drawHero(d: DrawCtx): void {
     // one big gap under a shorter map.
     const measuredBlockH = drawHeroBlock(makeBlock(innerTop, false)) + 20;
     const maxArtFrac = story ? 0.52 : 0.62;
-    const artH = Math.min(Math.round(innerH * maxArtFrac), innerH - measuredBlockH - blockGap);
+    const artH = Math.min(
+        Math.round(innerH * maxArtFrac),
+        innerH - measuredBlockH - blockGap,
+    );
     const slack = Math.max(0, innerH - artH - blockGap - measuredBlockH);
     const gapBonus = slack / heroBlockSectionCount(k, story);
-    drawHeroArtWindow(ctx, k, moodBunny, { x: innerX, y: innerTop, w: innerW, h: artH }, rarityCol, moodCol, story);
+    drawHeroArtWindow(
+        ctx,
+        k,
+        moodBunny,
+        { x: innerX, y: innerTop, w: innerW, h: artH },
+        rarityCol,
+        moodCol,
+        story,
+    );
     drawHeroBlock(makeBlock(innerTop + artH + blockGap, true, gapBonus));
 }
 
@@ -1145,7 +1393,10 @@ const TEMPLATES: Record<Layout, (d: DrawCtx) => void> = {
  * Draw the configured share card onto `canvas` at its fixed internal resolution.
  * Idempotent: safe to call on every config change to refresh the preview.
  */
-export async function drawShareCard(canvas: HTMLCanvasElement, cfg: ShareCardConfig): Promise<void> {
+export async function drawShareCard(
+    canvas: HTMLCanvasElement,
+    cfg: ShareCardConfig,
+): Promise<void> {
     const { w, h } = DIMS[cfg.format];
     canvas.width = w;
     canvas.height = h;
@@ -1171,6 +1422,10 @@ export async function shareCardBlob(cfg: ShareCardConfig): Promise<Blob> {
     const canvas = document.createElement('canvas');
     await drawShareCard(canvas, cfg);
     return new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('toBlob failed'))), 'image/png');
+        canvas.toBlob(
+            (blob) =>
+                blob ? resolve(blob) : reject(new Error('toBlob failed')),
+            'image/png',
+        );
     });
 }

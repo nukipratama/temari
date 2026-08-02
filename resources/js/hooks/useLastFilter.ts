@@ -21,7 +21,9 @@ export function useLastFilter(currentQuery: Record<string, string>) {
     // Read lazily, once, before the effect below has a chance to overwrite it.
     // `readSaved` swallows a missing/blocked `window.localStorage`, so this is
     // safe outside a browser too.
-    const [saved, setSaved] = useState<Record<string, string> | null>(readSaved);
+    const [saved, setSaved] = useState<Record<string, string> | null>(
+        readSaved,
+    );
     const serialisedCurrent = JSON.stringify(currentQuery);
 
     // Persist whatever the user is looking at now, but never persist "no filter"
@@ -52,7 +54,9 @@ export function useLastFilter(currentQuery: Record<string, string>) {
     // Only offer a resume when the user is currently unfiltered and the saved
     // filter would actually change what they see.
     const resumable =
-        saved !== null && Object.keys(currentQuery).length === 0 && Object.keys(saved).length > 0
+        saved !== null &&
+        Object.keys(currentQuery).length === 0 &&
+        Object.keys(saved).length > 0
             ? saved
             : null;
 
@@ -67,7 +71,11 @@ function readSaved(): Record<string, string> | null {
         }
 
         const parsed: unknown = JSON.parse(raw);
-        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        if (
+            typeof parsed !== 'object' ||
+            parsed === null ||
+            Array.isArray(parsed)
+        ) {
             return null;
         }
 

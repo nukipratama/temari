@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+
 import PackWrapper from './PackWrapper';
 
 describe('PackWrapper', () => {
@@ -12,9 +13,13 @@ describe('PackWrapper', () => {
     });
 
     it('hides the card behind a tiled card-back motif', () => {
-        const { container } = render(<PackWrapper rarity="epic" onOpen={vi.fn()} />);
+        const { container } = render(
+            <PackWrapper rarity="epic" onOpen={vi.fn()} />,
+        );
         // The card-back tiles bunny glyphs so the card can't be read through it.
-        expect(container.querySelectorAll('svg').length).toBeGreaterThanOrEqual(12);
+        expect(container.querySelectorAll('svg').length).toBeGreaterThanOrEqual(
+            12,
+        );
     });
 
     it('calls onOpen when the foil is tapped', async () => {

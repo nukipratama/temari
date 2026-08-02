@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import Aku from './Aku';
+
 import { makeUser, setMockPage } from '@/test/setup';
+
+import Aku from './Aku';
 
 vi.mock('@/components/koleksi/ProgressionChart', () => ({
     default: () => <div data-testid="progression-chart" />,
@@ -33,7 +35,11 @@ describe('Aku', () => {
     });
 
     it('falls back to "Aku," when no first name is available', () => {
-        setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+        });
         const noFirstName = { ...identity, name: '' };
         render(<Aku identity={noFirstName} stats={stats} />);
         expect(screen.getByText('Aku,')).toBeInTheDocument();
@@ -51,7 +57,9 @@ describe('Aku', () => {
     // point is asserted in UserMenu.test.tsx.
     it('no longer carries a settings row of its own', () => {
         render(<Aku identity={identity} stats={stats} />);
-        expect(screen.queryByText(/Notifikasi Telegram, zona HR/)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Notifikasi Telegram, zona HR/),
+        ).not.toBeInTheDocument();
     });
 
     it('renders the persona bar without a narration block of its own', () => {
@@ -61,7 +69,9 @@ describe('Aku', () => {
         ];
         render(<Aku identity={identity} stats={stats} personaMix={mix} />);
         expect(screen.getByText(/Persona/)).toBeInTheDocument();
-        expect(screen.queryByText(/Belum dibaca Temari/)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Belum dibaca Temari/),
+        ).not.toBeInTheDocument();
     });
 
     // The persona bar moved into the hero panel (it's the data behind "Kata
@@ -80,8 +90,15 @@ describe('Aku', () => {
     });
 
     it('omits the join-date block when member_since is missing', () => {
-        render(<Aku identity={{ ...identity, member_since: null }} stats={stats} />);
-        expect(screen.queryByText('Bareng Temari sejak')).not.toBeInTheDocument();
+        render(
+            <Aku
+                identity={{ ...identity, member_since: null }}
+                stats={stats}
+            />,
+        );
+        expect(
+            screen.queryByText('Bareng Temari sejak'),
+        ).not.toBeInTheDocument();
     });
 
     it('renders the progression section when progressionByCategory is provided', () => {
@@ -119,7 +136,12 @@ describe('Aku', () => {
                     vdot: 52.3,
                     threshold_pace_sec: 258,
                     threshold_confidence: 'high',
-                    training_paces: { easy: 330, marathon: 285, threshold: 258, interval: 240 },
+                    training_paces: {
+                        easy: 330,
+                        marathon: 285,
+                        threshold: 258,
+                        interval: 240,
+                    },
                 }}
             />,
         );
@@ -144,7 +166,10 @@ describe('Aku', () => {
             auth: { user: makeUser() },
             flash: {},
             demoLoginEnabled: false,
-            stravaSync: { state: 'ready', last_synced_at: '2026-07-04T00:00:00Z' },
+            stravaSync: {
+                state: 'ready',
+                last_synced_at: '2026-07-04T00:00:00Z',
+            },
         });
         render(<Aku identity={identity} stats={stats} />);
         expect(screen.queryByText(/Sambungin lagi/)).not.toBeInTheDocument();
@@ -159,7 +184,10 @@ describe('Aku', () => {
         });
         render(<Aku identity={identity} stats={stats} />);
         const link = screen.getByText('Sambungin lagi').closest('a');
-        expect(link).toHaveAttribute('href', '/auth/strava/redirect?from=/profil');
+        expect(link).toHaveAttribute(
+            'href',
+            '/auth/strava/redirect?from=/profil',
+        );
     });
 
     it('renders the profile voice quote when profileVoice is provided', () => {
@@ -172,7 +200,15 @@ describe('Aku', () => {
             subject_id: 1,
             discriminator: '2026-W21',
         };
-        render(<Aku identity={identity} stats={stats} profileVoice={profileVoice} />);
-        expect(screen.getByText(/Kamu makin konsisten tiap minggu/)).toBeInTheDocument();
+        render(
+            <Aku
+                identity={identity}
+                stats={stats}
+                profileVoice={profileVoice}
+            />,
+        );
+        expect(
+            screen.getByText(/Kamu makin konsisten tiap minggu/),
+        ).toBeInTheDocument();
     });
 });

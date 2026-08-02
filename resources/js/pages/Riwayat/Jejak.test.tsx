@@ -1,8 +1,10 @@
+import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
-import RunsIndex from './Jejak';
+
 import { makeUser, setMockPage } from '@/test/setup';
+
+import RunsIndex from './Jejak';
 import { run } from './runFixture';
 
 vi.mock('@/components/aktivitas/JourneyStrip', () => ({
@@ -34,7 +36,9 @@ describe('Riwayat/Jejak', () => {
                 weeklySnapshots={[]}
             />,
         );
-        expect(screen.getByText(/Aku lagi narik lari kamu/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Aku lagi narik lari kamu/i),
+        ).toBeInTheDocument();
     });
 
     it('shows the connection-state empty copy without asking the user to widen', () => {
@@ -53,17 +57,30 @@ describe('Riwayat/Jejak', () => {
             />,
         );
         // The page auto-widens, so there is no "widen the range yourself" nudge.
-        expect(screen.getByText(/Belum ada lari yang bisa ditampilkan/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Perlebar rentang waktu/i)).not.toBeInTheDocument();
+        expect(
+            screen.getByText(/Belum ada lari yang bisa ditampilkan/i),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText(/Perlebar rentang waktu/i),
+        ).not.toBeInTheDocument();
     });
 
     it('hides the sync button while a sync is already running', () => {
         // state defaults to 'syncing' in beforeEach.
         render(
-            <RunsIndex runs={[]} rangeFilter="8w" rangeStart="2026-04-13" weeklySnapshots={[]} />,
+            <RunsIndex
+                runs={[]}
+                rangeFilter="8w"
+                rangeStart="2026-04-13"
+                weeklySnapshots={[]}
+            />,
         );
-        expect(screen.getByText(/Aku lagi narik lari kamu/i)).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /sync/i })).not.toBeInTheDocument();
+        expect(
+            screen.getByText(/Aku lagi narik lari kamu/i),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /sync/i }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders runs with no auto-widen banner by default', () => {
@@ -76,7 +93,9 @@ describe('Riwayat/Jejak', () => {
             />,
         );
         expect(screen.getByTestId('run-row')).toBeInTheDocument();
-        expect(screen.queryByText(/diperlebar otomatis|Menampilkan semua lari/i)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/diperlebar otomatis|Menampilkan semua lari/i),
+        ).not.toBeInTheDocument();
     });
 
     it('shows the auto-widened banner when the server widened the range', () => {
@@ -89,7 +108,9 @@ describe('Riwayat/Jejak', () => {
                 weeklySnapshots={[]}
             />,
         );
-        expect(screen.getByText(/Rentang diperlebar otomatis/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Rentang diperlebar otomatis/i),
+        ).toBeInTheDocument();
     });
 
     it('shows the truncation note when runs are capped', () => {
@@ -103,7 +124,9 @@ describe('Riwayat/Jejak', () => {
                 weeklySnapshots={[]}
             />,
         );
-        expect(screen.getByText(/Menampilkan 365 lari terbaru/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Menampilkan 365 lari terbaru/i),
+        ).toBeInTheDocument();
     });
 
     it('groups runs into weekly buckets + renders weekly snapshot stats', () => {
@@ -174,8 +197,20 @@ describe('Riwayat/Jejak', () => {
                 rangeStart="2025-05-19"
                 weeklySnapshots={[]}
                 journeyMatch={{
-                    first: { date: '2024-08-12', name: 'First', distance_km: 3, pace_sec_per_km: 400, avg_hr: 140 },
-                    current: { date: '2026-05-19', name: 'Now', distance_km: 5, pace_sec_per_km: 350, avg_hr: 145 },
+                    first: {
+                        date: '2024-08-12',
+                        name: 'First',
+                        distance_km: 3,
+                        pace_sec_per_km: 400,
+                        avg_hr: 140,
+                    },
+                    current: {
+                        date: '2026-05-19',
+                        name: 'Now',
+                        distance_km: 5,
+                        pace_sec_per_km: 350,
+                        avg_hr: 145,
+                    },
                     pace_improvement_sec: 50,
                     hr_improvement_bpm: -5,
                     total_km: 544.1,
@@ -208,7 +243,10 @@ describe('Riwayat/Jejak', () => {
             '/aktivitas',
             // '8w' is the default range, so it is omitted from the URL.
             { mood: 'enteng' },
-            expect.objectContaining({ preserveScroll: true, preserveState: true }),
+            expect.objectContaining({
+                preserveScroll: true,
+                preserveState: true,
+            }),
         );
     });
 
@@ -224,7 +262,9 @@ describe('Riwayat/Jejak', () => {
         );
 
         fireEvent.click(screen.getByLabelText('Buka filter'));
-        expect(screen.getByRole('button', { name: /^Enteng$/ })).toHaveAttribute('aria-pressed', 'true');
+        expect(
+            screen.getByRole('button', { name: /^Enteng$/ }),
+        ).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('drops an already-selected mood from the url when toggled off', () => {
@@ -245,7 +285,10 @@ describe('Riwayat/Jejak', () => {
         expect(router.get).toHaveBeenCalledWith(
             '/aktivitas',
             {},
-            expect.objectContaining({ preserveScroll: true, preserveState: true }),
+            expect.objectContaining({
+                preserveScroll: true,
+                preserveState: true,
+            }),
         );
     });
 
@@ -268,7 +311,10 @@ describe('Riwayat/Jejak', () => {
         expect(router.get).toHaveBeenCalledWith(
             '/aktivitas',
             {},
-            expect.objectContaining({ preserveScroll: true, preserveState: true }),
+            expect.objectContaining({
+                preserveScroll: true,
+                preserveState: true,
+            }),
         );
     });
 
@@ -300,9 +346,15 @@ describe('Riwayat/Jejak', () => {
             />,
         );
 
-        expect(screen.getByText('Gak ada lari yang cocok.')).toBeInTheDocument();
+        expect(
+            screen.getByText('Gak ada lari yang cocok.'),
+        ).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: /Reset filter/ }));
-        expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+        expect(router.get).toHaveBeenCalledWith(
+            '/aktivitas',
+            {},
+            expect.anything(),
+        );
     });
 
     it('carries every active filter forward when one of them changes', () => {
@@ -343,7 +395,11 @@ describe('Riwayat/Jejak', () => {
         fireEvent.click(screen.getByLabelText('Buka filter'));
         fireEvent.click(screen.getByRole('button', { name: /^Half ke atas/ }));
 
-        expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+        expect(router.get).toHaveBeenCalledWith(
+            '/aktivitas',
+            {},
+            expect.anything(),
+        );
     });
 
     it('treats a distance filter as active for the result count', () => {
@@ -373,9 +429,15 @@ describe('Riwayat/Jejak', () => {
             );
 
             fireEvent.click(screen.getByLabelText('Buka filter'));
-            fireEvent.click(screen.getByRole('button', { name: /^Paling jauh/ }));
+            fireEvent.click(
+                screen.getByRole('button', { name: /^Paling jauh/ }),
+            );
 
-            expect(router.get).toHaveBeenCalledWith('/aktivitas', { sort: 'longest' }, expect.anything());
+            expect(router.get).toHaveBeenCalledWith(
+                '/aktivitas',
+                { sort: 'longest' },
+                expect.anything(),
+            );
         });
 
         it('omits the default sort from the url', () => {
@@ -391,9 +453,15 @@ describe('Riwayat/Jejak', () => {
             );
 
             fireEvent.click(screen.getByLabelText('Buka filter'));
-            fireEvent.click(screen.getByRole('button', { name: /^Terbaru dulu/ }));
+            fireEvent.click(
+                screen.getByRole('button', { name: /^Terbaru dulu/ }),
+            );
 
-            expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+            expect(router.get).toHaveBeenCalledWith(
+                '/aktivitas',
+                {},
+                expect.anything(),
+            );
         });
 
         // Ranking globally is a mode switch: weekly recap cards only mean
@@ -404,7 +472,12 @@ describe('Riwayat/Jejak', () => {
                 run(102, 'Sore panjang', '2026-05-12T17:00:00'),
             ];
             const { rerender } = render(
-                <RunsIndex runs={runs} rangeFilter="8w" rangeStart="2026-04-13" weeklySnapshots={[]} />,
+                <RunsIndex
+                    runs={runs}
+                    rangeFilter="8w"
+                    rangeStart="2026-04-13"
+                    weeklySnapshots={[]}
+                />,
             );
             // Grouped view labels each week.
             expect(screen.queryByText('Paling jauh')).not.toBeInTheDocument();
@@ -443,7 +516,11 @@ describe('Riwayat/Jejak', () => {
             fireEvent.click(screen.getByLabelText('Buka filter'));
             fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
-            expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+            expect(router.get).toHaveBeenCalledWith(
+                '/aktivitas',
+                {},
+                expect.anything(),
+            );
         });
     });
 
@@ -461,7 +538,9 @@ describe('Riwayat/Jejak', () => {
         );
 
         expect(screen.getByText(/Lagi lihat minggu/)).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /Lihat semua lari/ })).toHaveAttribute('href', '/aktivitas');
+        expect(
+            screen.getByRole('link', { name: /Lihat semua lari/ }),
+        ).toHaveAttribute('href', '/aktivitas');
     });
 
     it('counts a week-scoped view as filtered', () => {
@@ -500,7 +579,10 @@ describe('Riwayat/Jejak', () => {
 
         it('offers a saved filter above the list, and applies it only when tapped', () => {
             vi.mocked(router.get).mockReset();
-            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala', dist: '21up' }));
+            window.localStorage.setItem(
+                KEY,
+                JSON.stringify({ mood: 'nyala', dist: '21up' }),
+            );
             render(
                 <RunsIndex
                     runs={[run(101, 'Pagi santai', '2026-05-19T06:00:00')]}
@@ -510,7 +592,9 @@ describe('Riwayat/Jejak', () => {
                 />,
             );
 
-            expect(screen.getByText(/Lanjutkan: Half ke atas · Nyala/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Lanjutkan: Half ke atas · Nyala/),
+            ).toBeInTheDocument();
             expect(router.get).not.toHaveBeenCalled();
 
             fireEvent.click(screen.getByText(/Lanjutkan:/));
@@ -532,6 +616,8 @@ describe('Riwayat/Jejak', () => {
             />,
         );
 
-        expect(screen.queryByText('Gak ada lari yang cocok.')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Gak ada lari yang cocok.'),
+        ).not.toBeInTheDocument();
     });
 });

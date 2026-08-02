@@ -8,13 +8,20 @@ export function formatPace(secPerKm: number): string {
 
 // Distance in meters → "5.00" with em-dash fallback. Stat-row callers add the
 // "KM" label themselves.
-export function formatKm(distanceM: number | null | undefined, fractionDigits = 2): string {
+export function formatKm(
+    distanceM: number | null | undefined,
+    fractionDigits = 2,
+): string {
     if (distanceM == null) return '—';
     return (distanceM / 1000).toFixed(fractionDigits);
 }
 
-export function paceSecPerKm(movingTimeSec: number | null | undefined, distanceM: number | null | undefined): number | null {
-    if (movingTimeSec == null || distanceM == null || distanceM <= 0) return null;
+export function paceSecPerKm(
+    movingTimeSec: number | null | undefined,
+    distanceM: number | null | undefined,
+): number | null {
+    if (movingTimeSec == null || distanceM == null || distanceM <= 0)
+        return null;
     return movingTimeSec / (distanceM / 1000);
 }
 
@@ -54,10 +61,20 @@ export function formatDurationHMS(seconds: number | null | undefined): string {
 // shift the date/hour for non-WIB viewers. Null when the string doesn't lead
 // with a date.
 export function parseNaiveLocalDate(iso: string): Date | null {
-    const match = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(iso);
+    const match =
+        /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(
+            iso,
+        );
     if (!match) return null;
     const [, y, m, d, h, min, s] = match;
-    return new Date(Number(y), Number(m) - 1, Number(d), Number(h ?? 0), Number(min ?? 0), Number(s ?? 0));
+    return new Date(
+        Number(y),
+        Number(m) - 1,
+        Number(d),
+        Number(h ?? 0),
+        Number(min ?? 0),
+        Number(s ?? 0),
+    );
 }
 
 // Shared wording for the relative formatters below. Negative (future/skewed)
@@ -83,16 +100,26 @@ function relativeIdFromDelta(ms: number, iso: string, naive: boolean): string {
 // (created_at / generated_at / fetched_at style UTC timestamps, or local Dates
 // round-tripped through toISOString). Falls back to '—' on null/invalid.
 // For naive wall-clock values (start_date_local), use formatNaiveRelativeId.
-export function formatRelativeId(iso: string | null | undefined, now: Date = new Date()): string {
+export function formatRelativeId(
+    iso: string | null | undefined,
+    now: Date = new Date(),
+): string {
     if (!iso) return '—';
-    return relativeIdFromDelta(now.getTime() - new Date(iso).getTime(), iso, false);
+    return relativeIdFromDelta(
+        now.getTime() - new Date(iso).getTime(),
+        iso,
+        false,
+    );
 }
 
 // Relative wording for NAIVE wall-clock values (Strava's start_date_local,
 // serialized with a misleading trailing Z): the delta is measured against the
 // as-recorded local clock, so a 06:30 run reads "12 jam lalu" at 18:30 local
 // instead of being shifted by the viewer's offset.
-export function formatNaiveRelativeId(iso: string | null | undefined, now: Date = new Date()): string {
+export function formatNaiveRelativeId(
+    iso: string | null | undefined,
+    now: Date = new Date(),
+): string {
     if (!iso) return '—';
     const d = parseNaiveLocalDate(iso);
     if (d === null) return '—';
@@ -102,21 +129,36 @@ export function formatNaiveRelativeId(iso: string | null | undefined, now: Date 
 function idDateFromDate(d: Date, format: 'short' | 'long'): string {
     if (Number.isNaN(d.getTime())) return '—';
     if (format === 'long') {
-        return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        return d.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+        });
     }
-    return d.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'short' });
+    return d.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'short',
+    });
 }
 
 // Weekday + date for TRUE INSTANTS (see formatRelativeId). For naive
 // wall-clock values (start_date_local, pr.set_at), use formatNaiveIdDate.
-export function formatIdDate(iso: string | null, format: 'short' | 'long' = 'short'): string {
+export function formatIdDate(
+    iso: string | null,
+    format: 'short' | 'long' = 'short',
+): string {
     if (!iso) return '—';
     return idDateFromDate(new Date(iso), format);
 }
 
 // Weekday + date for NAIVE wall-clock values: component-parsed so the
 // as-recorded date can't roll across midnight under the viewer's offset.
-export function formatNaiveIdDate(iso: string | null, format: 'short' | 'long' = 'short'): string {
+export function formatNaiveIdDate(
+    iso: string | null,
+    format: 'short' | 'long' = 'short',
+): string {
     if (!iso) return '—';
     const d = parseNaiveLocalDate(iso);
     if (d === null) return '—';
@@ -125,17 +167,28 @@ export function formatNaiveIdDate(iso: string | null, format: 'short' | 'long' =
 
 /** "Senin, 11 Mei" — long weekday + numeric day + long month, no year. */
 export function formatWeekdayDateId(date: Date): string {
-    return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+    return date.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+    });
 }
 
 /** "08:30" — 24-hour clock, zero-padded. */
 export function formatTimeId(date: Date): string {
-    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 }
 
 /** "Sen, 11 Mei" — short weekday + numeric day + short month. */
 export function formatShortWeekdayDateId(date: Date): string {
-    return date.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+    return date.toLocaleDateString('id-ID', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+    });
 }
 
 /** "11 Mei" — numeric day + short month, no weekday or year. */
@@ -145,20 +198,44 @@ export function formatMonthDayId(date: Date): string {
 
 /** "Sen, 11" — short weekday + numeric day only. */
 export function formatWeekdayDayId(date: Date): string {
-    return date.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' });
+    return date.toLocaleDateString('id-ID', {
+        weekday: 'short',
+        day: 'numeric',
+    });
 }
 
 /** "11 Mei 2026" — numeric day + long month + year, no weekday. */
 export function formatDayMonthYearId(date: Date): string {
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
 }
 
 /** "11 Mei 2026" — zero-padded day + short month + year. */
 export function formatPaddedDayMonthYearId(date: Date): string {
-    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    });
 }
 
-const ID_MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'] as const;
+const ID_MONTH_SHORT = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
+] as const;
 
 // "19 Feb 2026" — parses YYYY-MM-DD from the front of the string so the wall-
 // clock date renders as-is, regardless of runtime timezone.
@@ -174,7 +251,9 @@ export function formatShortDateId(iso: string | null | undefined): string {
 // the as-recorded wall-clock renders identically in any runtime timezone. Never
 // goes through `new Date(iso)`, which would parse a trailing Z/offset as UTC and
 // shift the hour. Returns null when the string carries no time component.
-export function formatNaiveTimeId(iso: string | null | undefined): string | null {
+export function formatNaiveTimeId(
+    iso: string | null | undefined,
+): string | null {
     if (!iso) return null;
     const match = /T(\d{2}):(\d{2})/.exec(iso);
     if (!match) return null;
@@ -197,7 +276,10 @@ export function monthsSinceId(iso: string | null | undefined): number | null {
     if (!match) return null;
     const [, y, m] = match;
     const now = new Date();
-    return Math.max(0, (now.getFullYear() - Number(y)) * 12 + (now.getMonth() + 1 - Number(m)));
+    return Math.max(
+        0,
+        (now.getFullYear() - Number(y)) * 12 + (now.getMonth() + 1 - Number(m)),
+    );
 }
 
 // Local-zone Monday-of-week. Parses the iso by its own wall-clock components

@@ -1,11 +1,13 @@
-import { Link, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { Link, usePage } from '@inertiajs/react';
+
+import type { SharedProps } from '@/types/inertia';
+
 import BrandMark from '@/components/BrandMark';
 import StravaSyncBadge from '@/components/StravaSyncBadge';
 import UserMenu from '@/components/UserMenu';
 import { useScrolled } from '@/hooks/useScrolled';
 import { cn } from '@/lib/cn';
-import type { SharedProps } from '@/types/inertia';
 
 /**
  * Screens that were pushed onto a tab rather than being one, mapped to the
@@ -70,11 +72,21 @@ export default function MobileTopBar() {
                     aria-label={`Kembali ke ${back.label}`}
                     className="pressable focus-ring -ml-1 inline-flex min-w-0 items-center gap-1 rounded py-1 pl-1 pr-2 text-label-small text-ink-2 transition hover:text-ink"
                 >
-                    <Icon icon="mdi:chevron-left" width={18} height={18} aria-hidden className="shrink-0" />
+                    <Icon
+                        icon="mdi:chevron-left"
+                        width={18}
+                        height={18}
+                        aria-hidden
+                        className="shrink-0"
+                    />
                     <span className="truncate">{back.label}</span>
                 </Link>
             ) : (
-                <Link href="/" aria-label="Beranda" className="focus-ring rounded">
+                <Link
+                    href="/"
+                    aria-label="Beranda"
+                    className="focus-ring rounded"
+                >
                     <BrandMark wordmarkClassName="hidden min-[350px]:inline" />
                 </Link>
             )}

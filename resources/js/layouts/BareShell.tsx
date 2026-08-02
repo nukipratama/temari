@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import ErrorBanner from '@/components/ErrorBanner';
-import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
-import AiOutageBanner from '@/components/AiOutageBanner';
+
 import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
+import AiOutageBanner from '@/components/AiOutageBanner';
+import ErrorBanner from '@/components/ErrorBanner';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
+import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 

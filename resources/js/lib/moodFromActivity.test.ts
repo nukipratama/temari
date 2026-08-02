@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { moodFromActivity } from './moodFromActivity';
+
 import type { ActivityDetail } from '@/types/inertia';
+
+import { moodFromActivity } from './moodFromActivity';
 
 function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
     return {
@@ -31,7 +33,9 @@ describe('moodFromActivity', () => {
     });
 
     it('returns squished for long-distance drained runs', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 100, distance: 15000 }))).toBe('oleng');
+        expect(
+            moodFromActivity(detail({ trimp_edwards: 100, distance: 15000 })),
+        ).toBe('oleng');
     });
 
     it('returns bouncy for solid hard sessions', () => {
@@ -43,7 +47,11 @@ describe('moodFromActivity', () => {
     });
 
     it('reads a crushing effort as a quality win when the run is a tagged race/workout', () => {
-        expect(moodFromActivity(detail({ trimp_edwards: 220, workout_type: 3 }))).toBe('nyala');
-        expect(moodFromActivity(detail({ trimp_edwards: 220, workout_type: 1 }))).toBe('nyala');
+        expect(
+            moodFromActivity(detail({ trimp_edwards: 220, workout_type: 3 })),
+        ).toBe('nyala');
+        expect(
+            moodFromActivity(detail({ trimp_edwards: 220, workout_type: 1 })),
+        ).toBe('nyala');
     });
 });

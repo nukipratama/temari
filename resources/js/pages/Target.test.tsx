@@ -1,10 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import Target from './Target';
-import { makeUser, setMockPage } from '@/test/setup';
+
 import type { Rarity } from '@/types/inertia';
 
-function makeGoal(overrides: Partial<Parameters<typeof Target>[0]['goals'][number]> = {}) {
+import { makeUser, setMockPage } from '@/test/setup';
+
+import Target from './Target';
+
+function makeGoal(
+    overrides: Partial<Parameters<typeof Target>[0]['goals'][number]> = {},
+) {
     return {
         id: 'accessory.medal_pertama',
         title: 'Catat PR ke-1',
@@ -29,7 +34,9 @@ beforeEach(() => {
 
 describe('Target', () => {
     it('renders the eyebrow with completed / total counts', () => {
-        render(<Target goals={[makeGoal()]} completedCount={2} totalCount={28} />);
+        render(
+            <Target goals={[makeGoal()]} completedCount={2} totalCount={28} />,
+        );
         expect(screen.getByText(/2 \/ 28 target tercapai/)).toBeInTheDocument();
     });
 
@@ -50,7 +57,13 @@ describe('Target', () => {
 
     it('marks a completed goal with the check badge', () => {
         const { container } = render(
-            <Target goals={[makeGoal({ is_completed: true, current: 1, target: 1 })]} completedCount={1} totalCount={1} />,
+            <Target
+                goals={[
+                    makeGoal({ is_completed: true, current: 1, target: 1 }),
+                ]}
+                completedCount={1}
+                totalCount={1}
+            />,
         );
         expect(container.querySelector('.bg-horizon')).toBeInTheDocument();
     });
@@ -58,7 +71,14 @@ describe('Target', () => {
     it('formats fractional current/target values to one decimal', () => {
         const { container } = render(
             <Target
-                goals={[makeGoal({ slot: 'sepatu', unit: 'km', current: 12.5, target: 100.5 })]}
+                goals={[
+                    makeGoal({
+                        slot: 'sepatu',
+                        unit: 'km',
+                        current: 12.5,
+                        target: 100.5,
+                    }),
+                ]}
                 completedCount={0}
                 totalCount={1}
             />,
@@ -69,7 +89,11 @@ describe('Target', () => {
 
     it('renders a zero-width bar when the target is zero', () => {
         const { container } = render(
-            <Target goals={[makeGoal({ target: 0, current: 0 })]} completedCount={0} totalCount={1} />,
+            <Target
+                goals={[makeGoal({ target: 0, current: 0 })]}
+                completedCount={0}
+                totalCount={1}
+            />,
         );
         const bar = container.querySelector('[style*="width: 0%"]');
         expect(bar).toBeInTheDocument();
@@ -78,7 +102,9 @@ describe('Target', () => {
     it('shows the "Hampir!" nudge once progress reaches 75% but isn\'t completed yet', () => {
         render(
             <Target
-                goals={[makeGoal({ current: 80, target: 100, is_completed: false })]}
+                goals={[
+                    makeGoal({ current: 80, target: 100, is_completed: false }),
+                ]}
                 completedCount={0}
                 totalCount={1}
             />,
@@ -89,7 +115,9 @@ describe('Target', () => {
     it('hides the "Hampir!" nudge below the 75% threshold', () => {
         render(
             <Target
-                goals={[makeGoal({ current: 50, target: 100, is_completed: false })]}
+                goals={[
+                    makeGoal({ current: 50, target: 100, is_completed: false }),
+                ]}
                 completedCount={0}
                 totalCount={1}
             />,
@@ -100,11 +128,20 @@ describe('Target', () => {
     it('gives each progress bar a meaningful accessible name', () => {
         render(
             <Target
-                goals={[makeGoal({ title: 'Catat PR ke-1', current: 0, target: 1, unit: 'PR' })]}
+                goals={[
+                    makeGoal({
+                        title: 'Catat PR ke-1',
+                        current: 0,
+                        target: 1,
+                        unit: 'PR',
+                    }),
+                ]}
                 completedCount={0}
                 totalCount={1}
             />,
         );
-        expect(screen.getByRole('progressbar', { name: 'Catat PR ke-1: 0/1 PR' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('progressbar', { name: 'Catat PR ke-1: 0/1 PR' }),
+        ).toBeInTheDocument();
     });
 });

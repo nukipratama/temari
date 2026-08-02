@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import DataTable, { Td } from './DataTable';
 
 interface Row {
@@ -12,7 +13,9 @@ const rows: Row[] = [
     { id: 2, name: 'beta' },
 ];
 
-function renderTable(overrides: Partial<Parameters<typeof DataTable<Row>>[0]> = {}) {
+function renderTable(
+    overrides: Partial<Parameters<typeof DataTable<Row>>[0]> = {},
+) {
     return render(
         <DataTable<Row>
             icon="mdi:table"

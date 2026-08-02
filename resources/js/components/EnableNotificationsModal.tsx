@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 
 interface EnableNotificationsModalProps {
@@ -12,7 +13,10 @@ interface EnableNotificationsModalProps {
  * live on Pengaturan, so this points there instead of pushing one channel. Uses
  * the shared {@see TemariNudgeModal} shell.
  */
-export default function EnableNotificationsModal({ open, onClose }: Readonly<EnableNotificationsModalProps>) {
+export default function EnableNotificationsModal({
+    open,
+    onClose,
+}: Readonly<EnableNotificationsModalProps>) {
     return (
         <TemariNudgeModal
             open={open}
@@ -20,8 +24,9 @@ export default function EnableNotificationsModal({ open, onClose }: Readonly<Ena
             title="Nyalain notifikasi dulu yuk"
             body={
                 <>
-                    Notifikasimu belum nyala. Begitu nyala, tiap abis lari sama pas rekap aku kabarin
-                    langsung, jadi gak bakal kelewat. Bisa lewat notifikasi HP atau Telegram, pilih aja.
+                    Notifikasimu belum nyala. Begitu nyala, tiap abis lari sama
+                    pas rekap aku kabarin langsung, jadi gak bakal kelewat. Bisa
+                    lewat notifikasi HP atau Telegram, pilih aja.
                 </>
             }
             primaryLabel="Ke Pengaturan"

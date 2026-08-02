@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
 import { Link } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 
 const MotionLink = motion.create(Link);
 

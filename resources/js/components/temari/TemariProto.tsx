@@ -65,7 +65,10 @@ const HEADBAND_PALETTE: Record<string, HeadbandPalette> = {
 
 // ── Medal palette ───────────────────────────────────────────────────
 
-const MEDAL_PALETTE: Record<string, { coin: string; glow: string; ring: boolean }> = {
+const MEDAL_PALETTE: Record<
+    string,
+    { coin: string; glow: string; ring: boolean }
+> = {
     pertama: { coin: '#C77F4A', glow: '#E0A06E', ring: false },
     emas: { coin: '#D9B23A', glow: '#F5D365', ring: false },
     perak: { coin: '#A8B4C0', glow: '#C8D4E0', ring: true },
@@ -74,7 +77,10 @@ const MEDAL_PALETTE: Record<string, { coin: string; glow: string; ring: boolean 
 
 // ── Kaus (shirt/jersey) palette ─────────────────────────────────────
 
-const KAUS_PALETTE: Record<string, { fill: string; trim: string; emblem: string }> = {
+const KAUS_PALETTE: Record<
+    string,
+    { fill: string; trim: string; emblem: string }
+> = {
     pemula: { fill: '#E8E4DC', trim: '#CCC8C0', emblem: '#A09888' },
     pagi: { fill: '#F5D365', trim: '#D9B23A', emblem: '#B8941E' },
     hujan: { fill: '#5E89B5', trim: '#4A6F94', emblem: '#8CB4D8' },
@@ -92,7 +98,10 @@ const CELANA_PALETTE: Record<string, { fill: string; stripe: string }> = {
 
 // ── Sepatu (shoes) palette ──────────────────────────────────────────
 
-const SEPATU_PALETTE: Record<string, { upper: string; sole: string; accent: string }> = {
+const SEPATU_PALETTE: Record<
+    string,
+    { upper: string; sole: string; accent: string }
+> = {
     basic: { upper: '#A09888', sole: '#ffffff', accent: '#6e6452' },
     cepat: { upper: '#d9764a', sole: '#ffffff', accent: '#b75f37' },
     tahan: { upper: '#3d5a4f', sole: '#ffffff', accent: '#6b8e6f' },
@@ -101,7 +110,10 @@ const SEPATU_PALETTE: Record<string, { upper: string; sole: string; accent: stri
 
 // ── Aura palette ────────────────────────────────────────────────────
 
-const AURA_PALETTE: Record<string, { inner: string; mid: string; outer: string }> = {
+const AURA_PALETTE: Record<
+    string,
+    { inner: string; mid: string; outer: string }
+> = {
     pemanasan: { inner: '#F5D365', mid: '#D9B23A', outer: '#D9B23A' },
     gerah: { inner: '#E8A076', mid: '#C4623F', outer: '#C4623F' },
     tenang: { inner: '#8CB4D8', mid: '#5E89B5', outer: '#5E89B5' },
@@ -204,24 +216,36 @@ function TemariProto({
     const aspectHeight = (size * viewH) / viewW;
 
     const headbandKey = equipped?.headband ?? null;
-    const hb = HEADBAND_PALETTE[headbandKey ?? 'ember'] ?? HEADBAND_PALETTE.ember;
+    const hb =
+        HEADBAND_PALETTE[headbandKey ?? 'ember'] ?? HEADBAND_PALETTE.ember;
 
-    const medalKey = (!equipped?.medal || equipped.medal === 'none') ? null : equipped.medal;
-    const medal = medalKey ? (MEDAL_PALETTE[medalKey] ?? MEDAL_PALETTE.pertama) : null;
+    const medalKey =
+        !equipped?.medal || equipped.medal === 'none' ? null : equipped.medal;
+    const medal = medalKey
+        ? (MEDAL_PALETTE[medalKey] ?? MEDAL_PALETTE.pertama)
+        : null;
 
     const auraKey = resolveAuraKey(equipped);
     const showAura = auraKey !== null;
-    const auraColors = auraKey ? (AURA_PALETTE[auraKey] ?? AURA_PALETTE.pemanasan) : null;
+    const auraColors = auraKey
+        ? (AURA_PALETTE[auraKey] ?? AURA_PALETTE.pemanasan)
+        : null;
 
     const showSparkle = SPARKLE_POSES.has(pose) || showAura;
     const kausKey = equipped?.kaus ?? null;
-    const kausColors = kausKey ? (KAUS_PALETTE[kausKey] ?? KAUS_PALETTE.pemula) : null;
+    const kausColors = kausKey
+        ? (KAUS_PALETTE[kausKey] ?? KAUS_PALETTE.pemula)
+        : null;
 
     const celanaKey = equipped?.celana ?? null;
-    const celanaColors = celanaKey ? (CELANA_PALETTE[celanaKey] ?? CELANA_PALETTE.ringan) : null;
+    const celanaColors = celanaKey
+        ? (CELANA_PALETTE[celanaKey] ?? CELANA_PALETTE.ringan)
+        : null;
 
     const sepatuKey = equipped?.sepatu ?? null;
-    const sepatuColors = sepatuKey ? (SEPATU_PALETTE[sepatuKey] ?? SEPATU_PALETTE.basic) : null;
+    const sepatuColors = sepatuKey
+        ? (SEPATU_PALETTE[sepatuKey] ?? SEPATU_PALETTE.basic)
+        : null;
 
     const earTilt = EAR_TILT[pose];
     const eyeShape = EYE_BY_POSE[pose];
@@ -250,63 +274,144 @@ function TemariProto({
             >
                 <defs>
                     {/* Drop shadow for lift */}
-                    <filter id="temari-shadow" x="-20%" y="-10%" width="140%" height="140%">
-                        <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#3b2f1f" floodOpacity="0.15" />
+                    <filter
+                        id="temari-shadow"
+                        x="-20%"
+                        y="-10%"
+                        width="140%"
+                        height="140%"
+                    >
+                        <feDropShadow
+                            dx="0"
+                            dy="3"
+                            stdDeviation="3"
+                            floodColor="#3b2f1f"
+                            floodOpacity="0.15"
+                        />
                     </filter>
                     {/* Fur radial gradient — lit top-left, deep shade bottom-right */}
-                    <radialGradient id="fur-head-grad" cx="42%" cy="34%" r="62%">
+                    <radialGradient
+                        id="fur-head-grad"
+                        cx="42%"
+                        cy="34%"
+                        r="62%"
+                    >
                         <stop offset="0%" stopColor="#FFF3DD" />
                         <stop offset="55%" stopColor={FUR} />
                         <stop offset="82%" stopColor={FUR_SHADE} />
                         <stop offset="100%" stopColor={FUR_DARK} />
                     </radialGradient>
-                    <radialGradient id="fur-body-grad" cx="42%" cy="28%" r="72%">
+                    <radialGradient
+                        id="fur-body-grad"
+                        cx="42%"
+                        cy="28%"
+                        r="72%"
+                    >
                         <stop offset="0%" stopColor="#FFF3DD" />
                         <stop offset="50%" stopColor={FUR} />
                         <stop offset="82%" stopColor={FUR_SHADE} />
                         <stop offset="100%" stopColor={FUR_DARK} />
                     </radialGradient>
                     {/* Garment form-shading overlay — top highlight → bottom shade, works on any fill */}
-                    <linearGradient id="garment-shade" x1="18%" y1="0%" x2="62%" y2="100%">
+                    <linearGradient
+                        id="garment-shade"
+                        x1="18%"
+                        y1="0%"
+                        x2="62%"
+                        y2="100%"
+                    >
                         <stop offset="0%" stopColor="#fff" stopOpacity="0.28" />
                         <stop offset="34%" stopColor="#fff" stopOpacity="0" />
                         <stop offset="64%" stopColor="#000" stopOpacity="0" />
-                        <stop offset="100%" stopColor="#000" stopOpacity="0.34" />
+                        <stop
+                            offset="100%"
+                            stopColor="#000"
+                            stopOpacity="0.34"
+                        />
                     </linearGradient>
                     {/* Metallic coin sheen — diagonal highlight → shade */}
-                    <linearGradient id="coin-sheen" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <linearGradient
+                        id="coin-sheen"
+                        x1="0%"
+                        y1="0%"
+                        x2="100%"
+                        y2="100%"
+                    >
                         <stop offset="0%" stopColor="#fff" stopOpacity="0.6" />
                         <stop offset="44%" stopColor="#fff" stopOpacity="0" />
-                        <stop offset="100%" stopColor="#000" stopOpacity="0.3" />
+                        <stop
+                            offset="100%"
+                            stopColor="#000"
+                            stopOpacity="0.3"
+                        />
                     </linearGradient>
                     {/* Forehead highlight */}
-                    <radialGradient id="fur-highlight" cx="50%" cy="30%" r="40%">
+                    <radialGradient
+                        id="fur-highlight"
+                        cx="50%"
+                        cy="30%"
+                        r="40%"
+                    >
                         <stop offset="0%" stopColor="#fff" stopOpacity="0.35" />
                         <stop offset="100%" stopColor="#fff" stopOpacity="0" />
                     </radialGradient>
                     {/* Cheek blush gradient */}
-                    <radialGradient id="cheek-blush-l" cx="50%" cy="50%" r="50%">
+                    <radialGradient
+                        id="cheek-blush-l"
+                        cx="50%"
+                        cy="50%"
+                        r="50%"
+                    >
                         <stop offset="0%" stopColor={CHEEK} stopOpacity="0.7" />
                         <stop offset="100%" stopColor={CHEEK} stopOpacity="0" />
                     </radialGradient>
-                    <radialGradient id="cheek-blush-r" cx="50%" cy="50%" r="50%">
+                    <radialGradient
+                        id="cheek-blush-r"
+                        cx="50%"
+                        cy="50%"
+                        r="50%"
+                    >
                         <stop offset="0%" stopColor={CHEEK} stopOpacity="0.7" />
                         <stop offset="100%" stopColor={CHEEK} stopOpacity="0" />
                     </radialGradient>
                     {/* Inner ear shadow */}
-                    <radialGradient id="ear-inner-grad" cx="50%" cy="40%" r="55%">
-                        <stop offset="0%" stopColor={INNER_EAR} stopOpacity="0.6" />
-                        <stop offset="100%" stopColor="#B8785A" stopOpacity="0.4" />
+                    <radialGradient
+                        id="ear-inner-grad"
+                        cx="50%"
+                        cy="40%"
+                        r="55%"
+                    >
+                        <stop
+                            offset="0%"
+                            stopColor={INNER_EAR}
+                            stopOpacity="0.6"
+                        />
+                        <stop
+                            offset="100%"
+                            stopColor="#B8785A"
+                            stopOpacity="0.4"
+                        />
                     </radialGradient>
                     {/* Arm limb — bright lit top edge → deep shaded underside for a rounded 3D tube */}
-                    <linearGradient id="fur-arm-grad" x1="20%" y1="0%" x2="80%" y2="100%">
+                    <linearGradient
+                        id="fur-arm-grad"
+                        x1="20%"
+                        y1="0%"
+                        x2="80%"
+                        y2="100%"
+                    >
                         <stop offset="0%" stopColor="#FFF3DD" />
                         <stop offset="42%" stopColor={FUR} />
                         <stop offset="78%" stopColor="#D2B485" />
                         <stop offset="100%" stopColor={FUR_DARK} />
                     </linearGradient>
                     {/* Fist/hand — strong highlight top-left → dark bottom-right for volume */}
-                    <radialGradient id="fur-fist-grad" cx="36%" cy="30%" r="75%">
+                    <radialGradient
+                        id="fur-fist-grad"
+                        cx="36%"
+                        cy="30%"
+                        r="75%"
+                    >
                         <stop offset="0%" stopColor="#FFF6E6" />
                         <stop offset="50%" stopColor={FUR} />
                         <stop offset="100%" stopColor={FUR_DARK} />
@@ -317,7 +422,14 @@ function TemariProto({
                 {showAura && auraColors && <AuraLayer colors={auraColors} />}
 
                 {/* Ground shadow */}
-                <ellipse cx="60" cy="130" rx="24" ry="3.5" fill={EYE} opacity="0.1" />
+                <ellipse
+                    cx="60"
+                    cy="130"
+                    rx="24"
+                    ry="3.5"
+                    fill={EYE}
+                    opacity="0.1"
+                />
 
                 {/* Character group with drop shadow (skipped inside 3D-tilt cards) */}
                 <g filter={dropShadow ? 'url(#temari-shadow)' : undefined}>
@@ -332,10 +444,22 @@ function TemariProto({
                     />
 
                     {/* Arms */}
-                    <Arms armRot={armRot} held={held} kausColors={kausColors} wristColor={headbandKey ? hb.band : FUR_SHADE} />
+                    <Arms
+                        armRot={armRot}
+                        held={held}
+                        kausColors={kausColors}
+                        wristColor={headbandKey ? hb.band : FUR_SHADE}
+                    />
 
                     {/* Soft shadow the head casts onto the chest */}
-                    <ellipse cx="60" cy="57" rx="17" ry="5" fill={OUTLINE} opacity="0.13" />
+                    <ellipse
+                        cx="60"
+                        cy="57"
+                        rx="17"
+                        ry="5"
+                        fill={OUTLINE}
+                        opacity="0.13"
+                    />
 
                     {/* Head */}
                     <Head
@@ -363,23 +487,46 @@ function TemariProto({
 
 // ── Aura ─────────────────────────────────────────────────────────────
 
-function AuraLayer({ colors }: Readonly<{ colors: { inner: string; mid: string; outer: string } }>) {
+function AuraLayer({
+    colors,
+}: Readonly<{ colors: { inner: string; mid: string; outer: string } }>) {
     // The gradient id must be unique per instance: it was document-global, so with
     // several TemariProto auras on one page (e.g. the accessory grid) every circle
     // resolved to the first-mounted aura's colors, misrepresenting the rest.
     const gradId = `temari-aura-grad-${useId()}`;
     return (
         <g
-            style={{ animation: 'temari-aura-pulse 2.4s ease-in-out infinite', transformOrigin: '60px 60px' }}
+            style={{
+                animation: 'temari-aura-pulse 2.4s ease-in-out infinite',
+                transformOrigin: '60px 60px',
+            }}
         >
             <defs>
                 <radialGradient id={gradId}>
-                    <stop offset="0%" stopColor={colors.inner} stopOpacity="0.7" />
-                    <stop offset="60%" stopColor={colors.mid} stopOpacity="0.2" />
-                    <stop offset="100%" stopColor={colors.outer} stopOpacity="0" />
+                    <stop
+                        offset="0%"
+                        stopColor={colors.inner}
+                        stopOpacity="0.7"
+                    />
+                    <stop
+                        offset="60%"
+                        stopColor={colors.mid}
+                        stopOpacity="0.2"
+                    />
+                    <stop
+                        offset="100%"
+                        stopColor={colors.outer}
+                        stopOpacity="0"
+                    />
                 </radialGradient>
             </defs>
-            <circle cx="60" cy="60" r="68" fill={`url(#${gradId})`} opacity="0.7" />
+            <circle
+                cx="60"
+                cy="60"
+                r="68"
+                fill={`url(#${gradId})`}
+                opacity="0.7"
+            />
         </g>
     );
 }
@@ -404,17 +551,42 @@ function Head({
             {/* Ears */}
             <Ears tilt={earTilt} />
             {/* Head circle — gradient fill for 3D */}
-            <ellipse cx="60" cy="28" rx="34" ry="30" fill="url(#fur-head-grad)" stroke={FUR_SHADE} strokeWidth="1.2" />
+            <ellipse
+                cx="60"
+                cy="28"
+                rx="34"
+                ry="30"
+                fill="url(#fur-head-grad)"
+                stroke={FUR_SHADE}
+                strokeWidth="1.2"
+            />
             {/* Forehead highlight */}
-            <ellipse cx="60" cy="20" rx="22" ry="14" fill="url(#fur-highlight)" />
+            <ellipse
+                cx="60"
+                cy="20"
+                rx="22"
+                ry="14"
+                fill="url(#fur-highlight)"
+            />
             {/* Headband — only when equipped */}
-            {headbandKey && <Headband band={hb.band} legendary={headbandKey === 'legendaris'} />}
+            {headbandKey && (
+                <Headband
+                    band={hb.band}
+                    legendary={headbandKey === 'legendaris'}
+                />
+            )}
             {/* Cheeks — softer blush */}
             <Cheeks />
             {/* Eyes */}
             <Eyes shape={eyeShape} />
             {/* Nose dot */}
-            <ellipse cx="60" cy="42" rx="2.5" ry="2" fill={headbandKey ? hb.band : FUR_SHADE} />
+            <ellipse
+                cx="60"
+                cy="42"
+                rx="2.5"
+                ry="2"
+                fill={headbandKey ? hb.band : FUR_SHADE}
+            />
             {/* Mouth */}
             <Mouth shape={mouthShape} />
         </g>
@@ -454,8 +626,20 @@ function Body({
                         strokeLinejoin="round"
                     />
                     {/* Side stripes */}
-                    <rect x="36" y="80" width="1.4" height="10" fill={celanaColors.stripe} />
-                    <rect x="83" y="80" width="1.4" height="10" fill={celanaColors.stripe} />
+                    <rect
+                        x="36"
+                        y="80"
+                        width="1.4"
+                        height="10"
+                        fill={celanaColors.stripe}
+                    />
+                    <rect
+                        x="83"
+                        y="80"
+                        width="1.4"
+                        height="10"
+                        fill={celanaColors.stripe}
+                    />
                 </g>
             ) : (
                 <path
@@ -467,7 +651,10 @@ function Body({
                 />
             )}
             {/* Shorts form-shading — top light → bottom shade */}
-            <path d="M 34 78 Q 33 84 34 86 Q 36 92 44 92 L 76 92 Q 84 92 86 86 Q 87 84 86 78 Z" fill="url(#garment-shade)" />
+            <path
+                d="M 34 78 Q 33 84 34 86 Q 36 92 44 92 L 76 92 Q 84 92 86 86 Q 87 84 86 78 Z"
+                fill="url(#garment-shade)"
+            />
 
             {/* Kaus (shirt/jersey) — upper torso */}
             {kausColors ? (
@@ -488,7 +675,14 @@ function Body({
                         strokeLinecap="round"
                     />
                     {/* Chest emblem — small "T" */}
-                    <circle cx="60" cy="66" r="3.2" fill={emblemColor} stroke={OUTLINE} strokeWidth="0.6" />
+                    <circle
+                        cx="60"
+                        cy="66"
+                        r="3.2"
+                        fill={emblemColor}
+                        stroke={OUTLINE}
+                        strokeWidth="0.6"
+                    />
                     <text
                         x="60"
                         y="67.5"
@@ -519,7 +713,14 @@ function Body({
                         strokeLinecap="round"
                     />
                     {/* Default chest emblem */}
-                    <circle cx="60" cy="66" r="3.2" fill={emblemColor} stroke={OUTLINE} strokeWidth="0.6" />
+                    <circle
+                        cx="60"
+                        cy="66"
+                        r="3.2"
+                        fill={emblemColor}
+                        stroke={OUTLINE}
+                        strokeWidth="0.6"
+                    />
                     <text
                         x="60"
                         y="67.5"
@@ -534,7 +735,10 @@ function Body({
                 </g>
             )}
             {/* Shirt form-shading — top light → bottom shade */}
-            <path d="M 36 55 Q 35 64 34 78 L 86 78 Q 85 64 84 55 Q 76 58 60 58 Q 44 58 36 55 Z" fill="url(#garment-shade)" />
+            <path
+                d="M 36 55 Q 35 64 34 78 L 86 78 Q 85 64 84 55 Q 76 58 60 58 Q 44 58 36 55 Z"
+                fill="url(#garment-shade)"
+            />
         </g>
     );
 }
@@ -560,8 +764,20 @@ function Arms({
     const [rotL, rotR] = held ? [0, 0] : [-armRot[0], -armRot[1]];
     return (
         <>
-            <Arm side="left" rot={rotL} held={held} sleeveColor={sleeveColor} wristColor={wristColor} />
-            <Arm side="right" rot={rotR} held={held} sleeveColor={sleeveColor} wristColor={wristColor} />
+            <Arm
+                side="left"
+                rot={rotL}
+                held={held}
+                sleeveColor={sleeveColor}
+                wristColor={wristColor}
+            />
+            <Arm
+                side="right"
+                rot={rotR}
+                held={held}
+                sleeveColor={sleeveColor}
+                wristColor={wristColor}
+            />
         </>
     );
 }
@@ -571,7 +787,10 @@ function Arms({
 // shading and kill the 3D read). `s` = inward sign (+1 left, -1 right); a runner's
 // bent elbow — upper arm down the side, forearm angled forward to a relaxed fist.
 // `held` swings the forearm further in so both fists meet on a book.
-function armGeo(s: number, held: boolean): {
+function armGeo(
+    s: number,
+    held: boolean,
+): {
     d: string;
     sleeve: string;
     elbow: readonly [number, number] | null;
@@ -604,7 +823,13 @@ function Arm({
     held,
     sleeveColor,
     wristColor,
-}: Readonly<{ side: 'left' | 'right'; rot: number; held: boolean; sleeveColor: string; wristColor: string }>) {
+}: Readonly<{
+    side: 'left' | 'right';
+    rot: number;
+    held: boolean;
+    sleeveColor: string;
+    wristColor: string;
+}>) {
     // Shoulder pivots sit at the torso's upper edge (x≈36/84, y56) so the arm
     // overlaps the body with no gap; the whole arm swings around that pivot.
     const pivotX = side === 'left' ? 36 : 84;
@@ -613,19 +838,85 @@ function Arm({
     return (
         <g transform={`translate(${pivotX}, 58) rotate(${rot})`}>
             {/* Contact shadow where the arm tucks under the shoulder */}
-            <ellipse cx="0" cy="2.5" rx="4.6" ry="3" fill={OUTLINE} opacity="0.1" />
+            <ellipse
+                cx="0"
+                cy="2.5"
+                rx="4.6"
+                ry="3"
+                fill={OUTLINE}
+                opacity="0.1"
+            />
             {/* Limb — outline → gradient fill → underside shadow → top rim-light = rounded 3D tube */}
-            <path d={geo.d} fill="none" stroke={FUR_DARK} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d={geo.d} fill="none" stroke="url(#fur-arm-grad)" strokeWidth="6.6" strokeLinecap="round" strokeLinejoin="round" />
-            <path d={geo.d} fill="none" stroke={FUR_DARK} strokeWidth="3" strokeLinecap="round" opacity="0.3" transform="translate(0.7, 1.3)" />
+            <path
+                d={geo.d}
+                fill="none"
+                stroke={FUR_DARK}
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d={geo.d}
+                fill="none"
+                stroke="url(#fur-arm-grad)"
+                strokeWidth="6.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d={geo.d}
+                fill="none"
+                stroke={FUR_DARK}
+                strokeWidth="3"
+                strokeLinecap="round"
+                opacity="0.3"
+                transform="translate(0.7, 1.3)"
+            />
             {/* Elbow ambient occlusion (bent poses only) */}
-            {geo.elbow && <ellipse cx={geo.elbow[0]} cy={geo.elbow[1]} rx="2.4" ry="2" fill={FUR_DARK} opacity="0.18" />}
-            <path d={geo.d} fill="none" stroke="#FFF6E6" strokeWidth="1.8" strokeLinecap="round" opacity="0.55" transform="translate(-0.7, -1.4)" />
+            {geo.elbow && (
+                <ellipse
+                    cx={geo.elbow[0]}
+                    cy={geo.elbow[1]}
+                    rx="2.4"
+                    ry="2"
+                    fill={FUR_DARK}
+                    opacity="0.18"
+                />
+            )}
+            <path
+                d={geo.d}
+                fill="none"
+                stroke="#FFF6E6"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                opacity="0.55"
+                transform="translate(-0.7, -1.4)"
+            />
             {/* Sleeve over the shoulder */}
-            <path d={geo.sleeve} fill="none" stroke={sleeveColor} strokeWidth="7.4" strokeLinecap="round" />
-            <path d={geo.sleeve} fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" opacity="0.12" transform="translate(0.6, 1.1)" />
+            <path
+                d={geo.sleeve}
+                fill="none"
+                stroke={sleeveColor}
+                strokeWidth="7.4"
+                strokeLinecap="round"
+            />
+            <path
+                d={geo.sleeve}
+                fill="none"
+                stroke="#000"
+                strokeWidth="2"
+                strokeLinecap="round"
+                opacity="0.12"
+                transform="translate(0.6, 1.1)"
+            />
             {/* Fist */}
-            <Fist cx={geo.fist[0]} cy={geo.fist[1]} thumb={s} wrist={geo.wrist} wristColor={wristColor} />
+            <Fist
+                cx={geo.fist[0]}
+                cy={geo.fist[1]}
+                thumb={s}
+                wrist={geo.wrist}
+                wristColor={wristColor}
+            />
         </g>
     );
 }
@@ -636,13 +927,34 @@ function Fist({
     thumb,
     wrist,
     wristColor,
-}: Readonly<{ cx: number; cy: number; thumb: number; wrist: readonly [number, number]; wristColor: string }>) {
+}: Readonly<{
+    cx: number;
+    cy: number;
+    thumb: number;
+    wrist: readonly [number, number];
+    wristColor: string;
+}>) {
     return (
         <g>
             {/* Cast shadow on the body under the fist */}
-            <ellipse cx={cx + 1.2} cy={cy + 3.6} rx="4.4" ry="2.2" fill={OUTLINE} opacity="0.16" />
+            <ellipse
+                cx={cx + 1.2}
+                cy={cy + 3.6}
+                rx="4.4"
+                ry="2.2"
+                fill={OUTLINE}
+                opacity="0.16"
+            />
             {/* Wristband between forearm and fist */}
-            <ellipse cx={wrist[0]} cy={wrist[1]} rx="3.4" ry="2.2" fill={wristColor} stroke={OUTLINE} strokeWidth="0.3" />
+            <ellipse
+                cx={wrist[0]}
+                cy={wrist[1]}
+                rx="3.4"
+                ry="2.2"
+                fill={wristColor}
+                stroke={OUTLINE}
+                strokeWidth="0.3"
+            />
             {/* Fist — gradient sphere with an outline */}
             <circle cx={cx} cy={cy} r="4.8" fill={FUR_DARK} />
             <circle cx={cx} cy={cy} r="4.4" fill="url(#fur-fist-grad)" />
@@ -666,7 +978,13 @@ function Fist({
                 opacity="0.6"
             />
             {/* Specular highlight — world top-left */}
-            <circle cx={cx - 1.6} cy={cy - 1.8} r="1.7" fill="#FFF6E6" opacity="0.65" />
+            <circle
+                cx={cx - 1.6}
+                cy={cy - 1.8}
+                r="1.7"
+                fill="#FFF6E6"
+                opacity="0.65"
+            />
         </g>
     );
 }
@@ -689,7 +1007,10 @@ function HeldObject() {
                 rx="20"
                 ry="14"
                 fill="url(#temari-book-glow)"
-                style={{ animation: 'temari-breathe 3s ease-in-out infinite', transformOrigin: '60px 76px' }}
+                style={{
+                    animation: 'temari-breathe 3s ease-in-out infinite',
+                    transformOrigin: '60px 76px',
+                }}
             />
             {/* Open book — two pages meeting at the spine */}
             <path
@@ -707,7 +1028,12 @@ function HeldObject() {
                 strokeLinejoin="round"
             />
             {/* Spine */}
-            <path d="M 60 71 L 60 82" stroke={OUTLINE} strokeWidth="0.7" strokeLinecap="round" />
+            <path
+                d="M 60 71 L 60 82"
+                stroke={OUTLINE}
+                strokeWidth="0.7"
+                strokeLinecap="round"
+            />
             {/* Text lines */}
             <path
                 d="M 52 73.6 L 57.5 74.3 M 52 76.1 L 57.5 76.7 M 52 78.6 L 57.5 79.1"
@@ -727,30 +1053,78 @@ function HeldObject() {
 
 // ── Legs ──────────────────────────────────────────────────────────────
 
-function Legs({ sepatuColors }: Readonly<{ sepatuColors: { upper: string; sole: string; accent: string } | null }>) {
-    const shoe = sepatuColors ?? { upper: '#A09888', sole: '#ffffff', accent: '#6e6452' };
+function Legs({
+    sepatuColors,
+}: Readonly<{
+    sepatuColors: { upper: string; sole: string; accent: string } | null;
+}>) {
+    const shoe = sepatuColors ?? {
+        upper: '#A09888',
+        sole: '#ffffff',
+        accent: '#6e6452',
+    };
     return (
         <g>
             {/* Left leg */}
             <g transform="translate(48, 92)">
                 {/* Thigh — tapers from hip to knee with slight forward lean */}
-                <path d="M -4 0 Q -4.5 7 -3.5 14 L 3.5 14 Q 4.5 7 4 0 Z" fill={FUR} stroke={FUR_SHADE} strokeWidth="0.8" />
+                <path
+                    d="M -4 0 Q -4.5 7 -3.5 14 L 3.5 14 Q 4.5 7 4 0 Z"
+                    fill={FUR}
+                    stroke={FUR_SHADE}
+                    strokeWidth="0.8"
+                />
                 {/* Shoe */}
                 <g stroke={OUTLINE} strokeWidth="0.8" strokeLinejoin="round">
-                    <path d="M -8 12 L 6 12 Q 8 15 6 18 Q 6 21 4 21 L -6 21 Q -9 21 -9 18 Q -10 14 -8 12 Z" fill={shoe.upper} />
-                    <path d="M -8 12 L 6 12 L 6 15 L -8 15 Z" fill={shoe.accent} opacity="0.4" stroke="none" />
-                    <rect x="-9" y="18" width="16" height="3" rx="1.2" fill={shoe.sole} />
+                    <path
+                        d="M -8 12 L 6 12 Q 8 15 6 18 Q 6 21 4 21 L -6 21 Q -9 21 -9 18 Q -10 14 -8 12 Z"
+                        fill={shoe.upper}
+                    />
+                    <path
+                        d="M -8 12 L 6 12 L 6 15 L -8 15 Z"
+                        fill={shoe.accent}
+                        opacity="0.4"
+                        stroke="none"
+                    />
+                    <rect
+                        x="-9"
+                        y="18"
+                        width="16"
+                        height="3"
+                        rx="1.2"
+                        fill={shoe.sole}
+                    />
                 </g>
             </g>
             {/* Right leg */}
             <g transform="translate(72, 92)">
                 {/* Thigh — tapers from hip to knee */}
-                <path d="M -4 0 Q -4.5 7 -3.5 14 L 3.5 14 Q 4.5 7 4 0 Z" fill={FUR} stroke={FUR_SHADE} strokeWidth="0.8" />
+                <path
+                    d="M -4 0 Q -4.5 7 -3.5 14 L 3.5 14 Q 4.5 7 4 0 Z"
+                    fill={FUR}
+                    stroke={FUR_SHADE}
+                    strokeWidth="0.8"
+                />
                 {/* Shoe */}
                 <g stroke={OUTLINE} strokeWidth="0.8" strokeLinejoin="round">
-                    <path d="M -6 12 L 8 12 Q 10 14 9 18 Q 9 21 6 21 L -4 21 Q -7 21 -7 18 Q -8 14 -6 12 Z" fill={shoe.upper} />
-                    <path d="M -6 12 L 8 12 L 8 15 L -6 15 Z" fill={shoe.accent} opacity="0.4" stroke="none" />
-                    <rect x="-7" y="18" width="16" height="3" rx="1.2" fill={shoe.sole} />
+                    <path
+                        d="M -6 12 L 8 12 Q 10 14 9 18 Q 9 21 6 21 L -4 21 Q -7 21 -7 18 Q -8 14 -6 12 Z"
+                        fill={shoe.upper}
+                    />
+                    <path
+                        d="M -6 12 L 8 12 L 8 15 L -6 15 Z"
+                        fill={shoe.accent}
+                        opacity="0.4"
+                        stroke="none"
+                    />
+                    <rect
+                        x="-7"
+                        y="18"
+                        width="16"
+                        height="3"
+                        rx="1.2"
+                        fill={shoe.sole}
+                    />
                 </g>
             </g>
         </g>
@@ -768,9 +1142,32 @@ function MedalLayer({
             <path d="M -5 -13 L -1.1 -1 L 1.1 -1 L -2.3 -13 Z" fill="#A8512C" />
             <path d="M 5 -13 L 1.1 -1 L -1.1 -1 L 2.3 -13 Z" fill="#C4623F" />
             {/* Coin — metallic disc with bezel */}
-            <circle cx="0" cy="6.5" r="6.6" fill={medal.coin} stroke={OUTLINE} strokeWidth="0.5" />
-            <circle cx="0" cy="6.5" r="6.6" fill="none" stroke="#fff" strokeWidth="0.7" opacity="0.35" />
-            <circle cx="0" cy="6.5" r="5" fill="none" stroke={OUTLINE} strokeWidth="0.4" opacity="0.22" />
+            <circle
+                cx="0"
+                cy="6.5"
+                r="6.6"
+                fill={medal.coin}
+                stroke={OUTLINE}
+                strokeWidth="0.5"
+            />
+            <circle
+                cx="0"
+                cy="6.5"
+                r="6.6"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="0.7"
+                opacity="0.35"
+            />
+            <circle
+                cx="0"
+                cy="6.5"
+                r="5"
+                fill="none"
+                stroke={OUTLINE}
+                strokeWidth="0.4"
+                opacity="0.22"
+            />
             {/* Embossed star */}
             <path
                 d="M 0 3.1 L 0.88 5.29 L 3.23 5.45 L 1.43 6.96 L 2 9.25 L 0 8 L -2 9.25 L -1.43 6.96 L -3.23 5.45 L -0.88 5.29 Z"
@@ -780,10 +1177,26 @@ function MedalLayer({
             {/* Metallic sheen + shade */}
             <circle cx="0" cy="6.5" r="6.6" fill="url(#coin-sheen)" />
             {/* Specular glint */}
-            <ellipse cx="-2.4" cy="3.8" rx="1.8" ry="1.1" fill="#fff" opacity="0.55" transform="rotate(-35 -2.4 3.8)" />
+            <ellipse
+                cx="-2.4"
+                cy="3.8"
+                rx="1.8"
+                ry="1.1"
+                fill="#fff"
+                opacity="0.55"
+                transform="rotate(-35 -2.4 3.8)"
+            />
             {/* Platina/perak glow ring */}
             {medal.ring && (
-                <circle cx="0" cy="6.5" r="9.5" fill="none" stroke={medal.glow} strokeWidth="1.3" opacity="0.55" />
+                <circle
+                    cx="0"
+                    cy="6.5"
+                    r="9.5"
+                    fill="none"
+                    stroke={medal.glow}
+                    strokeWidth="1.3"
+                    opacity="0.55"
+                />
             )}
         </g>
     );
@@ -795,18 +1208,49 @@ function Ears({ tilt }: Readonly<{ tilt: [number, number] }>) {
     return (
         <>
             <g transform={`translate(35, 8) rotate(${tilt[0]})`}>
-                <ellipse cx="0" cy="-10" rx="8" ry="18" fill={FUR} stroke={FUR_SHADE} strokeWidth="1.2" />
-                <ellipse cx="0" cy="-8" rx="3.5" ry="12" fill="url(#ear-inner-grad)" />
+                <ellipse
+                    cx="0"
+                    cy="-10"
+                    rx="8"
+                    ry="18"
+                    fill={FUR}
+                    stroke={FUR_SHADE}
+                    strokeWidth="1.2"
+                />
+                <ellipse
+                    cx="0"
+                    cy="-8"
+                    rx="3.5"
+                    ry="12"
+                    fill="url(#ear-inner-grad)"
+                />
             </g>
             <g transform={`translate(85, 8) rotate(${tilt[1]})`}>
-                <ellipse cx="0" cy="-10" rx="8" ry="18" fill={FUR} stroke={FUR_SHADE} strokeWidth="1.2" />
-                <ellipse cx="0" cy="-8" rx="3.5" ry="12" fill="url(#ear-inner-grad)" />
+                <ellipse
+                    cx="0"
+                    cy="-10"
+                    rx="8"
+                    ry="18"
+                    fill={FUR}
+                    stroke={FUR_SHADE}
+                    strokeWidth="1.2"
+                />
+                <ellipse
+                    cx="0"
+                    cy="-8"
+                    rx="3.5"
+                    ry="12"
+                    fill="url(#ear-inner-grad)"
+                />
             </g>
         </>
     );
 }
 
-function Headband({ band, legendary }: Readonly<{ band: string; legendary: boolean }>) {
+function Headband({
+    band,
+    legendary,
+}: Readonly<{ band: string; legendary: boolean }>) {
     return (
         <>
             {/* Band wrapping the forehead edge-to-edge, hugging both sides of the
@@ -820,12 +1264,39 @@ function Headband({ band, legendary }: Readonly<{ band: string; legendary: boole
                 strokeLinejoin="round"
             />
             {/* Lower-edge shade + top highlight for depth */}
-            <path d="M 28 26.6 Q 60 22.8 92 26.6" fill="none" stroke="#000" strokeWidth="1.1" strokeOpacity="0.12" strokeLinecap="round" />
-            <path d="M 31 18.4 Q 60 14.8 89 18.4" fill="none" stroke="#fff" strokeWidth="1.1" strokeOpacity="0.3" strokeLinecap="round" />
+            <path
+                d="M 28 26.6 Q 60 22.8 92 26.6"
+                fill="none"
+                stroke="#000"
+                strokeWidth="1.1"
+                strokeOpacity="0.12"
+                strokeLinecap="round"
+            />
+            <path
+                d="M 31 18.4 Q 60 14.8 89 18.4"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="1.1"
+                strokeOpacity="0.3"
+                strokeLinecap="round"
+            />
             {/* Knot on the right side near the ear */}
-            <path d="M 90 20 L 97 16 L 95 22 L 100 25 L 92 26 Z" fill={band} stroke={OUTLINE} strokeWidth="0.4" strokeOpacity="0.25" strokeLinejoin="round" />
+            <path
+                d="M 90 20 L 97 16 L 95 22 L 100 25 L 92 26 Z"
+                fill={band}
+                stroke={OUTLINE}
+                strokeWidth="0.4"
+                strokeOpacity="0.25"
+                strokeLinejoin="round"
+            />
             {/* Tail dangling down the side */}
-            <path d="M 95 23 Q 99 30 97 38" stroke={band} strokeWidth="2.6" fill="none" strokeLinecap="round" />
+            <path
+                d="M 95 23 Q 99 30 97 38"
+                stroke={band}
+                strokeWidth="2.6"
+                fill="none"
+                strokeLinecap="round"
+            />
             {legendary && (
                 <path
                     d="M 60 19 l 1 -3 l 1 3 l 3 1 l -3 1 l -1 3 l -1 -3 l -3 -1 z"
@@ -868,8 +1339,20 @@ function Eyes({ shape }: Readonly<{ shape: EyeShape }>) {
     if (shape === 'sad') {
         return (
             <>
-                <path d="M 45 32 Q 48 36 51 32" stroke={EYE} strokeWidth="2" fill="none" strokeLinecap="round" />
-                <path d="M 69 32 Q 72 36 75 32" stroke={EYE} strokeWidth="2" fill="none" strokeLinecap="round" />
+                <path
+                    d="M 45 32 Q 48 36 51 32"
+                    stroke={EYE}
+                    strokeWidth="2"
+                    fill="none"
+                    strokeLinecap="round"
+                />
+                <path
+                    d="M 69 32 Q 72 36 75 32"
+                    stroke={EYE}
+                    strokeWidth="2"
+                    fill="none"
+                    strokeLinecap="round"
+                />
             </>
         );
     }
@@ -888,19 +1371,48 @@ function Mouth({ shape }: Readonly<{ shape: MouthShape }>) {
         return <ellipse cx="60" cy="51" rx="5" ry="4" fill={EYE} />;
     }
     if (shape === 'small') {
-        return <path d="M 56 49 Q 60 51 64 49" stroke={EYE} strokeWidth="1.4" fill="none" strokeLinecap="round" />;
+        return (
+            <path
+                d="M 56 49 Q 60 51 64 49"
+                stroke={EYE}
+                strokeWidth="1.4"
+                fill="none"
+                strokeLinecap="round"
+            />
+        );
     }
     if (shape === 'frown') {
-        return <path d="M 53 52 Q 60 46 67 52" stroke={EYE} strokeWidth="1.6" fill="none" strokeLinecap="round" />;
+        return (
+            <path
+                d="M 53 52 Q 60 46 67 52"
+                stroke={EYE}
+                strokeWidth="1.6"
+                fill="none"
+                strokeLinecap="round"
+            />
+        );
     }
-    return <path d="M 53 48 Q 60 54 67 48" stroke={EYE} strokeWidth="1.6" fill="none" strokeLinecap="round" />;
+    return (
+        <path
+            d="M 53 48 Q 60 54 67 48"
+            stroke={EYE}
+            strokeWidth="1.6"
+            fill="none"
+            strokeLinecap="round"
+        />
+    );
 }
 
 // ── Sparkles ──────────────────────────────────────────────────────────
 
 function Sparkles({ innerEarHex }: Readonly<{ innerEarHex: string }>) {
     return (
-        <g style={{ animation: 'temari-spin-sparkle 6s linear infinite', transformOrigin: '60px 60px' }}>
+        <g
+            style={{
+                animation: 'temari-spin-sparkle 6s linear infinite',
+                transformOrigin: '60px 60px',
+            }}
+        >
             <path
                 d="M 12 10 l 2 -6 l 2 6 l 6 2 l -6 2 l -2 6 l -2 -6 l -6 -2 z"
                 fill="#D9B23A"
@@ -924,29 +1436,39 @@ function Sparkles({ innerEarHex }: Readonly<{ innerEarHex: string }>) {
  * Field-level comparison so a parent that re-renders with a fresh inline
  * `equipped={{...}}` object doesn't force this 900-line SVG tree to rebuild.
  */
-function equippedEqual(a: TemariEquipped | null, b: TemariEquipped | null): boolean {
+function equippedEqual(
+    a: TemariEquipped | null,
+    b: TemariEquipped | null,
+): boolean {
     if (a === b) {
         return true;
     }
     if (a === null || b === null) {
         return false;
     }
-    return a.headband === b.headband
-        && a.medal === b.medal
-        && a.kaus === b.kaus
-        && a.celana === b.celana
-        && a.sepatu === b.sepatu
-        && a.aura === b.aura;
+    return (
+        a.headband === b.headband &&
+        a.medal === b.medal &&
+        a.kaus === b.kaus &&
+        a.celana === b.celana &&
+        a.sepatu === b.sepatu &&
+        a.aura === b.aura
+    );
 }
 
-function propsEqual(a: Readonly<TemariProtoProps>, b: Readonly<TemariProtoProps>): boolean {
-    return a.pose === b.pose
-        && a.size === b.size
-        && a.tone === b.tone
-        && a.animate === b.animate
-        && a.dropShadow === b.dropShadow
-        && a.className === b.className
-        && equippedEqual(a.equipped ?? null, b.equipped ?? null);
+function propsEqual(
+    a: Readonly<TemariProtoProps>,
+    b: Readonly<TemariProtoProps>,
+): boolean {
+    return (
+        a.pose === b.pose &&
+        a.size === b.size &&
+        a.tone === b.tone &&
+        a.animate === b.animate &&
+        a.dropShadow === b.dropShadow &&
+        a.className === b.className &&
+        equippedEqual(a.equipped ?? null, b.equipped ?? null)
+    );
 }
 
 export default memo(TemariProto, propsEqual);

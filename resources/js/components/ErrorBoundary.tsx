@@ -1,5 +1,6 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Icon } from '@iconify/react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
+
 import { reportClientError } from '@/lib/clientErrorReporter';
 
 interface Props {
@@ -38,10 +39,18 @@ export default class ErrorBoundary extends Component<Props, State> {
 
         return (
             <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
-                <Icon icon="mdi:emoticon-sad-outline" className="text-5xl text-horizon-deep" aria-hidden />
+                <Icon
+                    icon="mdi:emoticon-sad-outline"
+                    className="text-5xl text-horizon-deep"
+                    aria-hidden
+                />
                 <div className="flex flex-col gap-1">
-                    <h1 className="text-lg font-semibold text-ink">Waduh, ada yang error.</h1>
-                    <p className="text-sm text-ink-2">Halamannya lagi ngambek. Coba muat ulang dulu ya.</p>
+                    <h1 className="text-lg font-semibold text-ink">
+                        Waduh, ada yang error.
+                    </h1>
+                    <p className="text-sm text-ink-2">
+                        Halamannya lagi ngambek. Coba muat ulang dulu ya.
+                    </p>
                 </div>
                 <button
                     type="button"

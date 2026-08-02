@@ -1,8 +1,10 @@
-import { type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { type ReactNode } from 'react';
+
+import type { MetricKey } from '@/lib/metricGlossary';
+
 import MetricExplainer from '@/components/MetricExplainer';
 import { cn } from '@/lib/cn';
-import type { MetricKey } from '@/lib/metricGlossary';
 
 /**
  * Canonical "label + big tabular-nums value (+ optional unit/sub)" tile.
@@ -143,10 +145,15 @@ export default function StatTile({
                 )}
             >
                 {dotClass != null && (
-                    <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />
+                    <span
+                        aria-hidden
+                        className={cn('h-1.5 w-1.5 rounded-full', dotClass)}
+                    />
                 )}
                 <span>{label}</span>
-                {explainerKey != null && <MetricExplainer metricKey={explainerKey} size="xs" />}
+                {explainerKey != null && (
+                    <MetricExplainer metricKey={explainerKey} size="xs" />
+                )}
             </div>
             <div
                 className={cn(
@@ -158,13 +165,17 @@ export default function StatTile({
                 {value}
             </div>
             {unit != null && (
-                <div className={cn('mt-1 text-label-micro', LABEL_CLASS[tone])}>{unit}</div>
+                <div className={cn('mt-1 text-label-micro', LABEL_CLASS[tone])}>
+                    {unit}
+                </div>
             )}
             {sub != null && (
                 <div
                     className={cn(
                         'mt-1',
-                        subVariant === 'quote' ? 'font-display text-xs italic' : 'font-sans text-xs',
+                        subVariant === 'quote'
+                            ? 'font-display text-xs italic'
+                            : 'font-sans text-xs',
                         subColor,
                     )}
                 >

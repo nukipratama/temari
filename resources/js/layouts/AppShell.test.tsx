@@ -1,9 +1,13 @@
+import type { MotionConfigProps } from 'framer-motion';
+
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { MotionConfigProps } from 'framer-motion';
-import AppShell from './AppShell';
-import { makeUser, setMockPage } from '@/test/setup';
+
 import type { PendingReveal } from '@/types/inertia';
+
+import { makeUser, setMockPage } from '@/test/setup';
+
+import AppShell from './AppShell';
 
 const pendingCard: PendingReveal = {
     card_id: 1,
@@ -43,8 +47,16 @@ describe('AppShell', () => {
     });
 
     it('wraps the app tree in MotionConfig reducedMotion="user"', () => {
-        setMockPage({ auth: { user: andiUser }, flash: {}, demoLoginEnabled: false });
-        render(<AppShell><p>x</p></AppShell>);
+        setMockPage({
+            auth: { user: andiUser },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        render(
+            <AppShell>
+                <p>x</p>
+            </AppShell>,
+        );
         expect(motionConfigSpy).toHaveBeenCalledWith('user');
     });
 
@@ -59,7 +71,9 @@ describe('AppShell', () => {
                 <p>x</p>
             </AppShell>,
         );
-        expect(document.body.dataset.timeOfDay).toMatch(/^(dawn|morning|day|dusk|night)$/);
+        expect(document.body.dataset.timeOfDay).toMatch(
+            /^(dawn|morning|day|dusk|night)$/,
+        );
     });
 
     it('renders the 4 primary tabs + children by default', () => {
@@ -103,7 +117,9 @@ describe('AppShell', () => {
     it('mounts the flash notice as shell chrome', () => {
         setMockPage({
             auth: { user: andiUser },
-            flash: { info: 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.' },
+            flash: {
+                info: 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.',
+            },
             demoLoginEnabled: false,
         });
         render(
@@ -111,7 +127,9 @@ describe('AppShell', () => {
                 <p>child content</p>
             </AppShell>,
         );
-        expect(screen.getByText(/Tarikan dari Strava lagi dijeda sebentar/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Tarikan dari Strava lagi dijeda sebentar/),
+        ).toBeInTheDocument();
     });
 
     // The content region used to be keyed on the Inertia component name, which
@@ -119,7 +137,11 @@ describe('AppShell', () => {
     // enter animation starting at opacity 0 — so a navigation read as
     // "old page -> blank -> fade in". Both are gone; this pins that.
     it('does not remount the content region when the page component changes', () => {
-        setMockPage({ auth: { user: andiUser }, flash: {}, demoLoginEnabled: false }, '/', 'HariIni');
+        setMockPage(
+            { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
+            '/',
+            'HariIni',
+        );
         const { rerender } = render(
             <AppShell>
                 <p>body</p>
@@ -127,7 +149,11 @@ describe('AppShell', () => {
         );
         const before = document.getElementById('main-content');
 
-        setMockPage({ auth: { user: andiUser }, flash: {}, demoLoginEnabled: false }, '/kartu', 'Koleksi/Kartu');
+        setMockPage(
+            { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
+            '/kartu',
+            'Koleksi/Kartu',
+        );
         rerender(
             <AppShell>
                 <p>body</p>
@@ -138,18 +164,28 @@ describe('AppShell', () => {
     });
 
     it('carries no enter animation that would blank the content first', () => {
-        setMockPage({ auth: { user: andiUser }, flash: {}, demoLoginEnabled: false });
+        setMockPage({
+            auth: { user: andiUser },
+            flash: {},
+            demoLoginEnabled: false,
+        });
         render(
             <AppShell>
                 <p>body</p>
             </AppShell>,
         );
 
-        expect(document.getElementById('main-content')?.className).not.toContain('page-enter');
+        expect(
+            document.getElementById('main-content')?.className,
+        ).not.toContain('page-enter');
     });
 
     it('keeps the content region mounted across a partial reload of the same page', () => {
-        setMockPage({ auth: { user: andiUser }, flash: {}, demoLoginEnabled: false }, '/aktivitas', 'Riwayat/Jejak');
+        setMockPage(
+            { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
+            '/aktivitas',
+            'Riwayat/Jejak',
+        );
         const { rerender } = render(
             <AppShell>
                 <p>body</p>
@@ -158,7 +194,11 @@ describe('AppShell', () => {
         const before = document.getElementById('main-content');
 
         // Same component, new query string — a filter/`only:` refresh.
-        setMockPage({ auth: { user: andiUser }, flash: {}, demoLoginEnabled: false }, '/aktivitas?range=8w', 'Riwayat/Jejak');
+        setMockPage(
+            { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
+            '/aktivitas?range=8w',
+            'Riwayat/Jejak',
+        );
         rerender(
             <AppShell>
                 <p>body</p>
@@ -180,42 +220,73 @@ describe('AppShell', () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
-                unlock: { unlock_key: 'accessory.ikat_kepala_epik', name: 'Ikat Kepala Istimewa', icon: 'mdi:star', is_major: true },
+                unlock: {
+                    unlock_key: 'accessory.ikat_kepala_epik',
+                    name: 'Ikat Kepala Istimewa',
+                    icon: 'mdi:star',
+                    is_major: true,
+                },
             },
             demoLoginEnabled: false,
         });
-        render(<AppShell><p>x</p></AppShell>);
+        render(
+            <AppShell>
+                <p>x</p>
+            </AppShell>,
+        );
         expect(screen.getByText(/Ikat Kepala Istimewa/)).toBeInTheDocument();
         // Clicking "Nanti aja" triggers onClose (covers () => setMajorUnlock(null))
-        await act(async () => { fireEvent.click(screen.getByText('Nanti aja')); });
+        await act(async () => {
+            fireEvent.click(screen.getByText('Nanti aja'));
+        });
     });
 
     it('defers the aksesori-unlock modal while a CardReveal pack is pending, so they never stack', async () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
-                unlock: { unlock_key: 'accessory.ikat_kepala_epik', name: 'Ikat Kepala Istimewa', icon: 'mdi:star', is_major: true },
+                unlock: {
+                    unlock_key: 'accessory.ikat_kepala_epik',
+                    name: 'Ikat Kepala Istimewa',
+                    icon: 'mdi:star',
+                    is_major: true,
+                },
             },
             pendingReveal: pendingCard,
             demoLoginEnabled: false,
         });
-        render(<AppShell><p>x</p></AppShell>);
+        render(
+            <AppShell>
+                <p>x</p>
+            </AppShell>,
+        );
         // CardReveal (the pack) takes priority: it's shown...
         expect(await screen.findByText('Sync masuk')).toBeInTheDocument();
         // ...and the aksesori modal is held back, even though a major unlock fired.
-        expect(screen.queryByText(/Ikat Kepala Istimewa/)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Ikat Kepala Istimewa/),
+        ).not.toBeInTheDocument();
     });
 
     it('hides the UnlockToast while a CardReveal pack is pending', async () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
-                unlock: { unlock_key: 'accessory.medal_emas', name: 'Medali Emas', icon: 'mdi:medal', is_major: false },
+                unlock: {
+                    unlock_key: 'accessory.medal_emas',
+                    name: 'Medali Emas',
+                    icon: 'mdi:medal',
+                    is_major: false,
+                },
             },
             pendingReveal: pendingCard,
             demoLoginEnabled: false,
         });
-        render(<AppShell><p>x</p></AppShell>);
+        render(
+            <AppShell>
+                <p>x</p>
+            </AppShell>,
+        );
         expect(await screen.findByText('Sync masuk')).toBeInTheDocument();
         expect(screen.queryByText('Unlock baru')).not.toBeInTheDocument();
     });

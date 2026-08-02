@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import SectionLabel from './SectionLabel';
 
 describe('SectionLabel', () => {
@@ -37,6 +38,8 @@ describe('SectionLabel', () => {
                 Vibe
             </SectionLabel>,
         );
-        expect(container.querySelector('[aria-hidden]')).toHaveClass('bg-horizon');
+        expect(container.querySelector('[aria-hidden]')).toHaveClass(
+            'bg-horizon',
+        );
     });
 });

@@ -33,7 +33,8 @@ export default function MilestoneStrip({
                     ★ Target berikutnya
                 </Eyebrow>
                 <div className="font-display text-headline-sm text-cream">
-                    Sub-<em className="italic">{targetLabel}</em> di {distanceLabel}
+                    Sub-<em className="italic">{targetLabel}</em> di{' '}
+                    {distanceLabel}
                 </div>
             </div>
             <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-cream/70">

@@ -1,16 +1,21 @@
-import { Head, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { appLayout } from '@/layouts/appLayout';
-import Chip from '@/components/ui/Chip';
+
+import type { EquippedSlot, Rarity } from '@/types/inertia';
+
 import CollectionHeader from '@/components/koleksi/CollectionHeader';
+import TemariProto, {
+    type TemariEquipped,
+} from '@/components/temari/TemariProto';
+import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
+import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
-import TemariProto, { type TemariEquipped } from '@/components/temari/TemariProto';
+import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
-import PageContainer from '@/components/ui/PageContainer';
 import {
     mapHeadband,
     mapMedal,
@@ -21,7 +26,6 @@ import {
     keyToPreviewEquipped,
 } from '@/lib/equippedAccessories';
 import { RARITY_TEXT } from '@/lib/runcard';
-import type { EquippedSlot, Rarity } from '@/types/inertia';
 
 type Slot = EquippedSlot;
 
@@ -60,16 +64,28 @@ const SLOT_LABEL: Record<Slot, string> = {
     aura: 'Aura',
 };
 
-const SLOT_ORDER: Slot[] = ['medal', 'ikat_kepala', 'kaus', 'celana', 'sepatu', 'aura'];
+const SLOT_ORDER: Slot[] = [
+    'medal',
+    'ikat_kepala',
+    'kaus',
+    'celana',
+    'sepatu',
+    'aura',
+];
 
-export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriProps>) {
+export default function KoleksiAksesori({
+    items,
+    equipped,
+}: Readonly<AksesoriProps>) {
     const unlockedCount = items.filter((i) => i.unlocked).length;
     const eyebrow = `Koleksi · ${unlockedCount} / ${items.length} aksesori`;
 
     const aksesoriCount = `${unlockedCount} / ${items.length}`;
 
     const previewEquipped: TemariEquipped = {
-        headband: equipped.ikat_kepala ? mapHeadband(equipped.ikat_kepala) : null,
+        headband: equipped.ikat_kepala
+            ? mapHeadband(equipped.ikat_kepala)
+            : null,
         medal: mapMedal(equipped.medal),
         kaus: mapKaus(equipped.kaus),
         celana: mapCelana(equipped.celana),
@@ -85,7 +101,11 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
     }
 
     const equipItem = (key: string) => {
-        router.post('/api/aksesori/equip', { unlock_key: key }, { preserveScroll: true });
+        router.post(
+            '/api/aksesori/equip',
+            { unlock_key: key },
+            { preserveScroll: true },
+        );
     };
 
     return (
@@ -103,29 +123,52 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
                 <HeroPanel className="mt-8 lg:px-14 lg:py-12">
                     <div className="grid grid-cols-1 items-center gap-8 lg:gap-10 lg:grid-cols-[220px_1fr]">
                         <div className="flex justify-center">
-                            <TemariProto pose="proud" size={220} equipped={previewEquipped} animate />
+                            <TemariProto
+                                pose="proud"
+                                size={220}
+                                equipped={previewEquipped}
+                                animate
+                            />
                         </div>
                         <div>
-                            <Eyebrow token="hero" tone="horizon" className="mb-3">
+                            <Eyebrow
+                                token="hero"
+                                tone="horizon"
+                                className="mb-3"
+                            >
                                 ★ Yang lagi dipake
                             </Eyebrow>
                             <h2 className="mb-5 font-display text-display-md text-cream">
-                                <em className="italic text-horizon">Lagi pake yang ini.</em>
+                                <em className="italic text-horizon">
+                                    Lagi pake yang ini.
+                                </em>
                             </h2>
                             <ul className="grid gap-2 sm:grid-cols-2">
                                 {SLOT_ORDER.map((slot) => (
-                                    <li key={slot} className="flex items-center justify-between rounded-xl bg-cream/[0.06] px-4 py-3">
-                                        <Eyebrow as="span" token="micro" tone="ink-on-sky">
+                                    <li
+                                        key={slot}
+                                        className="flex items-center justify-between rounded-xl bg-cream/[0.06] px-4 py-3"
+                                    >
+                                        <Eyebrow
+                                            as="span"
+                                            token="micro"
+                                            tone="ink-on-sky"
+                                        >
                                             {SLOT_LABEL[slot]}
                                         </Eyebrow>
                                         <span className="font-display text-base italic text-cream">
-                                            {equippedLabelFor(slot, equipped, items)}
+                                            {equippedLabelFor(
+                                                slot,
+                                                equipped,
+                                                items,
+                                            )}
                                         </span>
                                     </li>
                                 ))}
                             </ul>
                             <p className="mt-5 max-w-md font-display text-sm italic leading-relaxed text-cream/75">
-                                &ldquo;Tiap kamu dapet aksesori baru, langsung aku siapin di sini.&rdquo; 🎀
+                                &ldquo;Tiap kamu dapet aksesori baru, langsung
+                                aku siapin di sini.&rdquo; 🎀
                             </p>
                         </div>
                     </div>
@@ -146,7 +189,11 @@ export default function KoleksiAksesori({ items, equipped }: Readonly<AksesoriPr
     );
 }
 
-function equippedLabelFor(slot: Slot, equipped: EquippedPayload, items: AksesoriItem[]): string {
+function equippedLabelFor(
+    slot: Slot,
+    equipped: EquippedPayload,
+    items: AksesoriItem[],
+): string {
     const key = equipped[slot];
     if (!key) return 'belum dipake';
     const item = items.find((i) => i.unlock_key === key);
@@ -157,7 +204,11 @@ function SlotSection({
     slot,
     items,
     onEquip,
-}: Readonly<{ slot: Slot; items: AksesoriItem[]; onEquip: (key: string) => void }>) {
+}: Readonly<{
+    slot: Slot;
+    items: AksesoriItem[];
+    onEquip: (key: string) => void;
+}>) {
     const [showLocked, setShowLocked] = useState(false);
     const unlocked = items.filter((i) => i.unlocked);
     const locked = items.filter((i) => !i.unlocked);
@@ -168,13 +219,19 @@ function SlotSection({
             <SectionLabel>{SLOT_LABEL[slot]}</SectionLabel>
             <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
                 {unlocked.map((item) => (
-                    <AksesoriCard key={item.unlock_key} item={item} onEquip={onEquip} />
+                    <AksesoriCard
+                        key={item.unlock_key}
+                        item={item}
+                        onEquip={onEquip}
+                    />
                 ))}
                 {/* Locked items: visible on sm+ always, collapsible on mobile. */}
                 {locked.map((item) => (
                     <div
                         key={item.unlock_key}
-                        className={showLocked ? 'contents' : 'hidden sm:contents'}
+                        className={
+                            showLocked ? 'contents' : 'hidden sm:contents'
+                        }
                     >
                         <AksesoriCard item={item} onEquip={onEquip} />
                     </div>
@@ -187,7 +244,14 @@ function SlotSection({
                     onClick={() => setShowLocked((s) => !s)}
                     className="mt-3.5 gap-1.5 px-4 py-2 text-xs font-semibold sm:hidden"
                 >
-                    <Icon icon={showLocked ? 'mdi:chevron-up' : 'mdi:chevron-down'} width={14} height={14} aria-hidden />
+                    <Icon
+                        icon={
+                            showLocked ? 'mdi:chevron-up' : 'mdi:chevron-down'
+                        }
+                        width={14}
+                        height={14}
+                        aria-hidden
+                    />
                     {showLocked
                         ? `Sembunyikan ${locked.length} belum kebuka`
                         : `+${locked.length} belum kebuka`}
@@ -241,23 +305,53 @@ function AksesoriCard({
                 )}
             </div>
             <div>
-                <h3 className={cn('font-display text-xl leading-tight tracking-[-0.01em]', RARITY_TEXT[item.rarity], 'text-ink')}>
+                <h3
+                    className={cn(
+                        'font-display text-xl leading-tight tracking-[-0.01em]',
+                        RARITY_TEXT[item.rarity],
+                        'text-ink',
+                    )}
+                >
                     {item.name}
                 </h3>
-                <p className="mt-1 font-sans text-sm text-ink-2">{item.description}</p>
+                <p className="mt-1 font-sans text-sm text-ink-2">
+                    {item.description}
+                </p>
             </div>
             {locked && (
-                <p className="mt-auto font-display text-xs italic text-ink-3">{item.criteria}</p>
+                <p className="mt-auto font-display text-xs italic text-ink-3">
+                    {item.criteria}
+                </p>
             )}
             {!locked && item.equipped && (
-                <PillButton tone="sky" size="sm" disabled className="mt-auto gap-1.5">
-                    <Icon icon="mdi:check-circle" width={15} height={15} aria-hidden />
+                <PillButton
+                    tone="sky"
+                    size="sm"
+                    disabled
+                    className="mt-auto gap-1.5"
+                >
+                    <Icon
+                        icon="mdi:check-circle"
+                        width={15}
+                        height={15}
+                        aria-hidden
+                    />
                     Terpasang
                 </PillButton>
             )}
             {!locked && !item.equipped && (
-                <PillButton tone="sky" size="sm" onClick={() => onEquip(item.unlock_key)} className="mt-auto gap-1.5">
-                    <Icon icon="mdi:hanger" width={15} height={15} aria-hidden />
+                <PillButton
+                    tone="sky"
+                    size="sm"
+                    onClick={() => onEquip(item.unlock_key)}
+                    className="mt-auto gap-1.5"
+                >
+                    <Icon
+                        icon="mdi:hanger"
+                        width={15}
+                        height={15}
+                        aria-hidden
+                    />
                     Pasang
                 </PillButton>
             )}

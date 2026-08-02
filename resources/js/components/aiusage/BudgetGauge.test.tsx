@@ -1,10 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import BudgetGauge from './BudgetGauge';
+
 import type { Budget } from '@/pages/AiUsage/types';
 
+import BudgetGauge from './BudgetGauge';
+
 function budget(overrides: Partial<Budget> = {}): Budget {
-    return { todayCost: 0.02, dailyCeiling: 0.1, currency: 'USD', ...overrides };
+    return {
+        todayCost: 0.02,
+        dailyCeiling: 0.1,
+        currency: 'USD',
+        ...overrides,
+    };
 }
 
 describe('BudgetGauge', () => {
@@ -19,7 +26,9 @@ describe('BudgetGauge', () => {
     it('fills the gauge to the spend-over-ceiling ratio', () => {
         render(<BudgetGauge budget={budget()} />);
 
-        const gauge = screen.getByRole('progressbar', { name: /anggaran hari ini/i });
+        const gauge = screen.getByRole('progressbar', {
+            name: /anggaran hari ini/i,
+        });
         expect(gauge.getAttribute('aria-valuenow')).toBe('20');
     });
 
@@ -27,7 +36,9 @@ describe('BudgetGauge', () => {
         render(<BudgetGauge budget={budget({ dailyCeiling: null })} />);
 
         expect(screen.getByText(/tanpa batas/i)).toBeInTheDocument();
-        expect(screen.getByText('Tidak ada batas harian yang disetel.')).toBeInTheDocument();
+        expect(
+            screen.getByText('Tidak ada batas harian yang disetel.'),
+        ).toBeInTheDocument();
         expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     });
 
@@ -40,11 +51,21 @@ describe('BudgetGauge', () => {
     it('names the overshoot amount once spend passes the ceiling', () => {
         render(<BudgetGauge budget={budget({ todayCost: 0.15 })} />);
 
-        expect(screen.getByText('Melewati batas harian sebesar $0,05.')).toBeInTheDocument();
+        expect(
+            screen.getByText('Melewati batas harian sebesar $0,05.'),
+        ).toBeInTheDocument();
     });
 
     it('scales both figures to the budget currency', () => {
-        render(<BudgetGauge budget={budget({ todayCost: 1000, dailyCeiling: 5000, currency: 'IDR' })} />);
+        render(
+            <BudgetGauge
+                budget={budget({
+                    todayCost: 1000,
+                    dailyCeiling: 5000,
+                    currency: 'IDR',
+                })}
+            />,
+        );
 
         expect(screen.getByText('Rp 1.000,00')).toBeInTheDocument();
     });

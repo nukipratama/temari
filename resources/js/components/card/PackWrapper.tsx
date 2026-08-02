@@ -1,10 +1,13 @@
-import { motion, useMotionValue, useTransform } from 'framer-motion';
 import type { KeyboardEvent } from 'react';
-import { cn } from '@/lib/cn';
+
+import { motion, useMotionValue, useTransform } from 'framer-motion';
+
+import type { Rarity } from '@/types/inertia';
+
 import { BunnyGlyph } from '@/components/BrandMark';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { cn } from '@/lib/cn';
 import { RARITY_HEX } from '@/lib/runcard';
-import type { Rarity } from '@/types/inertia';
 
 interface PackWrapperProps {
     rarity: Rarity;
@@ -31,7 +34,20 @@ const GLOW_ALPHA: Record<Rarity, number> = {
 // A few bunnies tiled into a sealed card-back so the card underneath is hidden
 // (surprise preserved) and the pack reads as a real foil, not a smudge. Stable
 // keys (not array indices) keep the tiles identity-stable across renders.
-const BACK_TILES = ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11'];
+const BACK_TILES = [
+    't0',
+    't1',
+    't2',
+    't3',
+    't4',
+    't5',
+    't6',
+    't7',
+    't8',
+    't9',
+    't10',
+    't11',
+];
 
 /**
  * The foil cover for the card reveal. The whole foil is draggable: as the user
@@ -42,7 +58,11 @@ const BACK_TILES = ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 
  * Touch-first (no keyboard gesture); reduced-motion is handled by the parent,
  * which skips rendering this entirely.
  */
-export default function PackWrapper({ rarity, onOpen, className }: Readonly<PackWrapperProps>) {
+export default function PackWrapper({
+    rarity,
+    onOpen,
+    className,
+}: Readonly<PackWrapperProps>) {
     const x = useMotionValue(0);
     // The foil peels with the pull: it fades and tilts as x grows.
     const foilOpacity = useTransform(x, [0, DRAG_MAX], [1, 0.12]);
@@ -79,19 +99,39 @@ export default function PackWrapper({ rarity, onOpen, className }: Readonly<Pack
             role="button"
             aria-label="Tarik atau ketuk buat buka kartu"
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, x: '60%', rotate: 10, scale: 1.06, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1] } }}
-            className={cn('absolute inset-0 z-20 cursor-grab select-none overflow-hidden rounded-[16px] active:cursor-grabbing', className)}
+            exit={{
+                opacity: 0,
+                x: '60%',
+                rotate: 10,
+                scale: 1.06,
+                transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1] },
+            }}
+            className={cn(
+                'absolute inset-0 z-20 cursor-grab select-none overflow-hidden rounded-[16px] active:cursor-grabbing',
+                className,
+            )}
         >
             {/* The peeling foil group — everything that fades/tilts as you pull. */}
-            <motion.div style={{ opacity: foilOpacity, rotate: foilRotate }} className="absolute inset-0 origin-top">
+            <motion.div
+                style={{ opacity: foilOpacity, rotate: foilRotate }}
+                className="absolute inset-0 origin-top"
+            >
                 {/* Opaque sealed base so the card can't be read through it. */}
                 <div className="absolute inset-0 bg-cream-deep" />
-                <div className={cn('absolute inset-0', rarityFoilTint(rarity))} />
+                <div
+                    className={cn('absolute inset-0', rarityFoilTint(rarity))}
+                />
 
                 {/* Card-back motif: tiled bunnies, faint, so it reads as a pack back. */}
-                <div aria-hidden className="absolute inset-0 flex flex-wrap content-center items-center justify-center gap-5 p-6 opacity-[0.09]">
+                <div
+                    aria-hidden
+                    className="absolute inset-0 flex flex-wrap content-center items-center justify-center gap-5 p-6 opacity-[0.09]"
+                >
                     {BACK_TILES.map((id, i) => (
-                        <span key={id} className={i % 2 === 0 ? 'rotate-6' : '-rotate-6'}>
+                        <span
+                            key={id}
+                            className={i % 2 === 0 ? 'rotate-6' : '-rotate-6'}
+                        >
                             <BunnyGlyph size={34} tone="ink" />
                         </span>
                     ))}
@@ -101,18 +141,32 @@ export default function PackWrapper({ rarity, onOpen, className }: Readonly<Pack
                 <motion.span
                     aria-hidden
                     className="absolute inset-0"
-                    style={{ background: `radial-gradient(circle at 50% 44%, ${rarityHex}, transparent 62%)` }}
+                    style={{
+                        background: `radial-gradient(circle at 50% 44%, ${rarityHex}, transparent 62%)`,
+                    }}
                     animate={{ opacity: [glow * 0.45, glow, glow * 0.45] }}
-                    transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                    transition={{
+                        duration: 2.4,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                    }}
                 />
 
                 {/* Holographic sheen sweeping across on a loop. */}
                 <motion.span
                     aria-hidden
                     className="absolute inset-y-0 -left-1/3 w-1/3"
-                    style={{ background: 'linear-gradient(115deg, transparent, rgba(255,255,255,0.7), transparent)' }}
+                    style={{
+                        background:
+                            'linear-gradient(115deg, transparent, rgba(255,255,255,0.7), transparent)',
+                    }}
                     animate={{ x: ['0%', '440%'] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', repeatDelay: 0.5 }}
+                    transition={{
+                        duration: 2.2,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                        repeatDelay: 0.5,
+                    }}
                 />
 
                 {/* Perforated tear line. */}
@@ -129,7 +183,10 @@ export default function PackWrapper({ rarity, onOpen, className }: Readonly<Pack
                 Tarik <span aria-hidden>→</span>
             </span>
 
-            <Eyebrow token="micro" className="absolute inset-x-0 bottom-5 text-center text-ink/60">
+            <Eyebrow
+                token="micro"
+                className="absolute inset-x-0 bottom-5 text-center text-ink/60"
+            >
                 Tarik atau ketuk buat buka
             </Eyebrow>
         </motion.div>

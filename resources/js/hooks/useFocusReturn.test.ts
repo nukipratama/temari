@@ -1,5 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
 import { useFocusReturn } from './useFocusReturn';
 
 let trigger: HTMLButtonElement;
@@ -22,9 +23,12 @@ describe('useFocusReturn', () => {
     });
 
     it('restores focus to the previously-focused element on close', () => {
-        const { rerender } = renderHook(({ open }: { open: boolean }) => useFocusReturn(open), {
-            initialProps: { open: true },
-        });
+        const { rerender } = renderHook(
+            ({ open }: { open: boolean }) => useFocusReturn(open),
+            {
+                initialProps: { open: true },
+            },
+        );
         trigger.blur();
         expect(document.activeElement).not.toBe(trigger);
 

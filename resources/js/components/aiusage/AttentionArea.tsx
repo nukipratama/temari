@@ -1,8 +1,10 @@
 import { Icon } from '@iconify/react';
 import { useForm, usePage } from '@inertiajs/react';
-import SectionHeading from '@/components/SectionHeading';
+
 import type { DeadLetterGroup } from '@/pages/AiUsage/types';
 import type { SharedProps } from '@/types/inertia';
+
+import SectionHeading from '@/components/SectionHeading';
 
 /**
  * The "stuck work" cluster: a global one-shot recover action plus three buckets
@@ -13,8 +15,13 @@ export default function AttentionArea({
     deadLettered,
     failedUnderBudget,
     nyangkut,
-}: Readonly<{ deadLettered: DeadLetterGroup[]; failedUnderBudget: DeadLetterGroup[]; nyangkut: DeadLetterGroup[] }>) {
-    const hasAny = deadLettered.length + failedUnderBudget.length + nyangkut.length > 0;
+}: Readonly<{
+    deadLettered: DeadLetterGroup[];
+    failedUnderBudget: DeadLetterGroup[];
+    nyangkut: DeadLetterGroup[];
+}>) {
+    const hasAny =
+        deadLettered.length + failedUnderBudget.length + nyangkut.length > 0;
     if (!hasAny) {
         return null;
     }
@@ -64,7 +71,10 @@ function RecoverBar() {
 
     return (
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev p-4">
-            <p className="text-sm text-ink-2">Baru pulih dari outage? Pulihkan semua blok yang nyangkut sekaligus.</p>
+            <p className="text-sm text-ink-2">
+                Baru pulih dari outage? Pulihkan semua blok yang nyangkut
+                sekaligus.
+            </p>
             <button
                 type="button"
                 onClick={recover}
@@ -89,18 +99,34 @@ function AttentionPanel({
     groups,
     countLabel,
     actionable,
-}: Readonly<{ title: string; subtitle: string; groups: DeadLetterGroup[]; countLabel: string; actionable: boolean }>) {
+}: Readonly<{
+    title: string;
+    subtitle: string;
+    groups: DeadLetterGroup[];
+    countLabel: string;
+    actionable: boolean;
+}>) {
     if (groups.length === 0) {
         return null;
     }
 
     return (
         <section className="mt-10">
-            <SectionHeading icon="mdi:alert-circle-outline" title={title} subtitle={subtitle} tone="accent" />
+            <SectionHeading
+                icon="mdi:alert-circle-outline"
+                title={title}
+                subtitle={subtitle}
+                tone="accent"
+            />
 
             <div className="mt-4 space-y-3">
                 {groups.map((group) => (
-                    <AttentionGroupRow key={group.user_id} group={group} countLabel={countLabel} actionable={actionable} />
+                    <AttentionGroupRow
+                        key={group.user_id}
+                        group={group}
+                        countLabel={countLabel}
+                        actionable={actionable}
+                    />
                 ))}
             </div>
         </section>
@@ -111,12 +137,18 @@ function AttentionGroupRow({
     group,
     countLabel,
     actionable,
-}: Readonly<{ group: DeadLetterGroup; countLabel: string; actionable: boolean }>) {
+}: Readonly<{
+    group: DeadLetterGroup;
+    countLabel: string;
+    actionable: boolean;
+}>) {
     const { post, processing } = useForm();
     const paused = usePage<SharedProps>().props.aiPaused ?? false;
 
     function retry(): void {
-        post(`/ai-usage/users/${group.user_id}/retry-failed`, { preserveScroll: true });
+        post(`/ai-usage/users/${group.user_id}/retry-failed`, {
+            preserveScroll: true,
+        });
     }
 
     // Collapse the block list into "type ×N" chips so a user with many stuck
@@ -129,7 +161,9 @@ function AttentionGroupRow({
     return (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev p-4">
             <div className="min-w-0">
-                <p className="truncate font-medium text-ink">{group.user_name}</p>
+                <p className="truncate font-medium text-ink">
+                    {group.user_name}
+                </p>
                 <p className="text-xs text-ink-3">
                     {group.count} {countLabel}
                 </p>
@@ -140,7 +174,11 @@ function AttentionGroupRow({
                             className="rounded-md bg-surface-sunken px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-ink-3"
                         >
                             {type}
-                            {count > 1 && <span className="ml-1 text-ink-2">×{count}</span>}
+                            {count > 1 && (
+                                <span className="ml-1 text-ink-2">
+                                    ×{count}
+                                </span>
+                            )}
                         </li>
                     ))}
                 </ul>
@@ -150,7 +188,11 @@ function AttentionGroupRow({
                     type="button"
                     onClick={retry}
                     disabled={processing || paused}
-                    title={paused ? 'Temari lagi istirahat, coba lagi nanti' : undefined}
+                    title={
+                        paused
+                            ? 'Temari lagi istirahat, coba lagi nanti'
+                            : undefined
+                    }
                     className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-leaf-deep px-3 py-1.5 text-xs font-semibold text-cream transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
                 >
                     <Icon icon="mdi:auto-awesome" aria-hidden />

@@ -1,17 +1,26 @@
-import { memo } from 'react';
-import { cn } from '@/lib/cn';
-import { formatDurationHMS, formatKm, formatNaiveIdDate, formatNaiveTimeId, formatPace, paceSecPerKm } from '@/lib/pace';
-import MotionLink from '@/components/MotionLink';
 import { Icon } from '@iconify/react';
-import { pressShrink } from '@/lib/motion';
-import { moodFromActivity } from '@/lib/moodFromActivity';
-import { aktivitasUrl } from '@/lib/routes';
-import Temari from '@/components/temari/Temari';
-import { MOOD_TO_POSE } from '@/lib/temariPose';
-import MoodChip from '@/components/ui/MoodChip';
-import { MOOD_LABEL } from '@/lib/mood';
-import { renderBold } from '@/lib/richText';
+import { memo } from 'react';
+
 import type { ActivityDetail, Mood } from '@/types/inertia';
+
+import MotionLink from '@/components/MotionLink';
+import Temari from '@/components/temari/Temari';
+import MoodChip from '@/components/ui/MoodChip';
+import { cn } from '@/lib/cn';
+import { MOOD_LABEL } from '@/lib/mood';
+import { moodFromActivity } from '@/lib/moodFromActivity';
+import { pressShrink } from '@/lib/motion';
+import {
+    formatDurationHMS,
+    formatKm,
+    formatNaiveIdDate,
+    formatNaiveTimeId,
+    formatPace,
+    paceSecPerKm,
+} from '@/lib/pace';
+import { renderBold } from '@/lib/richText';
+import { aktivitasUrl } from '@/lib/routes';
+import { MOOD_TO_POSE } from '@/lib/temariPose';
 
 export interface RunNote {
     oneline: string;
@@ -24,12 +33,20 @@ interface RunListRowProps {
     note?: RunNote | null;
 }
 
-function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowProps>) {
+function RunListRow({
+    detail,
+    mood = null,
+    note = null,
+}: Readonly<RunListRowProps>) {
     const km = formatKm(detail.distance);
     const paceSec = paceSecPerKm(detail.moving_time, detail.distance);
     const paceLabel = paceSec != null ? formatPace(paceSec) : '—';
-    const hr = detail.average_heartrate != null ? Math.round(detail.average_heartrate) : null;
-    const trimp = detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
+    const hr =
+        detail.average_heartrate != null
+            ? Math.round(detail.average_heartrate)
+            : null;
+    const trimp =
+        detail.trimp_edwards != null ? Math.round(detail.trimp_edwards) : null;
     const safeMood: Mood = note?.mood ?? mood ?? moodFromActivity(detail);
     const startTime = formatNaiveTimeId(detail.start_date_local);
 
@@ -50,21 +67,36 @@ function RunListRow({ detail, mood = null, note = null }: Readonly<RunListRowPro
                     <div className="min-w-0 flex-1">
                         {/* Wrap to two lines instead of a hard truncate so a run's
                             distinguishing trailing number/date survives at narrow widths. */}
-                        <div className="line-clamp-2 font-medium text-ink">{detail.name ?? 'Run'}</div>
+                        <div className="line-clamp-2 font-medium text-ink">
+                            {detail.name ?? 'Run'}
+                        </div>
                         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-3">
                             <span>
                                 {formatNaiveIdDate(detail.start_date_local)}
-                                {startTime && <span className="text-ink-2"> · {startTime}</span>}
+                                {startTime && (
+                                    <span className="text-ink-2">
+                                        {' '}
+                                        · {startTime}
+                                    </span>
+                                )}
                             </span>
                             <MoodChip mood={safeMood} size="sm" />
                         </div>
                     </div>
                     <div className="flex items-center gap-5 tabular-nums">
                         <Cell value={km} unit="km" emphasize />
-                        <Cell value={formatDurationHMS(detail.moving_time)} unit="durasi" hideOnNarrow="sm" />
+                        <Cell
+                            value={formatDurationHMS(detail.moving_time)}
+                            unit="durasi"
+                            hideOnNarrow="sm"
+                        />
                         <Cell value={paceLabel} unit="/km" hideOnNarrow="sm" />
                         <Cell value={hr ?? '-'} unit="bpm" hideOnNarrow="md" />
-                        <Cell value={trimp ?? '-'} unit="TRIMP" hideOnNarrow="md" />
+                        <Cell
+                            value={trimp ?? '-'}
+                            unit="TRIMP"
+                            hideOnNarrow="md"
+                        />
                     </div>
                 </div>
                 {note && (
@@ -96,11 +128,25 @@ const HIDE_CLASSES = {
     md: 'hidden md:block',
 } as const;
 
-function Cell({ value, unit, emphasize = false, hideOnNarrow }: Readonly<CellProps>) {
+function Cell({
+    value,
+    unit,
+    emphasize = false,
+    hideOnNarrow,
+}: Readonly<CellProps>) {
     return (
-        <div className={cn('text-center', hideOnNarrow && HIDE_CLASSES[hideOnNarrow])}>
-            <div className={cn('text-ink', emphasize && 'font-bold')}>{value}</div>
-            <div className="font-mono font-bold text-[11px] uppercase tracking-wide text-ink-2">{unit}</div>
+        <div
+            className={cn(
+                'text-center',
+                hideOnNarrow && HIDE_CLASSES[hideOnNarrow],
+            )}
+        >
+            <div className={cn('text-ink', emphasize && 'font-bold')}>
+                {value}
+            </div>
+            <div className="font-mono font-bold text-[11px] uppercase tracking-wide text-ink-2">
+                {unit}
+            </div>
         </div>
     );
 }

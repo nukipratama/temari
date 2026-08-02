@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { createElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import ProgressionChart from './ProgressionChart';
+
 import { formatNaiveIdDate } from '@/lib/pace';
+
+import ProgressionChart from './ProgressionChart';
 
 // Capture the props handed to the (lazy) Line chart so we can assert on the
 // derived `data`/`options` and invoke the inline tooltip/tick callbacks, which
@@ -21,7 +23,10 @@ type ChartOptions = {
         tooltip: {
             callbacks: {
                 title: (items: Array<{ dataIndex: number }>) => string;
-                label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => string;
+                label: (ctx: {
+                    dataset: { label?: string };
+                    parsed: { y: number | null };
+                }) => string;
             };
         };
     };
@@ -51,13 +56,20 @@ describe('ProgressionChart', () => {
     it('renders the empty state when there are no weeks', () => {
         render(<ProgressionChart weeks={[]} timesSec={[]} goalSec={null} />);
 
-        expect(screen.getByText(/Belum cukup lari di jarak ini/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Belum cukup lari di jarak ini/),
+        ).toBeInTheDocument();
         expect(screen.queryByTestId('line-chart')).not.toBeInTheDocument();
     });
 
     it('applies a custom className to the empty state', () => {
         const { container } = render(
-            <ProgressionChart weeks={[]} timesSec={[]} goalSec={null} className="custom-empty" />,
+            <ProgressionChart
+                weeks={[]}
+                timesSec={[]}
+                goalSec={null}
+                className="custom-empty"
+            />,
         );
 
         expect(container.querySelector('.custom-empty')).not.toBeNull();
@@ -79,7 +91,11 @@ describe('ProgressionChart', () => {
         expect(lastData!.datasets[0].label).toBe('Best time');
         // Seconds → minutes as {x,y} points spaced by real date (day offset from the
         // first week); a null time stays a null gap.
-        expect(lastData!.datasets[0].data).toEqual([{ x: 0, y: 25 }, null, { x: 14, y: 24 }]);
+        expect(lastData!.datasets[0].data).toEqual([
+            { x: 0, y: 25 },
+            null,
+            { x: 14, y: 24 },
+        ]);
         expect(lastData!.labels).toHaveLength(3);
     });
 
@@ -96,11 +112,20 @@ describe('ProgressionChart', () => {
         const goal = lastData!.datasets[1];
         expect(goal.label).toBe('Goal');
         // Flat line at goalSec/60 spanning the time range (first + last week x).
-        expect(goal.data).toEqual([{ x: 0, y: 20 }, { x: 7, y: 20 }]);
+        expect(goal.data).toEqual([
+            { x: 0, y: 20 },
+            { x: 7, y: 20 },
+        ]);
     });
 
     it('omits the goal dataset when goalSec is zero (falsy)', () => {
-        render(<ProgressionChart weeks={['2026-01-05']} timesSec={[1500]} goalSec={0} />);
+        render(
+            <ProgressionChart
+                weeks={['2026-01-05']}
+                timesSec={[1500]}
+                goalSec={0}
+            />,
+        );
 
         expect(lastData!.datasets).toHaveLength(1);
     });
@@ -115,14 +140,26 @@ describe('ProgressionChart', () => {
             />,
         );
 
-        const chart = screen.getByRole('img', { name: /Grafik progresi waktu terbaik 5K/ });
+        const chart = screen.getByRole('img', {
+            name: /Grafik progresi waktu terbaik 5K/,
+        });
         expect(chart).toBeInTheDocument();
         expect(screen.getByText(/Dari 25:00 pada/)).toBeInTheDocument();
     });
 
     it('falls back to a generic accessible name when no category is given', () => {
-        render(<ProgressionChart weeks={['2026-01-05']} timesSec={[1500]} goalSec={null} />);
-        expect(screen.getByRole('img', { name: /^Grafik progresi waktu terbaik\./ })).toBeInTheDocument();
+        render(
+            <ProgressionChart
+                weeks={['2026-01-05']}
+                timesSec={[1500]}
+                goalSec={null}
+            />,
+        );
+        expect(
+            screen.getByRole('img', {
+                name: /^Grafik progresi waktu terbaik\./,
+            }),
+        ).toBeInTheDocument();
     });
 
     it('applies a custom className to the chart wrapper', () => {
@@ -140,54 +177,99 @@ describe('ProgressionChart', () => {
 
     describe('tooltip label callback', () => {
         const renderChart = () => {
-            render(<ProgressionChart weeks={['2026-01-05']} timesSec={[1500]} goalSec={1200} />);
+            render(
+                <ProgressionChart
+                    weeks={['2026-01-05']}
+                    timesSec={[1500]}
+                    goalSec={1200}
+                />,
+            );
             return lastOptions!.plugins.tooltip.callbacks.label;
         };
 
         it('formats a present value as "<label>: H:MM:SS"', () => {
             const label = renderChart();
             // 25 minutes -> 25 * 60 = 1500s -> "25:00"
-            expect(label({ dataset: { label: 'Best time' }, parsed: { y: 25 } })).toBe('Best time: 25:00');
+            expect(
+                label({ dataset: { label: 'Best time' }, parsed: { y: 25 } }),
+            ).toBe('Best time: 25:00');
         });
 
         it('returns an empty string for a null value (gap point)', () => {
             const label = renderChart();
-            expect(label({ dataset: { label: 'Best time' }, parsed: { y: null } })).toBe('');
+            expect(
+                label({ dataset: { label: 'Best time' }, parsed: { y: null } }),
+            ).toBe('');
         });
     });
 
     describe('x-axis dates', () => {
         it('hides the x-axis tick labels (dates live in the tooltip)', () => {
-            render(<ProgressionChart weeks={['2026-01-05', '2026-01-12']} timesSec={[1500, 1440]} goalSec={null} />);
+            render(
+                <ProgressionChart
+                    weeks={['2026-01-05', '2026-01-12']}
+                    timesSec={[1500, 1440]}
+                    goalSec={null}
+                />,
+            );
             expect(lastOptions!.scales.x.ticks.display).toBe(false);
         });
 
         it('surfaces the point date via the tooltip title callback', () => {
-            render(<ProgressionChart weeks={['2026-01-05', '2026-01-12']} timesSec={[1500, 1440]} goalSec={null} />);
+            render(
+                <ProgressionChart
+                    weeks={['2026-01-05', '2026-01-12']}
+                    timesSec={[1500, 1440]}
+                    goalSec={null}
+                />,
+            );
             const title = lastOptions!.plugins.tooltip.callbacks.title;
-            expect(title([{ dataIndex: 1 }])).toBe(formatNaiveIdDate('2026-01-12', 'short'));
+            expect(title([{ dataIndex: 1 }])).toBe(
+                formatNaiveIdDate('2026-01-12', 'short'),
+            );
         });
     });
 
     describe('best-time area gradient', () => {
         it('falls back to a flat fill color when the chart area is not yet laid out', () => {
-            render(<ProgressionChart weeks={['2026-01-05']} timesSec={[1500]} goalSec={null} />);
-            const backgroundColor = lastData!.datasets[0].backgroundColor as (ctx: unknown) => string;
+            render(
+                <ProgressionChart
+                    weeks={['2026-01-05']}
+                    timesSec={[1500]}
+                    goalSec={null}
+                />,
+            );
+            const backgroundColor = lastData!.datasets[0].backgroundColor as (
+                ctx: unknown,
+            ) => string;
 
-            const color = backgroundColor({ chart: { chartArea: undefined, ctx: {} } });
+            const color = backgroundColor({
+                chart: { chartArea: undefined, ctx: {} },
+            });
 
             // horizon token (#e8a076) at 0.18 alpha.
             expect(color).toBe('#e8a0762e');
         });
 
         it('builds a vertical gradient once the chart area is known', () => {
-            render(<ProgressionChart weeks={['2026-01-05']} timesSec={[1500]} goalSec={null} />);
-            const backgroundColor = lastData!.datasets[0].backgroundColor as (ctx: unknown) => string;
+            render(
+                <ProgressionChart
+                    weeks={['2026-01-05']}
+                    timesSec={[1500]}
+                    goalSec={null}
+                />,
+            );
+            const backgroundColor = lastData!.datasets[0].backgroundColor as (
+                ctx: unknown,
+            ) => string;
             const addColorStop = vi.fn();
             const createLinearGradient = vi.fn(() => ({ addColorStop }));
 
             const gradient = backgroundColor({
-                chart: { chartArea: { top: 0, bottom: 260 }, ctx: { createLinearGradient } },
+                chart: {
+                    chartArea: { top: 0, bottom: 260 },
+                    ctx: { createLinearGradient },
+                },
             });
 
             expect(createLinearGradient).toHaveBeenCalledWith(0, 0, 0, 260);
@@ -198,7 +280,13 @@ describe('ProgressionChart', () => {
 
     describe('y-axis tick callback', () => {
         const renderChart = () => {
-            render(<ProgressionChart weeks={['2026-01-05']} timesSec={[1500]} goalSec={null} />);
+            render(
+                <ProgressionChart
+                    weeks={['2026-01-05']}
+                    timesSec={[1500]}
+                    goalSec={null}
+                />,
+            );
             return lastOptions!.scales.y.ticks.callback;
         };
 

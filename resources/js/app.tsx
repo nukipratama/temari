@@ -1,12 +1,14 @@
+import type { ComponentType } from 'react';
+
+import { addCollection } from '@iconify/react';
 import { createInertiaApp } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
-import type { ComponentType } from 'react';
-import { addCollection } from '@iconify/react';
+
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
-import { registerServiceWorker } from '@/lib/registerServiceWorker';
 import { syncAppBadgeOnVisible } from '@/lib/appBadge';
+import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
 import { mdiBundle } from '@/lib/iconBundle';
+import { registerServiceWorker } from '@/lib/registerServiceWorker';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'Temari';
 
@@ -45,7 +47,9 @@ function warmTabChunks(): void {
     if (typeof window === 'undefined') return;
     // `connection` is still not in lib.dom; respecting Data Saver matters more
     // than avoiding the cast.
-    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    const connection = (
+        navigator as Navigator & { connection?: { saveData?: boolean } }
+    ).connection;
     if (connection?.saveData) return;
 
     const warm = () => {

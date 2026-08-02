@@ -1,6 +1,7 @@
+import { router } from '@inertiajs/react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
+
 import AksesoriUnlockModal from './AksesoriUnlockModal';
 
 const epikUnlock = {
@@ -19,12 +20,16 @@ const minorUnlock = {
 
 describe('AksesoriUnlockModal', () => {
     it('renders nothing when unlock is null', () => {
-        const { container } = render(<AksesoriUnlockModal unlock={null} onClose={vi.fn()} />);
+        const { container } = render(
+            <AksesoriUnlockModal unlock={null} onClose={vi.fn()} />,
+        );
         expect(container.firstChild).toBeNull();
     });
 
     it('renders nothing when unlock is not major', () => {
-        const { container } = render(<AksesoriUnlockModal unlock={minorUnlock} onClose={vi.fn()} />);
+        const { container } = render(
+            <AksesoriUnlockModal unlock={minorUnlock} onClose={vi.fn()} />,
+        );
         expect(container.firstChild).toBeNull();
     });
 
@@ -37,8 +42,13 @@ describe('AksesoriUnlockModal', () => {
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={vi.fn()} />);
         const dialog = screen.getByRole('dialog');
         expect(dialog).toHaveAttribute('aria-modal', 'true');
-        expect(dialog).toHaveAttribute('aria-labelledby', 'aksesori-unlock-title');
-        expect(document.getElementById('aksesori-unlock-title')).toBeInTheDocument();
+        expect(dialog).toHaveAttribute(
+            'aria-labelledby',
+            'aksesori-unlock-title',
+        );
+        expect(
+            document.getElementById('aksesori-unlock-title'),
+        ).toBeInTheDocument();
     });
 
     it('closes on the Escape key', () => {
@@ -72,6 +82,8 @@ describe('AksesoriUnlockModal', () => {
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={onClose} />);
         fireEvent.click(screen.getByText('Pakai sekarang'));
         expect(onClose).toHaveBeenCalledOnce();
-        expect(router.visit).toHaveBeenCalledWith('/aksesori', { preserveScroll: false });
+        expect(router.visit).toHaveBeenCalledWith('/aksesori', {
+            preserveScroll: false,
+        });
     });
 });

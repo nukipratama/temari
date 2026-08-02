@@ -1,7 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+import type {
+    AnalysisPayload,
+    BriefingResult,
+    TrainingLoad,
+} from '@/types/inertia';
+
 import VitalChips from './VitalChips';
-import type { AnalysisPayload, BriefingResult, TrainingLoad } from '@/types/inertia';
 
 function payload(): AnalysisPayload {
     return {
@@ -103,9 +109,15 @@ describe('VitalChips', () => {
     // from. Only the two load-derived rails disappear.
     it('drops only the load-derived gauges when load is null', () => {
         render(<VitalChips briefing={briefing} load={null} />);
-        expect(screen.queryByRole('meter', { name: 'Vibe' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('meter', { name: 'Kesiapan' })).not.toBeInTheDocument();
-        expect(screen.getByRole('meter', { name: 'Recovery' })).toBeInTheDocument();
+        expect(
+            screen.queryByRole('meter', { name: 'Vibe' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('meter', { name: 'Kesiapan' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('meter', { name: 'Recovery' }),
+        ).toBeInTheDocument();
     });
 
     // All three tiles now share one structure: dot + label + explainer, value,
@@ -120,26 +132,48 @@ describe('VitalChips', () => {
     });
 
     it('clamps the Recovery gauge once past the 72h mark', () => {
-        const longRest: BriefingResult = { ...briefing, recoveryHours: 200, recoveryHoursLabel: '8 hari' };
+        const longRest: BriefingResult = {
+            ...briefing,
+            recoveryHours: 200,
+            recoveryHoursLabel: '8 hari',
+        };
         render(<VitalChips briefing={longRest} load={load} />);
-        expect(screen.getByRole('meter', { name: 'Recovery' })).toHaveAttribute('value', '72');
+        expect(screen.getByRole('meter', { name: 'Recovery' })).toHaveAttribute(
+            'value',
+            '72',
+        );
     });
 
     it('gives every tile an explainer, Recovery included', () => {
         render(<VitalChips briefing={briefing} load={load} />);
         // Vibe's explainer points at the `vibe_vs_mood` entry, so its label is
         // the glossary label rather than the tile label.
-        expect(screen.getByRole('button', { name: 'Penjelasan Vibe vs Mood' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Penjelasan Kesiapan' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Penjelasan Recovery' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Penjelasan Vibe vs Mood' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Penjelasan Kesiapan' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Penjelasan Recovery' }),
+        ).toBeInTheDocument();
     });
 
     it('falls back to streakLabel then recoveryLabel for the Recovery chip', () => {
-        const noHours: BriefingResult = { ...briefing, recoveryHoursLabel: null };
-        const { rerender } = render(<VitalChips briefing={noHours} load={load} />);
+        const noHours: BriefingResult = {
+            ...briefing,
+            recoveryHoursLabel: null,
+        };
+        const { rerender } = render(
+            <VitalChips briefing={noHours} load={load} />,
+        );
         expect(screen.getByText('Lari hari ini')).toBeInTheDocument();
 
-        const onlyRecovery: BriefingResult = { ...briefing, recoveryHoursLabel: null, streakLabel: null };
+        const onlyRecovery: BriefingResult = {
+            ...briefing,
+            recoveryHoursLabel: null,
+            streakLabel: null,
+        };
         rerender(<VitalChips briefing={onlyRecovery} load={load} />);
         expect(screen.getByText('Pemulihan: 41j')).toBeInTheDocument();
     });

@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import JourneyStrip from './JourneyStrip';
 
 describe('JourneyStrip', () => {
@@ -12,15 +13,29 @@ describe('JourneyStrip', () => {
         render(
             <JourneyStrip
                 match={{
-                    first: { date: '2026-01-01', name: 'First', distance_km: 5, pace_sec_per_km: 420, avg_hr: 165 },
-                    current: { date: '2026-05-21', name: 'Latest', distance_km: 5, pace_sec_per_km: 360, avg_hr: 150 },
+                    first: {
+                        date: '2026-01-01',
+                        name: 'First',
+                        distance_km: 5,
+                        pace_sec_per_km: 420,
+                        avg_hr: 165,
+                    },
+                    current: {
+                        date: '2026-05-21',
+                        name: 'Latest',
+                        distance_km: 5,
+                        pace_sec_per_km: 360,
+                        avg_hr: 150,
+                    },
                     pace_improvement_sec: 60,
                     hr_improvement_bpm: 15,
                     total_km: 80.4,
                 }}
             />,
         );
-        expect(screen.getByText(/Kamu vs Lari Pertama Kamu/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Kamu vs Lari Pertama Kamu/i),
+        ).toBeInTheDocument();
         expect(screen.getByText(/80\.4 km/)).toBeInTheDocument();
         const paceSpan = screen.getByText(/60 detik\/km lebih cepat/);
         expect(paceSpan).toBeInTheDocument();
@@ -34,8 +49,20 @@ describe('JourneyStrip', () => {
         render(
             <JourneyStrip
                 match={{
-                    first: { date: '2026-01-01', name: 'First', distance_km: 5, pace_sec_per_km: 360, avg_hr: 150 },
-                    current: { date: '2026-05-21', name: 'Latest', distance_km: 5, pace_sec_per_km: 420, avg_hr: 165 },
+                    first: {
+                        date: '2026-01-01',
+                        name: 'First',
+                        distance_km: 5,
+                        pace_sec_per_km: 360,
+                        avg_hr: 150,
+                    },
+                    current: {
+                        date: '2026-05-21',
+                        name: 'Latest',
+                        distance_km: 5,
+                        pace_sec_per_km: 420,
+                        avg_hr: 165,
+                    },
                     pace_improvement_sec: -10,
                     hr_improvement_bpm: -5,
                     total_km: 80.4,
@@ -54,8 +81,20 @@ describe('JourneyStrip', () => {
         render(
             <JourneyStrip
                 match={{
-                    first: { date: '2026-01-01', name: 'First', distance_km: 5, pace_sec_per_km: 420, avg_hr: 165 },
-                    current: { date: '2026-05-21', name: 'Latest', distance_km: 5, pace_sec_per_km: 360, avg_hr: 150 },
+                    first: {
+                        date: '2026-01-01',
+                        name: 'First',
+                        distance_km: 5,
+                        pace_sec_per_km: 420,
+                        avg_hr: 165,
+                    },
+                    current: {
+                        date: '2026-05-21',
+                        name: 'Latest',
+                        distance_km: 5,
+                        pace_sec_per_km: 360,
+                        avg_hr: 150,
+                    },
                     pace_improvement_sec: 60,
                     hr_improvement_bpm: 15,
                     total_km: 80.4,
@@ -69,8 +108,20 @@ describe('JourneyStrip', () => {
         render(
             <JourneyStrip
                 match={{
-                    first: { date: 'not-a-date', name: null, distance_km: null, pace_sec_per_km: null, avg_hr: null },
-                    current: { date: null, name: null, distance_km: null, pace_sec_per_km: null, avg_hr: null },
+                    first: {
+                        date: 'not-a-date',
+                        name: null,
+                        distance_km: null,
+                        pace_sec_per_km: null,
+                        avg_hr: null,
+                    },
+                    current: {
+                        date: null,
+                        name: null,
+                        distance_km: null,
+                        pace_sec_per_km: null,
+                        avg_hr: null,
+                    },
                     pace_improvement_sec: null,
                     hr_improvement_bpm: null,
                     total_km: 0,
@@ -85,8 +136,20 @@ describe('JourneyStrip', () => {
         render(
             <JourneyStrip
                 match={{
-                    first: { date: null, name: null, distance_km: null, pace_sec_per_km: 420, avg_hr: null },
-                    current: { date: null, name: null, distance_km: null, pace_sec_per_km: 360, avg_hr: null },
+                    first: {
+                        date: null,
+                        name: null,
+                        distance_km: null,
+                        pace_sec_per_km: 420,
+                        avg_hr: null,
+                    },
+                    current: {
+                        date: null,
+                        name: null,
+                        distance_km: null,
+                        pace_sec_per_km: 360,
+                        avg_hr: null,
+                    },
                     pace_improvement_sec: 60,
                     hr_improvement_bpm: null,
                     total_km: 12,

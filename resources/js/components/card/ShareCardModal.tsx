@@ -1,12 +1,19 @@
+import { Icon } from '@iconify/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
-import { Icon } from '@iconify/react';
-import { cn } from '@/lib/cn';
-import { useModal } from '@/hooks/useModal';
+
 import PillButton from '@/components/ui/PillButton';
-import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
+import { useModal } from '@/hooks/useModal';
+import { cn } from '@/lib/cn';
 import { RARITY_LABELS } from '@/lib/runcard';
-import { drawShareCard, shareCardBlob, type Format, type Layout, type ShareKartuData } from '@/lib/shareCard';
+import {
+    drawShareCard,
+    shareCardBlob,
+    type Format,
+    type Layout,
+    type ShareKartuData,
+} from '@/lib/shareCard';
+import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
 
 export type { ShareKartuData };
 
@@ -17,7 +24,11 @@ interface ShareCardModalProps {
 
 function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
     return new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('toBlob failed'))), 'image/png');
+        canvas.toBlob(
+            (blob) =>
+                blob ? resolve(blob) : reject(new Error('toBlob failed')),
+            'image/png',
+        );
     });
 }
 
@@ -27,12 +38,18 @@ const LAYOUT_LABELS: Record<Layout, string> = {
     rute: 'Rute',
 };
 
-export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardModalProps>) {
+export default function ShareCardModal({
+    kartu,
+    onClose,
+}: Readonly<ShareCardModalProps>) {
     const [layout, setLayout] = useState<Layout>('kartu');
     const [format, setFormat] = useState<Format>('story');
     // Transient status under the CTAs: confirms a copy/share that has no native
     // UI of its own, or surfaces a failure instead of swallowing it silently.
-    const [status, setStatus] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
+    const [status, setStatus] = useState<{
+        tone: 'ok' | 'err';
+        text: string;
+    } | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const drawRef = useRef<Promise<void> | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
@@ -49,8 +66,13 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
         // Clamp to a drawable layout: a no-GPS run has no route, so a stale
         // 'rute' selection (carried over from a previous GPS card) must not
         // paint a blank map. See `hasRoute` below.
-        const drawLayout = kartu.polyline != null && kartu.polyline !== '' ? layout : 'kartu';
-        drawRef.current = drawShareCard(canvasRef.current, { kartu, layout: drawLayout, format });
+        const drawLayout =
+            kartu.polyline != null && kartu.polyline !== '' ? layout : 'kartu';
+        drawRef.current = drawShareCard(canvasRef.current, {
+            kartu,
+            layout: drawLayout,
+            format,
+        });
     }, [kartu, layout, format]);
 
     // Auto-clear the status line so it reads as a transient toast.
@@ -64,9 +86,13 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
 
     // The route-hero template needs a polyline; hide it for no-GPS runs.
     const hasRoute = kartu.polyline != null && kartu.polyline !== '';
-    const availableLayouts = hasRoute ? LAYOUTS : LAYOUTS.filter((l) => l !== 'rute');
+    const availableLayouts = hasRoute
+        ? LAYOUTS
+        : LAYOUTS.filter((l) => l !== 'rute');
     // Clamp so share/copy never export a stale 'rute' layout on a no-GPS run.
-    const effectiveLayout: Layout = availableLayouts.includes(layout) ? layout : 'kartu';
+    const effectiveLayout: Layout = availableLayouts.includes(layout)
+        ? layout
+        : 'kartu';
 
     const cfg = { kartu, layout: effectiveLayout, format };
 
@@ -84,9 +110,14 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
         if (typeof navigator.share === 'function') {
             try {
                 const blob = await captureImage();
-                const file = new File([blob], `${kartu.name}.png`, { type: 'image/png' });
+                const file = new File([blob], `${kartu.name}.png`, {
+                    type: 'image/png',
+                });
                 if (navigator.canShare?.({ files: [file] })) {
-                    await navigator.share({ files: [file], title: `${kartu.name} · Temari` });
+                    await navigator.share({
+                        files: [file],
+                        title: `${kartu.name} · Temari`,
+                    });
                     return;
                 }
             } catch {
@@ -98,7 +129,9 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
             try {
                 await navigator.share({
                     title: `${kartu.name} · Temari`,
-                    text: kartu.quote ?? `Kartu ${RARITY_LABELS[kartu.rarity]}: ${kartu.name}`,
+                    text:
+                        kartu.quote ??
+                        `Kartu ${RARITY_LABELS[kartu.rarity]}: ${kartu.name}`,
                     url,
                 });
             } catch {
@@ -112,21 +145,35 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                 setStatus({ tone: 'err', text: 'Gagal nyalin link.' });
             }
         } else {
-            setStatus({ tone: 'err', text: 'Browser ini belum dukung berbagi.' });
+            setStatus({
+                tone: 'err',
+                text: 'Browser ini belum dukung berbagi.',
+            });
         }
     };
 
     const handleCopy = async () => {
-        if (typeof ClipboardItem === 'undefined' || navigator.clipboard?.write === undefined) {
-            setStatus({ tone: 'err', text: 'Browser ini belum dukung salin gambar. Pakai Bagikan ya.' });
+        if (
+            typeof ClipboardItem === 'undefined' ||
+            navigator.clipboard?.write === undefined
+        ) {
+            setStatus({
+                tone: 'err',
+                text: 'Browser ini belum dukung salin gambar. Pakai Bagikan ya.',
+            });
             return;
         }
         try {
             const blob = await captureImage();
-            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob }),
+            ]);
             setStatus({ tone: 'ok', text: 'Gambar kartu kesalin.' });
         } catch {
-            setStatus({ tone: 'err', text: 'Gagal nyalin gambar. Coba Bagikan aja.' });
+            setStatus({
+                tone: 'err',
+                text: 'Gagal nyalin gambar. Coba Bagikan aja.',
+            });
         }
     };
 
@@ -138,7 +185,10 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[51] flex items-center justify-center p-4"
-                style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)' }}
+                style={{
+                    background: 'rgba(0,0,0,0.5)',
+                    backdropFilter: 'blur(6px)',
+                }}
             >
                 <motion.div
                     key="share-panel"
@@ -185,7 +235,11 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                             height={format === 'story' ? 1920 : 1080}
                             aria-label={`Pratinjau kartu ${kartu.name}`}
                             className="block rounded-2xl"
-                            style={{ maxWidth: '100%', maxHeight: '52vh', boxShadow: '0 16px 48px rgba(31,39,71,0.25)' }}
+                            style={{
+                                maxWidth: '100%',
+                                maxHeight: '52vh',
+                                boxShadow: '0 16px 48px rgba(31,39,71,0.25)',
+                            }}
                         />
 
                         {/* Format picker */}
@@ -207,10 +261,14 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                                         aria-hidden
                                         className={cn(
                                             'rounded-sm bg-sky/25',
-                                            f === 'story' ? 'h-6 w-3.5' : 'h-5 w-5',
+                                            f === 'story'
+                                                ? 'h-6 w-3.5'
+                                                : 'h-5 w-5',
                                         )}
                                     />
-                                    {f === 'story' ? 'Potret · 9:16' : 'Persegi · 1:1'}
+                                    {f === 'story'
+                                        ? 'Potret · 9:16'
+                                        : 'Persegi · 1:1'}
                                 </button>
                             ))}
                         </div>
@@ -225,7 +283,13 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                                         type="button"
                                         onClick={() => setLayout(l)}
                                         aria-pressed={layout === l}
-                                        className={cn(toggleButtonVariants({ selected: layout === l, size: 'md' }), 'flex-1')}
+                                        className={cn(
+                                            toggleButtonVariants({
+                                                selected: layout === l,
+                                                size: 'md',
+                                            }),
+                                            'flex-1',
+                                        )}
                                     >
                                         {LAYOUT_LABELS[l]}
                                     </button>
@@ -236,12 +300,30 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
 
                     {/* CTAs — pinned footer. */}
                     <div className="flex flex-col gap-2 border-t border-cream-deep bg-cream px-5 py-4">
-                        <PillButton tone="sky" onClick={handleShare} className="w-full justify-center py-3.5 font-semibold">
-                            <Icon icon="mdi:share-variant" width={16} height={16} aria-hidden />
+                        <PillButton
+                            tone="sky"
+                            onClick={handleShare}
+                            className="w-full justify-center py-3.5 font-semibold"
+                        >
+                            <Icon
+                                icon="mdi:share-variant"
+                                width={16}
+                                height={16}
+                                aria-hidden
+                            />
                             Bagikan
                         </PillButton>
-                        <PillButton tone="ghost" onClick={handleCopy} className="w-full justify-center">
-                            <Icon icon="mdi:content-copy" width={16} height={16} aria-hidden />
+                        <PillButton
+                            tone="ghost"
+                            onClick={handleCopy}
+                            className="w-full justify-center"
+                        >
+                            <Icon
+                                icon="mdi:content-copy"
+                                width={16}
+                                height={16}
+                                aria-hidden
+                            />
                             Salin gambar
                         </PillButton>
                         {status !== null && (
@@ -250,7 +332,9 @@ export default function ShareCardModal({ kartu, onClose }: Readonly<ShareCardMod
                                 aria-live="polite"
                                 className={cn(
                                     'text-center font-sans text-xs',
-                                    status.tone === 'ok' ? 'text-leaf-deep' : 'text-ember-deep',
+                                    status.tone === 'ok'
+                                        ? 'text-leaf-deep'
+                                        : 'text-ember-deep',
                                 )}
                             >
                                 {status.text}

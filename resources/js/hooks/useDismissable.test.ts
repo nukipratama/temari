@@ -1,5 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { useDismissable } from './useDismissable';
 
 let container: HTMLDivElement;
@@ -83,7 +84,8 @@ describe('useDismissable', () => {
     it('removes its listeners when it closes', () => {
         const onClose = vi.fn();
         const { rerender } = renderHook(
-            ({ open }: { open: boolean }) => useDismissable(open, makeRef(), onClose),
+            ({ open }: { open: boolean }) =>
+                useDismissable(open, makeRef(), onClose),
             { initialProps: { open: true } },
         );
 
@@ -96,12 +98,17 @@ describe('useDismissable', () => {
     it('removes its listeners on unmount', () => {
         const onClose = vi.fn();
         const removeSpy = vi.spyOn(document, 'removeEventListener');
-        const { unmount } = renderHook(() => useDismissable(true, makeRef(), onClose));
+        const { unmount } = renderHook(() =>
+            useDismissable(true, makeRef(), onClose),
+        );
 
         unmount();
 
         expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
-        expect(removeSpy).toHaveBeenCalledWith('pointerdown', expect.any(Function));
+        expect(removeSpy).toHaveBeenCalledWith(
+            'pointerdown',
+            expect.any(Function),
+        );
 
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
         expect(onClose).not.toHaveBeenCalled();

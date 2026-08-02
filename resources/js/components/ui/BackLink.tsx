@@ -1,6 +1,7 @@
-import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { Link } from '@inertiajs/react';
 import { type ReactNode } from 'react';
+
 import { cn } from '@/lib/cn';
 
 type BackLinkTone = 'muted' | 'accent';
@@ -26,7 +27,12 @@ const TONE_CLASS: Record<BackLinkTone, string> = {
  * micro-label register, so every "go back" affordance reads identically across
  * detail pages and empty states.
  */
-export default function BackLink({ href, children, tone = 'muted', className }: Readonly<BackLinkProps>) {
+export default function BackLink({
+    href,
+    children,
+    tone = 'muted',
+    className,
+}: Readonly<BackLinkProps>) {
     return (
         <Link
             href={href}

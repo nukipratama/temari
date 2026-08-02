@@ -1,8 +1,17 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import AnalysisStatus from './AnalysisStatus';
-import { setMockPage } from '@/test/setup';
+
 import type { AnalysisPayload } from '@/types/inertia';
+
+import { setMockPage } from '@/test/setup';
+
+import AnalysisStatus from './AnalysisStatus';
 
 const BADGE_TEXT = /dihitung dengan zona lama/;
 const OLD_TS = '2026-01-01T00:00:00+00:00';
@@ -24,9 +33,15 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
 
 describe('AnalysisStatus', () => {
     it('renders done content with the reanalyze button by default', () => {
-        render(<AnalysisStatus analysis={payload({ status: 'done', content: 'Halo Temari' })} />);
+        render(
+            <AnalysisStatus
+                analysis={payload({ status: 'done', content: 'Halo Temari' })}
+            />,
+        );
         expect(screen.getByText('Halo Temari')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Baca ulang/ })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /Baca ulang/ }),
+        ).toBeInTheDocument();
     });
 
     it('hides the reanalyze button when allowReanalyze is false', () => {
@@ -36,29 +51,41 @@ describe('AnalysisStatus', () => {
                 allowReanalyze={false}
             />,
         );
-        expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Baca ulang/ }),
+        ).not.toBeInTheDocument();
     });
 
     it('uses renderContent for custom rendering when provided', () => {
         render(
             <AnalysisStatus
                 analysis={payload({ status: 'done', content: 'raw' })}
-                renderContent={(content) => <span data-testid="custom">[{content}]</span>}
+                renderContent={(content) => (
+                    <span data-testid="custom">[{content}]</span>
+                )}
             />,
         );
         expect(screen.getByTestId('custom').textContent).toBe('[raw]');
     });
 
     it('renders a skeleton placeholder when queued', () => {
-        const { container } = render(<AnalysisStatus analysis={payload({ status: 'queued' })} />);
+        const { container } = render(
+            <AnalysisStatus analysis={payload({ status: 'queued' })} />,
+        );
         expect(screen.getByRole('status')).toBeInTheDocument();
-        expect(container.querySelector('.skeleton, .skeleton-on-sky')).not.toBeNull();
+        expect(
+            container.querySelector('.skeleton, .skeleton-on-sky'),
+        ).not.toBeNull();
     });
 
     it('renders a skeleton placeholder when processing', () => {
-        const { container } = render(<AnalysisStatus analysis={payload({ status: 'processing' })} />);
+        const { container } = render(
+            <AnalysisStatus analysis={payload({ status: 'processing' })} />,
+        );
         expect(screen.getByRole('status')).toBeInTheDocument();
-        expect(container.querySelector('.skeleton, .skeleton-on-sky')).not.toBeNull();
+        expect(
+            container.querySelector('.skeleton, .skeleton-on-sky'),
+        ).not.toBeNull();
     });
 
     it('flips the queued skeleton to a quiet "muat ulang nanti" state after polling gives up', async () => {
@@ -78,7 +105,9 @@ describe('AnalysisStatus', () => {
                 vi.advanceTimersByTime(20 * 60 * 1000);
             });
 
-            expect(screen.getByText(/Masih diproses, muat ulang nanti ya/)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Masih diproses, muat ulang nanti ya/),
+            ).toBeInTheDocument();
             expect(screen.queryByRole('status')).toBeNull();
         } finally {
             vi.useRealTimers();
@@ -87,18 +116,31 @@ describe('AnalysisStatus', () => {
 
     it('renders the failed retry button', () => {
         render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
-        expect(screen.getByRole('button', { name: /Coba lagi/ })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /Coba lagi/ }),
+        ).toBeInTheDocument();
     });
 
     it('renders nothing when status is pending with no content', () => {
-        const { container } = render(<AnalysisStatus analysis={payload({ status: 'pending' })} />);
+        const { container } = render(
+            <AnalysisStatus analysis={payload({ status: 'pending' })} />,
+        );
         expect(container).toBeEmptyDOMElement();
     });
 
     it('shows the "belum tersedia" note and no trigger when awaitingSchedule (current week)', () => {
-        render(<AnalysisStatus analysis={payload({ status: 'pending' })} awaitingSchedule />);
-        expect(screen.getByText(/Rekap minggu ini belum tersedia/)).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
+        render(
+            <AnalysisStatus
+                analysis={payload({ status: 'pending' })}
+                awaitingSchedule
+            />,
+        );
+        expect(
+            screen.getByText(/Rekap minggu ini belum tersedia/),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+        ).not.toBeInTheDocument();
     });
 
     it('uses a custom awaitingScheduleLabel when provided (e.g. the current month)', () => {
@@ -109,8 +151,12 @@ describe('AnalysisStatus', () => {
                 awaitingScheduleLabel="Rekap bulan ini belum tersedia."
             />,
         );
-        expect(screen.getByText(/Rekap bulan ini belum tersedia/)).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
+        expect(
+            screen.getByText(/Rekap bulan ini belum tersedia/),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+        ).not.toBeInTheDocument();
     });
 
     it('suppresses the reanalyze button on done content when awaitingSchedule', () => {
@@ -121,7 +167,9 @@ describe('AnalysisStatus', () => {
             />,
         );
         expect(screen.getByText('Halo')).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Baca ulang/ }),
+        ).not.toBeInTheDocument();
     });
 
     it('shows "Dibuat X lalu" hint when generated_at is present on done content', () => {
@@ -131,7 +179,11 @@ describe('AnalysisStatus', () => {
         const ts = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
         render(
             <AnalysisStatus
-                analysis={payload({ status: 'done', content: 'ok', generated_at: ts })}
+                analysis={payload({
+                    status: 'done',
+                    content: 'ok',
+                    generated_at: ts,
+                })}
             />,
         );
         expect(screen.getByText(/Dibuat 5 menit lalu/)).toBeInTheDocument();
@@ -145,13 +197,21 @@ describe('AnalysisStatus', () => {
         const ts = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
         render(
             <AnalysisStatus
-                analysis={payload({ status: 'done', content: 'ok', generated_at: ts })}
+                analysis={payload({
+                    status: 'done',
+                    content: 'ok',
+                    generated_at: ts,
+                })}
                 onSky
             />,
         );
 
-        expect(screen.getByText(/Dibuat 5 menit lalu/)).toHaveClass('text-ink-on-sky');
-        expect(screen.getByText(/Dibuat 5 menit lalu/)).not.toHaveClass('text-ink-3');
+        expect(screen.getByText(/Dibuat 5 menit lalu/)).toHaveClass(
+            'text-ink-on-sky',
+        );
+        expect(screen.getByText(/Dibuat 5 menit lalu/)).not.toHaveClass(
+            'text-ink-3',
+        );
         const button = screen.getByRole('button', { name: /Baca ulang/ });
         expect(button).toHaveClass('text-ink-on-sky');
         expect(button).not.toHaveClass('text-ink-3');
@@ -159,14 +219,22 @@ describe('AnalysisStatus', () => {
     });
 
     it('shows attempt count when attempts > 1 on queued/processing', () => {
-        render(<AnalysisStatus analysis={payload({ status: 'processing', attempts: 3 })} />);
+        render(
+            <AnalysisStatus
+                analysis={payload({ status: 'processing', attempts: 3 })}
+            />,
+        );
         expect(screen.getByText(/Percobaan 3/)).toBeInTheDocument();
     });
 
     it('disables Analisis ulang and shows countdown when retry_after_seconds > 0', () => {
         render(
             <AnalysisStatus
-                analysis={payload({ status: 'done', content: 'x', retry_after_seconds: 125 })}
+                analysis={payload({
+                    status: 'done',
+                    content: 'x',
+                    retry_after_seconds: 125,
+                })}
             />,
         );
         const button = screen.getByRole('button', { name: /Tunggu 2:05/ });
@@ -178,29 +246,43 @@ describe('AnalysisStatus', () => {
         try {
             render(
                 <AnalysisStatus
-                    analysis={payload({ status: 'done', content: 'x', retry_after_seconds: 4 })}
+                    analysis={payload({
+                        status: 'done',
+                        content: 'x',
+                        retry_after_seconds: 4,
+                    })}
                 />,
             );
 
-            expect(screen.getByRole('button', { name: /Tunggu 0:04/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Tunggu 0:04/ }),
+            ).toBeInTheDocument();
 
             await act(async () => {
                 vi.advanceTimersByTime(1000);
             });
-            expect(screen.getByRole('button', { name: /Tunggu 0:03/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Tunggu 0:03/ }),
+            ).toBeInTheDocument();
 
             await act(async () => {
                 vi.advanceTimersByTime(4000);
             });
             // Countdown reaches 0 → button re-enables to "Baca ulang".
-            expect(screen.getByRole('button', { name: /^Baca ulang$/ })).not.toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: /^Baca ulang$/ }),
+            ).not.toBeDisabled();
         } finally {
             vi.useRealTimers();
         }
     });
 
     it('renders the rate-limited note after a 429 response', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 429, json: async () => ({}) });
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 429,
+            json: async () => ({}),
+        });
         const original = globalThis.fetch;
         globalThis.fetch = fetchMock as unknown as typeof fetch;
         document.head.innerHTML = '<meta name="csrf-token" content="t" />';
@@ -213,11 +295,15 @@ describe('AnalysisStatus', () => {
             );
 
             await act(async () => {
-                fireEvent.click(screen.getByRole('button', { name: /Baca ulang/ }));
+                fireEvent.click(
+                    screen.getByRole('button', { name: /Baca ulang/ }),
+                );
             });
 
             await waitFor(() => {
-                expect(screen.getByText(/Pelan-pelan, Temari kewalahan/)).toBeInTheDocument();
+                expect(
+                    screen.getByText(/Pelan-pelan, Temari kewalahan/),
+                ).toBeInTheDocument();
             });
         } finally {
             globalThis.fetch = original;
@@ -227,7 +313,10 @@ describe('AnalysisStatus', () => {
 
     it('respects the sm size class on done content', () => {
         const { container } = render(
-            <AnalysisStatus analysis={payload({ status: 'done', content: 'mini' })} size="sm" />,
+            <AnalysisStatus
+                analysis={payload({ status: 'done', content: 'mini' })}
+                size="sm"
+            />,
         );
         const body = container.querySelector('div.text-sm');
         expect(body).not.toBeNull();
@@ -236,21 +325,33 @@ describe('AnalysisStatus', () => {
     describe('when AI is globally paused', () => {
         it('hides the "Baca ulang" button on done content but keeps the content', () => {
             setMockPage({ aiPaused: true });
-            render(<AnalysisStatus analysis={payload({ status: 'done', content: 'Halo' })} />);
+            render(
+                <AnalysisStatus
+                    analysis={payload({ status: 'done', content: 'Halo' })}
+                />,
+            );
             expect(screen.getByText('Halo')).toBeInTheDocument();
-            expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /Baca ulang/ }),
+            ).not.toBeInTheDocument();
         });
 
         it('hides the "Coba lagi" button on a failed block', () => {
             setMockPage({ aiPaused: true });
             render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
-            expect(screen.queryByRole('button', { name: /Coba lagi/ })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /Coba lagi/ }),
+            ).not.toBeInTheDocument();
         });
 
         it('hides the empty-state trigger on a pending block', () => {
             setMockPage({ aiPaused: true });
-            render(<AnalysisStatus analysis={payload({ status: 'pending' })} />);
-            expect(screen.queryByRole('button', { name: /Minta Temari bacain/ })).not.toBeInTheDocument();
+            render(
+                <AnalysisStatus analysis={payload({ status: 'pending' })} />,
+            );
+            expect(
+                screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -258,41 +359,61 @@ describe('AnalysisStatus', () => {
         it('shows "Baca ulang" on a done block when it is the chain head', () => {
             render(
                 <AnalysisStatus
-                    analysis={payload({ status: 'done', content: 'recap', type: 'weekly_recap' })}
+                    analysis={payload({
+                        status: 'done',
+                        content: 'recap',
+                        type: 'weekly_recap',
+                    })}
                     chained
                     isChainHead
                 />,
             );
-            expect(screen.getByRole('button', { name: /Baca ulang/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Baca ulang/ }),
+            ).toBeInTheDocument();
         });
 
         it('hides "Baca ulang" on a done block that is not the chain head', () => {
             render(
                 <AnalysisStatus
-                    analysis={payload({ status: 'done', content: 'recap', type: 'weekly_recap' })}
+                    analysis={payload({
+                        status: 'done',
+                        content: 'recap',
+                        type: 'weekly_recap',
+                    })}
                     chained
                     isChainHead={false}
                 />,
             );
             expect(screen.getByText('recap')).toBeInTheDocument();
-            expect(screen.queryByRole('button', { name: /Baca ulang/ })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('button', { name: /Baca ulang/ }),
+            ).not.toBeInTheDocument();
         });
 
         it('still shows "Coba lagi" on a failed chained block (resumes the chain) even when not head', () => {
             render(
                 <AnalysisStatus
-                    analysis={payload({ status: 'failed', type: 'weekly_recap' })}
+                    analysis={payload({
+                        status: 'failed',
+                        type: 'weekly_recap',
+                    })}
                     chained
                     isChainHead={false}
                 />,
             );
-            expect(screen.getByRole('button', { name: /Coba lagi/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Coba lagi/ }),
+            ).toBeInTheDocument();
         });
 
         it('renders nothing on a pending chained block even when not head', () => {
             const { container } = render(
                 <AnalysisStatus
-                    analysis={payload({ status: 'pending', type: 'weekly_recap' })}
+                    analysis={payload({
+                        status: 'pending',
+                        type: 'weekly_recap',
+                    })}
                     chained
                     isChainHead={false}
                 />,
@@ -307,7 +428,9 @@ describe('AnalysisStatus', () => {
                     isChainHead={false}
                 />,
             );
-            expect(screen.getByRole('button', { name: /Baca ulang/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Baca ulang/ }),
+            ).toBeInTheDocument();
         });
     });
 

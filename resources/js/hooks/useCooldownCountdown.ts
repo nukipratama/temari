@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+
 import { formatDurationHMS } from '@/lib/pace';
 
 /**
@@ -8,8 +9,12 @@ import { formatDurationHMS } from '@/lib/pace';
  * "Baca ulang" / briefing footer buttons to disable retry until the cooldown
  * elapses.
  */
-export function useCooldownCountdown(initialSeconds: number | null | undefined): number {
-    const [remaining, setRemaining] = useState(() => Math.max(0, initialSeconds ?? 0));
+export function useCooldownCountdown(
+    initialSeconds: number | null | undefined,
+): number {
+    const [remaining, setRemaining] = useState(() =>
+        Math.max(0, initialSeconds ?? 0),
+    );
     const [lastInitial, setLastInitial] = useState(initialSeconds);
 
     // Restart the countdown when a fresh retry-after value arrives — adjusted
@@ -36,6 +41,11 @@ export function useCooldownCountdown(initialSeconds: number | null | undefined):
  * undefined when not cooling. `action` is the Indonesian infinitive phrase for
  * what's being waited on (e.g. "baca ulang", "kirim ke Telegram").
  */
-export function cooldownAriaLabel(remaining: number, action: string): string | undefined {
-    return remaining > 0 ? `Tunggu ${formatDurationHMS(remaining)} sebelum ${action}` : undefined;
+export function cooldownAriaLabel(
+    remaining: number,
+    action: string,
+): string | undefined {
+    return remaining > 0
+        ? `Tunggu ${formatDurationHMS(remaining)} sebelum ${action}`
+        : undefined;
 }
