@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
-use App\Services\Run\Metrics\ThresholdEstimator;
+use App\Actions\Run\Metrics\EstimateThresholdAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -13,7 +13,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->user = User::factory()->create();
-    $this->estimator = new ThresholdEstimator();
+    $this->estimator = new EstimateThresholdAction();
 });
 
 function seedDetail(User $user, array $summary, ?Carbon $startDate = null): void
@@ -31,7 +31,7 @@ it('returns null when no hard sessions exist in the lookback window', function (
         'best_60min_pace' => '6:30',
     ]);
 
-    expect($this->estimator->estimate($this->user))->toBeNull();
+    expect(($this->estimator)($this->user))->toBeNull();
 });
 
 it('uses best_60min_pace from a single hard session with low confidence', function (): void {
@@ -40,7 +40,7 @@ it('uses best_60min_pace from a single hard session with low confidence', functi
         'best_60min_pace' => '5:00',
     ]);
 
-    $result = $this->estimator->estimate($this->user);
+    $result = ($this->estimator)($this->user);
 
     expect($result)->not->toBeNull()
         ->and($result['pace_sec'])->toEqualWithDelta(300.0, 0.1)
@@ -54,7 +54,7 @@ it('falls back to best_30min_pace when 60min not available', function (): void {
         'best_30min_pace' => '5:30',
     ]);
 
-    $result = $this->estimator->estimate($this->user);
+    $result = ($this->estimator)($this->user);
 
     expect($result['pace_sec'])->toEqualWithDelta(330.0, 0.1);
 });
@@ -67,7 +67,7 @@ it('takes the median across multiple hard sessions and reports confidence', func
         ]);
     }
 
-    $result = $this->estimator->estimate($this->user);
+    $result = ($this->estimator)($this->user);
 
     // 6 values [300..350] → median at floor(5/2)=2 → 320.
     expect($result['pace_sec'])->toEqualWithDelta(320.0, 0.1)
@@ -81,7 +81,7 @@ it('ignores sessions outside the 60-day lookback', function (): void {
         'best_60min_pace' => '5:00',
     ], Carbon::today()->subDays(120));
 
-    expect($this->estimator->estimate($this->user))->toBeNull();
+    expect(($this->estimator)($this->user))->toBeNull();
 });
 
 it('ignores stream summaries whose time_in_zone_pct is not an array', function (): void {
@@ -90,7 +90,7 @@ it('ignores stream summaries whose time_in_zone_pct is not an array', function (
         'best_60min_pace' => '5:00',
     ]);
 
-    expect($this->estimator->estimate($this->user))->toBeNull();
+    expect(($this->estimator)($this->user))->toBeNull();
 });
 
 it('ignores stream summaries that have neither 30min nor 60min best paces', function (): void {
@@ -99,5 +99,5 @@ it('ignores stream summaries that have neither 30min nor 60min best paces', func
         'best_5min_pace' => '4:30',
     ]);
 
-    expect($this->estimator->estimate($this->user))->toBeNull();
+    expect(($this->estimator)($this->user))->toBeNull();
 });

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Agent\Tools;
 
+use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Models\User;
-use App\Services\Run\Metrics\RunBaseline;
 use Illuminate\Support\Carbon;
 
 final class RecentBaselineTool extends UserTool
@@ -13,7 +13,7 @@ final class RecentBaselineTool extends UserTool
     public function __construct(
         User $user,
         Carbon $asOf,
-        private readonly RunBaseline $baseline,
+        private readonly ResolveRunBaselineAction $baseline,
         /** Excluded from its own baseline when the caller is narrating that run. */
         private readonly ?int $excludeActivityId = null,
     ) {
@@ -36,7 +36,7 @@ final class RecentBaselineTool extends UserTool
     public function handle(array $arguments): array
     {
         return [
-            'recent_baseline_28d' => $this->baseline->forUserAsOf(
+            'recent_baseline_28d' => ($this->baseline)(
                 $this->user->id,
                 $this->asOf,
                 $this->excludeActivityId,

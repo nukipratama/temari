@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Events\ActivityIngested;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Listeners\RecordScheduledTaskRun;
@@ -11,7 +12,6 @@ use App\Listeners\VerifyDependencies;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
-use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Story\VerdictTimeline;
 use App\Support\Config\AppConfig;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -50,8 +50,9 @@ class AppServiceProvider extends ServiceProvider
         // reads the 28-day baseline once. RelativeEffort and RecentBaselineTool
         // both ask for it with identical arguments, and the memo can only collapse
         // that if they are handed the same instance — otherwise the container
-        // builds RelativeEffort its own RunBaseline and the window is scanned twice.
-        $this->app->scoped(RunBaseline::class);
+        // builds RelativeEffort its own ResolveRunBaselineAction and the window is
+        // scanned twice.
+        $this->app->scoped(ResolveRunBaselineAction::class);
     }
 
     public function boot(): void
