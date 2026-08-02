@@ -2,27 +2,21 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Gamification;
+namespace App\Actions\Gamification;
 
 use App\Enums\Badge;
 use App\Enums\Rarity;
 use App\Models\User;
 use App\Models\UserUnlock;
+use App\Services\Gamification\GamificationContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Session;
 
 /**
  * Recomputes eligible unlocks for a user and persists new ones. Idempotent:
- * existing unlock_key rows are left alone, so calling this on every event is
- * safe.
- *
- * Each criterion reads from materialized data (badges, PR rows, weekly
- * snapshots, activity_details) rather than re-computing thresholds, so the
- * engine stays cheap even as the catalog grows.
- *
- * @return list<string> unlock keys newly granted in this call
+ * existing unlock_key rows are left alone.
  */
-class UnlockEngine
+class GrantEligibleUnlocksAction
 {
     /** Keys that trigger the full-screen unlock takeover instead of the toast. */
     private const array MAJOR_KEYS = [
@@ -42,15 +36,13 @@ class UnlockEngine
     }
 
     /** @return list<string> */
-    public function grantEligible(User $user): array
+    public function __invoke(User $user): array
     {
         $already = UserUnlock::query()
             ->where('user_id', $user->id)
             ->pluck('unlock_key')
             ->all();
 
-        // Once every defined accessory is unlocked, skip the eligibility
-        // queries — they're moot.
         if (count(array_diff(self::allKeys(), $already)) === 0) {
             return [];
         }
@@ -74,9 +66,9 @@ class UnlockEngine
 
         UserUnlock::query()->insert($rows);
 
-        // Flash the first new unlock for the toast on the next request. Only
-        // do this when a session is active — background jobs / CLI ingests
-        // don't have one and would crash here.
+        // Flash the first new unlock for the toast on the next request.
+        // Session::isStarted() guards background jobs / CLI ingests, which
+        // have no session and would crash here.
         if (Session::isStarted()) {
             $firstKey = $new[0];
             $catalog = config('temari_unlocks', []);

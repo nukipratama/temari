@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
-use App\Services\Gamification\UnlockEngine;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class PersonalRecords
 {
     public function __construct(
-        private readonly UnlockEngine $unlockEngine,
+        private readonly GrantEligibleUnlocksAction $unlockEngine,
     ) {
     }
 
@@ -60,7 +60,7 @@ class PersonalRecords
         ];
 
         if ($broken !== []) {
-            $this->unlockEngine->grantEligible($activity->user);
+            ($this->unlockEngine)($activity->user);
         }
 
         return $broken;

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
-use App\Services\Gamification\UnlockEngine;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -17,12 +17,9 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
-    // UnlockEngine::grantEligible does a live DB query on every PR break and its
-    // own behavior has a dedicated suite (UnlockEngineTest); nothing here asserts
-    // on unlocks, so it's faked to keep this file scoped to PR-detection logic.
-    $unlockEngine = Mockery::mock(UnlockEngine::class);
-    $unlockEngine->shouldReceive('grantEligible')->andReturn([]);
-    $this->app->instance(UnlockEngine::class, $unlockEngine);
+    $unlockEngine = Mockery::mock(GrantEligibleUnlocksAction::class);
+    $unlockEngine->shouldReceive('__invoke')->andReturn([]);
+    $this->app->instance(GrantEligibleUnlocksAction::class, $unlockEngine);
     $this->records = app(PersonalRecords::class);
 });
 

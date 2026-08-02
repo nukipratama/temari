@@ -62,7 +62,7 @@ export interface EquippedAccessories {
     aura: string | null;
 }
 
-/** Flashed by UnlockEngine when a user earns their first new accessory in a request. */
+/** Flashed by GrantEligibleUnlocksAction when a user earns their first new accessory in a request. */
 export interface UnlockFlash {
     unlock_key: string;
     name: string;
