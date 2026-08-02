@@ -2,28 +2,28 @@
 
 declare(strict_types=1);
 
-use App\Services\AI\BackfillStagger;
+use App\Actions\AI\StaggerBackfillAction;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
-function backfillStagger(): BackfillStagger
+function staggerBackfill(): StaggerBackfillAction
 {
-    return new BackfillStagger();
+    return new StaggerBackfillAction();
 }
 
 it('reserves an immediate slot (delay 0) for a user with no prior reservation', function (): void {
-    expect(backfillStagger()->delayFor(1))->toBe(0);
+    expect(staggerBackfill()(1))->toBe(0);
 });
 
 it('staggers a second reservation for the same user by the configured window', function (): void {
     config(['ai.backfill_stagger_seconds' => 100]);
     Carbon::setTestNow('2026-05-18 12:00:00');
-    $stagger = backfillStagger();
+    $stagger = staggerBackfill();
 
-    expect($stagger->delayFor(1))->toBe(0)
-        ->and($stagger->delayFor(1))->toBe(100)
-        ->and($stagger->delayFor(1))->toBe(200);
+    expect($stagger(1))->toBe(0)
+        ->and($stagger(1))->toBe(100)
+        ->and($stagger(1))->toBe(200);
 
     Carbon::setTestNow();
 });
@@ -31,12 +31,12 @@ it('staggers a second reservation for the same user by the configured window', f
 it('keeps each user\'s slot independent', function (): void {
     config(['ai.backfill_stagger_seconds' => 100]);
     Carbon::setTestNow('2026-05-18 12:00:00');
-    $stagger = backfillStagger();
+    $stagger = staggerBackfill();
 
-    expect($stagger->delayFor(1))->toBe(0)
-        ->and($stagger->delayFor(2))->toBe(0)
-        ->and($stagger->delayFor(1))->toBe(100)
-        ->and($stagger->delayFor(2))->toBe(100);
+    expect($stagger(1))->toBe(0)
+        ->and($stagger(2))->toBe(0)
+        ->and($stagger(1))->toBe(100)
+        ->and($stagger(2))->toBe(100);
 
     Carbon::setTestNow();
 });
@@ -44,12 +44,12 @@ it('keeps each user\'s slot independent', function (): void {
 it('resets to an immediate slot once the previously reserved slot is in the past', function (): void {
     config(['ai.backfill_stagger_seconds' => 100]);
     Carbon::setTestNow('2026-05-18 12:00:00');
-    $stagger = backfillStagger();
-    expect($stagger->delayFor(1))->toBe(0);
+    $stagger = staggerBackfill();
+    expect($stagger(1))->toBe(0);
 
     // Jump well past the reserved slot (12:00:00 + 100s).
     Carbon::setTestNow('2026-05-18 12:10:00');
-    expect($stagger->delayFor(1))->toBe(0);
+    expect($stagger(1))->toBe(0);
 
     Carbon::setTestNow();
 });
@@ -57,10 +57,10 @@ it('resets to an immediate slot once the previously reserved slot is in the past
 it('floors the stagger window at 1 second even if misconfigured to 0 or negative', function (): void {
     config(['ai.backfill_stagger_seconds' => 0]);
     Carbon::setTestNow('2026-05-18 12:00:00');
-    $stagger = backfillStagger();
+    $stagger = staggerBackfill();
 
-    expect($stagger->delayFor(1))->toBe(0)
-        ->and($stagger->delayFor(1))->toBe(1);
+    expect($stagger(1))->toBe(0)
+        ->and($stagger(1))->toBe(1);
 
     Carbon::setTestNow();
 });
@@ -70,5 +70,5 @@ it('falls back to delay 0 on a lock timeout rather than blocking the caller', fu
         ->once()
         ->andThrow(new LockTimeoutException());
 
-    expect(backfillStagger()->delayFor(1))->toBe(0);
+    expect(staggerBackfill()(1))->toBe(0);
 });

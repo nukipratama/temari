@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\AI;
 
+use App\Actions\AI\StaggerBackfillAction;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -13,7 +14,6 @@ use App\Models\StoryLine;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\BackfillStagger;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
@@ -75,7 +75,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             $service->requestActivityGroup(
                 $next,
                 invalidate: false,
-                delaySeconds: app(BackfillStagger::class)->delayFor($next->user_id),
+                delaySeconds: app(StaggerBackfillAction::class)($next->user_id),
             );
         } catch (Throwable $e) {
             Log::warning('ai.activity_chain_advance_failed', [

@@ -16,7 +16,7 @@ use App\Models\Analytics\StravaSyncLog;
 use App\Services\AI\ChainLink;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
-use App\Services\AI\TokenUsageRecorder;
+use App\Actions\AI\RecordTokenUsageAction;
 use App\Services\Geo\ResolvedLocation;
 use App\Services\Run\JejakFilters;
 use App\Services\Run\Metrics\PaceFormatter;
@@ -71,7 +71,7 @@ it('has a test class for every concrete app class', function (): void {
         NotifiableAnalysisTypes::class, // shared type registry, asserted via NotificationEligibilityTest + AnalysisMessagePresenterTest
         // Covered indirectly by the suites that drive them.
         TokenUsage::class,              // StructuredChatCallerTest
-        TokenUsageRecorder::class,      // StructuredChatCallerTest
+        RecordTokenUsageAction::class, // StructuredChatCallerTest
         RuleBasedNarrationFiller::class, // DemoSeedCommandTest
         PaceFormatter::class,           // exercised across pace tests
         StravaSyncLog::class,           // SyncOrchestratorTest

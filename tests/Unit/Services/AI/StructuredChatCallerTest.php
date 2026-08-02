@@ -20,7 +20,7 @@ use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\Agent\AgentBudget;
-use App\Services\AI\TokenUsageRecorder;
+use App\Actions\AI\RecordTokenUsageAction;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use OpenAI\Exceptions\ErrorException;
@@ -211,7 +211,7 @@ it('does not record usage when Azure call fails', function (): void {
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
     $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
 
-    $caller = new StructuredChatCaller($azure, app(TokenUsageRecorder::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)));
+    $caller = new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)));
 
     expect(fn () => $caller->call('briefing', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class);
@@ -229,7 +229,7 @@ it('routes the per-kind client and records the resolved deployment', function ()
     $azure->shouldReceive('deploymentFor')->with('briefing')->andReturn('gpt-4o-briefing');
     $azure->shouldReceive('client')->andReturn($client);
 
-    new StructuredChatCaller($azure, app(TokenUsageRecorder::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)))
+    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
     expect(TokenUsage::query()->first()->model)->toBe('gpt-4o-briefing');
@@ -243,7 +243,7 @@ it('records null deployment when the resolved deployment is empty', function ():
     expect(TokenUsage::query()->first()->model)->toBeNull();
 });
 
-it('TokenUsageRecorder logs a warning when the DB insert throws', function (): void {
+it('RecordTokenUsageAction logs a warning when the DB insert throws', function (): void {
     Log::spy();
 
     Schema::drop('ai_token_usages');
@@ -251,7 +251,7 @@ it('TokenUsageRecorder logs a warning when the DB insert throws', function (): v
     $usage = new AgentBudget(8, 30_000);
     $usage->recordStep(10, 5, 15);
 
-    app(TokenUsageRecorder::class)->record('briefing', $usage, 'gpt-test');
+    app(RecordTokenUsageAction::class)('briefing', $usage, 'gpt-test');
 
     Log::shouldHaveReceived('warning')
         ->once()

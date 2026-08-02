@@ -11,7 +11,7 @@ use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\StructuredChatCaller;
-use App\Services\AI\TokenUsageRecorder;
+use App\Actions\AI\RecordTokenUsageAction;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -191,7 +191,7 @@ function fakeStructuredCaller(ClientFake $client, string $deployment = 'gpt-test
 
     return new StructuredChatCaller(
         $azure,
-        app(TokenUsageRecorder::class),
+        app(RecordTokenUsageAction::class),
         new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)),
     );
 }
