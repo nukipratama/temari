@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Head, router } from '@inertiajs/react';
-import { type ReactNode, useCallback, useRef, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
@@ -21,6 +21,11 @@ import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import { formatDurationHMS } from '@/lib/pace';
 
+import {
+    useNotificationPrefs,
+    type NotificationPrefs,
+} from './useNotificationPrefs';
+
 // The demo account can't be deleted; the backend guard rejects it and the
 // shared ErrorBanner surfaces the reason, so the confirm modal stays generic.
 
@@ -28,14 +33,6 @@ interface TelegramPayload {
     connected: boolean;
     username: string | null;
     connect_url: string | null;
-}
-
-interface NotificationPrefs {
-    /** Master switch over everything Temari sends, on every channel. */
-    notifications_enabled: boolean;
-    /** Per-channel mutes: off means wired but silent, not disconnected. */
-    telegram_enabled: boolean;
-    push_enabled: boolean;
 }
 
 interface PengaturanProps {
@@ -162,40 +159,17 @@ function NotificationPrefsPanel({
     telegram: TelegramPayload;
     testCooldownSeconds: number | null;
 }>) {
-    // Local state prevents a rapid-click race: if the user flips two toggles before
-    // Inertia refreshes props, the second PATCH would read stale props for the first
-    // toggle's value and silently revert it. Local state sees the latest flipped value.
-    const [notificationsEnabled, setNotificationsEnabled] = useState(
-        prefs.notifications_enabled,
-    );
-    const [telegramEnabled, setTelegramEnabled] = useState(
-        prefs.telegram_enabled,
-    );
-    const [pushEnabled, setPushEnabled] = useState(prefs.push_enabled);
-    const { open, setOpen, guard } = useDemoGuard();
-
-    const latestRef = useRef({
+    const {
         notificationsEnabled,
         telegramEnabled,
         pushEnabled,
-    });
-    latestRef.current = { notificationsEnabled, telegramEnabled, pushEnabled };
-
-    // Always sends the complete state — the server validates all three as
-    // required, and the toggles now live in two different groups, so a partial
-    // write would leave updateOrCreate holding stale values for the other group.
-    const savePrefs = useCallback(() => {
-        const current = latestRef.current;
-        router.patch(
-            '/profil/notifikasi',
-            {
-                notifications_enabled: current.notificationsEnabled,
-                telegram_enabled: current.telegramEnabled,
-                push_enabled: current.pushEnabled,
-            },
-            { preserveScroll: true },
-        );
-    }, []);
+        setNotificationsEnabled,
+        setTelegramEnabled,
+        setPushEnabled,
+        guard,
+        demoModalOpen,
+        setDemoModalOpen,
+    } = useNotificationPrefs({ prefs });
 
     return (
         <div className="flex flex-col gap-6">
@@ -215,14 +189,7 @@ function NotificationPrefsPanel({
                             <Toggle
                                 label="Kabarin aku"
                                 checked={notificationsEnabled}
-                                onChange={(value) =>
-                                    guard(() => {
-                                        setNotificationsEnabled(value);
-                                        latestRef.current.notificationsEnabled =
-                                            value;
-                                        savePrefs();
-                                    })
-                                }
+                                onChange={setNotificationsEnabled}
                             />
                         }
                     />
@@ -244,23 +211,11 @@ function NotificationPrefsPanel({
                     <TelegramPanel
                         telegram={telegram}
                         muted={!telegramEnabled}
-                        onMuteChange={(value) =>
-                            guard(() => {
-                                setTelegramEnabled(!value);
-                                latestRef.current.telegramEnabled = !value;
-                                savePrefs();
-                            })
-                        }
+                        onMuteChange={(muted) => setTelegramEnabled(!muted)}
                     />
                     <PushNotificationToggle
                         muted={!pushEnabled}
-                        onMuteChange={(value) =>
-                            guard(() => {
-                                setPushEnabled(!value);
-                                latestRef.current.pushEnabled = !value;
-                                savePrefs();
-                            })
-                        }
+                        onMuteChange={(muted) => setPushEnabled(!muted)}
                     />
                 </div>
                 {/* Lives with the channels rather than the types: what it proves
@@ -273,7 +228,10 @@ function NotificationPrefsPanel({
                 </div>
             </div>
 
-            <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
+            <DemoBlockedModal
+                open={demoModalOpen}
+                onClose={() => setDemoModalOpen(false)}
+            />
         </div>
     );
 }
