@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Models\StravaConnection;
+use App\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -294,10 +296,8 @@ class TokenUsageReport
             ->get();
 
         $ids = $userRows->pluck('user_id')->all();
-        // Cross-connection: users and strava_connections are not joinable to the
-        // analytics schema, so they are fetched and matched in PHP.
-        $liveNames = DB::table('users')->whereIn('id', $ids)->pluck('name', 'id');
-        $liveAthleteIds = DB::table('strava_connections')
+        $liveNames = User::query()->whereIn('id', $ids)->pluck('name', 'id');
+        $liveAthleteIds = StravaConnection::query()
             ->whereIn('user_id', $ids)
             ->pluck('strava_athlete_id', 'user_id');
 

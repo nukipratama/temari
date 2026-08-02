@@ -148,7 +148,7 @@ final readonly class StructuredChatCaller
 
             Log::info('narrator.ai.call', [
                 'kind' => $kind,
-                'status' => 'ok',
+                'status' => NarratorCallStatus::Ok->value,
                 'latency_ms' => self::latencyMs($startedAt),
                 'truncated' => $truncated,
                 'steps' => $budget->steps(),
@@ -226,7 +226,7 @@ final readonly class StructuredChatCaller
 
     private static function isTruncated(CreateResponse $response): bool
     {
-        return $response->status === 'incomplete'
+        return $response->status === AzureResponseStatus::Incomplete->value
             && $response->incompleteDetails?->reason === 'max_output_tokens';
     }
 
