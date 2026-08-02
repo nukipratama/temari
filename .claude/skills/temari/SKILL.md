@@ -198,23 +198,29 @@ worktrees would both try to bind off an unmodified `.env`. No changes needed to 
 correctly.
 
 Workflow: `EnterWorktree name=<slice>` → `./scripts/worktree-setup.sh <slot 1|2|3>` (its own
-`APP_PORT`/`VITE_PORT` off a static slot table — main stays 7001/7002, slots use 701x/702x — and
+`APP_PORT`/`VITE_PORT` off a static slot table — main stays 7001/7002, slots use 701x/702x —
 `FORWARD_DB_PORT`/`FORWARD_REDIS_PORT` set to `0`, an ephemeral host port, since DB/Redis are only
 ever reached via `sail mysql`/`sail artisan tinker` execing into the container, never from the
-host) → `vendor/` is empty on a fresh worktree, so `vendor/bin/sail` doesn't exist yet: bring the
-stack up and install once with plain `docker compose up -d` /
+host — then brings the stack up itself and fixes cache-volume ownership) → `vendor/` is empty on a
+fresh worktree, so `vendor/bin/sail` doesn't exist yet: install once with plain
 `docker compose exec -T app composer install`, then `./vendor/bin/sail npm ci` (`sail` works for
 everything from here on) → normal fast-feedback ladder → `ExitWorktree action=remove|keep`. That's
 enough to *run the automated suites* (they self-initialize their own `mysql_test`/`redis_test`) —
 to actually *load a page in a browser*, also run `sail artisan key:generate` (`.env.example` ships
 `APP_KEY` empty) and `sail artisan migrate`, plus `sail npm run dev` (or `npm run build`).
 
-**Three fresh-worktree gotchas**, none concurrency-specific: a fresh `npm ci` can hit `EACCES`
-because the `node_modules` named volume is created root-owned on first boot — one-time fix
-`docker compose exec -u root app chown -R www-data:www-data node_modules` (also printed by
-`worktree-setup.sh`). A missing `APP_KEY` (see above) 500s every page with `MissingAppKeyException`
-until `key:generate` runs. And if several worktrees cold-install at the same moment, one can
-occasionally fail mid-extraction on a transient bind-mount visibility race — just retry once.
+Composer's and npm's **download caches** are shared across worktrees via fixed-name volumes
+(`temari_composer_cache`/`temari_npm_cache` in `compose.yaml`) — only `vendor/`/`node_modules`
+themselves stay per-worktree (each must reflect that branch's own lockfile), so the second+
+worktree's install just replays from cache instead of re-downloading over the network.
+`worktree-setup.sh` chowns all three cache-type volumes (`node_modules` included) to `www-data`
+right after bringing the stack up, since they're created root-owned on first boot and the container
+always runs as `www-data` — no manual fix needed.
+
+**Two fresh-worktree gotchas**, neither concurrency-specific: a missing `APP_KEY` (see above) 500s
+every page with `MissingAppKeyException` until `key:generate` runs. And if several worktrees
+cold-install at the same moment, one can occasionally fail mid-extraction on a transient bind-mount
+visibility race — just retry once.
 
 The Docker image (`temari/dev`) and its build cache are shared across worktrees on purpose (plain
 local tag, not project-scoped) — only pass `--build` again if a worktree's slice actually touches
