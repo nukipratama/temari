@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs\Geo;
 
+use App\Actions\Geo\ReverseGeocodeAction;
 use App\Models\ActivityDetail;
-use App\Services\Geo\NominatimResolver;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,7 +19,7 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
 
     /**
      * The WithoutOverlapping lock caps this at 1 job/sec cluster-wide, and
-     * NominatimResolver swallows every request exception into a null return
+     * ReverseGeocodeAction swallows every request exception into a null return
      * rather than throwing — so a fixed $tries counts lock-contention releases
      * against the same tiny budget as real failures. A bulk backfill queues
      * far more than a couple of jobs behind the lock, so retry on a time
@@ -56,7 +56,7 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
         ];
     }
 
-    public function handle(NominatimResolver $resolver): void
+    public function handle(ReverseGeocodeAction $resolver): void
     {
         $detail = ActivityDetail::query()->find($this->activityDetailId);
         if ($detail === null || $detail->location_resolved_at !== null) {
@@ -69,7 +69,7 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $resolved = $resolver->reverse($detail->start_lat, $detail->start_lng);
+        $resolved = $resolver($detail->start_lat, $detail->start_lng);
 
         // Only stamp resolved_at on a real hit. A null is a transient Nominatim
         // miss (rate limit / timeout / empty body): leaving resolved_at null keeps

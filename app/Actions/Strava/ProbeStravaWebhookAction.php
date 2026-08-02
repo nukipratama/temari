@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Strava;
+namespace App\Actions\Strava;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -15,12 +15,12 @@ use Throwable;
  * subscribe command (pre-flight) and the doctor command (health check) so the
  * handshake — including the dotted-key parsing gotcha — lives in one place.
  */
-class StravaWebhookProbe
+class ProbeStravaWebhookAction
 {
     /**
      * @return array{passed: bool, status: int, detail: string}
      */
-    public function probe(string $callbackUrl, string $verifyToken): array
+    public function __invoke(string $callbackUrl, string $verifyToken): array
     {
         $challenge = 'probe-'.bin2hex(random_bytes(6));
 

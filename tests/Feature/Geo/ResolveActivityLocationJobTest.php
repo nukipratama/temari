@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Actions\Geo\ReverseGeocodeAction;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\ActivityDetail;
-use App\Services\Geo\NominatimResolver;
 use App\Services\Geo\ResolvedLocation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
@@ -19,13 +19,13 @@ it('writes resolved location + stamps resolved_at on success', function (): void
         'location_resolved_at' => null,
     ]);
 
-    $this->mock(NominatimResolver::class, function ($m): void {
-        $m->shouldReceive('reverse')
+    $this->mock(ReverseGeocodeAction::class, function ($m): void {
+        $m->shouldReceive('__invoke')
             ->once()
             ->andReturn(new ResolvedLocation('Jakarta Selatan, DKI Jakarta, Indonesia', 'ID'));
     });
 
-    new ResolveActivityLocationJob($detail->id)->handle(app(NominatimResolver::class));
+    new ResolveActivityLocationJob($detail->id)->handle(app(ReverseGeocodeAction::class));
 
     $detail->refresh();
     expect($detail->location_name)->toBe('Jakarta Selatan, DKI Jakarta, Indonesia');
@@ -40,9 +40,9 @@ it('leaves resolved_at null on a transient miss so the catch-up retries', functi
         'location_resolved_at' => null,
     ]);
 
-    $this->mock(NominatimResolver::class, fn ($m) => $m->shouldReceive('reverse')->once()->andReturn(null));
+    $this->mock(ReverseGeocodeAction::class, fn ($m) => $m->shouldReceive('__invoke')->once()->andReturn(null));
 
-    new ResolveActivityLocationJob($detail->id)->handle(app(NominatimResolver::class));
+    new ResolveActivityLocationJob($detail->id)->handle(app(ReverseGeocodeAction::class));
 
     $detail->refresh();
     expect($detail->location_name)->toBeNull();
@@ -58,9 +58,9 @@ it('skips already-resolved details', function (): void {
         'location_resolved_at' => now()->subDay(),
     ]);
 
-    $this->mock(NominatimResolver::class, fn ($m) => $m->shouldNotReceive('reverse'));
+    $this->mock(ReverseGeocodeAction::class, fn ($m) => $m->shouldNotReceive('__invoke'));
 
-    new ResolveActivityLocationJob($detail->id)->handle(app(NominatimResolver::class));
+    new ResolveActivityLocationJob($detail->id)->handle(app(ReverseGeocodeAction::class));
 
     expect($detail->fresh()->location_name)->toBe('cached');
 });
@@ -72,9 +72,9 @@ it('stamps and exits when the detail has no coords', function (): void {
         'location_resolved_at' => null,
     ]);
 
-    $this->mock(NominatimResolver::class, fn ($m) => $m->shouldNotReceive('reverse'));
+    $this->mock(ReverseGeocodeAction::class, fn ($m) => $m->shouldNotReceive('__invoke'));
 
-    new ResolveActivityLocationJob($detail->id)->handle(app(NominatimResolver::class));
+    new ResolveActivityLocationJob($detail->id)->handle(app(ReverseGeocodeAction::class));
 
     $detail->refresh();
     expect($detail->location_resolved_at)->not->toBeNull();
@@ -82,9 +82,9 @@ it('stamps and exits when the detail has no coords', function (): void {
 });
 
 it('is a no-op when the detail row was deleted before the job ran', function (): void {
-    $this->mock(NominatimResolver::class, fn ($m) => $m->shouldNotReceive('reverse'));
+    $this->mock(ReverseGeocodeAction::class, fn ($m) => $m->shouldNotReceive('__invoke'));
 
-    new ResolveActivityLocationJob(999_999)->handle(app(NominatimResolver::class));
+    new ResolveActivityLocationJob(999_999)->handle(app(ReverseGeocodeAction::class));
 
     expect(true)->toBeTrue();
 });

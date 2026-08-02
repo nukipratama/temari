@@ -3,9 +3,9 @@ title: Reverse Geocoding (start point → place name)
 description: How a run's GPS start point becomes a human place name — async Nominatim resolve, 1 req/sec lock, 30-day grid cache with miss sentinels, transient-vs-permanent error handling, hourly backfill
 tags: [architecture, geo]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-08-03
 code_refs:
-  - app/Services/Geo/NominatimResolver.php
+  - app/Actions/Geo/ReverseGeocodeAction.php
   - app/Services/Geo/ResolvedLocation.php
   - app/Jobs/Geo/ResolveActivityLocationJob.php
   - app/Console/Commands/Geo/BackfillActivityLocationsCommand.php
@@ -22,13 +22,13 @@ Turns a run's start coordinate into a display string like *"Kebayoran Baru, Jaka
 
 ## The resolver
 
-[`NominatimResolver::reverse`](app/Services/Geo/NominatimResolver.php#L22) is the only public surface. Given a lat/lng it returns a [`ResolvedLocation` DTO](app/Services/Geo/ResolvedLocation.php#L13) (display `name` + uppercased ISO alpha-2 `country`) or `null`.
+[`ReverseGeocodeAction::__invoke`](app/Actions/Geo/ReverseGeocodeAction.php#L23) is the only public surface. Given a lat/lng it returns a [`ResolvedLocation` DTO](app/Services/Geo/ResolvedLocation.php#L13) (display `name` + uppercased ISO alpha-2 `country`) or `null`.
 
-- **Caching + grid keying.** The cache key snaps coords to a coarse grid so adjacent points along a route collapse to one entry — see the `sprintf` precision in [`cacheKey`](app/Services/Geo/NominatimResolver.php#L123) and the TTL constant at the [`Cache::put` in `reverse`](app/Services/Geo/NominatimResolver.php#L37). (Constants rot; read the lines.)
-- **Miss sentinels.** `Cache::remember` can't memoize a `null`, so a miss is stored as the sentinel `false` and short-circuited on the next call — [the read/branch at the top of `reverse`](app/Services/Geo/NominatimResolver.php#L28). This stops a coord that genuinely has no address from re-hitting Nominatim every time.
-- **Zoom level.** The request asks Nominatim for a suburb-level result so the address carries kecamatan + kota rather than a street or a whole province — see the `zoom` query param in [`fetchUncached`](app/Services/Geo/NominatimResolver.php#L54).
-- **Indonesian field preference.** Nominatim's address keys vary by country, so [`formatAddress`](app/Services/Geo/NominatimResolver.php#L82) tries Indonesia-likely keys first and falls back to the global ones, taking the first hit per rank via [`firstFilled`](app/Services/Geo/NominatimResolver.php#L111). The result is assembled coarse→fine into the comma-joined display name.
-- **No throw-out.** Any HTTP/JSON failure is swallowed to `null` and logged at info level, never re-raised — the `try/catch` in [`fetchUncached`](app/Services/Geo/NominatimResolver.php#L68). A polite `User-Agent` and `Accept-Language: id,en` are sent per Nominatim TOS ([headers](app/Services/Geo/NominatimResolver.php#L45)).
+- **Caching + grid keying.** The cache key snaps coords to a coarse grid so adjacent points along a route collapse to one entry — see the `sprintf` precision in [`cacheKey`](app/Actions/Geo/ReverseGeocodeAction.php#L124) and the TTL constant at the [`Cache::put` in `__invoke`](app/Actions/Geo/ReverseGeocodeAction.php#L38). (Constants rot; read the lines.)
+- **Miss sentinels.** `Cache::remember` can't memoize a `null`, so a miss is stored as the sentinel `false` and short-circuited on the next call — [the read/branch at the top of `__invoke`](app/Actions/Geo/ReverseGeocodeAction.php#L29). This stops a coord that genuinely has no address from re-hitting Nominatim every time.
+- **Zoom level.** The request asks Nominatim for a suburb-level result so the address carries kecamatan + kota rather than a street or a whole province — see the `zoom` query param in [`fetchUncached`](app/Actions/Geo/ReverseGeocodeAction.php#L55).
+- **Indonesian field preference.** Nominatim's address keys vary by country, so [`formatAddress`](app/Actions/Geo/ReverseGeocodeAction.php#L83) tries Indonesia-likely keys first and falls back to the global ones, taking the first hit per rank via [`firstFilled`](app/Actions/Geo/ReverseGeocodeAction.php#L112). The result is assembled coarse→fine into the comma-joined display name.
+- **No throw-out.** Any HTTP/JSON failure is swallowed to `null` and logged at info level, never re-raised — the `try/catch` in [`fetchUncached`](app/Actions/Geo/ReverseGeocodeAction.php#L69). A polite `User-Agent` and `Accept-Language: id,en` are sent per Nominatim TOS ([headers](app/Actions/Geo/ReverseGeocodeAction.php#L46)).
 
 Note the rate limit is **not** enforced here — see the job below.
 
