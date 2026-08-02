@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Actions\AI\RecordTokenUsageAction;
 use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\UnavailableException;
 use App\Services\AI\Agent\AgentBudget;
@@ -35,7 +36,7 @@ final readonly class StructuredChatCaller
 
     public function __construct(
         private AzureOpenAIClient $azure,
-        private TokenUsageRecorder $usageRecorder,
+        private RecordTokenUsageAction $recordUsage,
         private AgentLoop $loop,
     ) {
     }
@@ -213,7 +214,7 @@ final readonly class StructuredChatCaller
             return;
         }
 
-        $this->usageRecorder->record(
+        ($this->recordUsage)(
             kind: $kind,
             usage: $budget,
             model: $deployment !== '' ? $deployment : null,

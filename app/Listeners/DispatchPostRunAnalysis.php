@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Actions\AI\StaggerBackfillAction;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
@@ -15,7 +16,6 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\BackfillStagger;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,7 +31,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
     public function __construct(
         private readonly AnalysisService $analysisService,
         private readonly WeeklyAggregator $weeklyAggregator,
-        private readonly BackfillStagger $backfillStagger,
+        private readonly StaggerBackfillAction $staggerBackfill,
     ) {
     }
 
@@ -48,7 +48,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
-        $delaySec = $isBackfill ? $this->backfillStagger->delayFor($activity->user_id) : 0;
+        $delaySec = $isBackfill ? ($this->staggerBackfill)($activity->user_id) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
 
         $this->requestPrContext($activity, $tooOld, $delaySec);
