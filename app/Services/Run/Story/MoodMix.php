@@ -72,17 +72,13 @@ final class MoodMix
             return [];
         }
 
-        $mix = [];
-        foreach ($counts as $mood => $count) {
-            $mix[] = [
+        return array_values(collect($counts)
+            ->map(fn (int $count, int|string $mood): array => [
                 'mood' => (string) $mood,
                 'count' => $count,
                 'percent' => round(($count / $total) * 100, 1),
-            ];
-        }
-
-        usort($mix, static fn (array $a, array $b): int => $b['count'] <=> $a['count']);
-
-        return $mix;
+            ])
+            ->sortByDesc('count')
+            ->all());
     }
 }

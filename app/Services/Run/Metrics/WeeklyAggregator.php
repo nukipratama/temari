@@ -13,8 +13,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Enumerable;
 
-use function count;
-
 class WeeklyAggregator
 {
     /**
@@ -237,18 +235,14 @@ class WeeklyAggregator
      */
     private function averageDecoupling(Enumerable $details): ?float
     {
-        $values = [];
-        foreach ($details as $detail) {
-            $decoupling = StreamSummary::fromArray($detail->stream_summary)->decouplingPct();
-            if ($decoupling !== null) {
-                $values[] = $decoupling;
-            }
-        }
+        $values = $details
+            ->map(fn (ActivityDetail $detail): ?float => StreamSummary::fromArray($detail->stream_summary)->decouplingPct())
+            ->filter(fn (?float $value): bool => $value !== null);
 
-        if ($values === []) {
+        if ($values->isEmpty()) {
             return null;
         }
 
-        return round(array_sum($values) / count($values), 2);
+        return round((float) $values->avg(), 2);
     }
 }

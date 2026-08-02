@@ -86,17 +86,16 @@ class MilestoneDetector
             return [];
         }
 
-        $milestones = [];
-
-        foreach ($newPrCategories as $category) {
+        $milestones = array_map(function (string $category): array {
             $label = PrCategory::tryFrom($category)?->label() ?? str_replace('_', ' ', $category);
-            $milestones[] = [
+
+            return [
                 'kind' => 'pr',
                 'label' => 'Personal Record!',
                 'body' => sprintf('Kamu baru saja memecahkan PR di %s. Aku catat.', $label),
                 'priority' => 100,
             ];
-        }
+        }, $newPrCategories);
 
         $longestEver = $this->longestEverBefore($activity, $detail);
         $distanceMeters = (float) ($detail->distance ?? 0);

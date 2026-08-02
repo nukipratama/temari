@@ -82,25 +82,25 @@ class VerdictTimeline implements VerdictNarrator
             ->whereIn('subject_id', $lines->pluck('activity_id')->all())
             ->pluck('content', 'subject_id');
 
-        $items = [];
-        foreach ($lines as $line) {
-            $detail = $line->activity?->detail;
-            if ($detail?->start_date_local === null) {
-                continue;
-            }
+        return array_values($lines
+            ->map(function (StoryLine $line) use ($speechByActivity): ?VerdictTimelineItem {
+                $detail = $line->activity?->detail;
+                if ($detail?->start_date_local === null) {
+                    return null;
+                }
 
-            $items[] = new VerdictTimelineItem(
-                activityId: (int) $line->activity_id,
-                mood: $line->mood,
-                moodFace: $this->moodFace($line->mood),
-                oneline: (string) $speechByActivity->get($line->activity_id),
-                startedAt: $detail->start_date_local,
-                distanceKm: DistanceFormatter::km((float) ($detail->distance ?? 0)),
-                intensity: $this->intensity($detail->trimp_edwards, $detail->moving_time),
-            );
-        }
-
-        return $items;
+                return new VerdictTimelineItem(
+                    activityId: (int) $line->activity_id,
+                    mood: $line->mood,
+                    moodFace: $this->moodFace($line->mood),
+                    oneline: (string) $speechByActivity->get($line->activity_id),
+                    startedAt: $detail->start_date_local,
+                    distanceKm: DistanceFormatter::km((float) ($detail->distance ?? 0)),
+                    intensity: $this->intensity($detail->trimp_edwards, $detail->moving_time),
+                );
+            })
+            ->filter()
+            ->all());
     }
 
     /**

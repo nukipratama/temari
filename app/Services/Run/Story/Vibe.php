@@ -133,18 +133,14 @@ class Vibe
             ->whereNotNull('stream_summary')
             ->get(['stream_summary']);
 
-        $samples = [];
-        foreach ($rows as $row) {
-            $decoupling = StreamSummary::fromArray($row->streamSummary())->decouplingPct();
-            if ($decoupling !== null) {
-                $samples[] = $decoupling;
-            }
-        }
+        $samples = $rows
+            ->map(fn (ActivityDetail $row): ?float => StreamSummary::fromArray($row->streamSummary())->decouplingPct())
+            ->filter(fn (?float $decoupling): bool => $decoupling !== null);
 
-        if ($samples === []) {
+        if ($samples->isEmpty()) {
             return null;
         }
 
-        return array_sum($samples) / count($samples);
+        return $samples->avg();
     }
 }
