@@ -9,21 +9,22 @@ import { usePopover } from '@/hooks/usePopover';
 const ITEM_CLASS =
     'pressable flex w-full items-center gap-2.5 px-4 py-2.5 text-left font-sans text-sm text-ink transition hover:bg-cream-deep';
 
+interface UserMenuProps {
+    name: string;
+    avatarUrl: string | null;
+}
+
 /**
  * Avatar button that opens a dropdown with the signed-in name, a link to
  * Pengaturan, and logout. Shared by the desktop `TopNav` and the mobile
  * `MobileTopBar`, so both account actions are one tap from every page on every
- * layout — settings used to be a row buried at the bottom of Aku, which meant
- * leaving whatever you were doing to reach it.
+ * layout.
  *
  * Deliberately NOT an ARIA menu: it is a disclosure popover, so the items stay
  * a plain Link and button rather than gaining `role="menuitem"`. A test pins
  * this.
  */
-export default function UserMenu({
-    name,
-    avatarUrl,
-}: Readonly<{ name: string; avatarUrl: string | null }>) {
+export default function UserMenu({ name, avatarUrl }: Readonly<UserMenuProps>) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const close = useCallback(() => setOpen(false), []);

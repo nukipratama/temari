@@ -54,17 +54,18 @@ export function formatDurationHMS(seconds: number | null | undefined): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// Builds a Date from the string's own Y-M-D[ H:M:S] components in the runtime's
-// local zone, ignoring any trailing Z/offset. Backend datetimes here are naive
-// wall-clock values (Strava's start_date_local) that Laravel serializes with a
-// misleading trailing Z — `new Date(iso)` would reinterpret them as UTC and
-// shift the date/hour for non-WIB viewers. Null when the string doesn't lead
-// with a date.
+// Matches a naive Y-M-D[ H:M[:S]] wall-clock string component-by-component,
+// ignoring any trailing Z/offset. Backend datetimes here (Strava's
+// start_date_local) are naive wall-clock values that Laravel serializes with
+// a misleading trailing Z — `new Date(iso)` would reinterpret them as UTC and
+// shift the date/hour for non-WIB viewers. Shared by every naive-datetime
+// formatter below so that invariant is enforced in one place.
+const NAIVE_DATETIME_RE =
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/;
+
+// Null when the string doesn't lead with a date.
 export function parseNaiveLocalDate(iso: string): Date | null {
-    const match =
-        /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(
-            iso,
-        );
+    const match = NAIVE_DATETIME_RE.exec(iso);
     if (!match) return null;
     const [, y, m, d, h, min, s] = match;
     return new Date(
@@ -247,23 +248,20 @@ export function formatShortDateId(iso: string | null | undefined): string {
     return `${Number(d)} ${ID_MONTH_SHORT[Number(m) - 1]} ${y}`;
 }
 
-// "06.52" — zero-padded HH.MM read straight from the naive datetime string, so
-// the as-recorded wall-clock renders identically in any runtime timezone. Never
-// goes through `new Date(iso)`, which would parse a trailing Z/offset as UTC and
-// shift the hour. Returns null when the string carries no time component.
+// "06.52" — zero-padded HH.MM via NAIVE_DATETIME_RE (see parseNaiveLocalDate).
+// Null when the string carries no time component.
 export function formatNaiveTimeId(
     iso: string | null | undefined,
 ): string | null {
     if (!iso) return null;
-    const match = /T(\d{2}):(\d{2})/.exec(iso);
-    if (!match) return null;
-    const [, h, m] = match;
+    const match = NAIVE_DATETIME_RE.exec(iso);
+    if (!match?.[4]) return null;
+    const [, , , , h, m] = match;
     return `${h}.${m}`;
 }
 
-// "19 Feb 2026 · 06.52" — short date + naive wall-clock time, both parsed from
-// the string components so neither the date nor the hour shifts under a non-WIB
-// runtime. Drops the time half when the string is date-only.
+// "19 Feb 2026 · 06.52" — short date + naive wall-clock time. Drops the time
+// half when the string is date-only.
 export function formatShortDateTimeId(iso: string | null | undefined): string {
     const date = formatShortDateId(iso);
     const time = formatNaiveTimeId(iso);
@@ -282,10 +280,8 @@ export function monthsSinceId(iso: string | null | undefined): number | null {
     );
 }
 
-// Local-zone Monday-of-week. Parses the iso by its own wall-clock components
-// (not new Date(iso), which reads a trailing Z/offset as UTC and can roll a
-// late-evening run into the next day's week for a non-UTC viewer) so a run is
-// always bucketed into the week it was actually run. Falls back to new Date for
+// Local-zone Monday-of-week, via parseNaiveLocalDate so a run is always
+// bucketed into the week it was actually run. Falls back to new Date for
 // inputs the naive parser can't read.
 export function mondayOf(iso: string): Date {
     const d = parseNaiveLocalDate(iso) ?? new Date(iso);
