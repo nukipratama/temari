@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders\Demo;
 
 use App\Actions\Gamification\GrantEligibleUnlocksAction;
+use App\Actions\Run\Story\ResolveFeaturedKartuAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
@@ -27,7 +28,6 @@ use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
-use App\Services\Run\Story\FeaturedKartuResolver;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
@@ -57,7 +57,7 @@ class DemoRunSeeder
         private readonly AnalysisService $analysisService,
         private readonly RuleBasedNarrationFiller $filler,
         private readonly GrantEligibleUnlocksAction $unlockEngine,
-        private readonly FeaturedKartuResolver $featuredKartu,
+        private readonly ResolveFeaturedKartuAction $featuredKartu,
         private readonly PolylineEncoder $polylineEncoder = new PolylineEncoder(),
     ) {
     }
@@ -321,7 +321,7 @@ class DemoRunSeeder
         // so the demo must stage it here or the hero falls back to "Belum dibaca".
         // Keyed by the featured card id (matching BriefingComposer) so the staged
         // quote lines up with the card the hero actually shows.
-        $featuredCard = $this->featuredKartu->resolve($user);
+        $featuredCard = ($this->featuredKartu)($user);
         if ($featuredCard !== null) {
             $this->analysisService->request(
                 subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,

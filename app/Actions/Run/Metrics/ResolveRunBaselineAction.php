@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Run\Metrics;
+namespace App\Actions\Run\Metrics;
 
 use App\Models\ActivityDetail;
+use App\Services\Run\Metrics\PaceCalculator;
+use App\Services\Run\Metrics\StreamSummary;
 use Illuminate\Support\Carbon;
 
 /**
@@ -14,7 +16,7 @@ use Illuminate\Support\Carbon;
  * against the user's own norm ("faster than your 28-day average"). Returns null
  * when the window holds no comparable runs.
  */
-class RunBaseline
+class ResolveRunBaselineAction
 {
     public const int WINDOW_DAYS = 28;
 
@@ -37,7 +39,7 @@ class RunBaseline
     /**
      * @return array{runs:int, avg_pace_sec_per_km:int|null, avg_hr:int|null, avg_decoupling_pct:float|null, avg_trimp:int|null, trimp_runs:int}|null
      */
-    public function forUserAsOf(int $userId, Carbon $asOf, ?int $excludeActivityId = null): ?array
+    public function __invoke(int $userId, Carbon $asOf, ?int $excludeActivityId = null): ?array
     {
         $key = $userId.'|'.$asOf->toIso8601String().'|'.($excludeActivityId ?? '-');
         if (array_key_exists($key, $this->memo)) {

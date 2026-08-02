@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use App\Actions\Gamification\GrantEligibleUnlocksAction;
+use App\Actions\Run\Story\BuildCardContextAction;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -17,7 +18,7 @@ class RunCardFactory
     public function __construct(
         private readonly SpecialMoves $specialMoves,
         private readonly GrantEligibleUnlocksAction $unlockEngine,
-        private readonly CardContextBuilder $contextBuilder,
+        private readonly BuildCardContextAction $contextBuilder,
         private readonly BadgeEvaluator $badgeEvaluator,
         private readonly RarityScorer $rarityScorer,
     ) {
@@ -34,7 +35,7 @@ class RunCardFactory
         // not retroactively downgrade this already-earned card on a rebuild.
         $prSet = ($existing !== null && $existing->pr_set) || $this->hasPrFromThisActivity($activity);
 
-        $context = $this->contextBuilder->for($activity, $detail);
+        $context = ($this->contextBuilder)($activity, $detail);
 
         // Badges compute first so rarity can derive from badge count.
         $badges = $this->badgeEvaluator->evaluate($detail, $summary, $context);

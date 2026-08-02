@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Run\Story;
+namespace App\Actions\Run\Story;
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Services\Run\Story\CardContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  * predicate. See {@see self::historyCounts()} for the per-count analyzed_at
  * treatment.
  */
-final class CardContextBuilder
+final class BuildCardContextAction
 {
     private const int WEEKLY_CONSISTENCY_RUNS = 3;
 
@@ -34,7 +35,7 @@ final class CardContextBuilder
     /** How far back the streak scan reaches, in distinct run days. */
     private const int STREAK_LOOKBACK_DAYS = 30;
 
-    public function for(Activity $activity, ActivityDetail $detail): CardContext
+    public function __invoke(Activity $activity, ActivityDetail $detail): CardContext
     {
         $startDate = $activity->detail?->start_date_local;
         $bracket = $this->reachedBracket($detail);

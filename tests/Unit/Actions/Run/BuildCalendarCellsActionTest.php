@@ -6,7 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\User;
-use App\Services\Run\CalendarBuilder;
+use App\Actions\Run\BuildCalendarCellsAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -24,7 +24,7 @@ beforeEach(function (): void {
         'monthEnd' => $monthEnd,
     ];
 
-    $this->buildCells = fn (User $user): array => new CalendarBuilder()->buildCells(
+    $this->buildCells = fn (User $user): array => new BuildCalendarCellsAction()(
         $user,
         $this->grid['gridStart'],
         $this->grid['gridEnd'],

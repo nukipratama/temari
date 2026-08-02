@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Run;
+namespace App\Actions\Run;
 
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
@@ -18,12 +18,12 @@ use Illuminate\Support\Collection;
  * frontend renders rich detail without a second query. The grid spans whole
  * Mon-Sun weeks ($gridStart..$gridEnd) padded around the visible month.
  */
-class CalendarBuilder
+class BuildCalendarCellsAction
 {
     /**
      * @return array<int, array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, activity_id: int|null}>
      */
-    public function buildCells(User $user, Carbon $gridStart, Carbon $gridEnd, Carbon $monthStart, Carbon $monthEnd): array
+    public function __invoke(User $user, Carbon $gridStart, Carbon $gridEnd, Carbon $monthStart, Carbon $monthEnd): array
     {
         $details = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')

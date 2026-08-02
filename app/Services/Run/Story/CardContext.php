@@ -6,8 +6,8 @@ namespace App\Services\Run\Story;
 
 /**
  * The whole-history facts a card needs, resolved once per build by
- * {@see CardContextBuilder} so {@see BadgeEvaluator} and {@see RarityScorer}
- * stay pure functions of the run in front of them.
+ * {@see \App\Actions\Run\Story\BuildCardContextAction} so {@see BadgeEvaluator}
+ * and {@see RarityScorer} stay pure functions of the run in front of them.
  */
 final readonly class CardContext
 {

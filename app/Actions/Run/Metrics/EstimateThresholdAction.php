@@ -2,14 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Run\Metrics;
+namespace App\Actions\Run\Metrics;
 
-use Illuminate\Database\Eloquent\Collection;
 use App\Models\ActivityDetail;
 use App\Models\User;
+use App\Services\Run\Metrics\PaceFormatter;
+use App\Services\Run\Metrics\StreamSummary;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
-class ThresholdEstimator
+class EstimateThresholdAction
 {
     private const int LOOKBACK_DAYS = 60;
 
@@ -18,7 +20,7 @@ class ThresholdEstimator
     /**
      * @return array{pace_sec: float, confidence: 'high'|'medium'|'low', sample_size: int}|null
      */
-    public function estimate(User $user, ?Carbon $asOf = null): ?array
+    public function __invoke(User $user, ?Carbon $asOf = null): ?array
     {
         $cutoff = ($asOf ?? Carbon::today())->copy()->subDays(self::LOOKBACK_DAYS)->toDateString();
 
