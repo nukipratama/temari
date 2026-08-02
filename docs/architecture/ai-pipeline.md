@@ -87,7 +87,7 @@ A stalled block is re-kicked hourly by the `ai:self-heal` command ([SelfHealComm
 
 ## Deferred recaps (windowing)
 
-The still-open current week/month never narrates on demand — its recap row is staged `Pending` (via `AnalysisService::requestDeferred()`) and filled only by the scheduled command once the period closes (`ai:weekly-recap` Monday 00:01, `ai:monthly-recap` on the 1st), in [routes/console.php](routes/console.php). `AnalysisController::trigger()` guards this with `isStillOpenRecapPeriod()`, returning the inert row unchanged. A Pending recap for the open window is therefore expected, not a backlog. See [[deferred-recap-windowing]].
+The still-open current week/month never narrates on demand — its recap row is staged `Pending` (via `AnalysisService::requestDeferred()`) and filled only by the scheduled command once the period closes (`ai:weekly-recap` Monday 00:01, `ai:monthly-recap` on the 1st), in [routes/console.php](routes/console.php). `AnalysisController::trigger()` guards this with `AnalysisService::isStillOpenRecapPeriod()`, returning the inert row unchanged. A Pending recap for the open window is therefore expected, not a backlog. See [[deferred-recap-windowing]].
 
 ## Manual (never auto) retry
 

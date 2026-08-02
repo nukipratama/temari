@@ -49,8 +49,9 @@ guarantee structural rather than incidental — `markDone()` skips both the
 cooldown and the notification fan-out when dispatch is suppressed, so the demo
 block stays instantly re-triggerable and sends nothing.
 
-[AnalysisController::trigger](app/Http/Controllers/Api/AnalysisController.php#L63)
-branches on `is_demo` after the ownership, still-open-recap and cooldown guards,
+[AnalysisController::trigger](app/Http/Controllers/Api/AnalysisController.php#L50)
+branches on [`AnalysisService::shouldServeRuleBased`](app/Services/AI/AnalysisService.php)
+(`is_demo`) after the ownership, still-open-recap and cooldown guards,
 and *before* the chain-resume and zone-recompute paths — both of those exist only
 to shape a real narration. The non-demo path is untouched.
 
