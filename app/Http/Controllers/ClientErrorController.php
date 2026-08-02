@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\ReportClientErrorRequest;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -19,14 +19,9 @@ class ClientErrorController extends Controller
 {
     private const int MAX_TRACE_CHARS = 2000;
 
-    public function __invoke(Request $request): Response
+    public function __invoke(ReportClientErrorRequest $request): Response
     {
-        $validated = $request->validate([
-            'message' => 'required|string|max:1000',
-            'stack' => 'nullable|string|max:5000',
-            'url' => 'nullable|string|max:2000',
-            'componentStack' => 'nullable|string|max:5000',
-        ]);
+        $validated = $request->validated();
 
         Log::channel('client-errors')->warning('client-error', [
             'message' => $validated['message'],

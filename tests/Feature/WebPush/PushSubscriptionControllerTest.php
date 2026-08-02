@@ -35,6 +35,12 @@ it('rejects a subscription pointed at an internal SSRF host', function (): void 
     $this->assertDatabaseCount('push_subscriptions', 0);
 });
 
+it('rejects a delete request missing the endpoint', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->deleteJson('/profil/push', [])->assertStatus(422);
+});
+
 it("deletes the user's own push subscription", function (): void {
     $user = User::factory()->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'k', 't');
