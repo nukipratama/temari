@@ -29,8 +29,7 @@ class LlmCostCalculator
      * `$cachedTokens` is the slice of `$promptTokens` the provider served from
      * its prompt cache. It only changes the bill when the deployment declares a
      * `cached_input_per_1m`; without one it bills as ordinary input, so a
-     * deployment that has not been given a cached rate costs exactly what it did
-     * before this argument existed.
+     * deployment that has not been given a cached rate is unaffected.
      *
      * Reasoning tokens need no handling here: the provider already counts them
      * inside `$completionTokens`, so they bill at the output rate by arriving.
