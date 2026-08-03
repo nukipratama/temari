@@ -40,8 +40,6 @@ set_env_var() {
 set_env_var APP_PORT "$APP_PORT"
 set_env_var VITE_PORT "$VITE_PORT"
 set_env_var APP_URL "http://localhost:${APP_PORT}"
-set_env_var FORWARD_DB_PORT 0
-set_env_var FORWARD_REDIS_PORT 0
 
 docker compose up -d
 docker compose exec -u root app chown -R www-data:www-data node_modules /var/cache/composer /var/cache/npm

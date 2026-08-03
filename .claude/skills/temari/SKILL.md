@@ -191,17 +191,15 @@ Code quality (pint/phpstan/rector/tsc) runs on **pre-commit**; coverage runs in 
 Running 2-3 Claude Code agents concurrently, each in its own `git worktree`, is safe — Compose
 derives its project name (containers/network/volumes) from the checkout's **directory basename**,
 and `compose.yaml` has no hardcoded `name:`/`COMPOSE_PROJECT_NAME`, so every worktree already gets
-its own isolated stack for free. The only real collision is **fixed host ports**
-(`.env.example`'s `APP_PORT`/`VITE_PORT`/`FORWARD_DB_PORT`/`FORWARD_REDIS_PORT`), which two
-worktrees would both try to bind off an unmodified `.env`. No changes needed to `compose.yaml` or
-`.githooks/pre-commit` — the pre-commit hook's `docker compose ps` check already resolves per-cwd
-correctly.
+its own isolated stack for free. `mysql`/`redis` are never published to the host at all (only
+reached via `sail mysql`/`sail artisan tinker`/`docker exec`), so the only real collision is
+**fixed host ports** (`.env.example`'s `APP_PORT`/`VITE_PORT`), which two worktrees would both try
+to bind off an unmodified `.env`. No changes needed to `compose.yaml` or `.githooks/pre-commit` —
+the pre-commit hook's `docker compose ps` check already resolves per-cwd correctly.
 
 Workflow: `EnterWorktree name=<slice>` → `./scripts/worktree-setup.sh <slot 1|2|3>` (its own
-`APP_PORT`/`VITE_PORT` off a static slot table — main stays 7001/7002, slots use 701x/702x —
-`FORWARD_DB_PORT`/`FORWARD_REDIS_PORT` set to `0`, an ephemeral host port, since DB/Redis are only
-ever reached via `sail mysql`/`sail artisan tinker` execing into the container, never from the
-host — then brings the stack up itself and fixes cache-volume ownership) → `vendor/` is empty on a
+`APP_PORT`/`VITE_PORT` off a static slot table — main stays 7001/7002, slots use 701x/702x — then
+brings the stack up itself and fixes cache-volume ownership) → `vendor/` is empty on a
 fresh worktree, so `vendor/bin/sail` doesn't exist yet: install once with plain
 `docker compose exec -T app composer install`, then `./vendor/bin/sail npm ci` (`sail` works for
 everything from here on) → normal fast-feedback ladder → `ExitWorktree action=remove|keep`. That's
