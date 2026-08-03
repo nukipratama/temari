@@ -52,8 +52,6 @@ services:
             - '--innodb-log-buffer-size=16M'
             - '--max-connections=50'
             - '--performance-schema=OFF'
-        ports:
-            - '${FORWARD_DB_PORT:-3306}:3306'
         environment:
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
             MYSQL_ROOT_HOST: '%'
@@ -71,8 +69,6 @@ services:
             - './docker/mysql/init:/docker-entrypoint-initdb.d:ro'
     redis:
         <<: *redis-base
-        ports:
-            - '${FORWARD_REDIS_PORT:-6379}:6379'
         volumes:
             - 'sail-redis:/data'
     mysql_test:
