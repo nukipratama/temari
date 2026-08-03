@@ -63,6 +63,11 @@ if [ -n "$STAGED_PHP" ]; then
 fi
 
 if [ -n "$STAGED_TS" ]; then
+  # shellcheck disable=SC2086
+  ./vendor/bin/sail exec -T app npx prettier --write $STAGED_TS
+  # shellcheck disable=SC2086
+  git add $STAGED_TS
+
   # tsc + eslint both run full (not staged-only): partial eslint missed
   # cross-file/pre-existing errors and let 2 lint errors reach main.
   ./vendor/bin/sail exec -T app npm run typecheck
