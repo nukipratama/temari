@@ -33,10 +33,9 @@ class StreamAnalysis
 
     /**
      * How much faster the second half must average before a run counts as a
-     * negative split. A bare `>` lets per-km noise coin-flip into the badge; so
-     * did the original 1.5%, which fired on a third of all runs. Fitted against
-     * real split data: 7% lands it near 1 run in 8, so finishing strong stays a
-     * deliberate act rather than the default outcome.
+     * negative split. A bare `>` lets per-km noise coin-flip into the badge;
+     * fitted against real split data, 7% lands it near 1 run in 8, so finishing
+     * strong stays a deliberate act rather than the default outcome.
      */
     private const float NEGATIVE_SPLIT_MARGIN = 1.07;
 

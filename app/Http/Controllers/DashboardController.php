@@ -39,13 +39,9 @@ class DashboardController extends Controller
         // it, so a closure would silently stop persisting it.
         $this->resolveGreeting($user, $temari, $vibe->current($user, $today), $today);
 
-        // Resolved lazily, and memoized because three props below need it.
-        //
-        // `useAnalysisTrigger` polls this page every 3-15s while a briefing
-        // analysis generates, and every consumer asks for `briefing` alone.
-        // Behind closures, Inertia skips the props the poll does not name — the
-        // training load, the weekly snapshots and this run fetch with its
-        // polylines and stream summaries no longer re-run on each tick.
+        // Deferred behind a closure (Inertia's `useAnalysisTrigger` poll skips
+        // any prop the partial reload does not name) and memoized (three props
+        // below share this one query set).
         /** @var Collection<int, ActivityDetail>|null $loadedRecentRuns */
         $loadedRecentRuns = null;
         $loadRecentRuns = function () use ($user, &$loadedRecentRuns): Collection {

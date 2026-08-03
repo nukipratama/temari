@@ -23,14 +23,10 @@ class StreakRemindCommand extends Command
     {
         $weekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
-        // Users reachable on *any* channel who haven't turned the notification
-        // master switch off (a missing preference row means all-on).
-        // Iterating users rather than Telegram connections is what lets a
-        // push-only user be nudged at all; via() re-checks per notifiable.
-        //
-        // The reachability filter has to know about channel mutes, or this
-        // enqueues a notification per candidate whose via() then returns [] —
-        // silent no-op work every Saturday rather than a visible failure.
+        // Reachable on *any* channel (via() re-checks per notifiable) and hasn't
+        // turned the master switch off (missing preference row means all-on).
+        // scopeReachable() must know about channel mutes, or this silently
+        // enqueues notifications whose via() then returns [].
         $users = User::query()
             ->where('is_demo', false)
             ->whereDoesntHave('notificationPreference', fn (Builder $query): Builder => $query->where('notifications_enabled', false))

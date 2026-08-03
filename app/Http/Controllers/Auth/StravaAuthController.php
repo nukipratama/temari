@@ -85,14 +85,10 @@ class StravaAuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
 
-        // Drops the AES key Inertia keeps in sessionStorage, which makes every
-        // page already written to the browser's history state undecryptable.
-        // Without it the back button re-renders the last authenticated page
-        // straight from history with no request to us at all.
-        //
-        // Deliberately AFTER invalidate(): clearHistory() sets a session flag
-        // that the next Inertia response pulls, so invalidating afterwards
-        // would throw it away before the redirect to /login could carry it.
+        // Drops the AES key Inertia keeps in sessionStorage, so the back button
+        // can't re-render an authenticated page straight from history. Must run
+        // after invalidate(): the flag it sets rides the next Inertia response,
+        // so invalidating afterwards would throw it away before the redirect.
         Inertia::clearHistory();
 
         return redirect()->route('login');
