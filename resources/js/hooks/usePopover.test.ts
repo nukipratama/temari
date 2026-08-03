@@ -1,5 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { usePopover } from './usePopover';
 
 let container: HTMLDivElement;
@@ -56,7 +57,8 @@ describe('usePopover', () => {
 
     it('restores focus to the trigger on close', () => {
         const { rerender } = renderHook(
-            ({ open }: { open: boolean }) => usePopover(open, makeRef(), vi.fn()),
+            ({ open }: { open: boolean }) =>
+                usePopover(open, makeRef(), vi.fn()),
             { initialProps: { open: true } },
         );
         inside.focus();

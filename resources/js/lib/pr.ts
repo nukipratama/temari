@@ -1,7 +1,14 @@
 import { formatDurationHMS } from '@/lib/pace';
 
 /** PR categories where the recorded value is a duration (e.g. fastest 5km). */
-const DISTANCE_CATEGORIES = new Set(['1km', '5km', '10km', '15km', 'half_marathon', 'marathon']);
+const DISTANCE_CATEGORIES = new Set([
+    '1km',
+    '5km',
+    '10km',
+    '15km',
+    'half_marathon',
+    'marathon',
+]);
 
 export const PR_CATEGORY_LABELS: Record<string, string> = {
     '1km': '1 km',

@@ -1,11 +1,23 @@
+import type { DeploymentRow } from '@/pages/AiUsage/types';
+
 import EmptyState from '@/components/aiusage/EmptyState';
 import DataTable, { Td } from '@/components/ui/DataTable';
 import { fmt, formatCost } from '@/pages/AiUsage/helpers';
-import type { DeploymentRow } from '@/pages/AiUsage/types';
 
-const COLUMNS = ['Deployment', 'Harga in/out /1M', 'Panggilan', 'Prompt', 'Completion', 'Total', 'Biaya'];
+const COLUMNS = [
+    'Deployment',
+    'Harga in/out /1M',
+    'Panggilan',
+    'Prompt',
+    'Completion',
+    'Total',
+    'Biaya',
+];
 
-export default function DeploymentTable({ rows, currency }: Readonly<{ rows: DeploymentRow[]; currency: string }>) {
+export default function DeploymentTable({
+    rows,
+    currency,
+}: Readonly<{ rows: DeploymentRow[]; currency: string }>) {
     return (
         <DataTable
             icon="mdi:server"
@@ -29,7 +41,9 @@ export default function DeploymentTable({ rows, currency }: Readonly<{ rows: Dep
                     <Td>{fmt(row.prompt)}</Td>
                     <Td>{fmt(row.completion)}</Td>
                     <Td className="font-semibold text-ink">{fmt(row.total)}</Td>
-                    <Td className="font-semibold text-ink">{formatCost(row.cost, currency)}</Td>
+                    <Td className="font-semibold text-ink">
+                        {formatCost(row.cost, currency)}
+                    </Td>
                 </>
             )}
         />

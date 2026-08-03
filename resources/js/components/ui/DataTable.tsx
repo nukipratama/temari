@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+
 import SectionHeading from '@/components/SectionHeading';
 import Card from '@/components/ui/Card';
 import { cn } from '@/lib/cn';
@@ -31,18 +32,33 @@ export default function DataTable<T>({
 }: Readonly<DataTableProps<T>>) {
     return (
         <section className="mt-10">
-            <SectionHeading icon={icon} title={title} subtitle={subtitle} tone={tone} />
+            <SectionHeading
+                icon={icon}
+                title={title}
+                subtitle={subtitle}
+                tone={tone}
+            />
 
             {rows.length === 0 ? (
                 emptyState
             ) : (
                 <div className="relative mt-4">
-                    <Card tone="cream" padding="none" className="overflow-x-auto bg-surface-elev">
-                        <table className="w-full text-sm tabular-nums" style={{ minWidth }}>
+                    <Card
+                        tone="cream"
+                        padding="none"
+                        className="overflow-x-auto bg-surface-elev"
+                    >
+                        <table
+                            className="w-full text-sm tabular-nums"
+                            style={{ minWidth }}
+                        >
                             <thead>
                                 <tr className="border-b border-line text-left text-xs text-ink-3">
                                     {columns.map((label) => (
-                                        <th key={label} className="px-5 py-3 font-semibold">
+                                        <th
+                                            key={label}
+                                            className="px-5 py-3 font-semibold"
+                                        >
                                             {label}
                                         </th>
                                     ))}
@@ -50,7 +66,10 @@ export default function DataTable<T>({
                             </thead>
                             <tbody>
                                 {rows.map((row) => (
-                                    <tr key={rowKey(row)} className="border-b border-line last:border-b-0">
+                                    <tr
+                                        key={rowKey(row)}
+                                        className="border-b border-line last:border-b-0"
+                                    >
                                         {renderRow(row)}
                                     </tr>
                                 ))}
@@ -60,13 +79,21 @@ export default function DataTable<T>({
                     {/* Scroll hint for narrow viewports. Must be a sibling of the
                         overflow-x-auto card, not a descendant — a descendant scrolls away
                         with the table content instead of staying pinned to the visible edge. */}
-                    <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface-elev to-transparent" />
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface-elev to-transparent"
+                    />
                 </div>
             )}
         </section>
     );
 }
 
-export function Td({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
-    return <td className={cn('px-5 py-3 text-ink-2', className)}>{children}</td>;
+export function Td({
+    children,
+    className,
+}: Readonly<{ children: ReactNode; className?: string }>) {
+    return (
+        <td className={cn('px-5 py-3 text-ink-2', className)}>{children}</td>
+    );
 }

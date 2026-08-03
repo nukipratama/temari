@@ -1,14 +1,21 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import SplitsTable from './SplitsTable';
+
 import type { StreamSummaryPartial, StreamSummaryPerKm } from '@/types/inertia';
+
+import SplitsTable from './SplitsTable';
 
 const rows: StreamSummaryPerKm[] = [
     { km: 1, pace: '6:00', avg_hr: 150, avg_cadence_spm: 170 },
     { km: 2, pace: '5:45', avg_hr: 155, avg_cadence_spm: 173 },
 ];
 
-const partial: StreamSummaryPartial = { distance_m: 700, pace: '4:00', avg_hr: 158, avg_cadence_spm: 168 };
+const partial: StreamSummaryPartial = {
+    distance_m: 700,
+    pace: '4:00',
+    avg_hr: 158,
+    avg_cadence_spm: 168,
+};
 
 function kmLessRow(pace: string): StreamSummaryPerKm {
     return { km: null as unknown as number, pace };
@@ -32,13 +39,22 @@ describe('SplitsTable', () => {
 
     it('tints the fastest row and zebra-stripes the rest', () => {
         const { container } = render(<SplitsTable rows={rows} />);
-        expect(container.querySelector('.bg-horizon\\/\\[0\\.08\\]')).not.toBeNull();
-        expect(container.querySelector('.bg-sky\\/\\[0\\.03\\]')).not.toBeNull();
+        expect(
+            container.querySelector('.bg-horizon\\/\\[0\\.08\\]'),
+        ).not.toBeNull();
+        expect(
+            container.querySelector('.bg-sky\\/\\[0\\.03\\]'),
+        ).not.toBeNull();
     });
 
     it('zebra-stripes an odd row that is not the fastest km', () => {
         const { container } = render(
-            <SplitsTable rows={[{ km: 1, pace: '5:45' }, { km: 2, pace: '6:00' }]} />,
+            <SplitsTable
+                rows={[
+                    { km: 1, pace: '5:45' },
+                    { km: 2, pace: '6:00' },
+                ]}
+            />,
         );
         expect(container.querySelector('.bg-cream-deep\\/30')).not.toBeNull();
     });
@@ -55,7 +71,9 @@ describe('SplitsTable', () => {
     });
 
     it('keys two km-less rows positionally so their React keys do not collide', () => {
-        const duplicateKeyWarning = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const duplicateKeyWarning = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {});
         render(<SplitsTable rows={[kmLessRow('6:00'), kmLessRow('6:10')]} />);
         expect(screen.getAllByText('KM ?')).toHaveLength(2);
         expect(duplicateKeyWarning).not.toHaveBeenCalled();
@@ -74,23 +92,37 @@ describe('SplitsTable', () => {
 
     it('drops the "sisa" note from the legend when there is no partial', () => {
         render(<SplitsTable rows={rows} />);
-        expect(screen.queryByText(/putus-putus = sisa/)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/putus-putus = sisa/),
+        ).not.toBeInTheDocument();
     });
 
     it('still renders for a sub-1km run that has only a partial', () => {
-        render(<SplitsTable rows={[]} partial={{ distance_m: 800, pace: '5:00' }} />);
+        render(
+            <SplitsTable
+                rows={[]}
+                partial={{ distance_m: 800, pace: '5:00' }}
+            />,
+        );
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
         expect(screen.getByText('0.8 KM')).toBeInTheDocument();
     });
 
     it('dashes the HR and cadence cells of a partial that recorded neither', () => {
-        render(<SplitsTable rows={[]} partial={{ distance_m: 800, pace: '5:00' }} />);
+        render(
+            <SplitsTable
+                rows={[]}
+                partial={{ distance_m: 800, pace: '5:00' }}
+            />,
+        );
         expect(screen.getByText('♡ —')).toBeInTheDocument();
         expect(screen.getByText('↻ —')).toBeInTheDocument();
     });
 
     it('passes the className through to the card', () => {
-        const { container } = render(<SplitsTable rows={rows} className="mt-10" />);
+        const { container } = render(
+            <SplitsTable rows={rows} className="mt-10" />,
+        );
         expect(container.querySelector('section')).toHaveClass('mt-10');
     });
 });

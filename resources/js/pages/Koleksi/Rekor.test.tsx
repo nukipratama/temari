@@ -1,7 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import KoleksiRekor from './Rekor';
+
 import { makeUser, setMockPage } from '@/test/setup';
+
+import KoleksiRekor from './Rekor';
 
 vi.mock('@/components/koleksi/MilestoneStrip', () => ({
     default: () => <div data-testid="milestone-strip" />,
@@ -9,11 +11,19 @@ vi.mock('@/components/koleksi/MilestoneStrip', () => ({
 
 vi.mock('@/components/run/SplitsSparkline', () => ({
     default: ({ partialPaceSec }: { partialPaceSec?: number | null }) => (
-        <div data-testid="splits-sparkline" data-partial={partialPaceSec ?? ''} />
+        <div
+            data-testid="splits-sparkline"
+            data-partial={partialPaceSec ?? ''}
+        />
     ),
 }));
 
-function pr(category: string, valueSec: number, id = 1, activityId: number | null = 99) {
+function pr(
+    category: string,
+    valueSec: number,
+    id = 1,
+    activityId: number | null = 99,
+) {
     return {
         id,
         user_id: 1,
@@ -49,7 +59,9 @@ describe('Koleksi/Rekor', () => {
     it('shows the empty state when no PRs exist, with a sync CTA', () => {
         render(<KoleksiRekor personalRecords={[]} />);
         expect(screen.getByText(/Belum ada PR/)).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /Sambungin Strava/i })).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: /Sambungin Strava/i }),
+        ).toBeInTheDocument();
     });
 
     it('hides the sync CTA on the empty state while a sync is already running', () => {
@@ -61,8 +73,12 @@ describe('Koleksi/Rekor', () => {
         });
         render(<KoleksiRekor personalRecords={[]} />);
         expect(screen.getByText(/Belum ada PR/)).toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: /Sambungin Strava/i })).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /sync/i })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: /Sambungin Strava/i }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /sync/i }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders the hero scoreboard for the highest distance PR', () => {
@@ -78,7 +94,11 @@ describe('Koleksi/Rekor', () => {
     it('renders the trophy wall for distance PRs', () => {
         render(
             <KoleksiRekor
-                personalRecords={[pr('5km', 1751, 1), pr('10km', 3500, 2), pr('half_marathon', 7200, 3)]}
+                personalRecords={[
+                    pr('5km', 1751, 1),
+                    pr('10km', 3500, 2),
+                    pr('half_marathon', 7200, 3),
+                ]}
                 featuredExtras={featuredExtras}
             />,
         );
@@ -88,7 +108,10 @@ describe('Koleksi/Rekor', () => {
     it('renders the pace ticker for effort PRs', () => {
         render(
             <KoleksiRekor
-                personalRecords={[pr('best_5min', 320, 10, null), pr('best_20min', 349, 11, null)]}
+                personalRecords={[
+                    pr('best_5min', 320, 10, null),
+                    pr('best_20min', 349, 11, null),
+                ]}
             />,
         );
         expect(screen.getByText(/Pace ticker/)).toBeInTheDocument();
@@ -107,8 +130,16 @@ describe('Koleksi/Rekor', () => {
             />,
         );
         const ticker = screen.getByText(/Pace ticker/).closest('section');
-        const labels = within(ticker!).getAllByText(/Best \d+ menit/).map((el) => el.textContent);
-        expect(labels).toEqual(['Best 5 menit', 'Best 10 menit', 'Best 20 menit', 'Best 30 menit', 'Best 60 menit']);
+        const labels = within(ticker!)
+            .getAllByText(/Best \d+ menit/)
+            .map((el) => el.textContent);
+        expect(labels).toEqual([
+            'Best 5 menit',
+            'Best 10 menit',
+            'Best 20 menit',
+            'Best 30 menit',
+            'Best 60 menit',
+        ]);
     });
 
     it('renders the featured PR context narrative when context_analysis is provided', () => {
@@ -124,17 +155,30 @@ describe('Koleksi/Rekor', () => {
                 discriminator: null,
             },
         };
-        render(<KoleksiRekor personalRecords={[featuredPr]} featuredExtras={featuredExtras} />);
-        expect(screen.getByText(/Tempo terbaru kamu konsisten/)).toBeInTheDocument();
+        render(
+            <KoleksiRekor
+                personalRecords={[featuredPr]}
+                featuredExtras={featuredExtras}
+            />,
+        );
+        expect(
+            screen.getByText(/Tempo terbaru kamu konsisten/),
+        ).toBeInTheDocument();
     });
 
     it('threads the trailing partial pace through to the sparkline', () => {
         render(
             <KoleksiRekor
                 personalRecords={[pr('5km', 1751)]}
-                featuredExtras={{ ...featuredExtras, splits_partial_pace_sec: 300 }}
+                featuredExtras={{
+                    ...featuredExtras,
+                    splits_partial_pace_sec: 300,
+                }}
             />,
         );
-        expect(screen.getByTestId('splits-sparkline')).toHaveAttribute('data-partial', '300');
+        expect(screen.getByTestId('splits-sparkline')).toHaveAttribute(
+            'data-partial',
+            '300',
+        );
     });
 });

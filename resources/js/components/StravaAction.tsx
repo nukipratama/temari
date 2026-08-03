@@ -1,5 +1,7 @@
-import { usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
+
+import { usePage } from '@inertiajs/react';
+
 import type { SharedProps } from '@/types/inertia';
 
 /**
@@ -8,7 +10,9 @@ import type { SharedProps } from '@/types/inertia';
  * happen; {@link StravaPausedBanner} carries the one explanation. Connecting is
  * not gated here: OAuth still completes, and it is the only way in.
  */
-export default function StravaAction({ children }: Readonly<{ children: ReactNode }>) {
+export default function StravaAction({
+    children,
+}: Readonly<{ children: ReactNode }>) {
     const paused = usePage<SharedProps>().props.stravaPaused ?? false;
 
     return paused ? null : <>{children}</>;

@@ -20,7 +20,12 @@ interface ToggleProps {
  * `role="switch"` with `aria-checked` rather than a checkbox, because the state
  * change takes effect immediately — there is no form to submit.
  */
-export default function Toggle({ label, checked, onChange, disabled = false }: Readonly<ToggleProps>) {
+export default function Toggle({
+    label,
+    checked,
+    onChange,
+    disabled = false,
+}: Readonly<ToggleProps>) {
     return (
         <button
             type="button"

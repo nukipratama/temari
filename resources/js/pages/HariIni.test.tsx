@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import HariIni from './HariIni';
-import { makeUser, setMockPage } from '@/test/setup';
+
 import type {
     ActivityDetail,
     BriefingResult,
@@ -10,6 +9,10 @@ import type {
     WeeklySnapshot,
 } from '@/types/inertia';
 
+import { makeUser, setMockPage } from '@/test/setup';
+
+import HariIni from './HariIni';
+
 const briefing: BriefingResult = {
     vibeState: 'pumped',
     vibeLabel: 'Membara',
@@ -17,7 +20,8 @@ const briefing: BriefingResult = {
     mascotVoice: {
         id: 4,
         status: 'done',
-        content: 'Tempo ringan, 35–45 menit.\n\nDua lari terakhirmu negatif-split, jadi hari ini boleh naik tipis.',
+        content:
+            'Tempo ringan, 35–45 menit.\n\nDua lari terakhirmu negatif-split, jadi hari ini boleh naik tipis.',
         type: 'briefing_mascot_voice',
         subject_type: 'briefing_user_day',
         subject_id: 1,
@@ -129,7 +133,14 @@ beforeEach(() => {
 
 describe('HariIni', () => {
     it('renders the editorial greeting with first name + vibe subtitle', () => {
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[]} />);
+        render(
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[]}
+            />,
+        );
         expect(screen.getByText(/Halo, Ada/)).toBeInTheDocument();
         // "membara" now appears both in the italic headline accent and as the
         // Vibe chip sub-label, so allow multiple matches.
@@ -137,36 +148,82 @@ describe('HariIni', () => {
     });
 
     it('renders the three vital chips (Vibe / Kesiapan / Recovery)', () => {
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
+        render(
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
+        );
         expect(screen.getByText('Vibe')).toBeInTheDocument();
         expect(screen.getByText('Kesiapan')).toBeInTheDocument();
         expect(screen.getByText('Recovery')).toBeInTheDocument();
     });
 
     it('shows the Temari read quote when mascotVoice is done', () => {
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[]} />);
+        render(
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[]}
+            />,
+        );
         expect(screen.getAllByText(/negatif-split/).length).toBeGreaterThan(0);
     });
 
     it('renders the featured hero kartu when a recentRun has an attached runCard', () => {
         render(
-            <HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />,
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
         );
-        expect(screen.getAllByText('Pembalik Keadaan').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Pembalik Keadaan').length).toBeGreaterThan(
+            0,
+        );
     });
 
     it('omits the hero panel when no recent run has a card', () => {
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[]} />);
-        expect(screen.queryByText(/Kartu andalan dari Temari/)).not.toBeInTheDocument();
+        render(
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[]}
+            />,
+        );
+        expect(
+            screen.queryByText(/Kartu andalan dari Temari/),
+        ).not.toBeInTheDocument();
     });
 
     it('shows the session title of the merged Temari voice', () => {
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
-        expect(screen.getByText(/Tempo ringan, 35–45 menit\./)).toBeInTheDocument();
+        render(
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
+        );
+        expect(
+            screen.getByText(/Tempo ringan, 35–45 menit\./),
+        ).toBeInTheDocument();
     });
 
     it('renders the Kondisi card with CTL / ATL / Strain / Monotony rows', () => {
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
+        render(
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
+        );
         ['Fondasi', 'Kelelahan', 'Beban', 'Variasi'].forEach((row) => {
             expect(screen.getByText(row)).toBeInTheDocument();
         });
@@ -174,19 +231,33 @@ describe('HariIni', () => {
 
     it('no longer renders a "Kartu terakhir" strip; the featured hero replaces it', () => {
         render(
-            <HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />,
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
         );
         // The kartu strip was removed from the dashboard. Cards now surface only
         // through the featured hero panel (eyebrow "Kartu andalan dari Temari").
         expect(screen.queryByText(/Kartu terakhir/i)).not.toBeInTheDocument();
-        expect(screen.getByText(/Kartu andalan dari Temari/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Kartu andalan dari Temari/),
+        ).toBeInTheDocument();
     });
 
     it('renders the featuredKartuVoice quote inside the hero panel', () => {
         render(
-            <HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />,
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
         );
-        expect(screen.getAllByText(/bukti kamu bisa lebih jauh/).length).toBeGreaterThan(0);
+        expect(
+            screen.getAllByText(/bukti kamu bisa lebih jauh/).length,
+        ).toBeGreaterThan(0);
     });
 
     it('renders without crashing when the Temari voice content is empty', () => {
@@ -194,7 +265,14 @@ describe('HariIni', () => {
             ...briefing,
             mascotVoice: { ...briefing.mascotVoice, content: '' },
         };
-        render(<HariIni briefing={emptyBriefing} load={load} snapshot={snapshot} recentRuns={[]} />);
+        render(
+            <HariIni
+                briefing={emptyBriefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[]}
+            />,
+        );
         expect(screen.getByText(/Halo, Ada/)).toBeInTheDocument();
     });
 
@@ -205,7 +283,12 @@ describe('HariIni', () => {
             mascotVoice: { ...briefing.mascotVoice, content: '\n\n   \n\n' },
         };
         render(
-            <HariIni briefing={blank} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />,
+            <HariIni
+                briefing={blank}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
         );
         // The section heading still renders; the body resolves to nothing.
         expect(screen.getByText('Kata Temari hari ini')).toBeInTheDocument();
@@ -214,12 +297,22 @@ describe('HariIni', () => {
     it('renders the Temari voice title-only when there is no body paragraph', () => {
         const titleOnly: BriefingResult = {
             ...briefing,
-            mascotVoice: { ...briefing.mascotVoice, content: '“Lari santai aja hari ini.”' },
+            mascotVoice: {
+                ...briefing.mascotVoice,
+                content: '“Lari santai aja hari ini.”',
+            },
         };
         render(
-            <HariIni briefing={titleOnly} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />,
+            <HariIni
+                briefing={titleOnly}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
         );
-        expect(screen.getByText(/Lari santai aja hari ini\./)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Lari santai aja hari ini\./),
+        ).toBeInTheDocument();
     });
 
     it('renders the Temari voice unclamped, with no expand toggle', () => {
@@ -228,9 +321,18 @@ describe('HariIni', () => {
             ...briefing,
             mascotVoice: { ...briefing.mascotVoice, content: longText },
         };
-        render(<HariIni briefing={longQuoteBriefing} load={load} snapshot={snapshot} recentRuns={[]} />);
+        render(
+            <HariIni
+                briefing={longQuoteBriefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[]}
+            />,
+        );
         expect(screen.getByText(longText)).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Baca selengkapnya' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Baca selengkapnya' }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders the "Target terdekat" goals when goalsSummary has closest goals', () => {
@@ -239,11 +341,29 @@ describe('HariIni', () => {
             completed: 1,
             closest: [
                 // whole numbers -> integer display, full progress capped at 100%
-                { id: 'g1', title: 'Lari 100 KM bulan ini', current: 100, target: 100, unit: 'km' },
+                {
+                    id: 'g1',
+                    title: 'Lari 100 KM bulan ini',
+                    current: 100,
+                    target: 100,
+                    unit: 'km',
+                },
                 // decimals -> toFixed(1) on both current and target
-                { id: 'g2', title: 'Half marathon', current: 12.5, target: 21.1, unit: 'km' },
+                {
+                    id: 'g2',
+                    title: 'Half marathon',
+                    current: 12.5,
+                    target: 21.1,
+                    unit: 'km',
+                },
                 // target 0 -> pct branch returns 0 (no divide-by-zero)
-                { id: 'g3', title: 'Target kosong', current: 0, target: 0, unit: 'sesi' },
+                {
+                    id: 'g3',
+                    title: 'Target kosong',
+                    current: 0,
+                    target: 0,
+                    unit: 'sesi',
+                },
             ],
         };
         setMockPage({
@@ -252,17 +372,30 @@ describe('HariIni', () => {
             demoLoginEnabled: false,
             goalsSummary,
         });
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
+        render(
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
+        );
         expect(screen.getByText('Target terdekat')).toBeInTheDocument();
         expect(screen.getByText('Lari 100 KM bulan ini')).toBeInTheDocument();
         expect(screen.getByText('Half marathon')).toBeInTheDocument();
         expect(screen.getByText('Target kosong')).toBeInTheDocument();
         // current/target sit in one span split by a "/" node; match the combined
         // text to confirm both the integer (100/100) and decimal (12.5/21.1) paths.
-        expect(screen.getByText((_, el) => el?.textContent === '100/100')).toBeInTheDocument();
-        expect(screen.getByText((_, el) => el?.textContent === '12.5/21.1')).toBeInTheDocument();
+        expect(
+            screen.getByText((_, el) => el?.textContent === '100/100'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText((_, el) => el?.textContent === '12.5/21.1'),
+        ).toBeInTheDocument();
         // target 0 -> "0/0", no NaN/Infinity from the divide-by-zero guard.
-        expect(screen.getByText((_, el) => el?.textContent === '0/0')).toBeInTheDocument();
+        expect(
+            screen.getByText((_, el) => el?.textContent === '0/0'),
+        ).toBeInTheDocument();
     });
 
     it('omits the goals section when goalsSummary has no closest goals', () => {
@@ -272,7 +405,14 @@ describe('HariIni', () => {
             demoLoginEnabled: false,
             goalsSummary: { total: 0, completed: 0, closest: [] },
         });
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
+        render(
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
+        );
         expect(screen.queryByText('Target terdekat')).not.toBeInTheDocument();
     });
 
@@ -295,7 +435,12 @@ describe('HariIni', () => {
 
     it('renders the last-run card with em-dash fallbacks when pace/trimp/weather/location absent', () => {
         render(
-            <HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[bareRun]} />,
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[bareRun]}
+            />,
         );
         // name falls back to "Lari"; pace + trimp both show the "—" placeholder.
         expect(screen.getByText('Lari')).toBeInTheDocument();
@@ -305,16 +450,35 @@ describe('HariIni', () => {
     });
 
     it('falls back to an empty first name and the default pose for an unknown vibe', () => {
-        setMockPage({ auth: { user: null }, flash: {}, demoLoginEnabled: false });
-        const oddBriefing = { ...briefing, vibeState: 'mysterious' as BriefingResult['vibeState'] };
-        render(<HariIni briefing={oddBriefing} load={load} snapshot={snapshot} recentRuns={[]} />);
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        const oddBriefing = {
+            ...briefing,
+            vibeState: 'mysterious' as BriefingResult['vibeState'],
+        };
+        render(
+            <HariIni
+                briefing={oddBriefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[]}
+            />,
+        );
         // greeting renders with no name, no crash on the missing pose mapping.
         expect(screen.getByText(/Halo,/)).toBeInTheDocument();
     });
 
     it('shows em-dash / empty vital chips and "belum cukup data" when load and snapshot are null', () => {
         render(
-            <HariIni briefing={briefing} load={null} snapshot={null} recentRuns={[detailWithCard]} />,
+            <HariIni
+                briefing={briefing}
+                load={null}
+                snapshot={null}
+                recentRuns={[detailWithCard]}
+            />,
         );
         // Kesiapan + Kondisi rows all collapse to the "—" placeholder.
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
@@ -324,8 +488,18 @@ describe('HariIni', () => {
     });
 
     it('falls back to streakLabel for the Recovery chip when recoveryHoursLabel is null', () => {
-        const noHours: BriefingResult = { ...briefing, recoveryHoursLabel: null };
-        render(<HariIni briefing={noHours} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
+        const noHours: BriefingResult = {
+            ...briefing,
+            recoveryHoursLabel: null,
+        };
+        render(
+            <HariIni
+                briefing={noHours}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
+        );
         expect(screen.getByText('Lari hari ini')).toBeInTheDocument();
     });
 
@@ -335,21 +509,41 @@ describe('HariIni', () => {
             recoveryHoursLabel: null,
             streakLabel: null,
         };
-        render(<HariIni briefing={onlyRecovery} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
+        render(
+            <HariIni
+                briefing={onlyRecovery}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
+        );
         expect(screen.getByText('Pemulihan: 41j')).toBeInTheDocument();
     });
 
     it('flips the "Saran lain" button to its pending label when triggered', async () => {
-        render(<HariIni briefing={briefing} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
+        render(
+            <HariIni
+                briefing={briefing}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
+        );
         const button = screen.getByRole('button', { name: 'Saran lain' });
         // trigger() flips `pending` synchronously before its fetch awaits, so the
         // re-render swaps the label to the in-flight copy.
         fireEvent.click(button);
-        expect(screen.getByRole('button', { name: 'Lagi mikir…' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Lagi mikir…' }),
+        ).toBeInTheDocument();
         // The global default fetch mock (a 404) still resolves for real, so the
         // trigger's catch/finally fires on a later microtask — wait for it to
         // settle back to the idle label instead of leaving it unmonitored.
-        await waitFor(() => expect(screen.getByRole('button', { name: 'Saran lain' })).toBeInTheDocument());
+        await waitFor(() =>
+            expect(
+                screen.getByRole('button', { name: 'Saran lain' }),
+            ).toBeInTheDocument(),
+        );
     });
 
     it('renders the Temari voice as a title + body when the text has two paragraphs', () => {
@@ -357,10 +551,18 @@ describe('HariIni', () => {
             ...briefing,
             mascotVoice: {
                 ...briefing.mascotVoice,
-                content: 'Tempo ringan hari ini.\n\nJaga pace di zona 2 selama 40 menit.',
+                content:
+                    'Tempo ringan hari ini.\n\nJaga pace di zona 2 selama 40 menit.',
             },
         };
-        render(<HariIni briefing={withBody} load={load} snapshot={snapshot} recentRuns={[detailWithCard]} />);
+        render(
+            <HariIni
+                briefing={withBody}
+                load={load}
+                snapshot={snapshot}
+                recentRuns={[detailWithCard]}
+            />,
+        );
         expect(screen.getByText('Tempo ringan hari ini.')).toBeInTheDocument();
         expect(screen.getByText(/Jaga pace di zona 2/)).toBeInTheDocument();
     });

@@ -1,0 +1,36 @@
+name: Setup PHP
+description: Set up PHP, cache composer vendor, install on cache miss
+inputs:
+  php-version:
+    required: true
+  coverage:
+    default: 'none'
+  classmap-authoritative:
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Setup PHP
+      uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+      with:
+        php-version: ${{ inputs.php-version }}
+        coverage: ${{ inputs.coverage }}
+        ini-values: >-
+          opcache.enable=1,
+          opcache.enable_cli=1,
+          opcache.memory_consumption=256,
+          opcache.max_accelerated_files=20000,
+          opcache.validate_timestamps=0,
+          opcache.jit=disable,
+          opcache.jit_buffer_size=0
+
+    - name: Cache composer vendor
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+      with:
+        path: vendor
+        key: composer-${{ runner.os }}-php${{ inputs.php-version }}-${{ hashFiles('composer.lock') }}
+        restore-keys: composer-${{ runner.os }}-php${{ inputs.php-version }}-
+
+    - name: Install composer deps
+      shell: bash
+      run: composer install --prefer-dist --no-interaction --no-progress ${{ inputs.classmap-authoritative == 'true' && '--classmap-authoritative' || '' }}

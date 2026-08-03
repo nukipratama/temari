@@ -7,8 +7,8 @@ namespace App\Http\Controllers;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
+use App\Actions\Run\Metrics\EstimateThresholdAction;
 use App\Services\Run\LifetimeStats;
-use App\Services\Run\Metrics\ThresholdEstimator;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\ProgressionSeriesBuilder;
@@ -38,7 +38,7 @@ class ProfileController extends Controller
         ProgressionSeriesBuilder $progressionSeriesBuilder,
         LifetimeStats $lifetimeStats,
         VdotEstimator $vdotEstimator,
-        ThresholdEstimator $thresholdEstimator,
+        EstimateThresholdAction $thresholdEstimator,
         TrainingPaceCalculator $trainingPaceCalculator,
     ): Response {
         /** @var User $user */
@@ -76,10 +76,10 @@ class ProfileController extends Controller
     /**
      * @return array{vdot: float|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null}|null
      */
-    private function fitness(VdotEstimator $vdotEstimator, ThresholdEstimator $thresholdEstimator, TrainingPaceCalculator $trainingPaceCalculator, User $user): ?array
+    private function fitness(VdotEstimator $vdotEstimator, EstimateThresholdAction $thresholdEstimator, TrainingPaceCalculator $trainingPaceCalculator, User $user): ?array
     {
         $vdot = $vdotEstimator->estimate($user);
-        $threshold = $thresholdEstimator->estimate($user);
+        $threshold = $thresholdEstimator($user);
 
         if ($vdot === null && $threshold === null) {
             return null;

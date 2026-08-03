@@ -75,7 +75,7 @@ final class AzureFailureMapper
      */
     public static function isOutputContentFiltered(CreateResponse $response): bool
     {
-        return $response->status === 'incomplete'
+        return $response->status === AzureResponseStatus::Incomplete->value
             && $response->incompleteDetails?->reason === 'content_filter';
     }
 

@@ -1,7 +1,10 @@
-import { Head, router } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { type ReactNode, useCallback, useRef, useState } from 'react';
-import { appLayout } from '@/layouts/appLayout';
+import { Head, router } from '@inertiajs/react';
+import { type ReactNode, useState } from 'react';
+
+import DemoBlockedModal from '@/components/DemoBlockedModal';
+import PushNotificationToggle from '@/components/PushNotificationToggle';
+import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Card from '@/components/ui/Card';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -9,13 +12,19 @@ import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import SettingsRow from '@/components/ui/SettingsRow';
 import Toggle from '@/components/ui/Toggle';
-import DemoBlockedModal from '@/components/DemoBlockedModal';
-import PushNotificationToggle from '@/components/PushNotificationToggle';
-import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
-import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
+import {
+    cooldownAriaLabel,
+    useCooldownCountdown,
+} from '@/hooks/useCooldownCountdown';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { usePendingPost } from '@/hooks/usePendingPost';
+import { appLayout } from '@/layouts/appLayout';
 import { formatDurationHMS } from '@/lib/pace';
+
+import {
+    useNotificationPrefs,
+    type NotificationPrefs,
+} from './useNotificationPrefs';
 
 // The demo account can't be deleted; the backend guard rejects it and the
 // shared ErrorBanner surfaces the reason, so the confirm modal stays generic.
@@ -24,14 +33,6 @@ interface TelegramPayload {
     connected: boolean;
     username: string | null;
     connect_url: string | null;
-}
-
-interface NotificationPrefs {
-    /** Master switch over everything Temari sends, on every channel. */
-    notifications_enabled: boolean;
-    /** Per-channel mutes: off means wired but silent, not disconnected. */
-    telegram_enabled: boolean;
-    push_enabled: boolean;
 }
 
 interface PengaturanProps {
@@ -66,7 +67,11 @@ export default function Pengaturan({
                     and from the avatar menu on every page, so a breadcrumb here
                     would be chrome without a job. */}
                 <header className="mb-8">
-                    <PageHero eyebrow="Pengaturan" lead="Atur Temari," emph="sesuai kamu." />
+                    <PageHero
+                        eyebrow="Pengaturan"
+                        lead="Atur Temari,"
+                        emph="sesuai kamu."
+                    />
                 </header>
 
                 {/* One notification section, not three. The user holds a single
@@ -131,8 +136,9 @@ function DeleteAccountPanel() {
                 title="Yakin mau hapus akun?"
                 body={
                     <>
-                        Semua lari, kartu, sama sambungan Strava kamu bakal dilepas dan gak bisa dibalikin.
-                        Kalau cuma mau ganti akun Strava, ini juga caranya.
+                        Semua lari, kartu, sama sambungan Strava kamu bakal
+                        dilepas dan gak bisa dibalikin. Kalau cuma mau ganti
+                        akun Strava, ini juga caranya.
                     </>
                 }
                 primaryLabel="Ya, hapus akunku"
@@ -153,32 +159,17 @@ function NotificationPrefsPanel({
     telegram: TelegramPayload;
     testCooldownSeconds: number | null;
 }>) {
-    // Local state prevents a rapid-click race: if the user flips two toggles before
-    // Inertia refreshes props, the second PATCH would read stale props for the first
-    // toggle's value and silently revert it. Local state sees the latest flipped value.
-    const [notificationsEnabled, setNotificationsEnabled] = useState(prefs.notifications_enabled);
-    const [telegramEnabled, setTelegramEnabled] = useState(prefs.telegram_enabled);
-    const [pushEnabled, setPushEnabled] = useState(prefs.push_enabled);
-    const { open, setOpen, guard } = useDemoGuard();
-
-    const latestRef = useRef({ notificationsEnabled, telegramEnabled, pushEnabled });
-    latestRef.current = { notificationsEnabled, telegramEnabled, pushEnabled };
-
-    // Always sends the complete state — the server validates all three as
-    // required, and the toggles now live in two different groups, so a partial
-    // write would leave updateOrCreate holding stale values for the other group.
-    const savePrefs = useCallback(() => {
-        const current = latestRef.current;
-        router.patch(
-            '/profil/notifikasi',
-            {
-                notifications_enabled: current.notificationsEnabled,
-                telegram_enabled: current.telegramEnabled,
-                push_enabled: current.pushEnabled,
-            },
-            { preserveScroll: true },
-        );
-    }, []);
+    const {
+        notificationsEnabled,
+        telegramEnabled,
+        pushEnabled,
+        setNotificationsEnabled,
+        setTelegramEnabled,
+        setPushEnabled,
+        guard,
+        demoModalOpen,
+        setDemoModalOpen,
+    } = useNotificationPrefs({ prefs });
 
     return (
         <div className="flex flex-col gap-6">
@@ -198,13 +189,7 @@ function NotificationPrefsPanel({
                             <Toggle
                                 label="Kabarin aku"
                                 checked={notificationsEnabled}
-                                onChange={(value) =>
-                                    guard(() => {
-                                        setNotificationsEnabled(value);
-                                        latestRef.current.notificationsEnabled = value;
-                                        savePrefs();
-                                    })
-                                }
+                                onChange={setNotificationsEnabled}
                             />
                         }
                     />
@@ -219,39 +204,34 @@ function NotificationPrefsPanel({
                     admin Telegram chats without touching preferences, and the bot
                     still replies to /start and /stop. See MaintainerAlerter. */}
                 <p className="mb-2 px-2 font-sans text-[12px] text-ink-3">
-                    Buat notifikasi lari kamu. Balasan bot sama peringatan sistem tetap masuk.
+                    Buat notifikasi lari kamu. Balasan bot sama peringatan
+                    sistem tetap masuk.
                 </p>
                 <div className="flex flex-col">
                     <TelegramPanel
                         telegram={telegram}
                         muted={!telegramEnabled}
-                        onMuteChange={(value) =>
-                            guard(() => {
-                                setTelegramEnabled(!value);
-                                latestRef.current.telegramEnabled = !value;
-                                savePrefs();
-                            })
-                        }
+                        onMuteChange={(muted) => setTelegramEnabled(!muted)}
                     />
                     <PushNotificationToggle
                         muted={!pushEnabled}
-                        onMuteChange={(value) =>
-                            guard(() => {
-                                setPushEnabled(!value);
-                                latestRef.current.pushEnabled = !value;
-                                savePrefs();
-                            })
-                        }
+                        onMuteChange={(muted) => setPushEnabled(!muted)}
                     />
                 </div>
                 {/* Lives with the channels rather than the types: what it proves
                     is that a channel can reach you, not that a type is on. */}
                 <div className="mt-4">
-                    <TestSendButton cooldownSeconds={testCooldownSeconds} guard={guard} />
+                    <TestSendButton
+                        cooldownSeconds={testCooldownSeconds}
+                        guard={guard}
+                    />
                 </div>
             </div>
 
-            <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
+            <DemoBlockedModal
+                open={demoModalOpen}
+                onClose={() => setDemoModalOpen(false)}
+            />
         </div>
     );
 }
@@ -264,8 +244,13 @@ function NotificationPrefsPanel({
 function TestSendButton({
     cooldownSeconds,
     guard,
-}: Readonly<{ cooldownSeconds: number | null; guard: (run: () => void) => void }>) {
-    const [sending, send] = usePendingPost('/profil/notifikasi/test', { preserveScroll: true });
+}: Readonly<{
+    cooldownSeconds: number | null;
+    guard: (run: () => void) => void;
+}>) {
+    const [sending, send] = usePendingPost('/profil/notifikasi/test', {
+        preserveScroll: true,
+    });
     const remaining = useCooldownCountdown(cooldownSeconds);
     const cooling = remaining > 0;
 
@@ -298,14 +283,22 @@ function TestSendButton({
 
 /** Sub-heading inside a settings card, one tier below SectionLabel. */
 function GroupLabel({ children }: Readonly<{ children: ReactNode }>) {
-    return <div className="mb-2 px-2 text-label-micro font-semibold text-ink-3">{children}</div>;
+    return (
+        <div className="mb-2 px-2 text-label-micro font-semibold text-ink-3">
+            {children}
+        </div>
+    );
 }
 
 function TelegramPanel({
     telegram,
     muted,
     onMuteChange,
-}: Readonly<{ telegram: TelegramPayload; muted: boolean; onMuteChange: (muted: boolean) => void }>) {
+}: Readonly<{
+    telegram: TelegramPayload;
+    muted: boolean;
+    onMuteChange: (muted: boolean) => void;
+}>) {
     const { isDemo, open, setOpen, guard } = useDemoGuard();
 
     if (!telegram.connected) {
@@ -330,7 +323,10 @@ function TelegramPanel({
                     description="Sambungin biar Temari bisa kabarin kamu."
                     onClick={() => setOpen(true)}
                 >
-                    <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
+                    <DemoBlockedModal
+                        open={open}
+                        onClose={() => setOpen(false)}
+                    />
                 </SettingsRow>
             );
         }
@@ -347,9 +343,13 @@ function TelegramPanel({
 
     // Mute sits beside the connection it silences, and only exists once there is
     // a connection — a mute on an unwired channel would mean nothing.
-    let description = telegram.username ? `Aktif · @${telegram.username}` : 'Aktif';
+    let description = telegram.username
+        ? `Aktif · @${telegram.username}`
+        : 'Aktif';
     if (muted) {
-        description = telegram.username ? `Dibisukan · @${telegram.username}` : 'Dibisukan';
+        description = telegram.username
+            ? `Dibisukan · @${telegram.username}`
+            : 'Dibisukan';
     }
 
     return (
@@ -358,19 +358,32 @@ function TelegramPanel({
                 icon="mdi:telegram"
                 label="Telegram"
                 description={description}
-                control={<Toggle
+                control={
+                    <Toggle
                         label="Kirim notifikasi lari ke Telegram"
                         checked={!muted}
                         onChange={(on) => onMuteChange(!on)}
-                    />}
+                    />
+                }
             />
             <div className="-mt-1 pl-11">
                 <button
                     type="button"
-                    onClick={() => guard(() => router.delete('/profil/telegram', { preserveScroll: true }))}
+                    onClick={() =>
+                        guard(() =>
+                            router.delete('/profil/telegram', {
+                                preserveScroll: true,
+                            }),
+                        )
+                    }
                     className="focus-ring inline-flex shrink-0 items-center gap-1 rounded text-label-small text-ink-3 transition hover:text-ember-deep"
                 >
-                    <Icon icon="mdi:link-off" width={13} height={13} aria-hidden />
+                    <Icon
+                        icon="mdi:link-off"
+                        width={13}
+                        height={13}
+                        aria-hidden
+                    />
                     Putuskan
                 </button>
             </div>

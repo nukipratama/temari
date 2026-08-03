@@ -1,5 +1,6 @@
-import { usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { usePage } from '@inertiajs/react';
+
 import type { SharedProps } from '@/types/inertia';
 
 /**
@@ -10,7 +11,8 @@ import type { SharedProps } from '@/types/inertia';
  * user reconnects, unlike a one-off flash error.
  */
 export default function StravaZoneReconnectBanner() {
-    const missing = usePage<SharedProps>().props.stravaZoneScopeMissing ?? false;
+    const missing =
+        usePage<SharedProps>().props.stravaZoneScopeMissing ?? false;
 
     if (!missing) {
         return null;
@@ -19,7 +21,13 @@ export default function StravaZoneReconnectBanner() {
     return (
         <div className="px-4 pt-4 lg:px-8">
             <div className="mx-auto flex max-w-page-2xl items-start gap-3 rounded-2xl border border-line bg-surface-sunken px-4 py-3">
-                <Icon icon="mdi:heart-pulse" width={20} height={20} className="mt-0.5 shrink-0 text-ink-3" aria-hidden />
+                <Icon
+                    icon="mdi:heart-pulse"
+                    width={20}
+                    height={20}
+                    className="mt-0.5 shrink-0 text-ink-3"
+                    aria-hidden
+                />
                 <p className="flex-1 font-sans text-sm leading-relaxed text-ink">
                     Sambungin ulang Strava buat sinkronin zona HR kamu otomatis.
                 </p>
@@ -27,7 +35,12 @@ export default function StravaZoneReconnectBanner() {
                     href="/auth/strava/redirect?from=/profil"
                     className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1.5 text-label-micro text-white transition hover:bg-strava-orange-hover"
                 >
-                    <Icon icon="mdi:strava" width={12} height={12} aria-hidden />
+                    <Icon
+                        icon="mdi:strava"
+                        width={12}
+                        height={12}
+                        aria-hidden
+                    />
                     Sambungin lagi
                 </a>
             </div>

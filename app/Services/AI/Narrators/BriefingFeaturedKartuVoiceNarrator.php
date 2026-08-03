@@ -50,7 +50,7 @@ class BriefingFeaturedKartuVoiceNarrator
 
     /**
      * @param  RunCard|null  $card  The featured card resolved by
-     *                              {@see \App\Services\Run\Story\FeaturedKartuResolver}. Its
+     *                              {@see \App\Actions\Run\Story\ResolveFeaturedKartuAction}. Its
      *                              `activity.detail` is not preloaded, so
      *                              {@see \App\Services\AI\Agent\Tools\FeaturedCardTool} lazy-loads
      *                              it for the km.

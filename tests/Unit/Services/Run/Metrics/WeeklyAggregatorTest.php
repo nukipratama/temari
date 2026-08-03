@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\Gamification\UnlockEngine;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Database\Events\QueryExecuted;
@@ -18,12 +18,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
-    // TrainingLoad stays real: several tests below assert on its actual CTL/EWMA
-    // math. UnlockEngine is unrelated to what this file verifies and does live DB
-    // queries (rebuildFor() only), so it's faked here — its own behavior has a
-    // dedicated suite (UnlockEngineTest).
-    $unlockEngine = Mockery::mock(UnlockEngine::class);
-    $unlockEngine->shouldReceive('grantEligible')->andReturn([]);
+    $unlockEngine = Mockery::mock(GrantEligibleUnlocksAction::class);
+    $unlockEngine->shouldReceive('__invoke')->andReturn([]);
     $this->aggregator = new WeeklyAggregator(app(TrainingLoad::class), $unlockEngine);
 });
 afterEach(fn () => Carbon::setTestNow());

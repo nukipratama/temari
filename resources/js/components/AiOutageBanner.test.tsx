@@ -1,9 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import AiOutageBanner from './AiOutageBanner';
+
 import { setMockPage } from '@/test/setup';
 
-const base = { auth: { user: null }, flash: {}, demoLoginEnabled: false } as const;
+import AiOutageBanner from './AiOutageBanner';
+
+const base = {
+    auth: { user: null },
+    flash: {},
+    demoLoginEnabled: false,
+} as const;
 
 describe('AiOutageBanner', () => {
     it('renders nothing when the pipeline is healthy', () => {
@@ -22,7 +28,9 @@ describe('AiOutageBanner', () => {
         setMockPage({ ...base, aiPaused: true });
         render(<AiOutageBanner />);
         expect(
-            screen.getByText('Temari lagi istirahat sebentar. Narasinya nggak ilang kok, nyusul otomatis pas dia balik.'),
+            screen.getByText(
+                'Temari lagi istirahat sebentar. Narasinya nggak ilang kok, nyusul otomatis pas dia balik.',
+            ),
         ).toBeInTheDocument();
     });
 });

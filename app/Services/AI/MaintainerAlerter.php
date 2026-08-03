@@ -51,11 +51,11 @@ class MaintainerAlerter
      * the retry budget). Fired from {@see AnalysisService::markFailed()} only at
      * the crossing (attempts reaching MAX). Coalesces into one summary push per
      * window instead of one per dead-letter — a rate-limit storm can dead-letter
-     * many blocks within seconds, which used to flood every admin's Telegram.
-     * Cache::add() only succeeds for the first dead-letter in a window, which is
-     * what schedules the flush; every dead-letter (first or not) increments the
-     * count the flush eventually reads. Serialised against flushDeadLetterWindow()
-     * via the same lock (see {@see self::withDeadLetterLock()}).
+     * many blocks within seconds, and one push per dead-letter would flood every
+     * admin's Telegram. Cache::add() only succeeds for the first dead-letter in
+     * a window, which is what schedules the flush; every dead-letter (first or
+     * not) increments the count the flush eventually reads. Serialised against
+     * flushDeadLetterWindow() via the same lock (see {@see self::withDeadLetterLock()}).
      */
     public function deadLettered(): void
     {

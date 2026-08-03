@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import KondisiCard from './KondisiCard';
+
 import type { TrainingLoad, WeeklySnapshot } from '@/types/inertia';
+
+import KondisiCard from './KondisiCard';
 
 const load: TrainingLoad = {
     form: -2.5,
@@ -44,7 +46,9 @@ describe('KondisiCard', () => {
     it('shows the "7 hari" subtitle and a technical-detail link', () => {
         render(<KondisiCard load={load} snapshot={snapshot} />);
         expect(screen.getByText(/7 hari/)).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /Detail teknis/ })).toHaveAttribute('href', '/aktivitas');
+        expect(
+            screen.getByRole('link', { name: /Detail teknis/ }),
+        ).toHaveAttribute('href', '/aktivitas');
     });
 
     it('falls back to em-dash values and "belum cukup data" when load and snapshot are null', () => {

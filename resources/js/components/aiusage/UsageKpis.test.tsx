@@ -1,16 +1,39 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import UsageKpis from './UsageKpis';
+
 import type { PreviousTotals, UsageTotals } from '@/pages/AiUsage/types';
 
+import UsageKpis from './UsageKpis';
+
 function totals(overrides: Partial<UsageTotals> = {}): UsageTotals {
-    return { prompt: 600, completion: 280, total: 880, calls: 3, cost: 0.05, truncated_calls: 0, ...overrides };
+    return {
+        prompt: 600,
+        completion: 280,
+        total: 880,
+        calls: 3,
+        cost: 0.05,
+        truncated_calls: 0,
+        ...overrides,
+    };
 }
 
-const previous: PreviousTotals = { prompt: 500, completion: 200, total: 700, calls: 2, cost: 0.04 };
+const previous: PreviousTotals = {
+    prompt: 500,
+    completion: 200,
+    total: 700,
+    calls: 2,
+    cost: 0.04,
+};
 
 function renderKpis(overrides: Partial<Parameters<typeof UsageKpis>[0]> = {}) {
-    return render(<UsageKpis totals={totals()} previousTotals={previous} currency="USD" {...overrides} />);
+    return render(
+        <UsageKpis
+            totals={totals()}
+            previousTotals={previous}
+            currency="USD"
+            {...overrides}
+        />,
+    );
 }
 
 describe('UsageKpis', () => {
@@ -36,7 +59,15 @@ describe('UsageKpis', () => {
     });
 
     it('avoids dividing by zero on an empty window', () => {
-        renderKpis({ totals: totals({ prompt: 0, completion: 0, total: 0, calls: 0, cost: 0 }) });
+        renderKpis({
+            totals: totals({
+                prompt: 0,
+                completion: 0,
+                total: 0,
+                calls: 0,
+                cost: 0,
+            }),
+        });
 
         expect(screen.getByText('0% dari total')).toBeInTheDocument();
         expect(screen.getByText('0 dari 0 call')).toBeInTheDocument();

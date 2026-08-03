@@ -1,11 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import SectionHeading from './SectionHeading';
 
 describe('SectionHeading', () => {
     it('renders the title in an h2', () => {
         render(<SectionHeading title="Kata Temari" />);
-        const h2 = screen.getByRole('heading', { level: 2, name: 'Kata Temari' });
+        const h2 = screen.getByRole('heading', {
+            level: 2,
+            name: 'Kata Temari',
+        });
         expect(h2).toBeInTheDocument();
     });
 
@@ -15,7 +19,9 @@ describe('SectionHeading', () => {
     });
 
     it('renders an icon container when icon prop is set', () => {
-        const { container } = render(<SectionHeading title="T" icon="mdi:run" />);
+        const { container } = render(
+            <SectionHeading title="T" icon="mdi:run" />,
+        );
         // Icon wrapper is the aria-hidden span sibling of the h2 wrapper
         expect(container.querySelector('[aria-hidden]')).toBeInTheDocument();
     });
@@ -25,8 +31,19 @@ describe('SectionHeading', () => {
         expect(container.querySelector('[aria-hidden]')).toBeNull();
     });
 
-    it.each(['brand', 'accent', 'pop', 'neutral'] as const)('renders with %s tone', (tone) => {
-        render(<SectionHeading title={`T-${tone}`} tone={tone} icon="mdi:run" />);
-        expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
-    });
+    it.each(['brand', 'accent', 'pop', 'neutral'] as const)(
+        'renders with %s tone',
+        (tone) => {
+            render(
+                <SectionHeading
+                    title={`T-${tone}`}
+                    tone={tone}
+                    icon="mdi:run"
+                />,
+            );
+            expect(
+                screen.getByRole('heading', { level: 2 }),
+            ).toBeInTheDocument();
+        },
+    );
 });

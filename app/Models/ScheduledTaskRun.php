@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\ScheduledTaskStatus;
 use Cron\CronExpression;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -19,7 +20,7 @@ use Throwable;
  * @property int $id
  * @property string $command
  * @property string|null $expression
- * @property string $last_status
+ * @property ScheduledTaskStatus $last_status
  * @property Carbon|null $last_run_at
  * @property int|null $runtime_ms
  * @property string|null $failure_message
@@ -34,17 +35,13 @@ use Throwable;
 ])]
 class ScheduledTaskRun extends Model
 {
-    public const string STATUS_OK = 'ok';
-
-    public const string STATUS_FAILED = 'failed';
-
     /**
      * Upsert the heartbeat for a command, stamping last_run_at to now.
      */
     public static function record(
         string $command,
         ?string $expression,
-        string $status,
+        ScheduledTaskStatus $status,
         ?int $runtimeMs = null,
         ?string $failureMessage = null,
     ): self {
@@ -62,7 +59,7 @@ class ScheduledTaskRun extends Model
 
     public function hasFailed(): bool
     {
-        return $this->last_status === self::STATUS_FAILED;
+        return $this->last_status === ScheduledTaskStatus::Failed;
     }
 
     /**
@@ -99,6 +96,7 @@ class ScheduledTaskRun extends Model
     protected function casts(): array
     {
         return [
+            'last_status' => ScheduledTaskStatus::class,
             'last_run_at' => 'datetime',
             'runtime_ms' => 'integer',
         ];

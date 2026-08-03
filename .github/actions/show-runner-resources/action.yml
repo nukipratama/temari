@@ -1,0 +1,20 @@
+name: Show runner resources
+description: Write runner CPU/memory info to the job summary
+inputs:
+  workers-label:
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        {
+          echo "### Runner: $(nproc) vCPU ($(uname -m))"
+          echo ""
+          echo "| | |"
+          echo "| --- | --- |"
+          echo "| nproc (= ${{ inputs.workers-label }}) | $(nproc) |"
+          echo "| Model | $(lscpu | sed -n 's/^Model name:[[:space:]]*//p') |"
+          echo "| Memory | $(free -h | awk '/^Mem:/{print $2}') |"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"

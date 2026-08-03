@@ -1,20 +1,6 @@
-import { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
-import { appLayout } from '@/layouts/appLayout';
-import { type TemariPose } from '@/components/temari/TemariProto';
-import EmptyRunsState from '@/components/run/EmptyRunsState';
-import Eyebrow from '@/components/ui/Eyebrow';
-import PageContainer from '@/components/ui/PageContainer';
-import KataTemariCard from '@/components/dashboard/KataTemariCard';
-import VitalChips from '@/components/dashboard/VitalChips';
-import FeaturedKartuPanel from '@/components/dashboard/FeaturedKartuPanel';
-import LastLariCard, { type LastRunNote } from '@/components/dashboard/LastLariCard';
-import KondisiCard from '@/components/dashboard/KondisiCard';
-import GoalsCard from '@/components/dashboard/GoalsCard';
+import { useState } from 'react';
 
-import { VIBE_TO_POSE, poseForRun } from '@/lib/temariPose';
-import { featuredCardFor, vibeSubtitleFor } from './HariIni/helpers';
-import { formatTimeId, formatWeekdayDateId } from '@/lib/pace';
 import type {
     ActivityDetail,
     BriefingResult,
@@ -23,6 +9,24 @@ import type {
     TrainingLoad,
     WeeklySnapshot,
 } from '@/types/inertia';
+
+import FeaturedKartuPanel from '@/components/dashboard/FeaturedKartuPanel';
+import GoalsCard from '@/components/dashboard/GoalsCard';
+import KataTemariCard from '@/components/dashboard/KataTemariCard';
+import KondisiCard from '@/components/dashboard/KondisiCard';
+import LastLariCard, {
+    type LastRunNote,
+} from '@/components/dashboard/LastLariCard';
+import VitalChips from '@/components/dashboard/VitalChips';
+import EmptyRunsState from '@/components/run/EmptyRunsState';
+import { type TemariPose } from '@/components/temari/TemariProto';
+import Eyebrow from '@/components/ui/Eyebrow';
+import PageContainer from '@/components/ui/PageContainer';
+import { appLayout } from '@/layouts/appLayout';
+import { formatTimeId, formatWeekdayDateId } from '@/lib/pace';
+import { VIBE_TO_POSE, poseForRun } from '@/lib/temariPose';
+
+import { featuredCardFor, vibeSubtitleFor } from './HariIni/helpers';
 
 interface HariIniProps {
     briefing: BriefingResult;
@@ -43,9 +47,14 @@ export default function HariIni({
 }: Readonly<HariIniProps>) {
     const { props } = usePage<SharedProps & HariIniProps>();
     const firstName = props.auth.user?.first_name ?? '';
-    const pose: TemariPose = VIBE_TO_POSE[briefing.vibeState] ?? 'observational';
+    const pose: TemariPose =
+        VIBE_TO_POSE[briefing.vibeState] ?? 'observational';
 
-    const featured = featuredCardFor(recentRuns, briefing.featuredCardId, recentMoods);
+    const featured = featuredCardFor(
+        recentRuns,
+        briefing.featuredCardId,
+        recentMoods,
+    );
     const lastRun = recentRuns[0] ?? null;
 
     // Freeze the date/time line at mount (lazy init) so it isn't recomputed impurely on every render.
@@ -63,14 +72,21 @@ export default function HariIni({
                         {dateLine}
                     </Eyebrow>
                     <h1 className="font-display text-display-2xl text-ink">
-                        Halo, {firstName}<br />
-                        <span className="italic text-horizon">{vibeSubtitle}</span>
+                        Halo, {firstName}
+                        <br />
+                        <span className="italic text-horizon">
+                            {vibeSubtitle}
+                        </span>
                     </h1>
                 </header>
 
                 {recentRuns.length === 0 ? (
                     <>
-                        <KataTemariCard briefing={briefing} pose={pose} lastRun={lastRun} />
+                        <KataTemariCard
+                            briefing={briefing}
+                            pose={pose}
+                            lastRun={lastRun}
+                        />
                         <div className="mt-6">
                             <EmptyRunsState />
                         </div>
@@ -78,7 +94,12 @@ export default function HariIni({
                 ) : (
                     <>
                         {/* HERO KARTU */}
-                        {featured && <FeaturedKartuPanel featured={featured} featuredKartuVoice={briefing.featuredKartuVoice} />}
+                        {featured && (
+                            <FeaturedKartuPanel
+                                featured={featured}
+                                featuredKartuVoice={briefing.featuredKartuVoice}
+                            />
+                        )}
 
                         {/* VITAL CHIPS — below hero, full width 3-up */}
                         <section className="mt-6">
@@ -87,8 +108,22 @@ export default function HariIni({
 
                         {/* 3-UP */}
                         <section className="mt-8 grid gap-4 lg:grid-cols-3">
-                            {lastRun && <LastLariCard run={lastRun} pose={poseForRun(lastRun, recentMoods[lastRun.activity_id] ?? null)} note={lastRunNote} />}
-                            <KataTemariCard briefing={briefing} pose={pose} lastRun={lastRun} />
+                            {lastRun && (
+                                <LastLariCard
+                                    run={lastRun}
+                                    pose={poseForRun(
+                                        lastRun,
+                                        recentMoods[lastRun.activity_id] ??
+                                            null,
+                                    )}
+                                    note={lastRunNote}
+                                />
+                            )}
+                            <KataTemariCard
+                                briefing={briefing}
+                                pose={pose}
+                                lastRun={lastRun}
+                            />
                             <KondisiCard load={load} snapshot={snapshot} />
                         </section>
 

@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use OpenAI\Testing\ClientFake;
 
 // The narrator itself never queries the DB, but fakeStructuredCaller() wires a
-// real TokenUsageRecorder, and StructuredChatCaller::call() persists a
+// real RecordTokenUsageAction, and StructuredChatCaller::call() persists a
 // TokenUsage row on every successful response.
 uses(RefreshDatabase::class);
 

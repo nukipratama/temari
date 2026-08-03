@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+
 import { cn } from '@/lib/cn';
 
 interface SectionLabelProps {
@@ -29,14 +30,29 @@ export default function SectionLabel({
         <div
             className={cn(
                 'mb-3.5 flex items-center gap-3',
-                size === 'micro' ? 'gap-1.5 text-label-micro' : 'gap-3 text-label-small',
+                size === 'micro'
+                    ? 'gap-1.5 text-label-micro'
+                    : 'gap-3 text-label-small',
                 onSky ? 'text-ink-on-sky' : 'text-ink-2',
                 className,
             )}
         >
-            {dot && <span aria-hidden className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClass)} />}
+            {dot && (
+                <span
+                    aria-hidden
+                    className={cn(
+                        'h-1.5 w-1.5 shrink-0 rounded-full',
+                        dotClass,
+                    )}
+                />
+            )}
             <span>{children}</span>
-            {!dot && <span aria-hidden className="h-px flex-1 bg-current opacity-20" />}
+            {!dot && (
+                <span
+                    aria-hidden
+                    className="h-px flex-1 bg-current opacity-20"
+                />
+            )}
         </div>
     );
 }

@@ -1,8 +1,8 @@
 import '@testing-library/jest-dom/vitest';
-import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
 import { createElement, type ReactNode } from 'react';
+import { afterEach, beforeEach, vi } from 'vitest';
 
 // Make framer-motion animations resolve instantly in tests. Without this its
 // animation frameloop runs over real time and a frame can fire after a test
@@ -47,7 +47,11 @@ let mockComponent = DEFAULT_COMPONENT;
  * `component` is the Inertia page name, exposed because `usePage().component`
  * is read in app code and tests may need to vary it.
  */
-export function setMockPage(props: Record<string, unknown>, url = DEFAULT_URL, component = DEFAULT_COMPONENT) {
+export function setMockPage(
+    props: Record<string, unknown>,
+    url = DEFAULT_URL,
+    component = DEFAULT_COMPONENT,
+) {
     mockPageProps = { ...DEFAULT_PAGE_PROPS, ...props };
     mockUrl = url;
     mockComponent = component;
@@ -90,7 +94,14 @@ function resetFormMock() {
 // Authenticated-user fixture for `usePage().props.auth.user`. Defaults to the
 // demo user shape; pass overrides to vary name etc.
 export function makeUser(overrides: Record<string, unknown> = {}) {
-    return { id: 1, name: 'Ada Lovelace', first_name: 'Ada', avatar_url: null, is_demo: false, ...overrides };
+    return {
+        id: 1,
+        name: 'Ada Lovelace',
+        first_name: 'Ada',
+        avatar_url: null,
+        is_demo: false,
+        ...overrides,
+    };
 }
 
 // Safe default fetch: any test that renders a component which fires fetch on
@@ -100,7 +111,10 @@ export function makeUser(overrides: Record<string, unknown> = {}) {
 // fetch behavior install their own `vi.stubGlobal('fetch', ...)`; the afterEach
 // unstub resets back to this default so those overrides don't leak.
 beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 404 }))));
+    vi.stubGlobal(
+        'fetch',
+        vi.fn(() => Promise.resolve(new Response('{}', { status: 404 }))),
+    );
 });
 
 afterEach(() => {
@@ -166,9 +180,20 @@ vi.mock('@inertiajs/react', async () => {
     return {
         Head: ({ children }: { children?: ReactNode }) => children ?? null,
         Link: linkComponent,
-        usePage: () => ({ props: mockPageProps, url: mockUrl, component: mockComponent }),
+        usePage: () => ({
+            props: mockPageProps,
+            url: mockUrl,
+            component: mockComponent,
+        }),
         useForm: () => formMock,
-        router: { post: vi.fn(), get: vi.fn(), patch: vi.fn(), delete: vi.fn(), reload: vi.fn(), visit: vi.fn() },
+        router: {
+            post: vi.fn(),
+            get: vi.fn(),
+            patch: vi.fn(),
+            delete: vi.fn(),
+            reload: vi.fn(),
+            visit: vi.fn(),
+        },
         usePoll: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
     };
 });
@@ -197,5 +222,8 @@ vi.mock('react-chartjs-2', () => ({
 // that keeps the layout/aria props the components pass through.
 vi.mock('@iconify/react', () => ({
     Icon: ({ icon, ...rest }: { icon?: unknown; [k: string]: unknown }) =>
-        createElement('span', { 'data-icon': typeof icon === 'string' ? icon : undefined, ...rest }),
+        createElement('span', {
+            'data-icon': typeof icon === 'string' ? icon : undefined,
+            ...rest,
+        }),
 }));

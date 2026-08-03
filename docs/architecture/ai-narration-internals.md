@@ -3,7 +3,7 @@ title: AI narration internals — context builders & the demo filler
 description: How prompt signals are assembled (context builders) and how copy is produced without the LLM (demo seed + unconfigured env).
 tags: [architecture, ai]
 status: living
-reviewed: 2026-07-27
+reviewed: 2026-08-03
 code_refs:
   - app/Services/AI/Context/ActivityNarrationContext.php
   - app/Services/AI/Agent/AgentToolbox.php
@@ -28,7 +28,7 @@ A narrator's prompt is two halves: a static system prompt plus a per-subject **c
 
 ### ActivityNarrationContext (per-run signals)
 
-[ActivityNarrationContext](app/Services/AI/Context/ActivityNarrationContext.php) is built once per narration call from an `ActivityDetail` ([`fromDetail`](app/Services/AI/Context/ActivityNarrationContext.php#L32)) and collects the run-level signals more than one narrator needs: distance, decoupling, negative-split flag, time-in-zone percentages, and the weather (temp / rain). It also exposes the km conversions ([`distanceKm`](app/Services/AI/Context/ActivityNarrationContext.php#L50), [`distanceKmOrNull`](app/Services/AI/Context/ActivityNarrationContext.php#L59)) so every consumer rounds distance the same way. The exact field list is the constructor — read it there, don't trust this prose.
+[ActivityNarrationContext](app/Services/AI/Context/ActivityNarrationContext.php) is built once per narration call from an `ActivityDetail` ([`fromDetail`](app/Services/AI/Context/ActivityNarrationContext.php#L44)) and collects the run-level signals more than one narrator needs: distance, decoupling, negative-split flag, time-in-zone percentages, and the weather (temp / rain). It also exposes the km conversions ([`distanceKm`](app/Services/AI/Context/ActivityNarrationContext.php#L74), [`distanceKmOrNull`](app/Services/AI/Context/ActivityNarrationContext.php#L83)) so every consumer rounds distance the same way. The exact field list is the constructor — read it there, don't trust this prose.
 
 It is shared by the run-insight, post-run-speech, and card-flavor narrators. Each narrator still adds its *own* keys (mood, PR flags, cadence, rarity, …) on top; the shared object only owns the cross-narrator signals so those stay identical across prompts. See [[vibe-and-mood]] for the per-narrator mood layer and [[cards-collection]] for card flavor.
 
@@ -66,12 +66,12 @@ Every narrator now reads rather than receives. What remains in any context is on
 
 ### BriefingContext (per-user-day signals)
 
-[BriefingContext](app/Services/Run/Story/BriefingContext.php) is the dashboard briefing's personalisation layer, built per user as-of a moment ([`forUser`](app/Services/Run/Story/BriefingContext.php#L38)) and serialised straight into the LLM user message ([`toArray`](app/Services/Run/Story/BriefingContext.php#L133), with short keys to keep token cost down). It collects this-week / last-week run-count + km deltas, recovery hours, and form status, plus two computed heuristics:
+[BriefingContext](app/Services/Run/Story/BriefingContext.php) is the dashboard briefing's personalisation layer, built per user as-of a moment ([`forUser`](app/Services/Run/Story/BriefingContext.php#L59)) and serialised straight into the LLM user message ([`toArray`](app/Services/Run/Story/BriefingContext.php#L231), with short keys to keep token cost down). It collects this-week / last-week run-count + km deltas, recovery hours, and form status, plus two computed heuristics:
 
-- the Indonesian **time-of-day bucket** (`subuh` / `pagi` / `siang` / `sore` / `malam`) so a morning briefing reads differently from an evening one ([`bucketFor`](app/Services/Run/Story/BriefingContext.php#L114));
-- **consecutive weeks active** — a streak proxy reusing the `WeeklySnapshot` rows we already keep, since we don't track a day-level streak ([`countConsecutiveActiveWeeks`](app/Services/Run/Story/BriefingContext.php#L98)).
+- the Indonesian **time-of-day bucket** (`subuh` / `pagi` / `siang` / `sore` / `malam`) so a morning briefing reads differently from an evening one ([`bucketFor`](app/Services/Run/Story/BriefingContext.php#L212));
+- **consecutive weeks active** — a streak proxy reusing the `WeeklySnapshot` rows we already keep, since we don't track a day-level streak ([`countConsecutiveActiveWeeks`](app/Services/Run/Story/BriefingContext.php#L196)).
 
-Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing ([`recoveryHoursForUser`](app/Services/Run/Story/BriefingContext.php#L78)). It feeds the [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php#L135); the rendered surface is the [[dashboard]] Kata Temari card.
+Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing — now computed by [RecoveryWindow::forUser](app/Services/Run/Story/RecoveryWindow.php#L35) and passed in. `BriefingContext::forUser` is called from [WeekStateTool::handle](app/Services/AI/Agent/Tools/WeekStateTool.php#L48), one of the agent tools [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) reads from; the rendered surface is the [[dashboard]] Kata Temari card.
 
 ### MetricsContext (briefing call envelope)
 
@@ -87,7 +87,7 @@ What remains is a **demo** path, not a production fallback.
 
 That class is deliberately shallower than the narrator it stands in for: it answers only what a single `ActivityDetail` can, with no rolling pace average over the user's history and no VDOT-derived easy-pace nudge. It is a demo stand-in, not a second implementation to keep in sync.
 
-No *dispatch* path reaches the filler any more: a paused or failing block stays `Pending` / `Failed` instead. It runs in exactly two places — the demo seed below, and the content-filter break in [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php#L39) / [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php#L131), where a continuity-stripped retry that still trips Azure's output filter degrades to a benign line rather than dead-lettering. That benign line becomes the next `prev_narrative`, which is what breaks the poison loop.
+No *dispatch* path reaches the filler any more: a paused or failing block stays `Pending` / `Failed` instead. It runs in exactly two places — the demo seed below, and the content-filter break in [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php#L44) / [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php#L78), where a continuity-stripped retry that still trips Azure's output filter degrades to a benign line rather than dead-lettering. That benign line becomes the next `prev_narrative`, which is what breaks the poison loop.
 
 ### The demo seed path
 

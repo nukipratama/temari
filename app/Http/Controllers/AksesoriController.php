@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\EquipAksesoriRequest;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\Gamification\EquippedAccessories;
@@ -60,16 +61,12 @@ class AksesoriController extends Controller
         ]);
     }
 
-    public function equip(Request $request): RedirectResponse
+    public function equip(EquipAksesoriRequest $request): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        $validated = $request->validate([
-            'unlock_key' => ['required', 'string'],
-        ]);
-
-        $key = (string) $validated['unlock_key'];
+        $key = $request->unlockKey();
         $slot = $this->equipped->slotFor($key);
 
         $unlock = UserUnlock::query()

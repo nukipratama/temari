@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\WebPush;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DestroyPushSubscriptionRequest;
 use App\Http\Requests\StorePushSubscriptionRequest;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 /**
@@ -35,15 +35,11 @@ class PushSubscriptionController extends Controller
         return response()->noContent();
     }
 
-    public function destroy(Request $request): Response
+    public function destroy(DestroyPushSubscriptionRequest $request): Response
     {
-        $validated = $request->validate([
-            'endpoint' => ['required', 'string', 'max:500'],
-        ]);
-
         /** @var User $user */
         $user = $request->user();
-        $user->deletePushSubscription($validated['endpoint']);
+        $user->deletePushSubscription($request->endpoint());
 
         SharedPropCacheKey::WebPushSubscribed->forget($user->id);
 

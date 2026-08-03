@@ -3,7 +3,7 @@ title: Run ingestion pipeline
 description: Strava sync → fetch detail/streams/weather → compute metrics → atomically write run card + story layer, drainable on failure
 tags: [architecture, run]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-08-03
 code_refs:
   - app/Services/Run/Ingest/SyncOrchestrator.php
   - app/Services/Run/Ingest/ActivityPipeline.php
@@ -49,7 +49,7 @@ The HTTP fetches above all run **outside** any transaction.
 
 ### The transactional boundary
 
-Then a single [DB::transaction](app/Services/Run/Ingest/ActivityPipeline.php) commits the watermark + the whole story layer atomically: stamp `analyzed_at` + reset `detail_fail_count` → [PersonalRecords::detectAndStore()](app/Services/Run/Metrics/PersonalRecords.php) (PR detection must run first — Temari's mood reads PR rows) → [RunCardFactory::build()](app/Services/Run/Story/RunCardFactory.php) → [Temari::postRunLine()](app/Services/Run/Story/Temari.php) → [MilestoneDetector::detect()](app/Services/Gamification/MilestoneDetector.php). If any throws, `analyzed_at` rolls back with it, so the stub stays drainable rather than stranded "analyzed" with a half-built story. These are all same-connection DB writes (no HTTP, no queued dispatch inside the txn): the Run domain does not reference `AnalysisService` at all, so **every** analysis request is issued post-commit by the listener below.
+Then a single [DB::transaction](app/Services/Run/Ingest/ActivityPipeline.php) commits the watermark + the whole story layer atomically: stamp `analyzed_at` + reset `detail_fail_count` → [PersonalRecords::detectAndStore()](app/Services/Run/Metrics/PersonalRecords.php) (PR detection must run first — Temari's mood reads PR rows) → [RunCardFactory::build()](app/Services/Run/Story/RunCardFactory.php) → [Temari::postRunLine()](app/Services/Run/Story/Temari.php) → [DetectActivityMilestonesAction](app/Actions/Gamification/DetectActivityMilestonesAction.php). If any throws, `analyzed_at` rolls back with it, so the stub stays drainable rather than stranded "analyzed" with a half-built story. These are all same-connection DB writes (no HTTP, no queued dispatch inside the txn): the Run domain does not reference `AnalysisService` at all, so **every** analysis request is issued post-commit by the listener below.
 
 After commit: [ActivityIngested](app/Events/ActivityIngested.php) fires the AI fan-out (see below), and `afterCommit` a [ResolveActivityLocationJob](app/Jobs/Geo/ResolveActivityLocationJob.php) reverse-geocodes the start point when coords exist (see [[geo-reverse-geocoding]]).
 

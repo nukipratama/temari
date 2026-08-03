@@ -1,15 +1,19 @@
+import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
-import UsageFilters from './UsageFilters';
+
 import type { KindOption, RangeToken } from '@/pages/AiUsage/types';
+
+import UsageFilters from './UsageFilters';
 
 const availableKinds: KindOption[] = [
     { value: 'briefing', label: 'BriefingMascotVoice' },
     { value: 'run-insight', label: 'RunInsightTechnical' },
 ];
 
-function renderFilters(overrides: Partial<Parameters<typeof UsageFilters>[0]> = {}) {
+function renderFilters(
+    overrides: Partial<Parameters<typeof UsageFilters>[0]> = {},
+) {
     return render(
         <UsageFilters
             range={'custom' as RangeToken}
@@ -92,7 +96,9 @@ describe('UsageFilters', () => {
     it('applies the kind filter immediately on change, preserving the range', () => {
         renderFilters({ range: '7d' as RangeToken });
 
-        fireEvent.change(screen.getByLabelText(/jenis/i), { target: { value: 'briefing' } });
+        fireEvent.change(screen.getByLabelText(/jenis/i), {
+            target: { value: 'briefing' },
+        });
 
         expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
@@ -104,7 +110,9 @@ describe('UsageFilters', () => {
     it('clearing the kind filter drops it from the query rather than sending an empty one', () => {
         renderFilters({ range: '7d' as RangeToken, kind: 'briefing' });
 
-        fireEvent.change(screen.getByLabelText(/jenis/i), { target: { value: '' } });
+        fireEvent.change(screen.getByLabelText(/jenis/i), {
+            target: { value: '' },
+        });
 
         expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
@@ -125,22 +133,35 @@ describe('UsageFilters', () => {
         ['30 hari', /30 hari/i, '30d'],
         ['bulan ini', /bulan ini/i, 'month'],
         ['semua', /semua/i, 'all'],
-    ])('preset "%s" links to a date-free range token (durable, never stale)', (_label, pattern, token) => {
-        renderFilters();
+    ])(
+        'preset "%s" links to a date-free range token (durable, never stale)',
+        (_label, pattern, token) => {
+            renderFilters();
 
-        expect(screen.getByRole('link', { name: pattern }).getAttribute('href')).toBe(`/ai-usage?range=${token}`);
-    });
+            expect(
+                screen
+                    .getByRole('link', { name: pattern })
+                    .getAttribute('href'),
+            ).toBe(`/ai-usage?range=${token}`);
+        },
+    );
 
     it('preset links preserve the active kind filter', () => {
         renderFilters({ kind: 'briefing' });
 
-        expect(screen.getByRole('link', { name: /7 hari/i }).getAttribute('href')).toBe('/ai-usage?range=7d&kind=briefing');
+        expect(
+            screen.getByRole('link', { name: /7 hari/i }).getAttribute('href'),
+        ).toBe('/ai-usage?range=7d&kind=briefing');
     });
 
     it('highlights the active preset', () => {
         renderFilters({ range: '7d' as RangeToken });
 
-        expect(screen.getByRole('link', { name: /7 hari/i }).className).toContain('bg-sky');
-        expect(screen.getByRole('link', { name: /30 hari/i }).className).toContain('bg-cream-deep');
+        expect(
+            screen.getByRole('link', { name: /7 hari/i }).className,
+        ).toContain('bg-sky');
+        expect(
+            screen.getByRole('link', { name: /30 hari/i }).className,
+        ).toContain('bg-cream-deep');
     });
 });

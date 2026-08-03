@@ -9,13 +9,8 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * The registry for every cached Inertia shared prop: one place owning the key
- * string, the TTL and the bust.
- *
- * Before this, a key was defined in `HandleInertiaRequests` and invalidated from
- * somewhere else entirely — `RunnerProfile` re-typed the string literal and
- * `SystemControl` imported an HTTP middleware constant. Both are the wrong way
- * round: a model and a Pulse card should not depend on the HTTP layer to know
- * how to invalidate their own writes.
+ * string, the TTL and the bust. A model or a Pulse card that invalidates its
+ * own writes should not need to depend on the HTTP layer to know how.
  */
 enum SharedPropCacheKey: string
 {

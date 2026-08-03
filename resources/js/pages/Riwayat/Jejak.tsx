@@ -1,22 +1,38 @@
-import { Head, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { appLayout } from '@/layouts/appLayout';
-import JourneyStrip, { type JourneyMatchData } from '@/components/aktivitas/JourneyStrip';
-import RunListRow, { type RunNote } from '@/components/run/RunListRow';
-import Card from '@/components/ui/Card';
-import Eyebrow from '@/components/ui/Eyebrow';
-import EmptyPanel from '@/components/ui/EmptyPanel';
-import PillButton from '@/components/ui/PillButton';
-import PageHero from '@/components/ui/PageHero';
-import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
+import { Head, usePage } from '@inertiajs/react';
+
+import type {
+    Mood,
+    SharedProps,
+    StravaSyncState,
+    WeeklySnapshotWithRecap,
+} from '@/types/inertia';
+
+import JourneyStrip, {
+    type JourneyMatchData,
+} from '@/components/aktivitas/JourneyStrip';
 import ActiveFilterChips from '@/components/riwayat/ActiveFilterChips';
-import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
+import {
+    RangeWidenedNote,
+    RunsTruncatedNote,
+    WeekFocusNote,
+} from '@/components/riwayat/InlineNote';
 import ResumeFilterChip from '@/components/riwayat/ResumeFilterChip';
+import RiwayatFilter from '@/components/riwayat/RiwayatFilter';
+import RiwayatTabs from '@/components/riwayat/RiwayatTabs';
 import WeekSection from '@/components/riwayat/WeekSection';
-import { RangeWidenedNote, RunsTruncatedNote, WeekFocusNote } from '@/components/riwayat/InlineNote';
-import BackLink from '@/components/ui/BackLink';
+import RunListRow, { type RunNote } from '@/components/run/RunListRow';
 import StravaSyncButton from '@/components/StravaSyncButton';
 import Temari from '@/components/temari/Temari';
+import BackLink from '@/components/ui/BackLink';
+import Card from '@/components/ui/Card';
+import EmptyPanel from '@/components/ui/EmptyPanel';
+import Eyebrow from '@/components/ui/Eyebrow';
+import PageContainer from '@/components/ui/PageContainer';
+import PageHero from '@/components/ui/PageHero';
+import PillButton from '@/components/ui/PillButton';
+import { appLayout } from '@/layouts/appLayout';
+
 import {
     DEFAULT_SORT,
     SORT_OPTIONS,
@@ -27,8 +43,6 @@ import {
     type RunWithDetail,
     type SortMode,
 } from './useJejakFilters';
-import PageContainer from '@/components/ui/PageContainer';
-import type { Mood, SharedProps, StravaSyncState, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 interface RunsIndexProps {
     runs: ReadonlyArray<RunWithDetail>;
@@ -69,16 +83,24 @@ export default function RunsIndex({
     weeklySnapshots,
     journeyMatch = null,
 }: Readonly<RunsIndexProps>) {
-    const { buckets, snapshotsByWeek, sections, chips, resetFilters, resume, anyFilterActive, ranked } =
-        useJejakFilters({
-            runs,
-            weeklySnapshots,
-            rangeFilter,
-            moodFilter,
-            distanceFilter,
-            sortMode,
-            weekFilter,
-        });
+    const {
+        buckets,
+        snapshotsByWeek,
+        sections,
+        chips,
+        resetFilters,
+        resume,
+        anyFilterActive,
+        ranked,
+    } = useJejakFilters({
+        runs,
+        weeklySnapshots,
+        rangeFilter,
+        moodFilter,
+        distanceFilter,
+        sortMode,
+        weekFilter,
+    });
 
     const hasRuns = runs.length > 0;
 
@@ -101,7 +123,10 @@ export default function RunsIndex({
                         <RiwayatTabs active="jejak" />
                         <RiwayatFilter {...sections} onReset={resetFilters} />
                     </div>
-                    <ActiveFilterChips chips={chips} onClearAll={resetFilters} />
+                    <ActiveFilterChips
+                        chips={chips}
+                        onClearAll={resetFilters}
+                    />
                     {resume !== null && (
                         <ResumeFilterChip
                             summary={resume.summary}
@@ -113,20 +138,35 @@ export default function RunsIndex({
 
                 <JourneyStrip match={journeyMatch} className="mt-6 mb-6" />
 
-                {weekFilter !== null && <WeekFocusNote weekEnding={weekFilter} />}
+                {weekFilter !== null && (
+                    <WeekFocusNote weekEnding={weekFilter} />
+                )}
 
                 {hasRuns && (
                     <div className="space-y-8">
-                        {rangeAutoWidened && <RangeWidenedNote rangeFilter={rangeFilter} />}
-                        {runsTruncated && <RunsTruncatedNote maxRuns={maxRuns} />}
+                        {rangeAutoWidened && (
+                            <RangeWidenedNote rangeFilter={rangeFilter} />
+                        )}
+                        {runsTruncated && (
+                            <RunsTruncatedNote maxRuns={maxRuns} />
+                        )}
                         {ranked ? (
-                            <RankedList runs={runs} notes={notes} moods={moods} sort={sortMode} />
+                            <RankedList
+                                runs={runs}
+                                notes={notes}
+                                moods={moods}
+                                sort={sortMode}
+                            />
                         ) : (
                             buckets.map((bucket) => (
                                 <WeekSection
                                     key={bucket.weekStart}
                                     bucket={bucket}
-                                    snapshot={snapshotsByWeek.get(bucket.weekEnding) ?? null}
+                                    snapshot={
+                                        snapshotsByWeek.get(
+                                            bucket.weekEnding,
+                                        ) ?? null
+                                    }
                                     notes={notes}
                                     moods={moods}
                                     filtered={anyFilterActive}
@@ -138,7 +178,9 @@ export default function RunsIndex({
                 {/* A filtered view that matched nothing is a different story from
                     a genuinely empty history, so it gets its own state with a way
                     back rather than the "connect Strava" onboarding copy. */}
-                {!hasRuns && anyFilterActive && <NoFilterMatchState onReset={resetFilters} />}
+                {!hasRuns && anyFilterActive && (
+                    <NoFilterMatchState onReset={resetFilters} />
+                )}
                 {!hasRuns && !anyFilterActive && <EmptyState />}
             </PageContainer>
         </>
@@ -167,7 +209,9 @@ function RankedList({
     return (
         <Card as="section" padding="none" className="overflow-hidden shadow-sm">
             <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-cream-deep bg-cream-deep/40 px-5 py-4">
-                <div className="font-display text-lg italic text-ink">{label}</div>
+                <div className="font-display text-lg italic text-ink">
+                    {label}
+                </div>
                 <Eyebrow token="micro" tone="ink-3">
                     {runs.length} lari · diurutkan
                 </Eyebrow>
@@ -221,7 +265,9 @@ function EmptyState() {
             body={sub}
             action={
                 <>
-                    {state !== 'syncing' && <StravaSyncButton state={state} className="mt-4" />}
+                    {state !== 'syncing' && (
+                        <StravaSyncButton state={state} className="mt-4" />
+                    )}
                     <BackLink href="/" tone="accent" className="mt-4">
                         Kembali ke Hari Ini
                     </BackLink>
@@ -239,14 +285,26 @@ function EmptyState() {
  */
 function NoFilterMatchState({ onReset }: Readonly<{ onReset: () => void }>) {
     return (
-        <Card tone="empty" padding="lg" className="flex flex-col items-center text-center">
+        <Card
+            tone="empty"
+            padding="lg"
+            className="flex flex-col items-center text-center"
+        >
             <Temari pose="observational" size={112} animate={false} />
-            <p className="mt-4 font-display text-2xl italic text-ink-2">Gak ada lari yang cocok.</p>
+            <p className="mt-4 font-display text-2xl italic text-ink-2">
+                Gak ada lari yang cocok.
+            </p>
             <p className="mt-2 font-sans text-sm text-ink-2">
-                Filternya kesempitan nih. Coba longgarin dikit biar keliatan lagi.
+                Filternya kesempitan nih. Coba longgarin dikit biar keliatan
+                lagi.
             </p>
             <PillButton tone="outline" onClick={onReset} className="mt-4">
-                <Icon icon="mdi:filter-remove-outline" width={15} height={15} aria-hidden />
+                <Icon
+                    icon="mdi:filter-remove-outline"
+                    width={15}
+                    height={15}
+                    aria-hidden
+                />
                 Reset filter
             </PillButton>
         </Card>

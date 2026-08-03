@@ -22,12 +22,15 @@ export function useDawnShift(): TimeOfDay {
     }, [tod]);
 
     useEffect(() => {
-        const interval = globalThis.setInterval(() => {
-            setTod((prev) => {
-                const next = timeOfDayFor(new Date());
-                return prev === next ? prev : next;
-            });
-        }, 5 * 60 * 1000);
+        const interval = globalThis.setInterval(
+            () => {
+                setTod((prev) => {
+                    const next = timeOfDayFor(new Date());
+                    return prev === next ? prev : next;
+                });
+            },
+            5 * 60 * 1000,
+        );
         return () => {
             globalThis.clearInterval(interval);
             delete document.body.dataset.timeOfDay;

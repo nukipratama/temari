@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
+use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Services\AI\Agent\AgentToolbox;
@@ -21,7 +22,6 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RelativeEffort;
-use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -189,7 +189,7 @@ class RunInsightNarrator
     public function __construct(
         private readonly StructuredChatCaller $caller,
         private readonly TrainingLoad $trainingLoad,
-        private readonly RunBaseline $baseline,
+        private readonly ResolveRunBaselineAction $baseline,
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $trainingPaceCalculator,
         private readonly RelativeEffort $relativeEffort,

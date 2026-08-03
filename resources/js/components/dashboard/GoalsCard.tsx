@@ -1,11 +1,13 @@
-import { usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { usePage } from '@inertiajs/react';
+
+import type { SharedProps } from '@/types/inertia';
+
 import Eyebrow from '@/components/ui/Eyebrow';
 import LinkCard from '@/components/ui/LinkCard';
-import SectionLabel from '@/components/ui/SectionLabel';
 import ProgressBar from '@/components/ui/ProgressBar';
+import SectionLabel from '@/components/ui/SectionLabel';
 import { formatGoalNumber, goalProgressRatio } from '@/lib/goalProgress';
-import type { SharedProps } from '@/types/inertia';
 
 export default function GoalsCard() {
     const { props } = usePage<SharedProps>();
@@ -19,7 +21,12 @@ export default function GoalsCard() {
         <section className="mt-8">
             <SectionLabel>
                 <span className="inline-flex items-center gap-2">
-                    <Icon icon="mdi:target" width={14} height={14} aria-hidden />
+                    <Icon
+                        icon="mdi:target"
+                        width={14}
+                        height={14}
+                        aria-hidden
+                    />
                     Target terdekat
                 </span>
             </SectionLabel>
@@ -28,16 +35,27 @@ export default function GoalsCard() {
                     const ratio = goalProgressRatio(goal.current, goal.target);
 
                     return (
-                        <LinkCard key={goal.id} href="/target" padding="md" className="flex h-full flex-col gap-2">
+                        <LinkCard
+                            key={goal.id}
+                            href="/target"
+                            padding="md"
+                            className="flex h-full flex-col gap-2"
+                        >
                             <div className="font-display text-base leading-tight tracking-[-0.01em] text-ink">
                                 {goal.title}
                             </div>
                             <div className="mt-auto">
                                 <div className="mb-1.5 flex items-baseline justify-between">
                                     <span className="font-sans text-sm font-semibold tabular-nums text-ink">
-                                        {formatGoalNumber(goal.current)}<span className="text-ink-3">/</span>{formatGoalNumber(goal.target)}
+                                        {formatGoalNumber(goal.current)}
+                                        <span className="text-ink-3">/</span>
+                                        {formatGoalNumber(goal.target)}
                                     </span>
-                                    <Eyebrow as="span" token="micro" tone="ink-3">
+                                    <Eyebrow
+                                        as="span"
+                                        token="micro"
+                                        tone="ink-3"
+                                    >
                                         {goal.unit}
                                     </Eyebrow>
                                 </div>

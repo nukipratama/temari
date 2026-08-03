@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Actions\AI\RecordTokenUsageAction;
 use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\UnavailableException;
 use App\Services\AI\Agent\AgentBudget;
@@ -35,7 +36,7 @@ final readonly class StructuredChatCaller
 
     public function __construct(
         private AzureOpenAIClient $azure,
-        private TokenUsageRecorder $usageRecorder,
+        private RecordTokenUsageAction $recordUsage,
         private AgentLoop $loop,
     ) {
     }
@@ -148,7 +149,7 @@ final readonly class StructuredChatCaller
 
             Log::info('narrator.ai.call', [
                 'kind' => $kind,
-                'status' => 'ok',
+                'status' => NarratorCallStatus::Ok->value,
                 'latency_ms' => self::latencyMs($startedAt),
                 'truncated' => $truncated,
                 'steps' => $budget->steps(),
@@ -213,7 +214,7 @@ final readonly class StructuredChatCaller
             return;
         }
 
-        $this->usageRecorder->record(
+        ($this->recordUsage)(
             kind: $kind,
             usage: $budget,
             model: $deployment !== '' ? $deployment : null,
@@ -226,7 +227,7 @@ final readonly class StructuredChatCaller
 
     private static function isTruncated(CreateResponse $response): bool
     {
-        return $response->status === 'incomplete'
+        return $response->status === AzureResponseStatus::Incomplete->value
             && $response->incompleteDetails?->reason === 'max_output_tokens';
     }
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Services\Run\Metrics\TrainingFormStatus;
+
 class VibeMatrix
 {
     /**
@@ -11,7 +13,7 @@ class VibeMatrix
      */
     public function pick(array $signals): string
     {
-        $status = $signals['form_status'];
+        $status = TrainingFormStatus::tryFrom($signals['form_status']);
         $daysSince = $signals['days_since_run'];
         $hasRecentPr = $signals['recent_pr'];
         $decoupling = $signals['decoupling_avg'];
@@ -20,15 +22,15 @@ class VibeMatrix
             return 'hibernating';
         }
 
-        if ($hasRecentPr && ! in_array($status, ['fatigued', 'overreaching'], strict: true)) {
+        if ($hasRecentPr && ! in_array($status, [TrainingFormStatus::Fatigued, TrainingFormStatus::Overreaching], strict: true)) {
             return 'pumped';
         }
 
-        if ($status === 'fresh') {
+        if ($status === TrainingFormStatus::Fresh) {
             return 'fresh';
         }
 
-        if ($status === 'overreaching') {
+        if ($status === TrainingFormStatus::Overreaching) {
             if ($decoupling !== null && $decoupling > 5.0) {
                 return 'stretched_thin';
             }
@@ -36,7 +38,7 @@ class VibeMatrix
             return 'cooked';
         }
 
-        if ($status === 'fatigued') {
+        if ($status === TrainingFormStatus::Fatigued) {
             return 'worn_down';
         }
 

@@ -1,7 +1,9 @@
 import { Icon } from '@iconify/react';
+
+import type { StravaSync, StravaSyncState } from '@/types/inertia';
+
 import { cn } from '@/lib/cn';
 import { formatRelativeId } from '@/lib/pace';
-import type { StravaSync, StravaSyncState } from '@/types/inertia';
 
 interface StravaSyncBadgeProps {
     sync: StravaSync | null;
@@ -9,14 +11,24 @@ interface StravaSyncBadgeProps {
     density?: 'compact' | 'normal';
 }
 
-export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<StravaSyncBadgeProps>) {
+export default function StravaSyncBadge({
+    sync,
+    density = 'normal',
+}: Readonly<StravaSyncBadgeProps>) {
     // Default a missing prop to disconnected so a brief server/client deploy
     // skew never renders a blank badge.
     const state: StravaSyncState = sync?.state ?? 'disconnected';
-    const relative = state === 'ready' && sync?.last_synced_at ? formatRelativeId(sync.last_synced_at) : null;
+    const relative =
+        state === 'ready' && sync?.last_synced_at
+            ? formatRelativeId(sync.last_synced_at)
+            : null;
     const isCompact = density === 'compact';
 
-    const { label, ariaLabel, icon, iconClass } = resolveBadge(state, relative, isCompact);
+    const { label, ariaLabel, icon, iconClass } = resolveBadge(
+        state,
+        relative,
+        isCompact,
+    );
     const badgeClass = cn(
         'inline-flex items-center whitespace-nowrap rounded-full bg-sky/[0.06] text-label-micro text-ink-2',
         isCompact ? 'gap-1.5 px-2.5 py-1.5' : 'gap-2 px-3.5 py-2',
@@ -25,7 +37,13 @@ export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<S
         <>
             {/* The sync glyph labels the badge as sync freshness, so a bare relative time
                 ("19 jam lalu") on the compact top bar can't misread as "last run 19h ago". */}
-            <Icon icon={icon} width={13} height={13} aria-hidden className={cn('shrink-0', iconClass)} />
+            <Icon
+                icon={icon}
+                width={13}
+                height={13}
+                aria-hidden
+                className={cn('shrink-0', iconClass)}
+            />
             {label}
         </>
     );
@@ -37,7 +55,10 @@ export default function StravaSyncBadge({ sync, density = 'normal' }: Readonly<S
             <a
                 href="/auth/strava/redirect"
                 aria-label={ariaLabel}
-                className={cn(badgeClass, 'focus-ring transition hover:bg-sky/[0.12]')}
+                className={cn(
+                    badgeClass,
+                    'focus-ring transition hover:bg-sky/[0.12]',
+                )}
             >
                 {content}
             </a>
@@ -58,10 +79,14 @@ function resolveBadge(
 ): { label: string; ariaLabel: string; icon: string; iconClass: string } {
     switch (state) {
         case 'ready': {
-            const full = relative ? `Strava synced · ${relative}` : 'Strava synced';
+            const full = relative
+                ? `Strava synced · ${relative}`
+                : 'Strava synced';
             return {
                 label: isCompact ? (relative ?? 'Synced') : full,
-                ariaLabel: relative ? `Strava synced ${relative}` : 'Strava synced',
+                ariaLabel: relative
+                    ? `Strava synced ${relative}`
+                    : 'Strava synced',
                 icon: 'mdi:cloud-check-variant-outline',
                 iconClass: 'text-leaf-deep',
             };
@@ -75,7 +100,9 @@ function resolveBadge(
             };
         case 'revoked':
             return {
-                label: isCompact ? 'Sambungkan ulang' : 'Strava putus · Sambungkan ulang',
+                label: isCompact
+                    ? 'Sambungkan ulang'
+                    : 'Strava putus · Sambungkan ulang',
                 ariaLabel: 'Sambungan Strava putus, sambungkan ulang',
                 icon: 'mdi:cloud-alert-outline',
                 iconClass: 'text-ember-deep',

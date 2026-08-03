@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+
+import type { ActivityDetail } from '@/types/inertia';
+
 import {
     BADGE_ABILITY,
     BADGE_LABELS,
@@ -11,7 +14,6 @@ import {
     kartuPropsFromDetail,
     zonePctFromDetail,
 } from './runcard';
-import type { ActivityDetail } from '@/types/inertia';
 
 function detailWith(summary: ActivityDetail['stream_summary']): ActivityDetail {
     return {
@@ -51,7 +53,14 @@ describe('RARITY_LABELS', () => {
     });
 });
 
-const BADGE_KEYS = ['hari_panas', 'pejuang_hujan', 'anak_pagi', 'long_slow_distance', 'negative_split', 'tahan_diri'];
+const BADGE_KEYS = [
+    'hari_panas',
+    'pejuang_hujan',
+    'anak_pagi',
+    'long_slow_distance',
+    'negative_split',
+    'tahan_diri',
+];
 
 describe('BADGE_LABELS', () => {
     it('has expected badge keys', () => {
@@ -103,7 +112,11 @@ describe('avgCadenceFromDetail', () => {
     });
 
     it('returns null when no cadence data exists', () => {
-        expect(avgCadenceFromDetail(detailWith({ per_km: [{ km: 1, pace: '6:00' }] }))).toBeNull();
+        expect(
+            avgCadenceFromDetail(
+                detailWith({ per_km: [{ km: 1, pace: '6:00' }] }),
+            ),
+        ).toBeNull();
         expect(avgCadenceFromDetail(detailWith(undefined))).toBeNull();
     });
 });
@@ -127,13 +140,19 @@ describe('fastestKmFromDetail', () => {
 
 describe('zonePctFromDetail', () => {
     it('returns the zone distribution when present', () => {
-        const detail = detailWith({ time_in_zone_pct: { Z1: 10, Z2: 50, Z3: 40 } });
+        const detail = detailWith({
+            time_in_zone_pct: { Z1: 10, Z2: 50, Z3: 40 },
+        });
         expect(zonePctFromDetail(detail)).toEqual({ Z1: 10, Z2: 50, Z3: 40 });
     });
 
     it('returns null when zone data is absent or all-zero', () => {
         expect(zonePctFromDetail(detailWith(undefined))).toBeNull();
-        expect(zonePctFromDetail(detailWith({ time_in_zone_pct: { Z1: 0, Z2: 0 } }))).toBeNull();
+        expect(
+            zonePctFromDetail(
+                detailWith({ time_in_zone_pct: { Z1: 0, Z2: 0 } }),
+            ),
+        ).toBeNull();
     });
 });
 
@@ -162,17 +181,27 @@ describe('kartuPropsFromDetail', () => {
         expect(props.durasi).toBe('30:10');
         expect(props.trimp).toBe('43');
         expect(props.subtitle).toContain('Pagi santai · ');
-        expect(props.stats).toEqual({ pace: '6:02/km', hr: '152 bpm', cadence: '178 spm', fastestKm: '5:12/km' });
+        expect(props.stats).toEqual({
+            pace: '6:02/km',
+            hr: '152 bpm',
+            cadence: '178 spm',
+            fastestKm: '5:12/km',
+        });
         expect(props.zonePct).toEqual({ Z1: 10, Z2: 60, Z3: 30 });
         expect(props.paceShape).toEqual([360, 312]);
     });
 
     it('uses the words-form duration when durationFormat is words', () => {
-        expect(kartuPropsFromDetail(fullDetail, { durationFormat: 'words' }).durasi).toBe('30 menit 10 detik');
+        expect(
+            kartuPropsFromDetail(fullDetail, { durationFormat: 'words' })
+                .durasi,
+        ).toBe('30 menit 10 detik');
     });
 
     it('falls back to "Lari" in the subtitle when the run has no name', () => {
-        expect(kartuPropsFromDetail({ ...fullDetail, name: null }).subtitle).toContain('Lari · ');
+        expect(
+            kartuPropsFromDetail({ ...fullDetail, name: null }).subtitle,
+        ).toContain('Lari · ');
     });
 
     it('uses "—" sentinels and null fields when detail is null or empty', () => {
@@ -181,7 +210,12 @@ describe('kartuPropsFromDetail', () => {
         expect(props.durasi).toBe('—');
         expect(props.trimp).toBe('—');
         expect(props.subtitle).toBeNull();
-        expect(props.stats).toEqual({ pace: undefined, hr: undefined, cadence: undefined, fastestKm: undefined });
+        expect(props.stats).toEqual({
+            pace: undefined,
+            hr: undefined,
+            cadence: undefined,
+            fastestKm: undefined,
+        });
         expect(props.zonePct).toBeNull();
         expect(props.paceShape).toEqual([]);
     });

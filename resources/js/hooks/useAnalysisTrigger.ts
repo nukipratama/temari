@@ -1,8 +1,14 @@
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+import type {
+    AnalysisPayload,
+    AnalysisStatus,
+    SharedProps,
+} from '@/types/inertia';
+
 import { postJson } from '@/lib/http';
 import { analysisTriggerUrl } from '@/lib/routes';
-import type { AnalysisPayload, AnalysisStatus, SharedProps } from '@/types/inertia';
 
 const POLL_INITIAL_MS = 3000;
 const POLL_MAX_MS = 15000;
@@ -30,7 +36,10 @@ function isAnalysisPayload(value: unknown): value is AnalysisPayload {
     if (typeof record.status !== 'string') {
         return false;
     }
-    return record.retry_after_seconds == null || typeof record.retry_after_seconds === 'number';
+    return (
+        record.retry_after_seconds == null ||
+        typeof record.retry_after_seconds === 'number'
+    );
 }
 
 interface TriggerOptions {
@@ -93,7 +102,10 @@ function scheduleNext(slot: PollSlot): void {
             return;
         }
         router.reload({ only: slot.only });
-        slot.nextDelayMs = Math.min(Math.round(slot.nextDelayMs * POLL_BACKOFF_FACTOR), POLL_MAX_MS);
+        slot.nextDelayMs = Math.min(
+            Math.round(slot.nextDelayMs * POLL_BACKOFF_FACTOR),
+            POLL_MAX_MS,
+        );
         scheduleNext(slot);
     }, slot.nextDelayMs);
 }
@@ -112,7 +124,10 @@ function stopSlot(slot: PollSlot): void {
 // When `gaveUp`, notify subscribers so their UI can leave the fake skeleton.
 function retireSlot(slot: PollSlot, gaveUp = false): void {
     stopSlot(slot);
-    globalThis.document.removeEventListener('visibilitychange', slot.onVisibility);
+    globalThis.document.removeEventListener(
+        'visibilitychange',
+        slot.onVisibility,
+    );
     if (pollSlots.get(slot.key) === slot) {
         pollSlots.delete(slot.key);
     }
@@ -146,7 +161,10 @@ function subscribePoll(only: string[], onRetire: () => void): () => void {
         };
         slot = created;
         pollSlots.set(key, created);
-        globalThis.document.addEventListener('visibilitychange', created.onVisibility);
+        globalThis.document.addEventListener(
+            'visibilitychange',
+            created.onVisibility,
+        );
         scheduleNext(created);
     }
     slot.refs += 1;
@@ -166,7 +184,9 @@ function subscribePoll(only: string[], onRetire: () => void): () => void {
  * owns the response: {@link useAnalysisTrigger} runs its state machine off it,
  * the bulk control in FourLensGrid only awaits completion.
  */
-export function triggerAnalysis(analysis: Pick<AnalysisPayload, 'type' | 'subject_id' | 'discriminator'>): Promise<Response> {
+export function triggerAnalysis(
+    analysis: Pick<AnalysisPayload, 'type' | 'subject_id' | 'discriminator'>,
+): Promise<Response> {
     return postJson(analysisTriggerUrl(analysis));
 }
 
@@ -185,7 +205,9 @@ export function useAnalysisTrigger(
     const [status, setStatus] = useState<AnalysisStatus>(payload.status);
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [retryAfterSeconds, setRetryAfterSeconds] = useState<number | null>(payload.retry_after_seconds ?? null);
+    const [retryAfterSeconds, setRetryAfterSeconds] = useState<number | null>(
+        payload.retry_after_seconds ?? null,
+    );
     const [pollingRetired, setPollingRetired] = useState(false);
     const lastTriggeredAtRef = useRef(0);
 
@@ -213,7 +235,11 @@ export function useAnalysisTrigger(
             }
 
             if (!response.ok) {
-                throw new Error(response.status === 429 ? RATE_LIMITED_ERROR : `Trigger failed (${response.status})`);
+                throw new Error(
+                    response.status === 429
+                        ? RATE_LIMITED_ERROR
+                        : `Trigger failed (${response.status})`,
+                );
             }
 
             const body: unknown = await response.json();
@@ -234,7 +260,15 @@ export function useAnalysisTrigger(
         } finally {
             setPending(false);
         }
-    }, [pending, payload.type, payload.subject_id, payload.discriminator, payload.status, inertiaReloadProps, onUpdate]);
+    }, [
+        pending,
+        payload.type,
+        payload.subject_id,
+        payload.discriminator,
+        payload.status,
+        inertiaReloadProps,
+        onUpdate,
+    ]);
 
     // Mirror server-provided status/retry into local state when the props change —
     // adjusted during render (React-endorsed) rather than in effects. Local
@@ -253,7 +287,8 @@ export function useAnalysisTrigger(
     }
 
     const reloadKey = inertiaReloadProps.join('|');
-    const isInFlight = payload.status === 'queued' || payload.status === 'processing';
+    const isInFlight =
+        payload.status === 'queued' || payload.status === 'processing';
     const pollActive = isInFlight && reloadKey !== '';
     const pollKey = pollActive ? reloadKey : null;
 
@@ -268,8 +303,18 @@ export function useAnalysisTrigger(
 
     useEffect(() => {
         if (!pollActive) return;
-        return subscribePoll(reloadKey.split('|'), () => setPollingRetired(true));
+        return subscribePoll(reloadKey.split('|'), () =>
+            setPollingRetired(true),
+        );
     }, [pollActive, reloadKey]);
 
-    return { status, pending, error, retryAfterSeconds, pollingRetired, paused, trigger };
+    return {
+        status,
+        pending,
+        error,
+        retryAfterSeconds,
+        pollingRetired,
+        paused,
+        trigger,
+    };
 }

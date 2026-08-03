@@ -30,7 +30,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\PastYouMatcher;
-use App\Services\Run\Metrics\RunBaseline;
+use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -83,7 +83,7 @@ it('names every tool in snake_case with a description the model can choose on', 
         new WeatherTool($a, $d),
         new EffortContextTool($a, $d, app(RelativeEffort::class)),
         new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad()),
-        new RecentBaselineTool($a->user, $d->start_date_local, new RunBaseline()),
+        new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction()),
         new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
     ];
 
@@ -350,7 +350,7 @@ it('reads the 28-day baseline and the load state from a prior run', function ():
         'stream_summary' => ['decoupling_pct' => 6.0, 'time_in_zone_min' => ['Z2' => 40]],
     ]);
 
-    $baseline = new RecentBaselineTool($a->user, $d->start_date_local, new RunBaseline())->handle([])['recent_baseline_28d'];
+    $baseline = new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction())->handle([])['recent_baseline_28d'];
     $load = new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad())->handle([])['training_load'];
 
     expect($baseline)->toMatchArray([
@@ -373,7 +373,7 @@ it('excludes the run being narrated from its own baseline', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['average_heartrate' => 190.0]);
 
-    expect(new RecentBaselineTool($a->user, $d->start_date_local, new RunBaseline(), $a->id)->handle([])['recent_baseline_28d'])
+    expect(new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction(), $a->id)->handle([])['recent_baseline_28d'])
         ->toBeNull();
 });
 

@@ -98,10 +98,16 @@ describe('app.css integrity', () => {
     // load-bearing half: without it every control keeps the ~300ms
     // double-tap-zoom wait.
     it('still declares the press-feedback rule', () => {
-        const blocks = [...css.matchAll(/\.pressable\s*\{[^}]*\}/g)].map((m) => m[0]);
+        const blocks = [...css.matchAll(/\.pressable\s*\{[^}]*\}/g)].map(
+            (m) => m[0],
+        );
         expect(blocks.length).toBeGreaterThan(0);
         expect(
-            blocks.some((b) => b.includes('touch-manipulation') && b.includes('active:opacity-70')),
+            blocks.some(
+                (b) =>
+                    b.includes('touch-manipulation') &&
+                    b.includes('active:opacity-70'),
+            ),
         ).toBe(true);
     });
 });

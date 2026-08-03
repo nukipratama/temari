@@ -1,6 +1,7 @@
 import type { TemariPose } from '@/components/temari/TemariProto';
-import { moodFromActivity } from '@/lib/moodFromActivity';
 import type { ActivityDetail, FormStatus, Mood } from '@/types/inertia';
+
+import { moodFromActivity } from '@/lib/moodFromActivity';
 
 export const MOOD_TO_POSE: Record<Mood, TemariPose> = {
     nyala: 'proud',
@@ -24,7 +25,10 @@ export const VIBE_TO_POSE: Record<string, TemariPose> = {
 
 // Prefer the persisted backend mood when the caller has it; only fall back to
 // the frontend heuristic for runs with no post-run StoryLine yet.
-export function poseForRun(run: ActivityDetail, mood?: Mood | null): TemariPose {
+export function poseForRun(
+    run: ActivityDetail,
+    mood?: Mood | null,
+): TemariPose {
     const resolved = mood ?? moodFromActivity(run);
     return MOOD_TO_POSE[resolved] ?? 'observational';
 }

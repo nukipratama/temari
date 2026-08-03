@@ -125,6 +125,24 @@ it('authorizes post-run speech only for the activity owner', function (): void {
     Bus::assertDispatched(AnalyzeActivityJob::class);
 });
 
+it('responds with the flat payload shape at the top level, not a resource-wrapped "data" envelope', function (): void {
+    $user = User::factory()->create();
+    Analysis::factory()->done('content here')->create([
+        'subject_id' => $user->id,
+        'discriminator' => '2026-05-18',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->getJson("/api/analyses/briefing_mascot_voice/{$user->id}?discriminator=2026-05-18")
+        ->assertSuccessful();
+
+    expect(array_keys($response->json()))->toEqualCanonicalizing([
+        'id', 'status', 'content', 'type', 'is_zone_dependent',
+        'subject_type', 'subject_id', 'discriminator', 'attempts',
+        'generated_at', 'retry_after_seconds',
+    ]);
+});
+
 it('returns the current state via GET show', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done('content here')->create([
@@ -777,6 +795,32 @@ it('skips the recompute when the user has no custom profile, since the stored su
     $this->actingAs($user)
         ->postJson("/api/analyses/run_insight_zones/{$activity->id}/trigger")
         ->assertSuccessful();
+});
+
+it('skips the recompute for a zone-dependent recap whose subject is not a run', function (): void {
+    Carbon::setTestNow('2026-05-18 05:30:00');
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create();
+
+    // The weekly recap is zone-dependent but keyed by a WeeklySnapshot id, so a
+    // recompute here would target an unrelated activity id.
+    $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+    Analysis::factory()->failed()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+
+    $recomputer = Mockery::mock(SummaryRecomputer::class);
+    $recomputer->shouldNotReceive('recomputeFromStoredStreams');
+    app()->instance(SummaryRecomputer::class, $recomputer);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/weekly_recap/{$snap->id}/trigger")
+        ->assertOk();
+
+    Carbon::setTestNow();
 });
 
 it('skips the recompute for a block whose narration does not depend on zones', function (): void {

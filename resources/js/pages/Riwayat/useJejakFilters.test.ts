@@ -1,6 +1,10 @@
+import { router } from '@inertiajs/react';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
+
+import type { Mood, WeeklySnapshotWithRecap } from '@/types/inertia';
+
+import { run } from './runFixture';
 import {
     DISTANCE_OPTIONS,
     filterQuery,
@@ -12,8 +16,6 @@ import {
     type FilterState,
     type RunWithDetail,
 } from './useJejakFilters';
-import { run } from './runFixture';
-import type { Mood, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 function state(overrides: Partial<FilterState> = {}): FilterState {
     return {
@@ -26,7 +28,9 @@ function state(overrides: Partial<FilterState> = {}): FilterState {
     };
 }
 
-function hookProps(overrides: Partial<Parameters<typeof useJejakFilters>[0]> = {}) {
+function hookProps(
+    overrides: Partial<Parameters<typeof useJejakFilters>[0]> = {},
+) {
     return {
         runs: [] as ReadonlyArray<RunWithDetail>,
         weeklySnapshots: [] as ReadonlyArray<WeeklySnapshotWithRecap>,
@@ -45,21 +49,29 @@ describe('filterQuery', () => {
     });
 
     it('serialises moods in MOOD_ORDER so the same selection is always the same link', () => {
-        expect(filterQuery(state({ moods: new Set<Mood>(['adem', 'nyala', 'oleng']) }))).toEqual({
+        expect(
+            filterQuery(
+                state({ moods: new Set<Mood>(['adem', 'nyala', 'oleng']) }),
+            ),
+        ).toEqual({
             mood: 'nyala,oleng,adem',
         });
     });
 
     it('carries every non-default axis', () => {
         expect(
-            filterQuery(state({ range: '1y', distance: '21up', sort: 'longest' })),
+            filterQuery(
+                state({ range: '1y', distance: '21up', sort: 'longest' }),
+            ),
         ).toEqual({ range: '1y', dist: '21up', sort: 'longest' });
     });
 
     // A week scope pins its own window, so carrying `range` alongside it would
     // be noise in the URL.
     it('drops the range when a week scope pins its own window', () => {
-        expect(filterQuery(state({ range: '1y', week: '2026-05-17' }))).toEqual({ week: '2026-05-17' });
+        expect(filterQuery(state({ range: '1y', week: '2026-05-17' }))).toEqual(
+            { week: '2026-05-17' },
+        );
     });
 });
 
@@ -69,7 +81,9 @@ describe('hrefWithFilters', () => {
     });
 
     it('builds a query string for an active filter', () => {
-        expect(hrefWithFilters(state({ range: '1y', distance: '0-5' }))).toBe('/aktivitas?range=1y&dist=0-5');
+        expect(hrefWithFilters(state({ range: '1y', distance: '0-5' }))).toBe(
+            '/aktivitas?range=1y&dist=0-5',
+        );
     });
 });
 
@@ -90,8 +104,16 @@ describe('summariseQuery', () => {
 
     it('names each axis in the popover order', () => {
         expect(
-            summariseQuery({ week: '2026-05-17', range: '1y', sort: 'longest', dist: '21up', mood: 'nyala,adem' }),
-        ).toBe('satu minggu · Setahun penuh · Paling jauh · Half ke atas · Nyala, Adem');
+            summariseQuery({
+                week: '2026-05-17',
+                range: '1y',
+                sort: 'longest',
+                dist: '21up',
+                mood: 'nyala,adem',
+            }),
+        ).toBe(
+            'satu minggu · Setahun penuh · Paling jauh · Half ke atas · Nyala, Adem',
+        );
     });
 
     it('ignores a mood value that is not a real mood', () => {
@@ -107,7 +129,10 @@ describe('groupByWeek', () => {
             run(103, 'Minggu lalu', '2026-05-12T06:00:00'),
         ]);
 
-        expect(buckets.map((b) => b.weekStart)).toEqual(['2026-05-18', '2026-05-11']);
+        expect(buckets.map((b) => b.weekStart)).toEqual([
+            '2026-05-18',
+            '2026-05-11',
+        ]);
         expect(buckets[0].weekEnding).toBe('2026-05-24');
         expect(buckets[0].runs.length).toBe(2);
         expect(buckets[0].totalKm).toBeCloseTo(10);
@@ -130,7 +155,12 @@ describe('groupByWeek', () => {
     });
 
     it('skips a row with no detail rather than throwing', () => {
-        const headless = { id: 1, user_id: 1, analyzed_at: null, detail: null } as unknown as RunWithDetail;
+        const headless = {
+            id: 1,
+            user_id: 1,
+            analyzed_at: null,
+            detail: null,
+        } as unknown as RunWithDetail;
 
         expect(groupByWeek([headless])).toEqual([]);
     });
@@ -152,9 +182,17 @@ describe('useJejakFilters', () => {
     afterEach(() => window.localStorage.clear());
 
     it('groups the runs and indexes the snapshots by their week', () => {
-        const snapshot = { id: 1, week_ending: '2026-05-24T00:00:00Z' } as unknown as WeeklySnapshotWithRecap;
+        const snapshot = {
+            id: 1,
+            week_ending: '2026-05-24T00:00:00Z',
+        } as unknown as WeeklySnapshotWithRecap;
         const { result } = renderHook(() =>
-            useJejakFilters(hookProps({ runs: [run(101, 'Pagi', '2026-05-19T06:00:00')], weeklySnapshots: [snapshot] })),
+            useJejakFilters(
+                hookProps({
+                    runs: [run(101, 'Pagi', '2026-05-19T06:00:00')],
+                    weeklySnapshots: [snapshot],
+                }),
+            ),
         );
 
         expect(result.current.buckets.length).toBe(1);
@@ -174,19 +212,25 @@ describe('useJejakFilters', () => {
         ['distance', { distanceFilter: '21up' as const }],
         ['week', { weekFilter: '2026-05-17' }],
     ])('counts a %s filter as active', (_axis, override) => {
-        const { result } = renderHook(() => useJejakFilters(hookProps(override)));
+        const { result } = renderHook(() =>
+            useJejakFilters(hookProps(override)),
+        );
 
         expect(result.current.anyFilterActive).toBe(true);
     });
 
     it('does not count a widened range on its own as an active filter', () => {
-        const { result } = renderHook(() => useJejakFilters(hookProps({ rangeFilter: '1y' })));
+        const { result } = renderHook(() =>
+            useJejakFilters(hookProps({ rangeFilter: '1y' })),
+        );
 
         expect(result.current.anyFilterActive).toBe(false);
     });
 
     it('switches to the ranked mode, not a re-ordering, for a non-default sort', () => {
-        const { result } = renderHook(() => useJejakFilters(hookProps({ sortMode: 'longest' })));
+        const { result } = renderHook(() =>
+            useJejakFilters(hookProps({ sortMode: 'longest' })),
+        );
 
         expect(result.current.ranked).toBe(true);
     });
@@ -223,87 +267,148 @@ describe('useJejakFilters', () => {
     });
 
     it.each([
-        ['week:2026-05-17', { range: '1y', mood: 'nyala', dist: '21up', sort: 'longest' }],
-        ['range:1y', { week: '2026-05-17', mood: 'nyala', dist: '21up', sort: 'longest' }],
+        [
+            'week:2026-05-17',
+            { range: '1y', mood: 'nyala', dist: '21up', sort: 'longest' },
+        ],
+        [
+            'range:1y',
+            {
+                week: '2026-05-17',
+                mood: 'nyala',
+                dist: '21up',
+                sort: 'longest',
+            },
+        ],
         ['sort:longest', { week: '2026-05-17', mood: 'nyala', dist: '21up' }],
         ['dist:21up', { week: '2026-05-17', mood: 'nyala', sort: 'longest' }],
         ['mood:nyala', { week: '2026-05-17', dist: '21up', sort: 'longest' }],
-    ])('drops the %s chip and keeps every other axis in the url', (key, expected) => {
-        vi.mocked(router.get).mockReset();
-        const { result } = renderHook(() =>
-            useJejakFilters(
-                hookProps({
-                    weekFilter: '2026-05-17',
-                    rangeFilter: '1y',
-                    sortMode: 'longest',
-                    distanceFilter: '21up',
-                    moodFilter: ['nyala'],
+    ])(
+        'drops the %s chip and keeps every other axis in the url',
+        (key, expected) => {
+            vi.mocked(router.get).mockReset();
+            const { result } = renderHook(() =>
+                useJejakFilters(
+                    hookProps({
+                        weekFilter: '2026-05-17',
+                        rangeFilter: '1y',
+                        sortMode: 'longest',
+                        distanceFilter: '21up',
+                        moodFilter: ['nyala'],
+                    }),
+                ),
+            );
+
+            act(() =>
+                result.current.chips.find((c) => c.key === key)!.onRemove(),
+            );
+
+            expect(router.get).toHaveBeenCalledWith(
+                '/aktivitas',
+                expected,
+                expect.objectContaining({
+                    preserveScroll: true,
+                    preserveState: true,
                 }),
-            ),
-        );
-
-        act(() => result.current.chips.find((c) => c.key === key)!.onRemove());
-
-        expect(router.get).toHaveBeenCalledWith(
-            '/aktivitas',
-            expected,
-            expect.objectContaining({ preserveScroll: true, preserveState: true }),
-        );
-    });
+            );
+        },
+    );
 
     it('resets every axis back to a bare /aktivitas', () => {
         vi.mocked(router.get).mockReset();
         const { result } = renderHook(() =>
             useJejakFilters(
-                hookProps({ rangeFilter: '1y', moodFilter: ['nyala'], distanceFilter: '21up', sortMode: 'fastest', weekFilter: '2026-05-17' }),
+                hookProps({
+                    rangeFilter: '1y',
+                    moodFilter: ['nyala'],
+                    distanceFilter: '21up',
+                    sortMode: 'fastest',
+                    weekFilter: '2026-05-17',
+                }),
             ),
         );
 
         act(() => result.current.resetFilters());
 
-        expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+        expect(router.get).toHaveBeenCalledWith(
+            '/aktivitas',
+            {},
+            expect.anything(),
+        );
     });
 
     describe('sections', () => {
         it('builds a shareable href per range option, carrying the other filters', () => {
-            const { result } = renderHook(() => useJejakFilters(hookProps({ moodFilter: ['nyala'] })));
+            const { result } = renderHook(() =>
+                useJejakFilters(hookProps({ moodFilter: ['nyala'] })),
+            );
 
-            expect(result.current.sections.range.hrefFor('1y')).toBe('/aktivitas?range=1y&mood=nyala');
+            expect(result.current.sections.range.hrefFor('1y')).toBe(
+                '/aktivitas?range=1y&mood=nyala',
+            );
         });
 
         it('toggles a mood on and off through the url', () => {
             vi.mocked(router.get).mockReset();
-            const { result, rerender } = renderHook((props: Parameters<typeof useJejakFilters>[0]) => useJejakFilters(props), {
-                initialProps: hookProps(),
-            });
+            const { result, rerender } = renderHook(
+                (props: Parameters<typeof useJejakFilters>[0]) =>
+                    useJejakFilters(props),
+                {
+                    initialProps: hookProps(),
+                },
+            );
 
             act(() => result.current.sections.mood.onToggle('enteng'));
-            expect(router.get).toHaveBeenLastCalledWith('/aktivitas', { mood: 'enteng' }, expect.anything());
+            expect(router.get).toHaveBeenLastCalledWith(
+                '/aktivitas',
+                { mood: 'enteng' },
+                expect.anything(),
+            );
 
             rerender(hookProps({ moodFilter: ['enteng'] }));
             act(() => result.current.sections.mood.onToggle('enteng'));
-            expect(router.get).toHaveBeenLastCalledWith('/aktivitas', {}, expect.anything());
+            expect(router.get).toHaveBeenLastCalledWith(
+                '/aktivitas',
+                {},
+                expect.anything(),
+            );
         });
 
         // Tapping the active band clears it, so the popover needs no extra "any" row.
         it('clears the distance band when the active one is picked again', () => {
             vi.mocked(router.get).mockReset();
-            const { result } = renderHook(() => useJejakFilters(hookProps({ distanceFilter: '21up' })));
+            const { result } = renderHook(() =>
+                useJejakFilters(hookProps({ distanceFilter: '21up' })),
+            );
 
             act(() => result.current.sections.distance.onSelect('21up'));
-            expect(router.get).toHaveBeenLastCalledWith('/aktivitas', {}, expect.anything());
+            expect(router.get).toHaveBeenLastCalledWith(
+                '/aktivitas',
+                {},
+                expect.anything(),
+            );
 
             act(() => result.current.sections.distance.onSelect('0-5'));
-            expect(router.get).toHaveBeenLastCalledWith('/aktivitas', { dist: '0-5' }, expect.anything());
+            expect(router.get).toHaveBeenLastCalledWith(
+                '/aktivitas',
+                { dist: '0-5' },
+                expect.anything(),
+            );
         });
 
         it('omits the default sort from the url', () => {
             vi.mocked(router.get).mockReset();
-            const { result } = renderHook(() => useJejakFilters(hookProps({ sortMode: 'longest' })));
+            const { result } = renderHook(() =>
+                useJejakFilters(hookProps({ sortMode: 'longest' })),
+            );
 
             act(() => result.current.sections.sort.onSelect('newest'));
 
-            expect(router.get).toHaveBeenCalledWith('/aktivitas', {}, expect.anything());
+            expect(router.get).toHaveBeenCalledWith(
+                '/aktivitas',
+                {},
+                expect.anything(),
+            );
         });
     });
 
@@ -317,7 +422,10 @@ describe('useJejakFilters', () => {
         });
 
         it('names what resuming would apply', () => {
-            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala', dist: '21up' }));
+            window.localStorage.setItem(
+                KEY,
+                JSON.stringify({ mood: 'nyala', dist: '21up' }),
+            );
             const { result } = renderHook(() => useJejakFilters(hookProps()));
 
             expect(result.current.resume?.summary).toBe('Half ke atas · Nyala');
@@ -338,7 +446,11 @@ describe('useJejakFilters', () => {
             expect(router.get).not.toHaveBeenCalled();
 
             act(() => result.current.resume!.apply());
-            expect(router.get).toHaveBeenCalledWith('/aktivitas', { mood: 'nyala' }, expect.anything());
+            expect(router.get).toHaveBeenCalledWith(
+                '/aktivitas',
+                { mood: 'nyala' },
+                expect.anything(),
+            );
         });
 
         it('forgets the saved query when dismissed, so it cannot nag', () => {
@@ -353,7 +465,9 @@ describe('useJejakFilters', () => {
 
         it('stays hidden while a filter is already active', () => {
             window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
-            const { result } = renderHook(() => useJejakFilters(hookProps({ moodFilter: ['enteng'] })));
+            const { result } = renderHook(() =>
+                useJejakFilters(hookProps({ moodFilter: ['enteng'] })),
+            );
 
             expect(result.current.resume).toBeNull();
         });

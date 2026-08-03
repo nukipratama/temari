@@ -1,9 +1,12 @@
+import { usePoll } from '@inertiajs/react';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { usePoll } from '@inertiajs/react';
-import EmptyRunsState from './EmptyRunsState';
-import { setMockPage } from '@/test/setup';
+
 import type { StravaSyncState } from '@/types/inertia';
+
+import { setMockPage } from '@/test/setup';
+
+import EmptyRunsState from './EmptyRunsState';
 
 const HERO_COPY: Record<StravaSyncState, { headline: string; copy: string }> = {
     disconnected: {

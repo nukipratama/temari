@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import FeaturedKartuPanel from './FeaturedKartuPanel';
+
 import type { FeaturedCard } from '@/pages/HariIni/helpers';
 import type { AnalysisPayload } from '@/types/inertia';
+
+import FeaturedKartuPanel from './FeaturedKartuPanel';
 
 const featured: FeaturedCard = {
     cardId: 7,
@@ -34,15 +36,31 @@ const voice: AnalysisPayload = {
 
 describe('FeaturedKartuPanel', () => {
     it('renders the eyebrow, card name, and a CTA to the run', () => {
-        render(<FeaturedKartuPanel featured={featured} featuredKartuVoice={voice} />);
-        expect(screen.getByText(/Kartu andalan dari Temari/)).toBeInTheDocument();
-        expect(screen.getAllByText('Pembalik Keadaan').length).toBeGreaterThan(0);
+        render(
+            <FeaturedKartuPanel
+                featured={featured}
+                featuredKartuVoice={voice}
+            />,
+        );
+        expect(
+            screen.getByText(/Kartu andalan dari Temari/),
+        ).toBeInTheDocument();
+        expect(screen.getAllByText('Pembalik Keadaan').length).toBeGreaterThan(
+            0,
+        );
         const cta = screen.getByRole('link', { name: /lihat aktivitas/i });
         expect(cta).toHaveAttribute('href', '/aktivitas/42');
     });
 
     it('renders the featured-kartu voice quote', () => {
-        render(<FeaturedKartuPanel featured={featured} featuredKartuVoice={voice} />);
-        expect(screen.getByText(/bukti kamu bisa lebih jauh/)).toBeInTheDocument();
+        render(
+            <FeaturedKartuPanel
+                featured={featured}
+                featuredKartuVoice={voice}
+            />,
+        );
+        expect(
+            screen.getByText(/bukti kamu bisa lebih jauh/),
+        ).toBeInTheDocument();
     });
 });

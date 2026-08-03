@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Strava;
 
+use App\Actions\Strava\ProbeStravaWebhookAction;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\User;
-use App\Services\Strava\StravaWebhookProbe;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -75,7 +75,7 @@ class DoctorCommand extends Command
                 $callbackUrl = route('strava.webhook.verify');
                 $verifyToken = (string) config('services.strava.webhook_verify_token');
 
-                return $verifyToken !== '' && app(StravaWebhookProbe::class)->probe($callbackUrl, $verifyToken)['passed'];
+                return $verifyToken !== '' && app(ProbeStravaWebhookAction::class)($callbackUrl, $verifyToken)['passed'];
             },
             'Rate limit headroom (15 min)' => fn (): bool => $sampleUserId !== null && RateLimiter::remaining("strava-api:{$sampleUserId}:15min", 200) > 0,
             'Rate limit headroom (daily)' => fn (): bool => $sampleUserId !== null && RateLimiter::remaining("strava-api:{$sampleUserId}:daily", 2000) > 0,
@@ -169,7 +169,7 @@ class DoctorCommand extends Command
 
         if ($verifyToken === '') {
             $this->warn('Webhook self-handshake: SKIPPED (STRAVA_WEBHOOK_VERIFY_TOKEN not configured).');
-        } elseif (app(StravaWebhookProbe::class)->probe($callbackUrl, $verifyToken)['passed']) {
+        } elseif (app(ProbeStravaWebhookAction::class)($callbackUrl, $verifyToken)['passed']) {
             $this->info('Webhook self-handshake: PASS (origin echoed the challenge). Probes from a trusted IP, so it does not prove Strava reaches the edge: if a subscription still fails with "GET to callback URL does not return 200", check Cloudflare Bot Fight Mode.');
         } else {
             $this->error('Webhook self-handshake: FAIL. Strava would reject a subscription. Check the app container env (verify token) and Cloudflare access to /strava/webhook.');

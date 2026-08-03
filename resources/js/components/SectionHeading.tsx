@@ -1,5 +1,7 @@
-import { Icon } from '@iconify/react';
 import type { ReactNode } from 'react';
+
+import { Icon } from '@iconify/react';
+
 import { cn } from '@/lib/cn';
 import { ICON_TONE, type Tone } from '@/lib/tones';
 
@@ -53,7 +55,9 @@ export default function SectionHeading({
                     {title}
                 </h2>
                 {subtitle !== undefined && subtitle !== null && (
-                    <p className="mt-2 text-sm leading-relaxed text-ink-2">{subtitle}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                        {subtitle}
+                    </p>
                 )}
             </div>
         </div>

@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import LastLariCard from './LastLariCard';
+
 import type { ActivityDetail } from '@/types/inertia';
+
+import LastLariCard from './LastLariCard';
 
 const richRun: ActivityDetail = {
     id: 1,
@@ -36,7 +38,11 @@ const bareRun: ActivityDetail = {
 describe('LastLariCard', () => {
     it('renders name, location, pace, and an optional note', () => {
         render(
-            <LastLariCard run={richRun} pose="proud" note={{ oneline: 'Sesi yang mantap.', mood: 'nyala' }} />,
+            <LastLariCard
+                run={richRun}
+                pose="proud"
+                note={{ oneline: 'Sesi yang mantap.', mood: 'nyala' }}
+            />,
         );
         expect(screen.getByText('Pagi negatif-split')).toBeInTheDocument();
         expect(screen.getByText(/Gelora Bung Karno/)).toBeInTheDocument();
@@ -61,7 +67,13 @@ describe('LastLariCard', () => {
 
     it('shows the run start time in the subline', () => {
         // start_date_local 07:00 renders as the as-recorded naive wall clock.
-        render(<LastLariCard run={richRun} pose="proud" note={{ oneline: 'x', mood: 'mumet' }} />);
+        render(
+            <LastLariCard
+                run={richRun}
+                pose="proud"
+                note={{ oneline: 'x', mood: 'mumet' }}
+            />,
+        );
         expect(screen.getByText('07.00')).toBeInTheDocument();
     });
 });

@@ -1,14 +1,16 @@
-import { Link } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { Link } from '@inertiajs/react';
 import { motion, useDragControls } from 'framer-motion';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
+
+import type { MoodOption } from '@/lib/mood';
+import type { Mood } from '@/types/inertia';
+
 import Eyebrow from '@/components/ui/Eyebrow';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';
-import type { MoodOption } from '@/lib/mood';
 import { filterOptionVariants } from '@/lib/variants';
-import type { Mood } from '@/types/inertia';
 
 export interface RangeOption<V extends string> {
     value: V;
@@ -58,7 +60,11 @@ interface SortSection<S extends string> {
     onSelect: (sort: S) => void;
 }
 
-interface RiwayatFilterProps<V extends string, B extends string = string, S extends string = string> {
+interface RiwayatFilterProps<
+    V extends string,
+    B extends string = string,
+    S extends string = string,
+> {
     range?: RangeSection<V>;
     mood?: MoodSection;
     distance?: DistanceSection<B>;
@@ -78,13 +84,20 @@ interface RiwayatFilterProps<V extends string, B extends string = string, S exte
  */
 /** Below Tailwind's `lg`, where the panel renders as a bottom sheet. */
 function isSheetViewport(): boolean {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    if (
+        typeof window === 'undefined' ||
+        typeof window.matchMedia !== 'function'
+    ) {
         return false;
     }
     return window.matchMedia('(max-width: 1023.98px)').matches;
 }
 
-export default function RiwayatFilter<V extends string, B extends string = string, S extends string = string>({
+export default function RiwayatFilter<
+    V extends string,
+    B extends string = string,
+    S extends string = string,
+>({
     range,
     mood,
     distance,
@@ -106,11 +119,17 @@ export default function RiwayatFilter<V extends string, B extends string = strin
     // Range counts as "active" only when the user picked something other than
     // the first (most-recent) option — that's the implicit default.
     const rangeActive =
-        range && range.options.length > 0 && range.value !== range.options[0].value ? 1 : 0;
+        range &&
+        range.options.length > 0 &&
+        range.value !== range.options[0].value
+            ? 1
+            : 0;
     const distanceActive = distance?.value != null ? 1 : 0;
     // Like range, the first sort option is the implicit default and isn't counted.
     const sortActive =
-        sort && sort.options.length > 0 && sort.value !== sort.options[0].value ? 1 : 0;
+        sort && sort.options.length > 0 && sort.value !== sort.options[0].value
+            ? 1
+            : 0;
     const totalActive = moodActive + rangeActive + distanceActive + sortActive;
     const summary = buildSummary(range, moodActive, distance, sort);
 
@@ -131,7 +150,12 @@ export default function RiwayatFilter<V extends string, B extends string = strin
                         : 'border-line/60 bg-surface-elev text-ink-2 hover:bg-surface-warm',
                 )}
             >
-                <Icon icon="mdi:tune-variant" width={14} height={14} aria-hidden />
+                <Icon
+                    icon="mdi:tune-variant"
+                    width={14}
+                    height={14}
+                    aria-hidden
+                />
                 <span>{summary}</span>
                 {totalActive > 0 && (
                     <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky px-1 font-mono text-[11px] font-bold text-cream">
@@ -149,7 +173,13 @@ export default function RiwayatFilter<V extends string, B extends string = strin
             {/* Scrim behind the mobile sheet: gives the sheet something to sit
                 against and makes tapping away to dismiss an obvious target.
                 Desktop keeps the anchored popover, so it is hidden there. */}
-            {open && <div className="fixed inset-0 z-30 bg-ink/20 lg:hidden" aria-hidden onClick={close} />}
+            {open && (
+                <div
+                    className="fixed inset-0 z-30 bg-ink/20 lg:hidden"
+                    aria-hidden
+                    onClick={close}
+                />
+            )}
             {open && (
                 <motion.div
                     // Drag is started by the grab handle rather than the sheet
@@ -206,9 +236,16 @@ export default function RiwayatFilter<V extends string, B extends string = strin
                     )}
                     {/* Sitting on anything but the first option switches the page to a
                         flat ranked list, which the hint spells out. */}
-                    {sort && <OptionListSectionView title="Urutan" section={sort} />}
+                    {sort && (
+                        <OptionListSectionView title="Urutan" section={sort} />
+                    )}
                     {range && <RangeSectionView section={range} />}
-                    {distance && <OptionListSectionView title="Jarak" section={distance} />}
+                    {distance && (
+                        <OptionListSectionView
+                            title="Jarak"
+                            section={distance}
+                        />
+                    )}
                     {mood && <MoodSectionView section={mood} />}
                 </motion.div>
             )}
@@ -216,7 +253,10 @@ export default function RiwayatFilter<V extends string, B extends string = strin
     );
 }
 
-function FilterSection({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
+function FilterSection({
+    title,
+    children,
+}: Readonly<{ title: string; children: ReactNode }>) {
     return (
         <div className="border-b border-line/60 px-3 py-3 last:border-b-0">
             <Eyebrow token="micro" tone="ink-2" className="mb-2">
@@ -227,7 +267,9 @@ function FilterSection({ title, children }: Readonly<{ title: string; children: 
     );
 }
 
-function RangeSectionView<V extends string>({ section }: Readonly<{ section: RangeSection<V> }>) {
+function RangeSectionView<V extends string>({
+    section,
+}: Readonly<{ section: RangeSection<V> }>) {
     return (
         <FilterSection title="Rentang waktu">
             <div className="flex flex-col gap-1">
@@ -241,11 +283,15 @@ function RangeSectionView<V extends string>({ section }: Readonly<{ section: Ran
                             preserveScroll
                             preserveState
                             aria-current={active ? 'true' : undefined}
-                            className={cn(filterOptionVariants({ layout: 'row', active }))}
+                            className={cn(
+                                filterOptionVariants({ layout: 'row', active }),
+                            )}
                         >
                             <span>{opt.label}</span>
                             {opt.hint && (
-                                <span className="font-mono text-[11px] text-ink-3">{opt.hint}</span>
+                                <span className="font-mono text-[11px] text-ink-3">
+                                    {opt.hint}
+                                </span>
                             )}
                         </Link>
                     );
@@ -267,9 +313,20 @@ function MoodSectionView({ section }: Readonly<{ section: MoodSection }>) {
                             type="button"
                             aria-pressed={active}
                             onClick={() => section.onToggle(mood)}
-                            className={cn(filterOptionVariants({ layout: 'mood', active }))}
+                            className={cn(
+                                filterOptionVariants({
+                                    layout: 'mood',
+                                    active,
+                                }),
+                            )}
                         >
-                            <span className={cn('inline-block h-3 w-3 rounded-sm', swatchClass)} aria-hidden />
+                            <span
+                                className={cn(
+                                    'inline-block h-3 w-3 rounded-sm',
+                                    swatchClass,
+                                )}
+                                aria-hidden
+                            />
                             {label}
                         </button>
                     );
@@ -287,7 +344,14 @@ function MoodSectionView({ section }: Readonly<{ section: MoodSection }>) {
 function OptionListSectionView<T extends string>({
     title,
     section,
-}: Readonly<{ title: string; section: { value: T | null; options: ReadonlyArray<{ value: T; label: string; hint?: string }>; onSelect: (value: T) => void } }>) {
+}: Readonly<{
+    title: string;
+    section: {
+        value: T | null;
+        options: ReadonlyArray<{ value: T; label: string; hint?: string }>;
+        onSelect: (value: T) => void;
+    };
+}>) {
     return (
         <FilterSection title={title}>
             <div className="flex flex-col gap-1">
@@ -299,11 +363,15 @@ function OptionListSectionView<T extends string>({
                             type="button"
                             aria-pressed={active}
                             onClick={() => section.onSelect(opt.value)}
-                            className={cn(filterOptionVariants({ layout: 'row', active }))}
+                            className={cn(
+                                filterOptionVariants({ layout: 'row', active }),
+                            )}
                         >
                             <span>{opt.label}</span>
                             {opt.hint && (
-                                <span className="font-mono text-[11px] text-ink-3">{opt.hint}</span>
+                                <span className="font-mono text-[11px] text-ink-3">
+                                    {opt.hint}
+                                </span>
                             )}
                         </button>
                     );
@@ -320,7 +388,11 @@ function buildSummary<V extends string, B extends string, S extends string>(
     sort: SortSection<S> | undefined,
 ): string {
     const parts: string[] = [];
-    if (sort && sort.options.length > 0 && sort.value !== sort.options[0].value) {
+    if (
+        sort &&
+        sort.options.length > 0 &&
+        sort.value !== sort.options[0].value
+    ) {
         const current = sort.options.find((o) => o.value === sort.value);
         if (current) parts.push(current.label);
     }

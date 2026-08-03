@@ -1,5 +1,6 @@
-import { useState } from 'react';
 import { usePage } from '@inertiajs/react';
+import { useState } from 'react';
+
 import type { SharedProps } from '@/types/inertia';
 
 /**

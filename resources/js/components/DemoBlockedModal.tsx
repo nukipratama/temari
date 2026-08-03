@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 
 interface DemoBlockedModalProps {
@@ -12,7 +13,10 @@ interface DemoBlockedModalProps {
  * upsell shown instead of a silent 403/redirect. Uses the shared
  * {@see TemariNudgeModal} shell (a calm nudge, not a win celebration).
  */
-export default function DemoBlockedModal({ open, onClose }: Readonly<DemoBlockedModalProps>) {
+export default function DemoBlockedModal({
+    open,
+    onClose,
+}: Readonly<DemoBlockedModalProps>) {
     return (
         <TemariNudgeModal
             open={open}
@@ -20,8 +24,9 @@ export default function DemoBlockedModal({ open, onClose }: Readonly<DemoBlocked
             title="Telegram-nya lagi istirahat dulu"
             body={
                 <>
-                    Ini kan masih demo, jadi Telegram aku matiin biar bot bareng-bareng ini gak kepencet
-                    orang lain. Sambungin Strava-mu sendiri, nanti notif beneran masuk ke HP kamu.
+                    Ini kan masih demo, jadi Telegram aku matiin biar bot
+                    bareng-bareng ini gak kepencet orang lain. Sambungin
+                    Strava-mu sendiri, nanti notif beneran masuk ke HP kamu.
                 </>
             }
             primaryLabel="Sambungkan dengan Strava"

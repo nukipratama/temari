@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import DetailTiles from './DetailTiles';
+
 import type { ActivityDetail, StreamSummary } from '@/types/inertia';
+
+import DetailTiles from './DetailTiles';
 
 const ONE_LEG_CADENCE = 85;
 
@@ -24,8 +26,13 @@ function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
 
 const baseSummary: StreamSummary = { decoupling_pct: 4.5 };
 
-function renderTiles(detailOverrides: Partial<ActivityDetail> = {}, summary: StreamSummary = baseSummary) {
-    return render(<DetailTiles detail={detail(detailOverrides)} summary={summary} />);
+function renderTiles(
+    detailOverrides: Partial<ActivityDetail> = {},
+    summary: StreamSummary = baseSummary,
+) {
+    return render(
+        <DetailTiles detail={detail(detailOverrides)} summary={summary} />,
+    );
 }
 
 describe('DetailTiles', () => {
@@ -40,12 +47,17 @@ describe('DetailTiles', () => {
     it('doubles the one-leg average_cadence into a both-legs spm tile', () => {
         renderTiles();
         expect(screen.getByText('CADENCE')).toBeInTheDocument();
-        expect(screen.getByText(String(ONE_LEG_CADENCE * 2))).toBeInTheDocument();
+        expect(
+            screen.getByText(String(ONE_LEG_CADENCE * 2)),
+        ).toBeInTheDocument();
         expect(screen.getByText('spm avg')).toBeInTheDocument();
     });
 
     it('shows TANJAKAN and GAP tiles on a hilly run', () => {
-        renderTiles({}, { ...baseSummary, max_grade_pct: 11, gap_pace: '5:20' });
+        renderTiles(
+            {},
+            { ...baseSummary, max_grade_pct: 11, gap_pace: '5:20' },
+        );
         expect(screen.getByText('TANJAKAN')).toBeInTheDocument();
         expect(screen.getByText('11%')).toBeInTheDocument();
         expect(screen.getByText('GAP')).toBeInTheDocument();
@@ -65,7 +77,10 @@ describe('DetailTiles', () => {
     });
 
     it('skips the grade tiles when max_grade_pct is not a finite number (no "NaN%")', () => {
-        renderTiles({}, { ...baseSummary, max_grade_pct: Number.NaN, gap_pace: '5:20' });
+        renderTiles(
+            {},
+            { ...baseSummary, max_grade_pct: Number.NaN, gap_pace: '5:20' },
+        );
         expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
         expect(screen.queryByText('TANJAKAN')).not.toBeInTheDocument();
     });
@@ -73,7 +88,9 @@ describe('DetailTiles', () => {
     it('exposes the decoupling tile as a warning when |decoupling| > 8% on a cool run', () => {
         renderTiles({ weather_temp_c: 20 }, { decoupling_pct: 12.5 });
         expect(screen.getByText('+12.5%')).toHaveClass('text-ember');
-        expect(screen.getByText('napas melar di paruh kedua')).toBeInTheDocument();
+        expect(
+            screen.getByText('napas melar di paruh kedua'),
+        ).toBeInTheDocument();
     });
 
     it('softens the decoupling tile with a heat explanation when the run was hot', () => {
@@ -93,7 +110,9 @@ describe('DetailTiles', () => {
         // must still read as a plain warning, not "wajar, tadi panas".
         renderTiles({ weather_temp_c: 32 }, { decoupling_pct: -12.5 });
         expect(screen.getByText('-12.5%')).toHaveClass('text-ember');
-        expect(screen.getByText('napas melar di paruh kedua')).toBeInTheDocument();
+        expect(
+            screen.getByText('napas melar di paruh kedua'),
+        ).toBeInTheDocument();
         expect(screen.queryByText(/wajar, tadi panas/)).not.toBeInTheDocument();
     });
 
@@ -112,21 +131,33 @@ describe('DetailTiles', () => {
         // AVG HR + MAX HR + CADENCE, no grade/decoupling data — 3 tiles, an odd
         // count that would otherwise strand CADENCE alone in the 2-column grid.
         renderTiles({}, {});
-        expect(screen.getByText('CADENCE').closest('div.rounded-xl')).toHaveClass('col-span-2');
-        expect(screen.getByText('AVG HR').closest('div.rounded-xl')).not.toHaveClass('col-span-2');
+        expect(
+            screen.getByText('CADENCE').closest('div.rounded-xl'),
+        ).toHaveClass('col-span-2');
+        expect(
+            screen.getByText('AVG HR').closest('div.rounded-xl'),
+        ).not.toHaveClass('col-span-2');
     });
 
     it('does not span the last tile when the tile count is even', () => {
         // Default fixture yields 4 tiles (AVG HR, MAX HR, CADENCE, DECOUPLING).
         renderTiles();
-        expect(screen.getByText('DECOUPLING').closest('div.rounded-xl')).not.toHaveClass('col-span-2');
+        expect(
+            screen.getByText('DECOUPLING').closest('div.rounded-xl'),
+        ).not.toHaveClass('col-span-2');
     });
 
     it('renders the empty card when the run carries no technical numbers', () => {
         renderTiles(
-            { average_heartrate: null, max_heartrate: null, average_cadence: null },
+            {
+                average_heartrate: null,
+                max_heartrate: null,
+                average_cadence: null,
+            },
             {},
         );
-        expect(screen.getByText(/Detail teknis-nya belum kebaca/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Detail teknis-nya belum kebaca/),
+        ).toBeInTheDocument();
     });
 });

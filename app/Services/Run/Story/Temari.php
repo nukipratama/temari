@@ -20,7 +20,7 @@ class Temari
 
     public const MOOD_ENTENG = 'enteng';   // easy run / negative split
 
-    public const MOOD_OLENG = 'oleng';     // HR drift / heat strain (was squished slot)
+    public const MOOD_OLENG = 'oleng';     // HR drift / heat strain
 
     public const MOOD_LEMES = 'lemes';     // wobble / decoupling drift
 

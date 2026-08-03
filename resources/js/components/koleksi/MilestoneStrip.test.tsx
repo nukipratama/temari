@@ -1,12 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import MilestoneStrip from './MilestoneStrip';
 
 describe('MilestoneStrip', () => {
     it('renders the target and delta labels for a sub-hour target', () => {
         // 50:00 target, 1:30 to go — mirrors Rekor.tsx passing a 10K chase.
         const { container } = render(
-            <MilestoneStrip targetSec={3000} deltaSec={90} distanceLabel="10K" />,
+            <MilestoneStrip
+                targetSec={3000}
+                deltaSec={90}
+                distanceLabel="10K"
+            />,
         );
 
         expect(screen.getByText(/Target berikutnya/)).toBeInTheDocument();

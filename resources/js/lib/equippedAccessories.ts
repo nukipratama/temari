@@ -1,5 +1,5 @@
-import type { EquippedAccessories } from '@/types/inertia';
 import type { TemariEquipped } from '@/components/temari/TemariProto';
+import type { EquippedAccessories } from '@/types/inertia';
 
 /**
  * Canonical unlock keys from config/temari_unlocks.php. Shared by the mascot's
@@ -39,7 +39,9 @@ export const ACCESSORY_KEYS = {
  * key off — one per slot, so the mascot shows exactly what the user equipped
  * (not every accessory they've unlocked).
  */
-export function equippedToKeys(equipped: EquippedAccessories | null | undefined): string[] {
+export function equippedToKeys(
+    equipped: EquippedAccessories | null | undefined,
+): string[] {
     if (!equipped) {
         return [];
     }
@@ -67,46 +69,51 @@ export function equippedToKeys(equipped: EquippedAccessories | null | undefined)
 // per-slot map, so renames or ambiguous substrings cannot cause false
 // matches.
 
+/** Builds a typed key→variant lookup without an `as Record<...>` cast at each entry. */
+function variantMap<V>(map: Record<string, V>): Record<string, V> {
+    return map;
+}
+
 /** Key-suffix → variant for each slot. The suffix is the full segment after `accessory.`. */
 const VARIANT_MAPS = {
-    ikat_kepala: {
+    ikat_kepala: variantMap<TemariEquipped['headband']>({
         ikat_kepala_legendaris: 'legendaris',
         ikat_kepala_epik: 'epik',
         ikat_kepala_langka: 'epik',
         ikat_kepala_berkesan: 'ember',
-    } as Record<string, TemariEquipped['headband']>,
-    medal: {
+    }),
+    medal: variantMap<TemariEquipped['medal']>({
         medal_platina: 'platina',
         medal_perak: 'perak',
         medal_emas: 'emas',
         medal_pertama: 'pertama',
-    } as Record<string, TemariEquipped['medal']>,
-    kaus: {
+    }),
+    kaus: variantMap<TemariEquipped['kaus']>({
         kaus_legendaris: 'legendaris',
         kaus_hujan: 'hujan',
         kaus_pagi: 'pagi',
         kaus_pemula: 'pemula',
-    } as Record<string, TemariEquipped['kaus']>,
-    celana: {
+    }),
+    celana: variantMap<TemariEquipped['celana']>({
         celana_maraton: 'maraton',
         celana_split: 'split',
         celana_jarak: 'jarak',
         celana_ringan: 'ringan',
-    } as Record<string, TemariEquipped['celana']>,
-    sepatu: {
+    }),
+    sepatu: variantMap<TemariEquipped['sepatu']>({
         sepatu_legendaris: 'legendaris',
         sepatu_tahan: 'tahan',
         sepatu_cepat: 'cepat',
         sepatu_basic: 'basic',
-    } as Record<string, TemariEquipped['sepatu']>,
-    aura: {
+    }),
+    aura: variantMap<TemariEquipped['aura']>({
         aura_jagoan: 'jagoan',
         aura_tenang: 'tenang',
         aura_gerah: 'gerah',
         aura_pemanasan: 'pemanasan',
         aura_angin: 'angin',
-    } as Record<string, TemariEquipped['aura']>,
-} as const;
+    }),
+};
 
 /** Extract the segment after `accessory.` from a full unlock key. */
 function suffixOf(key: string): string {
@@ -174,9 +181,12 @@ const SLOT_PREFIXES = [
     'aura',
 ] as const;
 
-type SlotName = typeof SLOT_PREFIXES[number];
+type SlotName = (typeof SLOT_PREFIXES)[number];
 
-const SLOT_MAPPER: Record<SlotName, (key: string) => TemariEquipped[keyof TemariEquipped]> = {
+const SLOT_MAPPER: Record<
+    SlotName,
+    (key: string) => TemariEquipped[keyof TemariEquipped]
+> = {
     ikat_kepala: (key) => mapHeadband(key),
     medal: (key) => mapMedal(key),
     kaus: (key) => mapKaus(key),

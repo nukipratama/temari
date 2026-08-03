@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 
 /**
  * How hard a run was for the runner *relative to their own recent norm*, using
  * the Edwards TRIMP we already compute ({@see ActivityDetail::$trimp_edwards})
- * against the 28-day baseline from {@see RunBaseline}. This is the "vs biasanya"
+ * against the 28-day baseline from {@see ResolveRunBaselineAction}. This is the "vs biasanya"
  * framing the raw TRIMP tile can't give on its own; it never compares the runner
  * to anyone else.
  *
@@ -30,7 +31,7 @@ class RelativeEffort
     /** Minimum prior runs *with* a TRIMP before we trust the baseline enough to compare. */
     private const int MIN_BASELINE_RUNS = 3;
 
-    public function __construct(private readonly RunBaseline $baseline)
+    public function __construct(private readonly ResolveRunBaselineAction $baseline)
     {
     }
 
@@ -47,7 +48,7 @@ class RelativeEffort
             return null;
         }
 
-        $baseline = $this->baseline->forUserAsOf($activity->user_id, $asOf, $activity->id);
+        $baseline = ($this->baseline)($activity->user_id, $asOf, $activity->id);
         $avgTrimp = $baseline['avg_trimp'] ?? null;
 
         if ($baseline === null || $avgTrimp === null || $avgTrimp <= 0 || $baseline['trimp_runs'] < self::MIN_BASELINE_RUNS) {

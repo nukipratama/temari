@@ -1,7 +1,12 @@
 import type { ActivityDetail } from '@/types/inertia';
+
 import type { RunWithDetail } from './useJejakFilters';
 
-export function run(id: number, name: string, isoDate: string | null = '2026-05-19T06:00:00'): RunWithDetail {
+export function run(
+    id: number,
+    name: string,
+    isoDate: string | null = '2026-05-19T06:00:00',
+): RunWithDetail {
     return {
         id,
         user_id: 1,

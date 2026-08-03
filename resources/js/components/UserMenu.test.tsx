@@ -1,6 +1,7 @@
+import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
+
 import UserMenu from './UserMenu';
 
 beforeEach(() => {
@@ -23,7 +24,9 @@ describe('UserMenu', () => {
         render(<UserMenu name="Ada Lovelace" avatarUrl={null} />);
         fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));
 
-        expect(screen.getByRole('link', { name: 'Pengaturan' })).toHaveAttribute('href', '/pengaturan');
+        expect(
+            screen.getByRole('link', { name: 'Pengaturan' }),
+        ).toHaveAttribute('href', '/pengaturan');
     });
 
     it('closes the dropdown when the settings link is followed', () => {
@@ -63,11 +66,18 @@ describe('UserMenu', () => {
         fireEvent.click(screen.getByLabelText(/Buka menu Ada Lovelace/));
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
         expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Keluar' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Keluar' }),
+        ).toBeInTheDocument();
     });
 
     it('renders the avatar image when avatar_url is provided', () => {
-        render(<UserMenu name="Ada Lovelace" avatarUrl="https://example.com/a.jpg" />);
+        render(
+            <UserMenu
+                name="Ada Lovelace"
+                avatarUrl="https://example.com/a.jpg"
+            />,
+        );
         const avatarButton = screen.getByLabelText(/Buka menu Ada/);
         expect(avatarButton.querySelector('img')).not.toBeNull();
     });

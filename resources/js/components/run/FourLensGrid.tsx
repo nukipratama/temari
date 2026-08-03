@@ -1,15 +1,20 @@
+import { Icon } from '@iconify/react';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useMemo, useState } from 'react';
-import { Icon } from '@iconify/react';
+
+import type { AnalysisPayload, SharedProps } from '@/types/inertia';
+
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { triggerAnalysis } from '@/hooks/useAnalysisTrigger';
-import { cooldownAriaLabel, useCooldownCountdown } from '@/hooks/useCooldownCountdown';
+import {
+    cooldownAriaLabel,
+    useCooldownCountdown,
+} from '@/hooks/useCooldownCountdown';
+import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
-import { cn } from '@/lib/cn';
-import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 interface LensConfig {
     id: 'cerita' | 'terjemahan' | 'split' | 'hr';
@@ -49,7 +54,12 @@ const TONE_ICON: Record<LensConfig['tone'], string> = {
     ember: 'text-ember',
 };
 
-const DEFAULT_RELOAD_PROPS = ['speechAnalysis', 'insightTechnical', 'insightSplits', 'insightZones'];
+const DEFAULT_RELOAD_PROPS = [
+    'speechAnalysis',
+    'insightTechnical',
+    'insightSplits',
+    'insightZones',
+];
 
 function bulkButtonLabel(pending: boolean, cooldownRemaining: number): string {
     if (pending) {
@@ -73,18 +83,46 @@ export default function FourLensGrid({
     const [bulkPending, setBulkPending] = useState(false);
     const paused = usePage<SharedProps>().props.aiPaused ?? false;
 
-    const lenses = useMemo<ReadonlyArray<LensConfig>>(() => [
-        { id: 'cerita', icon: 'mdi:chat-outline', label: 'Cerita lari ini', analysis: cerita, tone: 'leaf' },
-        { id: 'terjemahan', icon: 'mdi:stethoscope', label: 'Terjemahan teknis', analysis: terjemahan, tone: 'ember' },
-        { id: 'split', icon: 'mdi:timer-outline', label: 'Split paling seru', analysis: split, tone: 'citrus' },
-        { id: 'hr', icon: 'mdi:heart-pulse', label: 'Zona HR', analysis: hr, tone: 'sky' },
-    ], [cerita, terjemahan, split, hr]);
+    const lenses = useMemo<ReadonlyArray<LensConfig>>(
+        () => [
+            {
+                id: 'cerita',
+                icon: 'mdi:chat-outline',
+                label: 'Cerita lari ini',
+                analysis: cerita,
+                tone: 'leaf',
+            },
+            {
+                id: 'terjemahan',
+                icon: 'mdi:stethoscope',
+                label: 'Terjemahan teknis',
+                analysis: terjemahan,
+                tone: 'ember',
+            },
+            {
+                id: 'split',
+                icon: 'mdi:timer-outline',
+                label: 'Split paling seru',
+                analysis: split,
+                tone: 'citrus',
+            },
+            {
+                id: 'hr',
+                icon: 'mdi:heart-pulse',
+                label: 'Zona HR',
+                analysis: hr,
+                tone: 'sky',
+            },
+        ],
+        [cerita, terjemahan, split, hr],
+    );
 
     // The bulk control respects the same per-row cooldown the server enforces:
     // it stays disabled until the longest-cooling lens unlocks. Lenses finish
     // within seconds of each other, so the max is a faithful shared countdown.
     const cooldownRemaining = useCooldownCountdown(
-        Math.max(...lenses.map((l) => l.analysis.retry_after_seconds ?? 0)) || null,
+        Math.max(...lenses.map((l) => l.analysis.retry_after_seconds ?? 0)) ||
+            null,
     );
     const cooling = cooldownRemaining > 0;
     const bulkLabel = bulkButtonLabel(bulkPending, cooldownRemaining);
@@ -92,7 +130,9 @@ export default function FourLensGrid({
     const triggerAll = useCallback(async () => {
         if (bulkPending || cooling) return;
         setBulkPending(true);
-        await Promise.allSettled(lenses.map((l) => triggerAnalysis(l.analysis)));
+        await Promise.allSettled(
+            lenses.map((l) => triggerAnalysis(l.analysis)),
+        );
         router.reload({ only: inertiaReloadProps });
         setBulkPending(false);
     }, [bulkPending, cooling, lenses, inertiaReloadProps]);
@@ -107,10 +147,19 @@ export default function FourLensGrid({
                         type="button"
                         onClick={triggerAll}
                         disabled={bulkPending || cooling}
-                        aria-label={cooldownAriaLabel(cooldownRemaining, 'baca ulang semua')}
+                        aria-label={cooldownAriaLabel(
+                            cooldownRemaining,
+                            'baca ulang semua',
+                        )}
                         className="focus-ring rounded inline-flex items-center gap-1.5 text-label-micro text-ink-2 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        <Icon icon={bulkPending ? 'mdi:loading' : 'mdi:auto-awesome'} className={cn(bulkPending && 'animate-spin')} aria-hidden />
+                        <Icon
+                            icon={
+                                bulkPending ? 'mdi:loading' : 'mdi:auto-awesome'
+                            }
+                            className={cn(bulkPending && 'animate-spin')}
+                            aria-hidden
+                        />
                         {bulkLabel}
                     </button>
                 </div>

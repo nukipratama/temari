@@ -1,17 +1,19 @@
-import { AnimatePresence, motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
-import { useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
-import ConfettiBurst from '@/components/ConfettiBurst';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+
 import type { SharedProps, UnlockFlash } from '@/types/inertia';
+
+import ConfettiBurst from '@/components/ConfettiBurst';
 
 const DISMISS_MS = 5000;
 
 export default function UnlockToast() {
     const { props } = usePage<SharedProps>();
     const unlock = props.flash?.unlock ?? null;
-    const [active, setActive] = useState<UnlockFlash | null>(
-        () => (unlock !== null && !unlock.is_major ? unlock : null),
+    const [active, setActive] = useState<UnlockFlash | null>(() =>
+        unlock !== null && !unlock.is_major ? unlock : null,
     );
     const [lastUnlock, setLastUnlock] = useState(unlock);
 
@@ -42,10 +44,20 @@ export default function UnlockToast() {
                         className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-citrus/25 bg-surface-elev px-5 py-3 shadow-lg lg:bottom-6"
                         role="status"
                     >
-                        <Icon icon={active.icon} width={24} height={24} className="text-citrus-deep" aria-hidden />
+                        <Icon
+                            icon={active.icon}
+                            width={24}
+                            height={24}
+                            className="text-citrus-deep"
+                            aria-hidden
+                        />
                         <div>
-                            <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">Unlock baru</div>
-                            <div className="text-sm font-semibold text-ink">{active.name}</div>
+                            <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
+                                Unlock baru
+                            </div>
+                            <div className="text-sm font-semibold text-ink">
+                                {active.name}
+                            </div>
                         </div>
                         <button
                             type="button"
@@ -53,7 +65,12 @@ export default function UnlockToast() {
                             aria-label="Tutup notifikasi"
                             className="focus-ring ml-2 rounded-full p-1 text-ink-3 hover:bg-line/40 hover:text-ink"
                         >
-                            <Icon icon="mdi:close" width={14} height={14} aria-hidden />
+                            <Icon
+                                icon="mdi:close"
+                                width={14}
+                                height={14}
+                                aria-hidden
+                            />
                         </button>
                     </motion.div>
                 )}

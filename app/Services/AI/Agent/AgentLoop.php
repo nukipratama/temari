@@ -9,6 +9,7 @@ use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureFailureMapper;
 use App\Services\AI\AzureOpenAIClient;
+use App\Services\AI\NarratorCallStatus;
 use Illuminate\Support\Facades\Log;
 use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Responses\Responses\Output\OutputFunctionToolCall;
@@ -130,15 +131,11 @@ final readonly class AgentLoop
         } catch (Throwable $e) {
             Log::warning('narrator.ai.call', [
                 'kind' => $kind,
-                'status' => 'fail',
+                'status' => NarratorCallStatus::Fail->value,
                 'error' => $e->getMessage(),
                 'latency_ms' => self::latencyMs($startedAt),
             ]);
 
-            // A wrong API key (401/403) or wrong base URL/host (DNS/connection)
-            // is a config/auth failure: count it toward the Azure config breaker
-            // so a persistent misconfig trips and generation pauses cleanly (rows
-            // stay Pending) instead of burning the retry budget on every row.
             if (AzureFailureMapper::isConfigAuthFailure($e)) {
                 $this->configBreaker->recordFailure();
             }
@@ -146,15 +143,9 @@ final readonly class AgentLoop
             throw AzureFailureMapper::map($e);
         }
 
-        // The call reached Azure and authenticated, so any prior config-failure
-        // streak is stale: reset the breaker (fast no-op when already closed).
         $this->configBreaker->recordSuccess();
         $budget->recordStep(...self::usageOf($response));
 
-        // Output-side filtering returns HTTP 200 with an empty body rather than
-        // throwing a content_filter error, so it would otherwise decode as
-        // non-JSON and dead-letter. Map it to the same ContentFilterException as
-        // input-side so it flows through the strip-retry + rule-based fallback.
         if (AzureFailureMapper::isOutputContentFiltered($response)) {
             throw new ContentFilterException('Azure OpenAI call failed: output filtered by content management policy');
         }

@@ -1,12 +1,14 @@
 import { Icon } from '@iconify/react';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
+
+import type { KindOption, RangeToken } from '@/pages/AiUsage/types';
+
 import Card from '@/components/ui/Card';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
 import { toggleButtonVariants } from '@/lib/variants';
 import { navigate, presetHref, PRESETS } from '@/pages/AiUsage/helpers';
-import type { KindOption, RangeToken } from '@/pages/AiUsage/types';
 
 interface UsageFiltersProps {
     range: RangeToken;
@@ -16,7 +18,13 @@ interface UsageFiltersProps {
     availableKinds: KindOption[];
 }
 
-export default function UsageFilters({ range, from, to, kind, availableKinds }: Readonly<UsageFiltersProps>) {
+export default function UsageFilters({
+    range,
+    from,
+    to,
+    kind,
+    availableKinds,
+}: Readonly<UsageFiltersProps>) {
     const [fromInput, setFromInput] = useState<string>(from);
     const [toInput, setToInput] = useState<string>(to);
     const [kindInput, setKindInput] = useState<string>(kind ?? '');
@@ -24,7 +32,12 @@ export default function UsageFilters({ range, from, to, kind, availableKinds }: 
     function handleSubmit(e: React.FormEvent): void {
         e.preventDefault();
         // Editing the date fields is a custom window.
-        navigate({ range: 'custom', from: fromInput, to: toInput, kind: kindInput || null });
+        navigate({
+            range: 'custom',
+            from: fromInput,
+            to: toInput,
+            kind: kindInput || null,
+        });
     }
 
     // Changing the kind applies immediately, keeping the current range window.
@@ -41,12 +54,29 @@ export default function UsageFilters({ range, from, to, kind, availableKinds }: 
                 padding="sm"
                 className="bg-surface-elev"
             >
-                <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
-                    <DateField id="from" label="Dari" value={fromInput} onChange={setFromInput} />
-                    <DateField id="to" label="Sampai" value={toInput} onChange={setToInput} />
+                <form
+                    onSubmit={handleSubmit}
+                    className="flex flex-wrap items-end gap-3"
+                >
+                    <DateField
+                        id="from"
+                        label="Dari"
+                        value={fromInput}
+                        onChange={setFromInput}
+                    />
+                    <DateField
+                        id="to"
+                        label="Sampai"
+                        value={toInput}
+                        onChange={setToInput}
+                    />
 
                     {availableKinds.length > 0 && (
-                        <KindFilter kinds={availableKinds} value={kindInput} onChange={handleKindChange} />
+                        <KindFilter
+                            kinds={availableKinds}
+                            value={kindInput}
+                            onChange={handleKindChange}
+                        />
                     )}
 
                     <PillButton type="submit" tone="sky" size="sm">
@@ -68,13 +98,14 @@ export default function UsageFilters({ range, from, to, kind, availableKinds }: 
             </Card>
 
             <p className="mt-3 text-xs text-ink-3">
-                Rentang aktif: <span className="font-semibold text-ink">{from}</span> sampai{' '}
+                Rentang aktif:{' '}
+                <span className="font-semibold text-ink">{from}</span> sampai{' '}
                 <span className="font-semibold text-ink">{to}</span>
                 {kind && (
                     <>
                         {' '}
-                        <span className="text-ink-2">|</span>{' '}
-                        Filter: <span className="font-semibold text-ink">{kind}</span>
+                        <span className="text-ink-2">|</span> Filter:{' '}
+                        <span className="font-semibold text-ink">{kind}</span>
                     </>
                 )}
             </p>
@@ -86,7 +117,11 @@ function KindFilter({
     kinds,
     value,
     onChange,
-}: Readonly<{ kinds: KindOption[]; value: string; onChange: (v: string) => void }>) {
+}: Readonly<{
+    kinds: KindOption[];
+    value: string;
+    onChange: (v: string) => void;
+}>) {
     return (
         <label
             htmlFor="kind-filter"
@@ -115,9 +150,17 @@ function DateField({
     label,
     value,
     onChange,
-}: Readonly<{ id: string; label: string; value: string; onChange: (v: string) => void }>) {
+}: Readonly<{
+    id: string;
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+}>) {
     return (
-        <label htmlFor={id} className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
+        <label
+            htmlFor={id}
+            className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-ink-2"
+        >
             {label}
             <input
                 id={id}
@@ -130,9 +173,19 @@ function DateField({
     );
 }
 
-function PresetButton({ label, href, active }: Readonly<{ label: string; href: string; active: boolean }>) {
+function PresetButton({
+    label,
+    href,
+    active,
+}: Readonly<{ label: string; href: string; active: boolean }>) {
     return (
-        <Link href={href} preserveScroll className={cn(toggleButtonVariants({ size: 'sm', selected: active }))}>
+        <Link
+            href={href}
+            preserveScroll
+            className={cn(
+                toggleButtonVariants({ size: 'sm', selected: active }),
+            )}
+        >
             {label}
         </Link>
     );

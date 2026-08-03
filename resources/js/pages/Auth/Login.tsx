@@ -1,11 +1,13 @@
-import { Head, useForm, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
-import { bareLayout } from '@/layouts/BareShell';
+
+import type { SharedProps } from '@/types/inertia';
+
 import BrandMark from '@/components/BrandMark';
 import KartuMini from '@/components/card/KartuMini';
 import PillButton from '@/components/ui/PillButton';
-import type { SharedProps } from '@/types/inertia';
+import { bareLayout } from '@/layouts/BareShell';
 
 interface LoginProps {
     authStravaUrl: string;
@@ -14,9 +16,21 @@ interface LoginProps {
 }
 
 const PILLARS: ReadonlyArray<{ icon: string; label: string; desc: string }> = [
-    { icon: 'mdi:link-variant', label: 'Aku baca 📖', desc: 'Strava-mu nyambung otomatis' },
-    { icon: 'mdi:cards-outline', label: 'Aku catat ✍️', desc: 'Tiap lari dapet kartunya' },
-    { icon: 'mdi:hand-heart-outline', label: 'Aku temenin 🫶', desc: 'Konsisten, bukan kenceng' },
+    {
+        icon: 'mdi:link-variant',
+        label: 'Aku baca 📖',
+        desc: 'Strava-mu nyambung otomatis',
+    },
+    {
+        icon: 'mdi:cards-outline',
+        label: 'Aku catat ✍️',
+        desc: 'Tiap lari dapet kartunya',
+    },
+    {
+        icon: 'mdi:hand-heart-outline',
+        label: 'Aku temenin 🫶',
+        desc: 'Konsisten, bukan kenceng',
+    },
 ];
 
 const HERO_GRADIENT =
@@ -31,12 +45,17 @@ const FORM_CARD_SHADOW =
 // Strava button keeps #FC4C02 brand orange and the official Strava glyph per their guidelines.
 // Button label is localized ("Sambungkan dengan Strava") per explicit product decision; accept
 // the small risk that Strava brand review may flag it.
-export default function Login({ authStravaUrl, from = null }: Readonly<LoginProps>) {
+export default function Login({
+    authStravaUrl,
+    from = null,
+}: Readonly<LoginProps>) {
     const { demoLoginEnabled, flash } = usePage<SharedProps>().props;
     const demoForm = useForm({ from });
     const submitDemo = () => demoForm.post('/auth/demo');
 
-    const stravaUrl = from ? `${authStravaUrl}?from=${encodeURIComponent(from)}` : authStravaUrl;
+    const stravaUrl = from
+        ? `${authStravaUrl}?from=${encodeURIComponent(from)}`
+        : authStravaUrl;
 
     return (
         <>
@@ -66,9 +85,27 @@ function RouteEcho() {
             preserveAspectRatio="xMidYMid slice"
             fill="none"
         >
-            <path d="M-40,640 Q180,440 380,540 T880,320" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.08" />
-            <path d="M-40,540 Q140,340 340,420 T820,220" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.06" />
-            <path d="M-40,740 Q220,560 460,640 T920,460" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeOpacity="0.07" />
+            <path
+                d="M-40,640 Q180,440 380,540 T880,320"
+                stroke="white"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeOpacity="0.08"
+            />
+            <path
+                d="M-40,540 Q140,340 340,420 T820,220"
+                stroke="white"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeOpacity="0.06"
+            />
+            <path
+                d="M-40,740 Q220,560 460,640 T920,460"
+                stroke="white"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeOpacity="0.07"
+            />
         </svg>
     );
 }
@@ -81,7 +118,10 @@ function HeroSide() {
     // Only hide the overlay after play() resolves — if the browser rejects the call
     // (e.g. interrupted by a second click) the button stays visible so the user can retry.
     const playIntro = () => {
-        videoRef.current?.play().then(() => setPlaying(true)).catch(() => {});
+        videoRef.current
+            ?.play()
+            .then(() => setPlaying(true))
+            .catch(() => {});
     };
     return (
         <div
@@ -121,14 +161,22 @@ function HeroSide() {
                             className="focus-ring-on-sky group absolute inset-0 flex items-center justify-center bg-sky-deep/25 transition hover:bg-sky-deep/10"
                         >
                             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-cream/95 shadow-lg transition group-hover:scale-105">
-                                <Icon icon="mdi:play" width={32} height={32} className="ml-1 text-sky" aria-hidden />
+                                <Icon
+                                    icon="mdi:play"
+                                    width={32}
+                                    height={32}
+                                    className="ml-1 text-sky"
+                                    aria-hidden
+                                />
                             </span>
                         </button>
                     )}
                 </div>
                 <h1 className="mt-7 font-display italic text-display-lg text-cream sm:text-display-xl">
                     <span className="block whitespace-nowrap">Lari Kamu,</span>
-                    <span className="block whitespace-nowrap text-horizon">Gak Sendirian.</span>
+                    <span className="block whitespace-nowrap text-horizon">
+                        Gak Sendirian.
+                    </span>
                 </h1>
                 <p className="mt-4 font-sans text-base leading-relaxed text-cream sm:text-lg">
                     “Halo, aku Temari. Mulai sekarang, lari kamu aku temenin.”
@@ -146,7 +194,13 @@ interface FormSideProps {
     info?: string | null;
 }
 
-function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending, info = null }: Readonly<FormSideProps>) {
+function FormSide({
+    authStravaUrl,
+    demoLoginEnabled,
+    onSubmitDemo,
+    demoPending,
+    info = null,
+}: Readonly<FormSideProps>) {
     return (
         <div className="flex flex-col items-center justify-center gap-9 bg-cream px-8 py-12 sm:px-12 lg:px-[100px] lg:py-20">
             {info && (
@@ -154,7 +208,13 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending, 
                     role="status"
                     className="flex w-full max-w-[480px] items-start gap-2.5 rounded-2xl border border-leaf/30 bg-leaf/[0.08] px-4 py-3 font-sans text-[13px] leading-relaxed text-ink-2 2xl:max-w-[560px]"
                 >
-                    <Icon icon="mdi:check-circle-outline" width={16} height={16} aria-hidden className="mt-0.5 shrink-0 text-leaf-deep" />
+                    <Icon
+                        icon="mdi:check-circle-outline"
+                        width={16}
+                        height={16}
+                        aria-hidden
+                        className="mt-0.5 shrink-0 text-leaf-deep"
+                    />
                     <span>{info}</span>
                 </div>
             )}
@@ -168,7 +228,12 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending, 
                             aria-hidden
                             className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-horizon/[0.18] text-horizon-deep"
                         >
-                            <Icon icon={pillar.icon} width={18} height={18} aria-hidden />
+                            <Icon
+                                icon={pillar.icon}
+                                width={18}
+                                height={18}
+                                aria-hidden
+                            />
                         </span>
                         <div className="font-sans text-sm font-semibold text-ink">
                             {pillar.label}
@@ -191,9 +256,13 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending, 
                     className="shadow-md"
                 />
                 <div>
-                    <p className="font-sans text-sm font-semibold text-ink">Ini kartu beneran, bukan mockup</p>
+                    <p className="font-sans text-sm font-semibold text-ink">
+                        Ini kartu beneran, bukan mockup
+                    </p>
                     <p className="mt-1 font-sans text-xs leading-relaxed text-ink-3">
-                        Tiap lari yang nyambung dari Strava-mu, Temari bikinin kartu koleksi kayak gini, lengkap sama rute dan mood hari itu.
+                        Tiap lari yang nyambung dari Strava-mu, Temari bikinin
+                        kartu koleksi kayak gini, lengkap sama rute dan mood
+                        hari itu.
                     </p>
                 </div>
             </div>
@@ -213,10 +282,17 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending, 
                     href={authStravaUrl}
                     className="relative mt-6 flex w-full items-center rounded-full bg-strava-orange py-3.5 text-sm font-semibold text-white transition hover:bg-strava-orange-hover focus:outline-none focus:ring-4 focus:ring-strava-orange/30"
                 >
-                    <svg viewBox="0 0 24 24" className="absolute left-5 h-5 w-5" fill="currentColor" aria-hidden>
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="absolute left-5 h-5 w-5"
+                        fill="currentColor"
+                        aria-hidden
+                    >
                         <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
                     </svg>
-                    <span className="flex-1 px-12 text-center">Sambungkan dengan Strava</span>
+                    <span className="flex-1 px-12 text-center">
+                        Sambungkan dengan Strava
+                    </span>
                 </a>
 
                 {demoLoginEnabled && (
@@ -226,14 +302,31 @@ function FormSide({ authStravaUrl, demoLoginEnabled, onSubmitDemo, demoPending, 
                         disabled={demoPending}
                         className="relative mt-2.5 flex w-full items-center bg-transparent px-0 py-3 text-sm text-ink hover:text-ink disabled:opacity-60"
                     >
-                        <Icon icon="mdi:play-circle-outline" width={16} height={16} aria-hidden className="absolute left-5" />
-                        <span className="flex-1 px-12 text-center">Coba versi demo</span>
+                        <Icon
+                            icon="mdi:play-circle-outline"
+                            width={16}
+                            height={16}
+                            aria-hidden
+                            className="absolute left-5"
+                        />
+                        <span className="flex-1 px-12 text-center">
+                            Coba versi demo
+                        </span>
                     </PillButton>
                 )}
 
                 <p className="mt-6 flex items-start gap-2.5 rounded-[10px] bg-leaf/10 px-4 py-3 font-sans text-[13px] leading-relaxed text-ink-2">
-                    <Icon icon="mdi:shield-check-outline" width={16} height={16} aria-hidden className="mt-0.5 shrink-0 text-leaf-deep" />
-                    <span>Aku cuma pake Strava buat baca lari kamu doang, bukan yang lain.</span>
+                    <Icon
+                        icon="mdi:shield-check-outline"
+                        width={16}
+                        height={16}
+                        aria-hidden
+                        className="mt-0.5 shrink-0 text-leaf-deep"
+                    />
+                    <span>
+                        Aku cuma pake Strava buat baca lari kamu doang, bukan
+                        yang lain.
+                    </span>
                 </p>
             </div>
 

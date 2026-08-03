@@ -3,7 +3,10 @@
  * (e.g. ExpandableQuote). Keeps the label copy and styling in one place so
  * callers can't drift.
  */
-export default function ReadMoreToggle({ expanded, onToggle }: Readonly<{ expanded: boolean; onToggle: () => void }>) {
+export default function ReadMoreToggle({
+    expanded,
+    onToggle,
+}: Readonly<{ expanded: boolean; onToggle: () => void }>) {
     return (
         <button
             type="button"

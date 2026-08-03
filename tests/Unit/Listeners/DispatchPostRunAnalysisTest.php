@@ -18,7 +18,7 @@ use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\BackfillStagger;
+use App\Actions\AI\StaggerBackfillAction;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\MaterialFingerprint;
@@ -349,7 +349,7 @@ it('staggers AkuProfileVoice by the backfill delay on the ingest that first orig
 
     // Reserve the immediate (0-delay) slot ahead of this ingest, so its own
     // dispatch — including the AkuProfileVoice row it originates — is staggered.
-    app(BackfillStagger::class)->delayFor($activity->user_id);
+    app(StaggerBackfillAction::class)($activity->user_id);
 
     fire($activity);
 
@@ -559,7 +559,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
     $activity = analyzedActivity();
     $weekly = Mockery::mock(WeeklyAggregator::class);
     $weekly->shouldReceive('rebuildForwardFrom')->once()->andReturnNull();
-    $listener = new DispatchPostRunAnalysis(app(AnalysisService::class), $weekly, app(BackfillStagger::class));
+    $listener = new DispatchPostRunAnalysis(app(AnalysisService::class), $weekly, app(StaggerBackfillAction::class));
 
     $listener->handle(new ActivityIngested($activity->id));
 

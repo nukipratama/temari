@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { formatGoalNumber, goalProgressRatio } from './goalProgress';
 
 describe('goalProgressRatio', () => {

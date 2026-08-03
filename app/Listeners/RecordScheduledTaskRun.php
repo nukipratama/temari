@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Enums\ScheduledTaskStatus;
 use App\Models\ScheduledTaskRun;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
@@ -23,7 +24,7 @@ class RecordScheduledTaskRun
         ScheduledTaskRun::record(
             self::label($event->task),
             $event->task->getExpression(),
-            ScheduledTaskRun::STATUS_OK,
+            ScheduledTaskStatus::Ok,
             (int) round($event->runtime * 1000),
         );
     }
@@ -33,7 +34,7 @@ class RecordScheduledTaskRun
         ScheduledTaskRun::record(
             self::label($event->task),
             $event->task->getExpression(),
-            ScheduledTaskRun::STATUS_FAILED,
+            ScheduledTaskStatus::Failed,
             failureMessage: $event->exception->getMessage(),
         );
     }

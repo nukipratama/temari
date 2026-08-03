@@ -13,7 +13,11 @@ interface SplitsSparklineProps {
     className?: string;
 }
 
-export default function SplitsSparkline({ paceSec, partialPaceSec, className }: Readonly<SplitsSparklineProps>) {
+export default function SplitsSparkline({
+    paceSec,
+    partialPaceSec,
+    className,
+}: Readonly<SplitsSparklineProps>) {
     if (paceSec.length === 0) {
         return (
             <div
@@ -35,12 +39,20 @@ export default function SplitsSparkline({ paceSec, partialPaceSec, className }: 
     const bucketSize = perKm ? 1 : Math.ceil(paceSec.length / MAX_BARS);
     const bars = perKm
         ? paceSec.map((p, i) => ({ pace: p, from: i + 1, to: i + 1 }))
-        : Array.from({ length: Math.ceil(paceSec.length / bucketSize) }, (_, b) => {
-              const start = b * bucketSize;
-              const chunk = paceSec.slice(start, start + bucketSize);
-              const avg = chunk.reduce((sum, p) => sum + p, 0) / chunk.length;
-              return { pace: avg, from: start + 1, to: Math.min(start + bucketSize, paceSec.length) };
-          });
+        : Array.from(
+              { length: Math.ceil(paceSec.length / bucketSize) },
+              (_, b) => {
+                  const start = b * bucketSize;
+                  const chunk = paceSec.slice(start, start + bucketSize);
+                  const avg =
+                      chunk.reduce((sum, p) => sum + p, 0) / chunk.length;
+                  return {
+                      pace: avg,
+                      from: start + 1,
+                      to: Math.min(start + bucketSize, paceSec.length),
+                  };
+              },
+          );
 
     const barPaces = bars.map((b) => b.pace);
     const fastest = Math.min(...barPaces);
@@ -50,19 +62,27 @@ export default function SplitsSparkline({ paceSec, partialPaceSec, className }: 
     const last = paceSec[paceSec.length - 1];
     const negativeSplit = last < first;
     const fastestIdx = barPaces.indexOf(fastest);
-    const kmLabel = (b: { from: number; to: number }) => (b.from === b.to ? `${b.to}` : `${b.from}–${b.to}`);
+    const kmLabel = (b: { from: number; to: number }) =>
+        b.from === b.to ? `${b.to}` : `${b.from}–${b.to}`;
     // Thin the km-scale labels to ~6 evenly-spaced ticks so they stay legible at
     // 320px instead of colliding into an unreadable run of digits.
     const labelStep = Math.max(1, Math.ceil(bars.length / 6));
 
     return (
-        <div className={cn('rounded-xl border border-cream/[0.12] bg-sky/40 px-5 py-4 backdrop-blur', className)}>
+        <div
+            className={cn(
+                'rounded-xl border border-cream/[0.12] bg-sky/40 px-5 py-4 backdrop-blur',
+                className,
+            )}
+        >
             <header className="mb-3 flex items-baseline justify-between gap-3">
                 <Eyebrow token="micro" tone="ink-on-sky">
-                    Splits · pace per km{perKm ? '' : ` · rata-rata tiap ${bucketSize} km`}
+                    Splits · pace per km
+                    {perKm ? '' : ` · rata-rata tiap ${bucketSize} km`}
                 </Eyebrow>
                 <div className="font-display text-[13px] italic text-horizon">
-                    {negativeSplit ? 'negatif-split rapi' : 'splits stabil'}: {formatPace(first)} → {formatPace(last)}
+                    {negativeSplit ? 'negatif-split rapi' : 'splits stabil'}:{' '}
+                    {formatPace(first)} → {formatPace(last)}
                 </div>
             </header>
             <div className="flex h-[72px] items-end gap-1.5">
@@ -73,7 +93,10 @@ export default function SplitsSparkline({ paceSec, partialPaceSec, className }: 
                     const heightPct = norm * 78 + 22;
                     const isBest = i === fastestIdx;
                     return (
-                        <div key={`${b.from}-${b.to}`} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                        <div
+                            key={`${b.from}-${b.to}`}
+                            className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
+                        >
                             <div
                                 className={cn(
                                     'w-full min-h-[8px] rounded-sm transition-opacity',
@@ -108,7 +131,9 @@ export default function SplitsSparkline({ paceSec, partialPaceSec, className }: 
                             aria-label={`Sisa: ${formatPace(partialPaceSec)}/km`}
                             title={`Sisa · ${formatPace(partialPaceSec)}/km`}
                         />
-                        <div className="font-mono text-[11px] italic text-ink-on-sky">sisa</div>
+                        <div className="font-mono text-[11px] italic text-ink-on-sky">
+                            sisa
+                        </div>
                     </div>
                 )}
             </div>

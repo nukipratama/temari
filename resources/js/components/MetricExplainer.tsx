@@ -1,9 +1,14 @@
 import { Icon } from '@iconify/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useId, useRef, useState } from 'react';
+
 import { usePopover } from '@/hooks/usePopover';
-import { METRIC_GLOSSARY, type MetricGlossaryEntry, type MetricKey } from '@/lib/metricGlossary';
 import { cn } from '@/lib/cn';
+import {
+    METRIC_GLOSSARY,
+    type MetricGlossaryEntry,
+    type MetricKey,
+} from '@/lib/metricGlossary';
 
 interface MetricExplainerProps {
     metricKey: MetricKey;
@@ -40,7 +45,10 @@ export default function MetricExplainer({
             : 'focus-ring inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-3 transition hover:bg-line/60 hover:text-ink';
 
     return (
-        <span ref={containerRef} className={cn('relative inline-flex align-middle', className)}>
+        <span
+            ref={containerRef}
+            className={cn('relative inline-flex align-middle', className)}
+        >
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
@@ -49,7 +57,12 @@ export default function MetricExplainer({
                 aria-controls={open ? popoverId : undefined}
                 className={buttonClass}
             >
-                <Icon icon="mdi:help-circle-outline" width={iconSize} height={iconSize} aria-hidden />
+                <Icon
+                    icon="mdi:help-circle-outline"
+                    width={iconSize}
+                    height={iconSize}
+                    aria-hidden
+                />
             </button>
 
             <AnimatePresence>
@@ -64,13 +77,27 @@ export default function MetricExplainer({
                         transition={{ duration: 0.15 }}
                         className="absolute left-1/2 top-full z-30 mt-2 w-64 max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-leaf/25 bg-gradient-to-br from-surface-warm to-surface-elev text-left normal-case shadow-xl ring-1 ring-leaf/15"
                     >
-                        <div aria-hidden className="absolute inset-y-0 left-0 w-1 bg-leaf" />
+                        <div
+                            aria-hidden
+                            className="absolute inset-y-0 left-0 w-1 bg-leaf"
+                        />
                         <div className="px-3.5 py-3 pl-4">
                             <div className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-leaf-deep">
-                                <Icon icon="mdi:lightbulb-on-outline" width={12} height={12} aria-hidden />
-                                <span>{entry.acronym ? `${entry.label} · ${entry.acronym}` : entry.label}</span>
+                                <Icon
+                                    icon="mdi:lightbulb-on-outline"
+                                    width={12}
+                                    height={12}
+                                    aria-hidden
+                                />
+                                <span>
+                                    {entry.acronym
+                                        ? `${entry.label} · ${entry.acronym}`
+                                        : entry.label}
+                                </span>
                             </div>
-                            <p className="mt-1.5 text-sm leading-relaxed text-ink">{entry.body}</p>
+                            <p className="mt-1.5 text-sm leading-relaxed text-ink">
+                                {entry.body}
+                            </p>
                         </div>
                     </motion.div>
                 )}

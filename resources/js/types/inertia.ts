@@ -50,7 +50,8 @@ export interface StravaSync {
 }
 
 /** Resolved server-side from the user's equipped UserUnlock rows. */
-export type EquippedSlot = 'medal' | 'ikat_kepala' | 'kaus' | 'celana' | 'sepatu' | 'aura';
+export type EquippedSlot =
+    'medal' | 'ikat_kepala' | 'kaus' | 'celana' | 'sepatu' | 'aura';
 
 export interface EquippedAccessories {
     medal: string | null;
@@ -61,7 +62,7 @@ export interface EquippedAccessories {
     aura: string | null;
 }
 
-/** Flashed by UnlockEngine when a user earns their first new accessory in a request. */
+/** Flashed by GrantEligibleUnlocksAction when a user earns their first new accessory in a request. */
 export interface UnlockFlash {
     unlock_key: string;
     name: string;
@@ -71,7 +72,12 @@ export interface UnlockFlash {
 
 export interface SharedProps {
     auth: { user: AuthUser | null };
-    flash: { success: string | null; error: string | null; info: string | null; unlock?: UnlockFlash | null };
+    flash: {
+        success: string | null;
+        error: string | null;
+        info: string | null;
+        unlock?: UnlockFlash | null;
+    };
     demoLoginEnabled: boolean;
     pendingReveal?: PendingReveal | null;
     equippedAccessories?: EquippedAccessories | null;
@@ -155,7 +161,9 @@ export interface StreamSummaryPerKm {
 export type ZonePct = Partial<Record<'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5', number>>;
 
 /** Minutes of moving time spent in each HR zone, keyed Z1..Z5. Absent for no-HR runs. */
-export type ZoneMinutes = Partial<Record<'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5', number>>;
+export type ZoneMinutes = Partial<
+    Record<'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5', number>
+>;
 
 /** The trailing sub-km "sisa" segment. Display/narrative-only — never a full km
  *  and never in per_km (which stays full-km for card stats & AI). Absent for
@@ -168,10 +176,13 @@ export interface StreamSummaryPartial {
 }
 
 /** Windows the producer writes a `best_<window>_pace` key for (StreamAnalysis::BEST_EFFORT_WINDOWS). */
-export type BestEffortWindow = '30s' | '1min' | '3min' | '5min' | '10min' | '20min' | '30min' | '60min';
+export type BestEffortWindow =
+    '30s' | '1min' | '3min' | '5min' | '10min' | '20min' | '30min' | '60min';
 
 /** Share of moving time below / within / above the step-rate band. */
-export type CadenceDistributionPct = Partial<Record<'<165' | '165-175' | '>175', number>>;
+export type CadenceDistributionPct = Partial<
+    Record<'<165' | '165-175' | '>175', number>
+>;
 
 /** Mirrors `StreamAnalysis::compute()` — every key is omitted (never null) when
  *  the stream it derives from is missing or too short. */

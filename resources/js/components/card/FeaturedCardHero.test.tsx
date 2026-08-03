@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
 import FeaturedCardHero from './FeaturedCardHero';
 
 const baseProps = {
@@ -22,7 +23,13 @@ describe('FeaturedCardHero', () => {
     });
 
     it('honors a custom ctaLabel', () => {
-        render(<FeaturedCardHero {...baseProps} ctaLabel="Lihat detail lari" ctaHref="/aktivitas/3" />);
+        render(
+            <FeaturedCardHero
+                {...baseProps}
+                ctaLabel="Lihat detail lari"
+                ctaHref="/aktivitas/3"
+            />,
+        );
         const cta = screen.getByRole('link', { name: /lihat detail lari/i });
         expect(cta).toHaveAttribute('href', '/aktivitas/3');
     });
@@ -36,7 +43,12 @@ describe('FeaturedCardHero', () => {
         render(
             <FeaturedCardHero
                 {...baseProps}
-                stats={{ pace: '5:30/km', hr: '150 bpm', cadence: '178 spm', fastestKm: '5:02/km' }}
+                stats={{
+                    pace: '5:30/km',
+                    hr: '150 bpm',
+                    cadence: '178 spm',
+                    fastestKm: '5:02/km',
+                }}
                 durasi="42:11"
             />,
         );
@@ -64,13 +76,22 @@ describe('FeaturedCardHero', () => {
     });
 
     it('renders the voice slot when provided', () => {
-        render(<FeaturedCardHero {...baseProps} voice={<span>Temari bilang halo</span>} />);
+        render(
+            <FeaturedCardHero
+                {...baseProps}
+                voice={<span>Temari bilang halo</span>}
+            />,
+        );
         expect(screen.getByText('Temari bilang halo')).toBeInTheDocument();
     });
 
     it('renders the route watermark when a polyline is provided', () => {
-        const { container } = render(<FeaturedCardHero {...baseProps} polyline="abc123" />);
-        expect(container.querySelector('[data-variant="route"]')).not.toBeNull();
+        const { container } = render(
+            <FeaturedCardHero {...baseProps} polyline="abc123" />,
+        );
+        expect(
+            container.querySelector('[data-variant="route"]'),
+        ).not.toBeNull();
     });
 
     it('omits the route watermark when no polyline is provided', () => {

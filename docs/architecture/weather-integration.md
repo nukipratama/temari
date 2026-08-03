@@ -3,7 +3,7 @@ title: Weather Integration
 description: How a run's start-time weather (temp / humidity / rain / wind) is fetched from Open-Meteo, cached, stored on the activity detail, and surfaced across run detail, dashboard, and AI narration
 tags: [architecture, weather]
 status: living
-reviewed: 2026-07-08
+reviewed: 2026-08-03
 code_refs:
   - app/Services/Weather/OpenMeteoClient.php
   - app/Services/Weather/WeatherSnapshot.php
@@ -37,7 +37,7 @@ Every run gets a one-shot weather reading taken at its start point and start hou
 
 The snapshot lands on the [ActivityDetail](app/Models/ActivityDetail.php) row as seven nullable, casted columns — `weather_temp_c`, `weather_humidity_pct`, `weather_rain_detected`, `weather_wind_speed_kmh`, `weather_wind_gust_kmh`, `weather_wind_direction_deg`, `weather_rain_is_forecast` ([casts at ActivityDetail.php:141-143](app/Models/ActivityDetail.php#L141)). See [[data-model]] for how `ActivityDetail` hangs off the run.
 
-It's written during ingest by [ActivityPipeline::lookupWeather](app/Services/Run/Ingest/ActivityPipeline.php#L295): it pulls the first lat/lng from the streams blob, uses the detail's `start_date_local`, and calls the client. Consistent with the pipeline's best-effort contract ([class header comment at ActivityPipeline.php:34](app/Services/Run/Ingest/ActivityPipeline.php#L34)), a missing coord/time short-circuits and a thrown lookup is caught and logged so weather can never strand an activity as an un-ingestable stub ([catch at ActivityPipeline.php:314](app/Services/Run/Ingest/ActivityPipeline.php#L314)). The same start point feeds [[geo-reverse-geocoding]], which populates `location_name`.
+It's written during ingest by [ActivityPipeline::lookupWeather](app/Services/Run/Ingest/ActivityPipeline.php#L438): it pulls the first lat/lng from the streams blob, uses the detail's `start_date_local`, and calls the client. Consistent with the pipeline's best-effort contract ([class header comment at ActivityPipeline.php:38](app/Services/Run/Ingest/ActivityPipeline.php#L38)), a missing coord/time short-circuits and a thrown lookup is caught and logged so weather can never strand an activity as an un-ingestable stub ([catch at ActivityPipeline.php:457](app/Services/Run/Ingest/ActivityPipeline.php#L457)). The same start point feeds [[geo-reverse-geocoding]], which populates `location_name`.
 
 **Backfill.** Transient Open-Meteo misses leave `weather_temp_c` null even though coords exist. [`weather:backfill`](app/Console/Commands/Weather/BackfillActivityWeatherCommand.php) re-fetches exactly those rows (coords present, weather null) up to a `--limit`, so a temporary outage self-repairs on the next run.
 

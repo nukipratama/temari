@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Demo;
 
+use App\Actions\Gamification\GrantEligibleUnlocksAction;
+use App\Actions\Run\Story\ResolveFeaturedKartuAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
@@ -26,9 +28,7 @@ use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
-use App\Services\Run\Story\FeaturedKartuResolver;
 use App\Services\Run\Story\RunCardFactory;
-use App\Services\Gamification\UnlockEngine;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
 use Closure;
@@ -56,8 +56,8 @@ class DemoRunSeeder
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly AnalysisService $analysisService,
         private readonly RuleBasedNarrationFiller $filler,
-        private readonly UnlockEngine $unlockEngine,
-        private readonly FeaturedKartuResolver $featuredKartu,
+        private readonly GrantEligibleUnlocksAction $unlockEngine,
+        private readonly ResolveFeaturedKartuAction $featuredKartu,
         private readonly PolylineEncoder $polylineEncoder = new PolylineEncoder(),
     ) {
     }
@@ -133,7 +133,7 @@ class DemoRunSeeder
             // card-rarity ones (legendaris/epik) and the weekly-streak one
             // depend on cards + snapshots that only exist after the loop. One
             // final sweep grants everything the dataset now qualifies for.
-            $granted = $this->unlockEngine->grantEligible($user);
+            $granted = ($this->unlockEngine)($user);
             $log(sprintf('  %d accessory unlocks granted (%s)', count($granted), $granted === [] ? 'all already unlocked' : implode(', ', $granted)));
 
             // Equip the best-in-slot accessories (one per slot) so the demo
@@ -207,7 +207,7 @@ class DemoRunSeeder
             // CTL is cumulative, so roll the new run forward into every later
             // week's snapshot, then refresh today's greeting + briefing narration.
             $this->weeklyAggregator->rebuildForwardFrom($user, $today);
-            $this->unlockEngine->grantEligible($user);
+            ($this->unlockEngine)($user);
             $this->temari->dailyGreeting($user, $this->vibe->current($user));
 
             // Re-stage the date-keyed surfaces (briefing set, greeting, trend,
@@ -321,7 +321,7 @@ class DemoRunSeeder
         // so the demo must stage it here or the hero falls back to "Belum dibaca".
         // Keyed by the featured card id (matching BriefingComposer) so the staged
         // quote lines up with the card the hero actually shows.
-        $featuredCard = $this->featuredKartu->resolve($user);
+        $featuredCard = ($this->featuredKartu)($user);
         if ($featuredCard !== null) {
             $this->analysisService->request(
                 subjectOrType: AnalysisType::BRIEFING_SUBJECT_TYPE,

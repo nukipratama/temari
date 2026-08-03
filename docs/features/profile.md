@@ -12,7 +12,7 @@ code_refs:
   - resources/js/components/koleksi/ProgressionChart.tsx
   - resources/js/components/temari/Temari.tsx
   - app/Services/Run/Metrics/VdotEstimator.php
-  - app/Services/Run/Metrics/ThresholdEstimator.php
+  - app/Actions/Run/Metrics/EstimateThresholdAction.php
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
 ---
 
@@ -43,7 +43,7 @@ Sharing `/kalender`'s cache means the totals can trail a just-ingested run by up
 
 ## Fitness — VDOT, threshold pace & training paces
 
-When the runner has a VDOT-eligible PR, the hero stat grid grows two more tiles (**VDOT**, **Threshold pace**, `explainerKey`s `vdot`/`threshold_pace`) and a "Latihan · pace target" card renders below the hero panel with four tiles — **Easy**, **Marathon**, **Tempo**, **Interval** — each a pace-per-km via `formatPace`. `ProfileController::fitness` builds the `fitness` prop from [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php)`::estimate`, [ThresholdEstimator](app/Services/Run/Metrics/ThresholdEstimator.php)`::estimate` and [TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php)`::fromVdotResult`; `fitness` is `null` (and the extra tiles don't render) when the user has no VDOT-eligible PR yet.
+When the runner has a VDOT-eligible PR, the hero stat grid grows two more tiles (**VDOT**, **Threshold pace**, `explainerKey`s `vdot`/`threshold_pace`) and a "Latihan · pace target" card renders below the hero panel with four tiles — **Easy**, **Marathon**, **Tempo**, **Interval** — each a pace-per-km via `formatPace`. `ProfileController::fitness` builds the `fitness` prop from [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php)`::estimate`, [EstimateThresholdAction](app/Actions/Run/Metrics/EstimateThresholdAction.php)`::__invoke` and [TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php)`::fromVdotResult`; `fitness` is `null` (and the extra tiles don't render) when the user has no VDOT-eligible PR yet.
 
 These are the same estimators [AkuProfileVoiceNarrator](app/Services/AI/Narrators/AkuProfileVoiceNarrator.php) calls via [TrainingPacesTool](app/Services/AI/Agent/Tools/TrainingPacesTool.php) to narrate pace targets in prose — the numbers reach the user both ways, tabulated here and spoken in the hero voice above.
 

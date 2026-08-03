@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Services\Docs\DocStalenessChecker;
+use App\Actions\Docs\FindStaleDocsAction;
 use Carbon\CarbonImmutable;
 
 function staleCommandFinding(): array
@@ -15,8 +15,8 @@ function staleCommandFinding(): array
 }
 
 it('reports that every note is fresh when nothing is stale', function (): void {
-    $this->mock(DocStalenessChecker::class)
-        ->shouldReceive('findStale')
+    $this->mock(FindStaleDocsAction::class)
+        ->shouldReceive('__invoke')
         ->once()
         ->andReturn([]);
 
@@ -26,8 +26,8 @@ it('reports that every note is fresh when nothing is stale', function (): void {
 });
 
 it('lists each stale note and the code_ref that moved', function (): void {
-    $this->mock(DocStalenessChecker::class)
-        ->shouldReceive('findStale')
+    $this->mock(FindStaleDocsAction::class)
+        ->shouldReceive('__invoke')
         ->once()
         ->andReturn(staleCommandFinding());
 
@@ -38,8 +38,8 @@ it('lists each stale note and the code_ref that moved', function (): void {
 });
 
 it('exits non-zero under --strict when a note is stale', function (): void {
-    $this->mock(DocStalenessChecker::class)
-        ->shouldReceive('findStale')
+    $this->mock(FindStaleDocsAction::class)
+        ->shouldReceive('__invoke')
         ->once()
         ->andReturn(staleCommandFinding());
 

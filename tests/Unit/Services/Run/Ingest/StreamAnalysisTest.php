@@ -267,7 +267,7 @@ it('keeps best-effort pace true across an 11s mid-run gap (auto-pause)', functio
 
 it('emits the best_30min_pace window from compute()', function (): void {
     // Steady 3.0 m/s for >30min so the 1800s window qualifies. The key name
-    // must match what PrCategory::Best30Min and ThresholdEstimator read.
+    // must match what PrCategory::Best30Min and EstimateThresholdAction read.
     $time = [];
     $velocity = [];
     for ($t = 0; $t <= 2000; $t += 10) {

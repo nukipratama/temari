@@ -19,7 +19,10 @@ function subscribe(onChange: () => void): () => void {
  * (a restored scroll position does not need a second render to catch up).
  */
 export function useScrolled(threshold = 4): boolean {
-    const getSnapshot = useCallback(() => window.scrollY > threshold, [threshold]);
+    const getSnapshot = useCallback(
+        () => window.scrollY > threshold,
+        [threshold],
+    );
 
     return useSyncExternalStore(subscribe, getSnapshot, () => false);
 }

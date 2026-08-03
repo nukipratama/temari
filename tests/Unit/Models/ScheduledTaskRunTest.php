@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\ScheduledTaskStatus;
 use App\Models\ScheduledTaskRun;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -9,13 +10,13 @@ use Illuminate\Support\Carbon;
 uses(RefreshDatabase::class);
 
 it('upserts a single heartbeat row keyed on command', function (): void {
-    ScheduledTaskRun::record('strava:sync', '0 * * * *', ScheduledTaskRun::STATUS_OK, 1200);
-    ScheduledTaskRun::record('strava:sync', '0 * * * *', ScheduledTaskRun::STATUS_FAILED, null, 'boom');
+    ScheduledTaskRun::record('strava:sync', '0 * * * *', ScheduledTaskStatus::Ok, 1200);
+    ScheduledTaskRun::record('strava:sync', '0 * * * *', ScheduledTaskStatus::Failed, null, 'boom');
 
     expect(ScheduledTaskRun::query()->count())->toBe(1);
 
     $row = ScheduledTaskRun::query()->where('command', 'strava:sync')->sole();
-    expect($row->last_status)->toBe(ScheduledTaskRun::STATUS_FAILED)
+    expect($row->last_status)->toBe(ScheduledTaskStatus::Failed)
         ->and($row->hasFailed())->toBeTrue()
         ->and($row->failure_message)->toBe('boom')
         ->and($row->last_run_at)->not->toBeNull();

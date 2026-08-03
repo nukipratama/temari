@@ -2,16 +2,21 @@ import { csrfToken } from '@/lib/http';
 
 /** The browser can do web push at all (all iOS browsers gate this behind a Home-Screen install). */
 export function isPushSupported(): boolean {
-    return typeof navigator !== 'undefined'
-        && 'serviceWorker' in navigator
-        && 'PushManager' in window
-        && 'Notification' in window;
+    return (
+        typeof navigator !== 'undefined' &&
+        'serviceWorker' in navigator &&
+        'PushManager' in window &&
+        'Notification' in window
+    );
 }
 
 /** Running as an installed, standalone app (the only mode iOS delivers push in). */
 export function isStandalone(): boolean {
-    return window.matchMedia('(display-mode: standalone)').matches
-        || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    return (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as Navigator & { standalone?: boolean })
+            .standalone === true
+    );
 }
 
 /** iOS, but not Safari — these can't install a push-capable PWA, so the UI must say "open in Safari". */
@@ -20,7 +25,11 @@ export function isIosNonSafari(): boolean {
     return /iP(hone|ad|od)/.test(ua) && /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
 }
 
-async function send(url: string, method: string, body?: unknown): Promise<Response> {
+async function send(
+    url: string,
+    method: string,
+    body?: unknown,
+): Promise<Response> {
     return fetch(url, {
         method,
         credentials: 'same-origin',
@@ -85,7 +94,9 @@ export async function unsubscribe(): Promise<void> {
 /** Decode a base64url VAPID public key into the Uint8Array PushManager wants. */
 export function urlBase64ToUint8Array(base64String: string): Uint8Array {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const base64 = (base64String + padding)
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
     const raw = atob(base64);
     const output = new Uint8Array(raw.length);
     for (let i = 0; i < raw.length; i += 1) {

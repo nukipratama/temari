@@ -1,20 +1,22 @@
-import { lazy, type ReactNode, Suspense, useState } from 'react';
-import { MotionConfig } from 'framer-motion';
 import { usePage } from '@inertiajs/react';
-import UnlockToast from '@/components/temari/UnlockToast';
+import { MotionConfig } from 'framer-motion';
+import { lazy, type ReactNode, Suspense, useState } from 'react';
+
+import type { SharedProps, UnlockFlash } from '@/types/inertia';
+
+import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
+import AiOutageBanner from '@/components/AiOutageBanner';
 import AksesoriUnlockModal from '@/components/celebrations/AksesoriUnlockModal';
-import TopNav from '@/components/TopNav';
-import MobileTopBar from '@/components/MobileTopBar';
-import MobileBottomNav from '@/components/MobileBottomNav';
 import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
-import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
-import AiOutageBanner from '@/components/AiOutageBanner';
-import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
+import MobileBottomNav from '@/components/MobileBottomNav';
+import MobileTopBar from '@/components/MobileTopBar';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
+import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
+import UnlockToast from '@/components/temari/UnlockToast';
+import TopNav from '@/components/TopNav';
 import { useDawnShift } from '@/hooks/useDawnShift';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
-import type { SharedProps, UnlockFlash } from '@/types/inertia';
 
 // The pack reveal drags the whole share-card canvas engine in behind it, and
 // this layout wraps every page — so it stays off the first-paint path and is
@@ -31,8 +33,8 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
     const { pendingReveal, flash } = usePage<SharedProps>().props;
     const pending = pendingReveal ?? null;
     const unlock = flash?.unlock ?? null;
-    const [majorUnlock, setMajorUnlock] = useState<UnlockFlash | null>(
-        () => (unlock?.is_major ? unlock : null),
+    const [majorUnlock, setMajorUnlock] = useState<UnlockFlash | null>(() =>
+        unlock?.is_major ? unlock : null,
     );
     const [lastUnlock, setLastUnlock] = useState(unlock);
 
@@ -47,50 +49,53 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
 
     return (
         <MotionConfig reducedMotion="user">
-        {/* MobileTopBar carries the safe-area padding for this branch, so
+            {/* MobileTopBar carries the safe-area padding for this branch, so
             nothing is needed here — see its pt-[max(...)]. */}
-        <div className="min-h-screen bg-cream-deep text-ink">
-            <a
-                href="#main-content"
-                className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
-            >
-                Lompat ke konten
-            </a>
+            <div className="min-h-screen bg-cream-deep text-ink">
+                <a
+                    href="#main-content"
+                    className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
+                >
+                    Lompat ke konten
+                </a>
 
-            <TopNav />
-            <MobileTopBar />
+                <TopNav />
+                <MobileTopBar />
 
-            <ErrorBanner />
-            <FlashNotice />
-            <StravaZoneReconnectBanner />
-            <AiOutageBanner />
-            <AiCatchingUpBanner />
-            <StravaPausedBanner />
+                <ErrorBanner />
+                <FlashNotice />
+                <StravaZoneReconnectBanner />
+                <AiOutageBanner />
+                <AiCatchingUpBanner />
+                <StravaPausedBanner />
 
-            {/* Deliberately unkeyed and unanimated. A `key` here forced React to
+                {/* Deliberately unkeyed and unanimated. A `key` here forced React to
                 tear down and rebuild the whole content subtree on every visit
                 (25 card mounts on Koleksi), and the enter animation it existed
                 to replay started at opacity 0 — so a navigation read as
                 "old page → blank → fade in". Inertia already swaps a different
                 component type on a real navigation, so React remounts what it
                 needs to without help. */}
-            <main id="main-content" className="pb-28 lg:pb-0">
-                {children}
-            </main>
+                <main id="main-content" className="pb-28 lg:pb-0">
+                    {children}
+                </main>
 
-            <MobileBottomNav />
-            {/* Celebration overlays are sequenced, not stacked: CardReveal (a pack
+                <MobileBottomNav />
+                {/* Celebration overlays are sequenced, not stacked: CardReveal (a pack
                 reveal) takes priority over the aksesori-unlock modal, which in turn
                 takes priority over the UnlockToast, so a sync that fires more than
                 one celebration plays them back-to-back instead of all at once. */}
-            {!pending && majorUnlock === null && <UnlockToast />}
-            {pending && (
-                <Suspense fallback={null}>
-                    <CardReveal pending={pending} />
-                </Suspense>
-            )}
-            <AksesoriUnlockModal unlock={pending ? null : majorUnlock} onClose={() => setMajorUnlock(null)} />
-        </div>
+                {!pending && majorUnlock === null && <UnlockToast />}
+                {pending && (
+                    <Suspense fallback={null}>
+                        <CardReveal pending={pending} />
+                    </Suspense>
+                )}
+                <AksesoriUnlockModal
+                    unlock={pending ? null : majorUnlock}
+                    onClose={() => setMajorUnlock(null)}
+                />
+            </div>
         </MotionConfig>
     );
 }

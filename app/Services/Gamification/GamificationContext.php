@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Shared gamification stats for a user. Queried once and consumed by both
- * GoalResolver and UnlockEngine so the six DB queries are not duplicated
- * across the two services.
+ * GoalResolver and GrantEligibleUnlocksAction so the six DB queries are not
+ * duplicated across the two.
  */
 readonly class GamificationContext
 {

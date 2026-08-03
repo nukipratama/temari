@@ -1,17 +1,21 @@
+import { router } from '@inertiajs/react';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
+
 import { usePendingPost } from './usePendingPost';
 
 describe('usePendingPost', () => {
     it('starts with pending = false', () => {
-        const [pending] = renderHook(() => usePendingPost('/foo')).result.current;
+        const [pending] = renderHook(() => usePendingPost('/foo')).result
+            .current;
         expect(pending).toBe(false);
     });
 
     it('calls router.post with the url, empty body, and onStart/onFinish callbacks', () => {
         vi.mocked(router.post).mockReset();
-        const { result } = renderHook(() => usePendingPost('/foo', { preserveScroll: true }));
+        const { result } = renderHook(() =>
+            usePendingPost('/foo', { preserveScroll: true }),
+        );
         const [, post] = result.current;
 
         act(() => post());
@@ -59,14 +63,20 @@ describe('usePendingPost', () => {
 
     it('buzzes on success and still runs a caller-supplied onSuccess', () => {
         const vibrate = vi.fn(() => true);
-        Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true, writable: true });
+        Object.defineProperty(navigator, 'vibrate', {
+            value: vibrate,
+            configurable: true,
+            writable: true,
+        });
         const onSuccess = vi.fn();
         vi.mocked(router.post).mockReset();
         vi.mocked(router.post).mockImplementation((_url, _data, options) => {
             options?.onSuccess?.({} as never);
         });
 
-        const { result } = renderHook(() => usePendingPost('/foo', { onSuccess }));
+        const { result } = renderHook(() =>
+            usePendingPost('/foo', { onSuccess }),
+        );
         act(() => result.current[1]());
 
         expect(vibrate).toHaveBeenCalledOnce();
@@ -78,7 +88,11 @@ describe('usePendingPost', () => {
     // off onSuccess rather than onFinish.
     it('does not buzz when the request finishes without succeeding', () => {
         const vibrate = vi.fn(() => true);
-        Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true, writable: true });
+        Object.defineProperty(navigator, 'vibrate', {
+            value: vibrate,
+            configurable: true,
+            writable: true,
+        });
         vi.mocked(router.post).mockReset();
         vi.mocked(router.post).mockImplementation((_url, _data, options) => {
             options?.onStart?.({} as never);

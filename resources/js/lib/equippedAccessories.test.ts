@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ACCESSORY_KEYS, equippedToKeys } from './equippedAccessories';
+
 import type { EquippedAccessories } from '@/types/inertia';
+
+import { ACCESSORY_KEYS, equippedToKeys } from './equippedAccessories';
 
 const emptyEquipped: EquippedAccessories = {
     medal: null,

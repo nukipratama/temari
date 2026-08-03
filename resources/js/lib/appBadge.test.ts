@@ -1,13 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { syncAppBadgeOnVisible } from './appBadge';
 
 function setVisibility(state: DocumentVisibilityState) {
-    Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+    Object.defineProperty(document, 'visibilityState', {
+        value: state,
+        configurable: true,
+    });
 }
 
 function stubServiceWorker(notifications: unknown[]) {
     Object.defineProperty(navigator, 'serviceWorker', {
-        value: { ready: Promise.resolve({ getNotifications: vi.fn().mockResolvedValue(notifications) }) },
+        value: {
+            ready: Promise.resolve({
+                getNotifications: vi.fn().mockResolvedValue(notifications),
+            }),
+        },
         configurable: true,
         writable: true,
     });
@@ -16,8 +24,16 @@ function stubServiceWorker(notifications: unknown[]) {
 function stubBadge() {
     const setAppBadge = vi.fn().mockResolvedValue(undefined);
     const clearAppBadge = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'setAppBadge', { value: setAppBadge, configurable: true, writable: true });
-    Object.defineProperty(navigator, 'clearAppBadge', { value: clearAppBadge, configurable: true, writable: true });
+    Object.defineProperty(navigator, 'setAppBadge', {
+        value: setAppBadge,
+        configurable: true,
+        writable: true,
+    });
+    Object.defineProperty(navigator, 'clearAppBadge', {
+        value: clearAppBadge,
+        configurable: true,
+        writable: true,
+    });
     return { setAppBadge, clearAppBadge };
 }
 

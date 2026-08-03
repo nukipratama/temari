@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 
@@ -17,15 +18,33 @@ interface PageHeroProps {
 const HEADLINE_ON_SKY = 'font-display text-display-xl text-cream';
 const HEADLINE_ON_CREAM = 'font-display text-display-lg text-ink';
 
-export default function PageHero({ eyebrow, lead, emph, onSky = false, noItalic = false, className }: Readonly<PageHeroProps>) {
+export default function PageHero({
+    eyebrow,
+    lead,
+    emph,
+    onSky = false,
+    noItalic = false,
+    className,
+}: Readonly<PageHeroProps>) {
     return (
         <div className={className}>
-            <Eyebrow token="hero" tone={onSky ? 'horizon' : 'ink-2'} className="mb-3">
+            <Eyebrow
+                token="hero"
+                tone={onSky ? 'horizon' : 'ink-2'}
+                className="mb-3"
+            >
                 {eyebrow}
             </Eyebrow>
             <h1 className={onSky ? HEADLINE_ON_SKY : HEADLINE_ON_CREAM}>
                 {lead && <>{lead} </>}
-                <em className={cn(noItalic ? 'not-italic' : 'italic', onSky ? 'text-horizon' : 'text-horizon-deep')}>{emph}</em>
+                <em
+                    className={cn(
+                        noItalic ? 'not-italic' : 'italic',
+                        onSky ? 'text-horizon' : 'text-horizon-deep',
+                    )}
+                >
+                    {emph}
+                </em>
             </h1>
         </div>
     );

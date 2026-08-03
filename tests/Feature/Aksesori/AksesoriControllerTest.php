@@ -59,6 +59,14 @@ it('equips an ikat_kepala + un-equips the previous sibling', function (): void {
         ->value('equipped'))->toBeTrue();
 });
 
+it('rejects an equip request missing the unlock key', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson('/api/aksesori/equip', [])
+        ->assertStatus(422);
+});
+
 it('refuses to equip an accessory the user has not unlocked', function (): void {
     $user = User::factory()->create();
 

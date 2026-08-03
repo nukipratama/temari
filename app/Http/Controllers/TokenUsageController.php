@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ShowTokenUsageRequest;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -15,7 +16,6 @@ use App\Services\AI\RecapPeriod;
 use App\Services\AI\TokenUsageReport;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
@@ -29,14 +29,9 @@ class TokenUsageController extends Controller
     ) {
     }
 
-    public function show(Request $request): Response
+    public function show(ShowTokenUsageRequest $request): Response
     {
-        $validated = $request->validate([
-            'range' => 'sometimes|in:today,7d,30d,month,all,custom',
-            'from' => 'sometimes|date_format:Y-m-d',
-            'to' => 'sometimes|date_format:Y-m-d',
-            'kind' => 'sometimes|string',
-        ]);
+        $validated = $request->validated();
 
         [$range, $from, $to] = $this->resolveRange($validated);
         $kind = $validated['kind'] ?? null;

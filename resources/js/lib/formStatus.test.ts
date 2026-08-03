@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { formStatusLabel, formStatusTone } from './formStatus';
+
 import type { FormStatus } from '@/types/inertia';
+
+import { formStatusLabel, formStatusTone } from './formStatus';
 
 describe('formStatusLabel', () => {
     it.each([

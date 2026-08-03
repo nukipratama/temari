@@ -241,8 +241,8 @@ class OpenMeteoClient
 
     private function cacheKey(float $latitude, float $longitude, CarbonImmutable $startedAt): string
     {
-        // v2: cache shape gained wind + rain-source fields; the prefix retires
-        // stale v1 entries (temp/humidity/rain only) so they aren't served wind-less.
+        // Versioned so a future cache-shape change can bump this prefix rather
+        // than risk serving an old, differently-shaped entry.
         return sprintf(
             'weather:v2:%s:%s:%s',
             number_format($latitude, 3, '.', ''),

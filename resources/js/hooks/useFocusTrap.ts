@@ -1,4 +1,5 @@
 import { type RefObject, useEffect } from 'react';
+
 import { useFocusReturn } from './useFocusReturn';
 
 const TABBABLE_SELECTOR = [
@@ -11,8 +12,12 @@ const TABBABLE_SELECTOR = [
 ].join(',');
 
 function tabbablesIn(panel: HTMLElement): HTMLElement[] {
-    return Array.from(panel.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR)).filter(
-        (el) => !el.hasAttribute('hidden') && el.getAttribute('aria-hidden') !== 'true',
+    return Array.from(
+        panel.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR),
+    ).filter(
+        (el) =>
+            !el.hasAttribute('hidden') &&
+            el.getAttribute('aria-hidden') !== 'true',
     );
 }
 
@@ -24,7 +29,10 @@ function tabbablesIn(panel: HTMLElement): HTMLElement[] {
  *
  * SSR-/null-safe: no-ops when there is no document or the panel ref is empty.
  */
-export function useFocusTrap(isOpen: boolean, panelRef: RefObject<HTMLElement | null>): void {
+export function useFocusTrap(
+    isOpen: boolean,
+    panelRef: RefObject<HTMLElement | null>,
+): void {
     useFocusReturn(isOpen);
 
     useEffect(() => {

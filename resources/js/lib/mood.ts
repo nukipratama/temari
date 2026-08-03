@@ -39,7 +39,14 @@ export const MOOD_SOFT_FILL: Record<Mood, string> = {
 };
 
 // Canonical mood ordering for legends + filter rows (best-day → rest-day).
-export const MOOD_ORDER: ReadonlyArray<Mood> = ['nyala', 'enteng', 'oleng', 'lemes', 'mumet', 'adem'];
+export const MOOD_ORDER: ReadonlyArray<Mood> = [
+    'nyala',
+    'enteng',
+    'oleng',
+    'lemes',
+    'mumet',
+    'adem',
+];
 
 // Short cause hint per mood; pairs with MOOD_LABEL in filter/legend rows.
 // Running loanwords (PR, HR) stay English; everything else is casual Indonesian.
@@ -60,12 +67,14 @@ export interface MoodOption {
     swatchClass: string;
 }
 
-export const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map((mood) => ({
-    mood,
-    label: MOOD_LABEL[mood],
-    hint: MOOD_HINT[mood],
-    swatchClass: MOOD_FILL[mood],
-}));
+export const MOOD_FILTER_OPTIONS: ReadonlyArray<MoodOption> = MOOD_ORDER.map(
+    (mood) => ({
+        mood,
+        label: MOOD_LABEL[mood],
+        hint: MOOD_HINT[mood],
+        swatchClass: MOOD_FILL[mood],
+    }),
+);
 
 export function moodToken(mood: Mood): Mood {
     return mood;

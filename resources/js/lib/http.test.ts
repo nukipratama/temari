@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { csrfToken, postJson } from './http';
 
 afterEach(() => {
@@ -35,7 +36,9 @@ describe('postJson', () => {
         meta.name = 'csrf-token';
         meta.content = 'tok-xyz';
         document.head.appendChild(meta);
-        const fetchMock = vi.fn().mockResolvedValue(new Response('{"ok":true}'));
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(new Response('{"ok":true}'));
         vi.stubGlobal('fetch', fetchMock);
 
         await postJson('/api/markers/seen');

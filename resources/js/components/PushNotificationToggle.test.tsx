@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import PushNotificationToggle from './PushNotificationToggle';
-import { setMockPage } from '@/test/setup';
+
 import * as webPush from '@/lib/webPush';
+import { setMockPage } from '@/test/setup';
+
+import PushNotificationToggle from './PushNotificationToggle';
 
 vi.mock('@/lib/webPush');
 
@@ -42,7 +44,9 @@ it('shows the enable button when ready and subscribes on click', async () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Nyalakan/ }));
 
-    await waitFor(() => expect(webPush.subscribe).toHaveBeenCalledWith('test-key'));
+    await waitFor(() =>
+        expect(webPush.subscribe).toHaveBeenCalledWith('test-key'),
+    );
 });
 
 it('shows the Home-Screen install hint on Safari when not standalone', async () => {
@@ -55,13 +59,17 @@ it('tells a non-Safari iOS browser to open in Safari', async () => {
     vi.mocked(webPush.isStandalone).mockReturnValue(false);
     vi.mocked(webPush.isIosNonSafari).mockReturnValue(true);
     render(<PushNotificationToggle />);
-    expect(await screen.findByText(/Buka Temari di Safari/)).toBeInTheDocument();
+    expect(
+        await screen.findByText(/Buka Temari di Safari/),
+    ).toBeInTheDocument();
 });
 
 it('shows the unsupported hint', async () => {
     vi.mocked(webPush.isPushSupported).mockReturnValue(false);
     render(<PushNotificationToggle />);
-    expect(await screen.findByText(/belum bisa nerima notifikasi/)).toBeInTheDocument();
+    expect(
+        await screen.findByText(/belum bisa nerima notifikasi/),
+    ).toBeInTheDocument();
 });
 
 it('shows the OS-settings hint when permission is denied', async () => {
@@ -71,8 +79,14 @@ it('shows the OS-settings hint when permission is denied', async () => {
 });
 
 it('offers only the off switch when already subscribed', async () => {
-    vi.mocked(webPush.currentSubscription).mockResolvedValue({} as PushSubscription);
+    vi.mocked(webPush.currentSubscription).mockResolvedValue(
+        {} as PushSubscription,
+    );
     render(<PushNotificationToggle />);
-    expect(await screen.findByRole('button', { name: /Matikan/ })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Kirim tes/ })).not.toBeInTheDocument();
+    expect(
+        await screen.findByRole('button', { name: /Matikan/ }),
+    ).toBeInTheDocument();
+    expect(
+        screen.queryByRole('button', { name: /Kirim tes/ }),
+    ).not.toBeInTheDocument();
 });

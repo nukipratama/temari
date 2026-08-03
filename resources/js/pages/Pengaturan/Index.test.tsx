@@ -1,8 +1,10 @@
+import { router } from '@inertiajs/react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { router } from '@inertiajs/react';
-import Pengaturan from './Index';
+
 import { makeUser, setMockPage } from '@/test/setup';
+
+import Pengaturan from './Index';
 
 const connectedTelegram = {
     connected: true,
@@ -38,7 +40,9 @@ describe('Pengaturan', () => {
     it('opens with the editorial header rather than a bare title', () => {
         render(<Pengaturan />);
         expect(screen.getByText('Pengaturan')).toBeInTheDocument();
-        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Atur Temari, sesuai kamu.');
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'Atur Temari, sesuai kamu.',
+        );
     });
 
     // What gets sent and where it goes were three separate sections; they are
@@ -53,7 +57,9 @@ describe('Pengaturan', () => {
     // from the avatar menu on every page, so a breadcrumb has no job here.
     it('has no back link', () => {
         render(<Pengaturan />);
-        expect(screen.queryByRole('link', { name: /^Aku$/ })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: /^Aku$/ }),
+        ).not.toBeInTheDocument();
     });
 
     // The mute switches say "Kirim ke Telegram" nowhere near their real scope:
@@ -62,8 +68,12 @@ describe('Pengaturan', () => {
     // honour. See MaintainerAlerter.
     it('scopes the channel mutes to run notifications', () => {
         render(<Pengaturan />);
-        expect(screen.getByText(/Buat notifikasi lari kamu/)).toBeInTheDocument();
-        expect(screen.getByText(/peringatan sistem tetap masuk/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Buat notifikasi lari kamu/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/peringatan sistem tetap masuk/),
+        ).toBeInTheDocument();
     });
 
     it('tints the destructive row so it stops reading as routine', () => {
@@ -78,19 +88,26 @@ describe('Pengaturan', () => {
             connect_url: 'https://t.me/temari_bot?start=tok',
         };
         render(<Pengaturan telegram={telegram} />);
-        expect(screen.getByRole('link', { name: /Telegram/ })).toHaveAttribute('href', 'https://t.me/temari_bot?start=tok');
+        expect(screen.getByRole('link', { name: /Telegram/ })).toHaveAttribute(
+            'href',
+            'https://t.me/temari_bot?start=tok',
+        );
     });
 
     it('shows the channel-neutral master switch from notificationPrefs', () => {
         render(<Pengaturan notificationPrefs={prefs} />);
-        expect(screen.getByRole('switch', { name: 'Kabarin aku' })).toHaveAttribute('aria-checked', 'false');
+        expect(
+            screen.getByRole('switch', { name: 'Kabarin aku' }),
+        ).toHaveAttribute('aria-checked', 'false');
     });
 
     // The streak nudge had no toggle of its own and silently rode along on
     // "Rekap mingguan"; the master switch names it so the coupling is visible.
     it('names the streak nudge among what the master switch sends', () => {
         render(<Pengaturan notificationPrefs={prefs} />);
-        expect(screen.getByText(/pengingat kalau streak kamu lagi di ujung/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/pengingat kalau streak kamu lagi di ujung/),
+        ).toBeInTheDocument();
     });
 
     it('patches the channel-neutral preferences when the master switch is flipped, carrying all current values', () => {
@@ -132,7 +149,9 @@ describe('Pengaturan', () => {
         vi.mocked(router.post).mockReset();
         render(<Pengaturan testCooldownSeconds={45} />);
 
-        const button = screen.getByRole('button', { name: /Tunggu .* sebelum kirim notifikasi tes/ });
+        const button = screen.getByRole('button', {
+            name: /Tunggu .* sebelum kirim notifikasi tes/,
+        });
         expect(button).toBeDisabled();
 
         fireEvent.click(button);
@@ -141,11 +160,17 @@ describe('Pengaturan', () => {
 
     it('leaves the test button live when nothing is cooling', () => {
         render(<Pengaturan testCooldownSeconds={null} />);
-        expect(screen.getByText('Kirim notifikasi tes').closest('button')).not.toBeDisabled();
+        expect(
+            screen.getByText('Kirim notifikasi tes').closest('button'),
+        ).not.toBeDisabled();
     });
 
     it('opens the demo-blocked modal instead of patching when a demo user flips a toggle', () => {
-        setMockPage({ auth: { user: makeUser({ is_demo: true }) }, flash: {}, demoLoginEnabled: false });
+        setMockPage({
+            auth: { user: makeUser({ is_demo: true }) },
+            flash: {},
+            demoLoginEnabled: false,
+        });
         vi.mocked(router.patch).mockReset();
         render(<Pengaturan notificationPrefs={prefs} />);
 
@@ -154,7 +179,9 @@ describe('Pengaturan', () => {
 
         expect(router.patch).not.toHaveBeenCalled();
         expect(toggle).toHaveAttribute('aria-checked', 'false');
-        expect(screen.getByText('Telegram-nya lagi istirahat dulu')).toBeInTheDocument();
+        expect(
+            screen.getByText('Telegram-nya lagi istirahat dulu'),
+        ).toBeInTheDocument();
     });
 
     it('disconnects via DELETE when Putuskan is clicked', () => {
@@ -163,7 +190,9 @@ describe('Pengaturan', () => {
 
         fireEvent.click(screen.getByText('Putuskan'));
 
-        expect(router.delete).toHaveBeenCalledWith('/profil/telegram', { preserveScroll: true });
+        expect(router.delete).toHaveBeenCalledWith('/profil/telegram', {
+            preserveScroll: true,
+        });
     });
 
     it('opens a confirmation before deleting the account', () => {
@@ -181,7 +210,9 @@ describe('Pengaturan', () => {
         render(<Pengaturan />);
 
         fireEvent.click(screen.getByText('Hapus akun'));
-        fireEvent.click(screen.getByRole('button', { name: /Ya, hapus akunku/ }));
+        fireEvent.click(
+            screen.getByRole('button', { name: /Ya, hapus akunku/ }),
+        );
 
         expect(router.delete).toHaveBeenCalledWith('/akun');
     });
@@ -195,7 +226,9 @@ describe('Pengaturan', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Nanti aja' }));
         await waitFor(() => {
-            expect(screen.queryByText('Yakin mau hapus akun?')).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Yakin mau hapus akun?'),
+            ).not.toBeInTheDocument();
         });
         expect(router.delete).not.toHaveBeenCalled();
     });

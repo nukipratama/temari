@@ -16,8 +16,8 @@ use Illuminate\Support\Carbon;
  * post-run {@see StoryLine}, the one-liner from the {@see Analysis} row
  * carrying the {@see AnalysisType::PostRunSpeech} narration once it is Done.
  *
- * The three page controllers (Riwayat / HariIni / Kalender) used to hand-roll
- * this read; centralising it keeps the produced shapes from drifting.
+ * Centralised so the three page controllers (Riwayat / HariIni / Kalender)
+ * share one produced shape instead of drifting.
  */
 class PostRunNoteReader
 {

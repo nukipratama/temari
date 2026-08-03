@@ -1,11 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import EmptyPanel from './EmptyPanel';
+
 import { setMockPage } from '@/test/setup';
+
+import EmptyPanel from './EmptyPanel';
 
 beforeEach(() => {
     setMockPage({
-        auth: { user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null } },
+        auth: {
+            user: { id: 1, name: 'Ada', first_name: 'Ada', avatar_url: null },
+        },
         flash: {},
         demoLoginEnabled: false,
     });
@@ -13,7 +17,9 @@ beforeEach(() => {
 
 describe('EmptyPanel', () => {
     it('renders the title inside the dashed placeholder panel', () => {
-        const { container } = render(<EmptyPanel title="Belum ada data" className="" />);
+        const { container } = render(
+            <EmptyPanel title="Belum ada data" className="" />,
+        );
         expect(screen.getByText('Belum ada data')).toBeInTheDocument();
         expect(container.firstElementChild).toHaveClass('border-dashed');
         expect(container.firstElementChild).toHaveClass('border-cream-deep');
@@ -21,7 +27,9 @@ describe('EmptyPanel', () => {
     });
 
     it('lets a caller override the panel padding via className', () => {
-        const { container } = render(<EmptyPanel title="x" className="py-10" />);
+        const { container } = render(
+            <EmptyPanel title="x" className="py-10" />,
+        );
         expect(container.firstElementChild).toHaveClass('py-10');
     });
 
@@ -31,12 +39,16 @@ describe('EmptyPanel', () => {
     });
 
     it('renders the body copy when given', () => {
-        render(<EmptyPanel title="Judul" body="Sub-copy di sini." className="" />);
+        render(
+            <EmptyPanel title="Judul" body="Sub-copy di sini." className="" />,
+        );
         expect(screen.getByText('Sub-copy di sini.')).toBeInTheDocument();
     });
 
     it('renders the Temari mascot when a pose is given', () => {
-        const { container } = render(<EmptyPanel pose="excited" title="Judul" className="" />);
+        const { container } = render(
+            <EmptyPanel pose="excited" title="Judul" className="" />,
+        );
         expect(container.querySelector('svg')).toBeInTheDocument();
     });
 
@@ -46,13 +58,24 @@ describe('EmptyPanel', () => {
     });
 
     it('renders the composed action node', () => {
-        render(<EmptyPanel title="Judul" action={<button type="button">Aksi</button>} className="" />);
-        expect(screen.getByRole('button', { name: 'Aksi' })).toBeInTheDocument();
+        render(
+            <EmptyPanel
+                title="Judul"
+                action={<button type="button">Aksi</button>}
+                className=""
+            />,
+        );
+        expect(
+            screen.getByRole('button', { name: 'Aksi' }),
+        ).toBeInTheDocument();
     });
 
     it('renders the title and body in the canonical typography for every site', () => {
         render(<EmptyPanel title="Judul" body="Sub-copy" className="" />);
         expect(screen.getByText('Judul')).toHaveClass('text-2xl', 'text-ink-2');
-        expect(screen.getByText('Sub-copy')).toHaveClass('text-sm', 'text-ink-2');
+        expect(screen.getByText('Sub-copy')).toHaveClass(
+            'text-sm',
+            'text-ink-2',
+        );
     });
 });

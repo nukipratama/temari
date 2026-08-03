@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Run\Metrics;
 
 use Carbon\CarbonInterface;
+use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\Gamification\UnlockEngine;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Enumerable;
-
-use function count;
 
 class WeeklyAggregator
 {
@@ -38,7 +36,7 @@ class WeeklyAggregator
 
     public function __construct(
         private readonly TrainingLoad $trainingLoad,
-        private readonly UnlockEngine $unlockEngine,
+        private readonly GrantEligibleUnlocksAction $unlockEngine,
     ) {
     }
 
@@ -161,7 +159,7 @@ class WeeklyAggregator
             $count++;
         }
 
-        $this->unlockEngine->grantEligible($user);
+        ($this->unlockEngine)($user);
 
         return $count;
     }
@@ -237,18 +235,14 @@ class WeeklyAggregator
      */
     private function averageDecoupling(Enumerable $details): ?float
     {
-        $values = [];
-        foreach ($details as $detail) {
-            $decoupling = StreamSummary::fromArray($detail->stream_summary)->decouplingPct();
-            if ($decoupling !== null) {
-                $values[] = $decoupling;
-            }
-        }
+        $values = $details
+            ->map(fn (ActivityDetail $detail): ?float => StreamSummary::fromArray($detail->stream_summary)->decouplingPct())
+            ->filter(fn (?float $value): bool => $value !== null);
 
-        if ($values === []) {
+        if ($values->isEmpty()) {
             return null;
         }
 
-        return round(array_sum($values) / count($values), 2);
+        return round((float) $values->avg(), 2);
     }
 }

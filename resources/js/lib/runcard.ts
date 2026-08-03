@@ -1,6 +1,14 @@
-import { formatDuration, formatDurationHMS, formatKm, formatNaiveIdDate, paceSecPerKm, formatPace } from '@/lib/pace';
-import type { ActivityDetail, Rarity, ZonePct } from '@/types/inertia';
 import type { TemariPose } from '@/components/temari/TemariProto';
+import type { ActivityDetail, Rarity, ZonePct } from '@/types/inertia';
+
+import {
+    formatDuration,
+    formatDurationHMS,
+    formatKm,
+    formatNaiveIdDate,
+    paceSecPerKm,
+    formatPace,
+} from '@/lib/pace';
 
 export const RARITY_LABELS: Record<Rarity, string> = {
     common: 'Biasa',
@@ -10,7 +18,13 @@ export const RARITY_LABELS: Record<Rarity, string> = {
     legendary: 'Legendaris',
 };
 
-export const RARITY_ORDER: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+export const RARITY_ORDER: Rarity[] = [
+    'common',
+    'uncommon',
+    'rare',
+    'epic',
+    'legendary',
+];
 
 // Slug → display name (emoji emblem + casual-Jakarta name). The two English ones
 // are running terms (code-switch rule), the rest are ID-first. Mirrored in PHP
@@ -117,13 +131,14 @@ export const RARITY_TINT: Record<Rarity, string> = {
 };
 
 // Headband color driven by rarity — wired to TemariProto's `equipped.headband`.
-export const RARITY_HEADBAND: Record<Rarity, 'ember' | 'epik' | 'legendaris'> = {
-    common: 'ember',
-    uncommon: 'ember',
-    rare: 'epik',
-    epic: 'legendaris',
-    legendary: 'legendaris',
-};
+export const RARITY_HEADBAND: Record<Rarity, 'ember' | 'epik' | 'legendaris'> =
+    {
+        common: 'ember',
+        uncommon: 'ember',
+        rare: 'epik',
+        epic: 'legendaris',
+        legendary: 'legendaris',
+    };
 
 // Mascot pose driven by rarity — reinforces the tier hierarchy on cards and detail page.
 export const RARITY_POSE: Record<Rarity, TemariPose> = {
@@ -177,18 +192,24 @@ export function paceShapeFromDetail(detail?: ActivityDetail | null): number[] {
 
 // Mean per-km cadence (spm) from stream_summary, rounded. Null when no cadence
 // data exists on any split.
-export function avgCadenceFromDetail(detail?: ActivityDetail | null): number | null {
+export function avgCadenceFromDetail(
+    detail?: ActivityDetail | null,
+): number | null {
     const perKm = detail?.stream_summary?.per_km;
     if (!perKm?.length) return null;
     const cadences = perKm
         .map((split) => split.avg_cadence_spm)
         .filter((spm): spm is number => spm != null && spm > 0);
     if (cadences.length === 0) return null;
-    return Math.round(cadences.reduce((sum, spm) => sum + spm, 0) / cadences.length);
+    return Math.round(
+        cadences.reduce((sum, spm) => sum + spm, 0) / cadences.length,
+    );
 }
 
 // The fastest single km as its "M:SS" pace string. Null when no per-km data.
-export function fastestKmFromDetail(detail?: ActivityDetail | null): string | null {
+export function fastestKmFromDetail(
+    detail?: ActivityDetail | null,
+): string | null {
     const perKm = detail?.stream_summary?.per_km;
     if (!perKm?.length) return null;
     let best: { pace: string; seconds: number } | null = null;
@@ -203,10 +224,14 @@ export function fastestKmFromDetail(detail?: ActivityDetail | null): string | nu
 
 // HR zone distribution (% per Z1..Z5) from stream_summary. Null when the run
 // has no zone data (e.g. no HR), so callers can hide the zone bar.
-export function zonePctFromDetail(detail?: ActivityDetail | null): ZonePct | null {
+export function zonePctFromDetail(
+    detail?: ActivityDetail | null,
+): ZonePct | null {
     const zones = detail?.stream_summary?.time_in_zone_pct;
     if (zones == null) return null;
-    const hasData = (['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const).some((z) => (zones[z] ?? 0) > 0);
+    const hasData = (['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const).some(
+        (z) => (zones[z] ?? 0) > 0,
+    );
     return hasData ? zones : null;
 }
 
@@ -225,16 +250,24 @@ export interface CardStatStrings {
  * the `${x} bpm` / `${x} spm` / `${pace}/km` formatting can't drift. Each value is
  * omitted (not "—") when its source is missing, matching the card's honest-cells rule.
  */
-export function buildCardStats(detail?: ActivityDetail | null): CardStatStrings {
+export function buildCardStats(
+    detail?: ActivityDetail | null,
+): CardStatStrings {
     const paceSec = paceSecPerKm(detail?.moving_time, detail?.distance);
     const cadence = avgCadenceFromDetail(detail);
     const fastestKm = fastestKmFromDetail(detail);
     return {
         pace: paceSec != null ? `${formatPace(paceSec)}/km` : undefined,
-        hr: detail?.average_heartrate != null ? `${Math.round(detail.average_heartrate)} bpm` : undefined,
+        hr:
+            detail?.average_heartrate != null
+                ? `${Math.round(detail.average_heartrate)} bpm`
+                : undefined,
         cadence: cadence != null ? `${cadence} spm` : undefined,
         fastestKm: fastestKm != null ? `${fastestKm}/km` : undefined,
-        elevation: detail?.total_elevation_gain != null ? `${Math.round(detail.total_elevation_gain)} m` : undefined,
+        elevation:
+            detail?.total_elevation_gain != null
+                ? `${Math.round(detail.total_elevation_gain)} m`
+                : undefined,
     };
 }
 
@@ -278,8 +311,13 @@ export function kartuPropsFromDetail(
     return {
         km: formatKm(detail?.distance),
         durasi,
-        trimp: detail?.trimp_edwards == null ? '—' : String(Math.round(detail.trimp_edwards)),
-        subtitle: detail ? `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}` : null,
+        trimp:
+            detail?.trimp_edwards == null
+                ? '—'
+                : String(Math.round(detail.trimp_edwards)),
+        subtitle: detail
+            ? `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`
+            : null,
         stats: buildCardStats(detail),
         zonePct: zonePctFromDetail(detail),
         paceShape: paceShapeFromDetail(detail),

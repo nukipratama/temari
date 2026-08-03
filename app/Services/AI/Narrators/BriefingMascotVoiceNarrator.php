@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
+use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentToolbox;
@@ -15,7 +16,6 @@ use App\Services\AI\Agent\Tools\WeekStateTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\AI\StructuredChatCaller;
-use App\Services\Run\Metrics\RunBaseline;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\PastYouMatcher;
@@ -189,7 +189,7 @@ class BriefingMascotVoiceNarrator
         private readonly VerdictNarrator $verdictNarrator,
         private readonly StructuredChatCaller $caller,
         private readonly PastYouMatcher $pastYou,
-        private readonly RunBaseline $runBaseline,
+        private readonly ResolveRunBaselineAction $runBaseline,
     ) {
     }
 

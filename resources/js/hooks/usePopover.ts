@@ -1,4 +1,5 @@
 import { type RefObject } from 'react';
+
 import { useDismissable } from './useDismissable';
 import { useFocusReturn } from './useFocusReturn';
 

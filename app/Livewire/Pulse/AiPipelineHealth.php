@@ -27,12 +27,12 @@ class AiPipelineHealth extends Card
 
     public function render(AnalysisService $analyses): Renderable
     {
-        $statusCounts = DB::table('ai_analyses')
+        $statusCounts = Analysis::query()
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        $recentFailures = DB::table('ai_analyses')
+        $recentFailures = Analysis::query()
             ->where('status', AnalysisStatus::Failed->value)
             ->orderByDesc('updated_at')
             ->limit(25)

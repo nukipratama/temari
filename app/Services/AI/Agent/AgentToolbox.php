@@ -86,25 +86,20 @@ final readonly class AgentToolbox
     }
 
     /**
-     * Serialise a reading, leaving out everything the run has no answer for.
-     *
-     * A null key told the model nothing it could use: it still had to read the
-     * name, and "absent" carries the same meaning in half the words. A reading
-     * with nothing to report therefore comes back as `{}` — which is why every
-     * tool description says what a missing field means rather than what a null
-     * one does. That wording is the contract; do not strip without it.
-     *
-     * Empty arrays survive, since `[]` is an answer ("no zones recorded") in a
-     * way that a missing key is not.
+     * Serialise a reading, leaving out everything the run has no answer for. A
+     * null key is dropped entirely (a reading with nothing to report comes back
+     * as `{}`); every tool description says what a MISSING field means, never
+     * what a null one does — that wording is the contract, do not strip a null
+     * key without updating it. Empty arrays survive: `[]` is itself an answer
+     * ("no zones recorded"), unlike a missing key.
      *
      * @param  array<string, mixed>  $payload
      */
     private static function encode(array $payload): string
     {
-        // Cast so a reading with nothing left encodes as `{}` and not `[]`: the
-        // model is being handed an object, and an empty list would read as a
-        // different kind of answer. Payloads are always string-keyed, so this
-        // never renumbers anything. Nested lists stay lists.
+        // Cast to object so an empty payload encodes as `{}`, not `[]` — the
+        // model is being handed an object, not a differently-shaped answer.
+        // Payloads are always string-keyed, so this never renumbers anything.
         return (string) json_encode((object) self::withoutNulls($payload), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
     }
 

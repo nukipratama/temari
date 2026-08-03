@@ -1,15 +1,27 @@
 import { Link } from '@inertiajs/react';
+
+import type { TrainingLoad, WeeklySnapshot } from '@/types/inertia';
+
 import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
-import { atlHint, ctlHint, monotonyHint, strainHint } from '@/pages/HariIni/helpers';
-import type { TrainingLoad, WeeklySnapshot } from '@/types/inertia';
+import {
+    atlHint,
+    ctlHint,
+    monotonyHint,
+    strainHint,
+} from '@/pages/HariIni/helpers';
 
 export default function KondisiCard({
     load,
     snapshot,
 }: Readonly<{ load: TrainingLoad | null; snapshot: WeeklySnapshot | null }>) {
-    const rows: ReadonlyArray<{ label: string; value: string; hint: string; color: string }> = [
+    const rows: ReadonlyArray<{
+        label: string;
+        value: string;
+        hint: string;
+        color: string;
+    }> = [
         {
             label: 'Fondasi',
             value: load?.ctl_42d != null ? load.ctl_42d.toFixed(1) : '—',
@@ -24,7 +36,8 @@ export default function KondisiCard({
         },
         {
             label: 'Beban',
-            value: load?.strain != null ? Math.round(load.strain).toString() : '—',
+            value:
+                load?.strain != null ? Math.round(load.strain).toString() : '—',
             hint: strainHint(load?.strain),
             color: 'text-horizon',
         },
@@ -37,15 +50,21 @@ export default function KondisiCard({
     ];
     return (
         <Card as="section" padding="md" className="flex h-full flex-col gap-3">
-            <SectionLabel dot className="mb-0">Kondisi · {snapshot ? '7 hari' : 'belum cukup data'}</SectionLabel>
+            <SectionLabel dot className="mb-0">
+                Kondisi · {snapshot ? '7 hari' : 'belum cukup data'}
+            </SectionLabel>
             {rows.map(({ label, value, hint, color }) => (
                 <div
                     key={label}
                     className="flex items-baseline justify-between py-1.5 border-b border-cream-deep last:border-b-0"
                 >
                     <div>
-                        <div className="text-[13px] font-medium text-ink">{label}</div>
-                        <div className="font-display text-xs italic text-ink-3">{hint}</div>
+                        <div className="text-[13px] font-medium text-ink">
+                            {label}
+                        </div>
+                        <div className="font-display text-xs italic text-ink-3">
+                            {hint}
+                        </div>
                     </div>
                     <div
                         className={cn(

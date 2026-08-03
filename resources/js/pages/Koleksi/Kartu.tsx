@@ -1,24 +1,14 @@
-import { Head, usePage } from '@inertiajs/react';
 import { Icon } from '@iconify/react';
-import { appLayout } from '@/layouts/appLayout';
-import MotionLink from '@/components/MotionLink';
-import ConfettiBurst from '@/components/ConfettiBurst';
-import Card from '@/components/ui/Card';
-import CollectionHeader from '@/components/koleksi/CollectionHeader';
-import Eyebrow from '@/components/ui/Eyebrow';
-import EmptyPanel from '@/components/ui/EmptyPanel';
-import Kartu from '@/components/card/Kartu';
-import KartuMount from '@/components/card/KartuMount';
-import FeaturedCardHero from '@/components/card/FeaturedCardHero';
-import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
-import StravaSyncButton from '@/components/StravaSyncButton';
-import { cn } from '@/lib/cn';
-import { pressShrink } from '@/lib/motion';
-import { aktivitasUrl } from '@/lib/routes';
-import PageContainer from '@/components/ui/PageContainer';
-import { RARITY_LABELS, RARITY_ORDER, kartuPropsFromDetail } from '@/lib/runcard';
-import { memo, useCallback, useDeferredValue, useMemo, useState, type ReactNode } from 'react';
-import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import { Head, usePage } from '@inertiajs/react';
+import {
+    memo,
+    useCallback,
+    useDeferredValue,
+    useMemo,
+    useState,
+    type ReactNode,
+} from 'react';
+
 import type {
     Activity,
     ActivityDetail,
@@ -31,6 +21,29 @@ import type {
     SharedProps,
     StravaSyncState,
 } from '@/types/inertia';
+
+import FeaturedCardHero from '@/components/card/FeaturedCardHero';
+import Kartu from '@/components/card/Kartu';
+import KartuMount from '@/components/card/KartuMount';
+import ConfettiBurst from '@/components/ConfettiBurst';
+import ExpandableQuote from '@/components/dashboard/ExpandableQuote';
+import CollectionHeader from '@/components/koleksi/CollectionHeader';
+import MotionLink from '@/components/MotionLink';
+import StravaSyncButton from '@/components/StravaSyncButton';
+import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import Card from '@/components/ui/Card';
+import EmptyPanel from '@/components/ui/EmptyPanel';
+import Eyebrow from '@/components/ui/Eyebrow';
+import PageContainer from '@/components/ui/PageContainer';
+import { appLayout } from '@/layouts/appLayout';
+import { cn } from '@/lib/cn';
+import { pressShrink } from '@/lib/motion';
+import { aktivitasUrl } from '@/lib/routes';
+import {
+    RARITY_LABELS,
+    RARITY_ORDER,
+    kartuPropsFromDetail,
+} from '@/lib/runcard';
 
 interface FeaturedCardPayload {
     id: number;
@@ -85,7 +98,10 @@ export default function KoleksiKartu({
     // keystroke so typing in the search box stays responsive on large collections.
     const deferredSearch = useDeferredValue(search);
 
-    const totalKartu = Object.values(rarityCounts).reduce((sum, n) => sum + n, 0);
+    const totalKartu = Object.values(rarityCounts).reduce(
+        (sum, n) => sum + n,
+        0,
+    );
     const epicCount = rarityCounts.epic + rarityCounts.legendary;
     const eyebrow = `Koleksi · ${totalKartu} kartu · ${epicCount} terbaik`;
 
@@ -97,14 +113,19 @@ export default function KoleksiKartu({
         let filtered = rawGrid;
         if (deferredSearch.trim() !== '') {
             const q = deferredSearch.toLowerCase();
-            filtered = filtered.filter((card) =>
-                card.special_move.toLowerCase().includes(q)
-                || (card.activity?.detail?.name ?? '').toLowerCase().includes(q),
+            filtered = filtered.filter(
+                (card) =>
+                    card.special_move.toLowerCase().includes(q) ||
+                    (card.activity?.detail?.name ?? '')
+                        .toLowerCase()
+                        .includes(q),
             );
         }
         const sorted = [...filtered];
         if (sortBy === 'rarity') {
-            sorted.sort((a, b) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity]);
+            sorted.sort(
+                (a, b) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity],
+            );
         } else if (sortBy === 'name') {
             sorted.sort((a, b) => a.special_move.localeCompare(b.special_move));
         }
@@ -126,7 +147,11 @@ export default function KoleksiKartu({
         ) : (
             <div className="mt-6 grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-4">
                 {grid.map((card) => (
-                    <CardCell key={card.id} card={card} onTap={triggerBurstFor} />
+                    <CardCell
+                        key={card.id}
+                        card={card}
+                        onTap={triggerBurstFor}
+                    />
                 ))}
             </div>
         );
@@ -191,14 +216,17 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
             polyline={kartuProps.polyline}
             ctaHref={aktivitasUrl(featured)}
             voice={
-                featured.flavor_analysis && featured.flavor_analysis.status !== 'pending' && (
+                featured.flavor_analysis &&
+                featured.flavor_analysis.status !== 'pending' && (
                     <AnalysisStatus
                         analysis={featured.flavor_analysis}
                         inertiaReloadProps={['featuredCard']}
                         allowReanalyze={false}
                         showTimestamp={false}
                         onSky
-                        renderContent={(text) => <ExpandableQuote text={text} onSky />}
+                        renderContent={(text) => (
+                            <ExpandableQuote text={text} onSky />
+                        )}
                     />
                 )
             }
@@ -223,11 +251,19 @@ function RarityFilter({
     onSortChange: (v: SortMode) => void;
 }>) {
     return (
-        <nav aria-label="Filter kartu" className="mt-8 flex flex-wrap items-center gap-2">
+        <nav
+            aria-label="Filter kartu"
+            className="mt-8 flex flex-wrap items-center gap-2"
+        >
             <Eyebrow as="span" token="micro" tone="ink-2" className="mr-1.5">
                 Tingkat
             </Eyebrow>
-            <FilterPill href="/kartu" label="Semua" active={selected === null} dot={null} />
+            <FilterPill
+                href="/kartu"
+                label="Semua"
+                active={selected === null}
+                dot={null}
+            />
             {RARITY_ORDER.map((r) => (
                 <FilterPill
                     key={r}
@@ -241,7 +277,13 @@ function RarityFilter({
             {/* Search + Sort */}
             <div className="ml-auto flex items-center gap-2">
                 <div className="relative">
-                    <Icon icon="mdi:magnify" width={14} height={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" aria-hidden />
+                    <Icon
+                        icon="mdi:magnify"
+                        width={14}
+                        height={14}
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3"
+                        aria-hidden
+                    />
                     <input
                         type="text"
                         value={search}
@@ -258,7 +300,9 @@ function RarityFilter({
                     className="rounded-full border border-cream-deep bg-cream px-3 py-1.5 text-xs font-medium text-ink-2 focus:border-horizon focus:outline-none"
                 >
                     {SORT_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                        </option>
                     ))}
                 </select>
             </div>
@@ -279,7 +323,12 @@ function FilterPill({
     label,
     active,
     dot,
-}: Readonly<{ href: string; label: string; active: boolean; dot: Rarity | null }>) {
+}: Readonly<{
+    href: string;
+    label: string;
+    active: boolean;
+    dot: Rarity | null;
+}>) {
     return (
         <MotionLink
             href={href}
@@ -292,7 +341,12 @@ function FilterPill({
                     : 'bg-sky/[0.06] text-ink-2 hover:bg-sky/[0.12]',
             )}
         >
-            {dot && <span aria-hidden className={cn('h-2 w-2 rounded-full', RARITY_DOT[dot])} />}
+            {dot && (
+                <span
+                    aria-hidden
+                    className={cn('h-2 w-2 rounded-full', RARITY_DOT[dot])}
+                />
+            )}
             {label}
         </MotionLink>
     );
@@ -301,13 +355,19 @@ function FilterPill({
 const CardCell = memo(function CardCell({
     card,
     onTap,
-}: Readonly<{ card: CardWithRel; onTap: (rarity: Rarity, id: number) => void }>) {
+}: Readonly<{
+    card: CardWithRel;
+    onTap: (rarity: Rarity, id: number) => void;
+}>) {
     const detail = card.activity?.detail;
     // The derived-stat helpers each run multiple per_km passes; memoize them per
     // card so a parent re-render (e.g. a search keystroke) doesn't recompute every
     // tile. `memo` already skips re-render when props are unchanged, but this keeps
     // the work cheap on the renders that do happen (sort changes, etc.).
-    const derived = useMemo(() => (detail == null ? null : kartuPropsFromDetail(detail)), [detail]);
+    const derived = useMemo(
+        () => (detail == null ? null : kartuPropsFromDetail(detail)),
+        [detail],
+    );
 
     if (detail == null || derived == null) {
         return null;
@@ -353,7 +413,11 @@ function EmptyState() {
         <EmptyPanel
             title="Belum ada kartu di sini."
             body="Coba filter lain, atau sync lari terbaru dulu."
-            action={state !== 'syncing' && <StravaSyncButton state={state} className="mt-4" />}
+            action={
+                state !== 'syncing' && (
+                    <StravaSyncButton state={state} className="mt-4" />
+                )
+            }
             className="mt-8"
         />
     );
@@ -361,7 +425,12 @@ function EmptyState() {
 
 function LegendaryTease() {
     return (
-        <Card tone="empty" as="section" padding="lg" className="mt-8 flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+        <Card
+            tone="empty"
+            as="section"
+            padding="lg"
+            className="mt-8 flex flex-col items-start gap-5 sm:flex-row sm:items-center"
+        >
             <div className="flex h-28 w-20 items-center justify-center rounded-lg border-2 border-dashed border-rarity-legendary bg-rarity-legendary/[0.06] font-display text-4xl italic text-rarity-legendary">
                 ?
             </div>
@@ -370,8 +439,9 @@ function LegendaryTease() {
                     ★ Legendaris · belum kebuka
                 </Eyebrow>
                 <p className="font-display text-sm italic leading-relaxed text-ink-2">
-                    Kartu paling langka. Kebuka pas satu lari numpukin banyak hal kece sekaligus: PR, makin
-                    ngebut di paruh kedua, lari jauh, plus badge-badge kamu.
+                    Kartu paling langka. Kebuka pas satu lari numpukin banyak
+                    hal kece sekaligus: PR, makin ngebut di paruh kedua, lari
+                    jauh, plus badge-badge kamu.
                 </p>
             </div>
         </Card>

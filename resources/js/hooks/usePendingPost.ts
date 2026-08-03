@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { router } from '@inertiajs/react';
 import type { VisitOptions } from '@inertiajs/core';
+
+import { router } from '@inertiajs/react';
+import { useState } from 'react';
+
 import { hapticCommit } from '@/lib/haptics';
 
 /**
@@ -14,17 +16,24 @@ import { hapticCommit } from '@/lib/haptics';
  * `onFinish`, so a failed post never buzzes; a caller's own `onSuccess` still
  * runs.
  */
-export function usePendingPost(url: string, options?: Omit<VisitOptions, 'onStart' | 'onFinish'>): [boolean, () => void] {
+export function usePendingPost(
+    url: string,
+    options?: Omit<VisitOptions, 'onStart' | 'onFinish'>,
+): [boolean, () => void] {
     const [pending, setPending] = useState(false);
     const post = () =>
-        router.post(url, {}, {
-            ...options,
-            onStart: () => setPending(true),
-            onSuccess: (page) => {
-                hapticCommit();
-                options?.onSuccess?.(page);
+        router.post(
+            url,
+            {},
+            {
+                ...options,
+                onStart: () => setPending(true),
+                onSuccess: (page) => {
+                    hapticCommit();
+                    options?.onSuccess?.(page);
+                },
+                onFinish: () => setPending(false),
             },
-            onFinish: () => setPending(false),
-        });
+        );
     return [pending, post];
 }

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import {
     currentSubscription,
     isIosNonSafari,
@@ -13,7 +14,10 @@ vi.mock('@/lib/http', () => ({ csrfToken: () => 'test-csrf' }));
 
 const fakeSubscription = {
     endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
-    toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys: { p256dh: 'k', auth: 't' } }),
+    toJSON: () => ({
+        endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
+        keys: { p256dh: 'k', auth: 't' },
+    }),
     unsubscribe: vi.fn(() => Promise.resolve(true)),
 };
 
@@ -34,8 +38,14 @@ function stubServiceWorker(): void {
         },
     });
     vi.stubGlobal('PushManager', function PushManager() {});
-    vi.stubGlobal('Notification', { permission: 'default', requestPermission: vi.fn(() => Promise.resolve('granted')) });
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true })));
+    vi.stubGlobal('Notification', {
+        permission: 'default',
+        requestPermission: vi.fn(() => Promise.resolve('granted')),
+    });
+    vi.stubGlobal(
+        'fetch',
+        vi.fn(() => Promise.resolve({ ok: true })),
+    );
 }
 
 afterEach(() => {
@@ -47,7 +57,9 @@ afterEach(() => {
 describe('urlBase64ToUint8Array', () => {
     it('decodes a base64url VAPID key to its bytes', () => {
         // "hello" → base64url "aGVsbG8"
-        expect([...urlBase64ToUint8Array('aGVsbG8')]).toEqual([...new TextEncoder().encode('hello')]);
+        expect([...urlBase64ToUint8Array('aGVsbG8')]).toEqual([
+            ...new TextEncoder().encode('hello'),
+        ]);
     });
 
     it('handles the -/_ base64url alphabet', () => {
@@ -72,12 +84,16 @@ describe('capability detection', () => {
     });
 
     it('flags an iOS non-Safari browser', () => {
-        vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (iPhone) CriOS/120' });
+        vi.stubGlobal('navigator', {
+            userAgent: 'Mozilla/5.0 (iPhone) CriOS/120',
+        });
         expect(isIosNonSafari()).toBe(true);
     });
 
     it('does not flag Safari on iOS', () => {
-        vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (iPhone) Safari/605' });
+        vi.stubGlobal('navigator', {
+            userAgent: 'Mozilla/5.0 (iPhone) Safari/605',
+        });
         expect(isIosNonSafari()).toBe(false);
     });
 });
@@ -89,12 +105,17 @@ describe('subscribe', () => {
         await subscribe('aGVsbG8');
 
         expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/sw.js');
-        expect(fetch).toHaveBeenCalledWith('/profil/push', expect.objectContaining({ method: 'POST' }));
+        expect(fetch).toHaveBeenCalledWith(
+            '/profil/push',
+            expect.objectContaining({ method: 'POST' }),
+        );
     });
 
     it('throws permission-denied when the prompt is blocked', async () => {
         stubServiceWorker();
-        (Notification.requestPermission as ReturnType<typeof vi.fn>).mockResolvedValue('denied');
+        (
+            Notification.requestPermission as ReturnType<typeof vi.fn>
+        ).mockResolvedValue('denied');
 
         await expect(subscribe('aGVsbG8')).rejects.toThrow('permission-denied');
         expect(fetch).not.toHaveBeenCalled();
@@ -108,7 +129,10 @@ describe('unsubscribe', () => {
         await unsubscribe();
 
         expect(fakeSubscription.unsubscribe).toHaveBeenCalled();
-        expect(fetch).toHaveBeenCalledWith('/profil/push', expect.objectContaining({ method: 'DELETE' }));
+        expect(fetch).toHaveBeenCalledWith(
+            '/profil/push',
+            expect.objectContaining({ method: 'DELETE' }),
+        );
     });
 });
 

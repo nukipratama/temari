@@ -1,6 +1,7 @@
+import { Icon } from '@iconify/react';
 import { usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Icon } from '@iconify/react';
+
 import type { SharedProps } from '@/types/inertia';
 
 /**
@@ -32,8 +33,16 @@ export default function ErrorBanner() {
                 role="alert"
                 className="mx-auto flex max-w-page-2xl items-start gap-3 rounded-2xl border border-ember/30 bg-ember/[0.08] px-4 py-3"
             >
-                <Icon icon="mdi:alert-circle-outline" width={20} height={20} className="mt-0.5 shrink-0 text-ember-deep" aria-hidden />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-ink">{message}</p>
+                <Icon
+                    icon="mdi:alert-circle-outline"
+                    width={20}
+                    height={20}
+                    className="mt-0.5 shrink-0 text-ember-deep"
+                    aria-hidden
+                />
+                <p className="flex-1 font-sans text-sm leading-relaxed text-ink">
+                    {message}
+                </p>
                 <button
                     type="button"
                     onClick={() => setDismissed(true)}
