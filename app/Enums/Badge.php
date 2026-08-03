@@ -6,8 +6,7 @@ namespace App\Enums;
 
 /**
  * Single source of truth for run-card badges: slug (backed value) and
- * human-facing label live in one place, eliminating the old parallel
- * BADGE_* constants + BADGE_LABELS map on RunCard.
+ * human-facing label live in one place.
  */
 enum Badge: string
 {

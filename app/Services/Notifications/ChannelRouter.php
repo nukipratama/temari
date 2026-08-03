@@ -12,12 +12,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * The single answer to "where can this user actually be reached right now".
- *
- * Before this, six places asked that question and three different answers came
- * back: only `AnalysisReadyNotification` checked that a Telegram bot token was
- * configured, so the other five would happily route to a channel that could not
- * possibly send. Adding a mute flag to each copy is how that drift happened in
- * the first place.
+ * Every call site shares this one check rather than each re-deriving its own
+ * answer, which is how "reachable" quietly drifts out of sync between callers.
  *
  * Two conditions per channel, and they are different kinds of thing:
  *

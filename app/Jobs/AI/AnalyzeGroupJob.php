@@ -50,11 +50,9 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         try {
             $subject = $this->resolveSubject($this->subjectId);
         } catch (UnavailableException $e) {
-            // Count a terminal resolveSubject failure against the retry budget:
-            // bump attempts (like markProcessing would) before failing, so a
-            // subject that never materializes dead-letters after the budget
-            // instead of churning ai:self-heal forever at attempts=0 (an unswept
-            // family stayed permanently invisible; a swept one re-billed hourly).
+            // Bump attempts before failing (like markProcessing would), so a
+            // subject that never materializes dead-letters after the retry
+            // budget instead of churning ai:self-heal forever at attempts=0.
             foreach ($pending as $row) {
                 $service->markProcessing($row);
             }

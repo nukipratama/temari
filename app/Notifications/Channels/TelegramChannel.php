@@ -16,10 +16,10 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Delivers a {@see TelegramMessage} for any notification that implements
- * `toTelegram()`. Lifted from the retired SendTelegramNotificationJob: it keeps
- * the once-only delivery claim (so a queued retry is idempotent), the
- * photo-vs-text send, and the revoke-on-permanent-failure behaviour. The claim is
- * held on the shared {@see NotificationDeliveryClaim} keyed by (analysis, channel).
+ * `toTelegram()`. Keeps delivery once-only (so a queued retry is idempotent),
+ * the photo-vs-text send, and the revoke-on-permanent-failure behaviour. The
+ * claim is held on the shared {@see NotificationDeliveryClaim} keyed by
+ * (analysis, channel).
  *
  * A message with a null `deliveryKey` (streak / test) skips the claim entirely.
  * A `force` message (manual push) skips the claim CHECK — so a resend always

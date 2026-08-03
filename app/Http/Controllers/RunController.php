@@ -49,10 +49,9 @@ class RunController extends Controller
     /**
      * How long one run-detail view reserves the right to re-dispatch a location
      * resolve. `ShouldBeUnique` only dedupes while the job is queued or running,
-     * so once it finishes without stamping `location_resolved_at` — the
-     * deliberate outcome of a transient Nominatim miss — the very next poll tick
-     * re-queues it. Matched to the job's own `uniqueFor`, which also covers the
-     * longest narration poll window (30 ticks at up to 15s).
+     * so this guard covers the gap after a transient Nominatim miss finishes
+     * without stamping `location_resolved_at`. Matched to the job's own
+     * `uniqueFor`.
      */
     private const int LOCATION_DISPATCH_GUARD_SECONDS = 600;
 
@@ -67,17 +66,9 @@ class RunController extends Controller
         $filters = $jejak->filtersFor($user, $request);
         $runsQuery = $jejak->for($user, $filters);
 
-        // Resolved lazily, and memoized because four props below need it.
-        //
-        // Every prop on this page used to be computed here in the method body,
-        // which meant `useAnalysisTrigger`'s poll — a `router.reload({ only })`
-        // every 3-15s while any recap analysis is in flight — re-ran this whole
-        // query set on each tick despite asking for one prop. Behind a closure,
-        // Inertia skips it entirely on a partial reload that does not name it.
-        //
-        // Memoizing is what makes that safe: `runs`, `notes`, `moods` and
-        // `runsTruncated` all depend on this, and four separate closures would
-        // run the query four times on a full load.
+        // Deferred behind a closure (Inertia's `useAnalysisTrigger` poll skips
+        // any prop the partial reload does not name) and memoized (four props
+        // below share this one query set).
         /** @var Collection<int, Activity>|null $loadedRuns */
         $loadedRuns = null;
         $runsTruncated = false;
@@ -138,10 +129,6 @@ class RunController extends Controller
     /**
      * Weekly recap rows for the range, decorated with the flags the list needs.
      *
-     * Extracted so `index()` can hand Inertia a closure: this is the one heavy
-     * prop the analysis poll genuinely does need, and keeping it beside the
-     * queries it depends on avoids a five-argument closure inline.
-     *
      * @return SupportCollection<int, array<string, mixed>>
      */
     private function weeklySnapshotPayload(
@@ -161,25 +148,7 @@ class RunController extends Controller
             ->get();
 
         $recapAnalyses = $this->recapAnalysesFor($weeklySnapshots->all());
-
-        // Chain head = the latest completed week the chain actually narrates
-        // (runs > 0, not the in-progress week). Matching the chain's runs>0
-        // definition keeps a zero-run rest week from stealing the head and
-        // hiding "Baca ulang" on the real latest recap. Only the head may
-        // regenerate, so re-narrating mid-history can't desync later links.
-        //
-        // Queried independently of $weeklySnapshots rather than picked from it:
-        // a `week` deep link (old weekly-recap notification, revisited after
-        // later weeks have closed) narrows that collection to a single, often
-        // stale week, which would otherwise get mislabelled as the head and
-        // expose a "Baca ulang" whose actual server-side effect targets a
-        // different week entirely.
-        $chainHeadId = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('runs', '>', 0)
-            ->where('week_ending', '!=', $currentWeekEnding->toDateString())
-            ->orderByDesc('week_ending')
-            ->value('id');
+        $chainHeadId = $this->latestNarratedWeekId($user, $currentWeekEnding);
 
         return $weeklySnapshots
             ->map(fn (WeeklySnapshot $row): array => $this->decorateSnapshot(
@@ -189,6 +158,27 @@ class RunController extends Controller
                 $currentWeekEnding,
             ))
             ->values();
+    }
+
+    /**
+     * The latest completed week the recap chain actually narrates (runs > 0,
+     * not the in-progress week, not a zero-run rest week — either would steal
+     * the head and hide "Baca ulang" on the real latest recap). Only the head
+     * may regenerate, so re-narrating mid-history can't desync later links.
+     *
+     * Queried independently of the caller's own week range: a `week` deep link
+     * (an old weekly-recap notification, revisited after later weeks have
+     * closed) would otherwise narrow the candidate set to a single stale week
+     * and mislabel it as the head.
+     */
+    private function latestNarratedWeekId(User $user, Carbon $currentWeekEnding): ?int
+    {
+        return WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('runs', '>', 0)
+            ->where('week_ending', '!=', $currentWeekEnding->toDateString())
+            ->orderByDesc('week_ending')
+            ->value('id');
     }
 
     /**
@@ -227,10 +217,9 @@ class RunController extends Controller
      */
     private function buildJourneyMatch(User $user): ?array
     {
-        // Boundary dates + lifetime distance in one aggregate pass; detail rows
-        // for those dates follow in a second query. MIN/MAX skip NULL
-        // start_date_local natively (no explicit filter); SUM(distance) stays
-        // unfiltered to cover every analyzed detail, including null-dated ones.
+        // Boundary dates + lifetime distance in one aggregate pass (MIN/MAX skip
+        // NULL start_date_local natively); detail rows for those dates follow in
+        // a second query.
         $bounds = ActivityDetail::query()
             ->forUser($user->id)
             ->selectRaw('MIN(start_date_local) as first_date, MAX(start_date_local) as latest_date, SUM(distance) as total_distance')
@@ -319,15 +308,8 @@ class RunController extends Controller
             ResolveActivityLocationJob::dispatch($detail->id);
         }
 
-        // Resolved lazily, and memoized because the four insight props plus the
-        // notification cooldown all read it.
-        //
-        // Every prop below used to be computed in the method body, which meant
-        // `useAnalysisTrigger`'s poll — a `router.reload({ only })` every 3-15s
-        // for up to 30 ticks while the four run insights generate — re-ran the
-        // past-you match, the relative-effort baseline, the card payload and the
-        // story line on each tick for props it never asked for. Behind closures,
-        // Inertia skips every prop the poll does not name.
+        // Same partial-reload deferral as index() above: memoized because the
+        // four insight props plus the notification cooldown all read it.
         /** @var Collection<string, Analysis>|null $loadedAnalyses */
         $loadedAnalyses = null;
         $loadAnalyses = function () use ($activity, &$loadedAnalyses): Collection {
@@ -379,10 +361,6 @@ class RunController extends Controller
     }
 
     /**
-     * The card's full view now lives on this page (see docs/decisions), so it
-     * carries the same flavor/edition/share fields the old `/kartu/{card}`
-     * detail page used to load.
-     *
      * @return array<string, mixed>|null
      */
     private function cardPayload(CardPresenter $cards, ?RunCard $card, User $user): ?array

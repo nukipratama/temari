@@ -120,12 +120,11 @@ class PostRunSpeechNarrator
     /**
      * The reads this speech may pull, each bound to this activity.
      *
-     * Deliberately narrower than run insight's, and narrower still than it was:
-     * no per-km table, no zone breakdown, and no longer the three insight blocks
-     * as prose either. Handing it any of them produced a fourth telling of the
-     * same run alongside the three lenses that had already told it, on a page
-     * where all four sit side by side. What is left is the material for the one
-     * lens the others cannot hold: where this run sits against the athlete's own
+     * Deliberately narrower than run insight's: no per-km table, no zone
+     * breakdown. Handing it either would produce a fourth telling of the same
+     * run alongside the three lenses that already told it, on a page where all
+     * four sit side by side. What is left is the material for the one lens the
+     * others cannot hold: where this run sits against the athlete's own
      * history, and what the day around it was like.
      */
     public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox

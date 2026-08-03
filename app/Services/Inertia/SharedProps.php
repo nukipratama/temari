@@ -8,13 +8,10 @@ use App\Models\User;
 use Illuminate\Http\Request;
 
 /**
- * Builds the cross-cutting props merged into every Inertia response.
- *
- * These used to live on `HandleInertiaRequests` itself, which left an HTTP
- * middleware owning eight domain prop builders and service-locating five
- * collaborators through `app()`. The middleware is now wiring only; this is
- * where the shared-prop policy lives, and it is injectable, so a test can drive
- * it without a request cycle.
+ * Builds the cross-cutting props merged into every Inertia response. The
+ * `HandleInertiaRequests` middleware is wiring only; this is where the
+ * shared-prop policy lives, and it is injectable, so a test can drive it
+ * without a request cycle.
  *
  * The domain families each own their own builder ({@see GamificationProps},
  * {@see StravaProps}, {@see NotificationProps}, {@see AiProps}); what is left
