@@ -95,43 +95,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Show runner resources
-        run: |
-          {
-            echo "### Runner: $(nproc) vCPU ($(uname -m))"
-            echo ""
-            echo "| | |"
-            echo "| --- | --- |"
-            echo "| nproc (= test workers) | $(nproc) |"
-            echo "| Model | $(lscpu | sed -n 's/^Model name:[[:space:]]*//p') |"
-            echo "| Memory | $(free -h | awk '/^Mem:/{print $2}') |"
-            echo ""
-          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: ./.github/actions/show-runner-resources
+        with:
+          workers-label: test workers
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+      - uses: ./.github/actions/setup-php
         with:
           php-version: ${{ env.PHP_VERSION }}
           # pcov is only loaded where the coverage gate actually runs (see Tests).
           coverage: ${{ github.event_name == 'pull_request' && 'pcov' || 'none' }}
-          ini-values: >-
-            opcache.enable=1,
-            opcache.enable_cli=1,
-            opcache.memory_consumption=256,
-            opcache.max_accelerated_files=20000,
-            opcache.validate_timestamps=0,
-            opcache.jit=disable,
-            opcache.jit_buffer_size=0
-
-      - name: Cache composer vendor
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
-        with:
-          path: vendor
-          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
-
-      - name: Install composer deps
-        run: composer install --prefer-dist --no-interaction --no-progress --classmap-authoritative
+          classmap-authoritative: 'true'
 
       - name: Stub .env for file-scanning tests
         run: cp .env.example .env
@@ -191,36 +164,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Show runner resources
-        run: |
-          {
-            echo "### Runner: $(nproc) vCPU ($(uname -m))"
-            echo ""
-            echo "| | |"
-            echo "| --- | --- |"
-            echo "| nproc (= vitest workers) | $(nproc) |"
-            echo "| Model | $(lscpu | sed -n 's/^Model name:[[:space:]]*//p') |"
-            echo "| Memory | $(free -h | awk '/^Mem:/{print $2}') |"
-            echo ""
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Setup Node
-        id: setup-node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      - uses: ./.github/actions/show-runner-resources
         with:
-          node-version-file: '.nvmrc'
-          cache: npm
+          workers-label: vitest workers
 
-      - name: Cache node_modules
-        id: node_modules_cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
-        with:
-          path: node_modules
-          key: node_modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('package-lock.json') }}
-
-      - name: Install npm deps
-        if: steps.node_modules_cache.outputs.cache-hit != 'true'
-        run: npm ci --prefer-offline --no-audit --no-fund
+      - uses: ./.github/actions/setup-node
 
       - name: Component/test 1:1 structure check
         run: npx vitest run resources/js/test/structure.test.ts
@@ -263,28 +211,16 @@ jobs:
   # files skip re-analysis), so a fresh checkout here is the only place that
   # reliably catches new phpstan/rector/pint regressions. Pre-existing findings
   # are captured in phpstan-baseline.neon; this gate blocks anything NEW.
-  static-analysis:
+  backend-static-analysis:
     needs: [changes, secret-scan, docs-citation-guard]
-    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && (needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main') }}
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+      - uses: ./.github/actions/setup-php
         with:
           php-version: ${{ env.PHP_VERSION }}
-          coverage: none
-
-      - name: Cache composer vendor
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
-        with:
-          path: vendor
-          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
-
-      - name: Install composer deps
-        run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Stub .env (larastan boots the app to resolve types)
         run: cp .env.example .env
@@ -298,15 +234,33 @@ jobs:
       - name: Rector (dry-run)
         run: vendor/bin/rector --dry-run --no-progress-bar
 
+  frontend-static-analysis:
+    needs: [changes, secret-scan, docs-citation-guard]
+    if: ${{ needs.secret-scan.result == 'success' && needs.docs-citation-guard.result == 'success' && needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-node
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier (format check)
+        run: npm run format:check
+
   # Single required check for branch protection.
   ci-gate:
-    needs: [backend-tests, frontend-tests, static-analysis, build, secret-scan, docs-citation-guard, changes]
+    needs: [backend-tests, frontend-tests, backend-static-analysis, frontend-static-analysis, build, secret-scan, docs-citation-guard, changes]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require upstream jobs to have succeeded (or cleanly skipped)
         run: |
-          for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.static-analysis.result }}" "${{ needs.build.result }}"; do
+          for r in "${{ needs.backend-tests.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.backend-static-analysis.result }}" "${{ needs.frontend-static-analysis.result }}" "${{ needs.build.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
           for r in "${{ needs.secret-scan.result }}" "${{ needs.docs-citation-guard.result }}" "${{ needs.changes.result }}"; do
@@ -404,16 +358,10 @@ jobs:
           $COMPOSE exec -T mysql sh -c \
             'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" "$DB_DATABASE"' \
             | gzip > "$out"
-          size=$(stat -c%s "$out")
           tables=$($COMPOSE exec -T mysql sh -c \
             'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
             | tr -d '[:space:]')
-          if [ "$size" -lt 1024 ] && [ "${tables:-0}" -gt 0 ]; then
-            echo "::error::Backup at $out is only $size bytes (schema has $tables tables)"
-            exit 1
-          fi
-          echo "Backup OK: $out ($size bytes, $tables tables)"
-          ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz | tail -n +11 | xargs -r rm
+          scripts/deploy/verify-and-prune-backup.sh "Backup" "$out" "$tables" "$BACKUP_DIR/pre-deploy-*.sql.gz"
 
       - name: Backup analytics schema
         timeout-minutes: 5
@@ -423,17 +371,9 @@ jobs:
             set -o pipefail
             $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" --databases "$adb"' \
               | gzip > "$out"
-            # Same size + table-count guard the main backup gets, so a truncated or
-            # empty analytics dump fails the deploy instead of silently proceeding.
-            size=$(stat -c%s "$out")
             tables=$($COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$adb\""' \
               | tr -d '[:space:]')
-            if [ "$size" -lt 1024 ] && [ "${tables:-0}" -gt 0 ]; then
-              echo "::error::Analytics backup at $out is only $size bytes (schema has $tables tables)"
-              exit 1
-            fi
-            echo "Analytics backup OK: $out ($size bytes, $tables tables)"
-            ls -1t "$BACKUP_DIR"/analytics-pre-deploy-*.sql.gz | tail -n +11 | xargs -r rm
+            scripts/deploy/verify-and-prune-backup.sh "Analytics backup" "$out" "$tables" "$BACKUP_DIR/analytics-pre-deploy-*.sql.gz"
           else
             echo "Analytics schema not present yet — skipping (first deploy)."
           fi
@@ -469,13 +409,9 @@ jobs:
 
       - name: Healthcheck
         run: |
-          for i in $(seq 1 20); do
-            if curl -fsS --max-time 10 http://127.0.0.1:7001/up; then
-              echo "Healthcheck passed"; exit 0
-            fi
-            sleep 3
-          done
-          echo "Healthcheck failed"; exit 1
+          scripts/deploy/poll-health.sh http://127.0.0.1:7001/up \
+            && echo "Healthcheck passed" \
+            || { echo "Healthcheck failed"; exit 1; }
 
       - name: Smoke test
         run: |
@@ -516,12 +452,8 @@ jobs:
             docker tag temari/app:previous temari/app:latest
             $COMPOSE up -d --no-deps app horizon pulse scheduler
             $COMPOSE exec -T app php artisan horizon:terminate || true
-            rolled_ok=false
-            for i in $(seq 1 20); do
-              if curl -fsS --max-time 10 http://127.0.0.1:7001/up; then rolled_ok=true; break; fi
-              sleep 3
-            done
-            [ "$rolled_ok" = true ] && echo "Rolled back to :previous and healthy." \
+            scripts/deploy/poll-health.sh http://127.0.0.1:7001/up \
+              && echo "Rolled back to :previous and healthy." \
               || echo "::warning::Rolled back to :previous but /up still failing — likely an infra fault, not the image."
           else
             echo "::warning::No :previous image to roll back to. App left on the failed image."

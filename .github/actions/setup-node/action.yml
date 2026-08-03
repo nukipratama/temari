@@ -1,0 +1,23 @@
+name: Setup Node
+description: Set up Node via .nvmrc, cache node_modules, install on cache miss
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      id: setup-node
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      with:
+        node-version-file: '.nvmrc'
+        cache: npm
+
+    - name: Cache node_modules
+      id: node_modules_cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+      with:
+        path: node_modules
+        key: node_modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('package-lock.json') }}
+
+    - name: Install npm deps
+      if: steps.node_modules_cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm ci --prefer-offline --no-audit --no-fund
