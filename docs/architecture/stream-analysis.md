@@ -3,7 +3,7 @@ title: Stream analysis (stream_summary)
 description: How raw Strava streams become the stream_summary payload — zones, splits, decoupling, cadence, best-effort paces — and who reads it
 tags: [architecture, run]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-08-03
 code_refs:
   - app/Services/Run/Ingest/StreamAnalysis.php
   - app/Services/Run/Ingest/ActivityPipeline.php

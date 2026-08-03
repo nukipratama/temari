@@ -3,7 +3,7 @@ title: Run ingestion pipeline
 description: Strava sync → fetch detail/streams/weather → compute metrics → atomically write run card + story layer, drainable on failure
 tags: [architecture, run]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-08-03
 code_refs:
   - app/Services/Run/Ingest/SyncOrchestrator.php
   - app/Services/Run/Ingest/ActivityPipeline.php

@@ -3,7 +3,7 @@ title: Vibe & mood system
 description: The daily "vibe" that sets Temari's tone, the run-level mood vocabulary, and the featured-kartu pick that headlines the dashboard.
 tags: [feature, story]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-08-03
 code_refs:
   - app/Services/Run/Story/Vibe.php
   - app/Services/Run/Story/VibeMatrix.php
@@ -36,7 +36,7 @@ Two distinct "feelings" drive how the app speaks. The **vibe** is a daily, *whol
 
 ### The eight vibes
 
-A fixed vocabulary — keys are internal, the Indonesian labels + emoji are the display surface ([Vibe.php:16](../../app/Services/Run/Story/Vibe.php#L16)):
+A fixed vocabulary — keys are internal, the Indonesian labels + emoji are the display surface ([Vibe.php:17](../../app/Services/Run/Story/Vibe.php#L17)):
 
 | Vibe (key) | Label | Emoji | Roughly means |
 | --- | --- | --- | --- |
@@ -53,9 +53,9 @@ Indonesian-voice rule holds: the vibe *names* stay in Bahasa Indonesia; only the
 
 ## Run-level moods
 
-A finished run gets a single **mood** instead — six values on [Temari](../../app/Services/Run/Story/Temari.php): `nyala` (PR / hard win), `enteng` (easy / negative split), `oleng` (heat strain), `lemes` (decoupling drift), `mumet` (hard-zone heavy / overreaching), `adem` (rest / default). The selection cascade is `moodForActivity` ([Temari.php:96](../../app/Services/Run/Story/Temari.php#L96)); it reads the run's [[stream-analysis|stream summary]] and weather. This mood is what [[gamification]] writes onto the run's `StoryLine`, and each mood also carries a 4-char "sigil" and an optional accessory hint for the SVG renderer ([Temari.php:31](../../app/Services/Run/Story/Temari.php#L31)).
+A finished run gets a single **mood** instead — six values on [Temari](../../app/Services/Run/Story/Temari.php): `nyala` (PR / hard win), `enteng` (easy / negative split), `oleng` (heat strain), `lemes` (decoupling drift), `mumet` (hard-zone heavy / overreaching), `adem` (rest / default). The selection cascade is `moodForActivity` ([Temari.php:116](../../app/Services/Run/Story/Temari.php#L116)); it reads the run's [[stream-analysis|stream summary]] and weather. This mood is what [[gamification]] writes onto the run's `StoryLine`, and each mood also carries a 4-char "sigil" and an optional accessory hint for the SVG renderer ([Temari.php:31](../../app/Services/Run/Story/Temari.php#L31)).
 
-The bridge between the two systems is `moodForVibe` ([Temari.php:113](../../app/Services/Run/Story/Temari.php#L113)): when there's no run to react to, the daily greeting still needs a mascot mood, so each vibe collapses onto the nearest run-mood.
+The bridge between the two systems is `moodForVibe` ([Temari.php:148](../../app/Services/Run/Story/Temari.php#L148)): when there's no run to react to, the daily greeting still needs a mascot mood, so each vibe collapses onto the nearest run-mood.
 
 ## How the vibe is consumed
 
@@ -65,11 +65,11 @@ The bridge between the two systems is `moodForVibe` ([Temari.php:113](../../app/
 
 ## Featured kartu
 
-[ResolveFeaturedKartuAction::__invoke](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php) picks the one card the dashboard hero shows ("Kartu dari Temari"): scan the last few runs (window constant at [ResolveFeaturedKartuAction.php:21](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php#L21)), keep the **highest [[cards-collection|rarity]]**, break ties toward the **most recent** run. Because the resolver is the single source of truth, the rendered card and its "Kata Temari" quote can never describe different cards — the briefing keys the quote's analysis row off the *card id*, not the day ([BriefingComposer.php:43](../../app/Services/Run/Story/BriefingComposer.php#L43)), so a fresh run sliding the pick re-fetches the matching voice. The client mirrors the same tie rule in `featuredCardFor`; see [[dashboard]].
+[ResolveFeaturedKartuAction::__invoke](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php) picks the one card the dashboard hero shows ("Kartu dari Temari"): scan the last few runs (window constant at [ResolveFeaturedKartuAction.php:21](../../app/Actions/Run/Story/ResolveFeaturedKartuAction.php#L21)), keep the **highest [[cards-collection|rarity]]**, break ties toward the **most recent** run. Because the resolver is the single source of truth, the rendered card and its "Kata Temari" quote can never describe different cards — the briefing keys the quote's analysis row off the *card id*, not the day ([BriefingComposer.php:42](../../app/Services/Run/Story/BriefingComposer.php#L42)), so a fresh run sliding the pick re-fetches the matching voice. The client mirrors the same tie rule in `featuredCardFor`; see [[dashboard]].
 
 ## Past-you matcher
 
-[PastYouMatcher::findMatch](../../app/Services/Run/Story/PastYouMatcher.php) is a sibling story tool, not part of the vibe path: given a current run, it finds an *older* baseline run that's comparable enough to say "you've changed". It matches on pace-band, distance, and temperature within tolerances and a minimum age gap (all constants at the top of the class, [PastYouMatcher.php:22](../../app/Services/Run/Story/PastYouMatcher.php#L22)), preferring the *oldest* qualifying run, then reports the pace/time/HR deltas. The pace-band edges are in `paceBand` ([PastYouMatcher.php:118](../../app/Services/Run/Story/PastYouMatcher.php#L118)).
+[PastYouMatcher::findMatch](../../app/Services/Run/Story/PastYouMatcher.php) is a sibling story tool, not part of the vibe path: given a current run, it finds an *older* baseline run that's comparable enough to say "you've changed". It matches on pace-band, distance, and temperature within tolerances and a minimum age gap (all constants at the top of the class, [PastYouMatcher.php:22](../../app/Services/Run/Story/PastYouMatcher.php#L22)), preferring the *oldest* qualifying run, then reports the pace/time/HR deltas. The pace-band edges are in `paceBand` ([PastYouMatcher.php:156](../../app/Services/Run/Story/PastYouMatcher.php#L156)).
 
 ## See also
 
