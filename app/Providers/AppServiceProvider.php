@@ -87,10 +87,11 @@ class AppServiceProvider extends ServiceProvider
         // closure is treated as guest-denying regardless of its body.
         Gate::define('viewPulse', fn (?User $user = null): bool => true);
 
-        // Livewire's update endpoint (Pulse ops cards) is devtools-gated; `web` +
-        // the header guard are appended by setUpdateRoute.
+        // Livewire's update endpoint (Pulse ops cards) is devtools-gated and
+        // throttled like the other devtools routes; `web` + the header guard
+        // are appended by setUpdateRoute.
         Livewire::setUpdateRoute(fn ($handle, string $updatePath): Route => RouteFacade::post($updatePath, $handle)
-            ->middleware(['web', EnsureDevtoolsAccess::class]));
+            ->middleware(['web', 'throttle:60,1', EnsureDevtoolsAccess::class]));
 
         RateLimiter::for('analysis-trigger', function (Request $request): Limit {
             $perMinute = max(1, (int) config('ai.rate_limit_per_minute', 8));

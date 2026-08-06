@@ -37,3 +37,15 @@ it('lets /horizon and /pulse through with the correct devtools password', functi
         ->get('/pulse')
         ->assertSuccessful();
 });
+
+it('throttles repeated wrong-password guesses at 60 per minute', function (): void {
+    foreach (range(1, 60) as $i) {
+        $this->withHeaders(['Authorization' => 'Basic '.base64_encode("devtools:wrong-{$i}")])
+            ->get('/devtools')
+            ->assertUnauthorized();
+    }
+
+    $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')])
+        ->get('/devtools')
+        ->assertStatus(429);
+});
