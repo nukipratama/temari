@@ -81,12 +81,11 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ScheduledTaskFailed::class, [RecordScheduledTaskRun::class, 'failed']);
 
         // Real enforcement happens upstream in EnsureDevtoolsAccess (HTTP Basic
-        // Auth); these gates just rubber-stamp once that middleware has passed.
-        // Nullable param (unused) so Laravel's Gate resolves the closure for
-        // guests too — a zero-arg closure is treated as guest-denying regardless
-        // of its body.
+        // Auth); this gate just rubber-stamps once that middleware has passed
+        // (Pulse's own Authorize middleware checks it). Nullable param (unused)
+        // so Laravel's Gate resolves the closure for guests too — a zero-arg
+        // closure is treated as guest-denying regardless of its body.
         Gate::define('viewPulse', fn (?User $user = null): bool => true);
-        Gate::define('viewAiUsage', fn (?User $user = null): bool => true);
 
         // Livewire's update endpoint (Pulse ops cards) is devtools-gated; `web` +
         // the header guard are appended by setUpdateRoute.

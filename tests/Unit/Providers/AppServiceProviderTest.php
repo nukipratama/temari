@@ -83,9 +83,8 @@ it('shares one AnalysisService instance within a single request/CLI scope', func
     expect(app(AnalysisService::class))->toBe(app(AnalysisService::class));
 });
 
-it('always allows the viewPulse and viewAiUsage gates — real enforcement is upstream in EnsureDevtoolsAccess', function (): void {
-    expect(Gate::allows('viewPulse'))->toBeTrue()
-        ->and(Gate::allows('viewAiUsage'))->toBeTrue();
+it('always allows the viewPulse gate — real enforcement is upstream in EnsureDevtoolsAccess', function (): void {
+    expect(Gate::allows('viewPulse'))->toBeTrue();
 });
 
 it('gates the Livewire update route with the devtools middleware', function (): void {

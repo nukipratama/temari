@@ -57,7 +57,7 @@ The metering rows (`ai_token_usages`) live on the separate `analytics` connectio
 
 ## Access (ops-gated)
 
-The route in [web.php](../../routes/web.php) (`ai-usage`) is gated by HTTP Basic Auth against one shared devtools password ([EnsureDevtoolsAccess](../../app/Http/Middleware/EnsureDevtoolsAccess.php), `config('devtools.password')`), fully independent of the Strava/`is_admin` session. The same middleware covers Horizon and Pulse (via their own `middleware` config), so all three dashboards sit behind one shared credential the browser caches per-origin — switching which Strava account is logged in doesn't affect it. A small landing page at `/devtools` links to all three. The `viewHorizon`/`viewPulse`/`viewAiUsage` gates now always return true; they're a rubber stamp, since real enforcement happens in the middleware upstream. In production Cloudflare Access fronts the edge as well.
+The route in [web.php](../../routes/web.php) (`ai-usage`) is gated by HTTP Basic Auth against one shared devtools password ([EnsureDevtoolsAccess](../../app/Http/Middleware/EnsureDevtoolsAccess.php), `config('devtools.password')`), fully independent of the Strava/`is_admin` session. The same middleware covers Horizon and Pulse (via their own `middleware` config), so all three dashboards sit behind one shared credential the browser caches per-origin — switching which Strava account is logged in doesn't affect it. A small landing page at `/devtools` links to all three. The `viewHorizon`/`viewPulse` gates (checked internally by those packages) now always return true; they're a rubber stamp, since real enforcement happens in the middleware upstream. In production Cloudflare Access fronts the edge as well.
 
 ## See also
 
