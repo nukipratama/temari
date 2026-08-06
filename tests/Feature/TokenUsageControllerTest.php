@@ -19,10 +19,12 @@ use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
-// The /ai-usage dashboard is admin-gated. Every case below acts as a logged-in
-// maintainer; the auth/authorization cases override this per test.
+// The /ai-usage dashboard is gated by HTTP Basic Auth against a shared
+// devtools password. Every case below sends the correct credential; the
+// authorization cases override this per test.
 beforeEach(function (): void {
-    $this->actingAs(User::factory()->admin()->create());
+    config(['devtools.password' => 'secret']);
+    $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')]);
 });
 
 /** Dead-letter a WeeklyRecap for $user (Failed, budget burned). */
@@ -60,20 +62,21 @@ function seedUsage(
     ]);
 }
 
-it('is reachable by a logged-in admin', function (): void {
+it('is reachable with the correct devtools password', function (): void {
     $this->get('/ai-usage')->assertSuccessful();
 });
 
-it('redirects a guest to login', function (): void {
-    auth()->logout();
-
-    $this->get('/ai-usage')->assertRedirect('/login');
+it('challenges a request with no devtools password', function (): void {
+    $this->withHeaders(['Authorization' => ''])
+        ->get('/ai-usage')
+        ->assertUnauthorized()
+        ->assertHeader('WWW-Authenticate', 'Basic realm="Devtools"');
 });
 
-it('forbids a logged-in non-admin', function (): void {
-    $this->actingAs(User::factory()->create());
-
-    $this->get('/ai-usage')->assertForbidden();
+it('challenges a request with the wrong devtools password', function (): void {
+    $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
+        ->get('/ai-usage')
+        ->assertUnauthorized();
 });
 
 it('renders the AiUsage page with totals + per-kind breakdown filtered by date', function (): void {
@@ -382,7 +385,7 @@ it('retries a dead-lettered group for a hard-deleted user instead of 404ing', fu
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
-it('retry is reachable by a logged-in admin', function (): void {
+it('retry is reachable with the correct devtools password', function (): void {
     Bus::fake();
     $user = User::factory()->create();
 
@@ -391,12 +394,13 @@ it('retry is reachable by a logged-in admin', function (): void {
     Bus::assertNothingDispatched();
 });
 
-it('forbids the mutating retry for a logged-in non-admin', function (): void {
+it('challenges the mutating retry with the wrong devtools password', function (): void {
     Bus::fake();
-    $this->actingAs(User::factory()->create());
     $user = User::factory()->create();
 
-    $this->post("/ai-usage/users/{$user->id}/retry-failed")->assertForbidden();
+    $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
+        ->post("/ai-usage/users/{$user->id}/retry-failed")
+        ->assertUnauthorized();
     Bus::assertNothingDispatched();
 });
 
@@ -505,8 +509,8 @@ it('runs the recover command and flashes a confirmation', function (): void {
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('forbids the recover action for a logged-in non-admin', function (): void {
-    $this->actingAs(User::factory()->create());
-
-    $this->post('/ai-usage/recover')->assertForbidden();
+it('challenges the recover action with the wrong devtools password', function (): void {
+    $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
+        ->post('/ai-usage/recover')
+        ->assertUnauthorized();
 });

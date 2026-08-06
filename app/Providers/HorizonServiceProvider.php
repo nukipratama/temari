@@ -14,10 +14,11 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     #[Override]
     protected function gate(): void
     {
-        // /horizon requires a logged-in maintainer (`is_admin` per Strava
-        // account); edge basicauth (docker/Caddyfile) stays as defense-in-depth.
-        // The closure accepts a nullable user so a guest resolves to false rather
-        // than erroring.
-        Gate::define('viewHorizon', fn (?User $user = null): bool => $user?->is_admin === true);
+        // Real enforcement happens upstream in EnsureDevtoolsAccess (HTTP Basic
+        // Auth, config/horizon.php); this gate just rubber-stamps once that
+        // middleware has passed. Nullable param (unused) so Laravel's Gate
+        // resolves the closure for guests too — a zero-arg closure is treated
+        // as guest-denying regardless of its body.
+        Gate::define('viewHorizon', fn (?User $user = null): bool => true);
     }
 }

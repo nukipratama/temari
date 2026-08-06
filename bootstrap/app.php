@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Middleware\BlockDemoTelegramWrites;
-use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SetInertiaEtag;
 use Illuminate\Foundation\Application;
@@ -41,7 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'block-demo-telegram' => BlockDemoTelegramWrites::class,
-            'admin' => EnsureUserIsAdmin::class,
+            'devtools' => EnsureDevtoolsAccess::class,
             'inertia-etag' => SetInertiaEtag::class,
         ]);
 

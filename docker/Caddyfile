@@ -62,7 +62,8 @@
 	}
 
 	# Ops dashboards (/horizon, /pulse, /ai-usage) authorize inside Laravel via
-	# `is_admin`; Cloudflare Access fronts the edge. No basic-auth wall here.
+	# HTTP Basic Auth against a shared devtools password; Cloudflare Access
+	# fronts the edge too.
 
 	# Horizon (Vue) and Pulse (Alpine) compile template expressions via
 	# `new Function()`, and Horizon fetches its font from Bunny. Scoped here so the

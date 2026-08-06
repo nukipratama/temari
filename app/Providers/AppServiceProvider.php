@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Events\ActivityIngested;
+use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Listeners\RecordScheduledTaskRun;
 use App\Listeners\VerifyDependencies;
@@ -79,14 +80,18 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ScheduledTaskFinished::class, [RecordScheduledTaskRun::class, 'finished']);
         Event::listen(ScheduledTaskFailed::class, [RecordScheduledTaskRun::class, 'failed']);
 
-        // Nullable user so a guest resolves to false rather than erroring.
-        Gate::define('viewPulse', fn (?User $user = null): bool => $user?->is_admin === true);
-        Gate::define('viewAiUsage', fn (?User $user = null): bool => $user?->is_admin === true);
+        // Real enforcement happens upstream in EnsureDevtoolsAccess (HTTP Basic
+        // Auth); these gates just rubber-stamp once that middleware has passed.
+        // Nullable param (unused) so Laravel's Gate resolves the closure for
+        // guests too — a zero-arg closure is treated as guest-denying regardless
+        // of its body.
+        Gate::define('viewPulse', fn (?User $user = null): bool => true);
+        Gate::define('viewAiUsage', fn (?User $user = null): bool => true);
 
-        // Livewire's update endpoint (Pulse ops cards) is admin-only; `web` + the
-        // header guard are appended by setUpdateRoute.
+        // Livewire's update endpoint (Pulse ops cards) is devtools-gated; `web` +
+        // the header guard are appended by setUpdateRoute.
         Livewire::setUpdateRoute(fn ($handle, string $updatePath): Route => RouteFacade::post($updatePath, $handle)
-            ->middleware(['auth', 'admin']));
+            ->middleware(['web', EnsureDevtoolsAccess::class]));
 
         RateLimiter::for('analysis-trigger', function (Request $request): Limit {
             $perMinute = max(1, (int) config('ai.rate_limit_per_minute', 8));

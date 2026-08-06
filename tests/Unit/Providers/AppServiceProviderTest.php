@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Support\Config\AppConfig;
@@ -82,30 +83,17 @@ it('shares one AnalysisService instance within a single request/CLI scope', func
     expect(app(AnalysisService::class))->toBe(app(AnalysisService::class));
 });
 
-it('allows the viewPulse and viewAiUsage gates only for an admin user', function (): void {
-    $admin = User::factory()->admin()->make();
-    $plain = User::factory()->make(['email' => 'random@example.com']);
-    $demo = User::factory()->demo()->make();
-
-    expect(Gate::forUser($admin)->allows('viewPulse'))->toBeTrue()
-        ->and(Gate::forUser($admin)->allows('viewAiUsage'))->toBeTrue()
-        ->and(Gate::forUser($plain)->allows('viewPulse'))->toBeFalse()
-        ->and(Gate::forUser($plain)->allows('viewAiUsage'))->toBeFalse()
-        ->and(Gate::forUser($demo)->allows('viewPulse'))->toBeFalse()
-        ->and(Gate::forUser($demo)->allows('viewAiUsage'))->toBeFalse();
+it('always allows the viewPulse and viewAiUsage gates — real enforcement is upstream in EnsureDevtoolsAccess', function (): void {
+    expect(Gate::allows('viewPulse'))->toBeTrue()
+        ->and(Gate::allows('viewAiUsage'))->toBeTrue();
 });
 
-it('denies the viewPulse and viewAiUsage gates for guests', function (): void {
-    expect(Gate::allows('viewPulse'))->toBeFalse()
-        ->and(Gate::allows('viewAiUsage'))->toBeFalse();
-});
-
-it('gates the Livewire update route with auth and admin middleware', function (): void {
+it('gates the Livewire update route with the devtools middleware', function (): void {
     $route = app('router')->getRoutes()->getByName('livewire.update');
 
     expect($route)->not->toBeNull()
-        ->and($route->middleware())->toContain('auth')
-        ->and($route->middleware())->toContain('admin');
+        ->and($route->middleware())->toContain('web')
+        ->and($route->middleware())->toContain(EnsureDevtoolsAccess::class);
 });
 
 it('binds AnalysisService as scoped, not a cross-request singleton', function (): void {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureDevtoolsAccess;
 use Illuminate\Support\Str;
 
 return [
@@ -83,7 +84,7 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    'middleware' => ['web', EnsureDevtoolsAccess::class],
 
     /*
     |--------------------------------------------------------------------------

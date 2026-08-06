@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureDevtoolsAccess;
 use Laravel\Pulse\Recorders\CacheInteractions;
 use Laravel\Pulse\Recorders\Exceptions;
 use Laravel\Pulse\Recorders\Queues;
@@ -131,6 +132,7 @@ return [
 
     'middleware' => [
         'web',
+        EnsureDevtoolsAccess::class,
         Authorize::class,
     ],
 

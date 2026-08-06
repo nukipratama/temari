@@ -26,7 +26,7 @@ code_refs:
 
 # AI usage dashboard
 
-`/ai-usage` is the operator's view of what the LLM pipeline is costing. It is not part of the runner-facing app — it has no `auth` middleware so ops can open it without a Strava session, and is protected at the edge instead (see Access below).
+`/ai-usage` is the operator's view of what the LLM pipeline is costing. It is not part of the runner-facing app — it has no `auth` middleware so ops can open it without a Strava session, and is gated by a separate devtools password instead (see Access below).
 
 **Navigation:** `route('ai-usage')` → `/ai-usage`. Named route: `ai-usage`.
 
@@ -57,7 +57,7 @@ The metering rows (`ai_token_usages`) live on the separate `analytics` connectio
 
 ## Access (ops-gated)
 
-The route in [web.php](../../routes/web.php) (`ai-usage`) is gated by `['auth', 'admin']` — a logged-in maintainer carrying `is_admin` ([EnsureUserIsAdmin](../../app/Http/Middleware/EnsureUserIsAdmin.php)), the single source of authorization. The same `is_admin` gate covers Horizon (`viewHorizon`) and Pulse (`viewPulse`), so all three dashboards sit behind one operator allowlist, separate from the Strava login that gates the runner app. In production Cloudflare Access fronts the edge; there is no separate basic-auth wall.
+The route in [web.php](../../routes/web.php) (`ai-usage`) is gated by HTTP Basic Auth against one shared devtools password ([EnsureDevtoolsAccess](../../app/Http/Middleware/EnsureDevtoolsAccess.php), `config('devtools.password')`), fully independent of the Strava/`is_admin` session. The same middleware covers Horizon and Pulse (via their own `middleware` config), so all three dashboards sit behind one shared credential the browser caches per-origin — switching which Strava account is logged in doesn't affect it. A small landing page at `/devtools` links to all three. The `viewHorizon`/`viewPulse`/`viewAiUsage` gates now always return true; they're a rubber stamp, since real enforcement happens in the middleware upstream. In production Cloudflare Access fronts the edge as well.
 
 ## See also
 
