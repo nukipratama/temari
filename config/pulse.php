@@ -132,6 +132,7 @@ return [
 
     'middleware' => [
         'web',
+        'throttle:60,1',
         EnsureDevtoolsAccess::class,
         Authorize::class,
     ],

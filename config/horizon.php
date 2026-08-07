@@ -84,7 +84,7 @@ return [
     |
     */
 
-    'middleware' => ['web', EnsureDevtoolsAccess::class],
+    'middleware' => ['web', 'throttle:60,1', EnsureDevtoolsAccess::class],
 
     /*
     |--------------------------------------------------------------------------
