@@ -320,6 +320,40 @@ describe('Runs/Show', () => {
         expect(screen.getByText(/Paling kenceng di km 2/)).toBeInTheDocument();
     });
 
+    it('stacks the laps section under the splits section, both always rendered', () => {
+        const withLaps = {
+            ...detail,
+            stream_summary: {
+                ...detail.stream_summary,
+                laps: [
+                    {
+                        lap: 1,
+                        distance_m: 1000,
+                        elapsed_sec: 360,
+                        pace: '6:00',
+                    },
+                    { lap: 2, distance_m: 647, elapsed_sec: 233, pace: '6:00' },
+                ],
+            },
+        };
+        renderShow({ detail: withLaps });
+        const splits = screen.getByText('Splits per km');
+        const lapsHeading = screen.getByText('Laps');
+        expect(splits).toBeInTheDocument();
+        expect(lapsHeading).toBeInTheDocument();
+        expect(screen.getByText('647m')).toBeInTheDocument();
+        expect(
+            splits.compareDocumentPosition(lapsHeading) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it('omits the laps section when the run carries no laps', () => {
+        renderShow();
+        expect(screen.getByText('Splits per km')).toBeInTheDocument();
+        expect(screen.queryByText('Laps')).not.toBeInTheDocument();
+    });
+
     it('omits the splits section when the run has neither full kms nor a partial', () => {
         const noSplits = { ...detail, stream_summary: { decoupling_pct: 4.5 } };
         renderShow({

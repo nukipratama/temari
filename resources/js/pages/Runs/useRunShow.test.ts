@@ -125,6 +125,32 @@ describe('useRunShow', () => {
         const { result } = renderHook(() => useRunShow(hookProps()));
         expect(result.current.perKm).toHaveLength(2);
         expect(result.current.partialSplit).toBeNull();
+        expect(result.current.laps).toEqual([]);
+    });
+
+    it('derives the watch laps from the stream summary', () => {
+        const { result } = renderHook(() =>
+            useRunShow(
+                hookProps({
+                    detail: {
+                        ...detail,
+                        stream_summary: {
+                            ...detail.stream_summary,
+                            laps: [
+                                {
+                                    lap: 1,
+                                    distance_m: 647,
+                                    elapsed_sec: 233,
+                                    pace: '6:00',
+                                },
+                            ],
+                        },
+                    },
+                }),
+            ),
+        );
+        expect(result.current.laps).toHaveLength(1);
+        expect(result.current.laps[0].distance_m).toBe(647);
     });
 
     it('falls back to an empty stream summary when the run has none', () => {
