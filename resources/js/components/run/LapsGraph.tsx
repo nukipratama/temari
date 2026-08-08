@@ -47,7 +47,10 @@ export default function LapsGraph({
                 panjang tiap lap.
             </p>
 
-            <div className="flex flex-col gap-1 overflow-x-auto">
+            {/* The -mx-3/px-3 bleed lives on this wrapper, not per row: nested inside
+                a row it would bleed left of the scrollable viewport's origin and get
+                clipped there, cutting off the highlight's rounded corner. */}
+            <div className="-mx-3 flex flex-col gap-1 overflow-x-auto px-3">
                 {laps.map((lap, idx) => {
                     const sec = paceSecOf(lap);
                     const isFast = sec != null && sec === fastest;
@@ -57,7 +60,7 @@ export default function LapsGraph({
                             className={cn(
                                 'grid',
                                 ROW_GRID,
-                                '-mx-3 rounded-lg px-3 py-2 lg:py-2.5',
+                                'rounded-lg px-3 py-2 lg:py-2.5',
                                 barRowFill(isFast, idx),
                             )}
                         >
