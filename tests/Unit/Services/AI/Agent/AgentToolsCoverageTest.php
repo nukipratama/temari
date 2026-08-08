@@ -591,9 +591,13 @@ it('names the distance the runner has improved most, from one series build', fun
 
     // Two categories with two timed efforts each; 10k improved by more.
     foreach ([['5km', 5000.0, [1500, 1440]], ['10km', 10000.0, [3300, 3000]]] as [$category, $distance, $times]) {
+        // set_at sits far outside any run week here so the builder's PR-week
+        // snap is a no-op; the factory default is a random date within the last
+        // year, which can land on the slower week and flatten that delta.
         PersonalRecord::factory()->for($user)->create([
             'category' => $category,
             'value_sec' => min($times),
+            'set_at' => '2020-01-01',
         ]);
         foreach ($times as $index => $seconds) {
             $activity = Activity::factory()->for($user)->analyzed()->create();
