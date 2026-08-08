@@ -9,6 +9,7 @@ use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -24,35 +25,31 @@ beforeEach(function (): void {
 });
 
 /**
- * @return list<array{split: int, distance: int, elapsed_time: int, moving_time: int}>
+ * `stream_summary.per_km` rows as KmSplitBuilder writes them.
+ *
+ * @return list<array{km: int, pace: string, elapsed_sec: int, distance_m: int}>
  */
-function evenSplits(int $count, int $movingTime): array
+function evenPerKm(int $count, int $elapsedSec): array
 {
-    $splits = [];
+    $rows = [];
     for ($km = 1; $km <= $count; $km++) {
-        // elapsed_time padded above moving_time so a regression back to
-        // elapsed_time would change the computed PR and fail the assertions.
-        $splits[] = [
-            'split' => $km,
-            'distance' => 1000,
-            'elapsed_time' => $movingTime + 60,
-            'moving_time' => $movingTime,
+        $rows[] = [
+            'km' => $km,
+            'pace' => PaceFormatter::format((float) $elapsedSec),
+            'elapsed_sec' => $elapsedSec,
+            'distance_m' => 1000,
         ];
     }
 
-    return $splits;
+    return $rows;
 }
 
 it('interpolates time at distance from splits (no walk-past inflation)', function (): void {
     // Half-marathon hit mid-run; later walk splits must not inflate the PR.
-    $splits = [];
-    for ($km = 1; $km <= 21; $km++) {
-        $splits[] = ['split' => $km, 'distance' => 1000.0, 'moving_time' => 480.0];
+    $splits = evenPerKm(21, 480);
+    for ($km = 22; $km <= 25; $km++) {
+        $splits[] = ['km' => $km, 'pace' => '15:00', 'elapsed_sec' => 900, 'distance_m' => 1000];
     }
-    $splits[] = ['split' => 22, 'distance' => 1000.0, 'moving_time' => 900.0];
-    $splits[] = ['split' => 23, 'distance' => 1000.0, 'moving_time' => 900.0];
-    $splits[] = ['split' => 24, 'distance' => 1000.0, 'moving_time' => 900.0];
-    $splits[] = ['split' => 25, 'distance' => 1000.0, 'moving_time' => 900.0];
 
     // 21 km × 480s + 97.5m of the slow km 22 ≈ 10167.75s.
     $secs = $this->records->timeAtDistance($splits, 21097.5);
@@ -63,39 +60,31 @@ it('interpolates time at distance from splits (no walk-past inflation)', functio
 it('records the fastest embedded window, not the opening segment, on a negative-split run', function (): void {
     // Slow first 5 km (400s/km) then a fast closing 5 km (300s/km). The opening
     // 5 km is 2000s; the genuine best 5 km is the closing window at 1500s.
-    $splits = [];
-    for ($km = 1; $km <= 5; $km++) {
-        $splits[] = ['split' => $km, 'distance' => 1000.0, 'moving_time' => 400.0];
-    }
-    for ($km = 6; $km <= 10; $km++) {
-        $splits[] = ['split' => $km, 'distance' => 1000.0, 'moving_time' => 300.0];
-    }
+    $splits = [
+        ...evenPerKm(5, 400),
+        ...evenPerKm(5, 300),
+    ];
 
     $secs = $this->records->timeAtDistance($splits, 5000.0);
 
     expect($secs)->toBeFloat()->toEqualWithDelta(1500.0, 0.01);
 });
 
-it('uses moving_time, not elapsed_time, so paused seconds do not inflate the PR', function (): void {
-    // A paused run: each km took 600s moving but 900s elapsed (5 min of pauses).
-    // The PR must reflect the 5-km moving time (3000s), not elapsed (4500s).
+it('reads elapsed_sec, so paused seconds count toward the PR like the watch counts them', function (): void {
+    // A paused run: each km took 600s moving but 900s elapsed. Strava's own
+    // moving_time is no longer an input, so the 5 km PR is the elapsed 4500s.
     $splits = [];
     for ($km = 1; $km <= 5; $km++) {
-        $splits[] = ['split' => $km, 'distance' => 1000.0, 'moving_time' => 600.0, 'elapsed_time' => 900.0];
+        $splits[] = ['km' => $km, 'pace' => '15:00', 'elapsed_sec' => 900, 'moving_time' => 600, 'distance_m' => 1000];
     }
 
     $secs = $this->records->timeAtDistance($splits, 5000.0);
 
-    expect($secs)->toBeFloat()->toEqualWithDelta(3000.0, 0.01);
+    expect($secs)->toBeFloat()->toEqualWithDelta(4500.0, 0.01);
 });
 
 it('returns null when splits do not reach the target distance', function (): void {
-    $splits = [
-        ['split' => 1, 'distance' => 1000, 'moving_time' => 400],
-        ['split' => 2, 'distance' => 1000, 'moving_time' => 410],
-    ];
-
-    expect($this->records->timeAtDistance($splits, 10_000))->toBeNull();
+    expect($this->records->timeAtDistance(evenPerKm(2, 400), 10_000))->toBeNull();
 });
 
 it('inserts a fresh distance PR when none exists', function (): void {
@@ -103,8 +92,7 @@ it('inserts a fresh distance PR when none exists', function (): void {
     $activity = Activity::factory()->for($user)->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 6000,
-        'splits_metric' => evenSplits(6, 380),
-        'stream_summary' => null,
+        'stream_summary' => ['per_km' => evenPerKm(6, 380)],
     ]);
 
     $broken = $this->records->detectAndStore($activity, $detail);
@@ -114,6 +102,26 @@ it('inserts a fresh distance PR when none exists', function (): void {
             'user_id' => $user->id,
             'category' => '5km',
         ])->first())->not->toBeNull();
+});
+
+it('reaches a target that lands inside the trailing sub-km leftover', function (): void {
+    // 21 full kms only cover 21 000 m, so the half-marathon's last 97.5 m sits
+    // in the partial row. Without it the PR would silently never be detected.
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 21_200,
+        'stream_summary' => [
+            'per_km' => evenPerKm(21, 360),
+            'partial_split' => ['distance_m' => 200, 'pace' => '6:00'],
+        ],
+    ]);
+
+    $broken = $this->records->detectAndStore($activity, $detail);
+
+    expect($broken)->toContain('half_marathon')
+        ->and(PersonalRecord::query()->where('user_id', $user->id)->where('category', 'half_marathon')->value('value_sec'))
+        ->toEqualWithDelta(7_595.1, 0.1);
 });
 
 it('does not break a PR when the new time is slower', function (): void {
@@ -126,8 +134,7 @@ it('does not break a PR when the new time is slower', function (): void {
     $activity = Activity::factory()->for($user)->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5000,
-        'splits_metric' => evenSplits(5, 360),
-        'stream_summary' => null,
+        'stream_summary' => ['per_km' => evenPerKm(5, 360)],
     ]);
 
     $broken = $this->records->detectAndStore($activity, $detail);
@@ -145,7 +152,6 @@ it('breaks an effort PR when stream_summary has a faster best-N pace', function 
     $activity = Activity::factory()->for($user)->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5000,
-        'splits_metric' => [],
         'stream_summary' => [
             'best_5min_pace' => '5:00',
         ],
@@ -165,7 +171,6 @@ it('ignores effort pace strings that do not match M:SS format', function (): voi
     $activity = Activity::factory()->for($user)->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5000,
-        'splits_metric' => [],
         'stream_summary' => [
             'best_5min_pace' => 'not-a-pace',
             'best_10min_pace' => '5:00',
@@ -189,8 +194,7 @@ it('respects per-user scoping (PR break for user A does not affect user B)', fun
     $activity = Activity::factory()->for($userA)->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5000,
-        'splits_metric' => evenSplits(5, 380),
-        'stream_summary' => null,
+        'stream_summary' => ['per_km' => evenPerKm(5, 380)],
     ]);
 
     $broken = $this->records->detectAndStore($activity, $detail);
@@ -209,8 +213,7 @@ it('stages no pr_context row of its own, leaving the fan-out to DispatchPostRunA
     $activity = Activity::factory()->for($user)->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5000,
-        'splits_metric' => evenSplits(5, 280),
-        'stream_summary' => null,
+        'stream_summary' => ['per_km' => evenPerKm(5, 280)],
     ]);
 
     expect($this->records->detectAndStore($activity, $detail))->toContain('5km')
@@ -231,7 +234,7 @@ it('rebuildForUser drops orphaned records and re-detects from surviving runs', f
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 5000,
-        'splits_metric' => evenSplits(5, 300),
+        'stream_summary' => ['per_km' => evenPerKm(5, 300)],
         'start_date_local' => now(),
     ]);
 

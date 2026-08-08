@@ -30,7 +30,7 @@ class RekorController extends Controller
             ->orderBy('category')
             ->with([
                 'activity:id',
-                'activity.detail:id,activity_id,name,distance,moving_time,location_name,weather_temp_c,weather_humidity_pct,splits_metric',
+                'activity.detail:id,activity_id,name,distance,moving_time,location_name,weather_temp_c,weather_humidity_pct,stream_summary',
             ])
             ->get();
 
