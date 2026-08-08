@@ -99,6 +99,18 @@ final readonly class StreamSummary
     }
 
     /**
+     * Lap rows as the watch recorded them — one row per lap at whatever length
+     * it was, not bucketed into kilometres. Null when the activity carries no
+     * usable laps.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    public function laps(): ?array
+    {
+        return $this->array('laps');
+    }
+
+    /**
      * The trailing sub-km "sisa" row, or null when the run finished on a whole
      * kilometre (or the leftover was too short to report).
      *

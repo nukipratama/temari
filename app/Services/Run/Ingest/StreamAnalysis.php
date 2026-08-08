@@ -51,14 +51,26 @@ class StreamAnalysis
         3600 => '60min',
     ];
 
+    public function __construct(private readonly KmSplitBuilder $kmSplits)
+    {
+    }
+
     /**
      * @param  array<string, mixed>  $streams  raw Strava streams dict
      * @param  array<string, array{lo: int, hi: int}>  $hrZones  inclusive lo / exclusive hi
      * @param  array<int, array<string, mixed>>|null  $splitsMetric  per-km splits from /activities/{id}
+     * @param  float|null  $deviceDistanceM  the activity's own total distance
+     * @param  array<int, array<string, mixed>>|null  $laps  Strava `laps[]` as ingested
      * @return array<string, mixed>
      */
-    public function compute(array $streams, array $hrZones, ?array $splitsMetric, int $optimalCadenceSpm): array
-    {
+    public function compute(
+        array $streams,
+        array $hrZones,
+        ?array $splitsMetric,
+        int $optimalCadenceSpm,
+        ?float $deviceDistanceM = null,
+        ?array $laps = null,
+    ): array {
         $time = $this->data($streams, 'time');
         $heartrate = $this->data($streams, 'heartrate');
         $velocity = $this->data($streams, 'velocity_smooth');
@@ -66,6 +78,7 @@ class StreamAnalysis
         $altitude = $this->data($streams, 'altitude');
         $distance = $this->data($streams, 'distance');
         $grade = $this->data($streams, 'grade_smooth');
+        $latlng = $this->data($streams, 'latlng');
 
         $summary = array_merge(
             $this->bestEffortPaces($time, $velocity),
@@ -80,15 +93,21 @@ class StreamAnalysis
             $summary = array_merge($summary, $this->decoupling($time, $heartrate, $velocity));
         }
 
+        $cadenceByKm = $this->perKmCadenceFromStream($time, $distance, $cadence);
+
+        $perKm = $this->kmSplits->perKm($laps, $latlng, $time, $heartrate, $splitsMetric, $deviceDistanceM);
+        if ($perKm !== []) {
+            $summary['per_km'] = $this->attachStreamCadenceToRows($perKm, $cadenceByKm);
+        }
+
+        $lapRows = $this->kmSplits->laps($laps);
+        if ($lapRows !== []) {
+            $summary['laps'] = $lapRows;
+        }
+
         if (is_array($splitsMetric) && $splitsMetric !== []) {
-            $cadenceByKm = $this->perKmCadenceFromStream($time, $distance, $cadence);
-            $perKm = $this->perKm($splitsMetric);
-            if (isset($perKm['per_km'])) {
-                $perKm['per_km'] = $this->attachStreamCadenceToRows($perKm['per_km'], $cadenceByKm);
-            }
             $summary = array_merge(
                 $summary,
-                $perKm,
                 $this->partialSplit($splitsMetric, $cadenceByKm),
                 $this->hrDriftFromSplits($splitsMetric),
                 $this->cadenceDropFromSplits($splitsMetric),
@@ -597,34 +616,6 @@ class StreamAnalysis
             ],
             'optimal_cadence_pct' => round($optSec / $total * 100, 1),
         ];
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $splits
-     * @return array<string, array<int, array<string, mixed>>>
-     */
-    private function perKm(array $splits): array
-    {
-        $perKm = [];
-        foreach ($splits as $split) {
-            $paceSec = $this->fullKmPaceSec($split);
-            if ($paceSec === null) {
-                continue;
-            }
-            $row = [
-                'km' => (int) ($split['split'] ?? 0),
-                'pace' => PaceFormatter::format($paceSec),
-            ];
-            if (isset($split['average_heartrate'])) {
-                $row['avg_hr'] = (int) round((float) $split['average_heartrate']);
-            }
-            if (isset($split['average_cadence'])) {
-                $row['avg_cadence_spm'] = (int) round((float) $split['average_cadence'] * 2);
-            }
-            $perKm[] = $row;
-        }
-
-        return $perKm === [] ? [] : ['per_km' => $perKm];
     }
 
     /**

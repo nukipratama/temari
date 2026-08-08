@@ -92,6 +92,14 @@ it('reads the per-km and partial-split rows, and null when the run carries neith
         ->and(StreamSummary::fromArray([])->partialSplit())->toBeNull();
 });
 
+it('reads the lap rows, and null when the run was never lapped', function (): void {
+    $rows = [['lap' => 1, 'distance_m' => 647, 'elapsed_sec' => 250, 'pace' => '6:26']];
+
+    expect(StreamSummary::fromArray(['laps' => $rows])->laps())->toBe($rows)
+        ->and(StreamSummary::fromArray([])->laps())->toBeNull()
+        ->and(StreamSummary::fromArray(['laps' => null])->laps())->toBeNull();
+});
+
 it('reads negative_split only when it is a real boolean', function (mixed $value, ?bool $expected): void {
     expect(StreamSummary::fromArray(['negative_split' => $value])->negativeSplit())->toBe($expected);
 })->with([
