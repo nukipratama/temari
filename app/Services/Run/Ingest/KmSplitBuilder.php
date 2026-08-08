@@ -140,13 +140,27 @@ final class KmSplitBuilder
      */
     private function isKmGrid(array $laps): bool
     {
-        $last = count($laps) - 1;
+        return self::isPlainKmGrid(array_map(
+            fn (array $lap): float => (float) $lap['distance'],
+            $laps,
+        ));
+    }
+
+    /**
+     * The grid test on bare distances, so a reader holding already-normalised
+     * lap rows decides "these are just the kilometres" on this same threshold
+     * rather than a second one of its own.
+     *
+     * @param  list<float>  $distancesM
+     */
+    public static function isPlainKmGrid(array $distancesM): bool
+    {
+        $last = count($distancesM) - 1;
         if ($last < 0) {
             return false;
         }
 
-        foreach ($laps as $i => $lap) {
-            $distance = (float) $lap['distance'];
+        foreach ($distancesM as $i => $distance) {
             $long = $distance > self::METRES_PER_KM + self::KM_GRID_TOLERANCE_M;
             $short = $distance < self::METRES_PER_KM - self::KM_GRID_TOLERANCE_M;
             if ($long || ($short && $i !== $last)) {

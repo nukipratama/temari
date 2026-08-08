@@ -11,6 +11,7 @@ use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
+use App\Services\AI\Agent\Tools\LapsTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\TerrainTool;
@@ -53,6 +54,19 @@ class RunInsightNarrator
           adanya buat baca konsistensi effort dan kaitkan ke penyebabnya
           (medan, angin, atau effort belum stabil). JANGAN mengarang angka
           variability, dan jangan sebut istilah "pace variability" ke user.
+
+          SESI BERSTRUKTUR: kalau get_laps ngasih rep_count, lap-nya berulang
+          cepat-pelan, artinya pace yang naik-turun itu MEMANG bentuk sesinya,
+          bukan pacing yang berantakan. Di kasus ini abaikan pembacaan
+          "naik-turun" dari pace_consistency: jangan bilang effort belum
+          stabil, jangan cari-cari medan atau angin sebagai penyebabnya, dan
+          jangan nyaranin biar lebih rata. Baca sebaliknya, seberapa rapi
+          rep-nya diulang dan seberapa balik napasnya di jeda.
+          * Oke: "Pace-nya lompat-lompat, tapi emang begitu bentuknya: empat
+            rep di 4:40-an diselingi jogging pelan. Yang aku suka, rep
+            terakhir masih senada sama yang pertama."
+          * ANTI-PATTERN: "Pace kamu naik-turun, coba dijaga biar lebih rata."
+            (itu sesi interval, ratanya bukan tujuan).
           Contoh interpretasi:
           * cadence 160-165: "Cadence kamu di 162, masih di bawah ideal.
             Coba tingkatkan pelan-pelan ke 170+, langkah lebih pendek tapi
@@ -110,6 +124,24 @@ class RunInsightNarrator
           setelah km bulat terakhir. Boleh disebut sebagai penutup/finish
           ("nutup sisa 700 m di 5:30"), tapi JANGAN dihitung atau disebut sebagai
           satu km penuh.
+
+          LAP: get_laps ngasih lap sesuai rekaman jam, dan panjang lap belum
+          tentu 1 km. Kalau balikannya kosong, lap-nya cuma auto-split per km,
+          jadi gak ada cerita di luar splits: lewati, jangan disinggung sama
+          sekali. Kalau rep_count ada, baca sesi ini sebagai sesi interval, dan
+          ceritakan bentuknya, bukan daftar lap-nya: lap pelan di awal itu
+          warmup, lap cepat itu rep, lap pelan di antara rep itu recovery
+          (lamanya ada di recovery_sec), lap pelan di akhir itu cooldown.
+          Yang menarik di sesi begini adalah berapa rep-nya, seberapa konsisten
+          rep pertama sampai terakhir, dan apakah jeda-nya cukup. JANGAN
+          nyebutin tiap lap satu per satu, dan JANGAN campur nomor lap sama
+          nomor km, itu dua hitungan yang beda.
+          Contoh:
+          * "6 rep dan rapi banget: empat pertama nempel di 4:40-an, dua
+            terakhir cuma lepas dikit. Jeda 90 detik ternyata cukup buat
+            balikin napas."
+          * "Rep 1-3 kenceng, rep 4 mulai lepas ke 5:10. Di situ kelihatan
+            batasnya hari ini, dan itu info yang bagus buat sesi berikutnya."
 
         - zones: interpretasi HR zone breakdown. Sebut persentase spesifik dan,
           kalau time_in_zone_min ada, sebut durasinya (mis. "32 menit di Z2").
@@ -178,6 +210,13 @@ class RunInsightNarrator
         - per_km bisa membawa avg_hr per km. Kalau ada, baca cardiac drift antar
           km (HR merangkak naik di km akhir walau pace mirip = mulai lelah atau
           dehidrasi), kaitkan ke decoupling.
+        - get_laps: lap_count = jumlah lap; laps = barisnya (lap = nomor lap,
+          distance_m = panjang lap dalam meter, elapsed_sec = lamanya, pace per
+          km, kadang plus avg_hr); fastest_lap dan slowest_lap = nomor lap
+          tercepat dan terlambat. rep_count dan recovery_sec cuma muncul kalau
+          lap-nya berulang cepat-pelan. Di sesi dengan lap kebanyakan, laps
+          sengaja gak dikirim dan temuannya saja yang ada, jadi jangan bilang
+          lap-nya cuma segitu.
 
         ANTI-PATTERN:
         - Data dump tanpa interpretasi ("cadence 172, HR 148") -- selalu
@@ -251,6 +290,7 @@ class RunInsightNarrator
         return new AgentToolbox([
             new RunSummaryTool($activity, $detail),
             new KmSplitsTool($activity, $detail),
+            new LapsTool($activity, $detail),
             new HrZonesTool($activity, $detail),
             new TerrainTool($activity, $detail),
             new WeatherTool($activity, $detail),
