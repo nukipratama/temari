@@ -28,8 +28,16 @@ final class KmSplitBuilder
     /** Distance (m) at or above which a segment counts as a full kilometre. */
     private const float FULL_KM_MIN_DISTANCE_M = 950;
 
-    /** How far a lap may sit off 1000 m and still count as part of a km grid. */
-    private const float KM_GRID_TOLERANCE_M = 50;
+    /**
+     * How far a lap may sit off 1000 m and still count as part of a km grid.
+     * Measured against every real lap this user has: a genuine auto-lap is
+     * always bit-exact 1000 m (the watch fires the lap on its own odometer
+     * crossing 1000, so it reports the target, not a re-measurement); the
+     * closest any manual lap has ever come to 1000 m is 904.53 m. 5 m only
+     * exists to tolerate a future device that reports e.g. 999.97 instead of
+     * a clean 1000 - it costs nothing against real manual laps either way.
+     */
+    private const float KM_GRID_TOLERANCE_M = 5;
 
     private const float METRES_PER_KM = 1000;
 

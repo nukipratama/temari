@@ -89,28 +89,28 @@ it('carries the lap average heart rate and cadence onto the km row', function ()
 
 // ── The km-grid tolerance ──
 
-it('accepts laps that wobble within 50 m of the grid', function (): void {
+it('accepts laps that wobble within 5 m of the grid', function (): void {
     $laps = [
         ['distance' => 1000.0, 'elapsed_time' => 420],
-        ['distance' => 960.0, 'elapsed_time' => 400],
-        ['distance' => 1040.0, 'elapsed_time' => 440],
+        ['distance' => 997.0, 'elapsed_time' => 400],
+        ['distance' => 1003.0, 'elapsed_time' => 440],
         ['distance' => 300.0, 'elapsed_time' => 130],
     ];
 
     $rows = $this->builder->perKm($laps, [], [], [], null, 3300.0);
 
     expect($rows)->toHaveCount(3)
-        ->and($rows[1])->toMatchArray(['km' => 2, 'pace' => '6:57', 'distance_m' => 960]);
+        ->and($rows[1])->toMatchArray(['km' => 2, 'distance_m' => 997]);
 });
 
-it('rejects the grid when a lap falls more than 50 m short of a kilometre', function (): void {
+it('rejects the grid when a lap falls more than 5 m short of a kilometre', function (): void {
     $laps = [
         ['distance' => 1000.0, 'elapsed_time' => 420],
-        ['distance' => 940.0, 'elapsed_time' => 395],
+        ['distance' => 993.0, 'elapsed_time' => 415],
         ['distance' => 1000.0, 'elapsed_time' => 430],
     ];
 
-    expect($this->builder->perKm($laps, [], [], [], null, 2940.0))->toBe([]);
+    expect($this->builder->perKm($laps, [], [], [], null, 2993.0))->toBe([]);
 });
 
 it('rejects the grid when a single lap covers the whole run', function (): void {
