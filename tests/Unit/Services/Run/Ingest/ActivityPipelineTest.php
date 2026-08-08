@@ -65,6 +65,7 @@ it('stores detail and streams on successful fetch', function (): void {
             'average_cadence' => 82.5,
             'calories' => 600.0,
             'splits_metric' => [['split' => 1]],
+            'laps' => [['lap_index' => 1, 'distance' => 1000.0, 'elapsed_time' => 360, 'moving_time' => 360]],
             'map' => ['summary_polyline' => 'poly123'],
             'start_latlng' => [-6.2253, 106.8090],
         ]),
@@ -81,6 +82,7 @@ it('stores detail and streams on successful fetch', function (): void {
         ->and($detail->name)->toBe('Morning Run')
         ->and($detail->distance)->toEqualWithDelta(10000.0, 0.01)
         ->and($detail->summary_polyline)->toBe('poly123')
+        ->and($detail->laps)->toEqual([['lap_index' => 1, 'distance' => 1000.0, 'elapsed_time' => 360, 'moving_time' => 360]])
         ->and($detail->start_lat)->toEqualWithDelta(-6.2253, 1e-5)
         ->and($detail->start_lng)->toEqualWithDelta(106.8090, 1e-5);
 
@@ -149,7 +151,8 @@ it('leaves enrichment fields null when the detail payload omits them', function 
         ->and($detail->elev_high)->toBeNull()
         ->and($detail->device_name)->toBeNull()
         ->and($detail->average_watts)->toBeNull()
-        ->and($detail->max_speed)->toBeNull();
+        ->and($detail->max_speed)->toBeNull()
+        ->and($detail->laps)->toBeNull();
 });
 
 it('requests the grade_smooth stream key', function (): void {

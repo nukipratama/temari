@@ -10,6 +10,7 @@ final readonly class RunBlueprint
 {
     /**
      * @param  list<string>  $tags  human-readable annotations for debugging the seeded data
+     * @param  list<int>|null  $lapDistancesM  manual lap lengths in metres; null means the watch's 1 km auto-split
      */
     public function __construct(
         public Carbon $startsAt,
@@ -28,6 +29,7 @@ final readonly class RunBlueprint
         public bool $hasHrSensor = true,
         public bool $hasCadenceSensor = true,
         public ?DemoLocation $location = null,
+        public ?array $lapDistancesM = null,
     ) {
     }
 

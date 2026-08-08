@@ -19,8 +19,8 @@ class WeeklyAggregator
      * The only ActivityDetail columns the weekly roll-up reads: the week filter
      * and daily TRIMP map need the date, upsertWeek sums distance/moving_time,
      * and averageDecoupling reads `stream_summary`. Everything else on the table
-     * (notably the `splits_metric` blob) would be a year of JSON pulled per
-     * ingest for nothing.
+     * (notably the `splits_metric` and `laps` blobs) would be a year of JSON
+     * pulled per ingest for nothing.
      *
      * @var list<string>
      */
