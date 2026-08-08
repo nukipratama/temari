@@ -47,21 +47,6 @@ export default function LapsGraph({
                 panjang tiap lap.
             </p>
 
-            <div
-                className={cn(
-                    'grid text-label-micro text-ink-3',
-                    ROW_GRID,
-                    'px-3',
-                )}
-            >
-                <div>Jarak</div>
-                <div />
-                <div className="text-right">Pace</div>
-                <div className="text-right">Durasi</div>
-                <div className="hidden text-right lg:block">HR</div>
-                <div className="hidden text-right lg:block">Cadence</div>
-            </div>
-
             <div className="flex flex-col gap-1">
                 {laps.map((lap, idx) => {
                     const sec = paceSecOf(lap);
@@ -97,7 +82,13 @@ export default function LapsGraph({
                             <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink">
                                 {lap.pace}
                             </div>
-                            <div className="text-right font-sans text-xs tabular-nums text-ink-2">
+                            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2">
+                                <Icon
+                                    icon="mdi:timer-outline"
+                                    width={12}
+                                    height={12}
+                                    aria-hidden
+                                />
                                 {formatDurationHMS(lap.elapsed_sec)}
                             </div>
                             <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
@@ -105,7 +96,7 @@ export default function LapsGraph({
                             </div>
                             <div className="hidden items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2 lg:flex">
                                 <Icon
-                                    icon="mdi:run-fast"
+                                    icon="mdi:shoe-print"
                                     width={12}
                                     height={12}
                                     aria-hidden

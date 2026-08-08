@@ -36,16 +36,8 @@ describe('SplitsTable', () => {
         expect(screen.getByText('♡ 150')).toBeInTheDocument();
         expect(screen.getByText('173')).toBeInTheDocument();
         expect(
-            container.querySelector('[data-icon="mdi:run-fast"]'),
+            container.querySelector('[data-icon="mdi:shoe-print"]'),
         ).not.toBeNull();
-    });
-
-    it('labels the columns with a header row above the data', () => {
-        render(<SplitsTable rows={rows} />);
-        expect(screen.getByText('Km')).toBeInTheDocument();
-        expect(screen.getByText('Pace')).toBeInTheDocument();
-        expect(screen.getByText('HR')).toBeInTheDocument();
-        expect(screen.getByText('Cadence')).toBeInTheDocument();
     });
 
     it('tints the fastest row and zebra-stripes the rest', () => {

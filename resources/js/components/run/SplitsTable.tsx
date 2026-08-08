@@ -59,20 +59,6 @@ export default function SplitsTable({
                 {partial ? ', putus-putus = sisa' : ''}.
             </p>
 
-            <div
-                className={cn(
-                    'grid text-label-micro text-ink-3',
-                    ROW_GRID,
-                    'px-3',
-                )}
-            >
-                <div>Km</div>
-                <div />
-                <div className="text-right">Pace</div>
-                <div className="hidden text-right lg:block">HR</div>
-                <div className="hidden text-right lg:block">Cadence</div>
-            </div>
-
             <div className="flex flex-col gap-1">
                 {keyedRows.map(({ row, key }, idx) => {
                     const sec = paceSecOf(row);
@@ -112,7 +98,7 @@ export default function SplitsTable({
                             </div>
                             <div className="hidden items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2 lg:flex">
                                 <Icon
-                                    icon="mdi:run-fast"
+                                    icon="mdi:shoe-print"
                                     width={12}
                                     height={12}
                                     aria-hidden
@@ -154,7 +140,12 @@ function SplitPartialRow({
                 ♡ {partial.avg_hr ?? '—'}
             </div>
             <div className="hidden items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-3 lg:flex">
-                <Icon icon="mdi:run-fast" width={12} height={12} aria-hidden />
+                <Icon
+                    icon="mdi:shoe-print"
+                    width={12}
+                    height={12}
+                    aria-hidden
+                />
                 {partial.avg_cadence_spm ?? '—'}
             </div>
         </div>
