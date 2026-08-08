@@ -77,6 +77,24 @@ it('renders a longer PNG when the footer line gains a weather + wind reading', f
         ->and(strlen($png))->toBeGreaterThan(1000);
 });
 
+it('draws the pace + durasi cells from elapsed_time, not moving_time', function (): void {
+    $shared = [
+        'distance' => 5_280,
+        'summary_polyline' => null,
+        'average_heartrate' => null,
+    ];
+    $withElapsed = makeRunCard(
+        [...$shared, 'moving_time' => null, 'elapsed_time' => 1_800],
+        ['rarity' => 'common', 'special_move' => 'Langkah Mantap']
+    );
+    $movingOnly = makeRunCard(
+        [...$shared, 'moving_time' => 1_800, 'elapsed_time' => null],
+        ['rarity' => 'common', 'special_move' => 'Langkah Mantap']
+    );
+
+    expect(strlen(renderCard($withElapsed)))->toBeGreaterThan(strlen(renderCard($movingOnly)));
+});
+
 it('omits the weather footer segment gracefully when temp is absent', function (): void {
     $card = makeRunCard([
         'distance' => 5_280,

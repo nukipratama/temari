@@ -30,7 +30,7 @@ it('includes a metrics line for a post-run notification', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 5200,        // 5,2 km
-        'moving_time' => 2054,     // 34:14, pace 6:35/km
+        'elapsed_time' => 2054,     // 34:14, pace 6:35/km
         'average_heartrate' => 159,
     ]);
     $analysis = Analysis::factory()->make([
@@ -48,7 +48,7 @@ it('omits HR from the metrics line on a strap-less run', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 5200,
-        'moving_time' => 2054,
+        'elapsed_time' => 2054,
         'average_heartrate' => null,
     ]);
     $analysis = Analysis::factory()->make([
