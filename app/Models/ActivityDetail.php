@@ -31,6 +31,7 @@ use Override;
  * @property float|null $average_cadence
  * @property float|null $calories
  * @property array<int, array<string, mixed>>|null $splits_metric
+ * @property array<int, array<string, mixed>>|null $laps
  * @property string|null $summary_polyline
  * @property float|null $trimp_edwards
  * @property int|null $suffer_score
@@ -71,6 +72,7 @@ use Override;
     'average_cadence',
     'calories',
     'splits_metric',
+    'laps',
     'summary_polyline',
     'trimp_edwards',
     'suffer_score',
@@ -140,6 +142,17 @@ class ActivityDetail extends Model
     }
 
     /**
+     * Returns the laps array, or an empty array when the column is null.
+     * The column is JSON-cast, so null is the only non-array value possible.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function laps(): array
+    {
+        return $this->laps ?? [];
+    }
+
+    /**
      * @return array<string, string>
      */
     #[Override]
@@ -158,6 +171,7 @@ class ActivityDetail extends Model
             'average_cadence' => 'float',
             'calories' => 'float',
             'splits_metric' => 'array',
+            'laps' => 'array',
             'trimp_edwards' => 'float',
             'suffer_score' => 'integer',
             'workout_type' => 'integer',

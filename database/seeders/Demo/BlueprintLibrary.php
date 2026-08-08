@@ -239,6 +239,8 @@ class BlueprintLibrary
                 name: 'Dawn 6×800m',
                 tags: ['anak_pagi', 'intervals'],
                 location: $this->loc(0),
+                // Warm-up, 6 × (800 m rep + 400 m recovery), then the remaining 800 m as a cool-down lap.
+                lapDistancesM: [1_000, 800, 400, 800, 400, 800, 400, 800, 400, 800, 400, 800, 400],
             ),
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(108)->setTime(17, 30),
@@ -314,6 +316,8 @@ class BlueprintLibrary
                 name: 'Dawn 6×800m',
                 tags: ['anak_pagi', 'intervals'],
                 location: $this->loc(0),
+                // Warm-up, 6 × (800 m rep + 400 m recovery), then the remaining 800 m as a cool-down lap.
+                lapDistancesM: [1_000, 800, 400, 800, 400, 800, 400, 800, 400, 800, 400, 800, 400],
             ),
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(37)->setTime(6, 30),

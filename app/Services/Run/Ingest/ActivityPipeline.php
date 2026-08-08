@@ -230,6 +230,7 @@ class ActivityPipeline
                 'average_cadence' => $detail['average_cadence'] ?? null,
                 'calories' => $detail['calories'] ?? null,
                 'splits_metric' => $detail['splits_metric'] ?? null,
+                'laps' => $detail['laps'] ?? null,
                 'summary_polyline' => $detail['map']['summary_polyline'] ?? null,
                 'start_lat' => $latlng === null ? null : (float) $latlng[0],
                 'start_lng' => $latlng === null ? null : (float) $latlng[1],

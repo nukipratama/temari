@@ -47,6 +47,7 @@ class DemoRunSeeder
         private readonly BlueprintLibrary $library,
         private readonly StreamSynthesizer $synthesizer,
         private readonly SplitsBuilder $splitsBuilder,
+        private readonly LapsBuilder $lapsBuilder,
         private readonly StreamAnalysis $streamAnalysis,
         private readonly TrainingLoad $trainingLoad,
         private readonly PersonalRecords $personalRecords,
@@ -422,6 +423,7 @@ class DemoRunSeeder
     {
         $streams = $this->synthesizer->build($blueprint);
         $splits = $this->splitsBuilder->build($streams);
+        $laps = $this->lapsBuilder->build($streams, $blueprint->lapDistancesM);
 
         $activity = Activity::query()->updateOrCreate(
             [
@@ -457,6 +459,7 @@ class DemoRunSeeder
             'average_cadence' => $blueprint->hasCadenceSensor ? StreamStats::mean($cadenceStream) : null,
             'calories' => round($blueprint->distanceM / 1000 * 65),
             'splits_metric' => $splits,
+            'laps' => $laps,
             'summary_polyline' => $blueprint->hasGps
                 ? $this->demoPolyline($blueprint->distanceM, $blueprint->seed(), $location)
                 : null,

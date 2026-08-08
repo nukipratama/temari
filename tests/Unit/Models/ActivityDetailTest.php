@@ -85,6 +85,14 @@ it('paceSecPerKm computes pace and returns null for a zero-distance run', functi
         ->and($zeroDistance->paceSecPerKm())->toBeNull();
 });
 
+it('laps falls back to an empty array when the column is null', function (): void {
+    $withLaps = ActivityDetail::factory()->make(['activity_id' => 1, 'laps' => [['lap_index' => 1]]]);
+    $withoutLaps = ActivityDetail::factory()->make(['activity_id' => 1, 'laps' => null]);
+
+    expect($withLaps->laps())->toBe([['lap_index' => 1]])
+        ->and($withoutLaps->laps())->toBe([]);
+});
+
 it('streamSummary falls back to an empty array when stream_summary is null', function (): void {
     $withSummary = ActivityDetail::factory()->make(['activity_id' => 1, 'stream_summary' => ['decoupling_pct' => 5.5]]);
     $withoutSummary = ActivityDetail::factory()->make(['activity_id' => 1, 'stream_summary' => null]);
