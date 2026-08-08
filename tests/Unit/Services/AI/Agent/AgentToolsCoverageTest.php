@@ -304,6 +304,8 @@ it('reads null laps without fataling when there is no stream summary', function 
         'slowest_lap' => null,
         'rep_count' => null,
         'recovery_sec' => null,
+        'pause_count' => null,
+        'paused_laps' => null,
     ]);
 });
 
@@ -322,7 +324,36 @@ it('leaves the rep structure out when manual laps carry no fast-slow pattern', f
     expect($reading['lap_count'])->toBe(3)
         ->and($reading['laps'])->toHaveCount(3)
         ->and($reading['rep_count'])->toBeNull()
-        ->and($reading['recovery_sec'])->toBeNull();
+        ->and($reading['recovery_sec'])->toBeNull()
+        ->and($reading['pause_count'])->toBeNull()
+        ->and($reading['paused_laps'])->toBeNull();
+});
+
+// The real-world signature this exists for: an urban run with a couple of
+// stoplight stops, not a training decision. Distance is what flags it — pace
+// on a 60-80 m lap is GPS noise, not a slowdown worth narrating as effort.
+it('reads short stop-and-go laps as pauses, distinct from a rep structure', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['laps' => [
+        ['lap' => 1, 'distance_m' => 1000, 'elapsed_sec' => 390],
+        ['lap' => 2, 'distance_m' => 1000, 'elapsed_sec' => 395],
+        ['lap' => 3, 'distance_m' => 60, 'elapsed_sec' => 48],
+        ['lap' => 4, 'distance_m' => 1000, 'elapsed_sec' => 388],
+        ['lap' => 5, 'distance_m' => 1000, 'elapsed_sec' => 392],
+        ['lap' => 6, 'distance_m' => 75, 'elapsed_sec' => 50],
+        ['lap' => 7, 'distance_m' => 1000, 'elapsed_sec' => 385],
+        ['lap' => 8, 'distance_m' => 1000, 'elapsed_sec' => 390],
+        ['lap' => 9, 'distance_m' => 80, 'elapsed_sec' => 45],
+        ['lap' => 10, 'distance_m' => 1000, 'elapsed_sec' => 393],
+        ['lap' => 11, 'distance_m' => 1000, 'elapsed_sec' => 389],
+    ]]]);
+
+    $reading = new LapsTool($a, $d->fresh())->handle([]);
+
+    expect($reading['rep_count'])->toBeNull()
+        ->and($reading['recovery_sec'])->toBeNull()
+        ->and($reading['pause_count'])->toBe(3)
+        ->and($reading['paused_laps'])->toBe([3, 6, 9]);
 });
 
 it('drops the row table on a run with too many laps but keeps the findings', function (): void {

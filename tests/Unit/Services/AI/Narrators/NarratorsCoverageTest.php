@@ -298,10 +298,10 @@ it('RunInsightNarrator prompt exempts a lap-structured session from the pace-con
         ->and($prompt)->toContain('warmup');
 });
 
-it('RunInsightNarrator prompt gives notes storytelling room (3-4 sentences, no rigid word cap)', function (): void {
+it('RunInsightNarrator prompt gives notes storytelling room (2-3 paragraphs, no rigid word cap)', function (): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
-    expect($prompt)->toContain('3-4 kalimat')
+    expect($prompt)->toContain('2-3 paragraf')
         ->and($prompt)->toContain('jangan bertele-tele')
         ->and($prompt)->not->toContain('maksimal 55 kata');
 });

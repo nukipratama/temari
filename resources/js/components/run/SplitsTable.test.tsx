@@ -30,11 +30,22 @@ describe('SplitsTable', () => {
     });
 
     it('renders one row per km with its HR and cadence cells', () => {
-        render(<SplitsTable rows={rows} />);
+        const { container } = render(<SplitsTable rows={rows} />);
         expect(screen.getByText('KM 1')).toBeInTheDocument();
         expect(screen.getByText('KM 2')).toBeInTheDocument();
         expect(screen.getByText('♡ 150')).toBeInTheDocument();
-        expect(screen.getByText('↻ 173')).toBeInTheDocument();
+        expect(screen.getByText('173')).toBeInTheDocument();
+        expect(
+            container.querySelector('[data-icon="mdi:run-fast"]'),
+        ).not.toBeNull();
+    });
+
+    it('labels the columns with a header row above the data', () => {
+        render(<SplitsTable rows={rows} />);
+        expect(screen.getByText('Km')).toBeInTheDocument();
+        expect(screen.getByText('Pace')).toBeInTheDocument();
+        expect(screen.getByText('HR')).toBeInTheDocument();
+        expect(screen.getByText('Cadence')).toBeInTheDocument();
     });
 
     it('tints the fastest row and zebra-stripes the rest', () => {
@@ -87,7 +98,7 @@ describe('SplitsTable', () => {
         expect(screen.getByText(/putus-putus = sisa/)).toBeInTheDocument();
         expect(screen.getByText(/Paling kenceng di km 2/)).toBeInTheDocument();
         expect(screen.getByText('♡ 158')).toBeInTheDocument();
-        expect(screen.getByText('↻ 168')).toBeInTheDocument();
+        expect(screen.getByText('168')).toBeInTheDocument();
     });
 
     it('drops the "sisa" note from the legend when there is no partial', () => {
@@ -116,7 +127,7 @@ describe('SplitsTable', () => {
             />,
         );
         expect(screen.getByText('♡ —')).toBeInTheDocument();
-        expect(screen.getByText('↻ —')).toBeInTheDocument();
+        expect(screen.getByText('—')).toBeInTheDocument();
     });
 
     it('passes the className through to the card', () => {
