@@ -5,7 +5,12 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import { formatKm, formatPace } from '@/lib/pace';
-import { computeBarWidth, paceSecOf } from '@/lib/splits';
+import {
+    barRowFill,
+    computeBarWidth,
+    paceScale,
+    paceSecOf,
+} from '@/lib/splits';
 
 export default function SplitsTable({
     rows,
@@ -16,15 +21,11 @@ export default function SplitsTable({
     partial?: StreamSummaryPartial | null;
     className?: string;
 }>) {
-    const paces = rows
-        .map((r) => paceSecOf(r))
-        .filter((s): s is number => s != null && Number.isFinite(s));
-    const fastest = paces.length > 0 ? Math.min(...paces) : null;
+    const { fastest, slowest } = paceScale(rows);
     const fastestKm =
         fastest != null
             ? (rows.find((r) => paceSecOf(r) === fastest)?.km ?? null)
             : null;
-    const slowestSec = paces.length > 0 ? Math.max(...paces) : null;
 
     // Stable, collision-proof keys baked here — km for full splits, positional for
     // the trailing partial — so the render map keys off a data field, not its index.
@@ -57,8 +58,8 @@ export default function SplitsTable({
                 {keyedRows.map(({ row, key }, idx) => {
                     const sec = paceSecOf(row);
                     const isFast = sec != null && sec === fastest;
-                    const pctWidth = computeBarWidth(sec, fastest, slowestSec);
-                    const rowFill = splitRowFill(isFast, idx);
+                    const pctWidth = computeBarWidth(sec, fastest, slowest);
+                    const rowFill = barRowFill(isFast, idx);
                     return (
                         <div
                             key={key}
@@ -125,12 +126,4 @@ function SplitPartialRow({
             </div>
         </div>
     );
-}
-
-// Every splits row shares the same rounded box (see SplitsTable); only this
-// fill differs — horizon tint for the fastest km, a faint zebra stripe otherwise.
-function splitRowFill(isFast: boolean, idx: number): string {
-    if (isFast) return 'bg-horizon/[0.08]';
-    if (idx % 2 === 1) return 'bg-cream-deep/30';
-    return 'bg-sky/[0.03]';
 }

@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { StreamSummaryPerKm } from '@/types/inertia';
 
-import { FULL_SPREAD_SEC, computeBarWidth, paceSecOf } from './splits';
+import {
+    FULL_SPREAD_SEC,
+    barRowFill,
+    computeBarWidth,
+    paceScale,
+    paceSecOf,
+} from './splits';
 
 function row(overrides: Partial<StreamSummaryPerKm> = {}): StreamSummaryPerKm {
     return { km: 1, pace: '5:30', ...overrides };
@@ -19,6 +25,53 @@ describe('paceSecOf', () => {
 
     it('returns null when a "M:SS" segment is not numeric', () => {
         expect(paceSecOf(row({ pace: 'x:30' }))).toBeNull();
+    });
+});
+
+describe('paceScale', () => {
+    it('anchors on the fastest and slowest parseable pace', () => {
+        expect(
+            paceScale([
+                row({ pace: '6:00' }),
+                row({ pace: '5:30' }),
+                row({ pace: '6:20' }),
+            ]),
+        ).toEqual({ fastest: 330, slowest: 380 });
+    });
+
+    it('ignores rows with no parseable pace', () => {
+        expect(
+            paceScale([row({ pace: 'n/a' }), row({ pace: '5:30' })]),
+        ).toEqual({ fastest: 330, slowest: 330 });
+    });
+
+    it('reports no scale at all when nothing parses', () => {
+        expect(paceScale([row({ pace: 'n/a' })])).toEqual({
+            fastest: null,
+            slowest: null,
+        });
+    });
+
+    it('reports no scale for an empty row set', () => {
+        expect(paceScale([])).toEqual({ fastest: null, slowest: null });
+    });
+
+    it('scales a lap row the same way as a split row', () => {
+        expect(
+            paceScale([{ pace: '6:00' }, { pace: '5:45' }, { pace: '6:10' }]),
+        ).toEqual({ fastest: 345, slowest: 370 });
+    });
+});
+
+describe('barRowFill', () => {
+    it('tints the fastest row regardless of its position', () => {
+        expect(barRowFill(true, 0)).toBe('bg-horizon/[0.08]');
+        expect(barRowFill(true, 1)).toBe('bg-horizon/[0.08]');
+    });
+
+    it('zebra-stripes the other rows by position', () => {
+        expect(barRowFill(false, 0)).toBe('bg-sky/[0.03]');
+        expect(barRowFill(false, 1)).toBe('bg-cream-deep/30');
     });
 });
 

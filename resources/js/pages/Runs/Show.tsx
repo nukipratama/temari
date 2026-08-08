@@ -14,6 +14,7 @@ import Kartu from '@/components/card/Kartu';
 import KartuMount from '@/components/card/KartuMount';
 import DetailTiles from '@/components/run/DetailTiles';
 import FourLensGrid from '@/components/run/FourLensGrid';
+import LapsGraph from '@/components/run/LapsGraph';
 import MapWeatherPanel from '@/components/run/MapWeatherPanel';
 import SplitsTable from '@/components/run/SplitsTable';
 import SendNotificationButton from '@/components/SendNotificationButton';
@@ -103,6 +104,7 @@ export default function RunsShow({
     const {
         summary,
         perKm,
+        laps,
         partialSplit,
         mood,
         pose,
@@ -530,6 +532,9 @@ export default function RunsShow({
                         className="mt-10"
                     />
                 )}
+
+                {/* LAPS */}
+                {laps.length > 0 && <LapsGraph laps={laps} className="mt-10" />}
 
                 <Eyebrow
                     as="footer"

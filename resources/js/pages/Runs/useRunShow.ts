@@ -71,6 +71,7 @@ export function useRunShow({
 }: UseRunShowArgs) {
     const summary: StreamSummary = detail.stream_summary ?? {};
     const perKm = summary.per_km ?? [];
+    const laps = summary.laps ?? [];
     const partialSplit = summary.partial_split ?? null;
 
     const mood: Mood = storyLine?.mood ?? moodFallback;
@@ -177,6 +178,7 @@ export function useRunShow({
     return {
         summary,
         perKm,
+        laps,
         partialSplit,
         mood,
         pose,

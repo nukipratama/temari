@@ -157,6 +157,18 @@ export interface StreamSummaryPerKm {
     avg_cadence_spm?: number | null;
 }
 
+/** One lap as the watch recorded it — whatever distance the lap button (or the
+ *  auto-split) made it, never bucketed into kilometres. Absent for runs Strava
+ *  shipped no usable laps for. */
+export interface StreamSummaryLap {
+    lap: number;
+    distance_m: number;
+    elapsed_sec: number;
+    pace: string; // "M:SS" normalized per km
+    avg_hr?: number | null;
+    avg_cadence_spm?: number | null;
+}
+
 /** % of moving time spent in each HR zone, keyed Z1..Z5. Absent for no-HR runs. */
 export type ZonePct = Partial<Record<'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5', number>>;
 
@@ -188,6 +200,7 @@ export type CadenceDistributionPct = Partial<
  *  the stream it derives from is missing or too short. */
 export interface StreamSummary {
     per_km?: StreamSummaryPerKm[];
+    laps?: StreamSummaryLap[];
     partial_split?: StreamSummaryPartial | null;
     negative_split?: boolean;
     pace_variability_sec?: number;
