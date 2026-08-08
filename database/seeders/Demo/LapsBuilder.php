@@ -23,6 +23,7 @@ class LapsBuilder
         $time = $streams['time']['data'] ?? [];
         $distance = $streams['distance']['data'] ?? [];
         $heartrate = $streams['heartrate']['data'] ?? [];
+        $cadence = $streams['cadence']['data'] ?? [];
 
         $n = count($time);
         if ($n < 2 || count($distance) !== $n) {
@@ -44,14 +45,14 @@ class LapsBuilder
             // between the two stream samples it happened to land between — except
             // for a lap that ends with the run, which keeps whatever it covered.
             $lapEnd = $i === $n - 1 ? (float) end($distance) : $target;
-            $laps[] = $this->lapRow(count($laps) + 1, $startIdx, $i, $lapEnd - $lapStart, $time, $heartrate);
+            $laps[] = $this->lapRow(count($laps) + 1, $startIdx, $i, $lapEnd - $lapStart, $time, $heartrate, $cadence);
             $startIdx = $i;
             $lapStart = $lapEnd;
             $target = $this->nextTarget($remaining, $target);
         }
 
         if ($startIdx < $n - 1) {
-            $laps[] = $this->lapRow(count($laps) + 1, $startIdx, $n - 1, (float) end($distance) - $lapStart, $time, $heartrate);
+            $laps[] = $this->lapRow(count($laps) + 1, $startIdx, $n - 1, (float) end($distance) - $lapStart, $time, $heartrate, $cadence);
         }
 
         return $laps;
@@ -77,6 +78,7 @@ class LapsBuilder
     /**
      * @param  list<int|float|array{float, float}>  $streamTime
      * @param  list<int|float|array{float, float}>  $streamHeartrate
+     * @param  list<int|float|array{float, float}>  $streamCadence
      * @return array<string, int|float|string>
      */
     private function lapRow(
@@ -86,6 +88,7 @@ class LapsBuilder
         float $distance,
         array $streamTime,
         array $streamHeartrate,
+        array $streamCadence,
     ): array {
         $elapsed = (float) $streamTime[$endIdx] - (float) $streamTime[$startIdx];
         $avgSpeed = $elapsed > 0 ? $distance / $elapsed : 0.0;
@@ -105,6 +108,12 @@ class LapsBuilder
 
         if ($streamHeartrate !== []) {
             $row['average_heartrate'] = round(StreamStats::sliceMean($streamHeartrate, $startIdx, $endIdx), 1);
+        }
+
+        // Strava's raw per-foot convention, same as the stream KmSplitBuilder
+        // doubles into spm for both this and the per-km path.
+        if ($streamCadence !== []) {
+            $row['average_cadence'] = round(StreamStats::sliceMean($streamCadence, $startIdx, $endIdx), 1);
         }
 
         return $row;

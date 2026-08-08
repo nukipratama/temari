@@ -7,14 +7,19 @@ use Database\Seeders\Demo\LapsBuilder;
 /**
  * @return array<string, array{data: list<int|float>}>
  */
-function evenPacedStreams(int $seconds, float $metresPerSecond, bool $withHeartrate = false): array
-{
+function evenPacedStreams(
+    int $seconds,
+    float $metresPerSecond,
+    bool $withHeartrate = false,
+    bool $withCadence = false,
+): array {
     $samples = range(0, $seconds);
 
     return [
         'time' => ['data' => $samples],
         'distance' => ['data' => array_map(fn (int $i): float => $i * $metresPerSecond, $samples)],
         'heartrate' => ['data' => $withHeartrate ? array_fill(0, count($samples), 150) : []],
+        'cadence' => ['data' => $withCadence ? array_fill(0, count($samples), 85) : []],
     ];
 }
 
@@ -64,6 +69,15 @@ it('omits average_heartrate when no HR was recorded', function (): void {
     expect($withHr[0])->toHaveKey('average_heartrate')
         ->and($withHr[0]['average_heartrate'])->toEqualWithDelta(150.0, 0.1)
         ->and($withoutHr[0])->not->toHaveKey('average_heartrate');
+});
+
+it('omits average_cadence when no cadence was recorded', function (): void {
+    $withCadence = new LapsBuilder()->build(evenPacedStreams(500, 10.0, withCadence: true));
+    $withoutCadence = new LapsBuilder()->build(evenPacedStreams(500, 10.0));
+
+    expect($withCadence[0])->toHaveKey('average_cadence')
+        ->and($withCadence[0]['average_cadence'])->toEqualWithDelta(85.0, 0.1)
+        ->and($withoutCadence[0])->not->toHaveKey('average_cadence');
 });
 
 it('returns no laps for streams too short to cut', function (): void {
