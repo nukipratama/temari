@@ -187,7 +187,11 @@ final class KmSplitBuilder
                 $index++;
             }
             $boundaryTime = $this->interpolate($cumulative, $time, $index, $target);
-            $rows[] = $this->row($km, $boundaryTime - $startTime, self::METRES_PER_KM)
+            $elapsed = $boundaryTime - $startTime;
+            if ($elapsed <= 0) {
+                continue;
+            }
+            $rows[] = $this->row($km, $elapsed, self::METRES_PER_KM)
                 + $this->meanHeartRate($heartrate, $startIndex, $index);
             $startIndex = $index;
             $startTime = $boundaryTime;

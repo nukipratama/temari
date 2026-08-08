@@ -192,6 +192,18 @@ it('averages the heart-rate stream across each kilometre of the trace', function
         ->and($rows[1]['avg_hr'])->toBe(160);
 });
 
+it('drops a km boundary collapsed to zero elapsed time by a duplicate-timestamp GPS jump', function (): void {
+    // Two samples share one watch-clock second across a 2000 m jump, so both km
+    // boundaries interpolate to the same instant. km2 is dropped rather than
+    // reported as a kilometre run in no time at all.
+    [$latlng, $time, $heartrate] = meridianTrace([0, 500, 2500, 2600], [0, 50, 50, 150]);
+
+    $rows = $this->builder->perKm(null, $latlng, $time, $heartrate, null, 2600.0);
+
+    expect(array_column($rows, 'km'))->toBe([1])
+        ->and($rows[0]['elapsed_sec'])->toBe(50);
+});
+
 it('ignores a trace too short or too still to measure', function (): void {
     [$latlngShort, $timeShort, $heartrateShort] = meridianTrace([0], [0]);
     [$latlngStill, $timeStill, $heartrateStill] = meridianTrace([0, 0, 0], [0, 60, 120]);
