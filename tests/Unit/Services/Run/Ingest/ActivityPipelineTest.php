@@ -716,6 +716,31 @@ it('recomputeSummary refreshes a single activity from stored streams using curre
     expect(WeeklySnapshot::query()->where('user_id', $activity->user_id)->exists())->toBeTrue();
 });
 
+it('recomputeSummary can skip the forward snapshot rebuild for batch callers', function (): void {
+    $activity = makeActivityWithConnection();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-05-10 06:30:00'),
+        'distance' => 5000,
+        'moving_time' => 1800,
+    ]);
+    ActivityStream::query()->create([
+        'activity_id' => $activity->id,
+        'data' => [
+            'time' => ['data' => [0, 600, 1200, 1800]],
+            'heartrate' => ['data' => [150, 152, 154, 156]],
+        ],
+    ]);
+
+    Http::fake();
+    $this->pipeline->recomputeSummary($activity->fresh(), rebuildAggregates: false);
+
+    // The summary is still written; only the O(weeks-forward) rebuild is deferred
+    // to the caller, which rolls the snapshots once at the end of its sweep.
+    expect($activity->detail->fresh()->stream_summary)->toBeArray()
+        ->and(WeeklySnapshot::query()->where('user_id', $activity->user_id)->exists())->toBeFalse();
+    Http::assertNothingSent();
+});
+
 it('recomputeSummary is a no-op when the activity has no stored streams', function (): void {
     $activity = makeActivityWithConnection();
     ActivityDetail::factory()->for($activity)->create([

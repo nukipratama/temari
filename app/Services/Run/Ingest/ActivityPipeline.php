@@ -416,8 +416,12 @@ class ActivityPipeline
      * calls, so a user-initiated "Baca ulang" can refresh one block with new
      * zones without re-ingesting from Strava. No-op when the activity has no
      * stored streams or no detail row.
+     *
+     * $rebuildAggregates is opt-out for batch callers only: the forward rebuild
+     * is O(weeks-forward) per activity, so a whole-history loop must switch it
+     * off and roll the snapshots once at the end instead.
      */
-    public function recomputeSummary(Activity $activity): void
+    public function recomputeSummary(Activity $activity, bool $rebuildAggregates = true): void
     {
         $detail = $activity->detail;
         $stream = $activity->stream;
@@ -427,7 +431,7 @@ class ActivityPipeline
 
         $this->computeAndStoreSummary($activity, $detail, $stream->data);
 
-        if ($detail->start_date_local !== null) {
+        if ($rebuildAggregates && $detail->start_date_local !== null) {
             $this->weeklyAggregator->rebuildForwardFrom($activity->user, $detail->start_date_local);
         }
     }
