@@ -59,5 +59,5 @@ which use their own self-initializing mysql_test/redis_test and don't need
 this), also run once:
   ./vendor/bin/sail artisan key:generate   # .env.example ships APP_KEY empty
   ./vendor/bin/sail artisan migrate
-  ./vendor/bin/sail npm run dev            # or `npm run build` for a one-shot build
+  ./vendor/bin/sail npm run dev            # or \`npm run build\` for a one-shot build
 EOF
