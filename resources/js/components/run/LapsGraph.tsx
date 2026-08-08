@@ -14,7 +14,7 @@ import {
 } from '@/lib/splits';
 
 const ROW_GRID =
-    'grid-cols-[48px_1fr_56px_56px] items-center gap-2.5 lg:grid-cols-[56px_1fr_70px_70px_70px_70px] lg:gap-3';
+    'grid-cols-[48px_140px_56px_56px_56px_56px] items-center gap-2.5 lg:grid-cols-[56px_1fr_70px_70px_70px_70px] lg:gap-3';
 
 export default function LapsGraph({
     laps,
@@ -47,7 +47,7 @@ export default function LapsGraph({
                 panjang tiap lap.
             </p>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 overflow-x-auto">
                 {laps.map((lap, idx) => {
                     const sec = paceSecOf(lap);
                     const isFast = sec != null && sec === fastest;
@@ -91,10 +91,10 @@ export default function LapsGraph({
                                 />
                                 {formatDurationHMS(lap.elapsed_sec)}
                             </div>
-                            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
+                            <div className="text-right font-sans text-xs tabular-nums text-ink-2">
                                 ♡ {lap.avg_hr ?? '—'}
                             </div>
-                            <div className="hidden items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2 lg:flex">
+                            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2">
                                 <Icon
                                     icon="mdi:shoe-print"
                                     width={12}

@@ -15,7 +15,7 @@ import {
 } from '@/lib/splits';
 
 const ROW_GRID =
-    'grid-cols-[34px_1fr_56px] items-center gap-2.5 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3';
+    'grid-cols-[34px_140px_56px_56px_56px] items-center gap-2.5 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3';
 
 export default function SplitsTable({
     rows,
@@ -52,14 +52,16 @@ export default function SplitsTable({
                     </p>
                 )}
             </header>
-            {/* One dense chart at every width (HR + cadence columns fold away on phones);
-                the binary bar color needs a one-line key once the card affordance is gone. */}
+            {/* One dense chart at every width; on phones the row is wider than the
+                viewport so HR + cadence stay reachable by horizontal scroll instead
+                of folding away. The binary bar color needs a one-line key once the
+                card affordance is gone. */}
             <p className="mb-3 text-label-micro text-ink-3">
                 Batang oranye = km tercepat, gelap = lainnya
                 {partial ? ', putus-putus = sisa' : ''}.
             </p>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 overflow-x-auto">
                 {keyedRows.map(({ row, key }, idx) => {
                     const sec = paceSecOf(row);
                     const isFast = sec != null && sec === fastest;
@@ -93,10 +95,10 @@ export default function SplitsTable({
                             <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink">
                                 {row.pace ?? '—'}
                             </div>
-                            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
+                            <div className="text-right font-sans text-xs tabular-nums text-ink-2">
                                 ♡ {row.avg_hr ?? '—'}
                             </div>
-                            <div className="hidden items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2 lg:flex">
+                            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2">
                                 <Icon
                                     icon="mdi:shoe-print"
                                     width={12}
@@ -136,10 +138,10 @@ function SplitPartialRow({
             <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink-3">
                 {partial.pace ?? '—'}
             </div>
-            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-3 lg:block">
+            <div className="text-right font-sans text-xs tabular-nums text-ink-3">
                 ♡ {partial.avg_hr ?? '—'}
             </div>
-            <div className="hidden items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-3 lg:flex">
+            <div className="flex items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-3">
                 <Icon
                     icon="mdi:shoe-print"
                     width={12}
