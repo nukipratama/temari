@@ -72,7 +72,7 @@ class PersonalRecords
     private function checkDistancePrs(Activity $activity, ActivityDetail $detail, Carbon $setAt): array
     {
         $distance = (float) ($detail->distance ?? 0);
-        $splits = is_array($detail->splits_metric) ? $detail->splits_metric : [];
+        $splits = $this->splitRows(StreamSummary::fromArray($detail->streamSummary()));
         $broken = [];
 
         foreach (PrCategory::distances() as $category) {
@@ -122,6 +122,31 @@ class PersonalRecords
     }
 
     /**
+     * The run's segments in order: every full kilometre, then the trailing
+     * sub-km leftover. The window needs that leftover to reach a target that
+     * lands inside it — a 42.6 km run only covers 42 full kilometres, so the
+     * marathon PR sits in the final 600 m. The leftover's time is recovered
+     * from its already-normalized pace, the one place Strava's `moving_time`
+     * still shows through until KmSplitBuilder derives the partial itself.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function splitRows(StreamSummary $summary): array
+    {
+        $rows = array_values($summary->perKm() ?? []);
+
+        $partial = $summary->partialSplit() ?? [];
+        $pace = $partial['pace'] ?? null;
+        $paceSec = is_string($pace) ? PaceFormatter::parse($pace) : null;
+        $distance = (float) ($partial['distance_m'] ?? 0);
+        if ($paceSec !== null && $distance > 0) {
+            $rows[] = ['distance_m' => $distance, 'elapsed_sec' => $paceSec * $distance / 1000];
+        }
+
+        return $rows;
+    }
+
+    /**
      * Fastest time over any contiguous window of splits that covers the target
      * distance, so a negative-split run records its genuine best embedded effort
      * rather than only its opening segment. Null when no window reaches the target.
@@ -154,8 +179,8 @@ class PersonalRecords
         $accDist = 0.0;
         $accTime = 0.0;
         foreach ($splits as $split) {
-            $distance = (float) ($split['distance'] ?? 0);
-            $time = (float) ($split['moving_time'] ?? 0);
+            $distance = (float) ($split['distance_m'] ?? 0);
+            $time = (float) ($split['elapsed_sec'] ?? 0);
             if ($distance <= 0 || $time <= 0) {
                 continue;
             }

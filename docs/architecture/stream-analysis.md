@@ -56,6 +56,7 @@ Downstream consumers key into specific fields, so the shape is a contract. The p
 - `time_in_zone_min` / `time_in_zone_pct` — minutes and percent per zone (keyed `Z1..Z5`).
 - `per_km[]` — rows of `{ km, pace, elapsed_sec, distance_m, avg_hr?, avg_cadence_spm? }` ([type](resources/js/types/inertia.ts#L144)).
 - `laps[]` — rows of `{ lap, distance_m, elapsed_sec, pace, avg_hr?, avg_cadence_spm? }`, absent when the activity was never lapped.
+- `partial_split` — the trailing sub-km leftover as `{ distance_m, pace, avg_hr?, avg_cadence_spm? }`, absent when the run finished on a whole kilometre. It carries no `elapsed_sec`: it is still derived from `splits_metric.moving_time` ([partialSplit](app/Services/Run/Ingest/StreamAnalysis.php#L636)), the one fragment `KmSplitBuilder` does not yet own.
 - `best_{window}_pace` — e.g. `best_60min_pace`, as `"M:SS"` strings.
 - `decoupling_pct`, `hr_drift_bpm` (both absent below the 45-minute floor), `cadence_drop_spm`, `negative_split` (bool).
 - `cadence_distribution_pct`, `optimal_cadence_pct`, `pace_variability_sec` (absent below two full km), `stopped_time_sec`, `stop_count`, `descent_m`. Ascent comes from `ActivityDetail::$total_elevation_gain`, not from this blob.
@@ -67,5 +68,6 @@ Read through [StreamSummary](app/Services/Run/Metrics/StreamSummary.php), a type
 - **Training metrics** — `EstimateThresholdAction` mines best-effort paces and zone percent across recent runs ([query](app/Actions/Run/Metrics/EstimateThresholdAction.php#L23)); `RunBaseline` and the `Vibe` form score average `decoupling_pct` ([Vibe](app/Services/Run/Story/Vibe.php#L132)). See [[training-load-metrics]].
 - **Run detail UI** — the [[run-detail]] page reads the blob directly ([Show.tsx](resources/js/pages/Runs/Show.tsx#L94)); helpers in [runcard.ts](resources/js/lib/runcard.ts#L168) derive the pace-shape glyph, mean cadence, fastest km, and zone bar from `per_km` / `time_in_zone_pct`.
 - **Narration** — the narrators read the blob through their tools; the demo stand-in frames the same cadence / decoupling / HR story from it ([RuleBasedRunInsights](app/Services/AI/RuleBased/RuleBasedRunInsights.php#L57)) for the [[ai-pipeline]].
+- **Personal records** — distance PRs slide their window over `per_km` on `elapsed_sec`, then the `partial_split` leftover, so a 42.6 km run can still reach the 42 195 m marathon target ([splitRows](app/Services/Run/Metrics/PersonalRecords.php#L134)). The `/rekor` scoreboard's pace strip reads the same two keys ([featuredExtras](app/Services/Run/PrScoreboardBuilder.php#L48)) — which is why [RekorController](app/Http/Controllers/RekorController.php#L33) has to name `stream_summary` in its eager-load column list. See [[records]].
 
 See [[data-model]] for where `ActivityDetail` sits relative to `Activity` and `ActivityStream`.

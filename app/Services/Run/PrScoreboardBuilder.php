@@ -6,7 +6,8 @@ namespace App\Services\Run;
 
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
-use App\Services\Run\Metrics\PaceCalculator;
+use App\Services\Run\Metrics\PaceFormatter;
+use App\Services\Run\Metrics\StreamSummary;
 use Illuminate\Support\Collection;
 
 /**
@@ -52,11 +53,12 @@ class PrScoreboardBuilder
 
         /** @var ActivityDetail|null $detail */
         $detail = $pr->activity?->detail;
+        $summary = StreamSummary::fromArray($detail?->streamSummary());
 
         return [
             'pr_id' => $pr->id,
-            'splits_pace_sec' => $this->splitsPaceSec($detail?->splits_metric),
-            'splits_partial_pace_sec' => $this->splitsPartialPaceSec($detail?->splits_metric),
+            'splits_pace_sec' => $this->splitsPaceSec($summary->perKm()),
+            'splits_partial_pace_sec' => $this->splitsPartialPaceSec($summary->partialSplit()),
             'location_name' => $detail?->location_name,
             'weather_temp_c' => $detail?->weather_temp_c,
             'weather_humidity_pct' => $detail?->weather_humidity_pct,
@@ -65,58 +67,49 @@ class PrScoreboardBuilder
     }
 
     /**
-     * Convert Strava-shaped splits_metric (per-km segments with distance +
-     * moving_time) into a list of full-km pace-seconds-per-km. The trailing
-     * sub-km "sisa" segment is excluded here (see splitsPartialPaceSec) so the
-     * sparkline's verdict, crown, and bucketing only ever weigh full kms.
+     * Flatten `stream_summary.per_km` into a list of pace-seconds-per-km. Every
+     * row there is already a full kilometre on the watch's own elapsed basis;
+     * the trailing sub-km "sisa" row lives in `partial_split` (see
+     * splitsPartialPaceSec) so the sparkline's verdict, crown, and bucketing
+     * only ever weigh full kms.
      *
-     * @param  array<int, array<string, mixed>>|null  $splits
+     * @param  array<int, array<string, mixed>>|null  $perKm
      * @return array<int, int>
      */
-    public function splitsPaceSec(?array $splits): array
+    public function splitsPaceSec(?array $perKm): array
     {
-        if ($splits === null) {
-            return [];
-        }
-
         $out = [];
-        foreach ($splits as $row) {
-            $distance = isset($row['distance']) ? (float) $row['distance'] : 0.0;
-            if ($distance < 950) {
-                continue;
+        foreach ($perKm ?? [] as $row) {
+            $paceSec = $this->paceSec($row);
+            if ($paceSec !== null) {
+                $out[] = $paceSec;
             }
-            $time = isset($row['moving_time']) ? (float) $row['moving_time'] : 0.0;
-            $paceSecPerKm = PaceCalculator::secPerKm($distance, $time);
-            if ($paceSecPerKm === null) {
-                continue;
-            }
-            $out[] = (int) round($paceSecPerKm);
         }
 
         return $out;
     }
 
     /**
-     * Normalized per-km pace of the trailing "sisa" segment (100 m <= distance
-     * < 950 m), or null when the run ends on a full km. Rendered as a de-emphasized,
-     * non-crownable ghost bar; kept out of splitsPaceSec so it never skews the scale.
+     * Per-km-normalized pace of the trailing "sisa" row, or null when the run
+     * ends on a full km. Rendered as a de-emphasized, non-crownable ghost bar;
+     * kept out of splitsPaceSec so it never skews the scale.
      *
-     * @param  array<int, array<string, mixed>>|null  $splits
+     * @param  array<string, mixed>|null  $partial
      */
-    public function splitsPartialPaceSec(?array $splits): ?int
+    public function splitsPartialPaceSec(?array $partial): ?int
     {
-        if ($splits === null || $splits === []) {
-            return null;
-        }
-        $last = array_last($splits);
-        $distance = isset($last['distance']) ? (float) $last['distance'] : 0.0;
-        if ($distance >= 950 || $distance < 100) {
-            return null;
-        }
-        $time = isset($last['moving_time']) ? (float) $last['moving_time'] : 0.0;
-        $paceSecPerKm = PaceCalculator::secPerKm($distance, $time);
+        return $partial === null ? null : $this->paceSec($partial);
+    }
 
-        return $paceSecPerKm === null ? null : (int) round($paceSecPerKm);
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function paceSec(array $row): ?int
+    {
+        $pace = $row['pace'] ?? null;
+        $paceSec = is_string($pace) ? PaceFormatter::parse($pace) : null;
+
+        return $paceSec === null || $paceSec <= 0 ? null : (int) round($paceSec);
     }
 
     /**

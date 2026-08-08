@@ -56,8 +56,10 @@ it('computes hero scoreboard extras + progression series for a distance PR with 
     Carbon::setTestNow('2026-05-20 12:00:00');
     $user = User::factory()->create();
 
-    // The PR row + its source activity. splits_metric gets fed to splitsPaceSec;
-    // value_sec drives milestoneFor's rounding heuristic (1751s → 29:00 target).
+    // The PR row + its source activity. stream_summary.per_km gets fed to
+    // splitsPaceSec; value_sec drives milestoneFor's rounding heuristic
+    // (1751s → 29:00 target). The eager-load column list has to carry
+    // stream_summary or featuredExtras sees null and the pace strip goes empty.
     $featuredActivity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($featuredActivity)->create([
         'name' => 'Sub-30 5K',
@@ -67,12 +69,15 @@ it('computes hero scoreboard extras + progression series for a distance PR with 
         'weather_temp_c' => 28,
         'weather_humidity_pct' => 75,
         'start_date_local' => Carbon::parse('2026-05-18 06:30:00'),
-        'splits_metric' => [
-            ['distance' => 1_000, 'moving_time' => 360],
-            ['distance' => 1_000, 'moving_time' => 350],
-            ['distance' => 1_000, 'moving_time' => 345],
-            ['distance' => 1_000, 'moving_time' => 350],
-            ['distance' => 1_000, 'moving_time' => 346],
+        'stream_summary' => [
+            'per_km' => [
+                ['km' => 1, 'pace' => '6:00', 'elapsed_sec' => 360, 'distance_m' => 1_000],
+                ['km' => 2, 'pace' => '5:50', 'elapsed_sec' => 350, 'distance_m' => 1_000],
+                ['km' => 3, 'pace' => '5:45', 'elapsed_sec' => 345, 'distance_m' => 1_000],
+                ['km' => 4, 'pace' => '5:50', 'elapsed_sec' => 350, 'distance_m' => 1_000],
+                ['km' => 5, 'pace' => '5:46', 'elapsed_sec' => 346, 'distance_m' => 1_000],
+            ],
+            'partial_split' => ['distance_m' => 420, 'pace' => '6:10'],
         ],
     ]);
     PersonalRecord::factory()->forActivity($featuredActivity)->create([
@@ -100,7 +105,8 @@ it('computes hero scoreboard extras + progression series for a distance PR with 
             ->where('featuredExtras.location_name', 'Senayan')
             ->where('featuredExtras.target_sec', 1_740)
             ->where('featuredExtras.delta_sec', 11)
-            ->where('featuredExtras.splits_pace_sec', [360, 350, 345, 350, 346]));
+            ->where('featuredExtras.splits_pace_sec', [360, 350, 345, 350, 346])
+            ->where('featuredExtras.splits_partial_pace_sec', 370));
 
     Carbon::setTestNow();
 });

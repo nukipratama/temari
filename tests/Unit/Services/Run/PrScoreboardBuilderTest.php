@@ -107,66 +107,44 @@ describe('pickFeaturedPr', function (): void {
 });
 
 describe('splitsPaceSec', function (): void {
-    it('returns an empty list for null splits', function (): void {
-        expect($this->builder->splitsPaceSec(null))->toBe([]);
+    it('returns an empty list when the run carries no per_km rows', function (): void {
+        expect($this->builder->splitsPaceSec(null))->toBe([])
+            ->and($this->builder->splitsPaceSec([]))->toBe([]);
     });
 
-    it('converts per-km segments to rounded pace seconds', function (): void {
-        $splits = [
-            ['distance' => 1000, 'moving_time' => 360],
-            ['distance' => 1000, 'moving_time' => 345],
+    it('converts per-km rows to pace seconds', function (): void {
+        $perKm = [
+            ['km' => 1, 'pace' => '6:00', 'elapsed_sec' => 360, 'distance_m' => 1000],
+            ['km' => 2, 'pace' => '5:45', 'elapsed_sec' => 345, 'distance_m' => 1000],
         ];
 
-        expect($this->builder->splitsPaceSec($splits))->toBe([360, 345]);
+        expect($this->builder->splitsPaceSec($perKm))->toBe([360, 345]);
     });
 
-    it('skips segments with missing or zero distance/time', function (): void {
-        $splits = [
-            ['distance' => 1000, 'moving_time' => 360],
-            ['distance' => 0, 'moving_time' => 300],   // zero distance → null pace, skipped
-            ['moving_time' => 300],                     // missing distance → skipped
-            ['distance' => 1000],                       // missing time → skipped
+    it('skips rows with a missing or unparseable pace', function (): void {
+        $perKm = [
+            ['km' => 1, 'pace' => '6:00'],
+            ['km' => 2],
+            ['km' => 3, 'pace' => 'santai'],
+            ['km' => 4, 'pace' => 360],
+            ['km' => 5, 'pace' => '0:00'],
         ];
 
-        expect($this->builder->splitsPaceSec($splits))->toBe([360]);
-    });
-
-    it('excludes the trailing sub-km partial so the sparkline scale stays full-km', function (): void {
-        $splits = [
-            ['distance' => 1000, 'moving_time' => 360],
-            ['distance' => 1000, 'moving_time' => 350],
-            ['distance' => 700, 'moving_time' => 252],   // partial → excluded here
-        ];
-
-        expect($this->builder->splitsPaceSec($splits))->toBe([360, 350]);
+        expect($this->builder->splitsPaceSec($perKm))->toBe([360]);
     });
 });
 
 describe('splitsPartialPaceSec', function (): void {
-    it('returns null for null, empty, or full-km-ending splits', function (): void {
-        expect($this->builder->splitsPartialPaceSec(null))->toBeNull()
-            ->and($this->builder->splitsPartialPaceSec([]))->toBeNull()
-            ->and($this->builder->splitsPartialPaceSec([
-                ['distance' => 1000, 'moving_time' => 360],
-            ]))->toBeNull();
+    it('returns null when the run ends on a full km', function (): void {
+        expect($this->builder->splitsPartialPaceSec(null))->toBeNull();
     });
 
-    it('returns the normalized pace of a trailing partial (100m..950m)', function (): void {
-        $splits = [
-            ['distance' => 1000, 'moving_time' => 360],
-            ['distance' => 700, 'moving_time' => 252],   // 252 / 0.7 = 360 s/km
-        ];
-
-        expect($this->builder->splitsPartialPaceSec($splits))->toBe(360);
+    it('returns null when the partial row carries no usable pace', function (): void {
+        expect($this->builder->splitsPartialPaceSec(['distance_m' => 700]))->toBeNull();
     });
 
-    it('ignores a sub-100m trailing sliver', function (): void {
-        $splits = [
-            ['distance' => 1000, 'moving_time' => 360],
-            ['distance' => 40, 'moving_time' => 14],
-        ];
-
-        expect($this->builder->splitsPartialPaceSec($splits))->toBeNull();
+    it('returns the per-km-normalized pace of the trailing partial row', function (): void {
+        expect($this->builder->splitsPartialPaceSec(['distance_m' => 700, 'pace' => '6:00']))->toBe(360);
     });
 });
 
@@ -181,9 +159,11 @@ describe('featuredExtras', function (): void {
             'location_name' => 'Senayan',
             'weather_temp_c' => 28,
             'weather_humidity_pct' => 75,
-            'splits_metric' => [
-                ['distance' => 1000, 'moving_time' => 360],
-                ['distance' => 1000, 'moving_time' => 350],
+            'stream_summary' => [
+                'per_km' => [
+                    ['km' => 1, 'pace' => '6:00', 'elapsed_sec' => 360, 'distance_m' => 1000],
+                    ['km' => 2, 'pace' => '5:50', 'elapsed_sec' => 350, 'distance_m' => 1000],
+                ],
             ],
         ]);
         $activity = Activity::factory()->make(['id' => 1, 'user_id' => 1]);
@@ -213,10 +193,12 @@ describe('featuredExtras', function (): void {
     it('exposes the trailing partial pace alongside the full-km splits', function (): void {
         $detail = ActivityDetail::factory()->make([
             'activity_id' => 1,
-            'splits_metric' => [
-                ['distance' => 1000, 'moving_time' => 360],
-                ['distance' => 1000, 'moving_time' => 350],
-                ['distance' => 700, 'moving_time' => 252],
+            'stream_summary' => [
+                'per_km' => [
+                    ['km' => 1, 'pace' => '6:00', 'elapsed_sec' => 360, 'distance_m' => 1000],
+                    ['km' => 2, 'pace' => '5:50', 'elapsed_sec' => 350, 'distance_m' => 1000],
+                ],
+                'partial_split' => ['distance_m' => 700, 'pace' => '6:00'],
             ],
         ]);
         $activity = Activity::factory()->make(['id' => 1, 'user_id' => 1]);
