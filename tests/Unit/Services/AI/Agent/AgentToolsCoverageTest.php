@@ -14,6 +14,7 @@ use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\FeaturedCardTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
+use App\Services\AI\Agent\Tools\LapsTool;
 use App\Services\AI\Agent\Tools\LatestPastYouTool;
 use App\Services\AI\Agent\Tools\RecentRunsTool;
 use App\Services\AI\Agent\Tools\PastYouTool;
@@ -78,6 +79,7 @@ it('names every tool in snake_case with a description the model can choose on', 
     $tools = [
         new RunSummaryTool($a, $d),
         new KmSplitsTool($a, $d),
+        new LapsTool($a, $d),
         new HrZonesTool($a, $d),
         new TerrainTool($a, $d),
         new WeatherTool($a, $d),
@@ -235,6 +237,107 @@ it('leaves a run at the sample size untouched', function (): void {
 
     expect($reading['per_km'])->toHaveCount(12)
         ->and($reading['omitted_km'])->toBe(0);
+});
+
+// ── LapsTool ──────────────────────────────────────────────────────────
+
+/**
+ * A 13-lap interval session as the watch recorded it: warmup, six 400 m reps
+ * with a jog between each, cooldown.
+ *
+ * @return list<array<string, int>>
+ */
+function agentToolIntervalLaps(): array
+{
+    $laps = [['distance_m' => 1000, 'elapsed_sec' => 440]];
+    foreach ([108, 108, 110, 104, 109] as $rep) {
+        $laps[] = ['distance_m' => 400, 'elapsed_sec' => $rep];
+        $laps[] = ['distance_m' => 200, 'elapsed_sec' => 84];
+    }
+    $laps[] = ['distance_m' => 400, 'elapsed_sec' => 110];
+    $laps[] = ['distance_m' => 1000, 'elapsed_sec' => 430];
+
+    return array_map(
+        fn (array $lap, int $index): array => ['lap' => $index + 1] + $lap,
+        $laps,
+        array_keys($laps),
+    );
+}
+
+it('reads an interval session as a structure, counting the reps and the jogs between them', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['laps' => agentToolIntervalLaps()]]);
+
+    $reading = new LapsTool($a, $d->fresh())->handle([]);
+
+    expect($reading['lap_count'])->toBe(13)
+        ->and($reading['laps'])->toHaveCount(13)
+        ->and($reading['rep_count'])->toBe(6)
+        ->and($reading['recovery_sec'])->toBe([84, 84, 84, 84, 84])
+        // The quickest rep, not the first one that happens to be quick.
+        ->and($reading['fastest_lap'])->toBe(8)
+        ->and($reading['slowest_lap'])->toBe(1);
+});
+
+// get_km_splits already tells a plain auto-split run whole, so a second reading
+// of the same kilometres is only an invitation to narrate them twice.
+it('has nothing to add when the laps are just the kilometres', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['laps' => [
+        ['lap' => 1, 'distance_m' => 1000, 'elapsed_sec' => 437],
+        ['lap' => 2, 'distance_m' => 1000, 'elapsed_sec' => 439],
+        ['lap' => 3, 'distance_m' => 1000, 'elapsed_sec' => 424],
+        ['lap' => 4, 'distance_m' => 647, 'elapsed_sec' => 281],
+    ]]]);
+
+    expect(array_filter(new LapsTool($a, $d->fresh())->handle([]), fn (mixed $v): bool => $v !== null))->toBe([]);
+});
+
+it('reads null laps without fataling when there is no stream summary', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => null]);
+
+    expect(new LapsTool($a, $d->fresh())->handle([]))->toBe([
+        'lap_count' => null,
+        'laps' => null,
+        'fastest_lap' => null,
+        'slowest_lap' => null,
+        'rep_count' => null,
+        'recovery_sec' => null,
+    ]);
+});
+
+// A lap press at the turnaround is not a workout. Calling it one would hand the
+// splits note a rep structure to narrate that the runner never ran.
+it('leaves the rep structure out when manual laps carry no fast-slow pattern', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['laps' => [
+        ['lap' => 1, 'distance_m' => 2400, 'elapsed_sec' => 1010],
+        ['lap' => 2, 'distance_m' => 2600, 'elapsed_sec' => 1080],
+        ['lap' => 3, 'distance_m' => 647, 'elapsed_sec' => 281],
+    ]]]);
+
+    $reading = new LapsTool($a, $d->fresh())->handle([]);
+
+    expect($reading['lap_count'])->toBe(3)
+        ->and($reading['laps'])->toHaveCount(3)
+        ->and($reading['rep_count'])->toBeNull()
+        ->and($reading['recovery_sec'])->toBeNull();
+});
+
+it('drops the row table on a run with too many laps but keeps the findings', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $laps = [];
+    foreach (range(1, 24) as $lap) {
+        $laps[] = ['lap' => $lap, 'distance_m' => 400, 'elapsed_sec' => 120];
+    }
+    $d->update(['stream_summary' => ['laps' => $laps]]);
+
+    $reading = new LapsTool($a, $d->fresh())->handle([]);
+
+    expect($reading['lap_count'])->toBe(24)
+        ->and($reading['laps'])->toBeNull()
+        ->and($reading['fastest_lap'])->toBe(1);
 });
 
 // ── HrZonesTool ───────────────────────────────────────────────────────

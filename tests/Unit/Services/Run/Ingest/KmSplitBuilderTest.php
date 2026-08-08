@@ -265,3 +265,11 @@ it('has no lap rows to report when the activity carries none', function (): void
     expect($this->builder->laps(null))->toBe([])
         ->and($this->builder->laps([]))->toBe([]);
 });
+
+// Exposed so a reader holding the normalized rows (the narrator's get_laps)
+// asks "are these just the kilometres?" on this threshold, not a second one.
+it('answers the grid question on bare distances, tail lap allowed to fall short', function (): void {
+    expect(KmSplitBuilder::isPlainKmGrid([1000.0, 1000.0, 647.0]))->toBeTrue()
+        ->and(KmSplitBuilder::isPlainKmGrid([1000.0, 647.0, 1000.0]))->toBeFalse()
+        ->and(KmSplitBuilder::isPlainKmGrid([]))->toBeFalse();
+});

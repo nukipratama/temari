@@ -286,6 +286,18 @@ it('RunInsightNarrator prompt carries the quality-session framing so it stops as
         ->and($prompt)->toContain('SESI KUALITAS');
 });
 
+// Without this carve-out an interval session reads as sloppy pacing: the pace
+// spread is wide by design, and pace_consistency bands it as "naik-turun" all
+// the same, which the model then explains away as terrain or unstable effort.
+it('RunInsightNarrator prompt exempts a lap-structured session from the pace-consistency reading', function (): void {
+    $prompt = narratorPrompt(RunInsightNarrator::class);
+
+    expect($prompt)->toContain('SESI BERSTRUKTUR')
+        ->and($prompt)->toContain('rep_count')
+        ->and($prompt)->toContain('recovery_sec')
+        ->and($prompt)->toContain('warmup');
+});
+
 it('RunInsightNarrator prompt gives notes storytelling room (3-4 sentences, no rigid word cap)', function (): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
@@ -331,6 +343,7 @@ it('RunInsightNarrator offers every run reading as a tool bound to this activity
     expect($names)->toBe([
         'get_run_summary',
         'get_km_splits',
+        'get_laps',
         'get_hr_zones',
         'get_terrain',
         'get_weather',

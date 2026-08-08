@@ -19,7 +19,7 @@ Note: casual vernacular like `kebuka` / `kepoin` / `nyambung` is **on-voice and 
 
 For any English word, ask: **"would a Jakarta runner actually say this word in English while chatting?"**
 
-- **Common running terms → keep English.** `pace, split, negative split, tempo, easy run, long run, recovery, cadence, warmup, cooldown, PR, HR, splits, interval, threshold, gear, workout, cool down, warm up`. This is how runners talk. Card badges like `Negative Split` / `Long Slow Distance` count here.
+- **Common running terms → keep English.** `pace, split, negative split, tempo, easy run, long run, recovery, cadence, warmup, cooldown, PR, HR, splits, lap, laps, interval, threshold, gear, workout, cool down, warm up`. This is how runners talk. Card badges like `Negative Split` / `Long Slow Distance` count here.
 - **Loanwords people genuinely say → keep.** `highlight, sync, share, rekap, progress, streak, vibe, mood, fit, mode, podium`. Forcing `sorotan` / `sinkronkan` / `bagikan` / `mode` sounds like a manual. (`★ Highlight minggu ini`, not `Sorotan`.)
 - **Generic UI / everyday English → translate.** It reads as lazy translation otherwise: `earn → dapetin`, `tap → ketuk`, `Quality day! → Lari berkualitas!`, `continue → lanjut`, `back → kembali`, `save → simpan`, `next → berikutnya`.
 - **Internal consistency beats translation.** Localize a word everywhere or nowhere. Rarity is shown in Indonesian, so there is no `Epic+`; `hr` appears as `HR` consistently, never translated to `DNJ`.
