@@ -81,9 +81,7 @@ describe('LapsGraph', () => {
 
     it('renders each lap’s actual duration alongside its normalized pace', () => {
         render(<LapsGraph laps={laps} />);
-        // Lap 3 is 647 m in 233 s: its per-km pace rounds to "6:00" (same as
-        // laps 1 and 2), but its actual duration is "3:53" — proof the new
-        // column shows real elapsed time, not a repeat of the pace column.
+        // Lap 3's duration (3:53) differs from its pace (6:00) — laps 1-2 don't.
         expect(screen.getByText('3:53')).toBeInTheDocument();
     });
 

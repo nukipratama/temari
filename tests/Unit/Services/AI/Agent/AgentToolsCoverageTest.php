@@ -329,9 +329,6 @@ it('leaves the rep structure out when manual laps carry no fast-slow pattern', f
         ->and($reading['paused_laps'])->toBeNull();
 });
 
-// The real-world signature this exists for: an urban run with a couple of
-// stoplight stops, not a training decision. Distance is what flags it — pace
-// on a 60-80 m lap is GPS noise, not a slowdown worth narrating as effort.
 it('reads short stop-and-go laps as pauses, distinct from a rep structure', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['laps' => [

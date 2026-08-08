@@ -23,17 +23,9 @@ final class LapsTool extends ActivityTool
      */
     private const float REP_PACE_GAP_SEC = 45.0;
 
-    /**
-     * A lap under this fraction of the run's own median lap distance reads as a
-     * stop, not a stride: a stoplight, a crossing, a shoelace. Pace on a
-     * near-zero-distance lap is GPS noise, so distance is the signal, not pace.
-     */
+    /** A lap under this fraction of the run's own median lap distance reads as a stop. */
     private const float PAUSE_DISTANCE_RATIO = 0.25;
 
-    /**
-     * One short lap is just how some runs end mid-stride. It takes at least two
-     * before it reads as a pattern worth narrating.
-     */
     private const int MIN_PAUSE_LAPS = 2;
 
     public function name(): string
@@ -112,10 +104,19 @@ final class LapsTool extends ActivityTool
      */
     private static function isJustTheKilometres(array $laps): bool
     {
-        return KmSplitBuilder::isPlainKmGrid(array_map(
+        return KmSplitBuilder::isPlainKmGrid(self::distances($laps));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $laps
+     * @return list<float>
+     */
+    private static function distances(array $laps): array
+    {
+        return array_map(
             fn (array $lap): float => is_numeric($lap['distance_m'] ?? null) ? (float) $lap['distance_m'] : 0.0,
             $laps,
-        ));
+        );
     }
 
     /**
@@ -190,11 +191,9 @@ final class LapsTool extends ActivityTool
     }
 
     /**
-     * Positions of laps that read as a stop, not a stride: distance far short of
-     * the run's own median lap, excluding the final lap (every run's last lap is
-     * short because the run ended mid-lap, that's not a pause). Only called when
-     * reps() found nothing, so a real interval session's recovery laps are never
-     * relabelled as stops.
+     * Only called when reps() found nothing, so recovery laps in a real
+     * interval session are never relabelled as stops. Excludes the final lap:
+     * every run's last lap is short because the run ended mid-lap.
      *
      * @param  list<array<string, mixed>>  $laps
      * @return list<int>
@@ -206,10 +205,7 @@ final class LapsTool extends ActivityTool
             return [];
         }
 
-        $body = array_slice(array_map(
-            fn (array $lap): float => is_numeric($lap['distance_m'] ?? null) ? (float) $lap['distance_m'] : 0.0,
-            $laps,
-        ), 0, $n - 1);
+        $body = array_slice(self::distances($laps), 0, $n - 1);
 
         $sorted = $body;
         sort($sorted);
