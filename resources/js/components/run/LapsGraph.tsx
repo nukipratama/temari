@@ -1,15 +1,20 @@
+import { Icon } from '@iconify/react';
+
 import type { StreamSummaryLap } from '@/types/inertia';
 
 import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
-import { formatPace } from '@/lib/pace';
+import { formatDurationHMS, formatPace } from '@/lib/pace';
 import {
     barRowFill,
     computeBarWidth,
     paceScale,
     paceSecOf,
 } from '@/lib/splits';
+
+const ROW_GRID =
+    'grid-cols-[48px_1fr_56px_56px] items-center gap-2.5 lg:grid-cols-[56px_1fr_70px_70px_70px_70px] lg:gap-3';
 
 export default function LapsGraph({
     laps,
@@ -42,6 +47,21 @@ export default function LapsGraph({
                 panjang tiap lap.
             </p>
 
+            <div
+                className={cn(
+                    'grid text-label-micro text-ink-3',
+                    ROW_GRID,
+                    'px-3',
+                )}
+            >
+                <div>Jarak</div>
+                <div />
+                <div className="text-right">Pace</div>
+                <div className="text-right">Durasi</div>
+                <div className="hidden text-right lg:block">HR</div>
+                <div className="hidden text-right lg:block">Cadence</div>
+            </div>
+
             <div className="flex flex-col gap-1">
                 {laps.map((lap, idx) => {
                     const sec = paceSecOf(lap);
@@ -50,7 +70,8 @@ export default function LapsGraph({
                         <div
                             key={`lap-${lap.lap}`}
                             className={cn(
-                                'grid grid-cols-[48px_1fr_56px] items-center gap-2.5 lg:grid-cols-[56px_1fr_70px_70px_70px] lg:gap-3',
+                                'grid',
+                                ROW_GRID,
                                 '-mx-3 rounded-lg px-3 py-2 lg:py-2.5',
                                 barRowFill(isFast, idx),
                             )}
@@ -76,11 +97,20 @@ export default function LapsGraph({
                             <div className="text-right font-sans text-sm font-semibold tabular-nums text-ink">
                                 {lap.pace}
                             </div>
+                            <div className="text-right font-sans text-xs tabular-nums text-ink-2">
+                                {formatDurationHMS(lap.elapsed_sec)}
+                            </div>
                             <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
                                 ♡ {lap.avg_hr ?? '—'}
                             </div>
-                            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
-                                ↻ {lap.avg_cadence_spm ?? '—'}
+                            <div className="hidden items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2 lg:flex">
+                                <Icon
+                                    icon="mdi:run-fast"
+                                    width={12}
+                                    height={12}
+                                    aria-hidden
+                                />
+                                {lap.avg_cadence_spm ?? '—'}
                             </div>
                         </div>
                     );

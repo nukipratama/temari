@@ -1,3 +1,5 @@
+import { Icon } from '@iconify/react';
+
 import type { StreamSummaryPartial, StreamSummaryPerKm } from '@/types/inertia';
 
 import Card from '@/components/ui/Card';
@@ -11,6 +13,9 @@ import {
     paceScale,
     paceSecOf,
 } from '@/lib/splits';
+
+const ROW_GRID =
+    'grid-cols-[34px_1fr_56px] items-center gap-2.5 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3';
 
 export default function SplitsTable({
     rows,
@@ -54,6 +59,20 @@ export default function SplitsTable({
                 {partial ? ', putus-putus = sisa' : ''}.
             </p>
 
+            <div
+                className={cn(
+                    'grid text-label-micro text-ink-3',
+                    ROW_GRID,
+                    'px-3',
+                )}
+            >
+                <div>Km</div>
+                <div />
+                <div className="text-right">Pace</div>
+                <div className="hidden text-right lg:block">HR</div>
+                <div className="hidden text-right lg:block">Cadence</div>
+            </div>
+
             <div className="flex flex-col gap-1">
                 {keyedRows.map(({ row, key }, idx) => {
                     const sec = paceSecOf(row);
@@ -64,7 +83,8 @@ export default function SplitsTable({
                         <div
                             key={key}
                             className={cn(
-                                'grid grid-cols-[34px_1fr_56px] items-center gap-2.5 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3',
+                                'grid',
+                                ROW_GRID,
                                 // Every row gets the same rounded background box + -mx-3/px-3
                                 // bleed-and-realign so the fast row's alignment isn't special —
                                 // only the bar color should differ (see computeBarWidth caller).
@@ -90,8 +110,14 @@ export default function SplitsTable({
                             <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
                                 ♡ {row.avg_hr ?? '—'}
                             </div>
-                            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-2 lg:block">
-                                ↻ {row.avg_cadence_spm ?? '—'}
+                            <div className="hidden items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-2 lg:flex">
+                                <Icon
+                                    icon="mdi:run-fast"
+                                    width={12}
+                                    height={12}
+                                    aria-hidden
+                                />
+                                {row.avg_cadence_spm ?? '—'}
                             </div>
                         </div>
                     );
@@ -110,7 +136,13 @@ function SplitPartialRow({
     partial,
 }: Readonly<{ partial: StreamSummaryPartial }>) {
     return (
-        <div className="-mx-3 mt-1 grid grid-cols-[34px_1fr_56px] items-center gap-2.5 rounded-lg border-t border-cream-deep px-3 py-2 lg:grid-cols-[40px_1fr_70px_70px_70px] lg:gap-3 lg:py-2.5">
+        <div
+            className={cn(
+                'grid',
+                ROW_GRID,
+                '-mx-3 mt-1 rounded-lg border-t border-cream-deep px-3 py-2 lg:py-2.5',
+            )}
+        >
             <div className="font-mono text-[11px] uppercase tracking-[0.02em] text-ink-3">
                 {formatKm(partial.distance_m, 1)} KM
             </div>
@@ -121,8 +153,9 @@ function SplitPartialRow({
             <div className="hidden text-right font-sans text-xs tabular-nums text-ink-3 lg:block">
                 ♡ {partial.avg_hr ?? '—'}
             </div>
-            <div className="hidden text-right font-sans text-xs tabular-nums text-ink-3 lg:block">
-                ↻ {partial.avg_cadence_spm ?? '—'}
+            <div className="hidden items-center justify-end gap-1 font-sans text-xs tabular-nums text-ink-3 lg:flex">
+                <Icon icon="mdi:run-fast" width={12} height={12} aria-hidden />
+                {partial.avg_cadence_spm ?? '—'}
             </div>
         </div>
     );

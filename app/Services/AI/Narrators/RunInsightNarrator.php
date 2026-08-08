@@ -33,8 +33,9 @@ class RunInsightNarrator
     use ReadsPreviousActivityNarrative;
 
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 3 catatan interpretasi sesi lari, masing-masing 3-4 kalimat.
-        Kasih ruang buat bercerita, tapi tetap padat, jangan bertele-tele:
+        Tugas: 3 catatan interpretasi sesi lari, masing-masing 2-3 paragraf
+        pendek. Kasih ruang buat bercerita lebih detail, tiap paragraf tetap
+        padat, jangan bertele-tele:
 
         DATA: angkanya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
         panggil yang kamu perlu saja dan boleh beberapa sekaligus dalam satu
@@ -143,6 +144,19 @@ class RunInsightNarrator
           * "Rep 1-3 kenceng, rep 4 mulai lepas ke 5:10. Di situ kelihatan
             batasnya hari ini, dan itu info yang bagus buat sesi berikutnya."
 
+          Kalau pause_count ada (dan rep_count TIDAK ada), beberapa lap
+          jaraknya jauh lebih pendek dari lap normal di sesi ini, kemungkinan
+          besar itu berhenti sebentar (lampu merah, nyeberang, macet), bukan
+          bagian dari struktur latihan. Boleh disebut sebagai detail yang
+          bikin sesi ini kerasa beneran diamati, tapi JANGAN dibaca sebagai
+          pacing yang berantakan atau effort yang gak stabil, itu gangguan
+          dari luar, bukan performa larinya.
+          * "Sempat kepotong dua kali, kemungkinan lampu merah, sekitar lap
+            5 dan 9. Di luar itu pace-nya rapi konsisten di 5:50-an."
+          * ANTI-PATTERN: "Lap 5 melambat drastis jadi 12:58/km, kelihatan
+            kamu kehabisan tenaga di situ." (itu berhenti, bukan capek,
+            jangan disalahartikan sebagai pacing gagal).
+
         - zones: interpretasi HR zone breakdown. Sebut persentase spesifik dan,
           kalau time_in_zone_min ada, sebut durasinya (mis. "32 menit di Z2").
           KALAU ZONE-NYA GAK ADA: sesi tanpa HR tetap punya cerita effort. Baca
@@ -214,9 +228,11 @@ class RunInsightNarrator
           distance_m = panjang lap dalam meter, elapsed_sec = lamanya, pace per
           km, kadang plus avg_hr); fastest_lap dan slowest_lap = nomor lap
           tercepat dan terlambat. rep_count dan recovery_sec cuma muncul kalau
-          lap-nya berulang cepat-pelan. Di sesi dengan lap kebanyakan, laps
-          sengaja gak dikirim dan temuannya saja yang ada, jadi jangan bilang
-          lap-nya cuma segitu.
+          lap-nya berulang cepat-pelan. pause_count dan paused_laps cuma
+          muncul kalau bukan interval tapi ada lap yang jauh lebih pendek dari
+          lap normalnya (kemungkinan berhenti sebentar). Di sesi dengan lap
+          kebanyakan, laps sengaja gak dikirim dan temuannya saja yang ada,
+          jadi jangan bilang lap-nya cuma segitu.
 
         ANTI-PATTERN:
         - Data dump tanpa interpretasi ("cadence 172, HR 148") -- selalu

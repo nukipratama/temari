@@ -65,15 +65,33 @@ describe('LapsGraph', () => {
     });
 
     it('renders the HR and cadence cells of a lap that recorded them', () => {
-        render(<LapsGraph laps={laps} />);
+        const { container } = render(<LapsGraph laps={laps} />);
         expect(screen.getByText('♡ 155')).toBeInTheDocument();
-        expect(screen.getByText('↻ 173')).toBeInTheDocument();
+        expect(screen.getByText('173')).toBeInTheDocument();
+        expect(
+            container.querySelector('[data-icon="mdi:run-fast"]'),
+        ).not.toBeNull();
     });
 
     it('dashes the HR and cadence cells of a lap that recorded neither', () => {
         render(<LapsGraph laps={kmGridLaps} />);
         expect(screen.getAllByText('♡ —')).toHaveLength(2);
-        expect(screen.getAllByText('↻ —')).toHaveLength(2);
+        expect(screen.getAllByText('—')).toHaveLength(2);
+    });
+
+    it('renders each lap’s actual duration alongside its normalized pace', () => {
+        render(<LapsGraph laps={laps} />);
+        // Lap 3's duration (3:53) differs from its pace (6:00) — laps 1-2 don't.
+        expect(screen.getByText('3:53')).toBeInTheDocument();
+    });
+
+    it('labels the columns with a header row above the data', () => {
+        render(<LapsGraph laps={laps} />);
+        expect(screen.getByText('Jarak')).toBeInTheDocument();
+        expect(screen.getByText('Pace')).toBeInTheDocument();
+        expect(screen.getByText('Durasi')).toBeInTheDocument();
+        expect(screen.getByText('HR')).toBeInTheDocument();
+        expect(screen.getByText('Cadence')).toBeInTheDocument();
     });
 
     it('tints the fastest lap and zebra-stripes the rest', () => {

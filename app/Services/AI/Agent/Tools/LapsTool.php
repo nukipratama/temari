@@ -23,6 +23,11 @@ final class LapsTool extends ActivityTool
      */
     private const float REP_PACE_GAP_SEC = 45.0;
 
+    /** A lap under this fraction of the run's own median lap distance reads as a stop. */
+    private const float PAUSE_DISTANCE_RATIO = 0.25;
+
+    private const int MIN_PAUSE_LAPS = 2;
+
     public function name(): string
     {
         return 'get_laps';
@@ -33,9 +38,12 @@ final class LapsTool extends ActivityTool
         return 'Lap sesuai yang dipencet/direkam jam, satu baris per lap dan panjangnya belum tentu '
             .'1 km, plus lap tercepat dan terlambat. Kalau lap-nya berulang cepat-pelan, rep_count '
             .'(jumlah lap cepat) dan recovery_sec (lama tiap jeda di antaranya, detik) ikut muncul; '
-            .'kalau gak muncul berarti lap-nya gak berpola. Balikannya kosong kalau lap-nya cuma '
-            .'auto-split per km, karena sesi itu udah kebaca utuh dari get_km_splits. Di sesi dengan '
-            .'lap kebanyakan, baris lap-nya dilewat dan yang tersisa cuma temuannya.';
+            .'kalau gak muncul berarti lap-nya gak berpola. Kalau bukan interval tapi ada beberapa lap '
+            .'yang jauh lebih pendek dari lap normalnya, pause_count dan paused_laps (nomor lap-nya) '
+            .'ikut muncul, itu tandanya sempat berhenti (lampu merah, nyeberang), bukan capek. '
+            .'Balikannya kosong kalau lap-nya cuma auto-split per km, karena sesi itu udah kebaca utuh '
+            .'dari get_km_splits. Di sesi dengan lap kebanyakan, baris lap-nya dilewat dan yang tersisa '
+            .'cuma temuannya.';
     }
 
     /** @return array<string, mixed> */
@@ -51,6 +59,7 @@ final class LapsTool extends ActivityTool
         [$fastest, $slowest] = self::extremes($paces);
         $reps = self::reps($paces);
         $recoveries = self::recoveries($laps, $reps);
+        $pauses = $reps === [] ? self::pauses($laps) : [];
 
         return [
             'lap_count' => count($laps),
@@ -59,6 +68,11 @@ final class LapsTool extends ActivityTool
             'slowest_lap' => $slowest === null ? null : self::lapNumber($laps, $slowest),
             'rep_count' => $reps === [] ? null : count($reps),
             'recovery_sec' => $recoveries === [] ? null : $recoveries,
+            'pause_count' => $pauses === [] ? null : count($pauses),
+            'paused_laps' => $pauses === [] ? null : array_values(array_filter(array_map(
+                fn (int $position): ?int => self::lapNumber($laps, $position),
+                $pauses,
+            ))),
         ];
     }
 
@@ -77,6 +91,8 @@ final class LapsTool extends ActivityTool
             'slowest_lap' => null,
             'rep_count' => null,
             'recovery_sec' => null,
+            'pause_count' => null,
+            'paused_laps' => null,
         ];
     }
 
@@ -88,10 +104,19 @@ final class LapsTool extends ActivityTool
      */
     private static function isJustTheKilometres(array $laps): bool
     {
-        return KmSplitBuilder::isPlainKmGrid(array_map(
+        return KmSplitBuilder::isPlainKmGrid(self::distances($laps));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $laps
+     * @return list<float>
+     */
+    private static function distances(array $laps): array
+    {
+        return array_map(
             fn (array $lap): float => is_numeric($lap['distance_m'] ?? null) ? (float) $lap['distance_m'] : 0.0,
             $laps,
-        ));
+        );
     }
 
     /**
@@ -163,6 +188,39 @@ final class LapsTool extends ActivityTool
         }
 
         return $work;
+    }
+
+    /**
+     * Only called when reps() found nothing, so recovery laps in a real
+     * interval session are never relabelled as stops. Excludes the final lap:
+     * every run's last lap is short because the run ended mid-lap.
+     *
+     * @param  list<array<string, mixed>>  $laps
+     * @return list<int>
+     */
+    private static function pauses(array $laps): array
+    {
+        $n = count($laps);
+        if ($n < 3) {
+            return [];
+        }
+
+        $body = array_slice(self::distances($laps), 0, $n - 1);
+
+        $sorted = $body;
+        sort($sorted);
+        $median = $sorted[intdiv(count($sorted), 2)] ?? 0.0;
+        if ($median <= 0.0) {
+            return [];
+        }
+
+        $threshold = $median * self::PAUSE_DISTANCE_RATIO;
+        $flagged = array_keys(array_filter(
+            $body,
+            fn (float $distance): bool => $distance > 0.0 && $distance < $threshold,
+        ));
+
+        return count($flagged) >= self::MIN_PAUSE_LAPS ? $flagged : [];
     }
 
     /**
