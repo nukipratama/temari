@@ -116,6 +116,8 @@ class CompareRecalibrationCommand extends Command
             $profile['hr_zones'],
             is_array($detail->splits_metric) ? $detail->splits_metric : null,
             $profile['optimal_cadence_spm'],
+            $detail->distance,
+            $detail->laps(),
         ));
 
         $this->bump($tallies['pace']['stored'], PaceConsistency::label($stored->paceVariabilitySec()) ?? 'tidak ada');

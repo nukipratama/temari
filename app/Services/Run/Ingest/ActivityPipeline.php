@@ -396,6 +396,8 @@ class ActivityPipeline
             $hrZones,
             is_array($detail->splits_metric) ? $detail->splits_metric : null,
             $optimalCadence,
+            $detail->distance,
+            $detail->laps(),
         );
 
         $minutesInZone = StreamSummary::fromArray($summary)->zoneMinutes();

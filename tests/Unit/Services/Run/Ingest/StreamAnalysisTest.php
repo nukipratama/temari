@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Services\Run\Ingest\KmSplitBuilder;
 use App\Services\Run\Ingest\StreamAnalysis;
 
 beforeEach(function (): void {
-    $this->analysis = new StreamAnalysis();
+    $this->analysis = new StreamAnalysis(new KmSplitBuilder());
 });
 
 function defaultZones(): array
@@ -290,14 +291,14 @@ it('computes per-km splits + negative_split + hr drift + cadence drop from split
     // 53 minutes of moving time, so the sustained-effort metrics stay in play,
     // and a 9% second-half surge, comfortably over the negative-split margin.
     $splits = [
-        ['split' => 1, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 140, 'average_cadence' => 82],
-        ['split' => 2, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 142, 'average_cadence' => 82],
-        ['split' => 3, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 144, 'average_cadence' => 81],
-        ['split' => 4, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 146, 'average_cadence' => 81],
-        ['split' => 5, 'distance' => 1000, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 150, 'average_cadence' => 80],
-        ['split' => 6, 'distance' => 1000, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 152, 'average_cadence' => 80],
-        ['split' => 7, 'distance' => 1000, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 155, 'average_cadence' => 80],
-        ['split' => 8, 'distance' => 1000, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 158, 'average_cadence' => 80],
+        ['split' => 1, 'distance' => 1000, 'elapsed_time' => 420, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 140, 'average_cadence' => 82],
+        ['split' => 2, 'distance' => 1000, 'elapsed_time' => 420, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 142, 'average_cadence' => 82],
+        ['split' => 3, 'distance' => 1000, 'elapsed_time' => 420, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 144, 'average_cadence' => 81],
+        ['split' => 4, 'distance' => 1000, 'elapsed_time' => 420, 'moving_time' => 420, 'average_speed' => 2.38, 'average_heartrate' => 146, 'average_cadence' => 81],
+        ['split' => 5, 'distance' => 1000, 'elapsed_time' => 385, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 150, 'average_cadence' => 80],
+        ['split' => 6, 'distance' => 1000, 'elapsed_time' => 385, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 152, 'average_cadence' => 80],
+        ['split' => 7, 'distance' => 1000, 'elapsed_time' => 385, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 155, 'average_cadence' => 80],
+        ['split' => 8, 'distance' => 1000, 'elapsed_time' => 385, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 158, 'average_cadence' => 80],
     ];
 
     $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
@@ -361,15 +362,15 @@ it('requires a deliberate surge before calling a run a negative split', function
 
 it('emits the trailing sub-km segment as partial_split without touching per_km or aggregates', function (): void {
     $splits = [
-        ['split' => 1, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 140, 'average_cadence' => 82],
-        ['split' => 2, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 142, 'average_cadence' => 82],
-        ['split' => 3, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 145, 'average_cadence' => 81],
-        ['split' => 4, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 148, 'average_cadence' => 81],
-        ['split' => 5, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 150, 'average_cadence' => 80],
-        ['split' => 6, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 152, 'average_cadence' => 80],
-        ['split' => 7, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 154, 'average_cadence' => 80],
-        ['split' => 8, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 155, 'average_cadence' => 80],
-        ['split' => 9, 'distance' => 700, 'moving_time' => 252, 'average_speed' => 2.78, 'average_heartrate' => 158, 'average_cadence' => 80],
+        ['split' => 1, 'distance' => 1000, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 140, 'average_cadence' => 82],
+        ['split' => 2, 'distance' => 1000, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 142, 'average_cadence' => 82],
+        ['split' => 3, 'distance' => 1000, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 145, 'average_cadence' => 81],
+        ['split' => 4, 'distance' => 1000, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 148, 'average_cadence' => 81],
+        ['split' => 5, 'distance' => 1000, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 150, 'average_cadence' => 80],
+        ['split' => 6, 'distance' => 1000, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 152, 'average_cadence' => 80],
+        ['split' => 7, 'distance' => 1000, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 154, 'average_cadence' => 80],
+        ['split' => 8, 'distance' => 1000, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.78, 'average_heartrate' => 155, 'average_cadence' => 80],
+        ['split' => 9, 'distance' => 700, 'elapsed_time' => 252, 'moving_time' => 252, 'average_speed' => 2.78, 'average_heartrate' => 158, 'average_cadence' => 80],
     ];
 
     $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
@@ -388,9 +389,9 @@ it('emits the trailing sub-km segment as partial_split without touching per_km o
 
 it('drops a sub-100m trailing sliver rather than emitting a partial_split', function (): void {
     $splits = [
-        ['split' => 1, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78],
-        ['split' => 2, 'distance' => 1000, 'moving_time' => 360, 'average_speed' => 2.78],
-        ['split' => 3, 'distance' => 40, 'moving_time' => 14, 'average_speed' => 2.78],
+        ['split' => 1, 'distance' => 1000, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.78],
+        ['split' => 2, 'distance' => 1000, 'elapsed_time' => 360, 'moving_time' => 360, 'average_speed' => 2.78],
+        ['split' => 3, 'distance' => 40, 'elapsed_time' => 14, 'moving_time' => 14, 'average_speed' => 2.78],
     ];
 
     $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
@@ -712,4 +713,58 @@ it('judges sustained effort over the samples decoupling can actually analyse', f
     );
 
     expect($summary)->not->toHaveKey('decoupling_pct');
+});
+
+it('merges the laps-derived per_km rows in place of the splits_metric ones', function (): void {
+    // The watch says 7:00 and 7:10 (elapsed); Strava's moving_time says 6:00.
+    $laps = [
+        ['distance' => 1000.0, 'elapsed_time' => 420, 'average_heartrate' => 150],
+        ['distance' => 1000.0, 'elapsed_time' => 430, 'average_heartrate' => 155],
+        ['distance' => 400.0, 'elapsed_time' => 170],
+    ];
+    $splits = [
+        ['split' => 1, 'distance' => 1000, 'elapsed_time' => 420, 'moving_time' => 360, 'average_speed' => 2.78],
+        ['split' => 2, 'distance' => 1000, 'elapsed_time' => 430, 'moving_time' => 360, 'average_speed' => 2.78],
+        ['split' => 3, 'distance' => 400, 'elapsed_time' => 170, 'moving_time' => 144, 'average_speed' => 2.78],
+    ];
+
+    $summary = $this->analysis->compute([], defaultZones(), $splits, 170, 2400.0, $laps);
+
+    expect($summary['per_km'])->toBe([
+        ['km' => 1, 'pace' => '7:00', 'elapsed_sec' => 420, 'distance_m' => 1000, 'avg_hr' => 150],
+        ['km' => 2, 'pace' => '7:10', 'elapsed_sec' => 430, 'distance_m' => 1000, 'avg_hr' => 155],
+    ])
+        // partial_split keeps its own splits_metric basis, untouched by this slice.
+        ->and($summary['partial_split'])->toMatchArray(['distance_m' => 400]);
+});
+
+it('emits the raw lap rows alongside per_km', function (): void {
+    $laps = [
+        ['distance' => 1000.0, 'elapsed_time' => 420],
+        ['distance' => 647.0, 'elapsed_time' => 250],
+    ];
+
+    $summary = $this->analysis->compute([], defaultZones(), null, 170, 1647.0, $laps);
+
+    expect($summary['laps'])->toBe([
+        ['lap' => 1, 'distance_m' => 1000, 'elapsed_sec' => 420, 'pace' => '7:00'],
+        ['lap' => 2, 'distance_m' => 647, 'elapsed_sec' => 250, 'pace' => '6:26'],
+    ]);
+});
+
+it('omits the laps key when the activity has none', function (): void {
+    expect($this->analysis->compute([], defaultZones(), null, 170))->not->toHaveKey('laps');
+});
+
+it('still decorates lap-derived per_km rows with cadence from the stream', function (): void {
+    [$streams] = buildCadenceTestRun();
+    $laps = [
+        ['distance' => 1000.0, 'elapsed_time' => 360],
+        ['distance' => 1000.0, 'elapsed_time' => 360],
+        ['distance' => 1000.0, 'elapsed_time' => 360],
+    ];
+
+    $summary = $this->analysis->compute($streams, defaultZones(), null, 170, 3000.0, $laps);
+
+    expect(array_column($summary['per_km'], 'avg_cadence_spm'))->toBe([170, 176, 160]);
 });
