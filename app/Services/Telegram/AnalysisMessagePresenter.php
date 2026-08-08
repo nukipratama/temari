@@ -93,10 +93,10 @@ class AnalysisMessagePresenter
         if ($detail->distance !== null) {
             $parts[] = DistanceFormatter::kmString($detail->distance) . ' km';
         }
-        if ($detail->moving_time !== null) {
-            $parts[] = DurationFormatter::hms($detail->moving_time);
+        if ($detail->elapsed_time !== null) {
+            $parts[] = DurationFormatter::hms($detail->elapsed_time);
         }
-        $pace = PaceCalculator::secPerKm($detail->distance, $detail->moving_time);
+        $pace = PaceCalculator::secPerKm($detail->distance, $detail->elapsed_time);
         if ($pace !== null) {
             $parts[] = PaceFormatter::format($pace) . '/km';
         }

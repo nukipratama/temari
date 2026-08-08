@@ -50,11 +50,11 @@ it('builds the weekly-best series scaled to the target distance', function (): v
     ['user' => $user, 'featured' => $featured] = progressionFixture('10km', 2400);
 
     // Two runs in different ISO weeks, each within the +/-5% bucket of 10km.
-    foreach ([['2026-04-12', 9_900, 2_500], ['2026-05-04', 10_100, 2_450]] as [$date, $dist, $mt]) {
+    foreach ([['2026-04-12', 9_900, 2_500], ['2026-05-04', 10_100, 2_450]] as [$date, $dist, $et]) {
         $a = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($a)->create([
             'distance' => $dist,
-            'moving_time' => $mt,
+            'elapsed_time' => $et,
             'start_date_local' => Carbon::parse($date.' 07:00:00'),
         ]);
     }
@@ -81,7 +81,7 @@ it('snaps the series best to the authoritative PR time so the chart matches the 
     $a = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($a)->create([
         'distance' => 10_100,
-        'moving_time' => 2_450,
+        'elapsed_time' => 2_450,
         'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
@@ -100,7 +100,7 @@ it('does not stamp the PR time onto a more recent week when the PR predates the 
     $a = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($a)->create([
         'distance' => 5_000,
-        'moving_time' => 1_550, // scales to 1550 at the 5km target; distinct from the 1500 PR
+        'elapsed_time' => 1_550, // scales to 1550 at the 5km target; distinct from the 1500 PR
         'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
@@ -114,11 +114,11 @@ it('keeps only the best (lowest) scaled time per week', function (): void {
     ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1500);
 
     // Two runs in the SAME ISO week; the faster scaled time should win.
-    foreach ([1_600, 1_500] as $mt) {
+    foreach ([1_600, 1_500] as $et) {
         $a = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($a)->create([
             'distance' => 5_000,
-            'moving_time' => $mt,
+            'elapsed_time' => $et,
             'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
         ]);
     }
@@ -135,7 +135,7 @@ it('excludes runs outside the 26-week lookback window', function (): void {
     $a = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($a)->create([
         'distance' => 5_000,
-        'moving_time' => 1_500,
+        'elapsed_time' => 1_500,
         'start_date_local' => Carbon::parse('2025-10-01 07:00:00'), // > 26 weeks ago
     ]);
 
@@ -155,11 +155,11 @@ it('buildMany batches multiple distance bands from a single query without cross-
 
     $a5 = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($a5)->create([
-        'distance' => 5_000, 'moving_time' => 1_500, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+        'distance' => 5_000, 'elapsed_time' => 1_500, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
     $a10 = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($a10)->create([
-        'distance' => 10_000, 'moving_time' => 2_400, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+        'distance' => 10_000, 'elapsed_time' => 2_400, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
     $out = new ProgressionSeriesBuilder()->buildMany($user, [$pr5k, $pr10k], fn (): ?int => null);
@@ -180,10 +180,10 @@ it('buildMany preserves the given records order in the output keys', function ()
         'category' => '5km', 'value_sec' => 1_500, 'activity_id' => $act2->id, 'set_at' => '2020-01-01',
     ]);
 
-    foreach ([[10_000, 2_400], [5_000, 1_500]] as [$dist, $mt]) {
+    foreach ([[10_000, 2_400], [5_000, 1_500]] as [$dist, $et]) {
         $a = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($a)->create([
-            'distance' => $dist, 'moving_time' => $mt, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+            'distance' => $dist, 'elapsed_time' => $et, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
         ]);
     }
 
@@ -208,7 +208,7 @@ it('buildMany omits a band with no in-window runs while keeping others', functio
     // Only the 5km band gets an in-window run; 10km has none.
     $a = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($a)->create([
-        'distance' => 5_000, 'moving_time' => 1_500, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+        'distance' => 5_000, 'elapsed_time' => 1_500, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
     $out = new ProgressionSeriesBuilder()->buildMany($user, [$pr5k, $pr10k], fn (): ?int => null);
@@ -228,10 +228,10 @@ it('buildMany resolves each band\'s goal independently via the resolver callback
         'category' => '10km', 'value_sec' => 2_400, 'activity_id' => $act2->id, 'set_at' => '2020-01-01',
     ]);
 
-    foreach ([[5_000, 1_500], [10_000, 2_400]] as [$dist, $mt]) {
+    foreach ([[5_000, 1_500], [10_000, 2_400]] as [$dist, $et]) {
         $a = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($a)->create([
-            'distance' => $dist, 'moving_time' => $mt, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+            'distance' => $dist, 'elapsed_time' => $et, 'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
         ]);
     }
 
@@ -252,7 +252,7 @@ it('ignores another user\'s runs and un-analyzed activities', function (): void 
     $otherActivity = Activity::factory()->for($other)->analyzed()->create();
     ActivityDetail::factory()->for($otherActivity)->create([
         'distance' => 5_000,
-        'moving_time' => 1_400,
+        'elapsed_time' => 1_400,
         'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
@@ -260,7 +260,7 @@ it('ignores another user\'s runs and un-analyzed activities', function (): void 
     $pending = Activity::factory()->for($user)->create(['analyzed_at' => null]);
     ActivityDetail::factory()->for($pending)->create([
         'distance' => 5_000,
-        'moving_time' => 1_450,
+        'elapsed_time' => 1_450,
         'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 

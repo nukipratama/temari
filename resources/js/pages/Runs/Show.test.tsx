@@ -41,7 +41,7 @@ const detail: ActivityDetail = {
     start_date_local: '2026-05-10T07:00:00',
     distance: 10000,
     total_elevation_gain: 120,
-    moving_time: 3600,
+    elapsed_time: 3600,
     average_heartrate: 150,
     trimp_edwards: 70,
     stream_summary: {
@@ -212,9 +212,9 @@ describe('Runs/Show', () => {
         expect(screen.getByText('GAP')).toBeInTheDocument();
     });
 
-    it('renders the DURASI hero tile with the HMS-formatted moving_time', () => {
+    it('renders the DURASI hero tile with the HMS-formatted elapsed_time', () => {
         renderShow();
-        // moving_time 3600s → 1:00:00 in the digital H:MM:SS form (hero tile + the
+        // elapsed_time 3600s → 1:00:00 in the digital H:MM:SS form (hero tile + the
         // kartu section below it both show it).
         expect(screen.getByText('DURASI')).toBeInTheDocument();
         expect(screen.getAllByText('1:00:00').length).toBeGreaterThan(0);
@@ -373,8 +373,8 @@ describe('Runs/Show', () => {
         expect(screen.getAllByText(/Lari/).length).toBeGreaterThan(0);
     });
 
-    it('handles null distance/moving_time gracefully (dash in hero stats)', () => {
-        const noDist = { ...detail, distance: null, moving_time: null };
+    it('handles null distance/elapsed_time gracefully (dash in hero stats)', () => {
+        const noDist = { ...detail, distance: null, elapsed_time: null };
         renderShow({
             activity: {
                 id: 99,

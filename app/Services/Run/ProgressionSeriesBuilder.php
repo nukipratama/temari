@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
  * Builds the weekly-best progression chart for the featured PR on /rekor.
  *
  * For the featured PR's distance bucket (target distance +/- 5%), it finds the
- * best moving_time per ISO week over the last 26 weeks, scaling each run's time
+ * best elapsed_time per ISO week over the last 26 weeks, scaling each run's time
  * to the exact target distance so a 9.7km run and a 10.2km run compare
  * apples-to-apples. The goal line is the milestone target seconds supplied by
  * the caller.
@@ -74,10 +74,10 @@ class ProgressionSeriesBuilder
                     $q->orWhereBetween('distance', [$band['min'], $band['max']]);
                 }
             })
-            ->whereNotNull('moving_time')
-            ->where('moving_time', '>', 0)
+            ->whereNotNull('elapsed_time')
+            ->where('elapsed_time', '>', 0)
             ->where('start_date_local', '>=', $since)
-            ->select(['start_date_local', 'moving_time', 'distance'])
+            ->select(['start_date_local', 'elapsed_time', 'distance'])
             ->orderBy('start_date_local')
             ->get();
 
@@ -105,7 +105,7 @@ class ProgressionSeriesBuilder
     /**
      * Overwrite the PR's own week with its stored time, so the chart's labeled
      * best point matches the /rekor hero and trophy wall exactly instead of
-     * drifting a second or two (the weekly series scales whole-run moving_time
+     * drifting a second or two (the weekly series scales whole-run elapsed_time
      * while the PR is split-interpolated to the exact target distance).
      *
      * Only the PR's own ISO week is snapped: if the PR was set before the
@@ -140,9 +140,9 @@ class ProgressionSeriesBuilder
                 continue;
             }
             $weekKey = Carbon::parse($row->start_date_local)->startOfWeek(Carbon::MONDAY)->toDateString();
-            // Scale the moving_time to the exact target distance so weeks with
+            // Scale the elapsed_time to the exact target distance so weeks with
             // a 9.7km run and a 10.2km run compare apples-to-apples.
-            $scaled = (int) round((int) $row->moving_time * ($target / (float) $row->distance));
+            $scaled = (int) round((int) $row->elapsed_time * ($target / (float) $row->distance));
             if (! isset($bestByWeek[$weekKey]) || $scaled < $bestByWeek[$weekKey]) {
                 $bestByWeek[$weekKey] = $scaled;
             }

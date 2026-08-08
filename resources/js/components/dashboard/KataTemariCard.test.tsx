@@ -51,7 +51,7 @@ const runWithWeather: ActivityDetail = {
     name: 'Pagi',
     start_date_local: '2026-05-20T07:00',
     distance: 5000,
-    moving_time: 1800,
+    elapsed_time: 1800,
     average_heartrate: 145,
     trimp_edwards: 60,
     weather_temp_c: 28,

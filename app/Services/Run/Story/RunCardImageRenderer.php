@@ -10,6 +10,7 @@ use App\Services\Geo\PolylineProjector;
 use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\DurationFormatter;
+use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PaceFormatter;
 use Imagick;
 use ImagickPixel;
@@ -132,8 +133,8 @@ SVG;
         if ($detail->average_heartrate !== null) {
             $cells[] = ['HR', round($detail->average_heartrate).' bpm'];
         }
-        if ($detail->moving_time !== null) {
-            $cells[] = ['DURASI', DurationFormatter::hms((int) $detail->moving_time)];
+        if ($detail->elapsed_time !== null) {
+            $cells[] = ['DURASI', DurationFormatter::hms((int) $detail->elapsed_time)];
         }
 
         [$cream, $inkOnSky] = [self::CREAM, self::INK_ON_SKY];
@@ -185,7 +186,7 @@ SVG;
 
     private function paceLabel(ActivityDetail $detail): ?string
     {
-        $secPerKm = $detail->paceSecPerKm();
+        $secPerKm = PaceCalculator::secPerKm($detail->distance, $detail->elapsed_time);
 
         return $secPerKm === null ? null : PaceFormatter::format($secPerKm).'/km';
     }

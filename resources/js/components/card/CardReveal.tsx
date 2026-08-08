@@ -136,8 +136,8 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
 
     const km = formatKm(pending.distance_m);
     const durasi =
-        pending.moving_time_sec != null
-            ? formatDuration(pending.moving_time_sec)
+        pending.elapsed_time_sec != null
+            ? formatDuration(pending.elapsed_time_sec)
             : '—';
     const trimp =
         pending.trimp_edwards != null
@@ -153,7 +153,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
     const subtitleText = opened ? 'Udah masuk koleksimu.' : undefined;
 
     const sharePaceSec = paceSecPerKm(
-        pending.moving_time_sec,
+        pending.elapsed_time_sec,
         pending.distance_m,
     );
     const shareBadges = (pending.badges ?? []).slice(0, 2);
@@ -166,7 +166,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
         name: pending.detail_name,
         start_date_local: null,
         distance: pending.distance_m,
-        moving_time: pending.moving_time_sec,
+        elapsed_time: pending.elapsed_time_sec,
         average_heartrate: pending.average_heartrate ?? null,
         trimp_edwards: pending.trimp_edwards,
         stream_summary: pending.stream_summary ?? null,
@@ -459,7 +459,7 @@ function buildSubtitle(pending: PendingReveal): string | null {
     if (pending.detail_name === null) return null;
     // Don't double-append pace if detail_name already contains pace-like info.
     if (/\d+:\d+.*km/i.test(pending.detail_name)) return pending.detail_name;
-    const paceSec = paceSecPerKm(pending.moving_time_sec, pending.distance_m);
+    const paceSec = paceSecPerKm(pending.elapsed_time_sec, pending.distance_m);
     if (paceSec === null) return pending.detail_name;
     return `${pending.detail_name} · ${formatPace(paceSec)}/km`;
 }

@@ -18,7 +18,7 @@ const pendingCard: PendingReveal = {
     badges: null,
     detail_name: 'Easy run',
     distance_m: 5000,
-    moving_time_sec: 1800,
+    elapsed_time_sec: 1800,
     trimp_edwards: 42,
     public_share_url: '/aktivitas/1',
     edition: { index: 1, total: 1 },

@@ -77,6 +77,33 @@ it('renders a longer PNG when the footer line gains a weather + wind reading', f
         ->and(strlen($png))->toBeGreaterThan(1000);
 });
 
+// Asserted on the SVG rather than the rendered PNG: cell text is what's under
+// test, and PNG byte length does not reliably track it across rasterisers.
+it('draws the pace + durasi cells from elapsed_time, not moving_time', function (): void {
+    $svgFor = function (array $timeAttrs): string {
+        $card = makeRunCard([
+            'distance' => 5_000,
+            'summary_polyline' => null,
+            'average_heartrate' => null,
+            ...$timeAttrs,
+        ], ['rarity' => 'common', 'special_move' => 'Langkah Mantap']);
+
+        return (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
+            ->invoke(app(RunCardImageRenderer::class), $card);
+    };
+
+    // 5 km in 30:00 is 6:00/km; both cells must come from elapsed_time.
+    expect($svgFor(['moving_time' => null, 'elapsed_time' => 1_800]))
+        ->toContain('DURASI')
+        ->toContain('30:00')
+        ->toContain('6:00/km');
+
+    // Only moving_time present: nothing to draw either cell from.
+    expect($svgFor(['moving_time' => 1_800, 'elapsed_time' => null]))
+        ->not->toContain('DURASI')
+        ->not->toContain('PACE');
+});
+
 it('omits the weather footer segment gracefully when temp is absent', function (): void {
     $card = makeRunCard([
         'distance' => 5_280,

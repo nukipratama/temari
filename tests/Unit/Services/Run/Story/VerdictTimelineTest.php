@@ -219,14 +219,14 @@ it('converts meters to kilometers in the item DTO', function (): void {
     expect($items[0]->distanceKm)->toBe(7.3);
 });
 
-it('classifies session intensity from TRIMP density', function (float $trimp, int $movingTime, ?string $intensity): void {
+it('classifies session intensity from TRIMP density', function (float $trimp, int $elapsedTime, ?string $intensity): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::today(),
         'distance' => 6000.0,
         'trimp_edwards' => $trimp,
-        'moving_time' => $movingTime,
+        'elapsed_time' => $elapsedTime,
     ]);
     StoryLine::query()->create([
         'user_id' => $user->id,
@@ -255,14 +255,14 @@ it('classifies session intensity from TRIMP density', function (float $trimp, in
     'just over 2.8 is hard' => [84.6, 1800, 'hard'],         // 2.82 -> > 2.8
 ]);
 
-it('returns a null intensity when TRIMP or moving time is missing', function (): void {
+it('returns a null intensity when TRIMP or elapsed time is missing', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::today(),
         'distance' => 6000.0,
         'trimp_edwards' => null,
-        'moving_time' => 1800,
+        'elapsed_time' => 1800,
     ]);
     StoryLine::query()->create([
         'user_id' => $user->id,

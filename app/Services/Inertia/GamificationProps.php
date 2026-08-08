@@ -99,7 +99,7 @@ final readonly class GamificationProps
     }
 
     /**
-     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, mood: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, moving_time_sec: int|null, trimp_edwards: float|null, average_heartrate: float|null, stream_summary: array<string, mixed>|null, summary_polyline: string|null, public_share_url: string, edition: array{index: int, total: int}}|null
+     * @return array{card_id: int, activity_id: int, rarity: string, special_move: string, mood: string, badges: array<int, string>|null, detail_name: string|null, distance_m: float|null, elapsed_time_sec: int|null, trimp_edwards: float|null, average_heartrate: float|null, stream_summary: array<string, mixed>|null, summary_polyline: string|null, public_share_url: string, edition: array{index: int, total: int}}|null
      */
     private function pendingRevealFor(?User $user): ?array
     {
@@ -110,7 +110,7 @@ final readonly class GamificationProps
         $card = RunCard::query()
             ->whereKey($user->pending_reveal_card_id)
             ->with([
-                'activity.detail:id,activity_id,name,distance,moving_time,trimp_edwards,average_heartrate,summary_polyline,stream_summary,weather_temp_c',
+                'activity.detail:id,activity_id,name,distance,elapsed_time,trimp_edwards,average_heartrate,summary_polyline,stream_summary,weather_temp_c',
                 'activity.postRunStoryLine',
                 'activity:id,user_id',
             ])
@@ -134,7 +134,7 @@ final readonly class GamificationProps
             'badges' => $badges,
             'detail_name' => $detail?->name,
             'distance_m' => $detail?->distance,
-            'moving_time_sec' => $detail?->moving_time,
+            'elapsed_time_sec' => $detail?->elapsed_time,
             'trimp_edwards' => $detail?->trimp_edwards,
             'average_heartrate' => $detail?->average_heartrate,
             'stream_summary' => $detail?->stream_summary,

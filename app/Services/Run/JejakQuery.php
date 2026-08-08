@@ -77,7 +77,7 @@ class JejakQuery
                     }
                 }
             })
-            ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards', 'workout_type'])]);
+            ->with(['detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'elapsed_time', 'average_heartrate', 'trimp_edwards', 'workout_type'])]);
 
         // Mood lives on the post-run StoryLine, which is also what the list
         // renders, so filtering there keeps the filter and the displayed mood in
@@ -179,7 +179,7 @@ class JejakQuery
         // no pace to rank, so they drop out rather than sorting as infinitely
         // fast (and the division stays safe).
         $query->where('sort_detail.distance', '>', 0)
-            ->where('sort_detail.moving_time', '>', 0)
-            ->orderByRaw('sort_detail.moving_time / sort_detail.distance asc');
+            ->where('sort_detail.elapsed_time', '>', 0)
+            ->orderByRaw('sort_detail.elapsed_time / sort_detail.distance asc');
     }
 }

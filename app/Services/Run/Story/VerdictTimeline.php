@@ -65,7 +65,7 @@ class VerdictTimeline implements VerdictNarrator
                 'start_date_local',
                 'distance',
                 'trimp_edwards',
-                'moving_time',
+                'elapsed_time',
             )])
             ->orderByDesc('activity_details.start_date_local')
             ->limit($limit)
@@ -96,7 +96,7 @@ class VerdictTimeline implements VerdictNarrator
                 oneline: (string) $speechByActivity->get($line->activity_id),
                 startedAt: $detail->start_date_local,
                 distanceKm: DistanceFormatter::km((float) ($detail->distance ?? 0)),
-                intensity: $this->intensity($detail->trimp_edwards, $detail->moving_time),
+                intensity: $this->intensity($detail->trimp_edwards, $detail->elapsed_time),
             );
         }
 

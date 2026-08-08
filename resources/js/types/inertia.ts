@@ -28,7 +28,7 @@ export interface PendingReveal {
     badges: string[] | null;
     detail_name: string | null;
     distance_m: number | null;
-    moving_time_sec: number | null;
+    elapsed_time_sec: number | null;
     trimp_edwards: number | null;
     average_heartrate?: number | null;
     stream_summary?: StreamSummary | null;
@@ -220,7 +220,7 @@ export interface ActivityDetail {
     name: string | null;
     start_date_local: string | null;
     distance: number | null;
-    moving_time: number | null;
+    elapsed_time: number | null;
     total_elevation_gain?: number | null;
     average_heartrate: number | null;
     max_heartrate?: number | null;

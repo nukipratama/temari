@@ -297,12 +297,12 @@ it('ranks by pace when sorting fastest', function (): void {
     // 5K in 25min (5:00/km) vs 5K in 30min (6:00/km).
     $quick = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($quick)->create([
-        'name' => 'Quick', 'distance' => 5_000, 'moving_time' => 1_500,
+        'name' => 'Quick', 'distance' => 5_000, 'elapsed_time' => 1_500,
         'start_date_local' => Carbon::now()->subDays(3),
     ]);
     $slow = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($slow)->create([
-        'name' => 'Slow', 'distance' => 5_000, 'moving_time' => 1_800,
+        'name' => 'Slow', 'distance' => 5_000, 'elapsed_time' => 1_800,
         'start_date_local' => Carbon::now()->subDays(2),
     ]);
 
@@ -319,12 +319,12 @@ it('drops pace-less runs from the fastest ranking', function (): void {
     $user = User::factory()->create();
     $paced = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($paced)->create([
-        'name' => 'Paced', 'distance' => 5_000, 'moving_time' => 1_500,
+        'name' => 'Paced', 'distance' => 5_000, 'elapsed_time' => 1_500,
         'start_date_local' => Carbon::now()->subDays(3),
     ]);
     $noDistance = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($noDistance)->create([
-        'name' => 'No distance', 'distance' => 0, 'moving_time' => 1_500,
+        'name' => 'No distance', 'distance' => 0, 'elapsed_time' => 1_500,
         'start_date_local' => Carbon::now()->subDays(2),
     ]);
 

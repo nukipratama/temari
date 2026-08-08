@@ -16,7 +16,7 @@ function runWith(overrides: Partial<ActivityDetail>): ActivityDetail {
         name: 'Lari',
         start_date_local: '2026-05-20T07:00',
         distance: 5000,
-        moving_time: 1800,
+        elapsed_time: 1800,
         trimp_edwards: 60,
         average_heartrate: 145,
         ...overrides,
@@ -49,7 +49,7 @@ describe('poseForRun', () => {
         const run = runWith({
             trimp_edwards: 200,
             distance: 12_000,
-            moving_time: 3_600,
+            elapsed_time: 3_600,
             average_heartrate: 170,
         });
         expect(poseForRun(run)).toBe('wobble');
@@ -59,7 +59,7 @@ describe('poseForRun', () => {
         const run = runWith({
             trimp_edwards: 200,
             distance: 12_000,
-            moving_time: 3_600,
+            elapsed_time: 3_600,
             average_heartrate: 170,
         });
         expect(poseForRun(run, 'nyala')).toBe('proud');

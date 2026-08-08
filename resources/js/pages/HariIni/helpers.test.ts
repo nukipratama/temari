@@ -28,7 +28,7 @@ function runWith(
         name: 'Lari',
         start_date_local: '2026-05-20T07:00',
         distance: 5000,
-        moving_time: 1800,
+        elapsed_time: 1800,
         trimp_edwards: 60,
         average_heartrate: 145,
         ...overrides,

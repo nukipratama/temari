@@ -11,7 +11,7 @@ function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
         name: null,
         start_date_local: null,
         distance: null,
-        moving_time: null,
+        elapsed_time: null,
         average_heartrate: null,
         trimp_edwards: null,
         ...overrides,

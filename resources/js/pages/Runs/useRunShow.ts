@@ -77,7 +77,7 @@ export function useRunShow({
     const pose: TemariPose = MOOD_TO_POSE[mood];
 
     const km = formatKm(detail.distance);
-    const paceSec = paceSecPerKm(detail.moving_time, detail.distance);
+    const paceSec = paceSecPerKm(detail.elapsed_time, detail.distance);
     const pace = paceSec != null ? formatPace(paceSec) : '—';
     const hr =
         detail.average_heartrate != null

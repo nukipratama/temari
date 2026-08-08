@@ -12,7 +12,7 @@ function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
         name: 'Morning Run',
         start_date_local: '2026-05-10T07:00:00',
         distance: 10000,
-        moving_time: 3600,
+        elapsed_time: 3600,
         average_heartrate: 150,
         trimp_edwards: 70,
         ...overrides,
@@ -26,8 +26,8 @@ describe('RunListRow', () => {
         expect(screen.getByText('10.00')).toBeInTheDocument();
     });
 
-    it('renders the formatted moving_time as the durasi cell', () => {
-        render(<RunListRow detail={detail({ moving_time: 2054 })} />);
+    it('renders the formatted elapsed_time as the durasi cell', () => {
+        render(<RunListRow detail={detail({ elapsed_time: 2054 })} />);
         expect(screen.getByText('34:14')).toBeInTheDocument();
         expect(screen.getByText('durasi')).toBeInTheDocument();
     });
@@ -49,7 +49,7 @@ describe('RunListRow', () => {
             <RunListRow
                 detail={detail({
                     distance: null,
-                    moving_time: null,
+                    elapsed_time: null,
                     average_heartrate: null,
                     trimp_edwards: null,
                 })}
