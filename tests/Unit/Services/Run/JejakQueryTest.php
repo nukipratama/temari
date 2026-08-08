@@ -33,14 +33,14 @@ function jejakRunNames(User $user, string $query = ''): array
         ->all();
 }
 
-function jejakRun(User $user, string $name, Carbon $date, ?float $distance = null, ?int $movingTime = null): Activity
+function jejakRun(User $user, string $name, Carbon $date, ?float $distance = null, ?int $elapsedTime = null): Activity
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'name' => $name,
         'start_date_local' => $date,
         ...($distance === null ? [] : ['distance' => $distance]),
-        ...($movingTime === null ? [] : ['moving_time' => $movingTime]),
+        ...($elapsedTime === null ? [] : ['elapsed_time' => $elapsedTime]),
     ]);
 
     return $activity;

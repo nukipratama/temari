@@ -39,7 +39,7 @@ function RunListRow({
     note = null,
 }: Readonly<RunListRowProps>) {
     const km = formatKm(detail.distance);
-    const paceSec = paceSecPerKm(detail.moving_time, detail.distance);
+    const paceSec = paceSecPerKm(detail.elapsed_time, detail.distance);
     const paceLabel = paceSec != null ? formatPace(paceSec) : '—';
     const hr =
         detail.average_heartrate != null
@@ -86,7 +86,7 @@ function RunListRow({
                     <div className="flex items-center gap-5 tabular-nums">
                         <Cell value={km} unit="km" emphasize />
                         <Cell
-                            value={formatDurationHMS(detail.moving_time)}
+                            value={formatDurationHMS(detail.elapsed_time)}
                             unit="durasi"
                             hideOnNarrow="sm"
                         />

@@ -17,7 +17,7 @@ export function run(
             name,
             start_date_local: isoDate,
             distance: 5000,
-            moving_time: 1800,
+            elapsed_time: 1800,
             trimp_edwards: 50,
             average_heartrate: 145,
         } as ActivityDetail,

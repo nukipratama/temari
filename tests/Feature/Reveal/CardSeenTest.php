@@ -127,7 +127,7 @@ it('shares pendingReveal payload (incl. km/duration/trimp) when a card is flagge
     ActivityDetail::factory()->for($activity)->create([
         'name' => '10K race-pace',
         'distance' => 10240.5,
-        'moving_time' => 3480,
+        'elapsed_time' => 3480,
         'trimp_edwards' => 161.4,
         'stream_summary' => [
             'time_in_zone_pct' => ['Z2' => 80, 'Z3' => 20],
@@ -150,7 +150,7 @@ it('shares pendingReveal payload (incl. km/duration/trimp) when a card is flagge
             ->where('pendingReveal.special_move', 'Pembalik Keadaan')
             ->where('pendingReveal.detail_name', '10K race-pace')
             ->where('pendingReveal.distance_m', 10240.5)
-            ->where('pendingReveal.moving_time_sec', 3480)
+            ->where('pendingReveal.elapsed_time_sec', 3480)
             ->where('pendingReveal.trimp_edwards', 161.4)
             // No post-run story line yet: mood is computed, not the sleepy default.
             ->where('pendingReveal.mood', 'enteng'));

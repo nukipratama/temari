@@ -41,7 +41,7 @@ function cardWithRel(
         name: 'Lari pagi',
         start_date_local: '2026-05-10T06:30',
         distance: 5000,
-        moving_time: 1800,
+        elapsed_time: 1800,
         trimp_edwards: 50,
         average_heartrate: 150,
         activity: {
@@ -180,7 +180,7 @@ describe('Koleksi/Kartu', () => {
                 name: 'Sub-30',
                 start_date_local: '2026-05-10T06:00',
                 distance: 5000,
-                moving_time: 1751,
+                elapsed_time: 1751,
                 trimp_edwards: 85,
                 average_heartrate: 150,
             } as ActivityDetail,

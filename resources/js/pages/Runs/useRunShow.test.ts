@@ -12,7 +12,7 @@ const detail: ActivityDetail = {
     start_date_local: '2026-05-10T07:00:00',
     distance: 10000,
     total_elevation_gain: 120,
-    moving_time: 3600,
+    elapsed_time: 3600,
     average_heartrate: 150,
     trimp_edwards: 70,
     stream_summary: {

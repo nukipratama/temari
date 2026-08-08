@@ -48,7 +48,7 @@ class DashboardController extends Controller
             /** @var Collection<int, ActivityDetail> */
             return $loadedRecentRuns ??= ActivityDetail::query()
                 ->select([
-                    'id', 'activity_id', 'name', 'start_date_local', 'distance', 'moving_time',
+                    'id', 'activity_id', 'name', 'start_date_local', 'distance', 'elapsed_time',
                     'average_heartrate', 'trimp_edwards', 'workout_type',
                     'location_name', 'weather_temp_c', 'weather_humidity_pct', 'weather_rain_detected',
                     // Needed so the featured + strip cards draw the route hero and the

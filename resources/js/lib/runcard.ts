@@ -253,7 +253,7 @@ export interface CardStatStrings {
 export function buildCardStats(
     detail?: ActivityDetail | null,
 ): CardStatStrings {
-    const paceSec = paceSecPerKm(detail?.moving_time, detail?.distance);
+    const paceSec = paceSecPerKm(detail?.elapsed_time, detail?.distance);
     const cadence = avgCadenceFromDetail(detail);
     const fastestKm = fastestKmFromDetail(detail);
     return {
@@ -303,11 +303,11 @@ export function kartuPropsFromDetail(
     { durationFormat = 'hms' }: KartuPropsOptions = {},
 ): KartuPropsFromDetail {
     const durasi =
-        detail?.moving_time == null
+        detail?.elapsed_time == null
             ? '—'
             : durationFormat === 'hms'
-              ? formatDurationHMS(detail.moving_time)
-              : formatDuration(detail.moving_time);
+              ? formatDurationHMS(detail.elapsed_time)
+              : formatDuration(detail.elapsed_time);
     return {
         km: formatKm(detail?.distance),
         durasi,

@@ -22,7 +22,7 @@ function detailWith(summary: ActivityDetail['stream_summary']): ActivityDetail {
         name: null,
         start_date_local: null,
         distance: null,
-        moving_time: null,
+        elapsed_time: null,
         average_heartrate: null,
         trimp_edwards: null,
         stream_summary: summary,
@@ -163,7 +163,7 @@ describe('kartuPropsFromDetail', () => {
         name: 'Pagi santai',
         start_date_local: '2026-05-11T06:30:00Z',
         distance: 5000,
-        moving_time: 1810,
+        elapsed_time: 1810,
         average_heartrate: 152.4,
         trimp_edwards: 42.6,
         stream_summary: {

@@ -600,7 +600,7 @@ it('names the distance the runner has improved most, from one series build', fun
             ActivityDetail::factory()->for($activity)->create([
                 'start_date_local' => Carbon::today()->subDays(60 - $index * 10),
                 'distance' => $distance,
-                'moving_time' => $seconds,
+                'elapsed_time' => $seconds,
             ]);
         }
     }

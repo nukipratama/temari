@@ -39,7 +39,7 @@ export default function LastLariCard({
     note?: LastRunNote | null;
 }>) {
     const km = formatKm(run.distance);
-    const paceSec = paceSecPerKm(run.moving_time, run.distance);
+    const paceSec = paceSecPerKm(run.elapsed_time, run.distance);
     const trimp =
         run.trimp_edwards != null ? Math.round(run.trimp_edwards) : null;
     const dateLabel = formatNaiveRelativeId(run.start_date_local);

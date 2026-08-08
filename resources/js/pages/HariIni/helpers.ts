@@ -60,7 +60,8 @@ function toFeaturedCard(
         name: card.special_move,
         subtitle: `${RARITY_LABELS[card.rarity]} · ${formatNaiveRelativeId(r.start_date_local)}`,
         km: formatKm(r.distance),
-        durasi: r.moving_time != null ? formatDurationHMS(r.moving_time) : '—',
+        durasi:
+            r.elapsed_time != null ? formatDurationHMS(r.elapsed_time) : '—',
         trimp:
             r.trimp_edwards != null ? String(Math.round(r.trimp_edwards)) : '—',
         rarity: card.rarity,
