@@ -61,7 +61,10 @@ export default function SplitsTable({
                 {partial ? ', putus-putus = sisa' : ''}.
             </p>
 
-            <div className="flex flex-col gap-1 overflow-x-auto">
+            {/* The -mx-3/px-3 bleed lives on this wrapper, not per row: nested inside
+                a row it would bleed left of the scrollable viewport's origin and get
+                clipped there, cutting off the highlight's rounded corner. */}
+            <div className="-mx-3 flex flex-col gap-1 overflow-x-auto px-3">
                 {keyedRows.map(({ row, key }, idx) => {
                     const sec = paceSecOf(row);
                     const isFast = sec != null && sec === fastest;
@@ -73,10 +76,9 @@ export default function SplitsTable({
                             className={cn(
                                 'grid',
                                 ROW_GRID,
-                                // Every row gets the same rounded background box + -mx-3/px-3
-                                // bleed-and-realign so the fast row's alignment isn't special —
-                                // only the bar color should differ (see computeBarWidth caller).
-                                '-mx-3 rounded-lg px-3 py-2 lg:py-2.5',
+                                // Every row gets the same rounded background box — only the
+                                // bar color should differ (see computeBarWidth caller).
+                                'rounded-lg px-3 py-2 lg:py-2.5',
                                 rowFill,
                             )}
                         >
@@ -128,7 +130,7 @@ function SplitPartialRow({
             className={cn(
                 'grid',
                 ROW_GRID,
-                '-mx-3 mt-1 rounded-lg border-t border-cream-deep px-3 py-2 lg:py-2.5',
+                'mt-1 rounded-lg border-t border-cream-deep px-3 py-2 lg:py-2.5',
             )}
         >
             <div className="font-mono text-[11px] uppercase tracking-[0.02em] text-ink-3">
