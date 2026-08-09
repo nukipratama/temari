@@ -24,8 +24,8 @@ final class NotifiableAnalysisTypes
      * @var array<string, array{emoji: string, title: string, cta: string}>
      */
     public const array TYPES = [
-        AnalysisType::PostRunSpeech->value => ['emoji' => '🏃', 'title' => 'Lari kamu udah masuk! 🏁', 'cta' => 'Lihat detail lari'],
-        AnalysisType::WeeklyRecap->value => ['emoji' => '📊', 'title' => 'Rekap minggu lalu udah siap', 'cta' => 'Lihat riwayat'],
-        AnalysisType::MonthlyRecap->value => ['emoji' => '🗓️', 'title' => 'Rekap bulanan udah siap', 'cta' => 'Lihat kalender'],
+        AnalysisType::PostRunSpeech->value => ['emoji' => '🏃', 'title' => 'Your run is in! 🏁', 'cta' => 'View run details'],
+        AnalysisType::WeeklyRecap->value => ['emoji' => '📊', 'title' => 'Your weekly recap is ready', 'cta' => 'View history'],
+        AnalysisType::MonthlyRecap->value => ['emoji' => '🗓️', 'title' => 'Your monthly recap is ready', 'cta' => 'View calendar'],
     ];
 }

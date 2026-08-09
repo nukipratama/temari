@@ -75,11 +75,11 @@ class AksesoriController extends Controller
             ->first();
 
         if ($unlock === null) {
-            return back()->withErrors(['unlock_key' => 'Aksesori belum kebuka.']);
+            return back()->withErrors(['unlock_key' => 'This item isn\'t unlocked yet.']);
         }
 
         if ($slot === null) {
-            return back()->withErrors(['unlock_key' => 'Aksesori ini gak punya slot.']);
+            return back()->withErrors(['unlock_key' => 'This item has no slot.']);
         }
 
         /** @var array<string, mixed> $catalog */

@@ -1,6 +1,6 @@
 @extends('errors.layout')
 
 @section('code', '503')
-@section('title', 'Lagi ada perbaikan')
-@section('message', 'Temari lagi rapi-rapi sebentar. Balik lagi bentar lagi ya, gak lama kok.')
-@section('cta', 'Coba lagi')
+@section('title', 'Under maintenance')
+@section('message', 'Temari\'s tidying up for a bit. Check back shortly, it won\'t take long.')
+@section('cta', 'Try again')

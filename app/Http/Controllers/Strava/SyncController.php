@@ -25,11 +25,11 @@ class SyncController extends Controller
         $user = $request->user();
 
         if (! $config->boolean(AppConfigKey::StravaEnabled)) {
-            return back()->with('info', 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.');
+            return back()->with('info', 'Pulling from Strava is paused for now. It\'ll pick back up automatically.');
         }
 
         SyncActivitiesJob::dispatch($user->id);
 
-        return back()->with('success', 'Lagi narik lari terbaru dari Strava ya, sebentar.');
+        return back()->with('success', 'Pulling your latest runs from Strava, hang tight.');
     }
 }

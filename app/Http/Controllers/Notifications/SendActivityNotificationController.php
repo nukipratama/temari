@@ -37,8 +37,8 @@ class SendActivityNotificationController extends Controller
         return $this->pushOrDeferred(
             $user,
             $analysis,
-            'Ceritanya belum siap, coba lagi sebentar ya.',
-            'Aku kirim cerita lari ini ke kamu ya.',
+            'That story isn\'t ready yet, try again in a bit.',
+            'Sent you this run\'s story.',
         );
     }
 }

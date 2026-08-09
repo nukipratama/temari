@@ -37,8 +37,8 @@ class SendWeeklyRecapNotificationController extends Controller
         return $this->pushOrDeferred(
             $user,
             $analysis,
-            'Rekapnya belum siap, coba lagi sebentar ya.',
-            'Aku kirim rekap mingguan ini ke kamu ya.',
+            'That recap isn\'t ready yet, try again in a bit.',
+            'Sent you this weekly recap.',
         );
     }
 }

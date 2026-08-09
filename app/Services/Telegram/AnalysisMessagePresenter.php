@@ -23,16 +23,16 @@ use Illuminate\Support\Carbon;
 class AnalysisMessagePresenter
 {
     /**
-     * Indonesian month names by month number, for the monthly-recap title.
-     * Hardcoded rather than leaning on Carbon's `id` locale data, which isn't
-     * guaranteed loaded in every runtime (it would silently fall back to English).
+     * Month names by month number, for the monthly-recap title. Hardcoded
+     * rather than leaning on Carbon's locale data, which isn't guaranteed
+     * loaded in every runtime.
      *
      * @var array<int, string>
      */
     private const array MONTHS = [
-        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+        5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+        9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December',
     ];
 
     /**
@@ -167,24 +167,24 @@ class AnalysisMessagePresenter
         return trim($meta['emoji'] . ' ' . $phrase);
     }
 
-    /** "Lari 8,2K kamu udah masuk! 🏁", dropping the distance when it's unknown. */
+    /** "Your 8,2K run is in! 🏁", dropping the distance when it's unknown. */
     private function postRunTitle(Analysis $analysis): string
     {
         $distance = $this->activityDetail($analysis->subject_id)?->distance;
         $prefix = $distance !== null ? $this->shortDistance((int) $distance) . ' ' : '';
 
-        return 'Lari ' . $prefix . 'kamu udah masuk! 🏁';
+        return 'Your ' . $prefix . 'run is in! 🏁';
     }
 
-    /** "Rekap Juli udah siap", falling back to the label when the month is unknown. */
+    /** "Your July recap is ready", falling back to the label when the month is unknown. */
     private function monthlyRecapTitle(Analysis $analysis): string
     {
         $month = $this->monthName($analysis->discriminator);
 
-        return $month === null ? NotifiableAnalysisTypes::TYPES[AnalysisType::MonthlyRecap->value]['title'] : "Rekap {$month} udah siap";
+        return $month === null ? NotifiableAnalysisTypes::TYPES[AnalysisType::MonthlyRecap->value]['title'] : "Your {$month} recap is ready";
     }
 
-    /** The Indonesian month name for a "YYYY-MM" discriminator, or null when blank. */
+    /** The month name for a "YYYY-MM" discriminator, or null when blank. */
     private function monthName(?string $discriminator): ?string
     {
         if ($discriminator === null || $discriminator === '') {

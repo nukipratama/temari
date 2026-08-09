@@ -41,7 +41,7 @@ class StravaAuthController extends Controller
     {
         if ($request->filled('error')) {
             return redirect()->route('login')->withErrors([
-                'strava' => 'Sambungan ke Strava dibatalin. Coba lagi ya kalau mau lanjut.',
+                'strava' => 'The Strava connection was cancelled. Try again if you\'d like to continue.',
             ]);
         }
 
@@ -50,7 +50,7 @@ class StravaAuthController extends Controller
             $stravaUser = $this->driver()->user();
         } catch (InvalidStateException|RequestException) {
             return redirect()->route('login')->withErrors([
-                'strava' => 'Gagal nyambungin Strava. Coba lagi sebentar ya.',
+                'strava' => 'Couldn\'t connect to Strava. Try again in a moment.',
             ]);
         }
 

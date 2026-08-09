@@ -27,12 +27,12 @@ class ResyncActivityController extends Controller
         abort_unless($user->can('view', $activity), 404);
 
         if (! $config->boolean(AppConfigKey::StravaEnabled)) {
-            return back()->with('info', 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.');
+            return back()->with('info', 'Pulling from Strava is paused for now. It\'ll pick back up automatically.');
         }
 
         // A manual resync re-narrates the latest run; the webhook path does not.
         ResyncActivityJob::dispatch($activity->id, renarrate: true);
 
-        return back()->with('success', 'Lagi narik ulang lari ini dari Strava ya, sebentar.');
+        return back()->with('success', 'Re-pulling this run from Strava, hang tight.');
     }
 }

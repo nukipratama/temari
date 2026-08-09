@@ -30,18 +30,18 @@ class NotificationTestController extends Controller
         if (! $router->canReach($user)) {
             // Covers a muted channel too, not just an unwired one: the button
             // should not claim to have sent anything that will never arrive.
-            return back()->with('info', 'Nyalakan notifikasi dulu ya.');
+            return back()->with('info', 'Turn on notifications first.');
         }
 
         // attempt() rather than isActive()+start(): the pair leaves a gap where
         // two concurrent taps both see it inactive and both send.
         $cooldown = new Cooldown(Cooldown::testNotificationKey($user->id), Cooldown::TEST_WINDOW_SECONDS);
         if (! $cooldown->attempt()) {
-            return back()->with('info', 'Barusan udah dikirim. Tunggu sebentar ya.');
+            return back()->with('info', 'Already sent one just now. Give it a moment.');
         }
 
         $user->notify(new TestNotification());
 
-        return back()->with('success', 'Aku kirim notifikasi tes ya.');
+        return back()->with('success', 'Sent you a test notification.');
     }
 }

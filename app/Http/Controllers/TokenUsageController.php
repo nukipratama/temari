@@ -66,7 +66,7 @@ class TokenUsageController extends Controller
     {
         Artisan::call('ai:recover');
 
-        return back()->with('info', 'Pemulihan dijalankan: blok dead-letter di-coba ulang dan self-heal langsung disapu.');
+        return back()->with('info', 'Recovery ran: dead-lettered blocks were retried and self-heal swept immediately.');
     }
 
     /**
@@ -102,7 +102,7 @@ class TokenUsageController extends Controller
 
         $userName = User::query()->find($userId)?->name ?? "User #{$userId}";
 
-        return back()->with('info', "Mencoba ulang {$matching->count()} blok untuk {$userName}.");
+        return back()->with('info', "Retrying {$matching->count()} block(s) for {$userName}.");
     }
 
     /**

@@ -217,7 +217,7 @@ it('builds a web push message with the dynamic title, body, tap-through url, and
     $message = $notification->toWebPush($user, $notification);
     $payload = $message->toArray();
 
-    expect($payload['title'])->toContain('udah masuk!')
+    expect($payload['title'])->toContain('run is in!')
         ->and($payload['body'])->toContain('Pace konsisten.')
         ->and($payload['data'])->toBe(['url' => route('aktivitas.show', $analysis->subject_id)])
         ->and($message->getOptions())->toBe(['urgency' => 'high']);
