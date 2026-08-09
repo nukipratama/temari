@@ -103,7 +103,7 @@ describe('Riwayat/Jejak', () => {
             />,
         );
         expect(
-            screen.getByText(/Rentang diperlebar otomatis/i),
+            screen.getByText(/Range automatically widened/i),
         ).toBeInTheDocument();
     });
 
@@ -119,7 +119,7 @@ describe('Riwayat/Jejak', () => {
             />,
         );
         expect(
-            screen.getByText(/Menampilkan 365 lari terbaru/i),
+            screen.getByText(/Showing the 365 most recent runs/i),
         ).toBeInTheDocument();
     });
 
@@ -167,7 +167,7 @@ describe('Riwayat/Jejak', () => {
         );
         expect(screen.getAllByTestId('run-row').length).toBe(2);
         expect(screen.getByText(/A consistent week/)).toBeInTheDocument();
-        expect(screen.getByText(/Pas/)).toBeInTheDocument();
+        expect(screen.getByText(/Right on Track/)).toBeInTheDocument();
     });
 
     it('renders an orphans bucket when a run has no start_date_local', () => {
@@ -228,10 +228,10 @@ describe('Riwayat/Jejak', () => {
             />,
         );
 
-        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByLabelText('Open filter'));
         // Anchored: the removable chip for the same mood is also a button, but
-        // it is named "Hapus filter Enteng".
-        fireEvent.click(screen.getByRole('button', { name: /^Enteng$/ }));
+        // it is named "Remove filter Easy".
+        fireEvent.click(screen.getByRole('button', { name: /^Easy$/ }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/aktivitas',
@@ -255,10 +255,11 @@ describe('Riwayat/Jejak', () => {
             />,
         );
 
-        fireEvent.click(screen.getByLabelText('Buka filter'));
-        expect(
-            screen.getByRole('button', { name: /^Enteng$/ }),
-        ).toHaveAttribute('aria-pressed', 'true');
+        fireEvent.click(screen.getByLabelText('Open filter'));
+        expect(screen.getByRole('button', { name: /^Easy$/ })).toHaveAttribute(
+            'aria-pressed',
+            'true',
+        );
     });
 
     it('drops an already-selected mood from the url when toggled off', () => {
@@ -273,8 +274,8 @@ describe('Riwayat/Jejak', () => {
             />,
         );
 
-        fireEvent.click(screen.getByLabelText('Buka filter'));
-        fireEvent.click(screen.getByRole('button', { name: /^Enteng$/ }));
+        fireEvent.click(screen.getByLabelText('Open filter'));
+        fireEvent.click(screen.getByRole('button', { name: /^Easy$/ }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/aktivitas',
@@ -298,7 +299,7 @@ describe('Riwayat/Jejak', () => {
             />,
         );
 
-        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByLabelText('Open filter'));
         fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
         // Defaults are omitted, so the unfiltered view is a clean URL.
@@ -362,7 +363,7 @@ describe('Riwayat/Jejak', () => {
             />,
         );
 
-        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByLabelText('Open filter'));
         fireEvent.click(screen.getByRole('button', { name: /^Under 5K/ }));
 
         expect(router.get).toHaveBeenCalledWith(
@@ -384,7 +385,7 @@ describe('Riwayat/Jejak', () => {
             />,
         );
 
-        fireEvent.click(screen.getByLabelText('Buka filter'));
+        fireEvent.click(screen.getByLabelText('Open filter'));
         fireEvent.click(screen.getByRole('button', { name: /^Half and up/ }));
 
         expect(router.get).toHaveBeenCalledWith(
@@ -420,7 +421,7 @@ describe('Riwayat/Jejak', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByLabelText('Buka filter'));
+            fireEvent.click(screen.getByLabelText('Open filter'));
             fireEvent.click(screen.getByRole('button', { name: /^Longest/ }));
 
             expect(router.get).toHaveBeenCalledWith(
@@ -442,7 +443,7 @@ describe('Riwayat/Jejak', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByLabelText('Buka filter'));
+            fireEvent.click(screen.getByLabelText('Open filter'));
             fireEvent.click(
                 screen.getByRole('button', { name: /^Newest first/ }),
             );
@@ -503,7 +504,7 @@ describe('Riwayat/Jejak', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByLabelText('Buka filter'));
+            fireEvent.click(screen.getByLabelText('Open filter'));
             fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
             expect(router.get).toHaveBeenCalledWith(
@@ -527,9 +528,9 @@ describe('Riwayat/Jejak', () => {
             />,
         );
 
-        expect(screen.getByText(/Lagi lihat minggu/)).toBeInTheDocument();
+        expect(screen.getByText(/Viewing the week of/)).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /Lihat semua lari/ }),
+            screen.getByRole('link', { name: /View all runs/ }),
         ).toHaveAttribute('href', '/aktivitas');
     });
 
@@ -557,7 +558,9 @@ describe('Riwayat/Jejak', () => {
             />,
         );
 
-        expect(screen.queryByText(/Lagi lihat minggu/)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/Viewing the week of/),
+        ).not.toBeInTheDocument();
     });
 
     // Remembered, but never applied behind the user's back: landing on a
@@ -583,11 +586,11 @@ describe('Riwayat/Jejak', () => {
             );
 
             expect(
-                screen.getByText(/Lanjutkan: Half and up · Nyala/),
+                screen.getByText(/Resume: Half and up · Blazing/),
             ).toBeInTheDocument();
             expect(router.get).not.toHaveBeenCalled();
 
-            fireEvent.click(screen.getByText(/Lanjutkan:/));
+            fireEvent.click(screen.getByText(/Resume:/));
             expect(router.get).toHaveBeenCalledWith(
                 '/aktivitas',
                 { mood: 'nyala', dist: '21up' },

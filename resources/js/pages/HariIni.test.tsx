@@ -147,7 +147,7 @@ describe('HariIni', () => {
         expect(screen.getAllByText(/pumped/i).length).toBeGreaterThan(0);
     });
 
-    it('renders the three vital chips (Vibe / Kesiapan / Jeda)', () => {
+    it('renders the three vital chips (Vibe / Readiness / Break)', () => {
         render(
             <HariIni
                 briefing={briefing}
@@ -157,8 +157,8 @@ describe('HariIni', () => {
             />,
         );
         expect(screen.getByText('Vibe')).toBeInTheDocument();
-        expect(screen.getByText('Kesiapan')).toBeInTheDocument();
-        expect(screen.getByText('Jeda')).toBeInTheDocument();
+        expect(screen.getByText('Readiness')).toBeInTheDocument();
+        expect(screen.getByText('Break')).toBeInTheDocument();
     });
 
     it('shows the Temari read quote when mascotVoice is done', () => {
@@ -194,9 +194,7 @@ describe('HariIni', () => {
                 recentRuns={[]}
             />,
         );
-        expect(
-            screen.queryByText(/Kartu andalan dari Temari/),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/Temari's top pick/)).not.toBeInTheDocument();
     });
 
     it('shows the session title of the merged Temari voice', () => {
@@ -222,7 +220,7 @@ describe('HariIni', () => {
                 recentRuns={[detailWithCard]}
             />,
         );
-        ['Fondasi', 'Kelelahan', 'Beban', 'Variasi'].forEach((row) => {
+        ['Fitness', 'Fatigue', 'Strain', 'Monotony'].forEach((row) => {
             expect(screen.getByText(row)).toBeInTheDocument();
         });
     });
@@ -239,9 +237,7 @@ describe('HariIni', () => {
         // The kartu strip was removed from the dashboard. Cards now surface only
         // through the featured hero panel (eyebrow "Kartu andalan dari Temari").
         expect(screen.queryByText(/Kartu terakhir/i)).not.toBeInTheDocument();
-        expect(
-            screen.getByText(/Kartu andalan dari Temari/),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/Temari's top pick/)).toBeInTheDocument();
     });
 
     it('renders the featuredKartuVoice quote inside the hero panel', () => {
@@ -289,7 +285,7 @@ describe('HariIni', () => {
             />,
         );
         // The section heading still renders; the body resolves to nothing.
-        expect(screen.getByText('Kata Temari hari ini')).toBeInTheDocument();
+        expect(screen.getByText('Today from Temari')).toBeInTheDocument();
     });
 
     it('renders the Temari voice title-only when there is no body paragraph', () => {
@@ -333,7 +329,7 @@ describe('HariIni', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('renders the "Target terdekat" goals when goalsSummary has closest goals', () => {
+    it('renders the "Closest targets" goals when goalsSummary has closest goals', () => {
         const goalsSummary: GoalsSummary = {
             total: 3,
             completed: 1,
@@ -378,7 +374,7 @@ describe('HariIni', () => {
                 recentRuns={[detailWithCard]}
             />,
         );
-        expect(screen.getByText('Target terdekat')).toBeInTheDocument();
+        expect(screen.getByText('Closest targets')).toBeInTheDocument();
         expect(screen.getByText('Run 100 KM this month')).toBeInTheDocument();
         expect(screen.getByText('Half marathon')).toBeInTheDocument();
         expect(screen.getByText('Empty goal')).toBeInTheDocument();
@@ -411,7 +407,7 @@ describe('HariIni', () => {
                 recentRuns={[detailWithCard]}
             />,
         );
-        expect(screen.queryByText('Target terdekat')).not.toBeInTheDocument();
+        expect(screen.queryByText('Closest targets')).not.toBeInTheDocument();
     });
 
     it('renders the last-run card with location, weather, pace, trimp, and a note', () => {
@@ -440,8 +436,8 @@ describe('HariIni', () => {
                 recentRuns={[bareRun]}
             />,
         );
-        // name falls back to "Lari"; pace + trimp both show the "—" placeholder.
-        expect(screen.getByText('Lari')).toBeInTheDocument();
+        // name falls back to "Run"; pace + trimp both show the "—" placeholder.
+        expect(screen.getByText('Run')).toBeInTheDocument();
         expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
         // no location/weather row.
         expect(screen.queryByText(/Gelora/)).not.toBeInTheDocument();
@@ -480,7 +476,7 @@ describe('HariIni', () => {
         );
         // Kesiapan + Kondisi rows all collapse to the "—" placeholder.
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
-        expect(screen.getByText(/belum cukup data/)).toBeInTheDocument();
+        expect(screen.getByText(/not enough data yet/)).toBeInTheDocument();
         // Vibe chip falls back to the qualitative label when there's no form score.
         expect(screen.getAllByText(/pumped/i).length).toBeGreaterThan(0);
     });
@@ -518,7 +514,7 @@ describe('HariIni', () => {
         expect(screen.getByText('Recovery: 41h')).toBeInTheDocument();
     });
 
-    it('flips the "Saran lain" button to its pending label when triggered', async () => {
+    it('flips the "Another take" button to its pending label when triggered', async () => {
         render(
             <HariIni
                 briefing={briefing}
@@ -527,19 +523,19 @@ describe('HariIni', () => {
                 recentRuns={[detailWithCard]}
             />,
         );
-        const button = screen.getByRole('button', { name: 'Saran lain' });
+        const button = screen.getByRole('button', { name: 'Another take' });
         // trigger() flips `pending` synchronously before its fetch awaits, so the
         // re-render swaps the label to the in-flight copy.
         fireEvent.click(button);
         expect(
-            screen.getByRole('button', { name: 'Lagi mikir…' }),
+            screen.getByRole('button', { name: 'Thinking…' }),
         ).toBeInTheDocument();
         // The global default fetch mock (a 404) still resolves for real, so the
         // trigger's catch/finally fires on a later microtask — wait for it to
         // settle back to the idle label instead of leaving it unmonitored.
         await waitFor(() =>
             expect(
-                screen.getByRole('button', { name: 'Saran lain' }),
+                screen.getByRole('button', { name: 'Another take' }),
             ).toBeInTheDocument(),
         );
     });

@@ -168,7 +168,7 @@ describe('Runs/Show', () => {
 
     it('uses the backend moodFallback when there is no post-run story line', () => {
         renderShow({ storyLine: null, moodFallback: 'oleng' });
-        expect(screen.getAllByText('Oleng').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Wobbly').length).toBeGreaterThan(0);
     });
 
     it('shows the relative-effort sub-line under the TRIMP tile when banded', () => {
@@ -206,7 +206,7 @@ describe('Runs/Show', () => {
                 },
             },
         });
-        expect(screen.getByText('TANJAKAN')).toBeInTheDocument();
+        expect(screen.getByText('CLIMB')).toBeInTheDocument();
         expect(screen.getByText('GAP')).toBeInTheDocument();
     });
 
@@ -237,10 +237,10 @@ describe('Runs/Show', () => {
     it('renders the four-lens grid with the What Temari Says header', () => {
         renderShow();
         expect(screen.getByText('What Temari says')).toBeInTheDocument();
-        expect(screen.getByText('Cerita lari ini')).toBeInTheDocument();
-        expect(screen.getByText('Terjemahan teknis')).toBeInTheDocument();
-        expect(screen.getByText('Split paling seru')).toBeInTheDocument();
-        expect(screen.getByText('Zona HR')).toBeInTheDocument();
+        expect(screen.getByText("This run's story")).toBeInTheDocument();
+        expect(screen.getByText('Technical translation')).toBeInTheDocument();
+        expect(screen.getByText('Most interesting split')).toBeInTheDocument();
+        expect(screen.getByText('HR Zones')).toBeInTheDocument();
     });
 
     it('renders the speech analysis text inside the Cerita panel', () => {
@@ -315,7 +315,7 @@ describe('Runs/Show', () => {
     it('renders the splits per-km section from the stream summary', () => {
         renderShow();
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
-        expect(screen.getByText(/Paling kenceng di km 2/)).toBeInTheDocument();
+        expect(screen.getByText(/Fastest at km 2/)).toBeInTheDocument();
     });
 
     it('stacks the laps section under the splits section, both always rendered', () => {
@@ -446,7 +446,7 @@ describe('Runs/Show', () => {
             detail: bare,
         });
         expect(
-            screen.getByText(/Detail teknis-nya belum kebaca/),
+            screen.getByText(/Technical detail hasn't been read yet/),
         ).toBeInTheDocument();
     });
 
@@ -489,14 +489,14 @@ describe('Runs/Show', () => {
     it('shows a muted send button that nudges (no send) when no channel is wired', () => {
         vi.mocked(router.post).mockReset();
         renderShow();
-        fireEvent.click(screen.getByText('Kirim notifikasi'));
+        fireEvent.click(screen.getByText('Send notification'));
         expect(router.post).not.toHaveBeenCalled();
     });
 
     it('pushes the run to Telegram when connected and the button is clicked', () => {
         vi.mocked(router.post).mockReset();
         renderShow({}, { telegramConnected: true });
-        fireEvent.click(screen.getByText('Kirim notifikasi'));
+        fireEvent.click(screen.getByText('Send notification'));
         expect(router.post).toHaveBeenCalledWith(
             '/aktivitas/99/kirim',
             {},
@@ -514,9 +514,9 @@ describe('Runs/Show', () => {
             options?.onStart?.({} as never);
         });
         renderShow({}, { telegramConnected: true });
-        const button = screen.getByText('Kirim notifikasi').closest('button')!;
+        const button = screen.getByText('Send notification').closest('button')!;
         fireEvent.click(button);
         expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('Lagi ngirim…');
+        expect(button).toHaveTextContent('Sending…');
     });
 });

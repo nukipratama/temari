@@ -89,7 +89,7 @@ describe('Koleksi/Kartu', () => {
         );
         expect(screen.getByText(/No cards here yet/)).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /Sambungin Strava/i }),
+            screen.getByRole('link', { name: /Connect Strava/i }),
         ).toBeInTheDocument();
     });
 
@@ -117,7 +117,7 @@ describe('Koleksi/Kartu', () => {
         );
         expect(screen.getByText(/No cards here yet/)).toBeInTheDocument();
         expect(
-            screen.queryByRole('link', { name: /Sambungin Strava/i }),
+            screen.queryByRole('link', { name: /Connect Strava/i }),
         ).not.toBeInTheDocument();
         expect(
             screen.queryByRole('button', { name: /sync/i }),

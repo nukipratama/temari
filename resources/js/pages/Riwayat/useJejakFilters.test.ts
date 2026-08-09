@@ -111,7 +111,7 @@ describe('summariseQuery', () => {
                 dist: '21up',
                 mood: 'nyala,adem',
             }),
-        ).toBe('one week · Full year · Longest · Half and up · Nyala, Adem');
+        ).toBe('one week · Full year · Longest · Half and up · Blazing, Chill');
     });
 
     it('ignores a mood value that is not a real mood', () => {
@@ -259,8 +259,8 @@ describe('useJejakFilters', () => {
             'Full year',
             'Longest',
             'Half and up',
-            'Nyala',
-            'Adem',
+            'Blazing',
+            'Chill',
         ]);
     });
 
@@ -426,7 +426,9 @@ describe('useJejakFilters', () => {
             );
             const { result } = renderHook(() => useJejakFilters(hookProps()));
 
-            expect(result.current.resume?.summary).toBe('Half and up · Nyala');
+            expect(result.current.resume?.summary).toBe(
+                'Half and up · Blazing',
+            );
         });
 
         it('offers nothing when the saved query summarises to nothing', () => {

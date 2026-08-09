@@ -161,7 +161,7 @@ describe('AiUsage page', () => {
         render(<AiUsage {...baseProps} />);
 
         expect(screen.getByText('2026-05-01')).toBeInTheDocument();
-        expect(screen.getByText('Anggaran Hari Ini')).toBeInTheDocument();
+        expect(screen.getByText("Today's Budget")).toBeInTheDocument();
         expect(
             screen.getByText('Breakdown per Deployment'),
         ).toBeInTheDocument();
@@ -176,10 +176,10 @@ describe('AiUsage page', () => {
         render(<AiUsage {...baseProps} />);
 
         expect(
-            screen.getByRole('progressbar', { name: '51.1% dari total' }),
+            screen.getByRole('progressbar', { name: '51.1% of total' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('progressbar', { name: '83.0% dari total' }),
+            screen.getByRole('progressbar', { name: '83.0% of total' }),
         ).toBeInTheDocument();
     });
 
@@ -187,7 +187,7 @@ describe('AiUsage page', () => {
         render(<AiUsage {...baseProps} />);
 
         expect(screen.getByText('Daily Consumption')).toBeInTheDocument();
-        expect(screen.getByText('2 hari')).toBeInTheDocument();
+        expect(screen.getByText('2 days')).toBeInTheDocument();
     });
 
     it('drops the daily chart section entirely when there is nothing to plot', () => {
@@ -214,7 +214,7 @@ describe('AiUsage page', () => {
     it('hides the attention area when nothing is stuck', () => {
         render(<AiUsage {...baseProps} />);
 
-        expect(screen.queryByText('Perlu perhatian')).not.toBeInTheDocument();
+        expect(screen.queryByText('Needs attention')).not.toBeInTheDocument();
         expect(
             screen.queryByRole('button', { name: /Pulihkan semua/ }),
         ).not.toBeInTheDocument();
@@ -223,7 +223,7 @@ describe('AiUsage page', () => {
     it('shows the attention area once a bucket is filled', () => {
         render(<AiUsage {...baseProps} deadLettered={[deadLetteredGroup]} />);
 
-        expect(screen.getByText('Perlu perhatian')).toBeInTheDocument();
+        expect(screen.getByText('Needs attention')).toBeInTheDocument();
         expect(screen.getByText('Charlie')).toBeInTheDocument();
     });
 

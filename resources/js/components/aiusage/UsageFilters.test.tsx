@@ -128,11 +128,11 @@ describe('UsageFilters', () => {
     });
 
     it.each([
-        ['hari ini', /hari ini/i, 'today'],
-        ['7 hari', /7 hari/i, '7d'],
-        ['30 hari', /30 hari/i, '30d'],
-        ['bulan ini', /bulan ini/i, 'month'],
-        ['semua', /semua/i, 'all'],
+        ['Today', /today/i, 'today'],
+        ['7 days', /7 days/i, '7d'],
+        ['30 days', /30 days/i, '30d'],
+        ['This month', /this month/i, 'month'],
+        ['All', /all/i, 'all'],
     ])(
         'preset "%s" links to a date-free range token (durable, never stale)',
         (_label, pattern, token) => {
@@ -150,7 +150,7 @@ describe('UsageFilters', () => {
         renderFilters({ kind: 'briefing' });
 
         expect(
-            screen.getByRole('link', { name: /7 hari/i }).getAttribute('href'),
+            screen.getByRole('link', { name: /7 days/i }).getAttribute('href'),
         ).toBe('/ai-usage?range=7d&kind=briefing');
     });
 
@@ -158,10 +158,10 @@ describe('UsageFilters', () => {
         renderFilters({ range: '7d' as RangeToken });
 
         expect(
-            screen.getByRole('link', { name: /7 hari/i }).className,
+            screen.getByRole('link', { name: /7 days/i }).className,
         ).toContain('bg-sky');
         expect(
-            screen.getByRole('link', { name: /30 hari/i }).className,
+            screen.getByRole('link', { name: /30 days/i }).className,
         ).toContain('bg-cream-deep');
     });
 });

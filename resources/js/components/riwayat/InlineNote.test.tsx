@@ -54,7 +54,7 @@ describe('RangeWidenedNote', () => {
         render(<RangeWidenedNote rangeFilter="1y" />);
 
         expect(
-            screen.getByText(/Range automatically widened to Setahun penuh/),
+            screen.getByText(/Range automatically widened to Full year/),
         ).toBeInTheDocument();
     });
 

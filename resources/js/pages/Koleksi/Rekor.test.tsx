@@ -60,7 +60,7 @@ describe('Koleksi/Rekor', () => {
         render(<KoleksiRekor personalRecords={[]} />);
         expect(screen.getByText(/No PRs yet/)).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /Sambungin Strava/i }),
+            screen.getByRole('link', { name: /Connect Strava/i }),
         ).toBeInTheDocument();
     });
 
@@ -74,7 +74,7 @@ describe('Koleksi/Rekor', () => {
         render(<KoleksiRekor personalRecords={[]} />);
         expect(screen.getByText(/No PRs yet/)).toBeInTheDocument();
         expect(
-            screen.queryByRole('link', { name: /Sambungin Strava/i }),
+            screen.queryByRole('link', { name: /Connect Strava/i }),
         ).not.toBeInTheDocument();
         expect(
             screen.queryByRole('button', { name: /sync/i }),
@@ -131,14 +131,14 @@ describe('Koleksi/Rekor', () => {
         );
         const ticker = screen.getByText(/Pace ticker/).closest('section');
         const labels = within(ticker!)
-            .getAllByText(/Best \d+ menit/)
+            .getAllByText(/Best \d+ min/)
             .map((el) => el.textContent);
         expect(labels).toEqual([
-            'Best 5 menit',
-            'Best 10 menit',
-            'Best 20 menit',
-            'Best 30 menit',
-            'Best 60 menit',
+            'Best 5 min',
+            'Best 10 min',
+            'Best 20 min',
+            'Best 30 min',
+            'Best 60 min',
         ]);
     });
 

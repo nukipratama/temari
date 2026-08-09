@@ -243,7 +243,7 @@ describe('Kalender', () => {
 
     it('renders all six mood swatches in the legend', () => {
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        ['Nyala', 'Enteng', 'Oleng', 'Lemes', 'Mumet', 'Adem'].forEach(
+        ['Blazing', 'Easy', 'Wobbly', 'Gassed', 'Overloaded', 'Chill'].forEach(
             (label) => {
                 expect(screen.getByText(label)).toBeInTheDocument();
             },
@@ -286,7 +286,7 @@ describe('Kalender', () => {
         expect(filterButton).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(filterButton);
         expect(filterButton).toHaveAttribute('aria-expanded', 'true');
-        expect(screen.getByRole('button', { name: /Nyala/ })).toHaveAttribute(
+        expect(screen.getByRole('button', { name: /Blazing/ })).toHaveAttribute(
             'aria-pressed',
         );
     });
@@ -297,7 +297,7 @@ describe('Kalender', () => {
         );
         fireEvent.click(screen.getByRole('button', { name: /filter/i }));
         // Toggle only "Nyala" — cells with mood enteng/mumet should now be dimmed.
-        fireEvent.click(screen.getByRole('button', { name: /Nyala/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Blazing/ }));
         // Find the May 1 cell (mood: enteng, activity_id: 100) — it should pick up the dim opacity class.
         const link = container.querySelector('a[href="/aktivitas/100"]');
         expect(link?.className).toContain('opacity-30');
@@ -425,7 +425,7 @@ describe('Kalender', () => {
             ).not.toBeInTheDocument();
         });
 
-        it('shows a "Coba lagi" resume action when a past month recap failed', () => {
+        it('shows a "Try again" resume action when a past month recap failed', () => {
             render(
                 <Kalender
                     {...BASE_PROPS}
@@ -438,11 +438,11 @@ describe('Kalender', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Coba lagi/ }),
+                screen.getByRole('button', { name: /Try again/ }),
             ).toBeInTheDocument();
         });
 
-        it('shows the "Baca ulang" regenerate action only on the chain-head month', () => {
+        it('shows the "Reread" regenerate action only on the chain-head month', () => {
             render(
                 <Kalender
                     {...BASE_PROPS}
@@ -452,7 +452,7 @@ describe('Kalender', () => {
                 />,
             );
             expect(
-                screen.getByRole('button', { name: /Baca ulang/ }),
+                screen.getByRole('button', { name: /Reread/ }),
             ).toBeInTheDocument();
         });
 
@@ -466,7 +466,7 @@ describe('Kalender', () => {
                 />,
             );
             expect(
-                screen.queryByRole('button', { name: /Baca ulang/ }),
+                screen.queryByRole('button', { name: /Reread/ }),
             ).not.toBeInTheDocument();
         });
 
@@ -481,7 +481,7 @@ describe('Kalender', () => {
                     monthlyRecap={makeRecap()}
                 />,
             );
-            fireEvent.click(screen.getByText('Kirim notifikasi'));
+            fireEvent.click(screen.getByText('Send notification'));
             expect(router.post).not.toHaveBeenCalled();
         });
 
@@ -501,7 +501,7 @@ describe('Kalender', () => {
                     monthlyRecap={makeRecap()}
                 />,
             );
-            fireEvent.click(screen.getByText('Kirim notifikasi'));
+            fireEvent.click(screen.getByText('Send notification'));
             expect(router.post).toHaveBeenCalledWith(
                 '/rekap-bulanan/2026-04/kirim',
                 {},
