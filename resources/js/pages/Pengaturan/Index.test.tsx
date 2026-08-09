@@ -152,7 +152,7 @@ describe('Pengaturan', () => {
         render(<Pengaturan testCooldownSeconds={45} />);
 
         const button = screen.getByRole('button', {
-            name: /Tunggu .* sebelum kirim notifikasi tes/,
+            name: /Wait .* before sending a test notification/,
         });
         expect(button).toBeDisabled();
 
@@ -182,7 +182,7 @@ describe('Pengaturan', () => {
         expect(router.patch).not.toHaveBeenCalled();
         expect(toggle).toHaveAttribute('aria-checked', 'false');
         expect(
-            screen.getByText('Telegram-nya lagi istirahat dulu'),
+            screen.getByText("Telegram's taking a break for now"),
         ).toBeInTheDocument();
     });
 
@@ -230,7 +230,7 @@ describe('Pengaturan', () => {
             screen.getByText('Sure you want to delete your account?'),
         ).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Nanti aja' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
         await waitFor(() => {
             expect(
                 screen.queryByText('Sure you want to delete your account?'),

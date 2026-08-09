@@ -103,8 +103,8 @@ it('still routes when the master switch is on', function (): void {
 it('builds a keyless Telegram message naming the streak length', function (): void {
     $message = new StreakReminderNotification(3)->toTelegram(User::factory()->create());
 
-    expect($message->text)->toContain('3 minggu')
-        ->and($message->text)->toContain('Buka Temari')
+    expect($message->text)->toContain('3-week')
+        ->and($message->text)->toContain('Open Temari')
         ->and($message->deliveryKey)->toBeNull();
 });
 
@@ -113,8 +113,8 @@ it('builds a web push carrying the same streak length and a tap-through url', fu
     $message = $notification->toWebPush(User::factory()->create(), $notification);
     $payload = $message->toArray();
 
-    expect($payload['title'])->toContain('3 minggu')
-        ->and($payload['body'])->toContain('streak-nya nggak putus')
+    expect($payload['title'])->toContain('3-week')
+        ->and($payload['body'])->toContain("streak doesn't break")
         ->and($payload['data'])->toBe(['url' => route('dashboard')])
         ->and($message->getOptions())->toBe(['urgency' => 'high']);
 });

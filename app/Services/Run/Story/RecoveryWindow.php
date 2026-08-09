@@ -15,10 +15,10 @@ use Illuminate\Support\Carbon;
  * of showing two contradictory numbers.
  *
  * - {@see $hoursSinceLastRun} is literal hours since the most recent run —
- *   what the recency chip shows ("3 jam", "Lari hari ini").
+ *   what the recency chip shows ("3h", "Ran today").
  * - {@see $recoveryHours} is the same number, but null on a day the runner
  *   already ran: the briefing regenerates at ingest, moments after the run,
- *   so a literal count would read "0 jam" and citing it would fight the chip.
+ *   so a literal count would read "0h" and citing it would fight the chip.
  *   On a run day the narration leans on {@see $ranToday} instead.
  */
 final readonly class RecoveryWindow

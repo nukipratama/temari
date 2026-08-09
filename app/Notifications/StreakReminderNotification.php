@@ -58,7 +58,7 @@ class StreakReminderNotification extends Notification implements ShouldQueue
         $url = route('dashboard');
 
         return new TelegramMessage(
-            text: "{$this->title()}\n\n{$this->body()}\n\nBuka Temari: {$url}",
+            text: "{$this->title()}\n\n{$this->body()}\n\nOpen Temari: {$url}",
         );
     }
 
@@ -76,11 +76,11 @@ class StreakReminderNotification extends Notification implements ShouldQueue
 
     private function title(): string
     {
-        return "🔥 Streak lari {$this->streakWeeks} minggu kamu lagi di ujung";
+        return "🔥 Your {$this->streakWeeks}-week streak is on the edge";
     }
 
     private function body(): string
     {
-        return 'Minggu ini belum ada progres. Sempatkan lari sebelum minggu ini berakhir, biar streak-nya nggak putus.';
+        return "No runs yet this week. Get one in before it's over so the streak doesn't break.";
     }
 }

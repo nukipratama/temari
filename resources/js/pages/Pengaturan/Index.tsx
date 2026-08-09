@@ -237,7 +237,7 @@ function NotificationPrefsPanel({
 }
 
 /**
- * "Kirim notifikasi tes" with the two states it was missing: in-flight, and
+ * "Send test notification" with the two states it was missing: in-flight, and
  * cooling. Without them a tap looked like nothing happened, and a second tap
  * either sent again or hit the route throttle as a bare 429.
  */
@@ -267,7 +267,10 @@ function TestSendButton({
             disabled={sending || cooling}
             className="disabled:cursor-not-allowed disabled:opacity-60"
             onClick={() => guard(send)}
-            aria-label={cooldownAriaLabel(remaining, 'kirim notifikasi tes')}
+            aria-label={cooldownAriaLabel(
+                remaining,
+                'sending a test notification',
+            )}
         >
             <Icon
                 icon={sending ? 'mdi:loading' : 'mdi:send-outline'}
