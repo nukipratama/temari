@@ -31,7 +31,7 @@ describe('StravaZoneReconnectBanner', () => {
         const link = screen.getByText('Reconnect').closest('a');
         expect(link).toHaveAttribute(
             'href',
-            '/auth/strava/redirect?from=/profil',
+            '/auth/strava/redirect?from=/profile',
         );
     });
 });

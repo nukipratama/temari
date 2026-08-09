@@ -62,7 +62,7 @@ type CardWithRel = RunCardModel & {
     activity: Activity & { detail: ActivityDetail };
 };
 
-interface KartuProps {
+interface CardsProps {
     cards: PaginatedResponse<CardWithRel>;
     selectedRarity: string | null;
     featuredCard: FeaturedCardPayload | null;
@@ -90,7 +90,7 @@ export default function Cards({
     selectedRarity,
     featuredCard,
     rarityCounts,
-}: Readonly<KartuProps>) {
+}: Readonly<CardsProps>) {
     const [burstKey, setBurstKey] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<SortMode>('date');

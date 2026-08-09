@@ -32,7 +32,7 @@ export default function StravaZoneReconnectBanner() {
                     Reconnect Strava to auto-sync your HR zones.
                 </p>
                 <a
-                    href="/auth/strava/redirect?from=/profil"
+                    href="/auth/strava/redirect?from=/profile"
                     className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1.5 text-label-micro text-white transition hover:bg-strava-orange-hover"
                 >
                     <Icon

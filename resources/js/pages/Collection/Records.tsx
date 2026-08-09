@@ -46,7 +46,7 @@ interface FeaturedExtras {
     delta_sec: number | null;
 }
 
-interface RekorProps {
+interface RecordsProps {
     personalRecords: ExtendedPR[];
     featuredExtras?: FeaturedExtras | null;
 }
@@ -80,7 +80,7 @@ const PACE_ORDER: Record<string, number> = {
 export default function Records({
     personalRecords,
     featuredExtras = null,
-}: Readonly<RekorProps>) {
+}: Readonly<RecordsProps>) {
     const distancePRs = personalRecords
         .filter((p) =>
             DISTANCE_CATEGORIES.includes(

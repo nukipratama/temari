@@ -29,7 +29,7 @@ import { RARITY_TEXT } from '@/lib/runcard';
 
 type Slot = EquippedSlot;
 
-interface AksesoriItem {
+interface AccessoriesItem {
     unlock_key: string;
     slot: Slot | null;
     rarity: Rarity;
@@ -50,8 +50,8 @@ interface EquippedPayload {
     aura: string | null;
 }
 
-interface AksesoriProps {
-    items: AksesoriItem[];
+interface AccessoriesProps {
+    items: AccessoriesItem[];
     equipped: EquippedPayload;
 }
 
@@ -76,7 +76,7 @@ const SLOT_ORDER: Slot[] = [
 export default function Accessories({
     items,
     equipped,
-}: Readonly<AksesoriProps>) {
+}: Readonly<AccessoriesProps>) {
     const unlockedCount = items.filter((i) => i.unlocked).length;
     const eyebrow = `Collection · ${unlockedCount} / ${items.length} accessories`;
 
@@ -93,7 +93,7 @@ export default function Accessories({
         aura: mapAura(equipped.aura),
     };
 
-    const itemsBySlot: Record<string, AksesoriItem[]> = Object.fromEntries(
+    const itemsBySlot: Record<string, AccessoriesItem[]> = Object.fromEntries(
         SLOT_ORDER.map((s) => [s, []]),
     );
     for (const item of items) {
@@ -192,7 +192,7 @@ export default function Accessories({
 function equippedLabelFor(
     slot: Slot,
     equipped: EquippedPayload,
-    items: AksesoriItem[],
+    items: AccessoriesItem[],
 ): string {
     const key = equipped[slot];
     if (!key) return 'not equipped';
@@ -206,7 +206,7 @@ function SlotSection({
     onEquip,
 }: Readonly<{
     slot: Slot;
-    items: AksesoriItem[];
+    items: AccessoriesItem[];
     onEquip: (key: string) => void;
 }>) {
     const [showLocked, setShowLocked] = useState(false);
@@ -264,7 +264,7 @@ function SlotSection({
 function AksesoriCard({
     item,
     onEquip,
-}: Readonly<{ item: AksesoriItem; onEquip: (key: string) => void }>) {
+}: Readonly<{ item: AccessoriesItem; onEquip: (key: string) => void }>) {
     const locked = !item.unlocked;
     const preview = keyToPreviewEquipped(item.unlock_key);
     let cardBorder: string;

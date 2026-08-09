@@ -61,7 +61,7 @@ interface FitnessPayload {
     training_paces: TrainingPaces | null;
 }
 
-interface AkuProps {
+interface ProfileProps {
     identity: IdentityPayload;
     stats: StatsPayload;
     personaMix?: PersonaSlice[];
@@ -77,7 +77,7 @@ export default function Profile({
     profileVoice,
     progressionByCategory = null,
     fitness = null,
-}: Readonly<AkuProps>) {
+}: Readonly<ProfileProps>) {
     const { auth, stravaSync } = usePage<SharedProps>().props;
     const sharedUser = auth.user;
     const stravaRevoked = stravaSync?.state === 'revoked';
@@ -150,7 +150,7 @@ export default function Profile({
                             <div className="mt-5 flex flex-wrap items-center gap-2">
                                 {stravaRevoked && (
                                     <a
-                                        href="/auth/strava/redirect?from=/profil"
+                                        href="/auth/strava/redirect?from=/profile"
                                         className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1 text-label-micro text-white transition hover:bg-strava-orange-hover"
                                     >
                                         <Icon

@@ -26,7 +26,7 @@ interface Goal {
     is_completed: boolean;
 }
 
-interface TargetProps {
+interface GoalsProps {
     goals: Goal[];
     completedCount: number;
     totalCount: number;
@@ -63,7 +63,7 @@ export default function Goals({
     goals,
     completedCount,
     totalCount,
-}: Readonly<TargetProps>) {
+}: Readonly<GoalsProps>) {
     const eyebrow = `Collection · ${completedCount} / ${totalCount} goals reached`;
 
     const goalsBySlot: Record<string, Goal[]> = Object.fromEntries(
