@@ -113,7 +113,7 @@ export default function AksesoriUnlockModal({
                         {/* Headline */}
                         <div className="relative mt-5 text-center">
                             <div className="mb-3.5 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-horizon">
-                                ★ Aksesori baru
+                                ★ New accessory
                             </div>
                             <h2
                                 id="aksesori-unlock-title"
@@ -123,7 +123,7 @@ export default function AksesoriUnlockModal({
                                     {unlock.name}
                                 </em>
                                 <br />
-                                terbuka!
+                                unlocked!
                             </h2>
                         </div>
 
@@ -149,7 +149,7 @@ export default function AksesoriUnlockModal({
                                     height={16}
                                     aria-hidden
                                 />
-                                Pakai sekarang
+                                Equip now
                             </button>
                             <button
                                 type="button"
@@ -162,7 +162,7 @@ export default function AksesoriUnlockModal({
                                     height={14}
                                     aria-hidden
                                 />
-                                Nanti aja
+                                Not now
                             </button>
                         </div>
                     </motion.div>

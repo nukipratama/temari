@@ -4,9 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import TemariNudgeModal from './TemariNudgeModal';
 
 const baseProps = {
-    title: 'Judul nudge',
-    body: 'Isi pesan yang ramah.',
-    primaryLabel: 'Lakuin',
+    title: 'Nudge title',
+    body: 'A friendly message.',
+    primaryLabel: 'Do it',
     primaryIcon: 'mdi:check',
     onPrimary: vi.fn(),
 };
@@ -21,13 +21,13 @@ describe('TemariNudgeModal', () => {
 
     it('renders the title, body, primary CTA, and default dismiss label', () => {
         render(<TemariNudgeModal open onClose={vi.fn()} {...baseProps} />);
-        expect(screen.getByText('Judul nudge')).toBeInTheDocument();
-        expect(screen.getByText('Isi pesan yang ramah.')).toBeInTheDocument();
+        expect(screen.getByText('Nudge title')).toBeInTheDocument();
+        expect(screen.getByText('A friendly message.')).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Lakuin' }),
+            screen.getByRole('button', { name: 'Do it' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Nanti aja' }),
+            screen.getByRole('button', { name: 'Not now' }),
         ).toBeInTheDocument();
     });
 
@@ -37,7 +37,7 @@ describe('TemariNudgeModal', () => {
         expect(dialog).toHaveAttribute('aria-modal', 'true');
         expect(dialog).toHaveAttribute('aria-labelledby', 'temari-nudge-title');
         expect(document.getElementById('temari-nudge-title')).toHaveTextContent(
-            'Judul nudge',
+            'Nudge title',
         );
     });
 
@@ -47,11 +47,11 @@ describe('TemariNudgeModal', () => {
                 open
                 onClose={vi.fn()}
                 {...baseProps}
-                secondaryLabel="Batal"
+                secondaryLabel="Cancel"
             />,
         );
         expect(
-            screen.getByRole('button', { name: 'Batal' }),
+            screen.getByRole('button', { name: 'Cancel' }),
         ).toBeInTheDocument();
     });
 
@@ -65,15 +65,15 @@ describe('TemariNudgeModal', () => {
                 onPrimary={onPrimary}
             />,
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Lakuin' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Do it' }));
         expect(onPrimary).toHaveBeenCalledOnce();
     });
 
     it('calls onClose from both the dismiss CTA and the top-left close button', () => {
         const onClose = vi.fn();
         render(<TemariNudgeModal open onClose={onClose} {...baseProps} />);
-        fireEvent.click(screen.getByRole('button', { name: 'Nanti aja' }));
-        fireEvent.click(screen.getByLabelText('Tutup'));
+        fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+        fireEvent.click(screen.getByLabelText('Close'));
         expect(onClose).toHaveBeenCalledTimes(2);
     });
 });

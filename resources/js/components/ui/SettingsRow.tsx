@@ -7,9 +7,9 @@ import { cn } from '@/lib/cn';
 interface SettingsRowProps {
     /** Iconify icon name (e.g., "mdi:heart-pulse") */
     icon: string;
-    /** Main label (e.g., "Zona HR") */
+    /** Main label (e.g., "HR Zones") */
     label: string;
-    /** Secondary description (e.g., "Atur sendiri batas Z1-Z5...") */
+    /** Secondary description (e.g., "Set your own Z1-Z5 boundaries...") */
     description?: string;
     /** Inertia route href (e.g., "/pengaturan/zona") */
     href?: string;

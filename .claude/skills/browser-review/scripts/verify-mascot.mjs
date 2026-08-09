@@ -51,9 +51,9 @@ async function loginAsDemo(page) {
 }
 
 async function dismissReveal(page) {
-    const dialog = page.getByRole('dialog', { name: /kartu baru/i });
+    const dialog = page.getByRole('dialog', { name: /new card/i });
     if (await dialog.isVisible().catch(() => false)) {
-        await page.getByRole('button', { name: /tutup/i }).first().click().catch(() => {});
+        await page.getByRole('button', { name: /close/i }).first().click().catch(() => {});
         await page.waitForTimeout(800);
     }
 }

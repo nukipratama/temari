@@ -26,26 +26,26 @@ export default function KondisiCard({
         color: string;
     }> = [
         {
-            label: 'Fondasi',
+            label: 'Fitness',
             value: load?.ctl_42d != null ? load.ctl_42d.toFixed(1) : '—',
             hint: ctlHint(load?.ctl_42d),
             color: 'text-leaf',
         },
         {
-            label: 'Kelelahan',
+            label: 'Fatigue',
             value: load?.atl_7d != null ? load.atl_7d.toFixed(1) : '—',
             hint: atlHint(load?.atl_7d),
             color: atlTone(load?.atl_7d),
         },
         {
-            label: 'Beban',
+            label: 'Strain',
             value:
                 load?.strain != null ? Math.round(load.strain).toString() : '—',
             hint: strainHint(load?.strain),
             color: strainTone(load?.strain),
         },
         {
-            label: 'Variasi',
+            label: 'Monotony',
             value: load?.monotony != null ? load.monotony.toFixed(2) : '—',
             hint: monotonyHint(load?.monotony),
             color: monotonyTone(load?.monotony),
@@ -54,7 +54,7 @@ export default function KondisiCard({
     return (
         <Card as="section" padding="md" className="flex h-full flex-col gap-3">
             <SectionLabel dot className="mb-0">
-                Kondisi · {snapshot ? '7 hari' : 'belum cukup data'}
+                Condition · {snapshot ? '7 days' : 'not enough data yet'}
             </SectionLabel>
             {rows.map(({ label, value, hint, color }) => (
                 <div
@@ -83,7 +83,7 @@ export default function KondisiCard({
                 href="/aktivitas"
                 className="focus-ring mt-auto rounded pt-1 text-label-micro text-horizon-deep hover:text-ember-deep"
             >
-                Detail teknis →
+                Technical detail →
             </Link>
         </Card>
     );

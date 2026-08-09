@@ -9,7 +9,7 @@ type BackLinkTone = 'muted' | 'accent';
 interface BackLinkProps {
     /** Destination. */
     href: string;
-    /** Label after the arrow, e.g. "Riwayat · Jejak" or "Kembali ke Hari Ini". */
+    /** Label after the arrow, e.g. "History · Log" or "Back to Today". */
     children: ReactNode;
     /** `muted` (default) for detail-page breadcrumbs; `accent` for empty-state CTAs. */
     tone?: BackLinkTone;

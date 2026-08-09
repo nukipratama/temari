@@ -27,7 +27,7 @@ export default function GoalsCard() {
                         height={14}
                         aria-hidden
                     />
-                    Target terdekat
+                    Closest targets
                 </span>
             </SectionLabel>
             <div className="grid gap-3 sm:grid-cols-3">

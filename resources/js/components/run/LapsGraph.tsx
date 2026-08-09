@@ -35,7 +35,7 @@ export default function LapsGraph({
                 <SectionLabel>Laps</SectionLabel>
                 {fastest != null && fastestLap != null && (
                     <p className="font-display text-sm italic text-ink-2">
-                        Paling kenceng di lap {fastestLap},{' '}
+                        Fastest at lap {fastestLap},{' '}
                         <span className="font-semibold text-horizon-deep">
                             {formatPace(fastest)}/km
                         </span>
@@ -43,8 +43,8 @@ export default function LapsGraph({
                 )}
             </header>
             <p className="mb-3 text-label-micro text-ink-3">
-                Batang oranye = lap tercepat, gelap = lainnya. Angka kiri =
-                panjang tiap lap.
+                Orange bar = fastest lap, dark = the rest. Left number = each
+                lap&apos;s distance.
             </p>
 
             {/* The -mx-3/px-3 bleed lives on this wrapper, not per row: nested inside

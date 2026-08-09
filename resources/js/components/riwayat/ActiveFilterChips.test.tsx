@@ -14,17 +14,19 @@ describe('ActiveFilterChips', () => {
         render(
             <ActiveFilterChips
                 chips={[
-                    { key: 'a', label: 'Enteng', onRemove: vi.fn() },
-                    { key: 'b', label: 'Half ke atas', onRemove: vi.fn() },
+                    { key: 'a', label: 'Easy', onRemove: vi.fn() },
+                    { key: 'b', label: 'Half marathon+', onRemove: vi.fn() },
                 ]}
             />,
         );
 
         expect(
-            screen.getByRole('button', { name: 'Hapus filter Enteng' }),
+            screen.getByRole('button', { name: 'Remove filter Easy' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Hapus filter Half ke atas' }),
+            screen.getByRole('button', {
+                name: 'Remove filter Half marathon+',
+            }),
         ).toBeInTheDocument();
     });
 
@@ -34,14 +36,14 @@ describe('ActiveFilterChips', () => {
         render(
             <ActiveFilterChips
                 chips={[
-                    { key: 'a', label: 'Enteng', onRemove: removeA },
-                    { key: 'b', label: 'Half ke atas', onRemove: removeB },
+                    { key: 'a', label: 'Easy', onRemove: removeA },
+                    { key: 'b', label: 'Half marathon+', onRemove: removeB },
                 ]}
             />,
         );
 
         fireEvent.click(
-            screen.getByRole('button', { name: 'Hapus filter Enteng' }),
+            screen.getByRole('button', { name: 'Remove filter Easy' }),
         );
 
         expect(removeA).toHaveBeenCalledOnce();
@@ -54,25 +56,25 @@ describe('ActiveFilterChips', () => {
         const onClearAll = vi.fn();
         const { rerender } = render(
             <ActiveFilterChips
-                chips={[{ key: 'a', label: 'Enteng', onRemove: vi.fn() }]}
+                chips={[{ key: 'a', label: 'Easy', onRemove: vi.fn() }]}
                 onClearAll={onClearAll}
             />,
         );
         expect(
-            screen.queryByRole('button', { name: 'Hapus semua' }),
+            screen.queryByRole('button', { name: 'Clear all' }),
         ).not.toBeInTheDocument();
 
         rerender(
             <ActiveFilterChips
                 chips={[
-                    { key: 'a', label: 'Enteng', onRemove: vi.fn() },
-                    { key: 'b', label: 'Nyala', onRemove: vi.fn() },
+                    { key: 'a', label: 'Easy', onRemove: vi.fn() },
+                    { key: 'b', label: 'Blazing', onRemove: vi.fn() },
                 ]}
                 onClearAll={onClearAll}
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'Hapus semua' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
         expect(onClearAll).toHaveBeenCalledOnce();
     });
 
@@ -80,14 +82,14 @@ describe('ActiveFilterChips', () => {
         render(
             <ActiveFilterChips
                 chips={[
-                    { key: 'a', label: 'Enteng', onRemove: vi.fn() },
-                    { key: 'b', label: 'Nyala', onRemove: vi.fn() },
+                    { key: 'a', label: 'Easy', onRemove: vi.fn() },
+                    { key: 'b', label: 'Blazing', onRemove: vi.fn() },
                 ]}
             />,
         );
 
         expect(
-            screen.queryByRole('button', { name: 'Hapus semua' }),
+            screen.queryByRole('button', { name: 'Clear all' }),
         ).not.toBeInTheDocument();
     });
 });

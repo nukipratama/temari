@@ -39,7 +39,7 @@ describe('GoalsCard', () => {
             closest: [
                 {
                     id: 'g1',
-                    title: 'Lari 100 KM bulan ini',
+                    title: 'Run 100 KM this month',
                     current: 100,
                     target: 100,
                     unit: 'km',
@@ -53,10 +53,10 @@ describe('GoalsCard', () => {
                 },
                 {
                     id: 'g3',
-                    title: 'Target kosong',
+                    title: 'Empty target',
                     current: 0,
                     target: 0,
-                    unit: 'sesi',
+                    unit: 'sessions',
                 },
             ],
         };
@@ -67,8 +67,8 @@ describe('GoalsCard', () => {
             goalsSummary,
         });
         render(<GoalsCard />);
-        expect(screen.getByText('Target terdekat')).toBeInTheDocument();
-        expect(screen.getByText('Lari 100 KM bulan ini')).toBeInTheDocument();
+        expect(screen.getByText('Closest targets')).toBeInTheDocument();
+        expect(screen.getByText('Run 100 KM this month')).toBeInTheDocument();
         expect(screen.getByText('Half marathon')).toBeInTheDocument();
         expect(
             screen.getByText((_, el) => el?.textContent === '100/100'),
@@ -89,7 +89,7 @@ describe('GoalsCard', () => {
             closest: [
                 {
                     id: 'g1',
-                    title: 'Lari 100 KM bulan ini',
+                    title: 'Run 100 KM this month',
                     current: 40,
                     target: 100,
                     unit: 'km',
@@ -105,7 +105,7 @@ describe('GoalsCard', () => {
         render(<GoalsCard />);
         expect(
             screen.getByRole('progressbar', {
-                name: 'Lari 100 KM bulan ini: 40/100 km',
+                name: 'Run 100 KM this month: 40/100 km',
             }),
         ).toBeInTheDocument();
     });

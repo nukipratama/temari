@@ -53,26 +53,26 @@ describe('DetailTiles', () => {
         expect(screen.getByText('spm avg')).toBeInTheDocument();
     });
 
-    it('shows TANJAKAN and GAP tiles on a hilly run', () => {
+    it('shows CLIMB and GAP tiles on a hilly run', () => {
         renderTiles(
             {},
             { ...baseSummary, max_grade_pct: 11, gap_pace: '5:20' },
         );
-        expect(screen.getByText('TANJAKAN')).toBeInTheDocument();
+        expect(screen.getByText('CLIMB')).toBeInTheDocument();
         expect(screen.getByText('11%')).toBeInTheDocument();
         expect(screen.getByText('GAP')).toBeInTheDocument();
         expect(screen.getByText('5:20')).toBeInTheDocument();
     });
 
-    it('shows TANJAKAN without GAP when the grade-adjusted pace is missing', () => {
+    it('shows CLIMB without GAP when the grade-adjusted pace is missing', () => {
         renderTiles({}, { ...baseSummary, max_grade_pct: 11 });
-        expect(screen.getByText('TANJAKAN')).toBeInTheDocument();
+        expect(screen.getByText('CLIMB')).toBeInTheDocument();
         expect(screen.queryByText('GAP')).not.toBeInTheDocument();
     });
 
     it('hides the grade tiles on a flat run', () => {
         renderTiles({}, { ...baseSummary, max_grade_pct: 1, gap_pace: '5:20' });
-        expect(screen.queryByText('TANJAKAN')).not.toBeInTheDocument();
+        expect(screen.queryByText('CLIMB')).not.toBeInTheDocument();
         expect(screen.queryByText('GAP')).not.toBeInTheDocument();
     });
 
@@ -82,21 +82,21 @@ describe('DetailTiles', () => {
             { ...baseSummary, max_grade_pct: Number.NaN, gap_pace: '5:20' },
         );
         expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
-        expect(screen.queryByText('TANJAKAN')).not.toBeInTheDocument();
+        expect(screen.queryByText('CLIMB')).not.toBeInTheDocument();
     });
 
     it('exposes the decoupling tile as a warning when |decoupling| > 8% on a cool run', () => {
         renderTiles({ weather_temp_c: 20 }, { decoupling_pct: 12.5 });
         expect(screen.getByText('+12.5%')).toHaveClass('text-ember');
         expect(
-            screen.getByText('napas melar di paruh kedua'),
+            screen.getByText('breathing drifted in the second half'),
         ).toBeInTheDocument();
     });
 
     it('softens the decoupling tile with a heat explanation when the run was hot', () => {
         renderTiles({ weather_temp_c: 32 }, { decoupling_pct: 12.5 });
         expect(screen.getByText('+12.5%')).not.toHaveClass('text-ember');
-        expect(screen.getByText('wajar, tadi panas 32°C')).toBeInTheDocument();
+        expect(screen.getByText('normal, it was 32°C out')).toBeInTheDocument();
     });
 
     it('still flags a high decoupling on a run without weather data', () => {
@@ -111,9 +111,9 @@ describe('DetailTiles', () => {
         renderTiles({ weather_temp_c: 32 }, { decoupling_pct: -12.5 });
         expect(screen.getByText('-12.5%')).toHaveClass('text-ember');
         expect(
-            screen.getByText('napas melar di paruh kedua'),
+            screen.getByText('breathing drifted in the second half'),
         ).toBeInTheDocument();
-        expect(screen.queryByText(/wajar, tadi panas/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/normal, it was/)).not.toBeInTheDocument();
     });
 
     it('leaves a small decoupling untinted', () => {
@@ -157,7 +157,7 @@ describe('DetailTiles', () => {
             {},
         );
         expect(
-            screen.getByText(/Detail teknis-nya belum kebaca/),
+            screen.getByText(/Technical detail hasn't been read yet/),
         ).toBeInTheDocument();
     });
 });

@@ -34,8 +34,8 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 
 const LAYOUTS: Layout[] = ['kartu', 'rute'];
 const LAYOUT_LABELS: Record<Layout, string> = {
-    kartu: 'Kartu',
-    rute: 'Rute',
+    kartu: 'Card',
+    rute: 'Route',
 };
 
 export default function ShareCardModal({
@@ -131,7 +131,7 @@ export default function ShareCardModal({
                     title: `${kartu.name} · Temari`,
                     text:
                         kartu.quote ??
-                        `Kartu ${RARITY_LABELS[kartu.rarity]}: ${kartu.name}`,
+                        `${RARITY_LABELS[kartu.rarity]} card: ${kartu.name}`,
                     url,
                 });
             } catch {
@@ -140,14 +140,14 @@ export default function ShareCardModal({
         } else if (navigator.clipboard?.writeText !== undefined) {
             try {
                 await navigator.clipboard.writeText(url);
-                setStatus({ tone: 'ok', text: 'Link aktivitas kesalin.' });
+                setStatus({ tone: 'ok', text: 'Activity link copied.' });
             } catch {
-                setStatus({ tone: 'err', text: 'Gagal nyalin link.' });
+                setStatus({ tone: 'err', text: 'Failed to copy link.' });
             }
         } else {
             setStatus({
                 tone: 'err',
-                text: 'Browser ini belum dukung berbagi.',
+                text: "This browser doesn't support sharing.",
             });
         }
     };
@@ -159,7 +159,7 @@ export default function ShareCardModal({
         ) {
             setStatus({
                 tone: 'err',
-                text: 'Browser ini belum dukung salin gambar. Pakai Bagikan ya.',
+                text: "This browser doesn't support copying images. Use Share instead.",
             });
             return;
         }
@@ -168,11 +168,11 @@ export default function ShareCardModal({
             await navigator.clipboard.write([
                 new ClipboardItem({ 'image/png': blob }),
             ]);
-            setStatus({ tone: 'ok', text: 'Gambar kartu kesalin.' });
+            setStatus({ tone: 'ok', text: 'Card image copied.' });
         } catch {
             setStatus({
                 tone: 'err',
-                text: 'Gagal nyalin gambar. Coba Bagikan aja.',
+                text: 'Failed to copy image. Try Share instead.',
             });
         }
     };
@@ -207,14 +207,14 @@ export default function ShareCardModal({
                         <button
                             type="button"
                             onClick={onClose}
-                            aria-label="Tutup"
+                            aria-label="Close"
                             className={iconButtonVariants({ size: 'sm' })}
                         >
                             <Icon icon="mdi:close" width={16} height={16} />
                         </button>
                         <div className="flex-1 text-center">
                             <div className="text-label-micro text-ink-2">
-                                Bagikan kartu
+                                Share card
                             </div>
                             <div className="font-display text-xl tracking-tight text-ink">
                                 {kartu.name}
@@ -233,7 +233,7 @@ export default function ShareCardModal({
                             ref={canvasRef}
                             width={1080}
                             height={format === 'story' ? 1920 : 1080}
-                            aria-label={`Pratinjau kartu ${kartu.name}`}
+                            aria-label={`Preview of ${kartu.name}`}
                             className="block rounded-2xl"
                             style={{
                                 maxWidth: '100%',
@@ -267,13 +267,13 @@ export default function ShareCardModal({
                                         )}
                                     />
                                     {f === 'story'
-                                        ? 'Potret · 9:16'
-                                        : 'Persegi · 1:1'}
+                                        ? 'Portrait · 9:16'
+                                        : 'Square · 1:1'}
                                 </button>
                             ))}
                         </div>
 
-                        {/* Gaya — template picker. Hidden when a no-GPS run leaves only
+                        {/* Style — template picker. Hidden when a no-GPS run leaves only
                             the Kartu layout, so there's nothing to choose. */}
                         {availableLayouts.length > 1 && (
                             <div className="flex w-full gap-2">
@@ -311,7 +311,7 @@ export default function ShareCardModal({
                                 height={16}
                                 aria-hidden
                             />
-                            Bagikan
+                            Share
                         </PillButton>
                         <PillButton
                             tone="ghost"
@@ -324,7 +324,7 @@ export default function ShareCardModal({
                                 height={16}
                                 aria-hidden
                             />
-                            Salin gambar
+                            Copy image
                         </PillButton>
                         {status !== null && (
                             <p

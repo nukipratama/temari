@@ -31,26 +31,26 @@ export default function AttentionArea({
             <RecoverBar />
 
             <AttentionPanel
-                title="Perlu perhatian"
-                subtitle="Blok AI yang gagal berulang dan berhenti dicoba otomatis. Coba lagi manual per user."
+                title="Needs attention"
+                subtitle="AI blocks that failed repeatedly and stopped auto-retrying. Retry manually per user."
                 groups={deadLettered}
-                countLabel="blok berhenti dicoba otomatis"
+                countLabel="blocks stopped auto-retrying"
                 actionable
             />
 
             <AttentionPanel
-                title="Failed, belum menyerah"
-                subtitle="Blok yang lagi gagal tapi masih dicoba otomatis. Bisa dipaksa lanjut sekarang per user."
+                title="Failed, not giving up yet"
+                subtitle="Blocks currently failing but still auto-retrying. Can be forced to continue now, per user."
                 groups={failedUnderBudget}
-                countLabel="blok gagal, masih dicoba otomatis"
+                countLabel="blocks failing, still auto-retrying"
                 actionable
             />
 
             <AttentionPanel
-                title="Nyangkut"
-                subtitle="Blok pending/queued yang mandek lama (job-nya hilang). Pakai Pulihkan semua di atas buat nyapu."
+                title="Stuck"
+                subtitle="Pending/queued blocks stuck for a long time (their job got lost). Use Recover all above to clear them."
                 groups={nyangkut}
-                countLabel="blok nyangkut (pending/queued)"
+                countLabel="stuck blocks (pending/queued)"
                 actionable={false}
             />
         </>
@@ -72,8 +72,8 @@ function RecoverBar() {
     return (
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface-elev p-4">
             <p className="text-sm text-ink-2">
-                Baru pulih dari outage? Pulihkan semua blok yang nyangkut
-                sekaligus.
+                Just recovered from an outage? Recover every stuck block at
+                once.
             </p>
             <button
                 type="button"
@@ -82,7 +82,7 @@ function RecoverBar() {
                 className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-sky px-4 py-2 text-xs font-semibold text-cream transition-colors hover:bg-sky-deep disabled:cursor-wait disabled:opacity-60"
             >
                 <Icon icon="mdi:restore" aria-hidden />
-                <span>{processing ? 'Memulihkan…' : 'Pulihkan semua'}</span>
+                <span>{processing ? 'Recovering…' : 'Recover all'}</span>
             </button>
         </div>
     );
@@ -90,7 +90,7 @@ function RecoverBar() {
 
 /**
  * A per-user bucket of stuck blocks. When `actionable`, each group carries a
- * "Coba lagi semua" that re-arms and re-dispatches all of that user's Failed
+ * "Retry all" that re-arms and re-dispatches all of that user's Failed
  * blocks. Hidden when its bucket is empty.
  */
 function AttentionPanel({
@@ -190,13 +190,13 @@ function AttentionGroupRow({
                     disabled={processing || paused}
                     title={
                         paused
-                            ? 'Temari lagi istirahat, coba lagi nanti'
+                            ? 'Temari is resting, try again later'
                             : undefined
                     }
                     className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-leaf-deep px-3 py-1.5 text-xs font-semibold text-cream transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
                 >
                     <Icon icon="mdi:auto-awesome" aria-hidden />
-                    <span>{processing ? 'Mengirim…' : 'Coba lagi semua'}</span>
+                    <span>{processing ? 'Sending…' : 'Retry all'}</span>
                 </button>
             )}
         </div>

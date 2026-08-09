@@ -35,7 +35,7 @@ import {
 import Kartu from './Kartu';
 import PackWrapper from './PackWrapper';
 
-// Carries the ~1200-line canvas engine, so it is fetched on the Bagikan tap
+// Carries the ~1200-line canvas engine, so it is fetched on the Share tap
 // rather than riding along with the reveal itself.
 const ShareCardModal = lazy(() => import('./ShareCardModal'));
 
@@ -148,9 +148,9 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
     const effectivePose = revealPose(opened, pending.rarity);
     const eyebrow = opened
         ? `★ ${RARITY_LABELS[pending.rarity]}`
-        : 'Sync masuk';
-    const title = opened ? pending.special_move : 'Aku lagi baca lari kamu…';
-    const subtitleText = opened ? 'Udah masuk koleksimu.' : undefined;
+        : 'Syncing in';
+    const title = opened ? pending.special_move : "I'm reading your run…";
+    const subtitleText = opened ? "It's in your collection now." : undefined;
 
     const sharePaceSec = paceSecPerKm(
         pending.elapsed_time_sec,
@@ -204,7 +204,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
     };
 
     // Optimistic close: hide instantly on dismiss; the seen-POST + reload run in
-    // the background (see `dismiss`). Covers Tutup, outside-click, and Escape.
+    // the background (see `dismiss`). Covers Close, outside-click, and Escape.
     if (dismissed) return null;
 
     return (
@@ -213,7 +213,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                 ref={panelRef}
                 role="dialog"
                 aria-modal="true"
-                aria-label="Kartu baru"
+                aria-label="New card"
                 className="fixed inset-0 z-50 flex justify-center overflow-y-auto overflow-x-clip bg-sky-deep/80 px-4 py-6 backdrop-blur-md"
                 onClick={() => {
                     if (opened) dismiss();
@@ -390,7 +390,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                                                         height={16}
                                                         aria-hidden
                                                     />
-                                                    Lihat koleksi
+                                                    View collection
                                                 </PillButton>
                                             </motion.div>
                                             <motion.div
@@ -411,7 +411,7 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                                                         height={16}
                                                         aria-hidden
                                                     />
-                                                    Bagikan
+                                                    Share
                                                 </PillButton>
                                             </motion.div>
                                         </>
@@ -428,15 +428,15 @@ export default function CardReveal({ pending }: Readonly<CardRevealProps>) {
                                             height={14}
                                             aria-hidden
                                         />
-                                        Tutup
+                                        Close
                                     </PillButton>
                                 </div>
 
                                 {/* Helper text */}
                                 <div className="mt-4 text-label-micro text-ink-on-sky">
                                     {!opened
-                                        ? 'Sobek bungkusnya buat lihat kartu'
-                                        : 'Udah masuk koleksimu · ketuk di luar untuk tutup'}
+                                        ? 'Tear the wrapper to see your card'
+                                        : "It's in your collection now · tap outside to close"}
                                 </div>
                             </div>
                         </div>

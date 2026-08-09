@@ -1,12 +1,12 @@
 /**
  * Beginner-friendly explanations for every sport-science term surfaced
- * across the app. Each entry is a 1-2 sentence Indonesian explanation
- * keyed by a stable slug. Components opt in via `<MetricExplainer
- * metricKey="ctl" />` next to the label they want to demystify.
+ * across the app. Each entry is a 1-2 sentence explanation keyed by a
+ * stable slug. Components opt in via `<MetricExplainer metricKey="ctl" />`
+ * next to the label they want to demystify.
  *
- * Voice matches the Temari persona: santai khas obrolan, "kamu" address form,
- * common running terms stay English, obscure ones get explained, no em-dash,
- * no markdown. See docs/voice-and-tone.md.
+ * Voice matches the Temari persona: casual, warm, contractions fine,
+ * common running terms stay English, obscure ones get explained, no
+ * em-dash, no markdown. See docs/voice-and-tone.md.
  */
 
 export interface MetricGlossaryEntry {
@@ -14,7 +14,7 @@ export interface MetricGlossaryEntry {
     acronym?: string;
     /** Human-readable name. Used as the popover heading. */
     label: string;
-    /** 1-2 sentence Indonesian explanation. Plain prose, no markdown. */
+    /** 1-2 sentence explanation. Plain prose, no markdown. */
     body: string;
 }
 
@@ -22,133 +22,133 @@ export const METRIC_GLOSSARY = {
     ctl: {
         acronym: 'CTL',
         label: 'Fitness',
-        body: 'Kebugaran rata-rata 42 hari terakhir. Semakin tinggi, semakin siap kamu untuk lari jauh atau intens. Naiknya perlahan kalau kamu konsisten.',
+        body: 'Your average fitness over the last 42 days. The higher it is, the more ready you are for long or intense runs. It climbs slowly, and only with consistency.',
     },
     atl: {
         acronym: 'ATL',
         label: 'Fatigue',
-        body: 'Beban 7 hari terakhir. Tinggi berarti kamu baru selesai kerja keras dan perlu recovery sebelum push lagi.',
+        body: "Your training load over the last 7 days. High means you've just put in hard work and need some recovery before pushing again.",
     },
     form: {
-        label: 'Kesiapan',
-        body: 'Seberapa siap badanmu buat lari hari ini, dari selisih Fitness dikurangi Fatigue. Positif berarti segar dan siap. Negatif belum tentu jelek: artinya kamu lagi nyimpen capek tapi masih di zona ideal buat adaptasi.',
+        label: 'Readiness',
+        body: "How ready your body is to run today, from Fitness minus Fatigue. Positive means you're fresh and ready. Negative isn't necessarily bad, it means you're carrying some fatigue but still in the ideal zone for adaptation.",
     },
     trimp: {
         acronym: 'TRIMP',
         label: 'TRIMP',
-        body: 'Skor usaha satu sesi lari. Gabungan durasi dan detak jantung. Semakin lama atau semakin keras, semakin tinggi skornya. Baris di bawahnya ngebandingin sesi ini sama rata-rata effort kamu 28 hari terakhir, jadi kamu tau ini lebih berat atau lebih enteng dari biasanya.',
+        body: 'The effort score for a single run, combining duration and heart rate. The longer or harder it is, the higher the score. The line below compares this session to your average effort over the last 28 days, so you know if it was heavier or lighter than usual.',
     },
     monotony: {
         label: 'Monotony',
-        body: 'Variasi intensitas mingguan. Di atas 2 berarti minggumu terlalu seragam dan rentan cedera. Selipkan easy day untuk menurunkan angka ini.',
+        body: 'How much your weekly intensity varies. Above 2 means your week is too uniform and injury risk goes up. Slip in an easy day to bring this number down.',
     },
     strain: {
         label: 'Strain',
-        body: 'Total tekanan minggu ini, dihitung dari TRIMP dikalikan Monotony. Strain tinggi menandakan beban menumpuk.',
+        body: 'Total stress for the week, TRIMP multiplied by Monotony. High strain means load is piling up.',
     },
     decoupling: {
         label: 'Decoupling',
-        body: 'Selisih efisiensi paruh pertama dan paruh kedua lari. Di atas 5% berarti HR drift, base aerobic belum solid atau kamu sudah kepayahan.',
+        body: "The efficiency gap between the first and second half of a run. Above 5% means HR drift, either your aerobic base isn't solid yet or you were already gassed.",
     },
     recovery: {
-        label: 'Jeda',
-        body: 'Berapa lama sejak lari terakhirmu, bukan pengukuran pemulihan badan beneran (nggak ada sensor buat itu di sini). Aturan kasarnya, sekitar 72 jam biasanya cukup buat siap sesi berat lagi, tapi lari enteng nggak perlu nunggu selama itu.',
+        label: 'Break',
+        body: "How long it's been since your last run, not an actual measurement of physical recovery (there's no sensor for that here). As a rough rule, around 72 hours is usually enough to be ready for another hard session, but an easy run doesn't need to wait that long.",
     },
     vibe: {
         label: 'Vibe',
-        body: 'Ringkasan kondisi kamu hari ini, diambil dari Form dan tren mingguan. Aku pakai ini untuk menentukan tone briefing.',
+        body: "A summary of how you're doing today, drawn from Form and your weekly trend. I use this to set the tone of your briefing.",
     },
     cadence: {
         label: 'Cadence',
-        body: 'Langkah per menit (spm). Rentang 170 sampai 180 lazim untuk distance runner, biasanya naik 5 sampai 10 saat sprint.',
+        body: 'Steps per minute (spm). A range of 170 to 180 is common for distance runners, and it usually climbs 5 to 10 during a sprint.',
     },
     gap: {
         acronym: 'GAP',
         label: 'Grade Adjusted Pace',
-        body: 'Pace yang udah dihitung ulang seolah jalurnya datar, biar effort di tanjakan keliatan jujur. Lari nanjak yang berat bakal keluar lebih kencang dari pace mentahnya.',
+        body: 'Pace recalculated as if the route were flat, so effort on hills reads honestly. A hard uphill run will come out faster than its raw pace.',
     },
     edwards_trimp: {
         acronym: 'Edwards',
         label: 'Edwards TRIMP',
-        body: 'Metode hitung TRIMP yang menggunakan bobot per HR zone. Z1 dapat 1 poin per menit, Z5 dapat 5 poin per menit. Skor lebih tinggi berarti sesi lebih keras.',
+        body: 'A way of calculating TRIMP that weights each HR zone. Z1 earns 1 point per minute, Z5 earns 5 points per minute. A higher score means a harder session.',
     },
     hr_zones: {
         label: 'HR Zones',
-        body: 'Lima tingkat intensitas berdasarkan detak jantung. Z1 paling santai, Z5 paling keras. Distribusinya menentukan tipe sesi kamu.',
+        body: 'Five intensity levels based on heart rate. Z1 is the easiest, Z5 is the hardest. The split between them defines what kind of session you ran.',
     },
     hr_z1: {
         acronym: 'Z1',
         label: 'Zone 1: Recovery',
-        body: 'Sangat santai, masih bisa bernyanyi sambil lari. Untuk recovery atau cooldown.',
+        body: 'Very easy, you could still sing while running. For recovery or cooldown.',
     },
     hr_z2: {
         acronym: 'Z2',
-        label: 'Zone 2: Ngobrol',
-        body: 'Masih santai, masih bisa mengobrol sambil lari. Zone andalan untuk base building.',
+        label: 'Zone 2: Conversational',
+        body: 'Still easy, you can hold a conversation while running. The go-to zone for base building.',
     },
     hr_z3: {
         acronym: 'Z3',
         label: 'Zone 3: Tempo',
-        body: 'Tempo pace. Sudah terengah-engah, hanya bisa bicara satu sampai dua kata.',
+        body: "Tempo pace. You're breathing hard now, only good for one or two words at a time.",
     },
     hr_z4: {
         acronym: 'Z4',
         label: 'Zone 4: Threshold',
-        body: 'Threshold pace. Sudah keras, hanya bicara singkat. Untuk sesi tempo atau interval.',
+        body: 'Threshold pace. This is hard, only short bursts of talking. For tempo or interval sessions.',
     },
     hr_z5: {
         acronym: 'Z5',
         label: 'Zone 5: Max',
-        body: 'Mode sprint, tidak bisa bicara sama sekali. Dipakai hanya untuk interval pendek.',
+        body: 'Sprint mode, no talking at all. Used only for short intervals.',
     },
     status_fresh: {
-        label: 'Lagi seger',
-        body: 'Lagi segar dan siap buat sesi berat. Kesiapan positif, fatigue rendah.',
+        label: 'Feeling Fresh',
+        body: "You're fresh and ready for a hard session. Readiness is positive, fatigue is low.",
     },
     status_optimal: {
-        label: 'Pas banget',
-        body: 'Pas, beban dan kebugaran seimbang. Sweet spot buat training konsisten.',
+        label: 'Right on Track',
+        body: 'Right where you want to be, load and fitness are balanced. The sweet spot for consistent training.',
     },
     status_fatigued: {
-        label: 'Mulai capek',
-        body: 'Lagi capek, intensitasnya dikurangi dulu. Kasih easy day atau rest biar fatigue turun.',
+        label: 'Getting Tired',
+        body: "You're tired, ease off the intensity for now. Give yourself an easy day or rest so fatigue can drop.",
     },
     status_overreaching: {
-        label: 'Kelewatan',
-        body: 'Bebannya kelewat banyak. Wajib rest beberapa hari sebelum lanjut, kalau dipaksa risiko cedera atau sakit naik.',
+        label: 'Overreaching',
+        body: 'The load is way too much. Rest for a few days before continuing, pushing through raises the risk of injury or illness.',
     },
     vibe_vs_mood: {
         label: 'Vibe vs Mood',
-        body: 'Vibe = kondisi kamu hari ini, dihitung dari fitness, fatigue, dan form. Mood = nuansa lari per sesi (nyala, enteng, oleng, lemes, mumet, adem). Vibe satu hari satu, mood per lari.',
+        body: 'Vibe is your overall state today, calculated from fitness, fatigue and form. Mood is the feel of a single run. Vibe is one per day, mood is one per run.',
     },
     ascent: {
         label: 'Ascent',
-        body: 'Total tanjakan yang kamu lewatin selama lari, dalam meter. Makin tinggi, makin berat usahanya walau jaraknya sama.',
+        body: 'Total climb over the course of your run, in meters. The more of it there is, the harder the effort even at the same distance.',
     },
     vdot: {
         acronym: 'VDOT',
         label: 'VDOT',
-        body: 'Skor kebugaran lari dari PR terbaikmu, pakai rumus Jack Daniels. Makin tinggi, makin efisien threshold pace kamu.',
+        body: 'A running fitness score from your best PR, using the Jack Daniels formula. The higher it is, the more efficient your threshold pace.',
     },
     threshold_pace: {
         label: 'Threshold pace',
-        body: 'Perkiraan pace di ambang laktat, turunan dari skor VDOT. Pace ideal buat sesi tempo lari.',
+        body: 'An estimate of your lactate-threshold pace, derived from your VDOT score. The ideal pace for a tempo run.',
     },
     pace_easy: {
         label: 'Easy pace',
-        body: 'Pace santai buat base building, turunan dari skor VDOT kamu. Masih bisa ngobrol sambil lari di pace ini.',
+        body: 'An easy pace for base building, derived from your VDOT score. You can still hold a conversation at this pace.',
     },
     pace_marathon: {
         label: 'Marathon pace',
-        body: 'Pace target buat lari jarak jauh yang stabil, di antara easy dan threshold.',
+        body: 'A target pace for a steady long run, between easy and threshold.',
     },
     pace_interval: {
         label: 'Interval pace',
-        body: 'Pace tercepat buat repetisi pendek, di atas threshold. Dipakai buat sesi interval, bukan sesi panjang.',
+        body: 'The fastest pace, for short repeats above threshold. Used for interval sessions, not long ones.',
     },
     pace_tempo: {
         label: 'Tempo pace',
-        body: 'Pace target buat sesi tempo, turunan dari skor VDOT. Beda dari "Threshold pace" di kartu atas, yang perkiraan ambang laktat kamu sekarang dari lari-lari kencang terakhir.',
+        body: 'A target pace for tempo sessions, derived from your VDOT score. Different from the "Threshold pace" card above, which is your current estimated lactate threshold from recent hard runs.',
     },
 } as const satisfies Record<string, MetricGlossaryEntry>;
 

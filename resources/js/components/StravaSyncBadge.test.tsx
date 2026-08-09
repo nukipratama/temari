@@ -21,7 +21,7 @@ describe('StravaSyncBadge', () => {
 
     it('renders an inert badge while syncing', () => {
         render(<StravaSyncBadge sync={sync('syncing')} />);
-        expect(screen.getByText('Lagi sinkron')).toBeInTheDocument();
+        expect(screen.getByText('Syncing')).toBeInTheDocument();
         expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
 
@@ -36,15 +36,15 @@ describe('StravaSyncBadge', () => {
 
     it('uses the compact label variant when density is compact', () => {
         render(<StravaSyncBadge sync={sync('syncing')} density="compact" />);
-        expect(screen.getByText('Sinkron')).toBeInTheDocument();
-        expect(screen.queryByText('Lagi sinkron')).not.toBeInTheDocument();
+        expect(screen.getByText('Sync')).toBeInTheDocument();
+        expect(screen.queryByText('Syncing')).not.toBeInTheDocument();
     });
 
     it('renders a reconnect link to the OAuth redirect when revoked', () => {
         render(<StravaSyncBadge sync={sync('revoked')} />);
-        const link = screen.getByRole('link', { name: /sambungkan ulang/i });
+        const link = screen.getByRole('link', { name: /reconnect/i });
         expect(link).toHaveAttribute('href', '/auth/strava/redirect');
-        expect(screen.getByText(/Sambungkan ulang/)).toBeInTheDocument();
+        expect(screen.getByText(/Reconnect/)).toBeInTheDocument();
     });
 
     it('defaults a missing sync prop to disconnected', () => {

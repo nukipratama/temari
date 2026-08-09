@@ -42,7 +42,7 @@ it('renders nothing when no VAPID public key is configured', () => {
 it('shows the enable button when ready and subscribes on click', async () => {
     render(<PushNotificationToggle />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Nyalakan/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Turn on/ }));
 
     await waitFor(() =>
         expect(webPush.subscribe).toHaveBeenCalledWith('test-key'),
@@ -60,7 +60,7 @@ it('tells a non-Safari iOS browser to open in Safari', async () => {
     vi.mocked(webPush.isIosNonSafari).mockReturnValue(true);
     render(<PushNotificationToggle />);
     expect(
-        await screen.findByText(/Buka Temari di Safari/),
+        await screen.findByText(/Open Temari in Safari/),
     ).toBeInTheDocument();
 });
 
@@ -68,14 +68,14 @@ it('shows the unsupported hint', async () => {
     vi.mocked(webPush.isPushSupported).mockReturnValue(false);
     render(<PushNotificationToggle />);
     expect(
-        await screen.findByText(/belum bisa nerima notifikasi/),
+        await screen.findByText(/can't receive notifications/),
     ).toBeInTheDocument();
 });
 
 it('shows the OS-settings hint when permission is denied', async () => {
     vi.stubGlobal('Notification', { permission: 'denied' });
     render(<PushNotificationToggle />);
-    expect(await screen.findByText(/diblokir/i)).toBeInTheDocument();
+    expect(await screen.findByText(/blocked/i)).toBeInTheDocument();
 });
 
 it('offers only the off switch when already subscribed', async () => {
@@ -84,7 +84,7 @@ it('offers only the off switch when already subscribed', async () => {
     );
     render(<PushNotificationToggle />);
     expect(
-        await screen.findByRole('button', { name: /Matikan/ }),
+        await screen.findByRole('button', { name: /Turn off/ }),
     ).toBeInTheDocument();
     expect(
         screen.queryByRole('button', { name: /Kirim tes/ }),

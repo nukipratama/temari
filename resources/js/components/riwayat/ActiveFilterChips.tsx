@@ -41,7 +41,7 @@ export default function ActiveFilterChips({
                     key={chip.key}
                     type="button"
                     onClick={chip.onRemove}
-                    aria-label={`Hapus filter ${chip.label}`}
+                    aria-label={`Remove filter ${chip.label}`}
                     className="pressable focus-ring inline-flex items-center gap-1.5 rounded-full border border-sky/40 bg-sky/[0.06] py-1 pl-3 pr-2 text-xs font-medium text-sky"
                 >
                     {chip.label}
@@ -54,7 +54,7 @@ export default function ActiveFilterChips({
                     onClick={onClearAll}
                     className="focus-ring rounded px-1 text-xs font-medium text-ink-3 underline-offset-2 hover:text-ink-2 hover:underline"
                 >
-                    Hapus semua
+                    Clear all
                 </button>
             )}
         </div>

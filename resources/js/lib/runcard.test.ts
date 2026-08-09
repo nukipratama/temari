@@ -194,13 +194,13 @@ describe('kartuPropsFromDetail', () => {
         expect(
             kartuPropsFromDetail(fullDetail, { durationFormat: 'words' })
                 .durasi,
-        ).toBe('30 menit 10 detik');
+        ).toBe('30 min 10 sec');
     });
 
-    it('falls back to "Lari" in the subtitle when the run has no name', () => {
+    it('falls back to "Run" in the subtitle when the run has no name', () => {
         expect(
             kartuPropsFromDetail({ ...fullDetail, name: null }).subtitle,
-        ).toContain('Lari · ');
+        ).toContain('Run · ');
     });
 
     it('uses "—" sentinels and null fields when detail is null or empty', () => {

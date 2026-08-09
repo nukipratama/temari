@@ -25,7 +25,7 @@ describe('SplitsTable', () => {
     it('renders the section header and crowns the fastest km', () => {
         render(<SplitsTable rows={rows} />);
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
-        expect(screen.getByText(/Paling kenceng di km 2/)).toBeInTheDocument();
+        expect(screen.getByText(/Fastest at km 2/)).toBeInTheDocument();
         expect(screen.getByText('5:45/km')).toBeInTheDocument();
     });
 
@@ -65,7 +65,7 @@ describe('SplitsTable', () => {
     it('omits the crown line when no split has a parseable pace', () => {
         render(<SplitsTable rows={[{ km: 1, pace: 'n/a' }]} />);
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
-        expect(screen.queryByText(/Paling kenceng/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Fastest at km/)).not.toBeInTheDocument();
     });
 
     it('labels a km-less row "KM ?" instead of dropping it', () => {
@@ -87,8 +87,8 @@ describe('SplitsTable', () => {
         // A fast sisa (4:00) must not steal the "fastest km" crown from km 2 (5:45).
         render(<SplitsTable rows={rows} partial={partial} />);
         expect(screen.getByText('0.7 KM')).toBeInTheDocument();
-        expect(screen.getByText(/putus-putus = sisa/)).toBeInTheDocument();
-        expect(screen.getByText(/Paling kenceng di km 2/)).toBeInTheDocument();
+        expect(screen.getByText(/dashed = remainder/)).toBeInTheDocument();
+        expect(screen.getByText(/Fastest at km 2/)).toBeInTheDocument();
         expect(screen.getByText('♡ 158')).toBeInTheDocument();
         expect(screen.getByText('168')).toBeInTheDocument();
     });
@@ -96,7 +96,7 @@ describe('SplitsTable', () => {
     it('drops the "sisa" note from the legend when there is no partial', () => {
         render(<SplitsTable rows={rows} />);
         expect(
-            screen.queryByText(/putus-putus = sisa/),
+            screen.queryByText(/dashed = remainder/),
         ).not.toBeInTheDocument();
     });
 

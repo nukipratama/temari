@@ -286,7 +286,7 @@ export interface KartuPropsFromDetail {
 export interface KartuPropsOptions {
     /**
      * Duration display: `'hms'` (digital "30:10", default) or `'words'`
-     * ("30 menit 10 detik"). Cards use HMS so the fixed-width stat-grid cell
+     * ("30 min 10 sec"). Cards use HMS so the fixed-width stat-grid cell
      * doesn't clip the long words form under `truncate`.
      */
     durationFormat?: 'words' | 'hms';
@@ -317,7 +317,7 @@ export function kartuPropsFromDetail(
                 ? '—'
                 : String(Math.round(detail.trimp_edwards)),
         subtitle: detail
-            ? `${detail.name ?? 'Lari'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`
+            ? `${detail.name ?? 'Run'} · ${formatNaiveIdDate(detail.start_date_local, 'short')}`
             : null,
         stats: buildCardStats(detail),
         zonePct: zonePctFromDetail(detail),

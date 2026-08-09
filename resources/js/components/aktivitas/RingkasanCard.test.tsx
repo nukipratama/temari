@@ -23,23 +23,24 @@ describe('RingkasanCard', () => {
         render(
             <RingkasanCard
                 analysis={baseAnalysis()}
-                fallback="Minggu ini lo lari 3x sejauh 12.5km."
+                fallback="You ran 3x this week for 12.5km."
             />,
         );
         expect(
-            screen.getByText('Minggu ini lo lari 3x sejauh 12.5km.'),
+            screen.getByText('You ran 3x this week for 12.5km.'),
         ).toBeInTheDocument();
     });
 
     it('renders the LLM-generated narrative when the analysis is done', () => {
         const done = baseAnalysis({
             status: 'done',
-            content: 'Minggu ini kamu lari tiga kali, pace semakin halus.',
+            content:
+                'You ran three times this week, and your pace kept getting smoother.',
         });
         render(<RingkasanCard analysis={done} fallback="ignored" />);
         expect(
             screen.getByText(
-                'Minggu ini kamu lari tiga kali, pace semakin halus.',
+                'You ran three times this week, and your pace kept getting smoother.',
             ),
         ).toBeInTheDocument();
         // Fallback should not double-render when the LLM content is available.
@@ -49,7 +50,7 @@ describe('RingkasanCard', () => {
     it('hides the manual trigger but keeps the fallback prose for a past week with no narration yet', () => {
         render(<RingkasanCard analysis={baseAnalysis()} fallback="fallback" />);
         expect(
-            screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+            screen.queryByRole('button', { name: /Ask Temari to read it/ }),
         ).not.toBeInTheDocument();
         expect(screen.getByText('fallback')).toBeInTheDocument();
     });
@@ -63,15 +64,15 @@ describe('RingkasanCard', () => {
             />,
         );
         expect(
-            screen.getByText(/Rekap minggu ini belum tersedia/),
+            screen.getByText(/This week's recap isn't available yet/),
         ).toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: /Minta Temari bacain/ }),
+            screen.queryByRole('button', { name: /Ask Temari to read it/ }),
         ).not.toBeInTheDocument();
         // Still visible (never-empty intent preserved) but framed as a preview
-        // instead of stacking unlabeled under "belum tersedia" — that read as a
+        // instead of stacking unlabeled under "not available yet" — that read as a
         // contradiction (not ready yet, immediately followed by the summary).
-        expect(screen.getByText('Sementara ini:')).toBeInTheDocument();
+        expect(screen.getByText('For now:')).toBeInTheDocument();
         expect(screen.getByText('fallback')).toBeInTheDocument();
     });
 });

@@ -9,8 +9,7 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
     const hasCeiling = dailyCeiling !== null && dailyCeiling > 0;
     const ratio = hasCeiling ? todayCost / dailyCeiling : 0;
     const overBudget = hasCeiling && ratio > 1;
-    const caveat =
-        'Estimasi memakai harga list price dari config, bukan tagihan final.';
+    const caveat = 'Estimate uses list price from config, not the final bill.';
 
     return (
         <Card
@@ -21,7 +20,7 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
         >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-label-micro text-ink-2">
-                    Anggaran Hari Ini
+                    Today&apos;s Budget
                 </span>
                 <span className="text-sm text-ink-2">
                     <span className="font-semibold text-ink">
@@ -33,7 +32,7 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
                             {formatCost(dailyCeiling, currency)}
                         </>
                     ) : (
-                        <span className="text-ink-3"> · tanpa batas</span>
+                        <span className="text-ink-3"> · no limit</span>
                     )}
                 </span>
             </div>
@@ -42,18 +41,16 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
                 <ProgressBar
                     value={ratio}
                     tone={overBudget ? 'sky' : 'horizon'}
-                    ariaLabel={`Anggaran hari ini: ${Math.round(ratio * 100)}% terpakai`}
+                    ariaLabel={`Today's budget: ${Math.round(ratio * 100)}% used`}
                     className="mt-3"
                 />
             ) : (
-                <p className="mt-3 text-xs text-ink-3">
-                    Tidak ada batas harian yang disetel.
-                </p>
+                <p className="mt-3 text-xs text-ink-3">No daily limit set.</p>
             )}
 
             {overBudget && (
                 <p className="mt-2 text-xs font-semibold text-mood-lemes">
-                    Melewati batas harian sebesar{' '}
+                    Over the daily limit by{' '}
                     {formatCost(todayCost - dailyCeiling, currency)}.
                 </p>
             )}

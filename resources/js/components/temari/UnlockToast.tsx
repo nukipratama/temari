@@ -53,7 +53,7 @@ export default function UnlockToast() {
                         />
                         <div>
                             <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
-                                Unlock baru
+                                New unlock
                             </div>
                             <div className="text-sm font-semibold text-ink">
                                 {active.name}
@@ -62,7 +62,7 @@ export default function UnlockToast() {
                         <button
                             type="button"
                             onClick={() => setActive(null)}
-                            aria-label="Tutup notifikasi"
+                            aria-label="Dismiss notification"
                             className="focus-ring ml-2 rounded-full p-1 text-ink-3 hover:bg-line/40 hover:text-ink"
                         >
                             <Icon

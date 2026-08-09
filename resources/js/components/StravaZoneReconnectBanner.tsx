@@ -29,7 +29,7 @@ export default function StravaZoneReconnectBanner() {
                     aria-hidden
                 />
                 <p className="flex-1 font-sans text-sm leading-relaxed text-ink">
-                    Sambungin ulang Strava buat sinkronin zona HR kamu otomatis.
+                    Reconnect Strava to auto-sync your HR zones.
                 </p>
                 <a
                     href="/auth/strava/redirect?from=/profil"
@@ -41,7 +41,7 @@ export default function StravaZoneReconnectBanner() {
                         height={12}
                         aria-hidden
                     />
-                    Sambungin lagi
+                    Reconnect
                 </a>
             </div>
         </div>

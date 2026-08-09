@@ -54,7 +54,7 @@ describe('UsageFilters', () => {
     it('submits the date fields as a custom window', () => {
         renderFilters();
 
-        fireEvent.click(screen.getByRole('button', { name: /terapkan/i }));
+        fireEvent.click(screen.getByRole('button', { name: /apply/i }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
@@ -66,7 +66,7 @@ describe('UsageFilters', () => {
     it('sends the kind filter along with a submitted custom window', () => {
         renderFilters({ kind: 'briefing' });
 
-        fireEvent.click(screen.getByRole('button', { name: /terapkan/i }));
+        fireEvent.click(screen.getByRole('button', { name: /apply/i }));
 
         expect(router.get).toHaveBeenCalledWith(
             '/ai-usage',
@@ -96,7 +96,7 @@ describe('UsageFilters', () => {
     it('applies the kind filter immediately on change, preserving the range', () => {
         renderFilters({ range: '7d' as RangeToken });
 
-        fireEvent.change(screen.getByLabelText(/jenis/i), {
+        fireEvent.change(screen.getByLabelText(/kind/i), {
             target: { value: 'briefing' },
         });
 
@@ -110,7 +110,7 @@ describe('UsageFilters', () => {
     it('clearing the kind filter drops it from the query rather than sending an empty one', () => {
         renderFilters({ range: '7d' as RangeToken, kind: 'briefing' });
 
-        fireEvent.change(screen.getByLabelText(/jenis/i), {
+        fireEvent.change(screen.getByLabelText(/kind/i), {
             target: { value: '' },
         });
 
@@ -124,7 +124,7 @@ describe('UsageFilters', () => {
     it('hides the kind dropdown when the report has no kinds to filter by', () => {
         renderFilters({ availableKinds: [] });
 
-        expect(screen.queryByLabelText(/jenis/i)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/kind/i)).not.toBeInTheDocument();
     });
 
     it.each([

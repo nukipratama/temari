@@ -43,7 +43,7 @@ describe('LapsGraph', () => {
     it('renders the section header and crowns the fastest lap', () => {
         render(<LapsGraph laps={laps} />);
         expect(screen.getByText('Laps')).toBeInTheDocument();
-        expect(screen.getByText(/Paling kenceng di lap 2/)).toBeInTheDocument();
+        expect(screen.getByText(/Fastest at lap 2/)).toBeInTheDocument();
         expect(screen.getByText('5:45/km')).toBeInTheDocument();
     });
 
@@ -115,7 +115,7 @@ describe('LapsGraph', () => {
             />,
         );
         expect(screen.getByText('Laps')).toBeInTheDocument();
-        expect(screen.queryByText(/Paling kenceng/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Fastest at lap/)).not.toBeInTheDocument();
     });
 
     it('passes the className through to the card', () => {

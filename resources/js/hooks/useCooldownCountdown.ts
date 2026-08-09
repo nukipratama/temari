@@ -6,7 +6,7 @@ import { formatDurationHMS } from '@/lib/pace';
  * Counts an initial cooldown (in seconds) down to zero, ticking once a second
  * while positive. Resets whenever `initialSeconds` changes, so a fresh
  * retry-after value from the server restarts the countdown. Used by the analysis
- * "Baca ulang" / briefing footer buttons to disable retry until the cooldown
+ * "Reread" / briefing footer buttons to disable retry until the cooldown
  * elapses.
  */
 export function useCooldownCountdown(
@@ -38,14 +38,14 @@ export function useCooldownCountdown(
 
 /**
  * aria-label for a button disabled by a {@link useCooldownCountdown}, or
- * undefined when not cooling. `action` is the Indonesian infinitive phrase for
- * what's being waited on (e.g. "baca ulang", "kirim ke Telegram").
+ * undefined when not cooling. `action` is the phrase for what's being waited
+ * on (e.g. "reread", "sending to Telegram").
  */
 export function cooldownAriaLabel(
     remaining: number,
     action: string,
 ): string | undefined {
     return remaining > 0
-        ? `Tunggu ${formatDurationHMS(remaining)} sebelum ${action}`
+        ? `Wait ${formatDurationHMS(remaining)} before ${action}`
         : undefined;
 }

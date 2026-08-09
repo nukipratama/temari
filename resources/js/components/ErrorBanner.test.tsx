@@ -22,19 +22,19 @@ describe('ErrorBanner', () => {
         setMockPage({
             ...base,
             errors: {
-                strava: 'Gagal nyambungin Strava. Coba lagi sebentar ya.',
+                strava: 'Failed to connect Strava. Try again in a bit.',
             },
         });
         render(<ErrorBanner />);
         expect(screen.getByRole('alert')).toHaveTextContent(
-            'Gagal nyambungin Strava',
+            'Failed to connect Strava',
         );
     });
 
     it('dismisses when the close button is clicked', () => {
-        setMockPage({ ...base, errors: { demo: 'Demo user belum di-seed.' } });
+        setMockPage({ ...base, errors: { demo: 'Demo user not seeded yet.' } });
         render(<ErrorBanner />);
-        fireEvent.click(screen.getByLabelText('Tutup'));
+        fireEvent.click(screen.getByLabelText('Close'));
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
@@ -42,17 +42,17 @@ describe('ErrorBanner', () => {
         setMockPage({
             ...base,
             errors: {
-                strava: 'Gagal nyambungin Strava. Coba lagi sebentar ya.',
+                strava: 'Failed to connect Strava. Try again in a bit.',
             },
         });
         const { rerender } = render(<ErrorBanner />);
-        fireEvent.click(screen.getByLabelText('Tutup'));
+        fireEvent.click(screen.getByLabelText('Close'));
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 
-        setMockPage({ ...base, errors: { demo: 'Demo user belum di-seed.' } });
+        setMockPage({ ...base, errors: { demo: 'Demo user not seeded yet.' } });
         rerender(<ErrorBanner />);
         expect(screen.getByRole('alert')).toHaveTextContent(
-            'Demo user belum di-seed.',
+            'Demo user not seeded yet.',
         );
     });
 });

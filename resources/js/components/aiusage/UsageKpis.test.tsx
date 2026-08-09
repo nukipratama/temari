@@ -42,20 +42,20 @@ describe('UsageKpis', () => {
 
         expect(screen.getByText('880')).toBeInTheDocument();
         expect(screen.getByText('$0,05')).toBeInTheDocument();
-        expect(screen.getByText('68% dari total')).toBeInTheDocument();
+        expect(screen.getByText('68% of total')).toBeInTheDocument();
     });
 
     it('shows the average tokens per call', () => {
         renderKpis();
 
-        expect(screen.getByText('293 token/call')).toBeInTheDocument();
+        expect(screen.getByText('293 tokens/call')).toBeInTheDocument();
     });
 
     it('reports the truncated share against the call count', () => {
         renderKpis({ totals: totals({ calls: 4, truncated_calls: 1 }) });
 
         expect(screen.getByText('25%')).toBeInTheDocument();
-        expect(screen.getByText('1 dari 4 call')).toBeInTheDocument();
+        expect(screen.getByText('1 of 4 calls')).toBeInTheDocument();
     });
 
     it('avoids dividing by zero on an empty window', () => {
@@ -69,32 +69,32 @@ describe('UsageKpis', () => {
             }),
         });
 
-        expect(screen.getByText('0% dari total')).toBeInTheDocument();
-        expect(screen.getByText('0 dari 0 call')).toBeInTheDocument();
+        expect(screen.getByText('0% of total')).toBeInTheDocument();
+        expect(screen.getByText('0 of 0 calls')).toBeInTheDocument();
     });
 
     it('shows a vs-previous delta on the KPI tiles', () => {
         renderKpis();
 
-        expect(screen.getByText(/26% vs sblm/)).toBeInTheDocument();
+        expect(screen.getByText(/26% vs prev/)).toBeInTheDocument();
     });
 
     it('marks a drop with a down arrow', () => {
         renderKpis({ previousTotals: { ...previous, total: 1760 } });
 
-        expect(screen.getByText(/▼ 50% vs sblm/)).toBeInTheDocument();
+        expect(screen.getByText(/▼ 50% vs prev/)).toBeInTheDocument();
     });
 
     it('marks an unchanged window without an arrow', () => {
         renderKpis({ previousTotals: { ...previous, total: 880 } });
 
-        expect(screen.getByText(/· 0% vs sblm/)).toBeInTheDocument();
+        expect(screen.getByText(/· 0% vs prev/)).toBeInTheDocument();
     });
 
-    it('reads a window with no prior data as "baru" rather than an infinite jump', () => {
+    it('reads a window with no prior data as "new" rather than an infinite jump', () => {
         renderKpis({ previousTotals: { ...previous, total: 0 } });
 
-        expect(screen.getByText('· baru')).toBeInTheDocument();
+        expect(screen.getByText('· new')).toBeInTheDocument();
     });
 
     it('shows nothing at all when both the prior and current window are empty', () => {
@@ -103,12 +103,12 @@ describe('UsageKpis', () => {
             previousTotals: { ...previous, total: 0 },
         });
 
-        expect(screen.queryByText('· baru')).not.toBeInTheDocument();
+        expect(screen.queryByText('· new')).not.toBeInTheDocument();
     });
 
     it('hides the delta when there is no comparable prior window', () => {
         renderKpis({ previousTotals: null });
 
-        expect(screen.queryByText(/vs sblm/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/vs prev/)).not.toBeInTheDocument();
     });
 });

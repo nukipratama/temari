@@ -16,7 +16,7 @@ import {
 } from '@/lib/runcard';
 
 interface FeaturedCardHeroProps {
-    /** Mono eyebrow above the name, e.g. "★ Kartu andalan dari Temari". */
+    /** Mono eyebrow above the name, e.g. "★ Temari's top pick". */
     eyebrow: string;
     name: string;
     rarity: Rarity;
@@ -24,7 +24,7 @@ interface FeaturedCardHeroProps {
     km: string;
     /** Run telemetry for the hero stat strip (present-only cells). */
     stats?: KartuStats;
-    /** Formatted moving time for the DURASI cell. */
+    /** Formatted moving time for the DURATION cell. */
     durasi?: string;
     /** Badge slugs rendered as small pips. */
     badges?: ReadonlyArray<string>;
@@ -56,7 +56,7 @@ export default function FeaturedCardHero({
     badges,
     voice,
     ctaHref,
-    ctaLabel = 'Lihat aktivitas',
+    ctaLabel = 'View activity',
     card,
     polyline,
 }: Readonly<FeaturedCardHeroProps>) {
@@ -159,7 +159,7 @@ export default function FeaturedCardHero({
     );
 }
 
-/** Present-only PACE · HR · CADENCE · DURASI · BEST cells (mirrors Kartu's StatGrid). */
+/** Present-only PACE · HR · CADENCE · DURATION · BEST cells (mirrors Kartu's StatGrid). */
 function statCells(
     stats: KartuStats | undefined,
     durasi: string | undefined,
@@ -168,7 +168,7 @@ function statCells(
         { label: 'PACE', value: stats?.pace },
         { label: 'HR', value: stats?.hr },
         { label: 'CADENCE', value: stats?.cadence },
-        { label: 'DURASI', value: durasi },
+        { label: 'DURATION', value: durasi },
         { label: 'BEST', value: stats?.fastestKm },
     ];
     return raw.filter(

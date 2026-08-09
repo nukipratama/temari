@@ -22,11 +22,16 @@ interface KoleksiTabsProps {
 }
 
 const TABS: ReadonlyArray<TabItem> = [
-    { id: 'kartu', label: 'Kartu', href: '/kartu', icon: 'mdi:cards-outline' },
-    { id: 'rekor', label: 'Rekor', href: '/rekor', icon: 'mdi:trophy-outline' },
+    { id: 'kartu', label: 'Cards', href: '/kartu', icon: 'mdi:cards-outline' },
+    {
+        id: 'rekor',
+        label: 'Records',
+        href: '/rekor',
+        icon: 'mdi:trophy-outline',
+    },
     {
         id: 'aksesori',
-        label: 'Aksesori',
+        label: 'Accessories',
         href: '/aksesori',
         icon: 'mdi:tshirt-crew-outline',
     },

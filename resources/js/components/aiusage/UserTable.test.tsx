@@ -46,7 +46,7 @@ describe('UserTable', () => {
         render(<UserTable rows={[row()]} grandTotal={880} />);
 
         expect(
-            screen.getByRole('progressbar', { name: '83.0% dari total' }),
+            screen.getByRole('progressbar', { name: '83.0% of total' }),
         ).toBeInTheDocument();
     });
 
@@ -54,7 +54,7 @@ describe('UserTable', () => {
         render(<UserTable rows={[row()]} grandTotal={0} />);
 
         expect(
-            screen.getByRole('progressbar', { name: '0.0% dari total' }),
+            screen.getByRole('progressbar', { name: '0.0% of total' }),
         ).toBeInTheDocument();
     });
 
@@ -99,7 +99,7 @@ describe('UserTable', () => {
         );
 
         expect(screen.getByText('Mantan Pelari')).toBeInTheDocument();
-        expect(screen.getByText('dihapus')).toBeInTheDocument();
+        expect(screen.getByText('deleted')).toBeInTheDocument();
         expect(screen.getByText('Strava 12345')).toBeInTheDocument();
     });
 
@@ -112,14 +112,14 @@ describe('UserTable', () => {
         );
 
         expect(screen.getByText('Strava 777')).toBeInTheDocument();
-        expect(screen.queryByText('dihapus')).not.toBeInTheDocument();
+        expect(screen.queryByText('deleted')).not.toBeInTheDocument();
     });
 
     it('falls back to the empty state when nobody spent tokens in the window', () => {
         render(<UserTable rows={[]} grandTotal={0} />);
 
         expect(
-            screen.getByText('Belum ada catatan token di rentang ini.'),
+            screen.getByText('No token usage recorded in this range yet.'),
         ).toBeInTheDocument();
     });
 });

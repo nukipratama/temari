@@ -21,23 +21,23 @@ interface NavItem {
 const ITEMS: ReadonlyArray<NavItem> = [
     {
         id: 'hari-ini',
-        label: 'Hari Ini',
+        label: 'Today',
         icon: 'mdi:weather-sunset-up',
         href: '/',
     },
     {
         id: 'koleksi',
-        label: 'Koleksi',
+        label: 'Collection',
         icon: 'mdi:cards-outline',
         href: '/kartu',
     },
     {
         id: 'riwayat',
-        label: 'Riwayat',
+        label: 'History',
         icon: 'mdi:history',
         href: '/aktivitas',
     },
-    { id: 'aku', label: 'Aku', icon: 'mdi:account-outline', href: '/profil' },
+    { id: 'aku', label: 'Me', icon: 'mdi:account-outline', href: '/profil' },
 ];
 
 /**

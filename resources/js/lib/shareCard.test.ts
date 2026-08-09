@@ -17,14 +17,14 @@ const pointToPointPolyline = polylineCodec.encode([
 
 const kartu: ShareKartuData = {
     id: 1,
-    name: 'Pemburu Sabar',
+    name: 'Patient Hunter',
     shareUrl: '/aktivitas/1',
     rarity: 'legendary',
     mood: 'nyala',
     subtitle: null,
     date: '30 Mei 2026\n06:30',
     km: '42.61',
-    durasi: '6 jam 8 menit',
+    durasi: '6 hr 8 min',
     pace: '5:48',
     trimp: '913',
     hr: '164 bpm',
@@ -33,9 +33,9 @@ const kartu: ShareKartuData = {
     zonePct: { Z1: 10, Z2: 40, Z3: 30, Z4: 15, Z5: 5 },
     location: 'Gelora Bung Karno, Jakarta',
     weather: '27°C',
-    tags: ['Anak Pagi'],
+    tags: ['Early Bird'],
     tagEmojis: ['🌅'],
-    quote: 'Kartu ini lahir dari sesi yang tenang tapi solid.',
+    quote: 'This card was born from a calm but solid session.',
     polyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
     edition: { index: 2, total: 7 },
 };
@@ -180,7 +180,12 @@ describe('drawShareCard', () => {
     it('renders a multi-badge cluster on both layouts (2-col beside KM / row on rute)', async () => {
         const many = {
             ...kartu,
-            tags: ['Pejuang Hujan', 'Rajin', 'Z2 Master', 'Negative Split'],
+            tags: [
+                'Rain Warrior',
+                'Habit Forming',
+                'Z2 Master',
+                'Negative Split',
+            ],
             tagEmojis: ['🌧️', '💪', '❤️‍🔥', '⚡'],
         };
         for (const layout of ['kartu', 'rute'] as Layout[]) {
@@ -196,7 +201,7 @@ describe('drawShareCard', () => {
                 format: 'story',
             });
             expect(ctx.fillText).toHaveBeenCalledWith(
-                expect.stringContaining('Rajin'),
+                expect.stringContaining('Habit Forming'),
                 expect.any(Number),
                 expect.any(Number),
             );
@@ -283,7 +288,7 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, durasi: '39 menit 10 detik panjang sekali' },
+            kartu: { ...kartu, durasi: '39 min 10 sec extremely long' },
             layout: 'kartu',
             format: 'story',
         });
@@ -333,7 +338,7 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, subtitle: 'Long run minggu ini', quote: null },
+            kartu: { ...kartu, subtitle: 'Long run this week', quote: null },
             layout: 'kartu',
             format: 'story',
         });
@@ -478,7 +483,7 @@ describe('drawShareCard — edge / branch cases', () => {
             getContext: () => ctx,
         } as unknown as HTMLCanvasElement;
         await drawShareCard(canvas, {
-            kartu: { ...kartu, subtitle: 'Tempo Selasa' },
+            kartu: { ...kartu, subtitle: 'Tuesday tempo' },
             layout: 'kartu',
             format: 'feed',
         });
@@ -590,7 +595,7 @@ describe('drawShareCard — edge / branch cases', () => {
             // Two tags but only one emoji -> second pip uses the ✦ fallback.
             kartu: {
                 ...kartu,
-                tags: ['Anak Pagi', 'Kilat'],
+                tags: ['Early Bird', 'Speedster'],
                 tagEmojis: ['🌅'],
             },
             layout: 'kartu',
@@ -705,7 +710,7 @@ describe('drawShareCard — edge / branch cases', () => {
         // stays as the floating badge; date + location ride the muted context strip;
         // no "temari.app" wordmark.
         expect(ctx.fillText).toHaveBeenCalledWith(
-            'ELEVASI',
+            'ELEVATION',
             expect.any(Number),
             expect.any(Number),
         );

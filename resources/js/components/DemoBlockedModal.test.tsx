@@ -15,16 +15,14 @@ describe('DemoBlockedModal', () => {
     it('renders the title, body, and both CTAs when open', () => {
         render(<DemoBlockedModal open onClose={vi.fn()} />);
         expect(
-            screen.getByText('Telegram-nya lagi istirahat dulu'),
+            screen.getByText("Telegram's taking a break for now"),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/Connect your own Strava/)).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Connect Strava' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/Sambungin Strava-mu sendiri/),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Sambungkan dengan Strava' }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Nanti aja' }),
+            screen.getByRole('button', { name: 'Not now' }),
         ).toBeInTheDocument();
     });
 
@@ -34,30 +32,28 @@ describe('DemoBlockedModal', () => {
         expect(dialog).toHaveAttribute('aria-modal', 'true');
         expect(dialog).toHaveAttribute('aria-labelledby', 'temari-nudge-title');
         expect(document.getElementById('temari-nudge-title')).toHaveTextContent(
-            'Telegram-nya lagi istirahat dulu',
+            "Telegram's taking a break for now",
         );
     });
 
     it('posts to /logout when the primary CTA is clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<DemoBlockedModal open onClose={vi.fn()} />);
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Sambungkan dengan Strava' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Connect Strava' }));
         expect(router.post).toHaveBeenCalledWith('/logout');
     });
 
     it('calls onClose when the dismiss CTA is clicked', () => {
         const onClose = vi.fn();
         render(<DemoBlockedModal open onClose={onClose} />);
-        fireEvent.click(screen.getByRole('button', { name: 'Nanti aja' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
         expect(onClose).toHaveBeenCalledOnce();
     });
 
     it('calls onClose when the top-left close button is clicked', () => {
         const onClose = vi.fn();
         render(<DemoBlockedModal open onClose={onClose} />);
-        fireEvent.click(screen.getByLabelText('Tutup'));
+        fireEvent.click(screen.getByLabelText('Close'));
         expect(onClose).toHaveBeenCalledOnce();
     });
 });

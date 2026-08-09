@@ -19,10 +19,10 @@ export default function DailyChart({
         <Card tone="cream" padding="md" className="mt-4 bg-surface-elev">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-label-small text-ink-3">
-                    {data.length} hari
+                    {data.length} days
                 </span>
                 <span className="text-sm text-ink-2">
-                    Estimasi biaya:{' '}
+                    Estimated cost:{' '}
                     <span className="font-semibold text-ink">
                         {formatCost(totalCost, currency)}
                     </span>
@@ -45,9 +45,11 @@ export default function DailyChart({
                                     {formatDayLabel(d.day)}
                                 </div>
                                 <div className="text-ink-2">
-                                    {fmt(d.total)} token
+                                    {fmt(d.total)} tokens
                                 </div>
-                                <div className="text-ink-3">{d.calls} call</div>
+                                <div className="text-ink-3">
+                                    {d.calls} calls
+                                </div>
                                 <div className="text-ink-3">
                                     {formatCost(d.cost, currency)}
                                 </div>
@@ -57,7 +59,7 @@ export default function DailyChart({
                             <div
                                 className="w-full rounded-t-sm bg-horizon transition-colors group-hover:bg-horizon-deep"
                                 style={{ height: `${heightPct}%` }}
-                                aria-label={`${formatDayLabel(d.day)}: ${fmt(d.total)} token`}
+                                aria-label={`${formatDayLabel(d.day)}: ${fmt(d.total)} tokens`}
                             />
                         </div>
                     );

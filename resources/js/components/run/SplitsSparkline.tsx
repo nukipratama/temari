@@ -26,7 +26,7 @@ export default function SplitsSparkline({
                     className,
                 )}
             >
-                Splits belum tersedia untuk rekor ini.
+                Splits aren&apos;t available for this run yet.
             </div>
         );
     }
@@ -78,10 +78,10 @@ export default function SplitsSparkline({
             <header className="mb-3 flex items-baseline justify-between gap-3">
                 <Eyebrow token="micro" tone="ink-on-sky">
                     Splits · pace per km
-                    {perKm ? '' : ` · rata-rata tiap ${bucketSize} km`}
+                    {perKm ? '' : ` · avg per ${bucketSize} km`}
                 </Eyebrow>
                 <div className="font-display text-[13px] italic text-horizon">
-                    {negativeSplit ? 'negatif-split rapi' : 'splits stabil'}:{' '}
+                    {negativeSplit ? 'clean negative split' : 'steady splits'}:{' '}
                     {formatPace(first)} → {formatPace(last)}
                 </div>
             </header>
@@ -122,17 +122,17 @@ export default function SplitsSparkline({
                 {partialPaceSec != null && (
                     // Rendered OUTSIDE the bars array on purpose: it must never enter
                     // fastest/slowest/fastestIdx or it re-poisons the verdict + crown.
-                    // Fixed height (out of scale), dashed cream ghost, visible "sisa" key
+                    // Fixed height (out of scale), dashed cream ghost, visible "remainder" key
                     // since the sparkline has no legend.
                     <div className="ml-1 flex min-w-0 flex-1 flex-col items-center gap-1.5">
                         <div
                             className="min-h-[8px] w-full rounded-sm border border-dashed border-cream/30 bg-cream/12"
                             style={{ height: '38%' }}
-                            aria-label={`Sisa: ${formatPace(partialPaceSec)}/km`}
-                            title={`Sisa · ${formatPace(partialPaceSec)}/km`}
+                            aria-label={`Remainder: ${formatPace(partialPaceSec)}/km`}
+                            title={`Remainder · ${formatPace(partialPaceSec)}/km`}
                         />
                         <div className="font-mono text-[11px] italic text-ink-on-sky">
-                            sisa
+                            remainder
                         </div>
                     </div>
                 )}
