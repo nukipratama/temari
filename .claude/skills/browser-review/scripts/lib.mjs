@@ -99,7 +99,7 @@ export async function fullPageScreenshot(page, path, shotOpts) {
 // URI patterns that are not screenshotable pages (apis, webhooks, auth handshakes, assets).
 const SKIP = [
   /^api\//, /^auth\//, /^strava\/(webhook|sync)/, /^logout$/, /^client-errors$/,
-  /^ai-usage$/, /^_/, /^up$/, /^storage\//, /\{.*\}.*\{/, // multi-param = not a simple page
+  /^ai-usage$/, /^devtools/, /^_/, /^up$/, /^storage\//, /\{.*\}.*\{/, // multi-param = not a simple page
 ];
 
 /**
