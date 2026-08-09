@@ -13,19 +13,25 @@ final class HrZonesTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Sebaran waktu per HR zone (persen dan menit) plus TRIMP sesi ini. '
-            .'Kosong kalau lari ini tidak merekam heart rate.';
+        return 'Sebaran waktu per HR zone (persen dan menit), intensity_label (ringan/sedang/berat) '
+            .'turunan dari sebaran itu, plus TRIMP sesi ini. Kosong kalau lari ini tidak merekam heart rate.';
     }
 
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
         $summary = $this->summary();
+        $zonePct = $summary->zonePct();
 
         return [
-            'zone_pct' => $summary->zonePct(),
+            'zone_pct' => $zonePct,
             'time_in_zone_min' => $summary->zoneMinutes(),
             'trimp' => $this->detail->trimp_edwards,
+            'intensity_label' => $zonePct === [] ? null : match (true) {
+                $summary->hardZoneShare() >= 50.0 => 'berat',
+                $summary->hardZoneShare() >= 20.0 => 'sedang',
+                default => 'ringan',
+            },
         ];
     }
 }

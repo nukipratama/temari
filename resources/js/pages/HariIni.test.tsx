@@ -147,7 +147,7 @@ describe('HariIni', () => {
         expect(screen.getAllByText(/membara/i).length).toBeGreaterThan(0);
     });
 
-    it('renders the three vital chips (Vibe / Kesiapan / Recovery)', () => {
+    it('renders the three vital chips (Vibe / Kesiapan / Jeda)', () => {
         render(
             <HariIni
                 briefing={briefing}
@@ -158,7 +158,7 @@ describe('HariIni', () => {
         );
         expect(screen.getByText('Vibe')).toBeInTheDocument();
         expect(screen.getByText('Kesiapan')).toBeInTheDocument();
-        expect(screen.getByText('Recovery')).toBeInTheDocument();
+        expect(screen.getByText('Jeda')).toBeInTheDocument();
     });
 
     it('shows the Temari read quote when mascotVoice is done', () => {

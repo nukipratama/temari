@@ -160,6 +160,21 @@ it('weaves the run distance into the post-run speech', function (): void {
     expect($speech)->toContain('5,5 km');
 });
 
+it('does not cycle the post-run speech in lockstep with consecutive activity ids', function (): void {
+    // Regression for the demo feed's most visible defect: with the raw
+    // sequential activity id as the pool seed, every 6th run in the Riwayat
+    // feed rendered the byte-identical line. Consecutive real ids must land
+    // on a scattered, not rhythmic, set of phrases.
+    $lines = [];
+    for ($i = 0; $i < 18; $i++) {
+        $activity = Activity::factory()->create();
+        ActivityDetail::factory()->create(['activity_id' => $activity->id, 'distance' => 8000.0]);
+        $lines[] = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id));
+    }
+
+    expect(count(array_unique($lines)))->toBeGreaterThanOrEqual(8);
+});
+
 it('falls back to a flat post-run speech when the activity detail is missing', function (): void {
     $speech = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, 999_999));
 

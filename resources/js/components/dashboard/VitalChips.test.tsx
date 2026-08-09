@@ -53,7 +53,7 @@ describe('VitalChips', () => {
         render(<VitalChips briefing={briefing} load={load} />);
         expect(screen.getByText('Vibe')).toBeInTheDocument();
         expect(screen.getByText('Kesiapan')).toBeInTheDocument();
-        expect(screen.getByText('Recovery')).toBeInTheDocument();
+        expect(screen.getByText('Jeda')).toBeInTheDocument();
     });
 
     it('leads the Vibe tile with the label and a gloss sub, and signed form for Kesiapan', () => {
@@ -115,9 +115,7 @@ describe('VitalChips', () => {
         expect(
             screen.queryByRole('meter', { name: 'Kesiapan' }),
         ).not.toBeInTheDocument();
-        expect(
-            screen.getByRole('meter', { name: 'Recovery' }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('meter', { name: 'Jeda' })).toBeInTheDocument();
     });
 
     // All three tiles now share one structure: dot + label + explainer, value,
@@ -125,7 +123,7 @@ describe('VitalChips', () => {
     // odd one out — a solid full-width rail with no scale and no explainer.
     it('gives Recovery the same bounded gauge as its siblings', () => {
         render(<VitalChips briefing={briefing} load={load} />);
-        const meter = screen.getByRole('meter', { name: 'Recovery' });
+        const meter = screen.getByRole('meter', { name: 'Jeda' });
         expect(meter).toHaveAttribute('value', '41');
         expect(meter).toHaveAttribute('min', '0');
         expect(meter).toHaveAttribute('max', '72');
@@ -138,7 +136,7 @@ describe('VitalChips', () => {
             recoveryHoursLabel: '8 hari',
         };
         render(<VitalChips briefing={longRest} load={load} />);
-        expect(screen.getByRole('meter', { name: 'Recovery' })).toHaveAttribute(
+        expect(screen.getByRole('meter', { name: 'Jeda' })).toHaveAttribute(
             'value',
             '72',
         );
@@ -155,7 +153,7 @@ describe('VitalChips', () => {
             screen.getByRole('button', { name: 'Penjelasan Kesiapan' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Penjelasan Recovery' }),
+            screen.getByRole('button', { name: 'Penjelasan Jeda' }),
         ).toBeInTheDocument();
     });
 

@@ -105,6 +105,11 @@ final readonly class RuleBasedNarrationFiller
         }
         $km = DistanceFormatter::kmString($detail->distance) ?? '?';
 
+        // Hashed (not the bare, sequential activityId), or a run of consecutive
+        // activities — exactly what the Riwayat feed shows side by side — walks
+        // the pool in lockstep and repeats the identical line every N-th run.
+        $baseSeed = (int) crc32('post_run_speech_'.$activityId);
+
         $base = $this->select([
             "Lari {$km} km kelar. Pace-nya keangkut sampai akhir, bagus.",
             "Selesai {$km} km. Ritme kamu rapi, aku suka.",
@@ -112,7 +117,13 @@ final readonly class RuleBasedNarrationFiller
             "Kelar {$km} km. Napasnya keatur, larinya kebaca enak.",
             "Dapat {$km} km hari ini. Gak buru-buru tapi tetap kelar, itu yang penting.",
             "{$km} km lagi masuk catatan. Pelan tapi rutin, ini yang bikin beda.",
-        ], $activityId);
+            "Beres {$km} km. Effort-nya kebaca pas, gak dipaksa gak juga santai banget.",
+            "{$km} km tercatat. Lari kayak gini yang numpuk jadi progres.",
+            "Tuntas {$km} km hari ini. Simpel, tapi kelar itu yang utama.",
+            "Sesi {$km} km beres. Datang, lari, pulang, itu udah cukup.",
+            "{$km} km, selesai dengan rapi. Gak ada yang perlu dipoles.",
+            "Catatan hari ini {$km} km. Kecil-kecil gini yang bikin kebiasaan nempel.",
+        ], $baseSeed);
 
         return $base . $this->postRunCoda($detail, $activityId);
     }

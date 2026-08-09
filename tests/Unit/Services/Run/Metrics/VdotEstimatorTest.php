@@ -37,7 +37,7 @@ it('computes VDOT from a 5km PR via Daniels', function (): void {
         ->and($result['vdot'])->toBeFloat()->toBeGreaterThan(45)->toBeLessThan(55);
 });
 
-it('picks the PR yielding the highest VDOT when several exist', function (): void {
+it('picks the PR yielding the lowest VDOT when several exist, so training paces never outrun a real PR', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create([
         'category' => '5km',
@@ -50,7 +50,28 @@ it('picks the PR yielding the highest VDOT when several exist', function (): voi
 
     $result = $this->estimator->estimate($user);
 
-    expect($result['source_category'])->toBe('5km');
+    expect($result['source_category'])->toBe('half_marathon');
+});
+
+it('anchors VDOT to the marathon PR rather than a fast short-distance outlier', function (): void {
+    $user = User::factory()->create();
+    // A fast 1km (anaerobic speed) alongside a much slower marathon PR — the
+    // credibility defect this asymmetric-caution rule closes: without it,
+    // the 1km PR alone would drive every training pace, including a
+    // marathon "target" quicker than any marathon this athlete has ever
+    // actually run (the real bug: prescribed 5:39/km vs an actual 8:01/km).
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '1km',
+        'value_sec' => 278.0,
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => 'marathon',
+        'value_sec' => 20_292.0,
+    ]);
+
+    $result = $this->estimator->estimate($user);
+
+    expect($result['source_category'])->toBe('marathon');
 });
 
 it('formula computes a believable VDOT for a known marathon time', function (): void {

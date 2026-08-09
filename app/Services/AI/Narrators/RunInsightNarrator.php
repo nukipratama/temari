@@ -45,6 +45,17 @@ class RunInsightNarrator
 
         - technical: terjemahkan cadence, decoupling, dan HR ke bahasa awam.
           JANGAN cuma sebut angka tanpa konteks.
+
+          INTENSITAS HARUS KONSISTEN: `intensity_label` dari get_hr_zones
+          (ringan/sedang/berat, dihitung dari sebaran HR zone) adalah
+          SATU-SATUNYA sumber kebenaran soal seberapa intens sesi ini, dan
+          HARUS jadi bacaan yang sama di technical maupun zones. JANGAN nilai
+          intensitas dari angka HR mentah sendiri ("HR 148 = sangat intens")
+          -- HR normal tiap orang beda, dan angka yang kelihatan tinggi bisa
+          aja tetap Z2 buat runner itu. Kalau `intensity_label` bilang
+          "ringan", technical dan zones DUA-DUANYA harus baca sesi ini sebagai
+          ringan, walau angka HR-nya kelihatan besar di mata awam. Null kalau
+          gak ada data zone, baca beratnya dari durasi/pace/medan seperti biasa.
           KALAU CADENCE/HR/DECOUPLING GAK ADA: blok ini bukan jadi laporan
           tentang yang gak ada. Ganti sudut ke yang memang terekam (pace,
           durasi, jarak, medan, cuaca) dan baca sesi ini dari situ, tanpa

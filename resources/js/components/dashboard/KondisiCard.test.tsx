@@ -56,4 +56,19 @@ describe('KondisiCard', () => {
         expect(screen.getByText(/belum cukup data/)).toBeInTheDocument();
         expect(screen.getAllByText('—').length).toBe(4);
     });
+
+    // Regression: monotony 3.15 (the demo account's actual reading) used to
+    // render Variasi in the same calm leaf/green as a safe 1.2 reading — the
+    // riskiest state on the card looked the calmest. Beban tracks the same axis.
+    it('colors Variasi and Beban as alert when monotony and strain are both high', () => {
+        const riskyLoad: TrainingLoad = {
+            ...load,
+            monotony: 3.15,
+            strain: 6380.3,
+        };
+        render(<KondisiCard load={riskyLoad} snapshot={snapshot} />);
+
+        expect(screen.getByText('3.15').className).toContain('text-ember');
+        expect(screen.getByText('6380').className).toContain('text-ember');
+    });
 });

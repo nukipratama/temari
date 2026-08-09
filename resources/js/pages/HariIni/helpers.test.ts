@@ -5,6 +5,7 @@ import type { ActivityDetail, Rarity } from '@/types/inertia';
 import {
     MOOD_UPPER,
     atlHint,
+    atlTone,
     ctlHint,
     districtFromLocation,
     formatIdDateUpper,
@@ -13,8 +14,10 @@ import {
     formatWeather,
     kartuStripItem,
     monotonyHint,
+    monotonyTone,
     shortenLocation,
     strainHint,
+    strainTone,
     vibeSubtitleFor,
 } from './helpers';
 
@@ -245,5 +248,34 @@ describe('monotonyHint', () => {
         expect(monotonyHint(1.2)).toBe('sehat');
         expect(monotonyHint(1.7)).toBe('tinggi');
         expect(monotonyHint(2.5)).toBe('monoton');
+    });
+});
+
+describe('atlTone / strainTone / monotonyTone', () => {
+    it('reads calm for null (nothing to warn about yet)', () => {
+        expect(atlTone(null)).toBe('text-leaf');
+        expect(strainTone(null)).toBe('text-leaf');
+        expect(monotonyTone(null)).toBe('text-leaf');
+    });
+
+    it('escalates atl from calm to alert with the same buckets as atlHint', () => {
+        expect(atlTone(10)).toBe('text-leaf');
+        expect(atlTone(70)).toBe('text-citrus');
+        expect(atlTone(100)).toBe('text-ember');
+    });
+
+    it('escalates strain from calm to alert with the same buckets as strainHint', () => {
+        expect(strainTone(100)).toBe('text-leaf');
+        expect(strainTone(300)).toBe('text-citrus');
+        expect(strainTone(600)).toBe('text-ember');
+    });
+
+    // Regression: monotony >2.0 is the same hard-flag threshold Readiness caps
+    // a session for, but the Kondisi card used to render this row a fixed
+    // leaf/green regardless of value — the loudest state read as the calmest.
+    it('reads monotony >2.0 as alert, matching the Readiness hard-flag threshold', () => {
+        expect(monotonyTone(1.2)).toBe('text-leaf');
+        expect(monotonyTone(1.7)).toBe('text-citrus');
+        expect(monotonyTone(3.15)).toBe('text-ember');
     });
 });

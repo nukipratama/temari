@@ -51,8 +51,8 @@ export const METRIC_GLOSSARY = {
         body: 'Selisih efisiensi paruh pertama dan paruh kedua lari. Di atas 5% berarti HR drift, base aerobic belum solid atau kamu sudah kepayahan.',
     },
     recovery: {
-        label: 'Recovery',
-        body: 'Berapa lama sejak lari terakhirmu. Makin panjang jedanya, makin pulih badanmu. Sekitar 72 jam biasanya sudah balik segar buat sesi berat lagi, tapi lari enteng nggak perlu nunggu selama itu.',
+        label: 'Jeda',
+        body: 'Berapa lama sejak lari terakhirmu, bukan pengukuran pemulihan badan beneran (nggak ada sensor buat itu di sini). Aturan kasarnya, sekitar 72 jam biasanya cukup buat siap sesi berat lagi, tapi lari enteng nggak perlu nunggu selama itu.',
     },
     vibe: {
         label: 'Vibe',

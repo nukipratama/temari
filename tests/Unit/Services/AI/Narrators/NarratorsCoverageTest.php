@@ -889,16 +889,48 @@ it('BriefingMascotVoiceNarrator returns the mascot voice on valid JSON', functio
     $user = User::factory()->create();
     Activity::factory()->for($user)->analyzed()->create();
 
-    $narrator = bootMascotNarrator(json_encode(['mascot_voice' => 'Aku liat km kamu naik tipis, bagus.'], JSON_THROW_ON_ERROR));
+    $narrator = bootMascotNarrator(json_encode([
+        'mascot_voice' => 'Aku liat km kamu naik tipis, bagus.',
+        'session_type' => 'rest',
+    ], JSON_THROW_ON_ERROR));
 
     expect($narrator->generate($user, Carbon::today()))->toBe('Aku liat km kamu naik tipis, bagus.');
 });
 
 it('BriefingMascotVoiceNarrator throws on missing mascot_voice key', function (): void {
     $user = User::factory()->create();
-    $narrator = bootMascotNarrator(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
+    $narrator = bootMascotNarrator(json_encode(['session_type' => 'rest'], JSON_THROW_ON_ERROR));
     $narrator->generate($user, Carbon::today());
-})->throws(UnavailableException::class, 'missing mascot_voice');
+})->throws(UnavailableException::class, 'missing required fields');
+
+it('BriefingMascotVoiceNarrator clamps to a deterministic message when session_type exceeds readiness_ceiling', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'form_status' => 'fatigued',
+    ]);
+
+    $narrator = bootMascotNarrator(json_encode([
+        'mascot_voice' => "Long run santai, 8-12 km.\n\nMinggu ini enak ditutup satu sesi panjang.",
+        'session_type' => 'quality_ok',
+    ], JSON_THROW_ON_ERROR));
+
+    $voice = $narrator->generate($user, Carbon::today());
+
+    expect($voice)->toContain('Easy run santai')
+        ->and($voice)->not->toContain('Long run');
+});
+
+it('BriefingMascotVoiceNarrator clamps when session_type is unparseable', function (): void {
+    $user = User::factory()->create();
+
+    $narrator = bootMascotNarrator(json_encode([
+        'mascot_voice' => 'Sesi bebas hari ini.',
+        'session_type' => 'nonsense',
+    ], JSON_THROW_ON_ERROR));
+
+    expect($narrator->generate($user, Carbon::today()))->not->toBe('Sesi bebas hari ini.');
+});
 
 it('BriefingMascotVoiceNarrator throws on non-JSON', function (): void {
     $user = User::factory()->create();

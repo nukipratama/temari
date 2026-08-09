@@ -7,9 +7,12 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import {
     atlHint,
+    atlTone,
     ctlHint,
     monotonyHint,
+    monotonyTone,
     strainHint,
+    strainTone,
 } from '@/pages/HariIni/helpers';
 
 export default function KondisiCard({
@@ -32,20 +35,20 @@ export default function KondisiCard({
             label: 'Kelelahan',
             value: load?.atl_7d != null ? load.atl_7d.toFixed(1) : '—',
             hint: atlHint(load?.atl_7d),
-            color: 'text-ink-2',
+            color: atlTone(load?.atl_7d),
         },
         {
             label: 'Beban',
             value:
                 load?.strain != null ? Math.round(load.strain).toString() : '—',
             hint: strainHint(load?.strain),
-            color: 'text-horizon',
+            color: strainTone(load?.strain),
         },
         {
             label: 'Variasi',
             value: load?.monotony != null ? load.monotony.toFixed(2) : '—',
             hint: monotonyHint(load?.monotony),
-            color: 'text-leaf',
+            color: monotonyTone(load?.monotony),
         },
     ];
     return (

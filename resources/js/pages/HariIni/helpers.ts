@@ -199,3 +199,32 @@ export function monotonyHint(monotony: number | null | undefined): string {
     if (monotony < 2) return 'tinggi';
     return 'monoton';
 }
+
+export type RiskTone = 'text-leaf' | 'text-citrus' | 'text-ember';
+
+/** Below `low` reads calm, below `high` reads cautionary, at or above reads alert. */
+function riskTone(
+    value: number | null | undefined,
+    low: number,
+    high: number,
+): RiskTone {
+    if (value == null || value < low) return 'text-leaf';
+    if (value < high) return 'text-citrus';
+    return 'text-ember';
+}
+
+// Kondisi card colors, kept on the same risk axis the hints above already
+// describe in words (and, for monotony, the same >2.0 threshold Readiness
+// backs a session off for) instead of one fixed color per row regardless of
+// how extreme the value actually is.
+export function atlTone(atl: number | null | undefined): RiskTone {
+    return riskTone(atl, 55, 85);
+}
+
+export function strainTone(strain: number | null | undefined): RiskTone {
+    return riskTone(strain, 250, 500);
+}
+
+export function monotonyTone(monotony: number | null | undefined): RiskTone {
+    return riskTone(monotony, 1.5, 2);
+}

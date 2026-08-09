@@ -16,11 +16,14 @@ use App\Services\AI\Agent\Tools\WeekStateTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Story\BriefingContext;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The dashboard's single daily Temari voice ("Kata Temari hari ini"): one LLM
@@ -33,7 +36,8 @@ class BriefingMascotVoiceNarrator
 
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Tugas: kamu Temari, teman lari user. Tulis SATU blok suara Temari untuk
-        hari ini. Output SATU field: mascot_voice. Pakai "aku" sebagai subjek.
+        hari ini. Output DUA field: mascot_voice, dan session_type. Pakai "aku"
+        sebagai subjek.
 
         Blok ini menggabungkan dua hal jadi satu suara: bagaimana kamu membaca
         kondisi user hari ini, DAN sesi apa yang masuk akal dari bacaan itu.
@@ -104,8 +108,9 @@ class BriefingMascotVoiceNarrator
         penutup tiap hari.
 
         BATAS INTENSITAS (WAJIB, JANGAN DILANGGAR):
-        Field `readiness_ceiling` dari get_week_state menentukan sesi TERBERAT
-        yang boleh kamu sarankan hari ini. Ini keputusan sistem berbasis data, bukan
+        Field `readiness_ceiling` sudah ada LANGSUNG di input awal (juga
+        diulang di get_week_state) dan menentukan sesi TERBERAT yang boleh
+        kamu sarankan hari ini. Ini keputusan sistem berbasis data, bukan
         preferensi. Kamu boleh menyarankan sesi di level ini ATAU LEBIH RINGAN,
         TIDAK PERNAH lebih berat:
         - `rest`: cuma rest atau mobility ringan, jangan sarankan lari.
@@ -118,6 +123,14 @@ class BriefingMascotVoiceNarrator
         Kalau ragu, pilih yang lebih ringan. `readiness_ceiling` mengalahkan
         semua sinyal lain: walau user `fresh` dan progresnya bagus, kalau
         ceiling `easy_only` maka easy adalah batas.
+
+        Field output `session_type` HARUS diisi salah satu dari `rest` /
+        `easy_only` / `moderate_ok` / `quality_ok`, sesuai level sesi yang
+        beneran kamu sarankan di BARIS 1. Nilainya wajib sama atau lebih
+        ringan dari `readiness_ceiling` -- sistem menolak (dan mengganti
+        jawabanmu dengan pesan aman default) kalau `session_type` lebih berat
+        dari ceiling. Ini bukan sekadar label, cocokkan sungguhan dengan apa
+        yang kamu tulis di judul.
 
         `build_nudge` dari get_week_state (true/false): kalau true, user segar tapi
         fitness-nya flat atau menurun (risiko mundur). Ajak naik TIPIS dan jaga
@@ -195,19 +208,34 @@ class BriefingMascotVoiceNarrator
 
     public function generate(User $user, ?Carbon $asOf = null): string
     {
+        $asOf ??= Carbon::today();
+        $context = $this->context($user, $asOf);
+        $ceiling = ReadinessCeiling::from((string) $context['readiness_ceiling']);
+
         $decoded = $this->caller->call(
             kind: 'briefing_mascot_voice',
             systemPrompt: self::SYSTEM_PROMPT."\n\n".NarratorContinuity::RULE,
-            context: $this->context($user, $asOf),
+            context: $context,
             schemaName: 'TemariMascotVoice',
-            requiredKeys: ['mascot_voice'],
+            requiredKeys: ['mascot_voice', 'session_type'],
             options: new ChatCallOptions(
                 temperature: 0.8,
                 userId: $user->id,
                 maxTokens: 1800,
-                toolbox: $this->toolbox($user, $asOf ?? Carbon::today()),
+                toolbox: $this->toolbox($user, $asOf),
             ),
         );
+
+        $sessionType = ReadinessCeiling::tryFrom((string) $decoded['session_type']);
+        if ($sessionType === null || $sessionType->rank() > $ceiling->rank()) {
+            Log::warning('narrator.briefing.ceiling_violation', [
+                'user_id' => $user->id,
+                'ceiling' => $ceiling->value,
+                'session_type' => $decoded['session_type'],
+            ]);
+
+            return self::clampedVoice($ceiling);
+        }
 
         return (string) $decoded['mascot_voice'];
     }
@@ -224,13 +252,39 @@ class BriefingMascotVoiceNarrator
             AnalysisType::BriefingMascotVoice,
             $asOf,
         );
+        $briefing = BriefingContext::forUser($user, $asOf, $this->trainingLoad->summary($user, $asOf));
 
         return [
             'name' => $user->firstName(),
             'vibe' => $this->vibe->current($user, $asOf),
             'date' => $asOf->toDateString(),
+            'readiness_ceiling' => $briefing->readinessCeiling,
+            'build_nudge' => $briefing->buildNudge,
             ...NarratorContinuity::fields($prevNarrative),
         ];
+    }
+
+    /**
+     * Deterministic fallback voiced when the model's self-reported
+     * `session_type` exceeds `readiness_ceiling` (or is unparseable): the
+     * ceiling must never be violated even if the model ignores the prompt.
+     */
+    private static function clampedVoice(ReadinessCeiling $ceiling): string
+    {
+        return match ($ceiling) {
+            ReadinessCeiling::Rest => "Rest dulu hari ini.\n\n"
+                ."Load dan recovery kamu lagi butuh jeda, jadi hari ini fokus istirahat "
+                ."atau mobility ringan aja. Dicek lagi besok.",
+            ReadinessCeiling::EasyOnly => "Easy run santai, sesuai enaknya hari ini.\n\n"
+                ."Kondisi kamu lagi butuh sesi ringan dulu. Kalau ada slot lari, jaga "
+                ."pace santai dan napas yang masih bisa buat ngobrol, itu batas amannya hari ini.",
+            ReadinessCeiling::ModerateOk => "Base run santai sampai sedang.\n\n"
+                ."Kondisi kamu cukup buat sesi base atau moderate, tapi belum waktunya "
+                ."push ke tempo atau interval. Kalau ada slot lari, jaga di effort itu.",
+            ReadinessCeiling::QualityOk => "Sesi sesuai rencana hari ini.\n\n"
+                ."Kondisi kamu lagi bagus. Kalau ada slot lari, pilih format yang paling "
+                ."masuk akal buat progres kamu minggu ini, easy sampai quality sama-sama aman.",
+        };
     }
 
     public function toolbox(User $user, Carbon $asOf): AgentToolbox

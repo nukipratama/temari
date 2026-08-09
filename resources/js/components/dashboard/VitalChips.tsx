@@ -43,7 +43,7 @@ export default function VitalChips({
     // Vibe's value is just the label word — pairing it with the emoji inline
     // read richer, but "emoji + longest label" (e.g. "Hibernasi") never fit one
     // line in the narrow 3-up mobile tile, and forcing the emoji onto its own
-    // line broke the single-line rhythm shared with Kesiapan/Recovery even on
+    // line broke the single-line rhythm shared with Kesiapan/Jeda even on
     // wide screens with room to spare. There's no numeric vibe score, so the
     // horizon gauge shows form intensity and the sub-line glosses what the vibe means.
     const vibeValue = briefing.vibeLabel;
@@ -92,7 +92,7 @@ export default function VitalChips({
                 }
             />
             <VitalChip
-                label="Recovery"
+                label="Jeda"
                 value={
                     briefing.recoveryHoursLabel ??
                     briefing.streakLabel ??
@@ -105,7 +105,7 @@ export default function VitalChips({
                 gauge={
                     briefing.recoveryHours != null
                         ? {
-                              label: 'Recovery',
+                              label: 'Jeda',
                               value: briefing.recoveryHours,
                               min: 0,
                               max: RECOVERY_HOURS_FULL,
