@@ -106,17 +106,17 @@ export default function RunsIndex({
 
     return (
         <>
-            <Head title="Riwayat · Jejak" />
+            <Head title="History · Log" />
             <PageContainer>
                 <header className="flex flex-col gap-5">
                     <PageHero
                         eyebrow={
                             anyFilterActive
-                                ? `Riwayat · ${runs.length} hasil`
-                                : `Riwayat · ${runs.length} aktivitas`
+                                ? `History · ${runs.length} results`
+                                : `History · ${runs.length} activities`
                         }
-                        lead="Setiap lari"
-                        emph="ada ceritanya."
+                        lead="Every run"
+                        emph="has a story."
                         noItalic
                     />
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -213,7 +213,7 @@ function RankedList({
                     {label}
                 </div>
                 <Eyebrow token="micro" tone="ink-3">
-                    {runs.length} lari · diurutkan
+                    {runs.length} runs · sorted
                 </Eyebrow>
             </header>
             <div>
@@ -232,20 +232,20 @@ function RankedList({
 
 const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
     disconnected: {
-        line: 'Sambungin Strava dulu ya',
-        sub: 'Aku baca lari kamu dari Strava. Sambungin biar riwayatnya keisi.',
+        line: 'Connect Strava first',
+        sub: 'I read your runs from Strava. Connect it to fill in your history.',
     },
     revoked: {
-        line: 'Sambungan Strava putus',
-        sub: 'Token kamu udah gak aktif. Sambungin lagi biar lari baru kebaca.',
+        line: 'Strava connection dropped',
+        sub: "Your token isn't active anymore. Reconnect so new runs get picked up.",
     },
     syncing: {
-        line: 'Aku lagi narik lari kamu 🏃‍♀️',
-        sub: 'Sebentar ya, riwayatnya muncul begitu lari pertama selesai diproses.',
+        line: 'Pulling in your runs 🏃‍♀️',
+        sub: 'Hang tight, your history shows up as soon as the first run finishes processing.',
     },
     ready: {
-        line: 'Belum ada lari yang bisa ditampilkan',
-        sub: 'Lari baru muncul di sini begitu selesai diproses. Coba sync lagi kalau baru kelar lari.',
+        line: 'No runs to show yet',
+        sub: "New runs appear here once they're processed. Try syncing again if you just finished a run.",
     },
 };
 
@@ -269,7 +269,7 @@ function EmptyState() {
                         <StravaSyncButton state={state} className="mt-4" />
                     )}
                     <BackLink href="/" tone="accent" className="mt-4">
-                        Kembali ke Hari Ini
+                        Back to Today
                     </BackLink>
                 </>
             }
@@ -292,11 +292,10 @@ function NoFilterMatchState({ onReset }: Readonly<{ onReset: () => void }>) {
         >
             <Temari pose="observational" size={112} animate={false} />
             <p className="mt-4 font-display text-2xl italic text-ink-2">
-                Gak ada lari yang cocok.
+                No runs match.
             </p>
             <p className="mt-2 font-sans text-sm text-ink-2">
-                Filternya kesempitan nih. Coba longgarin dikit biar keliatan
-                lagi.
+                Your filters are too narrow. Try loosening them up to see more.
             </p>
             <PillButton tone="outline" onClick={onReset} className="mt-4">
                 <Icon

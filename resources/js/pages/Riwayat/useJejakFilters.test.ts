@@ -89,7 +89,7 @@ describe('hrefWithFilters', () => {
 
 describe('labelFor', () => {
     it('resolves an option label', () => {
-        expect(labelFor(DISTANCE_OPTIONS, '21up')).toBe('Half ke atas');
+        expect(labelFor(DISTANCE_OPTIONS, '21up')).toBe('Half and up');
     });
 
     it('falls back to the raw value for an unknown option', () => {
@@ -111,9 +111,7 @@ describe('summariseQuery', () => {
                 dist: '21up',
                 mood: 'nyala,adem',
             }),
-        ).toBe(
-            'satu minggu · Setahun penuh · Paling jauh · Half ke atas · Nyala, Adem',
-        );
+        ).toBe('one week · Full year · Longest · Half and up · Nyala, Adem');
     });
 
     it('ignores a mood value that is not a real mood', () => {
@@ -124,9 +122,9 @@ describe('summariseQuery', () => {
 describe('groupByWeek', () => {
     it('buckets runs by ISO week, Monday-start', () => {
         const buckets = groupByWeek([
-            run(101, 'Selasa', '2026-05-19T06:00:00'),
-            run(102, 'Minggu', '2026-05-24T06:00:00'),
-            run(103, 'Minggu lalu', '2026-05-12T06:00:00'),
+            run(101, 'Tuesday', '2026-05-19T06:00:00'),
+            run(102, 'Sunday', '2026-05-24T06:00:00'),
+            run(103, 'Last week', '2026-05-12T06:00:00'),
         ]);
 
         expect(buckets.map((b) => b.weekStart)).toEqual([
@@ -141,14 +139,14 @@ describe('groupByWeek', () => {
 
     it('collects dateless runs into one bucket at the end', () => {
         const buckets = groupByWeek([
-            run(101, 'Selasa', '2026-05-19T06:00:00'),
-            run(999, 'Tanpa tanggal', null),
+            run(101, 'Tuesday', '2026-05-19T06:00:00'),
+            run(999, 'No date', null),
         ]);
 
         expect(buckets[buckets.length - 1]).toMatchObject({
             weekStart: 'orphans',
             weekEnding: 'orphans',
-            label: 'Tanpa tanggal',
+            label: 'No date',
             totalKm: 5,
             totalTrimp: 50,
         });
@@ -166,7 +164,7 @@ describe('groupByWeek', () => {
     });
 
     it('treats a missing distance or TRIMP as zero', () => {
-        const bare = run(101, 'Tanpa metrik', '2026-05-19T06:00:00');
+        const bare = run(101, 'No metrics', '2026-05-19T06:00:00');
         bare.detail.distance = null;
         bare.detail.trimp_edwards = null;
 
@@ -189,7 +187,7 @@ describe('useJejakFilters', () => {
         const { result } = renderHook(() =>
             useJejakFilters(
                 hookProps({
-                    runs: [run(101, 'Pagi', '2026-05-19T06:00:00')],
+                    runs: [run(101, 'Morning', '2026-05-19T06:00:00')],
                     weeklySnapshots: [snapshot],
                 }),
             ),
@@ -257,10 +255,10 @@ describe('useJejakFilters', () => {
             'mood:adem',
         ]);
         expect(result.current.chips.map((c) => c.label)).toEqual([
-            'Satu minggu',
-            'Setahun penuh',
-            'Paling jauh',
-            'Half ke atas',
+            'One week',
+            'Full year',
+            'Longest',
+            'Half and up',
             'Nyala',
             'Adem',
         ]);
@@ -428,7 +426,7 @@ describe('useJejakFilters', () => {
             );
             const { result } = renderHook(() => useJejakFilters(hookProps()));
 
-            expect(result.current.resume?.summary).toBe('Half ke atas · Nyala');
+            expect(result.current.resume?.summary).toBe('Half and up · Nyala');
         });
 
         it('offers nothing when the saved query summarises to nothing', () => {

@@ -56,11 +56,11 @@ interface AksesoriProps {
 }
 
 const SLOT_LABEL: Record<Slot, string> = {
-    medal: 'Medali',
-    ikat_kepala: 'Ikat Kepala',
-    kaus: 'Kaus',
-    celana: 'Celana',
-    sepatu: 'Sepatu',
+    medal: 'Medal',
+    ikat_kepala: 'Headband',
+    kaus: 'Shirt',
+    celana: 'Shorts',
+    sepatu: 'Shoes',
     aura: 'Aura',
 };
 
@@ -78,7 +78,7 @@ export default function KoleksiAksesori({
     equipped,
 }: Readonly<AksesoriProps>) {
     const unlockedCount = items.filter((i) => i.unlocked).length;
-    const eyebrow = `Koleksi · ${unlockedCount} / ${items.length} aksesori`;
+    const eyebrow = `Collection · ${unlockedCount} / ${items.length} accessories`;
 
     const aksesoriCount = `${unlockedCount} / ${items.length}`;
 
@@ -110,13 +110,13 @@ export default function KoleksiAksesori({
 
     return (
         <>
-            <Head title="Koleksi · Aksesori" />
+            <Head title="Collection · Accessories" />
             <PageContainer>
                 <CollectionHeader
                     active="aksesori"
                     eyebrow={eyebrow}
-                    headline1="Dandanin Temari"
-                    headline2="pake yang udah kamu dapet."
+                    headline1="Dress up Temari"
+                    headline2="with what you've unlocked."
                     activeCount={aksesoriCount}
                 />
 
@@ -136,11 +136,11 @@ export default function KoleksiAksesori({
                                 tone="horizon"
                                 className="mb-3"
                             >
-                                ★ Yang lagi dipake
+                                ★ Currently equipped
                             </Eyebrow>
                             <h2 className="mb-5 font-display text-display-md text-cream">
                                 <em className="italic text-horizon">
-                                    Lagi pake yang ini.
+                                    Wearing this right now.
                                 </em>
                             </h2>
                             <ul className="grid gap-2 sm:grid-cols-2">
@@ -167,8 +167,8 @@ export default function KoleksiAksesori({
                                 ))}
                             </ul>
                             <p className="mt-5 max-w-md font-display text-sm italic leading-relaxed text-cream/75">
-                                &ldquo;Tiap kamu dapet aksesori baru, langsung
-                                aku siapin di sini.&rdquo; 🎀
+                                &ldquo;Every time you unlock something new, I'll
+                                have it ready right here.&rdquo; 🎀
                             </p>
                         </div>
                     </div>
@@ -195,9 +195,9 @@ function equippedLabelFor(
     items: AksesoriItem[],
 ): string {
     const key = equipped[slot];
-    if (!key) return 'belum dipake';
+    if (!key) return 'not equipped';
     const item = items.find((i) => i.unlock_key === key);
-    return item ? item.name : 'dipake';
+    return item ? item.name : 'equipped';
 }
 
 function SlotSection({
@@ -253,8 +253,8 @@ function SlotSection({
                         aria-hidden
                     />
                     {showLocked
-                        ? `Sembunyikan ${locked.length} belum kebuka`
-                        : `+${locked.length} belum kebuka`}
+                        ? `Hide ${locked.length} locked`
+                        : `+${locked.length} locked`}
                 </PillButton>
             )}
         </section>
@@ -284,7 +284,7 @@ function AksesoriCard({
         >
             {item.equipped && (
                 <Chip tone="horizon" className="absolute right-4 top-4 z-10">
-                    Lagi dipake
+                    Equipped
                 </Chip>
             )}
             <div className="relative">
@@ -336,7 +336,7 @@ function AksesoriCard({
                         height={15}
                         aria-hidden
                     />
-                    Terpasang
+                    Equipped
                 </PillButton>
             )}
             {!locked && !item.equipped && (
@@ -352,7 +352,7 @@ function AksesoriCard({
                         height={15}
                         aria-hidden
                     />
-                    Pasang
+                    Equip
                 </PillButton>
             )}
         </article>

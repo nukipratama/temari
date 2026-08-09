@@ -14,7 +14,7 @@ function makeRecap(overrides: Partial<MonthlyRecap> = {}): MonthlyRecap {
     return {
         id: 1,
         status: 'done',
-        content: 'Mei kamu padat, ritmenya kejaga.',
+        content: 'May was full and the rhythm held steady.',
         type: 'monthly_recap',
         subject_type: 'monthly_recap_user_month',
         subject_id: 1,
@@ -99,7 +99,7 @@ const TWO_WEEK_CELLS: CalendarCell[] = cellsFor([
 
 const BASE_PROPS = {
     month: '2026-05',
-    monthLabel: 'Mei 2026',
+    monthLabel: 'May 2026',
     prevMonth: '2026-04',
     nextMonth: '2026-06',
     todayMonth: '2026-05',
@@ -109,10 +109,10 @@ describe('Kalender', () => {
     it('renders the month label and short weekday headers', () => {
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
-            screen.getByRole('heading', { name: 'Mei 2026' }),
+            screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Sen')).toBeInTheDocument();
-        expect(screen.getByText('Min')).toBeInTheDocument();
+        expect(screen.getByText('Mon')).toBeInTheDocument();
+        expect(screen.getByText('Sun')).toBeInTheDocument();
     });
 
     it('renders all 7 weekday columns without a horizontal-scroll hint', () => {
@@ -121,7 +121,7 @@ describe('Kalender', () => {
         expect(
             screen.queryByText(/Geser buat lihat seminggu penuh/),
         ).not.toBeInTheDocument();
-        for (const day of ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']) {
+        for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
             expect(screen.getByText(day)).toBeInTheDocument();
         }
     });
@@ -138,9 +138,9 @@ describe('Kalender', () => {
                 }}
             />,
         );
-        expect(screen.getByText(/63 lari/i)).toBeInTheDocument();
+        expect(screen.getByText(/63 runs/i)).toBeInTheDocument();
         expect(screen.getByText(/544 km/i)).toBeInTheDocument();
-        expect(screen.getByText(/sejak 19 feb 2026/i)).toBeInTheDocument();
+        expect(screen.getByText(/since 19 feb 2026/i)).toBeInTheDocument();
     });
 
     it('renders per-week km totals in the week summary column', () => {
@@ -167,7 +167,7 @@ describe('Kalender', () => {
     // even though the visible text is just the unit.
     it('keeps the week column labelled for screen readers', () => {
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(screen.getByText('Pekan, jarak dalam kilometer')).toHaveClass(
+        expect(screen.getByText('Week, distance in kilometers')).toHaveClass(
             'sr-only',
         );
     });
@@ -183,13 +183,13 @@ describe('Kalender', () => {
         expect(activityLinks).toContain('/aktivitas/102');
     });
 
-    it('renders the navy "Hari ini" badge on today\'s cell', () => {
+    it('renders the navy "Today" badge on today\'s cell', () => {
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(screen.getByText('Hari ini')).toBeInTheDocument();
+        expect(screen.getByText('Today')).toBeInTheDocument();
     });
 
     it('marks today with a persistent dot next to the day number, not color alone', () => {
-        // The "Hari ini" text is lg-only; below that breakpoint the navy fill
+        // The "Today" text is lg-only; below that breakpoint the navy fill
         // would otherwise be the sole signal that a cell is today.
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         const dayNumber = screen.getByText('7');
@@ -201,22 +201,22 @@ describe('Kalender', () => {
             <Kalender
                 {...BASE_PROPS}
                 cells={TWO_WEEK_CELLS}
-                todayQuote="Form pas — sesi tempo cocok."
+                todayQuote="Good form — tempo session fits."
             />,
         );
         expect(
-            screen.getByText(/Form pas — sesi tempo cocok\./),
+            screen.getByText(/Good form — tempo session fits\./),
         ).toBeInTheDocument();
     });
 
-    it('hides the "Hari ini" jump-back when already on the current month', () => {
+    it('hides the "Today" jump-back when already on the current month', () => {
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
-            screen.queryByRole('link', { name: 'Hari ini' }),
+            screen.queryByRole('link', { name: 'Today' }),
         ).not.toBeInTheDocument();
     });
 
-    it('shows the "Hari ini" jump-back when viewing a different month', () => {
+    it('shows the "Today" jump-back when viewing a different month', () => {
         render(
             <Kalender
                 {...BASE_PROPS}
@@ -225,7 +225,7 @@ describe('Kalender', () => {
                 todayMonth="2026-05"
             />,
         );
-        expect(screen.getByRole('link', { name: 'Hari ini' })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: 'Today' })).toHaveAttribute(
             'href',
             '/kalender',
         );
@@ -234,10 +234,10 @@ describe('Kalender', () => {
     it('renders prev / next nav buttons with correct hrefs', () => {
         render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
-            screen.getByRole('link', { name: 'Bulan sebelumnya' }),
+            screen.getByRole('link', { name: 'Previous month' }),
         ).toHaveAttribute('href', '/kalender?month=2026-04');
         expect(
-            screen.getByRole('link', { name: 'Bulan berikutnya' }),
+            screen.getByRole('link', { name: 'Next month' }),
         ).toHaveAttribute('href', '/kalender?month=2026-06');
     });
 
@@ -353,7 +353,7 @@ describe('Kalender', () => {
         render(<Kalender {...BASE_PROPS} cells={[]} />);
         // No grid rows since chunkIntoWeeks returns []. Chrome (month label + legend) still shows.
         expect(
-            screen.getByRole('heading', { name: 'Mei 2026' }),
+            screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
         expect(screen.getByText('Mood')).toBeInTheDocument();
     });
@@ -368,17 +368,17 @@ describe('Kalender', () => {
                 />,
             );
             expect(
-                screen.getByText(/Mei kamu padat, ritmenya kejaga\./),
+                screen.getByText(/May was full and the rhythm held steady\./),
             ).toBeInTheDocument();
             expect(
-                screen.getByText(/Catatan Temari · Mei 2026/),
+                screen.getByText(/Temari's notes · May 2026/),
             ).toBeInTheDocument();
         });
 
         it('is omitted entirely when no recap prop is passed', () => {
             render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
             expect(
-                screen.queryByText(/Catatan Temari/),
+                screen.queryByText(/Temari's notes/),
             ).not.toBeInTheDocument();
         });
 
@@ -395,7 +395,7 @@ describe('Kalender', () => {
                     })}
                 />,
             );
-            expect(screen.getByText(/Catatan Temari/)).toBeInTheDocument();
+            expect(screen.getByText(/Temari's notes/)).toBeInTheDocument();
             expect(
                 screen.queryByText('Belum dibaca Temari.'),
             ).not.toBeInTheDocument();
@@ -418,7 +418,7 @@ describe('Kalender', () => {
                 />,
             );
             expect(
-                screen.getByText('Rekap bulan ini belum tersedia.'),
+                screen.getByText("This month's recap isn't ready yet."),
             ).toBeInTheDocument();
             expect(
                 screen.queryByRole('button', { name: /Minta Temari bacain/ }),

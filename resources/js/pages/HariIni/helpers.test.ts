@@ -28,7 +28,7 @@ function runWith(
     return {
         id: overrides.id ?? 1,
         activity_id: overrides.activity_id ?? 99,
-        name: 'Lari',
+        name: 'Run',
         start_date_local: '2026-05-20T07:00',
         distance: 5000,
         elapsed_time: 1800,
@@ -45,7 +45,7 @@ function runWith(
                       activity_id: 99,
                       rarity: cardOverrides.rarity ?? 'common',
                       special_move:
-                          cardOverrides.special_move ?? 'Langkah Mantap',
+                          cardOverrides.special_move ?? 'Steady Stride',
                       badges: ['negative_split'],
                   },
               }
@@ -64,8 +64,8 @@ describe('formatSignedForm', () => {
 });
 
 describe('vibeSubtitleFor', () => {
-    it('lowercases the vibe label and wraps it in "kamu lagi …"', () => {
-        expect(vibeSubtitleFor('Membara')).toBe('kamu lagi membara.');
+    it('lowercases the vibe label and wraps it in "you\'re feeling …"', () => {
+        expect(vibeSubtitleFor('Fired Up')).toBe("you're feeling fired up.");
     });
 });
 
@@ -192,7 +192,7 @@ describe('formatWeather', () => {
     });
 
     it('formats temperature, humidity, and rain when present', () => {
-        expect(formatWeather(28.4, 75, true)).toBe('28°C · 75% · hujan');
+        expect(formatWeather(28.4, 75, true)).toBe('28°C · 75% · rain');
     });
 
     it('omits rain when false', () => {
@@ -207,10 +207,10 @@ describe('ctlHint', () => {
     });
 
     it('classifies ctl by threshold', () => {
-        expect(ctlHint(10)).toBe('lagi dibangun');
-        expect(ctlHint(30)).toBe('naik tipis');
-        expect(ctlHint(60)).toBe('stabil');
-        expect(ctlHint(100)).toBe('tinggi');
+        expect(ctlHint(10)).toBe('still building');
+        expect(ctlHint(30)).toBe('trending up');
+        expect(ctlHint(60)).toBe('stable');
+        expect(ctlHint(100)).toBe('high');
     });
 });
 
@@ -221,9 +221,9 @@ describe('atlHint', () => {
 
     it('classifies atl by threshold', () => {
         expect(atlHint(10)).toBe('fresh');
-        expect(atlHint(40)).toBe('wajar');
-        expect(atlHint(70)).toBe('lelah');
-        expect(atlHint(100)).toBe('berat');
+        expect(atlHint(40)).toBe('normal');
+        expect(atlHint(70)).toBe('tired');
+        expect(atlHint(100)).toBe('heavy');
     });
 });
 
@@ -233,9 +233,9 @@ describe('strainHint', () => {
     });
 
     it('classifies strain by threshold', () => {
-        expect(strainHint(100)).toBe('ringan');
-        expect(strainHint(300)).toBe('sedang');
-        expect(strainHint(600)).toBe('berat');
+        expect(strainHint(100)).toBe('light');
+        expect(strainHint(300)).toBe('moderate');
+        expect(strainHint(600)).toBe('heavy');
     });
 });
 
@@ -245,9 +245,9 @@ describe('monotonyHint', () => {
     });
 
     it('classifies monotony by threshold', () => {
-        expect(monotonyHint(1.2)).toBe('sehat');
-        expect(monotonyHint(1.7)).toBe('tinggi');
-        expect(monotonyHint(2.5)).toBe('monoton');
+        expect(monotonyHint(1.2)).toBe('healthy');
+        expect(monotonyHint(1.7)).toBe('high');
+        expect(monotonyHint(2.5)).toBe('monotonous');
     });
 });
 

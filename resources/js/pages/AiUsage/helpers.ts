@@ -23,7 +23,7 @@ export function formatCost(amount: number, currency: string): string {
 
 /**
  * Navigate the report. A preset range travels as a self-correcting `range`
- * token (resolved server-side, never stale); a custom Dari/Sampai window
+ * token (resolved server-side, never stale); a custom From/To window
  * travels as absolute `from`/`to`.
  */
 export function navigate({
@@ -63,11 +63,11 @@ export function presetHref(token: RangeToken, kind: string | null): string {
 }
 
 export const PRESETS: ReadonlyArray<{ token: RangeToken; label: string }> = [
-    { token: 'today', label: 'Hari ini' },
-    { token: '7d', label: '7 hari' },
-    { token: '30d', label: '30 hari' },
-    { token: 'month', label: 'Bulan ini' },
-    { token: 'all', label: 'Semua' },
+    { token: 'today', label: 'Today' },
+    { token: '7d', label: '7 days' },
+    { token: '30d', label: '30 days' },
+    { token: 'month', label: 'This month' },
+    { token: 'all', label: 'All' },
 ];
 
 export function formatDayLabel(day: string): string {

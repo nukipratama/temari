@@ -55,9 +55,9 @@ describe('Koleksi/Aksesori', () => {
             item('accessory.medal_pertama', 'medal', false, false),
         ];
         render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
-        expect(screen.getByText(/Dandanin Temari/)).toBeInTheDocument();
-        // 6 slot labels appear in the equipped strip with "belum dipake" status.
-        expect(screen.getAllByText(/belum dipake/).length).toBe(6);
+        expect(screen.getByText(/Dress up Temari/)).toBeInTheDocument();
+        // 6 slot labels appear in the equipped strip with "not equipped" status.
+        expect(screen.getAllByText(/not equipped/).length).toBe(6);
     });
 
     it('renders unlocked + equipped state per item', () => {
@@ -78,7 +78,7 @@ describe('Koleksi/Aksesori', () => {
         );
         expect(screen.getAllByText(/Legendaris/i).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/Emas/i).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(/dipake/).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/equipped/i).length).toBeGreaterThan(0);
     });
 
     it('renders the medal name when equipped', () => {
@@ -111,13 +111,13 @@ describe('Koleksi/Aksesori', () => {
         expect(matches.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('posts to the equip endpoint when an unlocked-but-not-equipped Pasang button is clicked', () => {
+    it('posts to the equip endpoint when an unlocked-but-not-equipped Equip button is clicked', () => {
         vi.mocked(router.post).mockReset();
         const items = [
             item('accessory.ikat_kepala_epik', 'ikat_kepala', true, false),
         ];
         render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
-        fireEvent.click(screen.getByText('Pasang'));
+        fireEvent.click(screen.getByText('Equip'));
         expect(router.post).toHaveBeenCalledWith(
             '/api/aksesori/equip',
             { unlock_key: 'accessory.ikat_kepala_epik' },
@@ -131,7 +131,7 @@ describe('Koleksi/Aksesori', () => {
         expect(screen.getByText('accessory.sepatu_basic')).toBeInTheDocument();
     });
 
-    it('toggles the locked items list when the "belum kebuka" button is clicked', () => {
+    it('toggles the locked items list when the "locked" button is clicked', () => {
         const items = [
             item('accessory.ikat_kepala_epik', 'ikat_kepala', true, false),
             item(
@@ -144,7 +144,7 @@ describe('Koleksi/Aksesori', () => {
         ];
         render(<KoleksiAksesori items={items} equipped={emptyEquipped} />);
         // Each slot section has its own toggle + locked-item wrapper, so scope
-        // both to the ikat_kepala section rather than the first "belum kebuka"
+        // both to the ikat_kepala section rather than the first "locked"
         // button in the document (medal's section also has one).
         const section = screen
             .getByText('accessory.ikat_kepala_legendaris')
@@ -152,7 +152,7 @@ describe('Koleksi/Aksesori', () => {
         const btn =
             section &&
             Array.from(section.querySelectorAll('button')).find((b) =>
-                /belum kebuka/.test(b.textContent ?? ''),
+                /locked/.test(b.textContent ?? ''),
             );
         // The locked-item wrapper is hidden on mobile until toggled ("hidden sm:contents").
         const lockedWrapper = screen

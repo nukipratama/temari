@@ -72,9 +72,9 @@ interface KartuProps {
 type SortMode = 'date' | 'rarity' | 'name';
 
 const SORT_OPTIONS: ReadonlyArray<{ value: SortMode; label: string }> = [
-    { value: 'date', label: 'Terbaru' },
-    { value: 'rarity', label: 'Tingkat' },
-    { value: 'name', label: 'Nama' },
+    { value: 'date', label: 'Newest' },
+    { value: 'rarity', label: 'Rarity' },
+    { value: 'name', label: 'Name' },
 ];
 
 const RARITY_RANK: Record<Rarity, number> = {
@@ -103,7 +103,7 @@ export default function KoleksiKartu({
         0,
     );
     const epicCount = rarityCounts.epic + rarityCounts.legendary;
-    const eyebrow = `Koleksi · ${totalKartu} kartu · ${epicCount} terbaik`;
+    const eyebrow = `Collection · ${totalKartu} cards · ${epicCount} best`;
 
     // One flat, newest-first grid (the controller orders by id desc). Filter
     // tabs narrow to a single rarity; otherwise it's the whole collection.
@@ -158,14 +158,14 @@ export default function KoleksiKartu({
 
     return (
         <>
-            <Head title="Koleksi · Kartu" />
+            <Head title="Collection · Cards" />
             <ConfettiBurst burstKey={burstKey} />
             <PageContainer>
                 <CollectionHeader
                     active="kartu"
                     eyebrow={eyebrow}
-                    headline1="Semua kartu kamu"
-                    headline2="dari Temari."
+                    headline1="All your cards"
+                    headline2="from Temari."
                     activeCount={String(totalKartu)}
                 />
 
@@ -206,7 +206,7 @@ function SlimBanner({ featured }: Readonly<{ featured: FeaturedCardPayload }>) {
 
     return (
         <FeaturedCardHero
-            eyebrow={`★ Kartu terbaikmu · ${RARITY_LABELS[featured.rarity]}`}
+            eyebrow={`★ Your best card · ${RARITY_LABELS[featured.rarity]}`}
             name={featured.special_move}
             rarity={featured.rarity}
             km={kartuProps.km}
@@ -252,15 +252,15 @@ function RarityFilter({
 }>) {
     return (
         <nav
-            aria-label="Filter kartu"
+            aria-label="Filter cards"
             className="mt-8 flex flex-wrap items-center gap-2"
         >
             <Eyebrow as="span" token="micro" tone="ink-2" className="mr-1.5">
-                Tingkat
+                Rarity
             </Eyebrow>
             <FilterPill
                 href="/kartu"
-                label="Semua"
+                label="All"
                 active={selected === null}
                 dot={null}
             />
@@ -288,15 +288,15 @@ function RarityFilter({
                         type="text"
                         value={search}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        placeholder="Cari kartu..."
-                        aria-label="Cari kartu"
+                        placeholder="Search cards..."
+                        aria-label="Search cards"
                         className="w-36 rounded-full border border-cream-deep bg-cream py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-ink-3 focus:border-horizon focus:outline-none sm:w-44"
                     />
                 </div>
                 <select
                     value={sortBy}
                     onChange={(e) => onSortChange(e.target.value as SortMode)}
-                    aria-label="Urutkan"
+                    aria-label="Sort"
                     className="rounded-full border border-cream-deep bg-cream px-3 py-1.5 text-xs font-medium text-ink-2 focus:border-horizon focus:outline-none"
                 >
                     {SORT_OPTIONS.map((opt) => (
@@ -411,8 +411,8 @@ function EmptyState() {
 
     return (
         <EmptyPanel
-            title="Belum ada kartu di sini."
-            body="Coba filter lain, atau sync lari terbaru dulu."
+            title="No cards here yet."
+            body="Try a different filter, or sync your latest runs first."
             action={
                 state !== 'syncing' && (
                     <StravaSyncButton state={state} className="mt-4" />
@@ -436,12 +436,12 @@ function LegendaryTease() {
             </div>
             <div className="flex-1">
                 <Eyebrow token="micro" className="mb-1.5 text-rarity-legendary">
-                    ★ Legendaris · belum kebuka
+                    ★ Legendary · not unlocked yet
                 </Eyebrow>
                 <p className="font-display text-sm italic leading-relaxed text-ink-2">
-                    Kartu paling langka. Kebuka pas satu lari numpukin banyak
-                    hal kece sekaligus: PR, makin ngebut di paruh kedua, lari
-                    jauh, plus badge-badge kamu.
+                    The rarest card. Unlocks when one run stacks up a bunch of
+                    great things at once: a PR, a faster back half, a long
+                    distance, plus your badges.
                 </p>
             </div>
         </Card>

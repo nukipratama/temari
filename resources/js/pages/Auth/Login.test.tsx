@@ -8,9 +8,7 @@ import Login from './Login';
 describe('Login', () => {
     it('shows the Strava CTA with the given URL', () => {
         render(<Login authStravaUrl="/auth/strava/redirect" />);
-        const strava = screen
-            .getByText(/Sambungkan dengan Strava/)
-            .closest('a');
+        const strava = screen.getByText(/Connect with Strava/).closest('a');
         expect(strava?.getAttribute('href')).toBe('/auth/strava/redirect');
     });
 
@@ -21,9 +19,7 @@ describe('Login', () => {
                 from="/aktivitas/5?tab=splits"
             />,
         );
-        const strava = screen
-            .getByText(/Sambungkan dengan Strava/)
-            .closest('a');
+        const strava = screen.getByText(/Connect with Strava/).closest('a');
         expect(strava?.getAttribute('href')).toBe(
             '/auth/strava/redirect?from=' +
                 encodeURIComponent('/aktivitas/5?tab=splits'),
@@ -32,22 +28,22 @@ describe('Login', () => {
 
     it('hides demo button when demoLoginEnabled is false', () => {
         render(<Login authStravaUrl="/x" />);
-        expect(screen.queryByText('Coba versi demo')).not.toBeInTheDocument();
+        expect(screen.queryByText('Try the demo')).not.toBeInTheDocument();
     });
 
     it('shows demo button when demoLoginEnabled is true', () => {
         setMockPage({ demoLoginEnabled: true });
         render(<Login authStravaUrl="/x" />);
-        expect(screen.getByText('Coba versi demo')).toBeInTheDocument();
+        expect(screen.getByText('Try the demo')).toBeInTheDocument();
     });
 
     it('renders the brand hero + 3 onboarding pillars in Temari first-person voice', () => {
         render(<Login authStravaUrl="/x" />);
         expect(screen.getByText('Temari')).toBeInTheDocument();
         // Mascot intro headline includes the value-prop CTA.
-        expect(screen.getByText(/Gak Sendirian/)).toBeInTheDocument();
-        expect(screen.getByText(/Halo, aku Temari/)).toBeInTheDocument();
-        [/Aku baca/, /Aku catat/, /Aku temenin/].forEach((label) => {
+        expect(screen.getByText(/Never Alone/)).toBeInTheDocument();
+        expect(screen.getByText(/Hi, I'm Temari/)).toBeInTheDocument();
+        [/I read/, /I record/, /I'm here for you/].forEach((label) => {
             expect(screen.getByText(label)).toBeInTheDocument();
         });
     });
@@ -57,7 +53,7 @@ describe('Login', () => {
         const video = container.querySelector('video');
         expect(video?.getAttribute('src')).toBe('/videos/intro.mp4');
         expect(video?.getAttribute('poster')).toBe('/videos/intro-poster.jpg');
-        expect(screen.getByLabelText('Putar video intro')).toBeInTheDocument();
+        expect(screen.getByLabelText('Play intro video')).toBeInTheDocument();
     });
 
     it('clicking play starts the intro and hides the overlay', async () => {
@@ -69,10 +65,10 @@ describe('Login', () => {
         render(<Login authStravaUrl="/x" />);
         await userEvent
             .setup()
-            .click(screen.getByLabelText('Putar video intro'));
+            .click(screen.getByLabelText('Play intro video'));
         expect(playSpy).toHaveBeenCalled();
         expect(
-            screen.queryByLabelText('Putar video intro'),
+            screen.queryByLabelText('Play intro video'),
         ).not.toBeInTheDocument();
         playSpy.mockRestore();
     });
@@ -81,17 +77,17 @@ describe('Login', () => {
         const userEvent = (await import('@testing-library/user-event')).default;
         setMockPage({ demoLoginEnabled: true });
         render(<Login authStravaUrl="/x" />);
-        await userEvent.setup().click(screen.getByText('Coba versi demo'));
+        await userEvent.setup().click(screen.getByText('Try the demo'));
         expect(formMock.post).toHaveBeenCalledWith('/auth/demo');
     });
 
     it('shows a real sample Kartu as concrete proof of the product', () => {
         render(<Login authStravaUrl="/x" />);
         expect(
-            screen.getByText('Ini kartu beneran, bukan mockup'),
+            screen.getByText('This is a real card, not a mockup'),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('img', { name: '10K Subuh' }),
+            screen.getByRole('img', { name: '10K Sunrise' }),
         ).toBeInTheDocument();
     });
 
@@ -103,9 +99,9 @@ describe('Login', () => {
         render(<Login authStravaUrl="/x" />);
         await userEvent
             .setup()
-            .click(screen.getByLabelText('Putar video intro'));
+            .click(screen.getByLabelText('Play intro video'));
         expect(playSpy).toHaveBeenCalled();
-        expect(screen.getByLabelText('Putar video intro')).toBeInTheDocument();
+        expect(screen.getByLabelText('Play intro video')).toBeInTheDocument();
         playSpy.mockRestore();
     });
 
@@ -117,13 +113,13 @@ describe('Login', () => {
         const { container } = render(<Login authStravaUrl="/x" />);
         await userEvent
             .setup()
-            .click(screen.getByLabelText('Putar video intro'));
+            .click(screen.getByLabelText('Play intro video'));
         expect(
-            screen.queryByLabelText('Putar video intro'),
+            screen.queryByLabelText('Play intro video'),
         ).not.toBeInTheDocument();
 
         fireEvent.ended(container.querySelector('video')!);
-        expect(screen.getByLabelText('Putar video intro')).toBeInTheDocument();
+        expect(screen.getByLabelText('Play intro video')).toBeInTheDocument();
         playSpy.mockRestore();
     });
 });

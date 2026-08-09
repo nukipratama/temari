@@ -156,7 +156,7 @@ export default function RunsShow({
                     href="/aktivitas"
                     className="mb-4 hidden lg:inline-flex"
                 >
-                    Riwayat · Jejak
+                    History · Log
                 </BackLink>
 
                 <div className="mb-5 flex flex-wrap gap-2">
@@ -177,7 +177,7 @@ export default function RunsShow({
                                 }
                                 aria-hidden
                             />
-                            {resyncing ? 'Lagi narik…' : 'Resync dari Strava'}
+                            {resyncing ? 'Syncing…' : 'Resync from Strava'}
                         </PillButton>
                     </StravaAction>
                     <SendNotificationButton
@@ -212,7 +212,7 @@ export default function RunsShow({
                                             </Eyebrow>
                                         </div>
                                         <h1 className="font-display text-display-sm text-cream">
-                                            {detail.name ?? 'Lari'}
+                                            {detail.name ?? 'Run'}
                                         </h1>
                                     </div>
                                 </div>
@@ -221,7 +221,7 @@ export default function RunsShow({
                                         tone="plainSky"
                                         size="md"
                                         align="center"
-                                        label="JARAK"
+                                        label="DISTANCE"
                                         value={km}
                                         unit="km"
                                     />
@@ -229,7 +229,7 @@ export default function RunsShow({
                                         tone="plainSky"
                                         size="md"
                                         align="center"
-                                        label="DURASI"
+                                        label="DURATION"
                                         value={kartuProps.durasi}
                                     />
                                     <StatTile
@@ -262,7 +262,7 @@ export default function RunsShow({
                                         tone="plainSky"
                                         size="md"
                                         align="center"
-                                        label="ELEVASI"
+                                        label="ELEVATION"
                                         value={
                                             detail.total_elevation_gain != null
                                                 ? `${Math.round(detail.total_elevation_gain)}`
@@ -273,7 +273,7 @@ export default function RunsShow({
                                     />
                                 </div>
 
-                                {/* KAMU VS KAMU DULU — inline in hero */}
+                                {/* YOU VS PAST YOU — inline in hero */}
                                 {pastYou && (
                                     <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-cream/15 bg-cream/[0.08] px-4 py-3 backdrop-blur-sm">
                                         <div className="min-w-0">
@@ -281,8 +281,8 @@ export default function RunsShow({
                                                 token="micro"
                                                 className="text-cream/60"
                                             >
-                                                Kamu vs {pastYou.days_ago} hari
-                                                lalu
+                                                You vs {pastYou.days_ago} days
+                                                ago
                                             </Eyebrow>
                                             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-cream/90">
                                                 <span
@@ -298,8 +298,8 @@ export default function RunsShow({
                                                     )}
                                                 >
                                                     {pastYou.pace_diff_sec === 0
-                                                        ? 'Pace sama'
-                                                        : `${Math.abs(Math.round(pastYou.pace_diff_sec))} detik/km ${pastYou.pace_diff_sec > 0 ? 'lebih cepat' : 'lebih lambat'}`}
+                                                        ? 'Same pace'
+                                                        : `${Math.abs(Math.round(pastYou.pace_diff_sec))} sec/km ${pastYou.pace_diff_sec > 0 ? 'faster' : 'slower'}`}
                                                 </span>
                                                 {pastYou.hr_diff_bpm !==
                                                     null && (
@@ -317,8 +317,8 @@ export default function RunsShow({
                                                     >
                                                         {pastYou.hr_diff_bpm ===
                                                         0
-                                                            ? 'HR sama'
-                                                            : `${Math.abs(Math.round(pastYou.hr_diff_bpm))} bpm ${pastYou.hr_diff_bpm < 0 ? 'lebih rendah' : 'lebih tinggi'}`}
+                                                            ? 'Same HR'
+                                                            : `${Math.abs(Math.round(pastYou.hr_diff_bpm))} bpm ${pastYou.hr_diff_bpm < 0 ? 'lower' : 'higher'}`}
                                                     </span>
                                                 )}
                                             </div>
@@ -332,7 +332,7 @@ export default function RunsShow({
                                                 })}
                                                 className="focus-ring-on-sky inline-flex shrink-0 items-center gap-1 rounded-full border border-cream/20 px-3 py-1.5 text-label-micro text-cream/70 transition hover:border-cream/40 hover:text-cream"
                                             >
-                                                Lihat
+                                                View
                                                 <Icon
                                                     icon="mdi:arrow-right"
                                                     width={12}
@@ -382,7 +382,7 @@ export default function RunsShow({
                                 >
                                     ★ {rarityLabel}
                                     {card.edition &&
-                                        ` · ${card.edition.total} dari koleksimu`}
+                                        ` · ${card.edition.total} in your collection`}
                                 </Eyebrow>
                                 <h2 className="font-display text-display-sm leading-[0.95] tracking-[-0.02em] text-ink">
                                     {card.special_move}.
@@ -416,7 +416,7 @@ export default function RunsShow({
                                             height={14}
                                             aria-hidden
                                         />
-                                        Bagikan
+                                        Share
                                     </PillButton>
                                     <PillButton
                                         tone="outline"
@@ -436,8 +436,8 @@ export default function RunsShow({
                                             aria-hidden
                                         />
                                         {replaying
-                                            ? 'Menyiapkan…'
-                                            : 'Buka ulang kartu'}
+                                            ? 'Preparing…'
+                                            : 'Replay card reveal'}
                                     </PillButton>
                                 </div>
                                 {replayError && (
@@ -446,8 +446,8 @@ export default function RunsShow({
                                         aria-live="polite"
                                         className="mt-2 font-sans text-xs text-ember-deep"
                                     >
-                                        Gagal buka ulang kartu. Coba lagi
-                                        sebentar ya.
+                                        Couldn't replay the card. Try again in a
+                                        bit.
                                     </p>
                                 )}
                             </div>
@@ -457,13 +457,13 @@ export default function RunsShow({
                                 deserves an honest explanation instead of a blank. */}
                             <Card padding="md" className="flex flex-col gap-4">
                                 <SectionLabel>
-                                    Kenapa dapet {rarityLabel}
+                                    Why this earned {rarityLabel}
                                 </SectionLabel>
                                 <p className="text-sm text-ink-2">
-                                    Ditentuin dari gabungan hal keren di lari
-                                    ini: PR, pace yang stabil atau makin ngebut,
-                                    jarak jauh, konsistensi mingguan, plus badge
-                                    yang kamu bawa pulang.
+                                    Determined by a mix of great things in this
+                                    run: a PR, steady or negative-split pace,
+                                    long distance, weekly consistency, plus the
+                                    badges you brought home.
                                 </p>
                                 {cardBadges.length > 0 && (
                                     <div className="flex flex-col gap-3">
@@ -482,7 +482,7 @@ export default function RunsShow({
                                                 </Chip>
                                                 <p className="flex-1 text-sm text-ink-2">
                                                     {BADGE_ABILITY[b] ??
-                                                        'Kondisi spesial yang bikin lari ini istimewa.'}
+                                                        'A special condition that makes this run stand out.'}
                                                 </p>
                                             </div>
                                         ))}
@@ -493,7 +493,7 @@ export default function RunsShow({
                     </section>
                 )}
 
-                {/* KATA TEMARI */}
+                {/* WHAT TEMARI SAYS */}
                 <section className="mt-8">
                     <header className="mb-4 flex items-center gap-3.5">
                         <Temari
@@ -503,10 +503,10 @@ export default function RunsShow({
                         />
                         <div>
                             <h2 className="font-display text-headline-sm text-ink">
-                                Kata Temari
+                                What Temari says
                             </h2>
                             <p className="mt-1 font-sans text-xs text-ink-3">
-                                Empat cara liat lari ini.
+                                Four ways to look at this run.
                             </p>
                         </div>
                     </header>
@@ -542,7 +542,7 @@ export default function RunsShow({
                     tone="ink-3"
                     className="mt-8"
                 >
-                    Tersambung otomatis dari Strava ·{' '}
+                    Auto-synced from Strava ·{' '}
                     {formatIdDate(activity.analyzed_at ?? null, 'long')}
                 </Eyebrow>
             </PageContainer>

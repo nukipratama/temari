@@ -31,7 +31,7 @@ const runCard: RunCardDetail = {
     id: 1,
     activity_id: 99,
     rarity: 'epic',
-    special_move: 'Paru-paru Baja',
+    special_move: 'Iron Lungs',
     badges: ['negative_split'],
     edition: { index: 3, total: 5 },
     flavor_analysis: {
@@ -89,7 +89,7 @@ describe('useRunShow', () => {
         expect(result.current.trimp).toBe(70);
     });
 
-    it('maps a relative-effort band to its "vs biasanya" sub-line', () => {
+    it('maps a relative-effort band to its "vs usual" sub-line', () => {
         const { result } = renderHook(() =>
             useRunShow(
                 hookProps({
@@ -102,7 +102,7 @@ describe('useRunShow', () => {
                 }),
             ),
         );
-        expect(result.current.effortSub).toBe('lebih berat dari biasanya');
+        expect(result.current.effortSub).toBe('harder than usual');
     });
 
     it('omits the effort sub-line when the band is null', () => {
@@ -186,7 +186,7 @@ describe('useRunShow', () => {
         const { result: withCard } = renderHook(() => useRunShow(hookProps()));
         expect(withCard.current.shareData).toMatchObject({
             id: 1,
-            name: 'Paru-paru Baja',
+            name: 'Iron Lungs',
             shareUrl: '/aktivitas/255',
             mood: 'nyala',
         });

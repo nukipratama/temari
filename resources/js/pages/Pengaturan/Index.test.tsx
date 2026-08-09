@@ -29,19 +29,19 @@ beforeEach(() => {
 describe('Pengaturan', () => {
     it('renders the settings sections', () => {
         render(<Pengaturan />);
-        expect(screen.getByText('Notifikasi')).toBeInTheDocument();
+        expect(screen.getByText('Notifications')).toBeInTheDocument();
         expect(screen.getByText('Telegram')).toBeInTheDocument();
-        expect(screen.getByText('Zona HR')).toBeInTheDocument();
-        expect(screen.getByText('Hapus akun')).toBeInTheDocument();
+        expect(screen.getByText('HR zones')).toBeInTheDocument();
+        expect(screen.getByText('Delete account')).toBeInTheDocument();
     });
 
     // The page used to open with a bare <h1>Pengaturan</h1>, the only screen in
     // the app not using the editorial header every other page shares.
     it('opens with the editorial header rather than a bare title', () => {
         render(<Pengaturan />);
-        expect(screen.getByText('Pengaturan')).toBeInTheDocument();
+        expect(screen.getByText('Settings')).toBeInTheDocument();
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-            'Atur Temari, sesuai kamu.',
+            'Set up Temari, your way.',
         );
     });
 
@@ -49,8 +49,8 @@ describe('Pengaturan', () => {
     // now two labelled groups inside one Notifikasi card.
     it('groups the notification settings by what and where', () => {
         render(<Pengaturan />);
-        expect(screen.getByText('Apa yang dikirim')).toBeInTheDocument();
-        expect(screen.getByText('Ke mana')).toBeInTheDocument();
+        expect(screen.getByText('What gets sent')).toBeInTheDocument();
+        expect(screen.getByText('Where it goes')).toBeInTheDocument();
     });
 
     // No back affordance anywhere: Pengaturan is one tap from the Aku tab and
@@ -69,16 +69,18 @@ describe('Pengaturan', () => {
     it('scopes the channel mutes to run notifications', () => {
         render(<Pengaturan />);
         expect(
-            screen.getByText(/Buat notifikasi lari kamu/),
+            screen.getByText(/Controls your run notifications/),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/peringatan sistem tetap masuk/),
+            screen.getByText(/system alerts still come through/),
         ).toBeInTheDocument();
     });
 
     it('tints the destructive row so it stops reading as routine', () => {
         render(<Pengaturan />);
-        expect(screen.getByText('Hapus akun')).toHaveClass('text-ember-deep');
+        expect(screen.getByText('Delete account')).toHaveClass(
+            'text-ember-deep',
+        );
     });
 
     it('shows the Telegram connect link when not connected', () => {
@@ -97,7 +99,7 @@ describe('Pengaturan', () => {
     it('shows the channel-neutral master switch from notificationPrefs', () => {
         render(<Pengaturan notificationPrefs={prefs} />);
         expect(
-            screen.getByRole('switch', { name: 'Kabarin aku' }),
+            screen.getByRole('switch', { name: 'Keep me posted' }),
         ).toHaveAttribute('aria-checked', 'false');
     });
 
@@ -106,7 +108,7 @@ describe('Pengaturan', () => {
     it('names the streak nudge among what the master switch sends', () => {
         render(<Pengaturan notificationPrefs={prefs} />);
         expect(
-            screen.getByText(/pengingat kalau streak kamu lagi di ujung/),
+            screen.getByText(/nudge when your streak's about to end/),
         ).toBeInTheDocument();
     });
 
@@ -114,7 +116,7 @@ describe('Pengaturan', () => {
         vi.mocked(router.patch).mockReset();
         render(<Pengaturan notificationPrefs={prefs} />);
 
-        fireEvent.click(screen.getByRole('switch', { name: 'Kabarin aku' }));
+        fireEvent.click(screen.getByRole('switch', { name: 'Keep me posted' }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/profil/notifikasi',
@@ -127,11 +129,11 @@ describe('Pengaturan', () => {
         );
     });
 
-    it('posts a test notification when "Kirim notifikasi tes" is clicked', () => {
+    it('posts a test notification when "Send test notification" is clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<Pengaturan />);
 
-        fireEvent.click(screen.getByText('Kirim notifikasi tes'));
+        fireEvent.click(screen.getByText('Send test notification'));
 
         // The button routes through usePendingPost now, which adds its own
         // onStart/onSuccess/onFinish alongside the caller's options.
@@ -161,7 +163,7 @@ describe('Pengaturan', () => {
     it('leaves the test button live when nothing is cooling', () => {
         render(<Pengaturan testCooldownSeconds={null} />);
         expect(
-            screen.getByText('Kirim notifikasi tes').closest('button'),
+            screen.getByText('Send test notification').closest('button'),
         ).not.toBeDisabled();
     });
 
@@ -174,7 +176,7 @@ describe('Pengaturan', () => {
         vi.mocked(router.patch).mockReset();
         render(<Pengaturan notificationPrefs={prefs} />);
 
-        const toggle = screen.getByRole('switch', { name: 'Kabarin aku' });
+        const toggle = screen.getByRole('switch', { name: 'Keep me posted' });
         fireEvent.click(toggle);
 
         expect(router.patch).not.toHaveBeenCalled();
@@ -184,11 +186,11 @@ describe('Pengaturan', () => {
         ).toBeInTheDocument();
     });
 
-    it('disconnects via DELETE when Putuskan is clicked', () => {
+    it('disconnects via DELETE when Disconnect is clicked', () => {
         vi.mocked(router.delete).mockReset();
         render(<Pengaturan telegram={connectedTelegram} />);
 
-        fireEvent.click(screen.getByText('Putuskan'));
+        fireEvent.click(screen.getByText('Disconnect'));
 
         expect(router.delete).toHaveBeenCalledWith('/profil/telegram', {
             preserveScroll: true,
@@ -199,8 +201,10 @@ describe('Pengaturan', () => {
         vi.mocked(router.delete).mockReset();
         render(<Pengaturan />);
 
-        fireEvent.click(screen.getByText('Hapus akun'));
-        expect(screen.getByText('Yakin mau hapus akun?')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('Delete account'));
+        expect(
+            screen.getByText('Sure you want to delete your account?'),
+        ).toBeInTheDocument();
         // Nothing is deleted until the user confirms.
         expect(router.delete).not.toHaveBeenCalled();
     });
@@ -209,9 +213,9 @@ describe('Pengaturan', () => {
         vi.mocked(router.delete).mockReset();
         render(<Pengaturan />);
 
-        fireEvent.click(screen.getByText('Hapus akun'));
+        fireEvent.click(screen.getByText('Delete account'));
         fireEvent.click(
-            screen.getByRole('button', { name: /Ya, hapus akunku/ }),
+            screen.getByRole('button', { name: /Yes, delete my account/ }),
         );
 
         expect(router.delete).toHaveBeenCalledWith('/akun');
@@ -221,13 +225,15 @@ describe('Pengaturan', () => {
         vi.mocked(router.delete).mockReset();
         render(<Pengaturan />);
 
-        fireEvent.click(screen.getByText('Hapus akun'));
-        expect(screen.getByText('Yakin mau hapus akun?')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('Delete account'));
+        expect(
+            screen.getByText('Sure you want to delete your account?'),
+        ).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Nanti aja' }));
         await waitFor(() => {
             expect(
-                screen.queryByText('Yakin mau hapus akun?'),
+                screen.queryByText('Sure you want to delete your account?'),
             ).not.toBeInTheDocument();
         });
         expect(router.delete).not.toHaveBeenCalled();

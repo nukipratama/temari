@@ -153,9 +153,7 @@ describe('AiUsage page', () => {
 
         expect(screen.getByText('AI Usage')).toBeInTheDocument();
         expect(
-            screen.getByText(
-                'Konsumsi token Azure OpenAI per rentang tanggal.',
-            ),
+            screen.getByText('Azure OpenAI token consumption per date range.'),
         ).toBeInTheDocument();
     });
 
@@ -188,14 +186,14 @@ describe('AiUsage page', () => {
     it('renders the daily chart section when the window has days', () => {
         render(<AiUsage {...baseProps} />);
 
-        expect(screen.getByText('Konsumsi Harian')).toBeInTheDocument();
+        expect(screen.getByText('Daily Consumption')).toBeInTheDocument();
         expect(screen.getByText('2 hari')).toBeInTheDocument();
     });
 
     it('drops the daily chart section entirely when there is nothing to plot', () => {
         render(<AiUsage {...baseProps} daily={[]} />);
 
-        expect(screen.queryByText('Konsumsi Harian')).not.toBeInTheDocument();
+        expect(screen.queryByText('Daily Consumption')).not.toBeInTheDocument();
     });
 
     it('renders the flash info banner when present', () => {

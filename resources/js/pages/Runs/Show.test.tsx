@@ -65,13 +65,13 @@ const runCard: NonNullable<Parameters<typeof RunsShow>[0]['card']> = {
     id: 1,
     activity_id: 99,
     rarity: 'epic',
-    special_move: 'Paru-paru Baja',
+    special_move: 'Iron Lungs',
     badges: ['negative_split'],
     edition: { index: 3, total: 5 },
     flavor_analysis: {
         id: 2,
         status: 'done',
-        content: 'Napas kuat sampai akhir.',
+        content: 'Strong breathing all the way to the end.',
         type: 'card_flavor',
         subject_type: String.raw`App\Models\RunCard`,
         subject_id: 1,
@@ -97,7 +97,7 @@ function speechAnalysis(
     return {
         id: 1,
         status: 'done',
-        content: 'Run solid banget',
+        content: 'Solid run',
         type: 'post_run_speech',
         subject_type: String.raw`App\Models\Activity`,
         subject_id: 99,
@@ -180,9 +180,7 @@ describe('Runs/Show', () => {
                 band: 'well_above',
             },
         });
-        expect(
-            screen.getByText('lebih berat dari biasanya'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('harder than usual')).toBeInTheDocument();
     });
 
     it('shows no relative-effort sub-line when the baseline is too thin (null band)', () => {
@@ -194,7 +192,7 @@ describe('Runs/Show', () => {
                 band: null,
             },
         });
-        expect(screen.queryByText(/dari biasanya/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/than usual/)).not.toBeInTheDocument();
     });
 
     it('feeds the detail tiles from the stream summary', () => {
@@ -212,11 +210,11 @@ describe('Runs/Show', () => {
         expect(screen.getByText('GAP')).toBeInTheDocument();
     });
 
-    it('renders the DURASI hero tile with the HMS-formatted elapsed_time', () => {
+    it('renders the DURATION hero tile with the HMS-formatted elapsed_time', () => {
         renderShow();
         // elapsed_time 3600s → 1:00:00 in the digital H:MM:SS form (hero tile + the
         // kartu section below it both show it).
-        expect(screen.getByText('DURASI')).toBeInTheDocument();
+        expect(screen.getByText('DURATION')).toBeInTheDocument();
         expect(screen.getAllByText('1:00:00').length).toBeGreaterThan(0);
     });
 
@@ -236,9 +234,9 @@ describe('Runs/Show', () => {
         expect(screen.getByText('9 Jun 2026 · 06.52')).toBeInTheDocument();
     });
 
-    it('renders the four-lens grid with the Kata Temari header', () => {
+    it('renders the four-lens grid with the What Temari Says header', () => {
         renderShow();
-        expect(screen.getByText('Kata Temari')).toBeInTheDocument();
+        expect(screen.getByText('What Temari says')).toBeInTheDocument();
         expect(screen.getByText('Cerita lari ini')).toBeInTheDocument();
         expect(screen.getByText('Terjemahan teknis')).toBeInTheDocument();
         expect(screen.getByText('Split paling seru')).toBeInTheDocument();
@@ -247,21 +245,21 @@ describe('Runs/Show', () => {
 
     it('renders the speech analysis text inside the Cerita panel', () => {
         renderShow();
-        expect(screen.getByText(/Run solid banget/)).toBeInTheDocument();
+        expect(screen.getByText(/Solid run/)).toBeInTheDocument();
     });
 
     it('renders the kartu section with its own view (no link elsewhere) when a card exists', () => {
         renderShow();
-        expect(screen.getAllByText('Paru-paru Baja').length).toBeGreaterThan(0);
-        expect(screen.getByText('Bagikan')).toBeInTheDocument();
-        expect(screen.getByText('Buka ulang kartu')).toBeInTheDocument();
-        expect(screen.getByText(/Kenapa dapet Epic/)).toBeInTheDocument();
+        expect(screen.getAllByText('Iron Lungs').length).toBeGreaterThan(0);
+        expect(screen.getByText('Share')).toBeInTheDocument();
+        expect(screen.getByText('Replay card reveal')).toBeInTheDocument();
+        expect(screen.getByText(/Why this earned Epic/)).toBeInTheDocument();
     });
 
     it('omits the kartu section when card is null', () => {
         renderShow({ card: null });
-        expect(screen.queryByText('Paru-paru Baja')).not.toBeInTheDocument();
-        expect(screen.queryByText('Bagikan')).not.toBeInTheDocument();
+        expect(screen.queryByText('Iron Lungs')).not.toBeInTheDocument();
+        expect(screen.queryByText('Share')).not.toBeInTheDocument();
     });
 
     it('surfaces an error and does not reveal when the replay POST fails (419/429/500)', async () => {
@@ -272,10 +270,10 @@ describe('Runs/Show', () => {
         try {
             renderShow();
             await act(async () => {
-                fireEvent.click(screen.getByText('Buka ulang kartu'));
+                fireEvent.click(screen.getByText('Replay card reveal'));
             });
             expect(
-                await screen.findByText(/Gagal buka ulang kartu/),
+                await screen.findByText(/Couldn't replay the card/),
             ).toBeInTheDocument();
             expect(router.reload).not.toHaveBeenCalledWith({
                 only: ['pendingReveal'],
@@ -293,7 +291,7 @@ describe('Runs/Show', () => {
         try {
             renderShow();
             await act(async () => {
-                fireEvent.click(screen.getByText('Buka ulang kartu'));
+                fireEvent.click(screen.getByText('Replay card reveal'));
             });
             await waitFor(() =>
                 expect(router.reload).toHaveBeenCalledWith({
@@ -301,7 +299,7 @@ describe('Runs/Show', () => {
                 }),
             );
             expect(
-                screen.queryByText(/Gagal buka ulang kartu/),
+                screen.queryByText(/Couldn't replay the card/),
             ).not.toBeInTheDocument();
         } finally {
             globalThis.fetch = original;
@@ -390,10 +388,10 @@ describe('Runs/Show', () => {
                 days_ago: 30,
             },
         });
-        expect(screen.getByText(/30 hari lalu/)).toBeInTheDocument();
+        expect(screen.getByText(/30 days ago/)).toBeInTheDocument();
     });
 
-    it('falls back to "Lari" when detail.name is null', () => {
+    it('falls back to "Run" when detail.name is null', () => {
         const noName = { ...detail, name: null };
         renderShow({
             activity: {
@@ -404,7 +402,7 @@ describe('Runs/Show', () => {
             },
             detail: noName,
         });
-        expect(screen.getAllByText(/Lari/).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/^Run$/).length).toBeGreaterThan(0);
     });
 
     it('handles null distance/elapsed_time gracefully (dash in hero stats)', () => {
@@ -421,9 +419,9 @@ describe('Runs/Show', () => {
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
 
-    it('shows elevation gain as the ELEVASI hero tile, not a secondary ASCENT tile', () => {
+    it('shows elevation gain as the ELEVATION hero tile, not a secondary ASCENT tile', () => {
         renderShow();
-        expect(screen.getByText('ELEVASI')).toBeInTheDocument();
+        expect(screen.getByText('ELEVATION')).toBeInTheDocument();
         expect(screen.getByText('120')).toBeInTheDocument();
         expect(screen.queryByText('ASCENT')).not.toBeInTheDocument();
     });
@@ -455,7 +453,7 @@ describe('Runs/Show', () => {
     it('resyncs the activity from Strava when the Resync button is clicked', () => {
         vi.mocked(router.post).mockReset();
         renderShow();
-        fireEvent.click(screen.getByText('Resync dari Strava'));
+        fireEvent.click(screen.getByText('Resync from Strava'));
         expect(router.post).toHaveBeenCalledWith(
             '/aktivitas/99/resync',
             {},
@@ -470,7 +468,7 @@ describe('Runs/Show', () => {
     it('hides the Resync button entirely while the Strava kill-switch is off', () => {
         renderShow({}, { stravaPaused: true });
         expect(
-            screen.queryByText('Resync dari Strava'),
+            screen.queryByText('Resync from Strava'),
         ).not.toBeInTheDocument();
     });
 
@@ -481,11 +479,11 @@ describe('Runs/Show', () => {
         });
         renderShow();
         const button = screen
-            .getByText('Resync dari Strava')
+            .getByText('Resync from Strava')
             .closest('button')!;
         fireEvent.click(button);
         expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('Lagi narik…');
+        expect(button).toHaveTextContent('Syncing…');
     });
 
     it('shows a muted send button that nudges (no send) when no channel is wired', () => {
