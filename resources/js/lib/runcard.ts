@@ -10,12 +10,14 @@ import {
     formatPace,
 } from '@/lib/pace';
 
+// Mirrored word-for-word from App\Enums\Rarity::label(); types/generated.ts
+// only emits RARITY_VALUES, not labels.
 export const RARITY_LABELS: Record<Rarity, string> = {
-    common: 'Biasa',
-    uncommon: 'Berkesan',
-    rare: 'Langka',
-    epic: 'Istimewa',
-    legendary: 'Legendaris',
+    common: 'Common',
+    uncommon: 'Uncommon',
+    rare: 'Rare',
+    epic: 'Epic',
+    legendary: 'Legendary',
 };
 
 export const RARITY_ORDER: Rarity[] = [
@@ -26,53 +28,52 @@ export const RARITY_ORDER: Rarity[] = [
     'legendary',
 ];
 
-// Slug → display name (emoji emblem + casual-Jakarta name). The two English ones
-// are running terms (code-switch rule), the rest are ID-first. Mirrored in PHP
-// Badge::labels() — keep both runtimes in sync.
+// Slug → display name (emoji emblem + casual name). Mirrored word-for-word
+// from PHP Badge::labels() — keep both runtimes in sync.
 export const BADGE_LABELS: Record<string, string> = {
-    hari_panas: '🔥 Tahan Gerah',
-    pejuang_hujan: '🌧️ Pejuang Hujan',
-    anak_pagi: '🌅 Anak Pagi',
+    hari_panas: '🔥 Heat Tamer',
+    pejuang_hujan: '🌧️ Rain Warrior',
+    anak_pagi: '🌅 Early Bird',
     long_slow_distance: '🐢 Long Slow Distance',
     negative_split: '👻 Negative Split',
-    tahan_diri: '🧘 Anti Kalap',
-    anak_malam: '🌙 Anak Malam',
-    pendaki: '⛰️ Pendaki',
-    pertama_kali: '🏅 Pertama Kali',
-    rajin: '💪 Rajin',
-    kilat: '⚡ Kilat',
-    jauh: '🗺️ Jauh',
+    tahan_diri: '🧘 Held Back',
+    anak_malam: '🌙 Night Owl',
+    pendaki: '⛰️ Climber',
+    pertama_kali: '🏅 First Timer',
+    rajin: '💪 Habit Forming',
+    kilat: '⚡ Speedster',
+    jauh: '🗺️ Long Hauler',
     z2_master: '🫀 Z2 Master',
-    anak_dingin: '❄️ Anak Dingin',
-    keras: '😤 Keras',
-    santai: '☺️ Santai',
-    berturut: '🔥 Berturut',
-    hari_spesial: '🎉 Hari Spesial',
-    lawan_angin: '🌬️ Lawan Angin',
+    anak_dingin: '❄️ Cold Runner',
+    keras: '😤 All Out',
+    santai: '☺️ Easy Miles',
+    berturut: '🔥 Streak',
+    hari_spesial: '🎉 Holiday Run',
+    lawan_angin: '🌬️ Headwind',
 };
 
 // One-line "ability" meaning per badge, accurate to RunCardFactory::badges()
 // thresholds. Casual register, no em-dashes. Shown on the card ability rows.
 export const BADGE_ABILITY: Record<string, string> = {
-    hari_panas: 'Nekat lari pas gerah 31°C ke atas.',
-    pejuang_hujan: 'Diguyur hujan tetap lanjut lari.',
-    anak_pagi: 'Udah lari sebelum jam 6 pagi.',
-    long_slow_distance: 'Jarak jauh 12K+ santai, mayoritas pelan.',
-    negative_split: 'Paruh kedua malah lebih ngebut.',
-    tahan_diri: '10K+ sabar, gak kepancing buat ngebut.',
-    anak_malam: 'Lari malam, sebelum subuh atau setelah jam 9.',
-    pendaki: 'Elevasi total 200m ke atas, kayak naik gunung.',
-    pertama_kali: 'Lari pertama yang tercatat.',
-    rajin: 'Lari 3 hari berturut-turut.',
-    kilat: 'Pace di bawah 5:00/km, kencang.',
-    jauh: 'Jarak half marathon ke atas, 21K+.',
-    z2_master: 'Lebih dari 80% waktu di Z2.',
-    anak_dingin: 'Lari sebelum jam 6 pagi, still dark still cold.',
-    keras: 'HR rata-rata di atas 85% max, full effort.',
-    santai: 'HR rata-rata di bawah 70% max, beneran easy.',
-    berturut: 'Lari 7 hari berturut-turut, tanpa skip.',
-    hari_spesial: 'Lari pas hari libur nasional.',
-    lawan_angin: 'Lari nembus angin kencang, 20 km/j ke atas.',
+    hari_panas: 'Braved a run in 31°C+ heat.',
+    pejuang_hujan: 'Kept running through the rain.',
+    anak_pagi: 'Out the door before 6am.',
+    long_slow_distance: 'Long and easy, 12K+ at a mostly relaxed pace.',
+    negative_split: 'Second half faster than the first.',
+    tahan_diri: '10K+ and stayed patient instead of chasing pace.',
+    anak_malam: 'Ran at night, before dawn or after 9pm.',
+    pendaki: '200m+ of elevation gain, basically a mountain.',
+    pertama_kali: 'Your first logged run.',
+    rajin: 'Ran 3 days in a row.',
+    kilat: 'Pace under 5:00/km, fast.',
+    jauh: 'Half marathon distance or more, 21K+.',
+    z2_master: 'More than 80% of the time in Z2.',
+    anak_dingin: 'Before 6am, still dark, still cold.',
+    keras: 'Average HR above 85% max, full effort.',
+    santai: 'Average HR below 70% max, genuinely easy.',
+    berturut: 'Ran 7 days in a row, no skips.',
+    hari_spesial: 'Ran on a national holiday.',
+    lawan_angin: 'Pushed through strong wind, 20 km/h or more.',
 };
 
 export const RARITY_BORDER: Record<Rarity, string> = {

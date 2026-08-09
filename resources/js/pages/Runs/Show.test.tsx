@@ -255,7 +255,7 @@ describe('Runs/Show', () => {
         expect(screen.getAllByText('Paru-paru Baja').length).toBeGreaterThan(0);
         expect(screen.getByText('Bagikan')).toBeInTheDocument();
         expect(screen.getByText('Buka ulang kartu')).toBeInTheDocument();
-        expect(screen.getByText(/Kenapa dapet Istimewa/)).toBeInTheDocument();
+        expect(screen.getByText(/Kenapa dapet Epic/)).toBeInTheDocument();
     });
 
     it('omits the kartu section when card is null', () => {

@@ -118,7 +118,7 @@ describe('CardReveal', () => {
         expect(screen.getByText('Sync masuk')).toBeInTheDocument();
         // Tap to tear the foil open — the card behind it is revealed.
         await u.click(screen.getByTestId('pack-wrapper'));
-        expect(screen.getByText(/★ Istimewa/)).toBeInTheDocument();
+        expect(screen.getByText(/★ Epic/)).toBeInTheDocument();
         expect(
             screen.getByRole('heading', { name: 'Pembalik Keadaan' }),
         ).toBeInTheDocument();
@@ -188,7 +188,7 @@ describe('CardReveal', () => {
         expect(screen.getByTestId('pack-wrapper')).toBeInTheDocument();
         // The sealed eyebrow only flips to the rarity label once torn.
         expect(screen.getByText('Sync masuk')).toBeInTheDocument();
-        expect(screen.queryByText(/★ Istimewa/)).toBeNull();
+        expect(screen.queryByText(/★ Epic/)).toBeNull();
     });
 
     it('tears the pack open via Enter for keyboard users (focus lands there via the focus trap)', async () => {
@@ -197,7 +197,7 @@ describe('CardReveal', () => {
         // The focus trap moves focus to the pack wrapper (the sole tabbable while sealed).
         expect(screen.getByTestId('pack-wrapper')).toHaveFocus();
         await u.keyboard('{Enter}');
-        expect(screen.getByText(/★ Istimewa/)).toBeInTheDocument();
+        expect(screen.getByText(/★ Epic/)).toBeInTheDocument();
     });
 
     it('tears the pack open via Space for keyboard users', async () => {
@@ -205,7 +205,7 @@ describe('CardReveal', () => {
         render(<CardReveal pending={epicReveal} />);
         expect(screen.getByTestId('pack-wrapper')).toHaveFocus();
         await u.keyboard(' ');
-        expect(screen.getByText(/★ Istimewa/)).toBeInTheDocument();
+        expect(screen.getByText(/★ Epic/)).toBeInTheDocument();
     });
 
     it('restores focus to the previously-focused element on dismiss (focus trap cleanup)', async () => {
@@ -273,7 +273,7 @@ describe('CardReveal', () => {
         // Escape closes the topmost layer (the share modal) only — the reveal
         // beneath it stays open and is NOT marked seen.
         await u.keyboard('{Escape}');
-        expect(screen.getByText(/★ Istimewa/)).toBeInTheDocument();
+        expect(screen.getByText(/★ Epic/)).toBeInTheDocument();
         expect(fetchMock).not.toHaveBeenCalledWith(
             '/api/kartu/42/seen',
             expect.anything(),
@@ -294,7 +294,7 @@ describe('CardReveal', () => {
         const u = userEvent.setup();
         const { container } = render(<CardReveal pending={legendaryReveal} />);
         await u.click(screen.getByTestId('pack-wrapper'));
-        expect(screen.getByText(/★ Legendaris/)).toBeInTheDocument();
+        expect(screen.getByText(/★ Legendary/)).toBeInTheDocument();
         // Legendary-only "light flash" overlay, absent for other rarities.
         expect(
             container.querySelector('[class*="bg-white/50"]'),
@@ -307,7 +307,7 @@ describe('CardReveal', () => {
         // The card is already revealed — no foil to tear.
         expect(screen.queryByTestId('pack-wrapper')).toBeNull();
         // The reveal content (rarity eyebrow) is shown immediately.
-        expect(screen.getByText(/★ Biasa/)).toBeInTheDocument();
+        expect(screen.getByText(/★ Common/)).toBeInTheDocument();
         // The collection action is reachable without tearing.
         expect(await screen.findByText('Lihat koleksi')).toBeInTheDocument();
     });

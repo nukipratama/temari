@@ -19,11 +19,11 @@ enum Rarity: string
     public function label(): string
     {
         return match ($this) {
-            self::Common => 'Biasa',
-            self::Uncommon => 'Berkesan',
-            self::Rare => 'Langka',
-            self::Epic => 'Istimewa',
-            self::Legendary => 'Legendaris',
+            self::Common => 'Common',
+            self::Uncommon => 'Uncommon',
+            self::Rare => 'Rare',
+            self::Epic => 'Epic',
+            self::Legendary => 'Legendary',
         };
     }
 

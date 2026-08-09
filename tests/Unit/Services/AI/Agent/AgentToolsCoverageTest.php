@@ -615,9 +615,9 @@ it('reads the card identity with badge slugs humanised, so no raw code reaches t
     $reading = new CardIdentityTool($card)->handle([]);
 
     expect($reading['rarity'])->toBe('rare')
-        ->and($reading['rarity_label'])->toBe('Langka')
+        ->and($reading['rarity_label'])->toBe('Rare')
         ->and($reading['special_move'])->toBe('Pembara Sabar')
-        ->and($reading['badges'])->toBe(['Long Slow Distance', 'Pejuang Hujan']);
+        ->and($reading['badges'])->toBe(['Long Slow Distance', 'Rain Warrior']);
 });
 
 it('reads an empty badge list when the card carries none', function (): void {
@@ -641,10 +641,10 @@ it('reads the featured card with badges humanised and capped at three tags', fun
     $reading = new FeaturedCardTool($card->fresh()->load('activity.detail'))->handle([]);
 
     expect($reading['name'])->toBe('Langkah Sunyi')
-        ->and($reading['rarity_label'])->toBe('Legendaris')
+        ->and($reading['rarity_label'])->toBe('Legendary')
         ->and($reading['km'])->toBe('5km')
         ->and($reading['tags'])->toHaveCount(3)
-        ->and($reading['tags'][0])->toBe('Anak Pagi');
+        ->and($reading['tags'][0])->toBe('Early Bird');
 });
 
 it('reads a dash for the distance when the card run has none', function (): void {

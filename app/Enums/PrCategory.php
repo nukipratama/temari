@@ -32,11 +32,11 @@ enum PrCategory: string
             self::Km15 => '15 km',
             self::HalfMarathon => 'Half Marathon',
             self::Marathon => 'Marathon',
-            self::Best5Min => 'Best 5 menit',
-            self::Best10Min => 'Best 10 menit',
-            self::Best20Min => 'Best 20 menit',
-            self::Best30Min => 'Best 30 menit',
-            self::Best60Min => 'Best 60 menit',
+            self::Best5Min => 'Best 5 min',
+            self::Best10Min => 'Best 10 min',
+            self::Best20Min => 'Best 20 min',
+            self::Best30Min => 'Best 30 min',
+            self::Best60Min => 'Best 60 min',
         };
     }
 

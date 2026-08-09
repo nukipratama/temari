@@ -160,9 +160,9 @@ it('averages decoupling_pct across recent runs to drive the vibe', function (): 
     expect(app(Vibe::class)->current($user))->toBe(Vibe::BOUNCY);
 });
 
-it('exposes display labels in Indonesian', function (): void {
-    expect(Vibe::label(Vibe::BOUNCY))->toBe('Lincah')
-        ->and(Vibe::label(Vibe::COOKED))->toBe('Gosong')
-        ->and(Vibe::label(Vibe::HIBERNATING))->toBe('Hibernasi')
+it('exposes display labels', function (): void {
+    expect(Vibe::label(Vibe::BOUNCY))->toBe('Bouncy')
+        ->and(Vibe::label(Vibe::COOKED))->toBe('Cooked')
+        ->and(Vibe::label(Vibe::HIBERNATING))->toBe('Hibernating')
         ->and(Vibe::emoji(Vibe::PUMPED))->toBe('💥');
 });

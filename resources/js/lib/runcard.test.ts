@@ -42,13 +42,13 @@ describe('RARITY_LABELS', () => {
 
     // Parity guard: mirrored in App\Enums\Rarity::label() (see RarityTest.php).
     // Changing the ladder on one runtime without the other fails a test.
-    it('exposes the Indonesian rarity ladder labels', () => {
+    it('exposes the rarity ladder labels', () => {
         expect(RARITY_LABELS).toEqual({
-            common: 'Biasa',
-            uncommon: 'Berkesan',
-            rare: 'Langka',
-            epic: 'Istimewa',
-            legendary: 'Legendaris',
+            common: 'Common',
+            uncommon: 'Uncommon',
+            rare: 'Rare',
+            epic: 'Epic',
+            legendary: 'Legendary',
         });
     });
 });
@@ -69,10 +69,9 @@ describe('BADGE_LABELS', () => {
         });
     });
 
-    // The two English names are running terms (code-switch rule); the rest are ID-first.
-    it('uses the ID-first casual names', () => {
-        expect(BADGE_LABELS.hari_panas).toBe('🔥 Tahan Gerah');
-        expect(BADGE_LABELS.tahan_diri).toBe('🧘 Anti Kalap');
+    it('uses the casual English names', () => {
+        expect(BADGE_LABELS.hari_panas).toBe('🔥 Heat Tamer');
+        expect(BADGE_LABELS.tahan_diri).toBe('🧘 Held Back');
         expect(BADGE_LABELS.negative_split).toBe('👻 Negative Split');
     });
 });
@@ -89,8 +88,8 @@ describe('BADGE_ABILITY', () => {
 describe('badgeEmblem / badgeName', () => {
     it('splits the emoji from the name', () => {
         expect(badgeEmblem('hari_panas')).toBe('🔥');
-        expect(badgeName('hari_panas')).toBe('Tahan Gerah');
-        expect(badgeName('tahan_diri')).toBe('Anti Kalap');
+        expect(badgeName('hari_panas')).toBe('Heat Tamer');
+        expect(badgeName('tahan_diri')).toBe('Held Back');
     });
 
     it('falls back to prettyBadge for unknown slugs', () => {

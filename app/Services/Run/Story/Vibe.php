@@ -30,16 +30,16 @@ class Vibe
 
     public const HIBERNATING = 'hibernating';
 
-    /** Display labels (Indonesian). */
+    /** Display labels. */
     public const array LABELS = [
-        self::BOUNCY => 'Lincah',
-        self::STEADY => 'Stabil',
-        self::WORN_DOWN => 'Loyo',
-        self::COOKED => 'Gosong',
-        self::FRESH => 'Segar',
-        self::STRETCHED_THIN => 'Tipis',
-        self::PUMPED => 'Membara',
-        self::HIBERNATING => 'Hibernasi',
+        self::BOUNCY => 'Bouncy',
+        self::STEADY => 'Steady',
+        self::WORN_DOWN => 'Worn Down',
+        self::COOKED => 'Cooked',
+        self::FRESH => 'Fresh',
+        self::STRETCHED_THIN => 'Stretched Thin',
+        self::PUMPED => 'Pumped',
+        self::HIBERNATING => 'Hibernating',
     ];
 
     /** Emoji partner per vibe — feeds the Blade component. */

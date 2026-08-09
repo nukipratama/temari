@@ -130,7 +130,7 @@ readonly class WeeklyRecapBuilder
 
     /**
      * The closest-to-completion incomplete goal, via GoalResolver. Returns its
-     * label, progress ratio, and the "X lari/km lagi" remainder. Null when every
+     * label, progress ratio, and the "X runs/km to go" remainder. Null when every
      * goal is already complete.
      *
      * @return array{id: string, title: string, current: int|float, target: int|float, unit: string, ratio: float, remainder_label: string}|null
@@ -148,7 +148,7 @@ readonly class WeeklyRecapBuilder
         $target = $goal['target'];
         $ratio = $target > 0 ? min($goal['current'] / $target, 1.0) : 0.0;
         $remaining = max($target - $goal['current'], 0);
-        // Whole goals (lari/PR/kartu) read as integers; km goals keep one decimal.
+        // Whole goals (runs/PR/cards) read as integers; km goals keep one decimal.
         $remainder = DecimalFormatter::trimmed((float) $remaining);
 
         return [
@@ -158,7 +158,7 @@ readonly class WeeklyRecapBuilder
             'target' => $target,
             'unit' => $goal['unit'],
             'ratio' => $ratio,
-            'remainder_label' => "{$remainder} {$goal['unit']} lagi",
+            'remainder_label' => "{$remainder} {$goal['unit']} to go",
         ];
     }
 }
