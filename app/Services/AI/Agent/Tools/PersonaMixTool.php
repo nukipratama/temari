@@ -22,9 +22,9 @@ final class PersonaMixTool extends UserTool
 
     public function description(): string
     {
-        return 'Sebaran mood pengguna selama 12 minggu terakhir, plus paruh terbaru dan paruh '
-            .'sebelumnya secara terpisah supaya kelihatan kalau ada pergeseran, dan form_status '
-            .'terakhirnya. Daftar kosong berarti belum ada cukup lari buat dibaca.';
+        return "The user's mood distribution over the last 12 weeks, plus the recent half and the "
+            .'earlier half broken out separately so a shift is visible, and their latest '
+            .'form_status. An empty list means there aren\'t enough runs yet to read.';
     }
 
     /** @return array<string, mixed> */

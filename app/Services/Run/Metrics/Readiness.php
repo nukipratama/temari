@@ -29,7 +29,7 @@ final readonly class Readiness
      * @param  bool  $ranToday  already trained today (own session in the bag)
      * @param  float|null  $monotony  Foster monotony (>2 = injury-risk uniformity)
      * @param  float|null  $volumeRampPct  week-over-week volume change, % (null = no baseline)
-     * @param  string  $fitnessTrend  naik|plateau|turun (CTL slope)
+     * @param  string  $fitnessTrend  up|plateau|down (CTL slope)
      */
     public static function assess(
         ?string $formStatus,
@@ -82,7 +82,7 @@ final readonly class Readiness
         // --- Anti-detraining nudge: only when nothing above capped us to
         // easy/rest, so a build signal never contradicts a red flag. ---
         $buildNudge = $formStatus === 'fresh'
-            && $fitnessTrend !== 'naik'
+            && $fitnessTrend !== 'up'
             && ! $ranToday
             && $ceiling->rank() >= ReadinessCeiling::ModerateOk->rank();
 

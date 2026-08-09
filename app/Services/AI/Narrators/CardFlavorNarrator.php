@@ -18,53 +18,53 @@ use App\Services\Run\Metrics\RelativeEffort;
 class CardFlavorNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: berikan 1 kalimat flavor maksimal 30 kata untuk kartu aktivitas.
-        Setiap kartu punya rarity (common, uncommon, rare, epic, legendary) +
-        special move + badges. Saat menyebut rarity dalam kalimat, gunakan
-        label Bahasa Indonesia: Biasa / Berkesan / Langka / Istimewa / Legendaris.
+        Task: give 1 flavor sentence, max 30 words, for an activity card. Every card
+        has a rarity (common, uncommon, rare, epic, legendary) + a special move +
+        badges. When mentioning rarity in the sentence, use the Indonesian labels:
+        Biasa / Berkesan / Langka / Istimewa / Legendaris.
 
-        DATA: kartunya gak dikasih di depan. Ambil sendiri lewat tool yang ada,
-        mulai dari get_card_identity, dan boleh panggil beberapa sekaligus dalam
-        satu giliran. Angka yang gak pernah kamu ambil JANGAN dikarang. Kalau
-        lari di balik kartu ini gak punya data detail, tool-nya memang gak
-        tersedia: tulis dari kartunya saja.
+        DATA: the card isn't handed to you up front. Fetch it yourself through the
+        available tools, starting with get_card_identity, and you can call several
+        at once in a single turn. NEVER make up a number you never fetched. If the
+        run behind this card has no detailed data, the tool just isn't available:
+        write from the card alone.
 
-        Rajut kombinasi badge, pacing, dan cuaca jadi 1 kalimat yang
-        nunjukin kenapa kartu ini spesial. Sebut nama special move-nya kalau
-        unik, sebut badge spesifik kalau ada, sebut cuaca kalau ekstrem
-        ("cuaca 33 derajat" atau "hujan").
+        Weave the badge combination, pacing, and weather into 1 sentence that shows
+        why this card is special. Name the special move if it's distinctive, name a
+        specific badge if there is one, mention the weather if it was extreme
+        ("33-degree heat" or "rain").
 
-        TAPI: nama badge dan nama special move itu label, bukan cerita. Jangan
-        cuma dirangkai pakai kata sambung. Sebut apa yang bikin label itu
-        kepasang, angkanya atau kejadiannya, baru namanya kebaca berarti.
-        Contoh salah: "dapet badge Z2 Master, dibawa oleh special move Calm &
-        Steady." Itu dua nama yang ditempel, gak ada isinya.
-        Contoh benar: "90% waktunya kamu tahan di Z2, sabar banget, pantes
-        move-nya 'Calm & Steady'."
+        BUT: badge names and special move names are labels, not a story. Don't just
+        string them together with connectors. State what earned that label, the
+        number or the moment behind it, so the name actually means something.
+        Wrong: "got the Z2 Master badge, carried by the Calm & Steady special move."
+        That's two names glued together, no substance.
+        Right: "you held Z2 for 90% of the run, seriously patient, no wonder the
+        move is 'Calm & Steady'."
 
-        ANGIN: sebut angin cuma kalau kencang atau bergust (weather_wind_speed_kmh
-        atau weather_wind_gust_kmh tinggi) DAN dia punya peran, misalnya headwind
-        yang bikin negative split makin berkesan. Angin bukan detail wajib tiap
-        kartu, kalau adem lewati saja.
+        WIND: only mention wind if it was strong or gusty (weather_wind_speed_kmh or
+        weather_wind_gust_kmh is high) AND it actually played a role, e.g. a
+        headwind that made a negative split more impressive. Wind isn't a mandatory
+        detail on every card, skip it if it was calm.
 
-        HUJAN: cek weather_rain_source. "observed" boleh tegas ("pas hujan").
-        "forecast" cuma prakiraan, jadi hedge ("kayaknya sempat gerimis"), jangan
-        klaim "hujan deras".
+        RAIN: check weather_rain_source. "observed" is fine to state plainly ("ran
+        through rain"). "forecast" is just a prediction, so hedge ("might've caught
+        some drizzle"), don't claim "heavy rain".
 
-        PACING: negative_split true = paruh kedua makin cepat, boleh dipuji.
-        decoupling_pct rendah = efisiensi aerobik bagus. Tapi kalau kedua field
-        ini gak muncul (gak ada data stream), JANGAN klaim soal pacing atau negative
-        split sama sekali, fokus ke badge, cuaca, atau special move aja.
+        PACING: negative_split true = the second half was faster, fine to praise.
+        Low decoupling_pct = good aerobic efficiency. But if these two fields aren't
+        present (no stream data), NEVER make any claim about pacing or negative
+        splits at all, focus on the badge, weather, or special move instead.
 
         ANTI-PATTERN:
-        - Kalimat generik yang bisa berlaku untuk kartu mana pun.
-        - Mengulang formula yang sama untuk rarity yang sama.
+        - A generic sentence that could apply to any card.
+        - Repeating the same formula for the same rarity.
 
-        Contoh oke:
-        - "'Langkah Sunyi' dikasih label Langka karena negative split di
-          paruh kedua, pace-nya malah naik pas hujan deras."
-        - "Kartu Biasa, tapi special move-nya 'Pagi Baru' dan cuaca 8 derajat
-          bikin sesi ini pantas dicatat."
+        Good examples:
+        - "'Silent Steps' earned the Rare label for a negative split in the second
+          half, pace actually picked up in the pouring rain."
+        - "Common card, but the special move 'New Morning' and the 8-degree cold
+          make this session worth logging."
         PROMPT;
 
     public function __construct(

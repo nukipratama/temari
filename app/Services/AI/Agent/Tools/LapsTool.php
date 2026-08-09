@@ -35,15 +35,15 @@ final class LapsTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Lap sesuai yang dipencet/direkam jam, satu baris per lap dan panjangnya belum tentu '
-            .'1 km, plus lap tercepat dan terlambat. Kalau lap-nya berulang cepat-pelan, rep_count '
-            .'(jumlah lap cepat) dan recovery_sec (lama tiap jeda di antaranya, detik) ikut muncul; '
-            .'kalau gak muncul berarti lap-nya gak berpola. Kalau bukan interval tapi ada beberapa lap '
-            .'yang jauh lebih pendek dari lap normalnya, pause_count dan paused_laps (nomor lap-nya) '
-            .'ikut muncul, itu tandanya sempat berhenti (lampu merah, nyeberang), bukan capek. '
-            .'Balikannya kosong kalau lap-nya cuma auto-split per km, karena sesi itu udah kebaca utuh '
-            .'dari get_km_splits. Di sesi dengan lap kebanyakan, baris lap-nya dilewat dan yang tersisa '
-            .'cuma temuannya.';
+        return "Laps as pressed/recorded by the watch, one row per lap and a lap isn't necessarily "
+            .'1 km, plus the fastest and slowest lap. If the laps alternate fast-slow, rep_count '
+            .'(number of fast laps) and recovery_sec (the length of each gap between them, in '
+            ."seconds) show up too; if they don't, the laps have no pattern. If it's not an interval "
+            .'session but some laps are much shorter than the session\'s normal lap, pause_count and '
+            .'paused_laps (their lap numbers) show up instead, that\'s a sign of a brief stop (red '
+            .'light, crossing), not fatigue. Comes back empty if the laps are just auto-splits per '
+            ."km, since that session's already fully covered by get_km_splits. On sessions with a lot "
+            .'of laps, the lap rows are skipped and only the findings remain.';
     }
 
     /** @return array<string, mixed> */

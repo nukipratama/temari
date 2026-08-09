@@ -17,8 +17,8 @@ final class RunSummaryTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Angka pokok sesi ini: kapan larinya, jarak, durasi, pace, HR rata-rata dan maksimum, '
-            .'cadence. Mulai dari sini.';
+        return "This session's core numbers: when the run was, distance, duration, pace, average "
+            .'and max HR, cadence. Start here.';
     }
 
     /** @return array<string, mixed> */

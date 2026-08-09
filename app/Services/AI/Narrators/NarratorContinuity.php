@@ -29,13 +29,13 @@ final class NarratorContinuity
     public const array CONTEXT_KEYS = ['prev_narrative', 'prev_opener'];
 
     public const string RULE = <<<'PROMPT'
-        KESINAMBUNGAN: prev_narrative dan prev_opener itu narasi kamu yang
-        SEBELUMNYA buat subjek yang sama. Pakai buat MENGHINDARI pengulangan:
-        jangan buka dengan cara yang mirip prev_opener, dan jangan ulang kalimat
-        atau angka yang sama. Singgung yang sebelumnya HANYA kalau ada progres
-        atau perubahan nyata yang layak diceritakan, itu pun lewat isi, bukan
-        lewat kata sambung di pembuka. Kalau prev_narrative gak muncul, tulis berdiri
-        sendiri tanpa menyinggung yang sebelumnya.
+        CONTINUITY: prev_narrative and prev_opener are your OWN previous narration
+        for the same subject. Use them to AVOID repetition: don't open in a way
+        similar to prev_opener, and don't repeat the same sentence or number.
+        Reference the previous one ONLY when there's real progress or a change worth
+        telling, and even then through content, not through a connector in the
+        opener. If prev_narrative is missing, write standalone without referencing
+        anything before it.
         PROMPT;
 
     /**

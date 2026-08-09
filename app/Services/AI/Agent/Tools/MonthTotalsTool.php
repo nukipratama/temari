@@ -34,10 +34,10 @@ final class MonthTotalsTool extends NoArgumentTool
 
     public function description(): string
     {
-        return 'Rekap bulan yang lagi kamu ceritakan: total lari dan km, lari terjauh, jumlah PR, '
-            .'km per minggu di dalam bulan itu, sebaran mood, dan arah kebugaran (ctl_start vs '
-            .'ctl_end plus form_status_end). mood_mix kosong berarti belum ada data mood, jadi '
-            .'lewati bagian mood diam-diam. Kalau fitness gak muncul, bulan itu gak punya snapshot.';
+        return "The recap for the month you're telling: total runs and km, longest run, PR count, "
+            .'km per week within that month, mood distribution, and fitness direction (ctl_start vs '
+            ."ctl_end plus form_status_end). An empty mood_mix means there's no mood data yet, so "
+            .'skip the mood section silently. If fitness is missing, that month has no snapshot.';
     }
 
     /** @return array<string, mixed> */
@@ -78,7 +78,7 @@ final class MonthTotalsTool extends NoArgumentTool
 
     /**
      * Distance per seven-day bucket from the month's start, so the model can
-     * read "naik tiap minggu" without doing the bucketing itself.
+     * read "climbing every week" without doing the bucketing itself.
      *
      * @param  Collection<int, ActivityDetail>  $details
      * @return list<float>

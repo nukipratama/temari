@@ -30,10 +30,10 @@ final class LatestPastYouTool extends UserTool
 
     public function description(): string
     {
-        return 'Perbandingan lari terakhir pengguna dengan lari serupa miliknya di masa lalu. '
-            .'pace_diff_sec dan time_diff_sec positif = yang terakhir lebih cepat, negatif = lebih '
-            .'pelan. Kalau past_you gak muncul, gak ada tandingan yang layak, dan kalau begitu jangan '
-            .'mengarang perbandingan masa lalu.';
+        return "A comparison between the user's most recent run and a similar run of theirs from the "
+            .'past. pace_diff_sec and time_diff_sec positive = the recent one is faster, negative = '
+            .'slower. If past_you is missing, there\'s no good match, and in that case never make up '
+            .'a comparison to the past.';
     }
 
     /** @return array<string, mixed> */

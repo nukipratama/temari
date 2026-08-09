@@ -15,8 +15,8 @@ final class WeatherTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Cuaca saat lari: suhu, kelembapan, hujan (dengan rain_source observed/forecast), angin. '
-            .'Panggil sebelum menyalahkan kebugaran atas HR yang tinggi atau pace yang drop.';
+        return 'The weather during the run: temperature, humidity, rain (with rain_source '
+            .'observed/forecast), wind. Call this before blaming fitness for a high HR or a pace drop.';
     }
 
     /** @return array<string, mixed> */

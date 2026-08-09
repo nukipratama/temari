@@ -17,39 +17,38 @@ use Illuminate\Support\Carbon;
 class MonthlyRecapNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Tugas: 3-4 kalimat baca bulan lari pengguna. Kasih ruang buat
-        bercerita, tapi tetap padat, jangan bertele-tele.
+        Task: 3-4 sentences reading the user's running month. Give room to tell a
+        story, but keep it tight, don't ramble.
 
-        Cakupan: total km + jumlah lari + lari terjauh + distribusi mood
-        (nyala/enteng/oleng/lemes/mumet/adem) + jumlah PR + progres mingguan
-        di dalam bulan itu.
+        Scope: total km + number of runs + longest run + mood distribution
+        (nyala/enteng/oleng/lemes/mumet/adem) + PR count + weekly progress within
+        that month.
 
-        Struktur yang diharapkan:
-        1. Buka dengan angka konkret (total km, jumlah lari).
-        2. Narasi mood (HANYA kalau mood_mix terisi): mood mana yang dominan
-           dan apa artinya. Gunakan data mood_mix -- sebut persentase kalau
-           menonjol (mis. "60% sesi kamu adem, cuma 2 kali nyala"). Kalau
-           mood_mix kosong atau gak muncul, LEWATI langkah ini diam-diam, langsung ke
-           highlight, jangan sebut bahwa data mood belum ada.
-        3. Highlight: lari terjauh, jumlah PR (pr_count) kalau ada, progres
-           mingguan dari weekly_distance_km (mis. "naik tiap minggu" atau
-           "konsisten di kisaran 10 km"), atau arah fitness dari `fitness`
-           (ctl_end vs ctl_start: naik = base kebangun, turun = fitness luntur).
-           Pakai 1 yang paling menonjol.
-        4. Tutup: 1 refleksi singkat atau dorongan untuk bulan depan. Kalau
-           `fitness.form_status_end` overreaching/fatigued, condong ke recovery,
-           jangan dorong nambah beban. Kalau gak muncul, lewati.
+        Expected structure:
+        1. Open with a concrete number (total km, number of runs).
+        2. Mood narrative (ONLY if mood_mix is populated): which mood dominated and
+           what it means. Use the mood_mix data, mention a percentage if it stands
+           out (e.g. "60% of your sessions were adem, only 2 were nyala"). If
+           mood_mix is empty or missing, SKIP this step silently, go straight to the
+           highlight, don't mention that mood data isn't available.
+        3. Highlight: longest run, PR count (pr_count) if any, weekly progress from
+           weekly_distance_km (e.g. "climbing every week" or "steady around 10 km"),
+           or fitness direction from `fitness` (ctl_end vs ctl_start: up = base is
+           building, down = fitness is fading). Use whichever stands out most.
+        4. Close: 1 short reflection or nudge for next month. If
+           `fitness.form_status_end` is overreaching/fatigued, lean toward recovery,
+           don't push for more load. If it's missing, skip it.
 
-        Sesuaikan tone:
-        - Mayoritas nyala/enteng: rayakan konsistensi.
-        - Mayoritas lemes/mumet: empatik, akui effort, sarankan recovery.
-        - Mayoritas adem: apresiasi base building sabar.
-        - Campur adil: observasi bahwa variasinya sehat.
+        Match the tone:
+        - Mostly nyala/enteng: celebrate the consistency.
+        - Mostly lemes/mumet: empathetic, acknowledge the effort, suggest recovery.
+        - Mostly adem: appreciate the patient base building.
+        - An even mix: note that the variety is healthy.
 
         ANTI-PATTERN:
-        - "Bulan ini ritme kamu jalan terus" tanpa spesifik.
-        - Mengulang formula yang sama tiap bulan.
-        - Menggurui atau buat jadwal.
+        - "Your rhythm kept going this month" with no specifics.
+        - The same formula every month.
+        - Lecturing, or handing out a schedule.
         PROMPT;
 
     public function __construct(private readonly StructuredChatCaller $caller)

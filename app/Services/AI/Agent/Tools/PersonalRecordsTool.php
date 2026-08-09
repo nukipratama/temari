@@ -15,8 +15,8 @@ final class PersonalRecordsTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Personal record yang dipecahkan oleh lari ini, kalau ada. Daftar kosong berarti sesi '
-            .'ini TIDAK memecahkan PR apa pun, jadi jangan sebut PR sama sekali.';
+        return 'The personal records this run broke, if any. An empty list means this session did '
+            .'NOT break any PR, so never mention a PR at all.';
     }
 
     /** @return array<string, mixed> */

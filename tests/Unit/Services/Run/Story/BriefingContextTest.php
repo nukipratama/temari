@@ -105,8 +105,8 @@ it('reads the CTL slope over recent snapshots as a fitness trend', function (arr
 
     expect($ctx->fitnessTrend)->toBe($trend);
 })->with([
-    'rising' => [[30.0, 33.0, 36.0, 40.0], 'naik'],
-    'falling' => [[40.0, 36.0, 33.0, 30.0], 'turun'],
+    'rising' => [[30.0, 33.0, 36.0, 40.0], 'up'],
+    'falling' => [[40.0, 36.0, 33.0, 30.0], 'down'],
     'flat' => [[35.0, 35.2, 34.9, 35.1], 'plateau'],
 ]);
 
@@ -173,27 +173,27 @@ it('counts consecutive active weeks back from the current week', function (): vo
     expect($ctx->consecutiveWeeksActive)->toBe(2);
 });
 
-it('buckets the hour-of-day into Indonesian-friendly labels', function (int $hour, string $bucket): void {
+it('buckets the hour-of-day into time-of-day labels', function (int $hour, string $bucket): void {
     $user = User::factory()->create();
     $ctx = BriefingContext::forUser($user, Carbon::create(2026, 5, 21, $hour));
 
     expect($ctx->timeBucket)->toBe($bucket);
 })->with([
-    'subuh 04:00' => [4, 'subuh'],
-    'subuh 05:30' => [5, 'subuh'],
-    'pagi 08:00' => [8, 'pagi'],
-    'siang 12:00' => [12, 'siang'],
-    'sore 17:00' => [17, 'sore'],
-    'malam 21:00' => [21, 'malam'],
-    'dini hari 02:00' => [2, 'malam'],
-    'malam 03:00 (just before subuh)' => [3, 'malam'],
-    'pagi 06:00 (subuh/pagi boundary)' => [6, 'pagi'],
-    'pagi 10:00 (just before siang)' => [10, 'pagi'],
-    'siang 11:00 (pagi/siang boundary)' => [11, 'siang'],
-    'siang 14:00 (just before sore)' => [14, 'siang'],
-    'sore 15:00 (siang/sore boundary)' => [15, 'sore'],
-    'sore 18:00 (just before malam)' => [18, 'sore'],
-    'malam 19:00 (sore/malam boundary)' => [19, 'malam'],
+    'early_morning 04:00' => [4, 'early_morning'],
+    'early_morning 05:30' => [5, 'early_morning'],
+    'morning 08:00' => [8, 'morning'],
+    'midday 12:00' => [12, 'midday'],
+    'evening 17:00' => [17, 'evening'],
+    'night 21:00' => [21, 'night'],
+    'dead of night 02:00' => [2, 'night'],
+    'night 03:00 (just before early_morning)' => [3, 'night'],
+    'morning 06:00 (early_morning/morning boundary)' => [6, 'morning'],
+    'morning 10:00 (just before midday)' => [10, 'morning'],
+    'midday 11:00 (morning/midday boundary)' => [11, 'midday'],
+    'midday 14:00 (just before evening)' => [14, 'midday'],
+    'evening 15:00 (midday/evening boundary)' => [15, 'evening'],
+    'evening 18:00 (just before night)' => [18, 'evening'],
+    'night 19:00 (evening/night boundary)' => [19, 'night'],
 ]);
 
 it('serialises to a compact array suitable for the LLM user message', function (): void {
