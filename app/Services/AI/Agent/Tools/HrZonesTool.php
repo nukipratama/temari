@@ -22,14 +22,15 @@ final class HrZonesTool extends ActivityTool
     {
         $summary = $this->summary();
         $zonePct = $summary->zonePct();
+        $hardZoneShare = $summary->hardZoneShare();
 
         return [
             'zone_pct' => $zonePct,
             'time_in_zone_min' => $summary->zoneMinutes(),
             'trimp' => $this->detail->trimp_edwards,
             'intensity_label' => $zonePct === [] ? null : match (true) {
-                $summary->hardZoneShare() >= 50.0 => 'berat',
-                $summary->hardZoneShare() >= 20.0 => 'sedang',
+                $hardZoneShare >= 50.0 => 'berat',
+                $hardZoneShare >= 20.0 => 'sedang',
                 default => 'ringan',
             },
         ];
