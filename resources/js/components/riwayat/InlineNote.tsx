@@ -46,8 +46,8 @@ export default function InlineNote({
 export function RunsTruncatedNote({ maxRuns }: Readonly<{ maxRuns: number }>) {
     return (
         <InlineNote icon="mdi:history">
-            Menampilkan {maxRuns} lari terbaru. Lari yang lebih lama belum
-            dimuat.
+            Showing the {maxRuns} most recent runs. Older runs haven&apos;t
+            loaded yet.
         </InlineNote>
     );
 }
@@ -58,8 +58,8 @@ export function RangeWidenedNote({
     const label = labelFor(RANGE_FILTER_OPTIONS, rangeFilter);
     const message =
         rangeFilter === 'all'
-            ? 'Menampilkan semua lari kamu, biar lari terakhir tetap kelihatan.'
-            : `Rentang diperlebar otomatis ke ${label} biar lari terakhirmu kelihatan.`;
+            ? 'Showing all your runs, so your most recent one stays visible.'
+            : `Range automatically widened to ${label} so your latest run stays visible.`;
     return (
         <InlineNote icon="mdi:arrow-expand-horizontal">{message}</InlineNote>
     );
@@ -84,11 +84,11 @@ export function WeekFocusNote({
             className="mb-6 flex-wrap"
             action={
                 <BackLink href="/aktivitas" tone="accent">
-                    Lihat semua lari
+                    View all runs
                 </BackLink>
             }
         >
-            Lagi lihat minggu {formatIdDate(monday.toISOString())} -{' '}
+            Viewing the week of {formatIdDate(monday.toISOString())} -{' '}
             {formatIdDate(sunday.toISOString())}.
         </InlineNote>
     );

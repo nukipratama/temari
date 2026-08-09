@@ -18,11 +18,11 @@ describe('ErrorBoundary', () => {
     it('renders children when there is no error', () => {
         render(
             <ErrorBoundary>
-                <p>halaman sehat</p>
+                <p>healthy page</p>
             </ErrorBoundary>,
         );
 
-        expect(screen.getByText('halaman sehat')).toBeInTheDocument();
+        expect(screen.getByText('healthy page')).toBeInTheDocument();
     });
 
     it('renders the fallback and reports the error when a child throws', () => {
@@ -37,9 +37,9 @@ describe('ErrorBoundary', () => {
             </ErrorBoundary>,
         );
 
-        expect(screen.getByText('Waduh, ada yang error.')).toBeInTheDocument();
+        expect(screen.getByText('Oops, something broke.')).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /muat ulang/i }),
+            screen.getByRole('button', { name: /reload/i }),
         ).toBeInTheDocument();
         expect(reportClientError).toHaveBeenCalledWith(
             expect.objectContaining({ message: 'kaboom' }),

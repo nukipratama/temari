@@ -6,31 +6,27 @@ import PageHero from './PageHero';
 describe('PageHero', () => {
     it('renders eyebrow + lead + italic emph on a cream surface (default)', () => {
         render(
-            <PageHero
-                eyebrow="Hari Ini"
-                lead="Setiap lari"
-                emph="ada ceritanya."
-            />,
+            <PageHero eyebrow="Today" lead="Every run" emph="has a story." />,
         );
-        expect(screen.getByText('Hari Ini')).toBeInTheDocument();
-        expect(screen.getByText('ada ceritanya.')).toBeInTheDocument();
+        expect(screen.getByText('Today')).toBeInTheDocument();
+        expect(screen.getByText('has a story.')).toBeInTheDocument();
     });
 
     it('omits the lead clause when only emph is provided', () => {
-        render(<PageHero eyebrow="★ Identitas kamu" emph="Aku." />);
-        expect(screen.getByText('Aku.')).toBeInTheDocument();
+        render(<PageHero eyebrow="★ Your identity" emph="Me." />);
+        expect(screen.getByText('Me.')).toBeInTheDocument();
     });
 
     it('applies the on-sky tone classes (cream text + horizon accent)', () => {
         render(
             <PageHero
                 onSky
-                eyebrow="Koleksi"
+                eyebrow="Collection"
                 lead="Trophy wall,"
-                emph="kartu lari."
+                emph="of cards."
             />,
         );
-        const eyebrow = screen.getByText('Koleksi');
+        const eyebrow = screen.getByText('Collection');
         expect(eyebrow.className).toContain('text-horizon');
     });
 });

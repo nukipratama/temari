@@ -14,14 +14,14 @@ describe('MilestoneStrip', () => {
             />,
         );
 
-        expect(screen.getByText(/Target berikutnya/)).toBeInTheDocument();
+        expect(screen.getByText(/Next target/)).toBeInTheDocument();
         // Distance label is interpolated into the target line, so match the row.
         expect(screen.getByText(/10K/)).toBeInTheDocument();
         // Sub-hour target renders as M:SS via formatDurationHMS (inside an <em>).
         expect(screen.getByText('50:00')).toBeInTheDocument();
         // Delta renders as M:SS too.
         expect(screen.getByText('1:30')).toBeInTheDocument();
-        expect(screen.getByText(/kurang/)).toBeInTheDocument();
+        expect(screen.getByText(/to go/)).toBeInTheDocument();
         // No extra className applied by default.
         expect(container.firstChild).not.toHaveClass('relative');
     });

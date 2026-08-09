@@ -6,12 +6,12 @@ import { fmt, formatCost } from '@/pages/AiUsage/helpers';
 
 const COLUMNS = [
     'Deployment',
-    'Harga in/out /1M',
-    'Panggilan',
+    'Price in/out /1M',
+    'Calls',
     'Prompt',
     'Completion',
     'Total',
-    'Biaya',
+    'Cost',
 ];
 
 export default function DeploymentTable({
@@ -22,7 +22,7 @@ export default function DeploymentTable({
         <DataTable
             icon="mdi:server"
             title="Breakdown per Deployment"
-            subtitle="Biaya per model Azure yang dipanggil."
+            subtitle="Cost per Azure model called."
             tone="accent"
             columns={COLUMNS}
             minWidth={640}

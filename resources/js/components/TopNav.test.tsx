@@ -21,29 +21,27 @@ beforeEach(() => {
 describe('TopNav', () => {
     it('renders the 4 primary tabs', () => {
         render(<TopNav />);
-        expect(screen.getByText('Hari Ini')).toBeInTheDocument();
-        expect(screen.getByText('Koleksi')).toBeInTheDocument();
-        expect(screen.getByText('Riwayat')).toBeInTheDocument();
-        expect(screen.getByText('Aku')).toBeInTheDocument();
+        expect(screen.getByText('Today')).toBeInTheDocument();
+        expect(screen.getByText('Collection')).toBeInTheDocument();
+        expect(screen.getByText('History')).toBeInTheDocument();
+        expect(screen.getByText('Me')).toBeInTheDocument();
     });
 
     it('highlights the active tab from the current URL', () => {
         setMockPage(user(), '/aktivitas');
         render(<TopNav />);
-        expect(screen.getByText('Riwayat')).toHaveAttribute(
+        expect(screen.getByText('History')).toHaveAttribute(
             'aria-current',
             'page',
         );
-        expect(screen.getByText('Hari Ini')).not.toHaveAttribute(
-            'aria-current',
-        );
+        expect(screen.getByText('Today')).not.toHaveAttribute('aria-current');
     });
 
     it('gives tab links and the brand link a keyboard focus ring', () => {
         render(<TopNav />);
-        const tab = screen.getByText('Riwayat').closest('a');
+        const tab = screen.getByText('History').closest('a');
         expect(tab?.className).toMatch(/focus-ring/);
-        const brand = screen.getByLabelText('Beranda');
+        const brand = screen.getByLabelText('Home');
         expect(brand.className).toMatch(/focus-ring/);
     });
 
@@ -78,7 +76,7 @@ describe('TopNav', () => {
     it('renders the avatar menu for the signed-in user', () => {
         render(<TopNav />);
         expect(
-            screen.getByLabelText(/Buka menu Ada Lovelace/),
+            screen.getByLabelText(/Open menu for Ada Lovelace/),
         ).toBeInTheDocument();
     });
 
@@ -89,13 +87,13 @@ describe('TopNav', () => {
             demoLoginEnabled: false,
         });
         render(<TopNav />);
-        expect(screen.queryByLabelText(/Buka menu/)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/Open menu/)).not.toBeInTheDocument();
     });
 
-    it('highlights Aku for the nested /pengaturan settings pages', () => {
+    it('highlights Me for the nested /pengaturan settings pages', () => {
         setMockPage(user(), '/pengaturan/zona');
         render(<TopNav />);
-        expect(screen.getByText('Aku')).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByText('Me')).toHaveAttribute('aria-current', 'page');
     });
 
     it('activeTabFromUrl returns null for paths that do not match any prefix', () => {
@@ -103,6 +101,6 @@ describe('TopNav', () => {
         render(<TopNav />);
         // None of the four tabs should carry the active text-ink color.
         // (smoke check — the negative case for activeTabFromUrl loop returning null)
-        expect(screen.getByText('Hari Ini')).toBeInTheDocument();
+        expect(screen.getByText('Today')).toBeInTheDocument();
     });
 });

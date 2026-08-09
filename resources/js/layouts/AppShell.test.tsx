@@ -88,7 +88,7 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText('child content')).toBeInTheDocument();
-        ['Hari Ini', 'Koleksi', 'Riwayat', 'Aku'].forEach((label) => {
+        ['Today', 'Collection', 'History', 'Me'].forEach((label) => {
             expect(screen.getAllByText(label).length).toBeGreaterThan(0);
         });
         // <main> keeps bottom clearance for the fixed mobile bottom nav (cleared on lg).
@@ -111,14 +111,14 @@ describe('AppShell', () => {
                 <p>child content</p>
             </AppShell>,
         );
-        expect(screen.getByText(/Sambungin ulang Strava/)).toBeInTheDocument();
+        expect(screen.getByText(/Reconnect Strava/)).toBeInTheDocument();
     });
 
     it('mounts the flash notice as shell chrome', () => {
         setMockPage({
             auth: { user: andiUser },
             flash: {
-                info: 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.',
+                info: "The pull from Strava is paused for a bit. It'll resume automatically.",
             },
             demoLoginEnabled: false,
         });
@@ -128,7 +128,7 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(
-            screen.getByText(/Tarikan dari Strava lagi dijeda sebentar/),
+            screen.getByText(/The pull from Strava is paused for a bit/),
         ).toBeInTheDocument();
     });
 
@@ -235,9 +235,9 @@ describe('AppShell', () => {
             </AppShell>,
         );
         expect(screen.getByText(/Ikat Kepala Istimewa/)).toBeInTheDocument();
-        // Clicking "Nanti aja" triggers onClose (covers () => setMajorUnlock(null))
+        // Clicking "Not now" triggers onClose (covers () => setMajorUnlock(null))
         await act(async () => {
-            fireEvent.click(screen.getByText('Nanti aja'));
+            fireEvent.click(screen.getByText('Not now'));
         });
     });
 
@@ -261,7 +261,7 @@ describe('AppShell', () => {
             </AppShell>,
         );
         // CardReveal (the pack) takes priority: it's shown...
-        expect(await screen.findByText('Sync masuk')).toBeInTheDocument();
+        expect(await screen.findByText('Syncing in')).toBeInTheDocument();
         // ...and the aksesori modal is held back, even though a major unlock fired.
         expect(
             screen.queryByText(/Ikat Kepala Istimewa/),
@@ -287,7 +287,7 @@ describe('AppShell', () => {
                 <p>x</p>
             </AppShell>,
         );
-        expect(await screen.findByText('Sync masuk')).toBeInTheDocument();
-        expect(screen.queryByText('Unlock baru')).not.toBeInTheDocument();
+        expect(await screen.findByText('Syncing in')).toBeInTheDocument();
+        expect(screen.queryByText('New unlock')).not.toBeInTheDocument();
     });
 });

@@ -19,7 +19,7 @@ interface MetricExplainerProps {
 
 /**
  * Inline `(?)` trigger button + floating popover with a 1-2 sentence
- * Indonesian explanation pulled from {@link METRIC_GLOSSARY}. Use next
+ * explanation pulled from {@link METRIC_GLOSSARY}. Use next
  * to any sport-science label (CTL, ATL, TRIMP, HR zones, status chips,
  * etc.) so beginners aren't left guessing what the term means.
  *
@@ -52,7 +52,7 @@ export default function MetricExplainer({
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                aria-label={`Penjelasan ${entry.label}`}
+                aria-label={`Explain ${entry.label}`}
                 aria-expanded={open}
                 aria-controls={open ? popoverId : undefined}
                 className={buttonClass}

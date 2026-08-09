@@ -7,14 +7,14 @@ describe('ResumeFilterChip', () => {
     it('names what resuming would apply', () => {
         render(
             <ResumeFilterChip
-                summary="Half ke atas · Nyala"
+                summary="Half marathon+ · Blazing"
                 onResume={vi.fn()}
                 onDismiss={vi.fn()}
             />,
         );
 
         expect(
-            screen.getByText(/Lanjutkan: Half ke atas · Nyala/),
+            screen.getByText(/Resume: Half marathon\+ · Blazing/),
         ).toBeInTheDocument();
     });
 
@@ -22,14 +22,14 @@ describe('ResumeFilterChip', () => {
         const onResume = vi.fn();
         render(
             <ResumeFilterChip
-                summary="Nyala"
+                summary="Blazing"
                 onResume={onResume}
                 onDismiss={vi.fn()}
             />,
         );
 
         expect(onResume).not.toHaveBeenCalled();
-        fireEvent.click(screen.getByText(/Lanjutkan:/));
+        fireEvent.click(screen.getByText(/Resume:/));
         expect(onResume).toHaveBeenCalledOnce();
     });
 
@@ -37,13 +37,13 @@ describe('ResumeFilterChip', () => {
         const onDismiss = vi.fn();
         render(
             <ResumeFilterChip
-                summary="Nyala"
+                summary="Blazing"
                 onResume={vi.fn()}
                 onDismiss={onDismiss}
             />,
         );
 
-        fireEvent.click(screen.getByLabelText('Lupakan filter terakhir'));
+        fireEvent.click(screen.getByLabelText('Forget last filter'));
 
         expect(onDismiss).toHaveBeenCalledOnce();
     });

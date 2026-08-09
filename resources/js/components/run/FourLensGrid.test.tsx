@@ -12,7 +12,7 @@ function makeAnalysis(
     id: number,
     type: AnalysisPayload['type'],
     status: 'done' | 'pending' = 'done',
-    content = 'Hasil analisis.',
+    content = 'Analysis result.',
 ): AnalysisPayload {
     return {
         id,
@@ -26,45 +26,45 @@ function makeAnalysis(
 }
 
 const defaultProps = {
-    cerita: makeAnalysis(1, 'post_run_speech', 'done', 'Cerita lari ini.'),
+    cerita: makeAnalysis(1, 'post_run_speech', 'done', "This run's story."),
     terjemahan: makeAnalysis(
         2,
         'run_insight_technical',
         'done',
-        'Terjemahan teknis.',
+        'Technical translation.',
     ),
     split: makeAnalysis(3, 'run_insight_splits', 'done', 'Split per km.'),
-    hr: makeAnalysis(4, 'run_insight_zones', 'done', 'Zona HR.'),
+    hr: makeAnalysis(4, 'run_insight_zones', 'done', 'HR Zones.'),
 };
 
 describe('FourLensGrid', () => {
     it('renders the four lens cards with their labels', () => {
         render(<FourLensGrid {...defaultProps} isChainHead />);
-        expect(screen.getByText('Cerita lari ini')).toBeInTheDocument();
-        expect(screen.getByText('Terjemahan teknis')).toBeInTheDocument();
-        expect(screen.getByText('Split paling seru')).toBeInTheDocument();
-        expect(screen.getByText('Zona HR')).toBeInTheDocument();
+        expect(screen.getByText("This run's story")).toBeInTheDocument();
+        expect(screen.getByText('Technical translation')).toBeInTheDocument();
+        expect(screen.getByText('Most interesting split')).toBeInTheDocument();
+        expect(screen.getByText('HR Zones')).toBeInTheDocument();
     });
 
     it('renders analysis content when status is done', () => {
         render(<FourLensGrid {...defaultProps} isChainHead />);
-        expect(screen.getByText('Cerita lari ini.')).toBeInTheDocument();
+        expect(screen.getByText("This run's story.")).toBeInTheDocument();
     });
 
-    it('shows the head-only "Baca ulang semua" button on the chain head', () => {
+    it('shows the head-only "Reread all" button on the chain head', () => {
         render(<FourLensGrid {...defaultProps} isChainHead />);
-        expect(screen.getByText(/Baca ulang semua/i)).toBeInTheDocument();
+        expect(screen.getByText(/Reread all/i)).toBeInTheDocument();
     });
 
-    it('hides the "Baca ulang semua" button on a historical (non-head) run', () => {
+    it('hides the "Reread all" button on a historical (non-head) run', () => {
         render(<FourLensGrid {...defaultProps} />);
-        expect(screen.queryByText(/Baca ulang semua/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Reread all/i)).not.toBeInTheDocument();
     });
 
-    it('hides the head "Baca ulang semua" button when AI is globally paused', () => {
+    it('hides the head "Reread all" button when AI is globally paused', () => {
         setMockPage({ aiPaused: true });
         render(<FourLensGrid {...defaultProps} isChainHead />);
-        expect(screen.queryByText(/Baca ulang semua/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Reread all/i)).not.toBeInTheDocument();
     });
 
     it('disables the bulk trigger button while pending', () => {
@@ -74,9 +74,9 @@ describe('FourLensGrid', () => {
         );
         render(<FourLensGrid {...defaultProps} isChainHead />);
         fireEvent.click(
-            screen.getByText(/Baca ulang semua/i).closest('button') as Element,
+            screen.getByText(/Reread all/i).closest('button') as Element,
         );
-        expect(screen.getByText(/Lagi dibaca/i)).toBeInTheDocument();
+        expect(screen.getByText(/Rereading/i)).toBeInTheDocument();
     });
 
     it('reloads via inertia and re-enables the button once the bulk trigger settles', async () => {
@@ -87,7 +87,7 @@ describe('FourLensGrid', () => {
         render(<FourLensGrid {...defaultProps} isChainHead />);
 
         fireEvent.click(
-            screen.getByText(/Baca ulang semua/i).closest('button') as Element,
+            screen.getByText(/Reread all/i).closest('button') as Element,
         );
 
         await waitFor(() => {
@@ -101,18 +101,18 @@ describe('FourLensGrid', () => {
             });
         });
         await waitFor(() => {
-            expect(screen.getByText('Baca ulang semua')).toBeInTheDocument();
+            expect(screen.getByText('Reread all')).toBeInTheDocument();
         });
         expect(
-            screen.getByText(/Baca ulang semua/i).closest('button'),
+            screen.getByText(/Reread all/i).closest('button'),
         ).not.toBeDisabled();
     });
 
     it('drops the per-lens reanalyze buttons on the head run', () => {
         render(<FourLensGrid {...defaultProps} isChainHead />);
-        // The single "Baca ulang semua" control replaces every per-lens "Baca ulang".
-        expect(screen.queryByText(/^Baca ulang$/i)).not.toBeInTheDocument();
-        expect(screen.getByText(/Baca ulang semua/i)).toBeInTheDocument();
+        // The single "Reread all" control replaces every per-lens "Reread".
+        expect(screen.queryByText(/^Reread$/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/Reread all/i)).toBeInTheDocument();
     });
 
     it('shows the shared cooldown countdown on the bulk button', () => {
@@ -122,7 +122,7 @@ describe('FourLensGrid', () => {
         };
         render(<FourLensGrid {...cooling} isChainHead />);
         const button = screen.getByRole('button', {
-            name: /Tunggu 2:00 sebelum baca ulang semua/i,
+            name: /Wait 2:00 before rereading all/i,
         });
         expect(button).toBeDisabled();
         expect(button.textContent).toContain('2:00');

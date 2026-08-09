@@ -394,7 +394,7 @@ function nameGlowFor(rarity: Rarity): CSSProperties {
 }
 
 /**
- * Full-tier labeled stat block: a dense PACE · HR · CADENCE · DURASI · BEST grid.
+ * Full-tier labeled stat block: a dense PACE · HR · CADENCE · DURATION · BEST grid.
  * Each cell only renders when its source value is present (no "—" filler), so the
  * block stays honest and fills with substance rather than padding.
  */
@@ -411,9 +411,9 @@ function StatGrid({
     push('Pace', stats?.pace);
     push('HR', stats?.hr);
     push('Cadence', stats?.cadence);
-    push('Durasi', durasi);
+    push('Duration', durasi);
     push('Best', stats?.fastestKm);
-    push('Elevasi', stats?.elevation);
+    push('Elevation', stats?.elevation);
 
     if (cells.length === 0) {
         return null;

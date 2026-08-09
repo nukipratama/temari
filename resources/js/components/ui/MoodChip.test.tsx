@@ -13,14 +13,14 @@ describe('MoodChip', () => {
         'oleng',
         'mumet',
         'adem',
-    ] satisfies Mood[])('renders default Bahasa label for mood %s', (mood) => {
+    ] satisfies Mood[])('renders default label for mood %s', (mood) => {
         const expected = {
-            nyala: 'Nyala',
-            enteng: 'Enteng',
-            lemes: 'Lemes',
-            oleng: 'Oleng',
-            mumet: 'Mumet',
-            adem: 'Adem',
+            nyala: 'Blazing',
+            enteng: 'Easy',
+            lemes: 'Gassed',
+            oleng: 'Wobbly',
+            mumet: 'Overloaded',
+            adem: 'Chill',
         }[mood];
         render(<MoodChip mood={mood} />);
         expect(screen.getByText(expected)).toBeInTheDocument();

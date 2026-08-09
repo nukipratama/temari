@@ -8,22 +8,27 @@ import RiwayatFilter from './RiwayatFilter';
 type Range = '8w' | '12w';
 
 const RANGE_OPTIONS = [
-    { value: '8w' as const, label: '8 minggu' },
-    { value: '12w' as const, label: '12 minggu', hint: 'default' },
+    { value: '8w' as const, label: '8 weeks' },
+    { value: '12w' as const, label: '12 weeks', hint: 'default' },
 ];
 
 const MOOD_OPTIONS: ReadonlyArray<MoodOption> = [
-    { mood: 'nyala', label: 'Nyala', hint: 'pr', swatchClass: 'bg-mood-nyala' },
+    {
+        mood: 'nyala',
+        label: 'Blazing',
+        hint: 'pr',
+        swatchClass: 'bg-mood-nyala',
+    },
     {
         mood: 'lemes',
-        label: 'Lemes',
+        label: 'Gassed',
         hint: 'strain',
         swatchClass: 'bg-mood-lemes',
     },
 ];
 
 function openPanel() {
-    fireEvent.click(screen.getByRole('button', { name: /buka filter/i }));
+    fireEvent.click(screen.getByRole('button', { name: /open filter/i }));
 }
 
 describe('RiwayatFilter', () => {
@@ -40,12 +45,13 @@ describe('RiwayatFilter', () => {
         );
         openPanel();
 
-        const link = screen.getByRole('link', { name: /8 minggu/i });
+        const link = screen.getByRole('link', { name: /8 weeks/i });
         expect(link).toHaveAttribute('href', '/aktivitas?range=8w');
         // The active option is marked, not duplicated as a link target.
-        expect(
-            screen.getByRole('link', { name: /12 minggu/i }),
-        ).toHaveAttribute('aria-current', 'true');
+        expect(screen.getByRole('link', { name: /12 weeks/i })).toHaveAttribute(
+            'aria-current',
+            'true',
+        );
     });
 
     it('toggles a mood and fires onReset', () => {
@@ -63,7 +69,7 @@ describe('RiwayatFilter', () => {
         );
         openPanel();
 
-        fireEvent.click(screen.getByRole('button', { name: /lemes/i }));
+        fireEvent.click(screen.getByRole('button', { name: /gassed/i }));
         expect(onToggle).toHaveBeenCalledWith('lemes');
 
         fireEvent.click(screen.getByRole('button', { name: /reset/i }));
@@ -82,11 +88,10 @@ describe('RiwayatFilter', () => {
         );
         openPanel();
 
-        expect(screen.getByRole('button', { name: /nyala/i })).toHaveAttribute(
-            'aria-pressed',
-            'true',
-        );
-        expect(screen.getByRole('button', { name: /lemes/i })).toHaveAttribute(
+        expect(
+            screen.getByRole('button', { name: /blazing/i }),
+        ).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: /gassed/i })).toHaveAttribute(
             'aria-pressed',
             'false',
         );
@@ -124,7 +129,7 @@ describe('RiwayatFilter', () => {
                 }}
             />,
         );
-        const trigger = screen.getByRole('button', { name: /buka filter/i });
+        const trigger = screen.getByRole('button', { name: /open filter/i });
         openPanel();
         fireEvent.keyDown(document, { key: 'Escape' });
         expect(document.activeElement).toBe(trigger);
@@ -203,7 +208,7 @@ describe('RiwayatFilter', () => {
 
         // range + 1 mood + distance
         expect(
-            screen.getByRole('button', { name: /buka filter/i }),
+            screen.getByRole('button', { name: /open filter/i }),
         ).toHaveTextContent('3');
     });
 
@@ -226,7 +231,7 @@ describe('RiwayatFilter', () => {
         );
 
         expect(
-            screen.getByRole('button', { name: /buka filter/i }),
+            screen.getByRole('button', { name: /open filter/i }),
         ).toHaveTextContent('1');
     });
 });

@@ -186,7 +186,7 @@ describe('Kartu', () => {
         );
         expect(screen.getByText('Negative Split')).toBeInTheDocument();
         // Description lives in the title attribute, not visible DOM text.
-        expect(screen.queryByText(/malah lebih ngebut/)).toBeNull();
+        expect(screen.queryByText(/second half faster/)).toBeNull();
     });
 
     it('exposes the mood via the TRIMP badge aria-label', () => {
@@ -201,7 +201,7 @@ describe('Kartu', () => {
             />,
         );
         // Mood rides on the TRIMP "power" badge pip as an accessible label.
-        expect(screen.getByLabelText('Vibe Nyala')).toBeInTheDocument();
+        expect(screen.getByLabelText('Vibe Blazing')).toBeInTheDocument();
     });
 
     it('shows a mood pip with aria-label but no visible label text on the compact tier', () => {
@@ -215,8 +215,8 @@ describe('Kartu', () => {
                 size="md"
             />,
         );
-        expect(screen.getByLabelText('Vibe Lemes')).toBeInTheDocument();
-        expect(screen.queryByText('Lemes')).toBeNull();
+        expect(screen.getByLabelText('Vibe Gassed')).toBeInTheDocument();
+        expect(screen.queryByText('Gassed')).toBeNull();
     });
 
     it('shows a labeled stat grid on the full tier', () => {
@@ -321,7 +321,7 @@ describe('Kartu', () => {
         // StatGrid renders nothing (returns null).
         render(<Kartu name="x" km="1" durasi="" trimp={1} size="lg" />);
         expect(screen.queryByText('Pace')).toBeNull();
-        expect(screen.queryByText('Durasi')).toBeNull();
+        expect(screen.queryByText('Duration')).toBeNull();
     });
 
     it('hides the stat grid below the sm breakpoint (not the DOM) when hideStats is set', () => {

@@ -7,7 +7,7 @@ describe('PersonaBar', () => {
     it('shows the nudge message when there is no mix data', () => {
         render(<PersonaBar mix={[]} />);
         expect(
-            screen.getByText('Belum ada cukup lari buat baca personamu.'),
+            screen.getByText('Not enough runs yet to read your persona.'),
         ).toBeInTheDocument();
     });
 
@@ -20,9 +20,9 @@ describe('PersonaBar', () => {
                 ]}
             />,
         );
-        expect(screen.getByText('Nyala')).toBeInTheDocument();
+        expect(screen.getByText('Blazing')).toBeInTheDocument();
         expect(screen.getByText('60.0%')).toBeInTheDocument();
-        expect(screen.getByText('Adem')).toBeInTheDocument();
+        expect(screen.getByText('Chill')).toBeInTheDocument();
         expect(screen.getByText('40.0%')).toBeInTheDocument();
     });
 
@@ -30,14 +30,14 @@ describe('PersonaBar', () => {
         const { container } = render(
             <PersonaBar mix={[{ mood: 'enteng', count: 1, percent: 25 }]} />,
         );
-        const segment = container.querySelector('[aria-label="Enteng 25%"]');
+        const segment = container.querySelector('[aria-label="Easy 25%"]');
         expect(segment).toHaveStyle({ width: '25%' });
     });
 
     it('shows a sky-glass nudge (not the cream EmptyPanel) when onSky and there is no mix data', () => {
         const { container } = render(<PersonaBar mix={[]} onSky />);
         expect(
-            screen.getByText('Belum ada cukup lari buat baca personamu.'),
+            screen.getByText('Not enough runs yet to read your persona.'),
         ).toBeInTheDocument();
         expect(container.querySelector('.backdrop-blur')).not.toBeNull();
     });
@@ -49,7 +49,7 @@ describe('PersonaBar', () => {
                 mix={[{ mood: 'nyala', count: 3, percent: 60 }]}
             />,
         );
-        expect(screen.getByText('Nyala')).toHaveClass('text-cream');
+        expect(screen.getByText('Blazing')).toHaveClass('text-cream');
         expect(screen.getByText('60.0%')).toHaveClass('text-ink-on-sky');
     });
 

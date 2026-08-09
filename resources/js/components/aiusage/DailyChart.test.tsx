@@ -21,25 +21,25 @@ describe('DailyChart', () => {
     it('counts the days in view and sums their estimated cost', () => {
         render(<DailyChart data={twoDays} currency="USD" />);
 
-        expect(screen.getByText('2 hari')).toBeInTheDocument();
+        expect(screen.getByText('2 days')).toBeInTheDocument();
         expect(screen.getByText('$0,05')).toBeInTheDocument();
     });
 
     it('labels each bar with its day and token total for screen readers', () => {
         render(<DailyChart data={twoDays} currency="USD" />);
 
-        expect(screen.getByLabelText('18 Mei: 450 token')).toBeInTheDocument();
-        expect(screen.getByLabelText('19 Mei: 430 token')).toBeInTheDocument();
+        expect(screen.getByLabelText('18 Mei: 450 tokens')).toBeInTheDocument();
+        expect(screen.getByLabelText('19 Mei: 430 tokens')).toBeInTheDocument();
     });
 
     it('scales the tallest bar to full height and the rest against it', () => {
         render(<DailyChart data={twoDays} currency="USD" />);
 
-        expect(screen.getByLabelText('18 Mei: 450 token').style.height).toBe(
+        expect(screen.getByLabelText('18 Mei: 450 tokens').style.height).toBe(
             '100%',
         );
         expect(
-            screen.getByLabelText('19 Mei: 430 token').style.height,
+            screen.getByLabelText('19 Mei: 430 tokens').style.height,
         ).not.toBe('100%');
     });
 
@@ -51,7 +51,7 @@ describe('DailyChart', () => {
             />,
         );
 
-        expect(screen.getByLabelText('19 Mei: 0 token').style.height).toBe(
+        expect(screen.getByLabelText('19 Mei: 0 tokens').style.height).toBe(
             '2%',
         );
     });

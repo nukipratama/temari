@@ -27,43 +27,46 @@ describe('FlashNotice', () => {
         setMockPage({
             ...base,
             flash: {
-                info: 'Tarikan dari Strava lagi dijeda sebentar. Nanti ketarik lagi otomatis.',
+                info: "The pull from Strava is paused for a bit. It'll resume automatically.",
             },
         });
         render(<FlashNotice />);
         expect(screen.getByRole('status')).toHaveTextContent(
-            'Tarikan dari Strava lagi dijeda sebentar',
+            'The pull from Strava is paused for a bit',
         );
     });
 
     it('surfaces a success flash politely', () => {
         setMockPage({
             ...base,
-            flash: { success: 'Zona HR kamu udah kesimpen.' },
+            flash: { success: 'Your HR zones are saved.' },
         });
         render(<FlashNotice />);
         expect(screen.getByRole('status')).toHaveTextContent(
-            'Zona HR kamu udah kesimpen.',
+            'Your HR zones are saved.',
         );
     });
 
     it('surfaces an error flash assertively', () => {
-        setMockPage({ ...base, flash: { error: 'Gagal narik dari Strava.' } });
+        setMockPage({
+            ...base,
+            flash: { error: 'Failed to pull from Strava.' },
+        });
         render(<FlashNotice />);
         expect(screen.getByRole('alert')).toHaveTextContent(
-            'Gagal narik dari Strava.',
+            'Failed to pull from Strava.',
         );
     });
 
     it('shows one banner only, error first, when several flashes are set at once', () => {
         setMockPage({
             ...base,
-            flash: { error: 'Gagal.', info: 'Dijeda.', success: 'Kesimpen.' },
+            flash: { error: 'Failed.', info: 'Paused.', success: 'Saved.' },
         });
         render(<FlashNotice />);
         expect(screen.getAllByRole('alert')).toHaveLength(1);
-        expect(screen.queryByText('Dijeda.')).not.toBeInTheDocument();
-        expect(screen.queryByText('Kesimpen.')).not.toBeInTheDocument();
+        expect(screen.queryByText('Paused.')).not.toBeInTheDocument();
+        expect(screen.queryByText('Saved.')).not.toBeInTheDocument();
     });
 
     it('ignores an empty-string flash', () => {
@@ -75,24 +78,24 @@ describe('FlashNotice', () => {
     it('dismisses when the close button is clicked', () => {
         setMockPage({
             ...base,
-            flash: { info: 'Nyalakan notifikasi dulu ya.' },
+            flash: { info: 'Turn on notifications first.' },
         });
         render(<FlashNotice />);
-        fireEvent.click(screen.getByLabelText('Tutup'));
+        fireEvent.click(screen.getByLabelText('Close'));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
     it('stays dismissed when a partial reload replays the same flash', () => {
         setMockPage({
             ...base,
-            flash: { info: 'Barusan udah dikirim. Tunggu sebentar ya.' },
+            flash: { info: 'Just sent. Give it a moment.' },
         });
         const { rerender } = render(<FlashNotice />);
-        fireEvent.click(screen.getByLabelText('Tutup'));
+        fireEvent.click(screen.getByLabelText('Close'));
 
         setMockPage({
             ...base,
-            flash: { info: 'Barusan udah dikirim. Tunggu sebentar ya.' },
+            flash: { info: 'Just sent. Give it a moment.' },
         });
         rerender(<FlashNotice />);
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
@@ -101,26 +104,26 @@ describe('FlashNotice', () => {
     it('re-shows for a fresh flash after a prior dismissal', () => {
         setMockPage({
             ...base,
-            flash: { info: 'Nyalakan notifikasi dulu ya.' },
+            flash: { info: 'Turn on notifications first.' },
         });
         const { rerender } = render(<FlashNotice />);
-        fireEvent.click(screen.getByLabelText('Tutup'));
+        fireEvent.click(screen.getByLabelText('Close'));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
         setMockPage({
             ...base,
-            flash: { success: 'Aku kirim notifikasi tes ya.' },
+            flash: { success: 'Sending you a test notification.' },
         });
         rerender(<FlashNotice />);
         expect(screen.getByRole('status')).toHaveTextContent(
-            'Aku kirim notifikasi tes ya.',
+            'Sending you a test notification.',
         );
     });
 
     it('clears itself when the next navigation carries no flash', () => {
         setMockPage({
             ...base,
-            flash: { success: 'Zona kamu udah disinkron ulang dari Strava.' },
+            flash: { success: 'Your zones were re-synced from Strava.' },
         });
         const { rerender, container } = render(<FlashNotice />);
         expect(screen.getByRole('status')).toBeInTheDocument();

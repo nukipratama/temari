@@ -40,8 +40,8 @@ export function computeBarWidth(
         return 60;
     // Faster pace = wider bar, anchored at 90% for the fastest km. The band amplitude
     // scales with the ABSOLUTE split spread, so a run where every km is within a second
-    // or two renders as near-equal full-width bars ("konsisten") instead of a misleading
-    // 40→90 swing that contradicts the "pacing sangat konsisten" narration above it.
+    // or two renders as near-equal full-width bars ("consistent") instead of a misleading
+    // 40→90 swing that contradicts the "pacing was very consistent" narration above it.
     const spread = slowest - fastest;
     const amplitude = Math.min(spread / FULL_SPREAD_SEC, 1) * 50;
     const t = (slowest - sec) / spread; // 0 (slowest) .. 1 (fastest)

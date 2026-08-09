@@ -32,7 +32,7 @@ interface FourLensGridProps {
     /**
      * This run is the head of the per-activity narration chain (the latest run).
      * Per-activity narration is connected + chained: only the head may
-     * regenerate, so the "Baca ulang semua" control shows on the head only.
+     * regenerate, so the "Reread all" control shows on the head only.
      * Historical runs are resume-only via the per-block chain actions.
      */
     isChainHead?: boolean;
@@ -63,12 +63,12 @@ const DEFAULT_RELOAD_PROPS = [
 
 function bulkButtonLabel(pending: boolean, cooldownRemaining: number): string {
     if (pending) {
-        return 'Lagi dibaca…';
+        return 'Rereading…';
     }
     if (cooldownRemaining > 0) {
         return formatDurationHMS(cooldownRemaining);
     }
-    return 'Baca ulang semua';
+    return 'Reread all';
 }
 
 export default function FourLensGrid({
@@ -88,28 +88,28 @@ export default function FourLensGrid({
             {
                 id: 'cerita',
                 icon: 'mdi:chat-outline',
-                label: 'Cerita lari ini',
+                label: "This run's story",
                 analysis: cerita,
                 tone: 'leaf',
             },
             {
                 id: 'terjemahan',
                 icon: 'mdi:stethoscope',
-                label: 'Terjemahan teknis',
+                label: 'Technical translation',
                 analysis: terjemahan,
                 tone: 'ember',
             },
             {
                 id: 'split',
                 icon: 'mdi:timer-outline',
-                label: 'Split paling seru',
+                label: 'Most interesting split',
                 analysis: split,
                 tone: 'citrus',
             },
             {
                 id: 'hr',
                 icon: 'mdi:heart-pulse',
-                label: 'Zona HR',
+                label: 'HR Zones',
                 analysis: hr,
                 tone: 'sky',
             },
@@ -149,7 +149,7 @@ export default function FourLensGrid({
                         disabled={bulkPending || cooling}
                         aria-label={cooldownAriaLabel(
                             cooldownRemaining,
-                            'baca ulang semua',
+                            'rereading all',
                         )}
                         className="focus-ring rounded inline-flex items-center gap-1.5 text-label-micro text-ink-2 transition hover:text-leaf-deep disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -190,7 +190,7 @@ export default function FourLensGrid({
                             inertiaReloadProps={inertiaReloadProps}
                             chained
                             isChainHead={isChainHead}
-                            // On the head run the single "Baca ulang semua"
+                            // On the head run the single "Reread all"
                             // control replaces every per-lens action; historical
                             // runs keep their per-block resume (failed/pending).
                             allowReanalyze={!isChainHead}

@@ -33,14 +33,12 @@ describe('JourneyStrip', () => {
                 }}
             />,
         );
-        expect(
-            screen.getByText(/Kamu vs Lari Pertama Kamu/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/You vs Your First Run/i)).toBeInTheDocument();
         expect(screen.getByText(/80\.4 km/)).toBeInTheDocument();
-        const paceSpan = screen.getByText(/60 detik\/km lebih cepat/);
+        const paceSpan = screen.getByText(/60 sec\/km faster/);
         expect(paceSpan).toBeInTheDocument();
         expect(paceSpan).toHaveClass('text-leaf-deep');
-        const hrSpan = screen.getByText(/15 bpm lebih rendah/);
+        const hrSpan = screen.getByText(/15 bpm lower/);
         expect(hrSpan).toBeInTheDocument();
         expect(hrSpan).toHaveClass('text-leaf-deep');
     });
@@ -69,10 +67,10 @@ describe('JourneyStrip', () => {
                 }}
             />,
         );
-        const paceSpan = screen.getByText(/10 detik\/km lebih lambat/);
+        const paceSpan = screen.getByText(/10 sec\/km slower/);
         expect(paceSpan).toBeInTheDocument();
         expect(paceSpan).toHaveClass('text-ember-deep');
-        const hrSpan = screen.getByText(/5 bpm lebih tinggi/);
+        const hrSpan = screen.getByText(/5 bpm higher/);
         expect(hrSpan).toBeInTheDocument();
         expect(hrSpan).toHaveClass('text-ember-deep');
     });
@@ -129,7 +127,7 @@ describe('JourneyStrip', () => {
             />,
         );
         expect(screen.getByText(/not-a-date/)).toBeInTheDocument();
-        expect(screen.queryByText(/detik\/km/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/sec\/km/)).not.toBeInTheDocument();
     });
 
     it('skips the hr line when no HR data on either side', () => {

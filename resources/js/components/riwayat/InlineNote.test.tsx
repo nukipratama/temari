@@ -10,17 +10,17 @@ import InlineNote, {
 describe('InlineNote', () => {
     it('renders the icon and the sentence', () => {
         const { container } = render(
-            <InlineNote icon="mdi:history">Ada yang disembunyiin.</InlineNote>,
+            <InlineNote icon="mdi:history">Something is hidden.</InlineNote>,
         );
 
-        expect(screen.getByText('Ada yang disembunyiin.')).toBeInTheDocument();
+        expect(screen.getByText('Something is hidden.')).toBeInTheDocument();
         expect(
             container.querySelector('[data-icon="mdi:history"]'),
         ).not.toBeNull();
     });
 
     it('renders no trailing control when the note offers no way out', () => {
-        render(<InlineNote icon="mdi:history">Cuma sebaris.</InlineNote>);
+        render(<InlineNote icon="mdi:history">Just one line.</InlineNote>);
 
         expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
@@ -29,15 +29,13 @@ describe('InlineNote', () => {
         render(
             <InlineNote
                 icon="mdi:history"
-                action={<a href="/aktivitas">Keluar</a>}
+                action={<a href="/aktivitas">Exit</a>}
             >
-                Cuma sebaris.
+                Just one line.
             </InlineNote>,
         );
 
-        expect(
-            screen.getByRole('link', { name: 'Keluar' }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Exit' })).toBeInTheDocument();
     });
 });
 
@@ -46,7 +44,7 @@ describe('RunsTruncatedNote', () => {
         render(<RunsTruncatedNote maxRuns={365} />);
 
         expect(
-            screen.getByText(/Menampilkan 365 lari terbaru/),
+            screen.getByText(/Showing the 365 most recent runs/),
         ).toBeInTheDocument();
     });
 });
@@ -56,16 +54,14 @@ describe('RangeWidenedNote', () => {
         render(<RangeWidenedNote rangeFilter="1y" />);
 
         expect(
-            screen.getByText(/Rentang diperlebar otomatis ke Setahun penuh/),
+            screen.getByText(/Range automatically widened to Setahun penuh/),
         ).toBeInTheDocument();
     });
 
     it('names no range at all when widened to the full history', () => {
         render(<RangeWidenedNote rangeFilter="all" />);
 
-        expect(
-            screen.getByText(/Menampilkan semua lari kamu/),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/Showing all your runs/)).toBeInTheDocument();
     });
 });
 
@@ -77,11 +73,11 @@ describe('WeekFocusNote', () => {
 
         expect(
             screen.getByText(
-                /Lagi lihat minggu Senin, 11 Mei - Minggu, 17 Mei/,
+                /Viewing the week of Senin, 11 Mei - Minggu, 17 Mei/,
             ),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /Lihat semua lari/ }),
+            screen.getByRole('link', { name: /View all runs/ }),
         ).toHaveAttribute('href', '/aktivitas');
     });
 });

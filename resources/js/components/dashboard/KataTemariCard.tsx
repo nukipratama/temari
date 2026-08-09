@@ -66,11 +66,11 @@ export default function KataTemariCard({
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const cooling = cooldownRemaining > 0;
 
-    let label = 'Saran lain';
+    let label = 'Another take';
     if (cooling) {
         label = formatDurationHMS(cooldownRemaining);
     } else if (pending) {
-        label = 'Lagi mikir…';
+        label = 'Thinking…';
     }
 
     const weatherChipLabel = lastRun
@@ -84,7 +84,7 @@ export default function KataTemariCard({
     return (
         <Card as="section" padding="md" className="flex h-full flex-col gap-3">
             <SectionLabel dot className="mb-0">
-                Kata Temari hari ini
+                Today from Temari
             </SectionLabel>
             <div className="flex items-start gap-3">
                 <Temari pose={pose} size={48} animate={false} />
@@ -109,7 +109,7 @@ export default function KataTemariCard({
                     disabled={pending || cooling}
                     aria-label={cooldownAriaLabel(
                         cooldownRemaining,
-                        'minta saran lain',
+                        'asking for another take',
                     )}
                     className="focus-ring mt-auto rounded inline-flex items-center self-start gap-1 text-xs text-ink-3 hover:text-leaf-deep transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:text-ink-3"
                 >

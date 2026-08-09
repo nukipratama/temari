@@ -102,7 +102,7 @@ const WeekSection = memo(function WeekSection({
                         icon="mdi:run"
                         label={
                             hiddenCount > 0
-                                ? `${bucket.runs.length} dari ${weekTotal} run`
+                                ? `${bucket.runs.length} of ${weekTotal} run`
                                 : `${runCount} run`
                         }
                     />
@@ -124,8 +124,9 @@ const WeekSection = memo(function WeekSection({
                         className="shrink-0"
                         aria-hidden
                     />
-                    {hiddenCount} lari lain di minggu ini gak cocok sama
-                    filternya.
+                    {hiddenCount} other run{hiddenCount === 1 ? '' : 's'} this
+                    week {hiddenCount === 1 ? "doesn't" : "don't"} match the
+                    filter.
                 </p>
             )}
 
@@ -190,11 +191,14 @@ function WeeklyStatusChips({
     return (
         <>
             {snapshot.atl_7d !== null && (
-                <MetricChip label="Lelah" value={snapshot.atl_7d.toFixed(1)} />
+                <MetricChip
+                    label="Fatigue"
+                    value={snapshot.atl_7d.toFixed(1)}
+                />
             )}
             {snapshot.monotony !== null && (
                 <MetricChip
-                    label="Variasi"
+                    label="Monotony"
                     value={snapshot.monotony.toFixed(2)}
                     alert={monotonyAlert}
                     explainerKey="monotony"
@@ -210,12 +214,12 @@ function WeeklyStatusChips({
             )}
             {snapshot.ctl_42d !== null && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-leaf/15 px-2.5 py-0.5 text-xs font-semibold text-leaf-deep">
-                    Fondasi {snapshot.ctl_42d.toFixed(1)}
+                    Fitness {snapshot.ctl_42d.toFixed(1)}
                 </span>
             )}
             {snapshot.form !== null && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-horizon/15 px-2.5 py-0.5 text-xs font-semibold text-horizon-deep">
-                    Kesiapan {snapshot.form >= 0 ? '+' : ''}
+                    Readiness {snapshot.form >= 0 ? '+' : ''}
                     {snapshot.form.toFixed(1)}
                 </span>
             )}
@@ -283,14 +287,14 @@ function ruleBasedFallback(snap: WeeklySnapshotWithRecap): string {
     const parts: string[] = [];
     if (snap.runs !== null && snap.distance_km !== null) {
         parts.push(
-            `Minggu ini kamu lari ${snap.runs}x sejauh ${snap.distance_km.toFixed(1)} km.`,
+            `You ran ${snap.runs}x this week for ${snap.distance_km.toFixed(1)} km.`,
         );
     }
     if (snap.form !== null && snap.form_status) {
         const formLabel = formStatusLabel(snap.form_status);
         parts.push(
-            `Kesiapan ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, status ${formLabel.toLowerCase()}.`,
+            `Readiness ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, ${formLabel.toLowerCase()}.`,
         );
     }
-    return parts.join(' ') || 'Belum ada data minggu ini, sabar ya.';
+    return parts.join(' ') || 'No data for this week yet, hang tight.';
 }

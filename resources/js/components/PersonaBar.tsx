@@ -32,14 +32,14 @@ export default function PersonaBar({
                     className={cn('text-center', className)}
                 >
                     <p className="font-display text-base italic text-cream/85">
-                        Belum ada cukup lari buat baca personamu.
+                        Not enough runs yet to read your persona.
                     </p>
                 </Card>
             );
         }
         return (
             <EmptyPanel
-                title="Belum ada cukup lari buat baca personamu."
+                title="Not enough runs yet to read your persona."
                 className={cn('py-5', className)}
             />
         );

@@ -10,7 +10,7 @@ describe('SendNotificationButton', () => {
     it('posts to the given url when clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<SendNotificationButton url="/aktivitas/99/kirim" />);
-        fireEvent.click(screen.getByText('Kirim notifikasi'));
+        fireEvent.click(screen.getByText('Send notification'));
         expect(router.post).toHaveBeenCalledWith(
             '/aktivitas/99/kirim',
             {},
@@ -22,25 +22,25 @@ describe('SendNotificationButton', () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
         vi.mocked(router.post).mockReset();
         render(<SendNotificationButton url="/aktivitas/99/kirim" />);
-        fireEvent.click(screen.getByText('Kirim notifikasi'));
+        fireEvent.click(screen.getByText('Send notification'));
         expect(router.post).not.toHaveBeenCalledWith(
             '/aktivitas/99/kirim',
             expect.anything(),
             expect.anything(),
         );
         expect(
-            screen.getByText('Telegram-nya lagi istirahat dulu'),
+            screen.getByText("Telegram's taking a break for now"),
         ).toBeInTheDocument();
     });
 
-    it('closes the demo-blocked modal when its Tutup button is pressed', async () => {
+    it('closes the demo-blocked modal when its Close button is pressed', async () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
         render(<SendNotificationButton url="/aktivitas/99/kirim" />);
-        fireEvent.click(screen.getByText('Kirim notifikasi'));
-        fireEvent.click(screen.getByLabelText('Tutup'));
+        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(screen.getByLabelText('Close'));
         await waitFor(() =>
             expect(
-                screen.queryByText('Telegram-nya lagi istirahat dulu'),
+                screen.queryByText("Telegram's taking a break for now"),
             ).not.toBeInTheDocument(),
         );
     });
@@ -54,14 +54,14 @@ describe('SendNotificationButton', () => {
                 reachable={false}
             />,
         );
-        fireEvent.click(screen.getByText('Kirim notifikasi'));
+        fireEvent.click(screen.getByText('Send notification'));
         expect(router.post).not.toHaveBeenCalled();
         expect(
-            screen.getByText('Nyalain notifikasi dulu yuk'),
+            screen.getByText('Turn on notifications first'),
         ).toBeInTheDocument();
     });
 
-    it('closes the enable-notifications nudge when its Tutup button is pressed', async () => {
+    it('closes the enable-notifications nudge when its Close button is pressed', async () => {
         setMockPage({ auth: { user: makeUser({ is_demo: false }) } });
         render(
             <SendNotificationButton
@@ -69,11 +69,11 @@ describe('SendNotificationButton', () => {
                 reachable={false}
             />,
         );
-        fireEvent.click(screen.getByText('Kirim notifikasi'));
-        fireEvent.click(screen.getByLabelText('Tutup'));
+        fireEvent.click(screen.getByText('Send notification'));
+        fireEvent.click(screen.getByLabelText('Close'));
         await waitFor(() =>
             expect(
-                screen.queryByText('Nyalain notifikasi dulu yuk'),
+                screen.queryByText('Turn on notifications first'),
             ).not.toBeInTheDocument(),
         );
     });
@@ -86,12 +86,12 @@ describe('SendNotificationButton', () => {
                 reachable={false}
             />,
         );
-        fireEvent.click(screen.getByText('Kirim notifikasi'));
+        fireEvent.click(screen.getByText('Send notification'));
         expect(
-            screen.getByText('Nyalain notifikasi dulu yuk'),
+            screen.getByText('Turn on notifications first'),
         ).toBeInTheDocument();
         expect(
-            screen.queryByText('Telegram-nya lagi istirahat dulu'),
+            screen.queryByText("Telegram's taking a break for now"),
         ).not.toBeInTheDocument();
     });
 
@@ -100,10 +100,10 @@ describe('SendNotificationButton', () => {
             options?.onStart?.({} as never);
         });
         render(<SendNotificationButton url="/aktivitas/99/kirim" />);
-        const button = screen.getByText('Kirim notifikasi').closest('button')!;
+        const button = screen.getByText('Send notification').closest('button')!;
         fireEvent.click(button);
         expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('Lagi ngirim…');
+        expect(button).toHaveTextContent('Sending…');
     });
 
     it('disables the button and shows a countdown while on cooldown', () => {
@@ -115,11 +115,11 @@ describe('SendNotificationButton', () => {
             />,
         );
         const button = screen.getByLabelText(
-            /tunggu.*sebelum kirim notifikasi/i,
+            /wait.*before sending a notification/i,
         );
         expect(button).toBeDisabled();
         expect(button).toHaveTextContent('2:05');
-        expect(button).not.toHaveTextContent('Kirim notifikasi');
+        expect(button).not.toHaveTextContent('Send notification');
     });
 
     it('stays clickable when no cooldown is active', () => {
@@ -131,7 +131,7 @@ describe('SendNotificationButton', () => {
             />,
         );
         expect(
-            screen.getByRole('button', { name: 'Kirim notifikasi' }),
+            screen.getByRole('button', { name: 'Send notification' }),
         ).not.toBeDisabled();
     });
 });

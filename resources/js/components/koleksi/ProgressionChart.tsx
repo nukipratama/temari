@@ -49,14 +49,14 @@ export default function ProgressionChart({
     className,
 }: Readonly<ProgressionChartProps>) {
     const chartLabel = category
-        ? `Grafik progresi waktu terbaik ${category}`
-        : 'Grafik progresi waktu terbaik';
+        ? `Best time progression chart ${category}`
+        : 'Best time progression chart';
     const firstIdx = timesSec.findIndex((t) => t != null);
     const lastIdx = lastDefinedIndex(timesSec);
     const summarySentence =
         firstIdx >= 0 && lastIdx >= 0
-            ? `Dari ${formatDurationHMS(timesSec[firstIdx]!)} pada ${formatNaiveIdDate(weeks[firstIdx], 'short')} menjadi ${formatDurationHMS(timesSec[lastIdx]!)} pada ${formatNaiveIdDate(weeks[lastIdx], 'short')}.`
-            : 'Belum ada data waktu untuk periode ini.';
+            ? `From ${formatDurationHMS(timesSec[firstIdx]!)} on ${formatNaiveIdDate(weeks[firstIdx], 'short')} to ${formatDurationHMS(timesSec[lastIdx]!)} on ${formatNaiveIdDate(weeks[lastIdx], 'short')}.`
+            : 'No time data for this period yet.';
     // Space points by their real date (day-offset from the first week), not at even
     // intervals, so uneven time gaps read honestly instead of overstating progress.
     const xOffsets = useMemo(() => {
@@ -193,7 +193,7 @@ export default function ProgressionChart({
     if (weeks.length === 0) {
         return (
             <EmptyPanel
-                title="Belum cukup lari di jarak ini buat narik garis progresi."
+                title="Not enough runs at this distance yet to draw a progression line."
                 className={cn('py-10', className)}
             />
         );

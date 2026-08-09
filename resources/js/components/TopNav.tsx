@@ -17,22 +17,22 @@ interface NavItem {
 }
 
 const ITEMS: ReadonlyArray<NavItem> = [
-    { id: 'hari-ini', label: 'Hari Ini', href: '/', prefixes: ['/'] },
+    { id: 'hari-ini', label: 'Today', href: '/', prefixes: ['/'] },
     {
         id: 'koleksi',
-        label: 'Koleksi',
+        label: 'Collection',
         href: '/kartu',
         prefixes: ['/koleksi', '/kartu', '/aksesori', '/rekor', '/target'],
     },
     {
         id: 'riwayat',
-        label: 'Riwayat',
+        label: 'History',
         href: '/aktivitas',
         prefixes: ['/riwayat', '/aktivitas', '/kalender'],
     },
     {
         id: 'aku',
-        label: 'Aku',
+        label: 'Me',
         href: '/profil',
         prefixes: ['/aku', '/profil', '/pengaturan'],
     },
@@ -62,7 +62,7 @@ export default function TopNav() {
                 <div className="flex items-center gap-12">
                     <Link
                         href="/"
-                        aria-label="Beranda"
+                        aria-label="Home"
                         className="focus-ring rounded"
                     >
                         <BrandMark />

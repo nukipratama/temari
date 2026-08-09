@@ -142,7 +142,7 @@ export default function RiwayatFilter<
                     setOpen((v) => !v);
                 }}
                 aria-expanded={open}
-                aria-label="Buka filter"
+                aria-label="Open filter"
                 className={cn(
                     'focus-ring inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition lg:text-sm',
                     totalActive > 0
@@ -237,12 +237,12 @@ export default function RiwayatFilter<
                     {/* Sitting on anything but the first option switches the page to a
                         flat ranked list, which the hint spells out. */}
                     {sort && (
-                        <OptionListSectionView title="Urutan" section={sort} />
+                        <OptionListSectionView title="Sort" section={sort} />
                     )}
                     {range && <RangeSectionView section={range} />}
                     {distance && (
                         <OptionListSectionView
-                            title="Jarak"
+                            title="Distance"
                             section={distance}
                         />
                     )}
@@ -271,7 +271,7 @@ function RangeSectionView<V extends string>({
     section,
 }: Readonly<{ section: RangeSection<V> }>) {
     return (
-        <FilterSection title="Rentang waktu">
+        <FilterSection title="Time range">
             <div className="flex flex-col gap-1">
                 {section.options.map((opt) => {
                     const active = opt.value === section.value;

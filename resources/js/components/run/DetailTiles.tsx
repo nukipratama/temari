@@ -58,15 +58,15 @@ export default function DetailTiles({
         maxGrade >= 3
     ) {
         tiles.push({
-            label: 'TANJAKAN',
+            label: 'CLIMB',
             value: `${maxGrade}%`,
-            sub: 'tanjakan tercuram',
+            sub: 'steepest climb',
         });
         if (summary.gap_pace != null) {
             tiles.push({
                 label: 'GAP',
                 value: summary.gap_pace,
-                sub: '/km setara datar',
+                sub: '/km flat-equivalent',
                 metricKey: 'gap',
             });
         }
@@ -87,8 +87,8 @@ export default function DetailTiles({
             label: 'DECOUPLING',
             value: `${decoupling >= 0 ? '+' : ''}${decoupling.toFixed(1)}%`,
             sub: heatExplainsIt
-                ? `wajar, tadi panas ${Math.round(detail.weather_temp_c as number)}°C`
-                : 'napas melar di paruh kedua',
+                ? `normal, it was ${Math.round(detail.weather_temp_c as number)}°C out`
+                : 'breathing drifted in the second half',
             warn: decouplingHigh && !heatExplainsIt,
             metricKey: 'decoupling',
         });
@@ -96,7 +96,10 @@ export default function DetailTiles({
 
     if (tiles.length === 0) {
         return (
-            <EmptyPanel title="Detail teknis-nya belum kebaca." className="" />
+            <EmptyPanel
+                title="Technical detail hasn't been read yet."
+                className=""
+            />
         );
     }
 

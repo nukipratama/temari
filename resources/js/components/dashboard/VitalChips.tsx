@@ -22,18 +22,18 @@ const FORM_RANGE = 40;
 // costing you. Past it the gauge just reads full.
 const RECOVERY_HOURS_FULL = 72;
 
-// A one-line gloss per vibe, keyed by its Indonesian label (mirrors Vibe::LABELS).
-// Sits on the sub-line so the tile says something ("badan lagi enteng") instead
+// A one-line gloss per vibe, keyed by its label (mirrors Vibe::LABELS).
+// Sits on the sub-line so the tile says something ("feeling light") instead
 // of just restating the word.
 const VIBE_SUB: Record<string, string> = {
-    Lincah: 'badan lagi enteng',
-    Stabil: 'ritme kejaga',
-    Loyo: 'tenaga lagi turun',
-    Gosong: 'kelewat capek, rehat',
-    Segar: 'fresh, siap gas',
-    Tipis: 'lagi mepet batas',
-    Membara: 'lagi on fire',
-    Hibernasi: 'lama nggak lari',
+    Bouncy: 'feeling light',
+    Steady: 'holding rhythm',
+    'Worn Down': 'energy dipping',
+    Cooked: 'wiped out, rest up',
+    Fresh: 'ready to go',
+    'Stretched Thin': 'close to the limit',
+    Pumped: 'on fire',
+    Hibernating: "haven't run in a while",
 };
 
 export default function VitalChips({
@@ -41,9 +41,9 @@ export default function VitalChips({
     load,
 }: Readonly<{ briefing: BriefingResult; load: TrainingLoad | null }>) {
     // Vibe's value is just the label word — pairing it with the emoji inline
-    // read richer, but "emoji + longest label" (e.g. "Hibernasi") never fit one
+    // read richer, but "emoji + longest label" (e.g. "Hibernating") never fit one
     // line in the narrow 3-up mobile tile, and forcing the emoji onto its own
-    // line broke the single-line rhythm shared with Kesiapan/Jeda even on
+    // line broke the single-line rhythm shared with Readiness/Break even on
     // wide screens with room to spare. There's no numeric vibe score, so the
     // horizon gauge shows form intensity and the sub-line glosses what the vibe means.
     const vibeValue = briefing.vibeLabel;
@@ -72,7 +72,7 @@ export default function VitalChips({
                 }
             />
             <VitalChip
-                label="Kesiapan"
+                label="Readiness"
                 value={load ? formatSignedForm(load.form) : '—'}
                 sub={load ? formStatusLabel(load.form_status) : ''}
                 tone="leaf"
@@ -80,7 +80,7 @@ export default function VitalChips({
                 gauge={
                     load?.form != null
                         ? {
-                              label: 'Kesiapan',
+                              label: 'Readiness',
                               value: load.form,
                               min: -FORM_RANGE,
                               max: FORM_RANGE,
@@ -92,25 +92,25 @@ export default function VitalChips({
                 }
             />
             <VitalChip
-                label="Jeda"
+                label="Break"
                 value={
                     briefing.recoveryHoursLabel ??
                     briefing.streakLabel ??
                     briefing.recoveryLabel
                 }
-                sub="lari terakhir"
+                sub="since last run"
                 tone="ink"
                 explainerKey="recovery"
                 recoveryTone={briefing.recoveryTone}
                 gauge={
                     briefing.recoveryHours != null
                         ? {
-                              label: 'Jeda',
+                              label: 'Break',
                               value: briefing.recoveryHours,
                               min: 0,
                               max: RECOVERY_HOURS_FULL,
                               tone: briefing.recoveryTone,
-                              anchors: ['0', `${RECOVERY_HOURS_FULL}j`],
+                              anchors: ['0', `${RECOVERY_HOURS_FULL}h`],
                           }
                         : undefined
                 }
@@ -120,7 +120,7 @@ export default function VitalChips({
 }
 
 interface GaugeConfig {
-    /** Accessible name for the gauge (the metric label, e.g. "Kesiapan"). */
+    /** Accessible name for the gauge (the metric label, e.g. "Readiness"). */
     label: string;
     value: number;
     min: number;
@@ -150,7 +150,7 @@ function VitalGauge({
 }: Readonly<GaugeConfig>) {
     const clamped = Math.min(Math.max(value, min), max);
     const pct = ((clamped - min) / (max - min)) * 100;
-    // Bipolar (Kesiapan): fill grows from the zero mark; leaf when positive, ember when negative.
+    // Bipolar (Readiness): fill grows from the zero mark; leaf when positive, ember when negative.
     const leafPolarity = value >= 0 ? 'bg-leaf' : 'bg-ember';
     const fillColor =
         tone === 'leaf' ? leafPolarity : (GAUGE_FILL[tone] ?? 'bg-horizon');
@@ -260,7 +260,7 @@ function VitalChip({
         <div className="flex h-full flex-col justify-between rounded-xl border border-line bg-surface-card px-3.5 py-4">
             <SectionLabel dot dotClass={dotClass} className="mb-1">
                 {/* Tighten the tracking + icon gap at the narrowest width so the
-                    longest label ("Kesiapan") keeps its (?) icon inside the tile at
+                    longest label ("Readiness") keeps its (?) icon inside the tile at
                     320px; both relax back to the full spec from sm up. */}
                 <span className="inline-flex items-center gap-1 tracking-[0.02em] sm:gap-1.5 sm:tracking-[0.12em]">
                     {label}

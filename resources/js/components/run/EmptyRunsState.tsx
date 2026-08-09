@@ -15,44 +15,44 @@ const HERO: Record<
     { eyebrow: string; headline: string; copy: string }
 > = {
     disconnected: {
-        eyebrow: '★ Belum nyambung',
-        headline: 'Sambungin Strava dulu',
-        copy: 'Aku baca lari kamu langsung dari Strava. Sambungin dulu biar kartu pertamamu mulai jalan.',
+        eyebrow: '★ Not connected',
+        headline: 'Connect Strava first',
+        copy: 'I read your runs straight from Strava. Connect it first to get your first card going.',
     },
     revoked: {
-        eyebrow: '★ Sambungan putus',
-        headline: 'Sambungan Strava putus',
-        copy: 'Token Strava kamu udah gak aktif. Sambungin lagi yuk biar lari baru kebaca.',
+        eyebrow: '★ Disconnected',
+        headline: 'Strava connection lost',
+        copy: "Your Strava token isn't active anymore. Reconnect so new runs can be read.",
     },
     syncing: {
-        eyebrow: '★ Lagi narik',
-        headline: 'Lari kamu lagi ditarik dari Strava',
-        copy: 'Sebentar ya, begitu lari pertamamu masuk, aku langsung baca dan kartunya muncul.',
+        eyebrow: '★ Syncing',
+        headline: 'Your runs are being pulled from Strava',
+        copy: "Hang tight, the moment your first run comes in, I'll read it and the card will show up.",
     },
     ready: {
-        eyebrow: '★ Belum ada',
-        headline: 'Belum nemu lari baru',
-        copy: 'Kalau kamu baru kelar lari, coba sync lagi biar langsung kebaca.',
+        eyebrow: '★ Nothing yet',
+        headline: 'No new runs found yet',
+        copy: 'If you just finished a run, try syncing again so it gets picked up.',
     },
 };
 
 const ACTIONS = [
     {
         icon: 'mdi:cards-outline',
-        title: 'Cek koleksi yang legendaris',
-        desc: 'Liat kartu yang bisa kamu dapetin.',
+        title: 'Check out the legendary collection',
+        desc: 'See the cards you could unlock.',
         href: '/kartu',
     },
     {
         icon: 'mdi:tshirt-crew-outline',
-        title: 'Dandanin Temari',
-        desc: 'Pilih kombinasi aksesori untuk profilmu.',
+        title: 'Dress up Temari',
+        desc: 'Pick an accessory combo for your profile.',
         href: '/aksesori',
     },
     {
         icon: 'mdi:chart-line',
-        title: 'Lihat rekap lari kamu',
-        desc: 'Begitu lari pertama masuk, rekap langsung muncul di sini.',
+        title: 'See your run recap',
+        desc: 'Once your first run comes in, the recap shows up here.',
         href: '/aktivitas',
     },
 ] as const;
@@ -100,9 +100,9 @@ export default function EmptyRunsState() {
                 <StravaSyncButton state={state} />
             </div>
 
-            {/* Sambil nungguin */}
+            {/* While you wait */}
             <Card padding="md" className="w-full max-w-md">
-                <SectionLabel>Sambil nungguin</SectionLabel>
+                <SectionLabel>While you wait</SectionLabel>
                 <div className="mt-3 flex flex-col gap-2">
                     {ACTIONS.map(({ icon, title, desc, href }) => (
                         <Link

@@ -10,12 +10,12 @@ export const MOOD_FACE: Record<Mood, string> = {
 };
 
 export const MOOD_LABEL: Record<Mood, string> = {
-    nyala: 'Nyala',
-    enteng: 'Enteng',
-    lemes: 'Lemes',
-    oleng: 'Oleng',
-    mumet: 'Mumet',
-    adem: 'Adem',
+    nyala: 'Blazing',
+    enteng: 'Easy',
+    lemes: 'Gassed',
+    oleng: 'Wobbly',
+    mumet: 'Overloaded',
+    adem: 'Chill',
 };
 
 // Solid mood fill (bg-mood-{key}); use for persona bar segments + sigil swatches.
@@ -49,14 +49,13 @@ export const MOOD_ORDER: ReadonlyArray<Mood> = [
 ];
 
 // Short cause hint per mood; pairs with MOOD_LABEL in filter/legend rows.
-// Running loanwords (PR, HR) stay English; everything else is casual Indonesian.
 export const MOOD_HINT: Record<Mood, string> = {
-    nyala: 'PR / menang',
-    enteng: 'santai',
+    nyala: 'PR or win',
+    enteng: 'easy pace',
     oleng: 'HR drift',
-    lemes: 'ngoyo',
-    mumet: 'kelewatan',
-    adem: 'istirahat',
+    lemes: 'pushed too hard',
+    mumet: 'overdid it',
+    adem: 'rest day',
 };
 
 export interface MoodOption {

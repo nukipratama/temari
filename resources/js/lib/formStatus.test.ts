@@ -6,10 +6,10 @@ import { formStatusLabel, formStatusTone } from './formStatus';
 
 describe('formStatusLabel', () => {
     it.each([
-        ['fresh', 'Lagi seger'],
-        ['optimal', 'Pas banget'],
-        ['fatigued', 'Mulai capek'],
-        ['overreaching', 'Kelewatan'],
+        ['fresh', 'Feeling Fresh'],
+        ['optimal', 'Right on Track'],
+        ['fatigued', 'Getting Tired'],
+        ['overreaching', 'Overreaching'],
     ] satisfies Array<[FormStatus, string]>)('maps %s → %s', (s, label) => {
         expect(formStatusLabel(s)).toBe(label);
     });

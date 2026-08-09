@@ -12,7 +12,7 @@ export default function EmptyState() {
                 aria-hidden
             />
             <p className="mt-2 text-sm text-ink-2">
-                Belum ada catatan token di rentang ini.
+                No token usage recorded in this range yet.
             </p>
         </Card>
     );

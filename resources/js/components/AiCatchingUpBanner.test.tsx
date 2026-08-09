@@ -29,7 +29,7 @@ describe('AiCatchingUpBanner', () => {
         render(<AiCatchingUpBanner />);
         expect(
             screen.getByText(
-                'Masih diproses di belakang layar. Balik lagi nanti ya, narasinya nyusul otomatis.',
+                'Still processing in the background. Check back in a bit, the narration will catch up automatically.',
             ),
         ).toBeInTheDocument();
     });

@@ -9,8 +9,8 @@ import FeaturedKartuPanel from './FeaturedKartuPanel';
 const featured: FeaturedCard = {
     cardId: 7,
     activityId: 42,
-    name: 'Pembalik Keadaan',
-    subtitle: 'Epik · 2 hari lalu',
+    name: 'Comeback Kid',
+    subtitle: 'Epic · 2 days ago',
     km: '5.28',
     durasi: '40:00',
     trimp: '87',
@@ -27,7 +27,7 @@ const featured: FeaturedCard = {
 const voice: AnalysisPayload = {
     id: 5,
     status: 'done',
-    content: 'Kartu ini bukti kamu bisa lebih jauh.',
+    content: 'This card proves you can go further.',
     type: 'briefing_featured_kartu_voice',
     subject_type: 'briefing_user_day',
     subject_id: 1,
@@ -42,13 +42,9 @@ describe('FeaturedKartuPanel', () => {
                 featuredKartuVoice={voice}
             />,
         );
-        expect(
-            screen.getByText(/Kartu andalan dari Temari/),
-        ).toBeInTheDocument();
-        expect(screen.getAllByText('Pembalik Keadaan').length).toBeGreaterThan(
-            0,
-        );
-        const cta = screen.getByRole('link', { name: /lihat aktivitas/i });
+        expect(screen.getByText(/Temari's top pick/)).toBeInTheDocument();
+        expect(screen.getAllByText('Comeback Kid').length).toBeGreaterThan(0);
+        const cta = screen.getByRole('link', { name: /view activity/i });
         expect(cta).toHaveAttribute('href', '/aktivitas/42');
     });
 
@@ -60,7 +56,7 @@ describe('FeaturedKartuPanel', () => {
             />,
         );
         expect(
-            screen.getByText(/bukti kamu bisa lebih jauh/),
+            screen.getByText(/proves you can go further/),
         ).toBeInTheDocument();
     });
 });

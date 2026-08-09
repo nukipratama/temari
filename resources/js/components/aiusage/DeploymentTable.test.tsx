@@ -103,7 +103,7 @@ describe('DeploymentTable', () => {
         render(<DeploymentTable rows={[]} currency="USD" />);
 
         expect(
-            screen.getByText('Belum ada catatan token di rentang ini.'),
+            screen.getByText('No token usage recorded in this range yet.'),
         ).toBeInTheDocument();
     });
 });

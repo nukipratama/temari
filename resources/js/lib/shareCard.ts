@@ -442,7 +442,7 @@ interface DrawCtx {
     moodBunny: HTMLImageElement | null;
 }
 
-/** Bottom-left mono date stamp, shared by the poster and angka templates. */
+/** Bottom-left mono date stamp, shared by the poster and numeric templates. */
 function drawDateFooter(d: DrawCtx): void {
     const { ctx, h, cfg, pal } = d;
     const parts = [
@@ -1233,9 +1233,9 @@ function heroStatCells(
         { label: 'PACE', value: k.pace ? k.pace + '/km' : null },
         { label: 'HR', value: k.hr },
         { label: 'CADENCE', value: k.cadence },
-        { label: 'DURASI', value: k.durasi },
+        { label: 'DURATION', value: k.durasi },
         { label: 'BEST', value: k.fastestKm },
-        { label: 'ELEVASI', value: k.ascent ?? null },
+        { label: 'ELEVATION', value: k.ascent ?? null },
     ];
     return raw.filter(
         (c): c is { label: string; value: string } =>
@@ -1272,8 +1272,8 @@ function drawHeroStatGrid(
         ctx.fillStyle = C.inkOnSky;
         ctx.fillText(cell.label, cx, cy + labelSize);
         ctx.letterSpacing = '0px';
-        // Shrink the value to fit its column so long values (e.g. "39 menit 10
-        // detik") can't overlap the neighbouring cell.
+        // Shrink the value to fit its column so long values (e.g. "39 min 10
+        // sec") can't overlap the neighbouring cell.
         let vSize = valueSize;
         ctx.font = `700 ${vSize}px "JetBrains Mono"`;
         while (vSize > 18 && ctx.measureText(cell.value).width > maxValueW) {

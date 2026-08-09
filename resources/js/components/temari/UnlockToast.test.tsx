@@ -40,7 +40,7 @@ describe('UnlockToast', () => {
         });
         render(<UnlockToast />);
         expect(screen.getByText('Medali Emas')).toBeInTheDocument();
-        expect(screen.getByText('Unlock baru')).toBeInTheDocument();
+        expect(screen.getByText('New unlock')).toBeInTheDocument();
     });
 
     it('clears the mobile bottom nav with a safe-area-aware offset, resetting to bottom-6 on lg', () => {
@@ -85,7 +85,7 @@ describe('UnlockToast', () => {
             }),
         });
         render(<UnlockToast />);
-        const dismissBtn = screen.getByLabelText('Tutup notifikasi');
+        const dismissBtn = screen.getByLabelText('Dismiss notification');
         expect(dismissBtn).toBeInTheDocument();
         // async act flushes AnimatePresence's safe-to-remove tick after setActive(null).
         await act(async () => {

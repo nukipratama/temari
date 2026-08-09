@@ -25,15 +25,15 @@ describe('CollectionHeader', () => {
             <CollectionHeader
                 active="rekor"
                 eyebrow="Koleksi"
-                headline1="Rekor"
-                headline2="terbaikmu"
+                headline1="Your best"
+                headline2="times"
             />,
         );
-        expect(screen.getByText('Rekor').closest('a')).toHaveAttribute(
+        expect(screen.getByText('Records').closest('a')).toHaveAttribute(
             'aria-current',
             'page',
         );
-        expect(screen.getByText('Kartu').closest('a')).not.toHaveAttribute(
+        expect(screen.getByText('Cards').closest('a')).not.toHaveAttribute(
             'aria-current',
         );
     });
@@ -43,8 +43,8 @@ describe('CollectionHeader', () => {
             <CollectionHeader
                 active="kartu"
                 eyebrow="Koleksi"
-                headline1="Kartu"
-                headline2="kamu"
+                headline1="Your"
+                headline2="cards"
                 activeCount="12"
             />,
         );

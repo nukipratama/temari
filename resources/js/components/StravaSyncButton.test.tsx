@@ -9,14 +9,15 @@ import StravaSyncButton from './StravaSyncButton';
 describe('StravaSyncButton', () => {
     it('renders a connect link to the OAuth redirect when disconnected', () => {
         render(<StravaSyncButton state="disconnected" />);
-        expect(
-            screen.getByText('Sambungin Strava').closest('a'),
-        ).toHaveAttribute('href', '/auth/strava/redirect');
+        expect(screen.getByText('Connect Strava').closest('a')).toHaveAttribute(
+            'href',
+            '/auth/strava/redirect',
+        );
     });
 
     it('renders a reconnect link when revoked', () => {
         render(<StravaSyncButton state="revoked" />);
-        expect(screen.getByText('Sambungin lagi').closest('a')).toHaveAttribute(
+        expect(screen.getByText('Reconnect').closest('a')).toHaveAttribute(
             'href',
             '/auth/strava/redirect',
         );
@@ -25,7 +26,7 @@ describe('StravaSyncButton', () => {
     it('posts to /strava/sync when ready and clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<StravaSyncButton state="ready" />);
-        fireEvent.click(screen.getByText('Sync sekarang'));
+        fireEvent.click(screen.getByText('Sync now'));
         expect(router.post).toHaveBeenCalledWith(
             '/strava/sync',
             {},
@@ -38,9 +39,9 @@ describe('StravaSyncButton', () => {
             options?.onStart?.({} as never);
         });
         render(<StravaSyncButton state="ready" />);
-        fireEvent.click(screen.getByText('Sync sekarang'));
+        fireEvent.click(screen.getByText('Sync now'));
 
-        const button = screen.getByRole('button', { name: 'Menyinkron…' });
+        const button = screen.getByRole('button', { name: 'Syncing…' });
         expect(button).toBeDisabled();
     });
 
@@ -50,10 +51,10 @@ describe('StravaSyncButton', () => {
             options?.onFinish?.({} as never);
         });
         render(<StravaSyncButton state="ready" />);
-        fireEvent.click(screen.getByText('Sync sekarang'));
+        fireEvent.click(screen.getByText('Sync now'));
 
         expect(
-            screen.getByRole('button', { name: 'Sync sekarang' }),
+            screen.getByRole('button', { name: 'Sync now' }),
         ).not.toBeDisabled();
     });
 
@@ -76,9 +77,10 @@ describe('StravaSyncButton', () => {
             stravaPaused: true,
         });
         render(<StravaSyncButton state="disconnected" />);
-        expect(
-            screen.getByText('Sambungin Strava').closest('a'),
-        ).toHaveAttribute('href', '/auth/strava/redirect');
+        expect(screen.getByText('Connect Strava').closest('a')).toHaveAttribute(
+            'href',
+            '/auth/strava/redirect',
+        );
     });
 
     it('renders nothing while syncing', () => {

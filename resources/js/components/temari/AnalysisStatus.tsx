@@ -43,7 +43,7 @@ function StaleZonesBadge() {
     return (
         <span className="inline-flex items-center self-start gap-1 rounded-full bg-horizon/15 px-2 py-0.5 text-xs text-ember-deep">
             <Icon icon="mdi:heart-pulse" aria-hidden />
-            <span>dihitung dengan zona lama</span>
+            <span>calculated with old zones</span>
         </span>
     );
 }
@@ -58,8 +58,8 @@ interface Props {
     allowReanalyze?: boolean;
     /**
      * The in-progress period (week or month): its recap waits for the scheduler,
-     * so the manual trigger is suppressed and the empty state reads "belum
-     * tersedia". The wording is set via {@link awaitingScheduleLabel}.
+     * so the manual trigger is suppressed and the empty state reads "not
+     * available yet". The wording is set via {@link awaitingScheduleLabel}.
      */
     awaitingSchedule?: boolean;
     /** Empty-state copy shown when {@link awaitingSchedule}. Defaults to the weekly wording. */
@@ -72,13 +72,13 @@ interface Props {
      * This block belongs to a connected + chained narration kind. The trigger
      * still POSTs to this row, but the server resumes the chain from the
      * earliest unfilled link instead of narrating this row in isolation. The
-     * "Coba lagi" / "Minta Temari bacain" actions on failed/pending links stay
-     * (they resume the chain forward), but "Baca ulang" (regenerate of a Done
+     * "Try again" / "Ask Temari to read it" actions on failed/pending links stay
+     * (they resume the chain forward), but "Reread" (regenerate of a Done
      * block) is shown only on the chain head — see {@link isChainHead}.
      */
     chained?: boolean;
     /**
-     * The latest item in its chain. Only the head may regenerate (`Baca ulang`),
+     * The latest item in its chain. Only the head may regenerate (`Reread`),
      * because re-narrating a mid-history Done block would desync every later
      * block that referenced its old narrative. Ignored unless `chained`.
      */
@@ -96,7 +96,7 @@ const SKELETON_WIDTHS = ['w-full', 'w-[70%]', 'w-[85%]'];
 function RateLimitedNote() {
     return (
         <span className="text-xs text-horizon-deep">
-            Pelan-pelan, Temari kewalahan. Coba lagi sebentar ya.
+            Easy there, Temari&apos;s overwhelmed. Try again in a bit.
         </span>
     );
 }
@@ -108,7 +108,7 @@ export default function AnalysisStatus({
     renderContent,
     allowReanalyze = true,
     awaitingSchedule = false,
-    awaitingScheduleLabel = 'Rekap minggu ini belum tersedia.',
+    awaitingScheduleLabel = "This week's recap isn't available yet.",
     showTimestamp = true,
     onSky = false,
     chained = false,
@@ -124,7 +124,7 @@ export default function AnalysisStatus({
         trigger,
     } = useAnalysisTrigger(analysis, inertiaReloadProps);
     const canTrigger = allowReanalyze && !awaitingSchedule && !paused;
-    // A Done block may regenerate ("Baca ulang") in standalone mode, but in a
+    // A Done block may regenerate ("Reread") in standalone mode, but in a
     // chain only the head may, so regenerating mid-history can't desync later
     // links. Resume actions on failed/pending links stay regardless.
     const canRegenerate = canTrigger && (!chained || isChainHead);
@@ -156,7 +156,7 @@ export default function AnalysisStatus({
                     <span
                         className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}
                     >
-                        Dibuat {formatRelativeId(analysis.generated_at)}
+                        Generated {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
                 {canRegenerate && (
@@ -166,7 +166,7 @@ export default function AnalysisStatus({
                         disabled={cooling || pending}
                         aria-label={cooldownAriaLabel(
                             cooldownRemaining,
-                            'baca ulang',
+                            'reread',
                         )}
                         className={`focus-ring rounded inline-flex items-center self-start gap-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${onSky ? 'text-ink-on-sky hover:text-cream disabled:hover:text-ink-on-sky' : 'text-ink-3 hover:text-leaf-deep disabled:hover:text-ink-3'}`}
                     >
@@ -174,7 +174,7 @@ export default function AnalysisStatus({
                         <span>
                             {cooling
                                 ? formatDurationHMS(cooldownRemaining)
-                                : 'Baca ulang'}
+                                : 'Reread'}
                         </span>
                     </button>
                 )}
@@ -193,7 +193,7 @@ export default function AnalysisStatus({
                         className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-2'}`}
                     >
                         <Icon icon="mdi:clock-outline" aria-hidden />
-                        <span>Masih diproses, muat ulang nanti ya.</span>
+                        <span>Still processing, check back in a bit.</span>
                     </span>
                 </div>
             );
@@ -205,7 +205,7 @@ export default function AnalysisStatus({
                 role="status"
                 aria-live="polite"
             >
-                <span className="sr-only">Lagi dipikirin Temari…</span>
+                <span className="sr-only">Temari&apos;s thinking it over…</span>
                 <div className="flex flex-col gap-1.5">
                     {SKELETON_WIDTHS.map((width) => (
                         <div
@@ -219,7 +219,7 @@ export default function AnalysisStatus({
                     <span
                         className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-ink-3'}`}
                     >
-                        Percobaan {attempts}
+                        Attempt {attempts}
                     </span>
                 )}
             </div>
@@ -239,7 +239,7 @@ export default function AnalysisStatus({
                         className="focus-ring rounded inline-flex items-center self-start gap-1 text-xs text-leaf-deep hover:text-ink transition-colors disabled:opacity-50"
                     >
                         <Icon icon="mdi:auto-awesome" aria-hidden />
-                        <span>Coba lagi</span>
+                        <span>Try again</span>
                     </button>
                 )}
             </div>

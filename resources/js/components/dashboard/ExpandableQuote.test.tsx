@@ -5,8 +5,8 @@ import ExpandableQuote from './ExpandableQuote';
 
 describe('ExpandableQuote', () => {
     it('renders the quoted text', () => {
-        render(<ExpandableQuote text="Lari santai aja." />);
-        expect(screen.getByText(/Lari santai aja\./)).toBeInTheDocument();
+        render(<ExpandableQuote text="Easy does it." />);
+        expect(screen.getByText(/Easy does it\./)).toBeInTheDocument();
     });
 
     // Narration that opens by quoting a card name would otherwise collide with
@@ -14,42 +14,42 @@ describe('ExpandableQuote', () => {
     it('strips an inner opening quote so the decorative frame is the only one', () => {
         render(
             <ExpandableQuote
-                text={'"Full Send" sekali seumur progres, rayain.'}
+                text={'"Full Send" once-in-a-lifetime progress, celebrate it.'}
             />,
         );
         const paragraph = screen.getByText(/Full Send/);
 
         expect(paragraph.textContent).toBe(
-            '“Full Send sekali seumur progres, rayain.”',
+            '“Full Send once-in-a-lifetime progress, celebrate it.”',
         );
     });
 
     it('leaves a mid-string quote alone (e.g. a pace like 5\'30")', () => {
-        render(<ExpandableQuote text={'Pace 5\'30" rapi banget.'} />);
+        render(<ExpandableQuote text={'Pace 5\'30" is clean.'} />);
         const paragraph = screen.getByText(/Pace/);
 
-        expect(paragraph.textContent).toBe('“Pace 5\'30" rapi banget.”');
+        expect(paragraph.textContent).toBe('“Pace 5\'30" is clean.”');
     });
 
     it('omits the toggle for a short quote (<= 150 chars)', () => {
-        render(<ExpandableQuote text="pendek" />);
+        render(<ExpandableQuote text="short" />);
         expect(
-            screen.queryByRole('button', { name: 'Baca selengkapnya' }),
+            screen.queryByRole('button', { name: 'Read more' }),
         ).not.toBeInTheDocument();
     });
 
     it('toggles open/closed for a long quote (> 150 chars)', () => {
         render(<ExpandableQuote text={'a'.repeat(200)} />);
         const toggle = screen.getByRole('button', {
-            name: 'Baca selengkapnya',
+            name: 'Read more',
         });
         fireEvent.click(toggle);
         expect(
-            screen.getByRole('button', { name: 'Tutup' }),
+            screen.getByRole('button', { name: 'Show less' }),
         ).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: 'Tutup' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Show less' }));
         expect(
-            screen.getByRole('button', { name: 'Baca selengkapnya' }),
+            screen.getByRole('button', { name: 'Read more' }),
         ).toBeInTheDocument();
     });
 
@@ -60,8 +60,8 @@ describe('ExpandableQuote', () => {
     });
 
     it('uses cream text on the sky panel', () => {
-        render(<ExpandableQuote text="Lari santai aja." onSky />);
-        const paragraph = screen.getByText(/Lari santai aja\./);
+        render(<ExpandableQuote text="Easy does it." onSky />);
+        const paragraph = screen.getByText(/Easy does it\./);
         expect(paragraph.className).toContain('text-cream');
         expect(paragraph.className).not.toContain('text-ink');
     });

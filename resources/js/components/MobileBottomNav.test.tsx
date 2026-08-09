@@ -8,29 +8,29 @@ import MobileBottomNav from './MobileBottomNav';
 describe('MobileBottomNav', () => {
     it('renders all four primary tabs with their labels', () => {
         render(<MobileBottomNav />);
-        expect(screen.getByText('Hari Ini')).toBeInTheDocument();
-        expect(screen.getByText('Koleksi')).toBeInTheDocument();
-        expect(screen.getByText('Riwayat')).toBeInTheDocument();
-        expect(screen.getByText('Aku')).toBeInTheDocument();
+        expect(screen.getByText('Today')).toBeInTheDocument();
+        expect(screen.getByText('Collection')).toBeInTheDocument();
+        expect(screen.getByText('History')).toBeInTheDocument();
+        expect(screen.getByText('Me')).toBeInTheDocument();
     });
 
     it('marks the tab matching the current url as active', () => {
         setMockPage({}, '/kartu');
         render(<MobileBottomNav />);
-        const link = screen.getByText('Koleksi').closest('a')!;
+        const link = screen.getByText('Collection').closest('a')!;
         expect(link).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByText('Hari Ini').closest('a')).not.toHaveAttribute(
+        expect(screen.getByText('Today').closest('a')).not.toHaveAttribute(
             'aria-current',
         );
     });
 
     it('links each tab to its target path', () => {
         render(<MobileBottomNav />);
-        expect(screen.getByText('Riwayat').closest('a')).toHaveAttribute(
+        expect(screen.getByText('History').closest('a')).toHaveAttribute(
             'href',
             '/aktivitas',
         );
-        expect(screen.getByText('Aku').closest('a')).toHaveAttribute(
+        expect(screen.getByText('Me').closest('a')).toHaveAttribute(
             'href',
             '/profil',
         );
@@ -41,10 +41,10 @@ describe('MobileBottomNav', () => {
     it('tints inactive tabs with the readable on-sky muted tone', () => {
         setMockPage({}, '/kartu');
         render(<MobileBottomNav />);
-        expect(screen.getByText('Koleksi').closest('a')).toHaveClass(
+        expect(screen.getByText('Collection').closest('a')).toHaveClass(
             'text-horizon',
         );
-        expect(screen.getByText('Aku').closest('a')).toHaveClass(
+        expect(screen.getByText('Me').closest('a')).toHaveClass(
             'text-ink-on-sky',
         );
     });
@@ -58,7 +58,7 @@ describe('MobileBottomNav', () => {
         setMockPage({}, '/kartu');
         render(<MobileBottomNav />);
 
-        const link = screen.getByText('Koleksi').closest('a')!;
+        const link = screen.getByText('Collection').closest('a')!;
         const event = new MouseEvent('click', {
             bubbles: true,
             cancelable: true,
@@ -75,7 +75,7 @@ describe('MobileBottomNav', () => {
         setMockPage({}, '/kartu');
         render(<MobileBottomNav />);
 
-        const link = screen.getByText('Aku').closest('a')!;
+        const link = screen.getByText('Me').closest('a')!;
         const event = new MouseEvent('click', {
             bubbles: true,
             cancelable: true,
@@ -102,7 +102,7 @@ describe('MobileBottomNav', () => {
         render(<MobileBottomNav />);
 
         screen
-            .getByText('Koleksi')
+            .getByText('Collection')
             .closest('a')!
             .dispatchEvent(
                 new MouseEvent('click', { bubbles: true, cancelable: true }),

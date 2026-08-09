@@ -8,9 +8,9 @@ interface EnableNotificationsModalProps {
 }
 
 /**
- * Soft front door behind the muted "Kirim notifikasi" pill for a user who has no
- * channel wired yet. Channel-neutral on purpose: notifikasi HP and Telegram both
- * live on Pengaturan, so this points there instead of pushing one channel. Uses
+ * Soft front door behind the muted "Send notification" pill for a user who has no
+ * channel wired yet. Channel-neutral on purpose: push notifications and Telegram both
+ * live on Settings, so this points there instead of pushing one channel. Uses
  * the shared {@see TemariNudgeModal} shell.
  */
 export default function EnableNotificationsModal({
@@ -21,15 +21,16 @@ export default function EnableNotificationsModal({
         <TemariNudgeModal
             open={open}
             onClose={onClose}
-            title="Nyalain notifikasi dulu yuk"
+            title="Turn on notifications first"
             body={
                 <>
-                    Notifikasimu belum nyala. Begitu nyala, tiap abis lari sama
-                    pas rekap aku kabarin langsung, jadi gak bakal kelewat. Bisa
-                    lewat notifikasi HP atau Telegram, pilih aja.
+                    Your notifications aren&apos;t on yet. Once they are,
+                    I&apos;ll let you know right after every run and at recap
+                    time, so nothing slips by. Push notifications or Telegram,
+                    your pick.
                 </>
             }
-            primaryLabel="Ke Pengaturan"
+            primaryLabel="Go to Settings"
             primaryIcon="mdi:bell-outline"
             onPrimary={() => router.visit('/pengaturan')}
         />

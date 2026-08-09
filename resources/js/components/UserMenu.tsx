@@ -16,7 +16,7 @@ interface UserMenuProps {
 
 /**
  * Avatar button that opens a dropdown with the signed-in name, a link to
- * Pengaturan, and logout. Shared by the desktop `TopNav` and the mobile
+ * Settings, and logout. Shared by the desktop `TopNav` and the mobile
  * `MobileTopBar`, so both account actions are one tap from every page on every
  * layout.
  *
@@ -41,7 +41,7 @@ export default function UserMenu({ name, avatarUrl }: Readonly<UserMenuProps>) {
                 type="button"
                 onClick={() => setOpen((v) => !v)}
                 aria-expanded={open}
-                aria-label={`Buka menu ${name}`}
+                aria-label={`Open menu for ${name}`}
                 className="flex h-11 w-11 items-center justify-center rounded-full ring-2 ring-cream-deep transition hover:ring-leaf focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
             >
                 <UserAvatar
@@ -55,7 +55,7 @@ export default function UserMenu({ name, avatarUrl }: Readonly<UserMenuProps>) {
                 <div className="absolute right-0 top-[calc(100%+10px)] z-40 w-52 overflow-hidden rounded-2xl border border-cream-deep bg-cream shadow-lg">
                     <div className="border-b border-cream-deep px-4 py-3">
                         <div className="text-label-micro font-semibold text-ink-3">
-                            Masuk sebagai
+                            Signed in as
                         </div>
                         <div className="mt-0.5 truncate font-sans text-sm font-medium text-ink">
                             {name}
@@ -73,7 +73,7 @@ export default function UserMenu({ name, avatarUrl }: Readonly<UserMenuProps>) {
                             aria-hidden
                             className="text-ink-3"
                         />
-                        Pengaturan
+                        Settings
                     </Link>
                     <button
                         type="button"
@@ -87,7 +87,7 @@ export default function UserMenu({ name, avatarUrl }: Readonly<UserMenuProps>) {
                             aria-hidden
                             className="text-ink-3"
                         />
-                        Keluar
+                        Log out
                     </button>
                 </div>
             )}

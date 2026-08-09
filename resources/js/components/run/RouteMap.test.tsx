@@ -43,37 +43,37 @@ describe('RouteMap', () => {
     it('gives the map a generic accessible name when no distance is provided', () => {
         render(<RouteMap polyline="good" />);
         expect(
-            screen.getByRole('img', { name: 'Peta rute lari' }),
+            screen.getByRole('img', { name: 'Run route map' }),
         ).toBeInTheDocument();
     });
 
     it('threads the distance into the accessible name when provided', () => {
         render(<RouteMap polyline="good" distanceKm="10.42" />);
         expect(
-            screen.getByRole('img', { name: 'Peta rute lari, 10.42 km' }),
+            screen.getByRole('img', { name: 'Run route map, 10.42 km' }),
         ).toBeInTheDocument();
     });
 
     it('falls back to a placeholder when the polyline decodes to <2 points', () => {
         render(<RouteMap polyline="one" />);
         expect(screen.queryByTestId('polyline')).not.toBeInTheDocument();
-        expect(screen.getByText(/Rute tidak tersedia/i)).toBeInTheDocument();
+        expect(screen.getByText(/Route not available/i)).toBeInTheDocument();
     });
 
     it('falls back to a placeholder when the polyline decodes to 0 points', () => {
         render(<RouteMap polyline="empty" />);
-        expect(screen.getByText(/Rute tidak tersedia/i)).toBeInTheDocument();
+        expect(screen.getByText(/Route not available/i)).toBeInTheDocument();
     });
 
     it('gates interaction behind a tap-to-activate overlay, then removes it once tapped', async () => {
         render(<RouteMap polyline="good" />);
-        const overlay = screen.getByRole('button', { name: /Aktifkan peta/i });
+        const overlay = screen.getByRole('button', { name: /Activate map/i });
         expect(overlay).toBeInTheDocument();
 
         await userEvent.setup().click(overlay);
 
         expect(
-            screen.queryByRole('button', { name: /Aktifkan peta/i }),
+            screen.queryByRole('button', { name: /Activate map/i }),
         ).not.toBeInTheDocument();
     });
 });

@@ -18,7 +18,7 @@ describe('BudgetGauge', () => {
     it('renders spend against the ceiling with a list-price caveat', () => {
         render(<BudgetGauge budget={budget()} />);
 
-        expect(screen.getByText('Anggaran Hari Ini')).toBeInTheDocument();
+        expect(screen.getByText("Today's Budget")).toBeInTheDocument();
         expect(screen.getByText('$0,02')).toBeInTheDocument();
         expect(screen.getByText(/list price/i)).toBeInTheDocument();
     });
@@ -27,7 +27,7 @@ describe('BudgetGauge', () => {
         render(<BudgetGauge budget={budget()} />);
 
         const gauge = screen.getByRole('progressbar', {
-            name: /anggaran hari ini/i,
+            name: /today's budget/i,
         });
         expect(gauge.getAttribute('aria-valuenow')).toBe('20');
     });
@@ -35,24 +35,22 @@ describe('BudgetGauge', () => {
     it('shows a no-ceiling state instead of a gauge when dailyCeiling is null', () => {
         render(<BudgetGauge budget={budget({ dailyCeiling: null })} />);
 
-        expect(screen.getByText(/tanpa batas/i)).toBeInTheDocument();
-        expect(
-            screen.getByText('Tidak ada batas harian yang disetel.'),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/no limit/i)).toBeInTheDocument();
+        expect(screen.getByText('No daily limit set.')).toBeInTheDocument();
         expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     });
 
     it('treats a zero ceiling as no ceiling rather than dividing by it', () => {
         render(<BudgetGauge budget={budget({ dailyCeiling: 0 })} />);
 
-        expect(screen.getByText(/tanpa batas/i)).toBeInTheDocument();
+        expect(screen.getByText(/no limit/i)).toBeInTheDocument();
     });
 
     it('names the overshoot amount once spend passes the ceiling', () => {
         render(<BudgetGauge budget={budget({ todayCost: 0.15 })} />);
 
         expect(
-            screen.getByText('Melewati batas harian sebesar $0,05.'),
+            screen.getByText('Over the daily limit by $0,05.'),
         ).toBeInTheDocument();
     });
 

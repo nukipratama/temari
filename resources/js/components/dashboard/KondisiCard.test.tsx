@@ -34,7 +34,7 @@ const snapshot: WeeklySnapshot = {
 describe('KondisiCard', () => {
     it('renders all four metric rows with formatted values', () => {
         render(<KondisiCard load={load} snapshot={snapshot} />);
-        ['Fondasi', 'Kelelahan', 'Beban', 'Variasi'].forEach((label) => {
+        ['Fitness', 'Fatigue', 'Strain', 'Monotony'].forEach((label) => {
             expect(screen.getByText(label)).toBeInTheDocument();
         });
         expect(screen.getByText('42.0')).toBeInTheDocument(); // ctl toFixed(1)
@@ -43,24 +43,24 @@ describe('KondisiCard', () => {
         expect(screen.getByText('1.20')).toBeInTheDocument(); // monotony toFixed(2)
     });
 
-    it('shows the "7 hari" subtitle and a technical-detail link', () => {
+    it('shows the "7 days" subtitle and a technical-detail link', () => {
         render(<KondisiCard load={load} snapshot={snapshot} />);
-        expect(screen.getByText(/7 hari/)).toBeInTheDocument();
+        expect(screen.getByText(/7 days/)).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /Detail teknis/ }),
+            screen.getByRole('link', { name: /Technical detail/ }),
         ).toHaveAttribute('href', '/aktivitas');
     });
 
-    it('falls back to em-dash values and "belum cukup data" when load and snapshot are null', () => {
+    it('falls back to em-dash values and "not enough data yet" when load and snapshot are null', () => {
         render(<KondisiCard load={null} snapshot={null} />);
-        expect(screen.getByText(/belum cukup data/)).toBeInTheDocument();
+        expect(screen.getByText(/not enough data yet/)).toBeInTheDocument();
         expect(screen.getAllByText('—').length).toBe(4);
     });
 
     // Regression: monotony 3.15 (the demo account's actual reading) used to
-    // render Variasi in the same calm leaf/green as a safe 1.2 reading — the
-    // riskiest state on the card looked the calmest. Beban tracks the same axis.
-    it('colors Variasi and Beban as alert when monotony and strain are both high', () => {
+    // render Monotony in the same calm leaf/green as a safe 1.2 reading — the
+    // riskiest state on the card looked the calmest. Strain tracks the same axis.
+    it('colors Monotony and Strain as alert when monotony and strain are both high', () => {
         const riskyLoad: TrainingLoad = {
             ...load,
             monotony: 3.15,

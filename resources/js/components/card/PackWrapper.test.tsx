@@ -8,8 +8,8 @@ describe('PackWrapper', () => {
     it('renders the sealed pack with the pull affordance and hint', () => {
         render(<PackWrapper rarity="epic" onOpen={vi.fn()} />);
         expect(screen.getByTestId('pack-wrapper')).toBeInTheDocument();
-        expect(screen.getByText('Tarik')).toBeInTheDocument();
-        expect(screen.getByText(/Tarik atau ketuk/)).toBeInTheDocument();
+        expect(screen.getByText('Pull')).toBeInTheDocument();
+        expect(screen.getByText(/Drag or tap/)).toBeInTheDocument();
     });
 
     it('hides the card behind a tiled card-back motif', () => {

@@ -45,7 +45,7 @@ export default function SplitsTable({
                 <SectionLabel>Splits per km</SectionLabel>
                 {fastest != null && fastestKm != null && (
                     <p className="font-display text-sm italic text-ink-2">
-                        Paling kenceng di km {fastestKm},{' '}
+                        Fastest at km {fastestKm},{' '}
                         <span className="font-semibold text-horizon-deep">
                             {formatPace(fastest)}/km
                         </span>
@@ -57,8 +57,8 @@ export default function SplitsTable({
                 of folding away. The binary bar color needs a one-line key once the
                 card affordance is gone. */}
             <p className="mb-3 text-label-micro text-ink-3">
-                Batang oranye = km tercepat, gelap = lainnya
-                {partial ? ', putus-putus = sisa' : ''}.
+                Orange bar = fastest km, dark = the rest
+                {partial ? ', dashed = remainder' : ''}.
             </p>
 
             {/* The -mx-3/px-3 bleed lives on this wrapper, not per row: nested inside

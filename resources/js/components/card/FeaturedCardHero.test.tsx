@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import FeaturedCardHero from './FeaturedCardHero';
 
 const baseProps = {
-    eyebrow: '★ Kartu minggu ini',
-    name: 'Langkah Mantap',
+    eyebrow: "★ This week's card",
+    name: 'Steady Steps',
     rarity: 'rare' as const,
     km: '10.01',
     ctaHref: '/aktivitas/7',
@@ -15,8 +15,8 @@ const baseProps = {
 describe('FeaturedCardHero', () => {
     it('renders the name and a CTA link to ctaHref with the default label', () => {
         render(<FeaturedCardHero {...baseProps} />);
-        expect(screen.getByText('Langkah Mantap')).toBeInTheDocument();
-        const cta = screen.getByRole('link', { name: /lihat aktivitas/i });
+        expect(screen.getByText('Steady Steps')).toBeInTheDocument();
+        const cta = screen.getByRole('link', { name: /view activity/i });
         expect(cta).toHaveAttribute('href', '/aktivitas/7');
         // The CTA navigates, so it must be an anchor, not a button nested in one.
         expect(cta.tagName).toBe('A');
@@ -26,11 +26,11 @@ describe('FeaturedCardHero', () => {
         render(
             <FeaturedCardHero
                 {...baseProps}
-                ctaLabel="Lihat detail lari"
+                ctaLabel="View run detail"
                 ctaHref="/aktivitas/3"
             />,
         );
-        const cta = screen.getByRole('link', { name: /lihat detail lari/i });
+        const cta = screen.getByRole('link', { name: /view run detail/i });
         expect(cta).toHaveAttribute('href', '/aktivitas/3');
     });
 
@@ -58,7 +58,7 @@ describe('FeaturedCardHero', () => {
         expect(screen.getByText('150 bpm')).toBeInTheDocument();
         expect(screen.getByText('CADENCE')).toBeInTheDocument();
         expect(screen.getByText('178 spm')).toBeInTheDocument();
-        expect(screen.getByText('DURASI')).toBeInTheDocument();
+        expect(screen.getByText('DURATION')).toBeInTheDocument();
         expect(screen.getByText('42:11')).toBeInTheDocument();
         expect(screen.getByText('BEST')).toBeInTheDocument();
         expect(screen.getByText('5:02/km')).toBeInTheDocument();
