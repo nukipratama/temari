@@ -26,10 +26,10 @@ final class EffortContextTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Seberapa berat sesi ini dibanding niatnya dan dibanding kebiasaan 28 hari terakhir: '
-            .'session_intent (workout/race/easy/unknown, tagged atau inferred), relative_effort band, '
-            .'dan decoupling. Kalau decoupling gak muncul, lari ini terlalu pendek buat mengukurnya, '
-            .'jadi jangan dikarang.';
+        return 'How hard this session was relative to its intent and to the last 28 days\' habits: '
+            .'session_intent (workout/race/easy/unknown, tagged or inferred), relative_effort band, '
+            ."and decoupling. If decoupling is missing, this run was too short to measure it, so don't "
+            .'make it up.';
     }
 
     /** @return array<string, mixed> */

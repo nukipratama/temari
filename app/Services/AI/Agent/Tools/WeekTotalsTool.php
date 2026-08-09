@@ -24,9 +24,10 @@ final class WeekTotalsTool extends NoArgumentTool
 
     public function description(): string
     {
-        return 'Minggu yang lagi kamu ceritakan: jumlah lari, jarak, pace rata-rata, TRIMP, '
-            .'ctl_42d/atl_7d/form/form_status, monotony, strain, decoupling rata-rata, plus angka '
-            .'minggu sebelumnya buat dibandingkan. Kalau prev_* gak muncul, belum ada minggu pembanding.';
+        return "The week you're telling: number of runs, distance, average pace, TRIMP, "
+            .'ctl_42d/atl_7d/form/form_status, monotony, strain, average decoupling, plus the '
+            ."previous week's numbers to compare against. If prev_* is missing, there's no "
+            .'comparison week yet.';
     }
 
     /** @return array<string, mixed> */

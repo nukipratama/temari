@@ -26,8 +26,8 @@ final class FeaturedCardTool extends NoArgumentTool
 
     public function description(): string
     {
-        return 'Kartu pilihan minggu ini: nama special move-nya, rarity_label, jarak larinya, dan '
-            .'sampai tiga badge teratas. Mulai dari sini.';
+        return "This week's featured card: its special move name, rarity_label, run distance, and "
+            .'up to three top badges. Start here.';
     }
 
     /** @return array<string, mixed> */

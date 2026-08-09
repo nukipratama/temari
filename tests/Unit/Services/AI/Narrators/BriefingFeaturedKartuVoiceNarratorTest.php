@@ -77,7 +77,7 @@ it('returns a fallback line and skips the LLM when there is no featured card', f
     );
 
     expect($narrator->generate($user, null))
-        ->toBe('Belum ada kartu khusus buat kamu minggu ini. Terus lari, aku pantau!');
+        ->toBe("No special card for you this week yet. Keep running, I'm watching!");
     $client->assertNothingSent();
 });
 

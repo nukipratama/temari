@@ -384,7 +384,7 @@ it('reads the zone split in both percent and minutes, with the session TRIMP', f
         'zone_pct' => ['Z2' => 70, 'Z3' => 30],
         'time_in_zone_min' => ['Z2' => 32, 'Z3' => 14],
         'trimp' => 92.4,
-        'intensity_label' => 'sedang',
+        'intensity_label' => 'moderate',
     ]);
 });
 
@@ -400,22 +400,22 @@ it('reads empty zones for a run with no heart rate', function (): void {
         ->and($reading['intensity_label'])->toBeNull();
 });
 
-it('reads intensity_label ringan for a Z1/Z2-dominant session regardless of raw HR', function (): void {
+it('reads intensity_label light for a Z1/Z2-dominant session regardless of raw HR', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update([
         'stream_summary' => ['time_in_zone_pct' => ['Z1' => 5, 'Z2' => 95]],
     ]);
 
-    expect(new HrZonesTool($a, $d->fresh())->handle([])['intensity_label'])->toBe('ringan');
+    expect(new HrZonesTool($a, $d->fresh())->handle([])['intensity_label'])->toBe('light');
 });
 
-it('reads intensity_label berat when Z3-Z5 together cover at least half the session', function (): void {
+it('reads intensity_label heavy when Z3-Z5 together cover at least half the session', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update([
         'stream_summary' => ['time_in_zone_pct' => ['Z2' => 49, 'Z3' => 30, 'Z4' => 21]],
     ]);
 
-    expect(new HrZonesTool($a, $d->fresh())->handle([])['intensity_label'])->toBe('berat');
+    expect(new HrZonesTool($a, $d->fresh())->handle([])['intensity_label'])->toBe('heavy');
 });
 
 // ── TerrainTool ───────────────────────────────────────────────────────

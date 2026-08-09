@@ -71,24 +71,24 @@ final readonly class RuleBasedNarrationFiller
     private function briefingMascotVoice(int $seed): string
     {
         return $this->select([
-            "Tempo ringan, 35-45 menit.\n\nRitme kamu kebaca stabil beberapa minggu ini dan belum ada sesi quality sejak minggu lalu, jadi hari ini aku rasa muat satu tempo. Warmup 10 menit santai, tempo 15-20 menit sedikit lebih cepat dari pace rata-ratamu, terus cooldown, cadence di 175+.\n\nYang perlu diperhatikan: kalau HR cepat naik padahal pelan, mundur ke run-walk 15-25 menit atau berhenti di cooldown. Cuaca terasa panas atau badan masih lemes, rest juga tidak rugi.",
-            "Easy run, 30-40 menit.\n\nDua sesi terakhirmu kebaca berat dan recovery-nya belum panjang, makanya aku taruh easy hari ini. Jaga di sekitar pace normalmu, napas masih bisa buat ngobrol, cadence di 170+ biar langkah gak berat.\n\nYang perlu diperhatikan: kalau kaki berat atau HR naik aneh di awal, itu tanda recovery belum kelar. Mundur ke jalan cepat 20 menit gak apa-apa.",
-            "Long run santai, 8-12 km.\n\nMinggu ini km kamu naik tipis dan konsisten, aku pikir enak ditutup satu sesi panjang. Pace conversational, jangan tergoda ngejar waktu, bawa air kalau cuaca panas.\n\nYang perlu diperhatikan: jarak panjang butuh pace stabil. Kalau km 5 udah kerasa dipaksa, potong jadi 6-8 km. Lebih baik pendek tapi rapi daripada panjang tapi berantakan.",
-            "Rest dulu hari ini.\n\nBeberapa hari terakhir kamu jalan terus tanpa jeda dan aku liat load-nya numpuk, jadi hari ini aku gak nyaranin lari. Mobility ringan atau jalan santai 20 menit udah cukup buat bikin kaki enteng lagi.\n\nYang perlu diperhatikan: kalau besok badan masih berat, tambah satu hari lagi. Rest itu bagian dari training, bukan bolos.",
-            "Easy run, 25-30 menit.\n\nKamu baru balik setelah beberapa hari absen, jadi aku mau mulai dari yang pendek dulu biar ritmenya kebentuk lagi. Pelan aja, effort by feel, gak usah liat pace sama sekali.\n\nYang perlu diperhatikan: godaan terbesar habis absen itu langsung ngebut. Kalau napas mulai berat sebelum menit 15, kurangi tempo atau selingi jalan.",
-            "Base run, 5-7 km.\n\nMinggu ini kamu udah konsisten dan kondisimu kebaca aman, jadi hari ini cukup jaga ritme yang udah jalan. Pace di sekitar rata-ratamu, satu blok stabil tanpa perlu ganti gigi.\n\nYang perlu diperhatikan: sesi begini gampang kepancing jadi tempo di tengah jalan. Kalau kepengin naik, simpan buat sesi berikutnya.",
+            "Easy tempo, 35-45 minutes.\n\nYour rhythm's read steady these past few weeks and there hasn't been a quality session since last week, so today I think there's room for a tempo. 10-minute easy warmup, 15-20 minute tempo a bit faster than your average pace, then cooldown, cadence at 175+.\n\nWhat to watch: if HR climbs fast even at an easy pace, back off to a 15-25 minute run-walk or stop at the cooldown. If the weather's hot or you're still feeling wiped, resting isn't a loss either.",
+            "Easy run, 30-40 minutes.\n\nYour last two sessions read heavy and recovery hasn't been long, that's why I'm putting easy on today. Hold around your normal pace, breathing should still allow talking, cadence at 170+ so your steps stay light.\n\nWhat to watch: if your legs feel heavy or HR climbs oddly early on, that's a sign recovery isn't done yet. Backing off to a brisk 20-minute walk is fine.",
+            "Easy long run, 8-12 km.\n\nYour km's been climbing slightly and consistently this week, I think it'd feel good to close it out with one long session. Conversational pace, don't get tempted to chase a time, bring water if it's hot.\n\nWhat to watch: a long distance needs a steady pace. If km 5 already feels forced, cut it to 6-8 km. Better short and clean than long and messy.",
+            "Rest today.\n\nYou've been going non-stop the past few days and I can see the load piling up, so I'm not suggesting a run today. Light mobility or a relaxed 20-minute walk is enough to make your legs feel light again.\n\nWhat to watch: if you're still feeling heavy tomorrow, add one more day. Rest is part of training, not skipping it.",
+            "Easy run, 25-30 minutes.\n\nYou're just back after a few days off, so I want to start short to get the rhythm going again. Keep it slow, effort by feel, don't even look at the pace.\n\nWhat to watch: the biggest temptation after time off is to go straight back to fast. If your breathing gets heavy before minute 15, ease off or add some walking.",
+            "Base run, 5-7 km.\n\nYou've been consistent this week and your condition reads safe, so today's about holding the rhythm that's already working. Pace around your average, one steady block with no need to shift gears.\n\nWhat to watch: a session like this is easy to accidentally turn into a tempo halfway through. If you feel like pushing, save it for next time.",
         ], $seed);
     }
 
     private function briefingFeaturedKartuVoice(int $seed): string
     {
         return $this->select([
-            'Kartu ini nyimpen cerita lari yang berkesan. Buka lagi pas kamu butuh dorongan.',
-            'Ada satu kartu yang menonjol minggu ini. Simpan sebagai pengingat kamu bisa.',
-            'Kartu ini bukti sesi yang pantas dikenang. Pajang aja, gak rugi.',
-            'Satu kartu ini pantas dilihat lagi. Kadang kita lupa seberapa jauh udah melangkah.',
-            'Kartu ini rekaman sesi yang gak biasa. Simpan buat hari yang butuh pengingat.',
-            'Ada kartu yang menonjol dari sisa minggu ini. Pajang, biar keinget kamu bisa.',
+            "This card holds a run worth remembering. Open it again whenever you need a push.",
+            "One card stood out this week. Keep it as a reminder that you've got this.",
+            'This card is proof of a session worth remembering. No harm in showing it off.',
+            "This one's worth a second look. Sometimes it's easy to forget how far you've come.",
+            'This card is a record of a session that was out of the ordinary. Save it for a day you need the reminder.',
+            "One card stood out from the rest of the week. Show it off, so it sticks that you've got this.",
         ], $seed);
     }
 
@@ -101,7 +101,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $detail = $this->detailFor($activityId);
         if ($detail === null) {
-            return 'Selesai juga. Konsisten kayak gini yang aku suka.';
+            return 'Done. This is the kind of consistency I like to see.';
         }
         $km = DistanceFormatter::kmString($detail->distance) ?? '?';
 
@@ -111,18 +111,18 @@ final readonly class RuleBasedNarrationFiller
         $baseSeed = (int) crc32('post_run_speech_'.$activityId);
 
         $base = $this->select([
-            "Lari {$km} km kelar. Pace-nya keangkut sampai akhir, bagus.",
-            "Selesai {$km} km. Ritme kamu rapi, aku suka.",
-            "{$km} km masuk. Konsisten kayak gini yang bikin progres.",
-            "Kelar {$km} km. Napasnya keatur, larinya kebaca enak.",
-            "Dapat {$km} km hari ini. Gak buru-buru tapi tetap kelar, itu yang penting.",
-            "{$km} km lagi masuk catatan. Pelan tapi rutin, ini yang bikin beda.",
-            "Beres {$km} km. Effort-nya kebaca pas, gak dipaksa gak juga santai banget.",
-            "{$km} km tercatat. Lari kayak gini yang numpuk jadi progres.",
-            "Tuntas {$km} km hari ini. Simpel, tapi kelar itu yang utama.",
-            "Sesi {$km} km beres. Datang, lari, pulang, itu udah cukup.",
-            "{$km} km, selesai dengan rapi. Gak ada yang perlu dipoles.",
-            "Catatan hari ini {$km} km. Kecil-kecil gini yang bikin kebiasaan nempel.",
+            "That's {$km} km done. Pace held up all the way to the end, nice.",
+            "Finished {$km} km. Your rhythm was clean, I like it.",
+            "{$km} km in the books. This kind of consistency is what builds progress.",
+            "{$km} km done. Breathing stayed controlled, the run read easy.",
+            "Got {$km} km today. No rush, but it got done, that's what matters.",
+            "Another {$km} km in the log. Slow but regular, that's what makes the difference.",
+            "{$km} km wrapped up. The effort read just right, not forced, not too easy either.",
+            "{$km} km logged. Runs like this are what add up to progress.",
+            "{$km} km wrapped today. Simple, but getting it done is what counts.",
+            "{$km} km session done. Show up, run, go home, that's enough.",
+            "{$km} km, wrapped up clean. Nothing to fix here.",
+            "Today's log: {$km} km. It's the small ones like this that make the habit stick.",
         ], $baseSeed);
 
         return $base . $this->postRunCoda($detail, $activityId);
@@ -137,12 +137,12 @@ final readonly class RuleBasedNarrationFiller
     {
         $codas = [];
         if (StreamSummary::fromArray($detail->stream_summary)->negativeSplit() === true) {
-            $codas[] = ' Paruh kedua malah lebih kencang, mantap.';
+            $codas[] = ' Second half actually got faster, nice.';
         }
         if ($detail->weather_rain_detected === true) {
-            $codas[] = ' Hujan-hujan tetap jalan, salut.';
+            $codas[] = ' Ran straight through the rain, respect.';
         } elseif ($detail->weather_temp_c !== null && $detail->weather_temp_c >= 31) {
-            $codas[] = " Padahal {$detail->weather_temp_c} derajat, gerah banget.";
+            $codas[] = " And that was in {$detail->weather_temp_c} degrees, brutal heat.";
         }
 
         return $codas === [] ? '' : $codas[abs($seed) % count($codas)];
@@ -153,7 +153,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $detail = $this->detailFor($activityId);
         if ($detail === null) {
-            return 'Detail teknis-nya belum kebaca lengkap.';
+            return "The technical detail isn't fully readable yet.";
         }
 
         return $this->runInsights->technical($detail);
@@ -163,7 +163,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $detail = $this->detailFor($activityId);
         if ($detail === null) {
-            return 'Splits-nya belum kebaca lengkap.';
+            return "The splits aren't fully readable yet.";
         }
 
         return $this->runInsights->splits($detail);
@@ -173,7 +173,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $detail = $this->detailFor($activityId);
         if ($detail === null) {
-            return 'Distribusi zone-nya belum kebaca lengkap.';
+            return "The zone breakdown isn't fully readable yet.";
         }
 
         return $this->runInsights->zones($detail);
@@ -184,46 +184,46 @@ final readonly class RuleBasedNarrationFiller
         $snapshot = WeeklySnapshot::query()->find($snapshotId);
         if ($snapshot === null || $snapshot->runs === null || $snapshot->runs < 1) {
             return $this->select([
-                'Minggu ini ritme kamu cukup teratur. Volume lari masuk akal, recovery juga keurus.',
-                'Volume minggu ini oke, gak kebanyakan tapi gak juga kosong. Balance yang sehat.',
-                'Satu minggu lagi kelar. Jarak dan frekuensi lari kamu masuk akal, terus pelan-pelan aja.',
-                'Minggu yang konsisten tanpa drama. Kadang kayak gini yang dibutuhin, stabil naik.',
-                'Minggu ini agak sepi lari, gak apa-apa. Kadang tubuh minta jeda dulu.',
-                'Belum banyak gerak minggu ini. Pelan-pelan balik lagi, gak usah langsung banyak.',
-                'Minggu yang lebih banyak istirahat. Recovery juga bagian dari latihan kok.',
+                "Your rhythm was pretty steady this week. Volume was reasonable, recovery got taken care of too.",
+                "This week's volume was fine, not too much but not empty either. A healthy balance.",
+                'Another week wrapped. Your distance and frequency made sense, just keep going steady.',
+                'A consistent week, no drama. Sometimes this is exactly what\'s needed, a steady climb.',
+                "This week was a bit quiet on running, that's fine. Sometimes the body just needs a pause.",
+                'Not much movement this week. Ease back in slowly, no need to jump straight back to a lot.',
+                "A week that leaned more toward rest. Recovery's part of training too.",
             ], $snapshotId);
         }
 
         $km = DecimalFormatter::decimal((float) $snapshot->distance_km);
         $runs = $snapshot->runs;
         $closer = match ($snapshot->form_status) {
-            'fresh' => 'Badan lagi seger, ada ruang buat naik pelan-pelan.',
-            'optimal' => 'Kondisi pas banget, pertahanin ritme ini.',
-            'fatigued' => 'Mulai kerasa capek, sisipin recovery minggu depan.',
-            'overreaching' => 'Bebannya udah tinggi, jangan lupa istirahat cukup.',
-            default => 'Stabil terus pelan-pelan aja.',
+            'fresh' => "Feeling fresh, there's room to build up gradually.",
+            'optimal' => 'Right in the sweet spot, keep this rhythm going.',
+            'fatigued' => 'Starting to feel the fatigue, work in some recovery next week.',
+            'overreaching' => "Load's gotten high, don't forget to rest enough.",
+            default => 'Keep it steady, nice and slow.',
         };
 
         return $this->select([
-            "{$km} km dalam {$runs} lari minggu ini. {$closer}",
-            "Minggu ini kekumpul {$km} km dari {$runs} sesi. {$closer}",
-            "{$runs} lari, total {$km} km. {$closer}",
-            "Minggu ini {$km} km dari {$runs} kali lari. {$closer}",
-            "Kekumpul {$km} km, {$runs} sesi. {$closer}",
-            "{$runs} sesi minggu ini, total {$km} km. {$closer}",
+            "{$km} km across {$runs} runs this week. {$closer}",
+            "This week added up to {$km} km from {$runs} sessions. {$closer}",
+            "{$runs} runs, {$km} km total. {$closer}",
+            "This week: {$km} km across {$runs} runs. {$closer}",
+            "{$km} km logged, {$runs} sessions. {$closer}",
+            "{$runs} sessions this week, {$km} km total. {$closer}",
         ], $snapshotId);
     }
 
     private function prContext(int $seed): string
     {
         return $this->select([
-            'PR-nya hasil dari konsistensi minggu-minggu sebelumnya, bukan kebetulan.',
-            'Ini bukan keberuntungan, ini hasil kerja keras yang kekumpul pelan-pelan.',
-            'PR baru! Setiap detik yang dipotong itu bukti latihan yang gak putus.',
-            'Rekor baru kebuka. Kamu udah bayar mahal pelan-pelan, ini hasilnya.',
-            'Rekornya kebuka bukan tiba-tiba. Ini akumulasi sesi yang kamu jalanin diam-diam.',
-            'PR baru masuk. Angkanya cuma penanda, kerjanya udah kamu lakuin dari kemarin.',
-            'Waktu yang dipotong ini kecil di layar, tapi gede di usaha. Selamat.',
+            "This PR is the result of consistency over the past few weeks, not luck.",
+            "This isn't luck, it's hard work that added up slowly.",
+            'New PR! Every second shaved off is proof of training that never stopped.',
+            "A new record's unlocked. You've been paying the price slowly, this is the payoff.",
+            "This record didn't come out of nowhere. It's the sum of sessions you put in quietly.",
+            'New PR logged. The number\'s just the marker, the work was already done.',
+            "The time shaved off looks small on screen, but it's huge in effort. Congrats.",
         ], $seed);
     }
 
@@ -238,7 +238,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $card = RunCard::query()->with('activity.detail')->find($cardId);
         if ($card === null) {
-            return 'Kartu ini lahir dari sesi yang tenang tapi solid.';
+            return 'This card was born from a quiet but solid session.';
         }
 
         $move = $card->special_move;
@@ -271,39 +271,39 @@ final readonly class RuleBasedNarrationFiller
      */
     private const array FLAVOR_POOLS = [
         'common' => [
-            '"{move}" mungkin biasa, tapi tetap kamu jalanin sampai habis.',
-            'Lari {km} km yang kalem, dicatat karena konsisten itu mahal.',
-            'Gak ada drama di "{move}", cuma ritme yang rapi.',
-            'Sesi "{move}" yang kalem, tapi kamu selesaiin utuh.',
-            'Lari {km} km biasa tapi rapi, itu udah cukup.',
+            '"{move}" might be ordinary, but you still saw it through to the end.',
+            'A calm {km} km run, logged because consistency is worth something.',
+            'No drama in "{move}", just a clean rhythm.',
+            'A quiet "{move}" session, but you finished it whole.',
+            "An ordinary {km} km run, but a clean one, that's enough.",
         ],
         'uncommon' => [
-            '"{move}" terasa pas, ada rasa yang nyangkut di sesi ini.',
-            'Lari {km} km yang berkesan, bukan sekadar angka.',
-            'Ada momen di "{move}" yang bikin kamu mau inget lagi.',
-            '"{move}" nyimpen satu momen yang bikin nyangkut.',
-            'Lari {km} km yang lebih dari sekadar catatan.',
+            '"{move}" felt right, there\'s something about this session that sticks.',
+            'A memorable {km} km run, not just a number.',
+            'There\'s a moment in "{move}" worth remembering again.',
+            '"{move}" holds one moment that sticks with you.',
+            "A {km} km run that's more than just a log entry.",
         ],
         'rare' => [
-            '"{move}" jarang ketemu, simpan baik-baik.',
-            'Lari {km} km langka yang gak datang tiap minggu.',
-            'Sesuatu di "{move}" bikin sesi ini beda dari biasanya.',
-            '"{move}" gak muncul tiap minggu, catat baik-baik.',
-            'Lari {km} km yang lumayan langka buat kamu.',
+            '"{move}" doesn\'t come around often, hang onto it.',
+            "A rare {km} km run that doesn't happen every week.",
+            'Something about "{move}" makes this session different from the usual.',
+            '"{move}" doesn\'t show up every week, make sure it\'s logged.',
+            "A {km} km run that's pretty rare for you.",
         ],
         'epic' => [
-            '"{move}" luar biasa, kerja kerasnya kebaca jelas.',
-            'Lari {km} km yang patut dipajang, ini bukan sesi sembarangan.',
-            '"{move}" level beda, kamu lagi naik kelas.',
-            '"{move}" nunjukin kamu lagi naik level.',
-            'Lari {km} km yang gak main-main, pantas dipajang.',
+            '"{move}" is exceptional, the hard work reads clearly.',
+            "A {km} km run worth showing off, this wasn't just any session.",
+            '"{move}" is on another level, you\'re leveling up.',
+            '"{move}" shows you\'re stepping up a level.',
+            'A {km} km run that means business, worth showing off.',
         ],
         'legendary' => [
-            '"{move}" legendaris, sesi yang bakal kamu ceritain lama.',
-            'Lari {km} km yang masuk buku sejarah lari kamu.',
-            '"{move}" sekali seumur progres, rayain.',
-            '"{move}" bakal jadi cerita yang kamu ulang-ulang.',
-            'Lari {km} km yang masuk sejarah lari kamu.',
+            '"{move}" is legendary, a session you\'ll be talking about for a while.',
+            'A {km} km run that goes into your running history books.',
+            '"{move}" is a once-in-a-while kind of progress, celebrate it.',
+            '"{move}" is going to be a story you keep retelling.',
+            'A {km} km run that goes into your running history.',
         ],
     ];
 
@@ -320,25 +320,25 @@ final readonly class RuleBasedNarrationFiller
         }
 
         $clauses = [
-            Badge::NegativeSplit->value => 'Paruh kedua malah makin nyala.',
-            Badge::HariPanas->value => 'Padahal hari lagi gerah-gerahnya.',
-            Badge::PejuangHujan->value => 'Hujan pun gak bikin kamu mundur.',
-            Badge::AnakPagi->value => 'Berangkat pas dunia masih sepi.',
-            Badge::LongSlowDistance->value => 'Jarak panjang, sabar dijaga.',
-            Badge::TahanDiri->value => 'Pace ditahan rapi dari awal.',
-            Badge::AnakMalam->value => 'Malam makin larut, kamu makin jalan.',
-            Badge::Pendaki->value => 'Elevasi gede, tenaga ekstra.',
-            Badge::PertamaKali->value => 'Langkah pertama yang gak bakal dilupain.',
-            Badge::Rajin->value => 'Tiga hari berturut, disiplin abis.',
-            Badge::Kilat->value => 'Pace di bawah 5 per km, kencang.',
-            Badge::Jauh->value => 'Half marathon ke atas, jarak serius.',
-            Badge::Z2Master->value => 'Mayoritas waktu di Z2, sabar banget.',
-            Badge::AnakDingin->value => 'Pagi buta tapi semangat udah nyala.',
-            Badge::Keras->value => 'HR tinggi dari awal sampai akhir.',
-            Badge::Santai->value => 'Beneran easy, HR dijaga rendah.',
-            Badge::Berturut->value => 'Seminggu penuh tanpa skip, keren.',
-            Badge::HariSpesial->value => 'Lari pas hari libur nasional.',
-            Badge::LawanAngin->value => 'Angin kencang gak bikin kamu mundur.',
+            Badge::NegativeSplit->value => 'Second half actually picked up even more.',
+            Badge::HariPanas->value => 'And that was in the middle of a scorcher.',
+            Badge::PejuangHujan->value => "Not even the rain could stop you.",
+            Badge::AnakPagi->value => 'Headed out while the world was still quiet.',
+            Badge::LongSlowDistance->value => 'Long distance, patience held.',
+            Badge::TahanDiri->value => 'Pace held back cleanly from the start.',
+            Badge::AnakMalam->value => 'The later it got, the more you kept going.',
+            Badge::Pendaki->value => 'Big elevation, extra effort.',
+            Badge::PertamaKali->value => "A first step you won't forget.",
+            Badge::Rajin->value => 'Three days straight, seriously disciplined.',
+            Badge::Kilat->value => 'Sub-5 pace per km, fast.',
+            Badge::Jauh->value => 'Half marathon and up, serious distance.',
+            Badge::Z2Master->value => 'Mostly in Z2, seriously patient.',
+            Badge::AnakDingin->value => 'Dead of early morning, but the energy was already on.',
+            Badge::Keras->value => 'HR stayed high start to finish.',
+            Badge::Santai->value => 'Genuinely easy, HR kept low.',
+            Badge::Berturut->value => 'A full week with no skips, impressive.',
+            Badge::HariSpesial->value => 'Ran on a national holiday.',
+            Badge::LawanAngin->value => "Strong wind didn't slow you down.",
         ];
 
         // Highlight one of the card's badges, chosen by seed so multi-badge
@@ -362,26 +362,26 @@ final readonly class RuleBasedNarrationFiller
     private function akuProfileVoice(int $seed): string
     {
         return $this->select([
-            'Lari kamu lebih sering **adem** daripada digas, dan itu kelihatan di caranya numpuk: pelan, rutin, gak pernah lompat jauh. Tipe yang ngebangun base sabar. Terusin ritmenya, aku catat semuanya di sini.',
-            'Sebaran mood kamu condong ke **enteng** dan itu ngedukung angkanya: kamu balik lagi terus tanpa drama, minggu demi minggu. Konsistensi model gini yang bikin progres awet, jadi gak usah buru-buru naik.',
-            'Kamu tipe yang milih rutin daripada heboh, dan streak mingguan kamu ngebuktiin itu. Base dulu, kecepatan nyusul. Kalau nanti mau nyelipin satu sesi lebih naik, kamu udah punya fondasinya.',
-            'Belakangan **nyala** kamu lebih sering muncul dibanding beberapa bulan lalu yang lebih adem, dan rekor yang kekumpul ngikutin arah itu. Kamu lagi di fase berani. Jaga satu easy di antaranya biar gak kebablasan.',
-            'Mood lari kamu campur antara **nyala** dan **oleng**, dan jarak terjauhmu kebaca lahir dari hari-hari beraninya. Kamu suka push, itu bagus. Satu sesi santai di sela-sela bakal bikin yang berat kerasa lebih enteng.',
-            'Pola kamu kebaca disiplin: lebih sering **adem**, sesekali digas, dan total km kamu numpuk dari situ, bukan dari satu lari heroik. Cara ngebangun yang sehat. Lanjut aja pelan-pelan.',
-            'Kamu baru mulai dan mix-nya masih tipis, tapi kamu udah datang lagi berkali-kali. Buat aku itu udah cerita. Kita bangun pelan, biar bacaan personanya nanti beneran punya isi.',
+            "Your runs lean more **adem** than pushed, and it shows in how it adds up: slow, regular, never a big jump. The type who builds a base patiently. Keep the rhythm going, I'm tracking all of it here.",
+            "Your mood spread leans **enteng** and the numbers back it up: you keep coming back without any drama, week after week. This kind of consistency is what makes progress last, so no need to rush the ramp-up.",
+            "You're the type who picks routine over flash, and your weekly streak proves it. Base first, speed follows. Whenever you want to slip in a bigger session, you've already got the foundation for it.",
+            "Lately **nyala** shows up more often than the quieter months before, and the records you've picked up follow that same direction. You're in a bold phase right now. Keep one easy run in the mix so it doesn't run away from you.",
+            "Your running mood mixes **nyala** and **oleng**, and your longest distance reads like it was born on the bold days. You like to push, that's a good thing. One relaxed session in between will make the hard ones feel lighter.",
+            "Your pattern reads disciplined: mostly **adem**, occasionally pushed, and your total km builds up from that, not from one heroic run. A healthy way to build. Just keep going steady.",
+            "You're just getting started and the mix is still thin, but you've already come back again and again. To me, that's already a story. We'll build it slowly, so the persona reading actually has substance later.",
         ], $seed);
     }
 
     private function monthlyRecap(int $seed): string
     {
         return $this->select([
-            'Bulan ini ritme kamu jalan terus. Gak ngotot, gak juga ngilang. Konsisten yang aku suka.',
-            'Sebulan penuh lari yang teratur. Volume masuk akal, effort juga dijaga. Bulan yang solid.',
-            'Bulan yang tanpa skip berarti. Kamu datang, lari, pulang. Pola yang sehat.',
-            'Bulan ini kamu pilih konsistensi daripada intensitas. Dan itu pilihan yang bagus.',
-            'Sebulan ini kamu datang terus meski gak selalu ngebut. Kehadiran yang konsisten itu mahal.',
-            'Bulan yang rapi tanpa banyak drama. Volume kejaga, effort gak dipaksa. Solid.',
-            'Bulan ini lebih banyak sabar daripada ngoyo. Strategi yang bener buat jangka panjang.',
+            "Your rhythm kept going this month. Not forcing it, not disappearing either. The kind of consistent I like to see.",
+            'A full month of regular running. Volume made sense, effort stayed controlled too. A solid month.',
+            'A month with no meaningful skips. You showed up, ran, went home. A healthy pattern.',
+            "This month you chose consistency over intensity. And that's a good choice.",
+            "This month you kept showing up even when you weren't always fast. Consistent presence is worth a lot.",
+            "A clean month without much drama. Volume stayed on track, effort wasn't forced. Solid.",
+            'This month leaned more patient than pushing hard. The right strategy for the long run.',
         ], $seed);
     }
 }

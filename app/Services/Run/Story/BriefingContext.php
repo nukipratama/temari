@@ -36,11 +36,11 @@ final readonly class BriefingContext
         public bool $ranToday,
         public ?int $daysSinceLastRun,
         public ?string $formStatus,
-        /** `subuh` (4-5) · `pagi` (6-10) · `siang` (11-14) · `sore` (15-18) · `malam` (19-3) */
+        /** `early_morning` (4-5) · `morning` (6-10) · `midday` (11-14) · `evening` (15-18) · `night` (19-3) */
         public string $timeBucket,
         /** Weeks in a row with at least 1 run, ending at the current week. */
         public int $consecutiveWeeksActive,
-        /** CTL-slope trajectory over recent weeks: `naik` / `plateau` / `turun`. */
+        /** CTL-slope trajectory over recent weeks: `up` / `plateau` / `down`. */
         public string $fitnessTrend,
         /** Week-over-week volume change (%), null when there is no prior-week baseline. */
         public ?float $volumeRampPct,
@@ -144,8 +144,8 @@ final readonly class BriefingContext
 
     /**
      * Direction of the CTL (fitness) slope over the most recent weeks, from the
-     * snapshot rows already loaded. `naik` when the latest reading is clearly
-     * above the oldest in the window, `turun` when clearly below, else
+     * snapshot rows already loaded. `up` when the latest reading is clearly
+     * above the oldest in the window, `down` when clearly below, else
      * `plateau` (including too-few data points to judge a trend).
      *
      * @param  array<string, WeeklySnapshot>  $byDate
@@ -168,14 +168,14 @@ final readonly class BriefingContext
         $first = $series[0];
         $last = $series[count($series) - 1];
         if ($first <= 0.0) {
-            return $last > 0.0 ? 'naik' : 'plateau';
+            return $last > 0.0 ? 'up' : 'plateau';
         }
 
         $changePct = (($last - $first) / $first) * 100;
 
         return match (true) {
-            $changePct > 5.0 => 'naik',
-            $changePct < -5.0 => 'turun',
+            $changePct > 5.0 => 'up',
+            $changePct < -5.0 => 'down',
             default => 'plateau',
         };
     }
@@ -214,11 +214,11 @@ final readonly class BriefingContext
         $hour = (int) $asOf->format('H');
 
         return match (true) {
-            $hour >= 4 && $hour <= 5 => 'subuh',
-            $hour >= 6 && $hour <= 10 => 'pagi',
-            $hour >= 11 && $hour <= 14 => 'siang',
-            $hour >= 15 && $hour <= 18 => 'sore',
-            default => 'malam',
+            $hour >= 4 && $hour <= 5 => 'early_morning',
+            $hour >= 6 && $hour <= 10 => 'morning',
+            $hour >= 11 && $hour <= 14 => 'midday',
+            $hour >= 15 && $hour <= 18 => 'evening',
+            default => 'night',
         };
     }
 

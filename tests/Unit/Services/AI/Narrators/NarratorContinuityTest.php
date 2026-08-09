@@ -8,7 +8,7 @@ it('states the continuity rule in terms of avoiding repetition, not forcing a ca
     expect(NarratorContinuity::RULE)
         ->toBeString()
         ->toContain('prev_opener')
-        ->toContain('MENGHINDARI pengulangan')
+        ->toContain('AVOID repetition')
         // The old crutch phrasing must not creep back in.
         ->not->toContain('lanjutkan benang');
 });

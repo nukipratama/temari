@@ -23,8 +23,8 @@ final class CardIdentityTool extends NoArgumentTool
 
     public function description(): string
     {
-        return 'Kartu yang lagi kamu tulis flavour-nya: rarity (pakai rarity_label kalau menyebutnya '
-            .'dalam kalimat), special move, dan badge-nya. Mulai dari sini.';
+        return "The card whose flavor you're writing: rarity (use rarity_label if you mention it in "
+            .'the sentence), special move, and its badges. Start here.';
     }
 
     /** @return array<string, mixed> */

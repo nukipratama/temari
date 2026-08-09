@@ -28,8 +28,8 @@ final class RecentRunsTool extends UserTool
 
     public function description(): string
     {
-        return 'Lima lari terakhir pengguna dengan mood, jarak, intensitas, dan satu baris rangkuman '
-            .'masing-masing. Panggil kalau mau menyambung ke apa yang baru saja dia jalani.';
+        return "The user's last five runs with mood, distance, intensity, and a one-line summary "
+            .'each. Call this when you want to connect to what they\'ve just been doing.';
     }
 
     /** @return array<string, mixed> */

@@ -27,9 +27,9 @@ final class TrainingPacesTool extends UserTool
 
     public function description(): string
     {
-        return 'Pace latihan pengguna dalam detik per km, diturunkan dari VDOT-nya: easy, marathon, '
-            .'threshold, interval. Panggil kalau mau menyarankan pace yang konkret. Kalau pace-nya gak '
-            .'muncul sama sekali, riwayat PR-nya belum cukup buat mengestimasi VDOT.';
+        return "The user's training paces in seconds per km, derived from their VDOT: easy, "
+            .'marathon, threshold, interval. Call this when you want to suggest a concrete pace. '
+            .'If the paces don\'t show up at all, their PR history isn\'t enough yet to estimate VDOT.';
     }
 
     /** @return array<string, mixed> */

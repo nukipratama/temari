@@ -283,7 +283,7 @@ it('RunInsightNarrator prompt carries the quality-session framing so it stops as
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
     expect($prompt)->toContain('session_intent')
-        ->and($prompt)->toContain('SESI KUALITAS');
+        ->and($prompt)->toContain('QUALITY SESSIONS');
 });
 
 // Without this carve-out an interval session reads as sloppy pacing: the pace
@@ -292,7 +292,7 @@ it('RunInsightNarrator prompt carries the quality-session framing so it stops as
 it('RunInsightNarrator prompt exempts a lap-structured session from the pace-consistency reading', function (): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
-    expect($prompt)->toContain('SESI BERSTRUKTUR')
+    expect($prompt)->toContain('STRUCTURED SESSION')
         ->and($prompt)->toContain('rep_count')
         ->and($prompt)->toContain('recovery_sec')
         ->and($prompt)->toContain('warmup');
@@ -301,8 +301,8 @@ it('RunInsightNarrator prompt exempts a lap-structured session from the pace-con
 it('RunInsightNarrator prompt gives notes storytelling room (2-3 paragraphs, no rigid word cap)', function (): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
-    expect($prompt)->toContain('2-3 paragraf')
-        ->and($prompt)->toContain('jangan bertele-tele')
+    expect($prompt)->toContain('2-3 short paragraphs')
+        ->and($prompt)->toContain("don't ramble")
         ->and($prompt)->not->toContain('maksimal 55 kata');
 });
 
@@ -357,8 +357,8 @@ it('RunInsightNarrator offers every run reading as a tool bound to this activity
 it('RunInsightNarrator prompt tells the model to fetch its own numbers and not invent the rest', function (): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
-    expect($prompt)->toContain('Ambil sendiri lewat tool')
-        ->and($prompt)->toContain('JANGAN dikarang');
+    expect($prompt)->toContain('Fetch them yourself')
+        ->and($prompt)->toContain('NEVER make up');
 });
 
 it('BriefingMascotVoiceNarrator reads the day, the last run and the 28d baseline', function (): void {
@@ -372,8 +372,8 @@ it('BriefingMascotVoiceNarrator reads the day, the last run and the 28d baseline
 it('BriefingMascotVoiceNarrator prompt tells the model to fetch its own numbers and not invent the rest', function (): void {
     $prompt = narratorPrompt(BriefingMascotVoiceNarrator::class);
 
-    expect($prompt)->toContain('Ambil sendiri lewat tool')
-        ->and($prompt)->toContain('JANGAN dikarang');
+    expect($prompt)->toContain('Fetch them yourself')
+        ->and($prompt)->toContain('NEVER make up');
 });
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
@@ -793,8 +793,8 @@ it('AkuProfileVoiceNarrator builds context from user stats', function (): void {
     expect($context['total_runs'])->toBe(1)
         ->and($context['total_km'])->toBe(5.0)
         ->and($context['longest_run_km'])->toBe(5.0)
-        // 07:00 falls in the pagi bucket; streak needs no snapshots so 0.
-        ->and($context['favorite_time'])->toBe('pagi')
+        // 07:00 falls in the morning bucket; streak needs no snapshots so 0.
+        ->and($context['favorite_time'])->toBe('morning')
         ->and($context['weekly_streak'])->toBe(0);
 });
 
@@ -807,7 +807,7 @@ it('AkuProfileVoiceNarrator reads the weekly streak and the most common run time
             'runs' => 3,
         ]);
     }
-    // Most runs in the evening (malam).
+    // Most runs at night.
     foreach (['2026-05-10T20:00', '2026-05-12T21:00', '2026-05-14T07:00'] as $when) {
         $activity = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($activity)->create([
@@ -819,7 +819,7 @@ it('AkuProfileVoiceNarrator reads the weekly streak and the most common run time
     $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
 
     expect($context['weekly_streak'])->toBe(2)
-        ->and($context['favorite_time'])->toBe('malam');
+        ->and($context['favorite_time'])->toBe('night');
 });
 
 it('AkuProfileVoiceNarrator feeds the latest form_status as the consistency spine', function (): void {
@@ -917,7 +917,7 @@ it('BriefingMascotVoiceNarrator clamps to a deterministic message when session_t
 
     $voice = $narrator->generate($user, Carbon::today());
 
-    expect($voice)->toContain('Easy run santai')
+    expect($voice)->toContain('Easy run, whatever feels comfortable today')
         ->and($voice)->not->toContain('Long run');
 });
 
@@ -1141,16 +1141,16 @@ it('MonthlyRecapNarrator prompt makes the mood step conditional on mood_mix', fu
     $prompt = narratorPrompt(MonthlyRecapNarrator::class);
 
     expect($prompt)
-        ->toContain('HANYA kalau mood_mix terisi')
-        ->toContain('LEWATI langkah ini diam-diam')
+        ->toContain('ONLY if mood_mix is populated')
+        ->toContain('SKIP this step silently')
         ->not->toContain('—');
 });
 
 it('recap prompts give storytelling room (3-4 sentences, no rigid word cap)', function (string $narrator): void {
     $prompt = narratorPrompt($narrator);
 
-    expect($prompt)->toContain('3-4 kalimat')
-        ->and($prompt)->toContain('jangan bertele-tele')
+    expect($prompt)->toContain('3-4 sentences')
+        ->and($prompt)->toContain("don't ramble")
         ->and($prompt)->not->toContain('maksimal 90 kata')
         ->and($prompt)->not->toContain('maksimal 100 kata');
 })->with([
@@ -1166,10 +1166,10 @@ it('PostRunSpeechNarrator prompt hands the mechanics to the other three lenses',
     $prompt = narratorPrompt(PostRunSpeechNarrator::class);
 
     expect($prompt)
-        ->toContain('LENSA KAMU')
-        ->toContain('Itu bukan bagian kamu.')
-        ->toContain('JANGAN membedah pacing')
-        ->toContain('kenapa lari ini');
+        ->toContain('YOUR LENS')
+        ->toContain("That's not your part.")
+        ->toContain('NEVER dissect pacing')
+        ->toContain('this run mattered');
 });
 
 it('WeeklyRecapNarrator prompt caps the number count so the recap stops reading as a table', function (): void {
@@ -1178,9 +1178,9 @@ it('WeeklyRecapNarrator prompt caps the number count so the recap stops reading 
     $prompt = narratorPrompt(WeeklyRecapNarrator::class);
 
     expect($prompt)
-        ->toContain('maksimal 3 angka di SELURUH output')
-        ->toContain('buat KAMU BACA')
-        ->toContain('Itu tabel, bukan cerita.')
+        ->toContain('max 3 numbers across the ENTIRE output')
+        ->toContain('for YOU TO READ')
+        ->toContain("That's a table, not a story.")
         ->not->toContain('Sebutkan 1-2');
 });
 
@@ -1190,17 +1190,17 @@ it('CardFlavorNarrator prompt refuses badge and move names stitched together', f
     $prompt = narratorPrompt(CardFlavorNarrator::class);
 
     expect($prompt)
-        ->toContain('label, bukan cerita')
-        ->toContain('dibawa oleh special move')
-        ->toContain('dua nama yang ditempel');
+        ->toContain('labels, not a story')
+        ->toContain('carried by the Calm & Steady special move')
+        ->toContain('glued together');
 });
 
-it('RunInsightNarrator prompt steers general words to Indonesian while keeping run terms English', function (): void {
+it('RunInsightNarrator prompt steers toward plain, natural phrasing while keeping run terms English', function (): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
     expect($prompt)
-        ->toContain('BAHASA:')
-        ->toContain('stabil/rata bukan "steady"')
+        ->toContain('LANGUAGE:')
+        ->toContain('plain and conversational, not clinical')
         ->toContain('negative split')
         ->not->toContain('—');
 });
@@ -1215,9 +1215,9 @@ it('RunInsightNarrator gives technical and zones a job when their subject is mis
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
     expect($prompt)
-        ->toContain('KALAU CADENCE/HR/DECOUPLING GAK ADA')
-        ->toContain('KALAU ZONE-NYA GAK ADA')
+        ->toContain('IF CADENCE/HR/DECOUPLING IS MISSING')
+        ->toContain('IF THE ZONES ARE MISSING')
         // The two phrasings prod actually produced, named so they cannot return.
-        ->toContain('fokus ke pace')
-        ->toContain('dari durasi dan');
+        ->toContain('focusing on pace')
+        ->toContain('from duration and');
 });

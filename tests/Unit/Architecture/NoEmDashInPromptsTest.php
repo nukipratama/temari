@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\File;
  *
  * Two narrow, conscious exceptions:
  *   1. TemariPersona's persona prompt contains the literal instruction
- *      "JANGAN em dash (—) atau en dash (–)" — telling the model not to use
+ *      "NO em dash (—) or en dash (–)" — telling the model not to use
  *      them. That line MUST keep the glyphs to be meaningful.
  *   2. The '—' glyph used as a null placeholder in data display (not prose) is
  *      allowed by the skill. A bare single-glyph literal counts as a placeholder.
@@ -54,8 +54,8 @@ it('has no em-dash or en-dash in any AI prompt/persona/context string literal', 
                 continue;
             }
 
-            // Exception 1: the persona's deliberate "JANGAN em dash" instruction.
-            if (str_contains($text, 'JANGAN em dash')) {
+            // Exception 1: the persona's deliberate "NO em dash" instruction.
+            if (str_contains($text, 'NO em dash')) {
                 continue;
             }
 

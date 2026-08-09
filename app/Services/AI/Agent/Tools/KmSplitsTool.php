@@ -25,10 +25,10 @@ final class KmSplitsTool extends ActivityTool
 
     public function description(): string
     {
-        return 'Split per km (dengan avg_hr per km kalau ada), plus km tercepat dan terlambat yang '
-            .'sudah dicarikan buat kamu, sisa jarak setelah km bulat terakhir, pola negative split, '
-            .'dan seberapa rata pace-nya. Di lari panjang, per_km cuma sampel: omitted_km bilang '
-            .'berapa km yang gak ikut, dan km tercepat/terlambat selalu ada di sampelnya.';
+        return 'Per-km splits (with avg_hr per km when available), plus the fastest and slowest km '
+            .'already found for you, the remaining distance after the last full km, negative-split '
+            .'pattern, and how even the pace was. On long runs, per_km is just a sample: omitted_km '
+            .'says how many km were left out, and the fastest/slowest km are always included in the sample.';
     }
 
     /** @return array<string, mixed> */

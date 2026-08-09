@@ -48,12 +48,12 @@ final readonly class RuleBasedRunInsights
     /** Second half slower than the first by this fraction reads as a positive split. */
     private const float POSITIVE_SPLIT_MARGIN = 0.015;
 
-    /** Opener frames, so identical-metric runs don't all read "Sesi ini ...". */
+    /** Opener frames, so identical-metric runs don't all read "This session ...". */
     private const array TECHNICAL_FRAMES = [
-        'Sesi ini %s.',
-        'Catatan teknisnya, %s.',
-        'Dari angka-angkanya, %s.',
-        'Baca teknisnya: %s.',
+        'This session: %s.',
+        'Technical notes: %s.',
+        'From the numbers: %s.',
+        'Reading the technicals: %s.',
     ];
 
     public function technical(ActivityDetail $detail): string
@@ -66,11 +66,11 @@ final readonly class RuleBasedRunInsights
         $this->appendDecouplingPart($detail, $summary, $parts);
         $this->appendElevationPart($detail, $parts);
         if (PaceConsistency::isNotablyUneven($summary->paceVariabilitySec())) {
-            $parts[] = 'pace agak bervariasi, coba jaga konsistensi';
+            $parts[] = 'pace varied a bit, worth keeping it more consistent';
         }
 
         if ($parts === []) {
-            return 'Sesi ini metrik-nya konsisten, gak ada yang mencolok.';
+            return "This session's metrics were consistent, nothing stood out.";
         }
 
         $frame = self::TECHNICAL_FRAMES[$detail->activity_id % count(self::TECHNICAL_FRAMES)];
@@ -90,9 +90,9 @@ final readonly class RuleBasedRunInsights
         $cadence = (int) round($detail->average_cadence * 2);
         $label = match (true) {
             $cadence >= self::CADENCE_IDEAL => 'ideal',
-            $cadence >= self::CADENCE_MODERATE => 'lumayan',
-            $cadence >= self::CADENCE_LOW => 'masih bisa dinaikin',
-            default => 'cukup rendah',
+            $cadence >= self::CADENCE_MODERATE => 'decent',
+            $cadence >= self::CADENCE_LOW => 'could still come up',
+            default => 'fairly low',
         };
         $parts[] = "cadence {$cadence} spm ({$label})";
     }
@@ -109,19 +109,19 @@ final readonly class RuleBasedRunInsights
         $avgHr = (int) round($detail->average_heartrate);
         $maxHr = $detail->max_heartrate;
         if ($maxHr === null || $maxHr <= 0) {
-            $parts[] = "HR rata-rata {$avgHr}";
+            $parts[] = "average HR {$avgHr}";
 
             return;
         }
 
         $share = round(($avgHr / $maxHr) * 100);
         $label = match (true) {
-            $share <= self::HR_RESERVE_EASY => 'zona nyaman',
-            $share <= self::HR_RESERVE_MODERATE => 'zona sedang',
-            $share <= self::HR_RESERVE_HARD => 'intens tinggi',
-            default => 'sangat intens',
+            $share <= self::HR_RESERVE_EASY => 'comfortable zone',
+            $share <= self::HR_RESERVE_MODERATE => 'moderate zone',
+            $share <= self::HR_RESERVE_HARD => 'high intensity',
+            default => 'very intense',
         };
-        $parts[] = "HR rata-rata {$avgHr} ({$label})";
+        $parts[] = "average HR {$avgHr} ({$label})";
     }
 
     /**
@@ -139,10 +139,10 @@ final readonly class RuleBasedRunInsights
         if ($decoupling > self::DECOUPLING_HIGH) {
             $temp = $detail->weather_temp_c;
             $parts[] = $temp !== null && $temp >= self::DECOUPLING_HOT_TEMP_C
-                ? "{$label}, tapi wajar soalnya tadi panas ~{$temp}°C"
-                : "{$label}, aerobik base belum solid";
+                ? "{$label}, but that's expected given the ~{$temp}°C heat"
+                : "{$label}, aerobic base isn't quite solid yet";
         } elseif ($decoupling > self::DECOUPLING_OK) {
-            $parts[] = "{$label}, masih wajar";
+            $parts[] = "{$label}, still within normal range";
         }
     }
 
@@ -175,7 +175,7 @@ final readonly class RuleBasedRunInsights
         $this->appendFinishPart($summary, $parts);
 
         if ($parts === []) {
-            return 'Data split belum cukup buat dianalisis.';
+            return "There's not enough split data to analyze yet.";
         }
 
         return implode(' ', array_map(fn (string $part): string => ucfirst($part) . '.', $parts));
@@ -195,18 +195,18 @@ final readonly class RuleBasedRunInsights
     private function appendSplitDirectionPart(StreamSummary $summary, array $perKm, array &$parts): bool
     {
         if ($summary->negativeSplit() === true) {
-            $parts[] = 'negative split, paruh kedua lebih cepat dari awal';
+            $parts[] = 'negative split, second half faster than the first';
 
             return false;
         }
 
         if ($this->isPositiveSplit($perKm)) {
-            $parts[] = 'positive split, pace melambat di paruh kedua';
+            $parts[] = 'positive split, pace slowed in the second half';
 
             return false;
         }
 
-        $parts[] = 'pacing cukup merata dari awal sampai akhir';
+        $parts[] = 'pacing stayed fairly even start to finish';
 
         return true;
     }
@@ -259,8 +259,8 @@ final readonly class RuleBasedRunInsights
 
         $parts[] = match (true) {
             $rangeSec > self::PACE_DIFF_WIDE => $this->kmRangeWide($perKm, $fastest, $slowest),
-            $rangeSec > self::PACE_DIFF_NOTICEABLE => "km {$fastest} tercepat, gap-nya wajar",
-            default => 'gap antar km sangat kecil',
+            $rangeSec > self::PACE_DIFF_NOTICEABLE => "km {$fastest} was fastest, a normal gap",
+            default => 'the gap between km was very small',
         };
     }
 
@@ -272,7 +272,7 @@ final readonly class RuleBasedRunInsights
         $idx = array_search($fastest, array_column($perKm, 'km'), true);
         $fastestPace = $perKm[$idx !== false ? $idx : 0]['pace'] ?? '?';
 
-        return "km {$fastest} tercepat ({$fastestPace}), km {$slowest} paling lambat, selisih cukup besar";
+        return "km {$fastest} was fastest ({$fastestPace}), km {$slowest} was slowest, a fairly big gap";
     }
 
     /**
@@ -290,8 +290,8 @@ final readonly class RuleBasedRunInsights
         }
 
         $parts[] = PaceConsistency::isVeryEven($raw)
-            ? 'konsistensi pace sangat bagus'
-            : 'konsistensi pace cukup baik';
+            ? 'pace consistency was excellent'
+            : 'pace consistency was pretty good';
     }
 
     /**
@@ -309,7 +309,7 @@ final readonly class RuleBasedRunInsights
         }
 
         $km = DistanceFormatter::kmString((float) $partial['distance_m']);
-        $parts[] = "sisa {$km} km ditutup di {$partial['pace']}";
+        $parts[] = "closed out the last {$km} km at {$partial['pace']}";
     }
 
     public function zones(ActivityDetail $detail): string
@@ -318,7 +318,7 @@ final readonly class RuleBasedRunInsights
         $zonePct = $this->resolveZonePercentages($summary);
 
         if ($zonePct === []) {
-            return 'Data heart rate zone belum tersedia.';
+            return "Heart rate zone data isn't available yet.";
         }
 
         /** @var list<string> $parts */
@@ -329,17 +329,17 @@ final readonly class RuleBasedRunInsights
         if ($dominantPct > 0) {
             $dominantLabel = DecimalFormatter::trimmed($dominantPct);
             $parts[] = $dominantPct >= 70
-                ? "{$dominantLabel}% di {$dominantZone[0]}"
-                : "didominasi {$dominantZone[0]} ({$dominantLabel}%)";
+                ? "{$dominantLabel}% in {$dominantZone[0]}"
+                : "mostly {$dominantZone[0]} ({$dominantLabel}%)";
         }
 
         $easyPct = (float) ($zonePct['Z1'] ?? 0) + (float) ($zonePct['Z2'] ?? 0);
         $hardPct = $summary->hardZoneShare();
         $discipline = match (true) {
-            $easyPct >= 80 => 'base building proper, mayoritas easy',
-            $easyPct >= 60 => 'kombinasi easy dan moderate, seimbang',
-            $hardPct >= 50 => 'intensitas tinggi, hati-hati overstrain',
-            $hardPct >= 30 => 'ada porsi quality yang cukup',
+            $easyPct >= 80 => 'proper base building, mostly easy',
+            $easyPct >= 60 => 'a balanced mix of easy and moderate',
+            $hardPct >= 50 => 'high intensity, watch out for overstrain',
+            $hardPct >= 30 => 'a decent chunk of quality work',
             default => null,
         };
         if ($discipline !== null) {
@@ -347,7 +347,7 @@ final readonly class RuleBasedRunInsights
         }
 
         if (((float) ($zonePct['Z5'] ?? 0)) > 10) {
-            $parts[] = 'Z5 cukup banyak, pastikan recovery cukup';
+            $parts[] = 'a fair amount of Z5, make sure recovery is enough';
         }
 
         return ucfirst(implode(', ', $parts)) . '.';
