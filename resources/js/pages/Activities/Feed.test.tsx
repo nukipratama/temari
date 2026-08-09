@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
-import RunsIndex from './Jejak';
+import RunsIndex from './Feed';
 import { run } from './runFixture';
 
 vi.mock('@/components/aktivitas/JourneyStrip', () => ({
@@ -26,7 +26,7 @@ beforeEach(() => {
     });
 });
 
-describe('Riwayat/Jejak', () => {
+describe('Activities/Feed', () => {
     it('renders the empty state when no runs exist', () => {
         render(
             <RunsIndex
@@ -234,7 +234,7 @@ describe('Riwayat/Jejak', () => {
         fireEvent.click(screen.getByRole('button', { name: /^Easy$/ }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/aktivitas',
+            '/activities',
             // '8w' is the default range, so it is omitted from the URL.
             { mood: 'enteng' },
             expect.objectContaining({
@@ -278,7 +278,7 @@ describe('Riwayat/Jejak', () => {
         fireEvent.click(screen.getByRole('button', { name: /^Easy$/ }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/aktivitas',
+            '/activities',
             {},
             expect.objectContaining({
                 preserveScroll: true,
@@ -304,7 +304,7 @@ describe('Riwayat/Jejak', () => {
 
         // Defaults are omitted, so the unfiltered view is a clean URL.
         expect(router.get).toHaveBeenCalledWith(
-            '/aktivitas',
+            '/activities',
             {},
             expect.objectContaining({
                 preserveScroll: true,
@@ -344,7 +344,7 @@ describe('Riwayat/Jejak', () => {
         expect(screen.getByText('No runs match.')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: /Reset filter/ }));
         expect(router.get).toHaveBeenCalledWith(
-            '/aktivitas',
+            '/activities',
             {},
             expect.anything(),
         );
@@ -367,7 +367,7 @@ describe('Riwayat/Jejak', () => {
         fireEvent.click(screen.getByRole('button', { name: /^Under 5K/ }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/aktivitas',
+            '/activities',
             { range: '1y', mood: 'enteng', dist: '0-5' },
             expect.anything(),
         );
@@ -389,7 +389,7 @@ describe('Riwayat/Jejak', () => {
         fireEvent.click(screen.getByRole('button', { name: /^Half and up/ }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/aktivitas',
+            '/activities',
             {},
             expect.anything(),
         );
@@ -425,7 +425,7 @@ describe('Riwayat/Jejak', () => {
             fireEvent.click(screen.getByRole('button', { name: /^Longest/ }));
 
             expect(router.get).toHaveBeenCalledWith(
-                '/aktivitas',
+                '/activities',
                 { sort: 'longest' },
                 expect.anything(),
             );
@@ -449,7 +449,7 @@ describe('Riwayat/Jejak', () => {
             );
 
             expect(router.get).toHaveBeenCalledWith(
-                '/aktivitas',
+                '/activities',
                 {},
                 expect.anything(),
             );
@@ -508,7 +508,7 @@ describe('Riwayat/Jejak', () => {
             fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
             expect(router.get).toHaveBeenCalledWith(
-                '/aktivitas',
+                '/activities',
                 {},
                 expect.anything(),
             );
@@ -531,7 +531,7 @@ describe('Riwayat/Jejak', () => {
         expect(screen.getByText(/Viewing the week of/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /View all runs/ }),
-        ).toHaveAttribute('href', '/aktivitas');
+        ).toHaveAttribute('href', '/activities');
     });
 
     it('counts a week-scoped view as filtered', () => {
@@ -592,7 +592,7 @@ describe('Riwayat/Jejak', () => {
 
             fireEvent.click(screen.getByText(/Resume:/));
             expect(router.get).toHaveBeenCalledWith(
-                '/aktivitas',
+                '/activities',
                 { mood: 'nyala', dist: '21up' },
                 expect.anything(),
             );

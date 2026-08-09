@@ -64,7 +64,7 @@ class CalendarController extends Controller
             $discriminator,
         );
 
-        return Inertia::render('Riwayat/Kalender', [
+        return Inertia::render('Activities/Calendar', [
             'month' => $discriminator,
             'monthLabel' => $this->formatMonthLabel($monthStart),
             'prevMonth' => $monthStart->copy()->subMonthNoOverflow()->format('Y-m'),

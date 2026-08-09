@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
-import Aku from './Aku';
+import Profile from './Profile';
 
 vi.mock('@/components/koleksi/ProgressionChart', () => ({
     default: () => <div data-testid="progression-chart" />,
@@ -27,9 +27,9 @@ beforeEach(() => {
     });
 });
 
-describe('Aku', () => {
+describe('Profile', () => {
     it('renders the editorial greeting with the first name', () => {
-        render(<Aku identity={identity} stats={stats} />);
+        render(<Profile identity={identity} stats={stats} />);
         expect(screen.getByText(/running since/i)).toBeInTheDocument();
         expect(screen.getByText('Ada Runner,')).toBeInTheDocument();
     });
@@ -41,12 +41,12 @@ describe('Aku', () => {
             demoLoginEnabled: false,
         });
         const noFirstName = { ...identity, name: '' };
-        render(<Aku identity={noFirstName} stats={stats} />);
+        render(<Profile identity={noFirstName} stats={stats} />);
         expect(screen.getByText('Runner,')).toBeInTheDocument();
     });
 
     it('renders the three stat tiles', () => {
-        render(<Aku identity={identity} stats={stats} />);
+        render(<Profile identity={identity} stats={stats} />);
         expect(screen.getByText('Total km')).toBeInTheDocument();
         expect(screen.getByText('Total runs')).toBeInTheDocument();
         expect(screen.getByText('Longest run')).toBeInTheDocument();
@@ -56,7 +56,7 @@ describe('Aku', () => {
     // it is reachable from every page rather than only from here. The entry
     // point is asserted in UserMenu.test.tsx.
     it('no longer carries a settings row of its own', () => {
-        render(<Aku identity={identity} stats={stats} />);
+        render(<Profile identity={identity} stats={stats} />);
         expect(
             screen.queryByText(/Notifikasi Telegram, zona HR/),
         ).not.toBeInTheDocument();
@@ -67,7 +67,7 @@ describe('Aku', () => {
             { mood: 'enteng' as const, count: 22, percent: 34.9 },
             { mood: 'adem' as const, count: 21, percent: 33.3 },
         ];
-        render(<Aku identity={identity} stats={stats} personaMix={mix} />);
+        render(<Profile identity={identity} stats={stats} personaMix={mix} />);
         expect(screen.getByText(/Persona/)).toBeInTheDocument();
         expect(
             screen.queryByText(/Belum dibaca Temari/),
@@ -79,19 +79,19 @@ describe('Aku', () => {
     // <section class="mt-10"> would mean it slipped back out of the hero.
     it('renders the persona bar inside the hero panel, not a separate section below it', () => {
         const mix = [{ mood: 'nyala' as const, count: 3, percent: 100 }];
-        render(<Aku identity={identity} stats={stats} personaMix={mix} />);
+        render(<Profile identity={identity} stats={stats} personaMix={mix} />);
         expect(screen.getByText(/Persona/).closest('section')).toBeNull();
     });
 
     it('shows the "With Temari since" join date when member_since is present', () => {
-        render(<Aku identity={identity} stats={stats} />);
+        render(<Profile identity={identity} stats={stats} />);
         expect(screen.getByText('With Temari since')).toBeInTheDocument();
         expect(screen.getByText('12 Agu 2024')).toBeInTheDocument();
     });
 
     it('omits the join-date block when member_since is missing', () => {
         render(
-            <Aku
+            <Profile
                 identity={{ ...identity, member_since: null }}
                 stats={stats}
             />,
@@ -101,7 +101,7 @@ describe('Aku', () => {
 
     it('renders the progression section when progressionByCategory is provided', () => {
         render(
-            <Aku
+            <Profile
                 identity={identity}
                 stats={stats}
                 progressionByCategory={{
@@ -119,7 +119,7 @@ describe('Aku', () => {
     });
 
     it('renders no VDOT, threshold pace or Training pace block when fitness is absent', () => {
-        render(<Aku identity={identity} stats={stats} />);
+        render(<Profile identity={identity} stats={stats} />);
         expect(screen.queryByText('VDOT')).not.toBeInTheDocument();
         expect(screen.queryByText('Threshold pace')).not.toBeInTheDocument();
         expect(screen.queryByText(/Training/)).not.toBeInTheDocument();
@@ -127,7 +127,7 @@ describe('Aku', () => {
 
     it('renders VDOT, threshold pace and the Training pace-target block when fitness is provided', () => {
         render(
-            <Aku
+            <Profile
                 identity={identity}
                 stats={stats}
                 fitness={{
@@ -169,7 +169,7 @@ describe('Aku', () => {
                 last_synced_at: '2026-07-04T00:00:00Z',
             },
         });
-        render(<Aku identity={identity} stats={stats} />);
+        render(<Profile identity={identity} stats={stats} />);
         expect(screen.queryByText(/Reconnect/)).not.toBeInTheDocument();
     });
 
@@ -180,7 +180,7 @@ describe('Aku', () => {
             demoLoginEnabled: false,
             stravaSync: { state: 'revoked', last_synced_at: null },
         });
-        render(<Aku identity={identity} stats={stats} />);
+        render(<Profile identity={identity} stats={stats} />);
         const link = screen.getByText('Reconnect').closest('a');
         expect(link).toHaveAttribute(
             'href',
@@ -199,7 +199,7 @@ describe('Aku', () => {
             discriminator: '2026-W21',
         };
         render(
-            <Aku
+            <Profile
                 identity={identity}
                 stats={stats}
                 profileVoice={profileVoice}

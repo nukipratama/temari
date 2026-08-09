@@ -23,7 +23,7 @@ class RunnerZonesController extends Controller
         $user = $request->user();
         $profile = RunnerProfile::query()->where('user_id', $user->id)->first();
 
-        return Inertia::render('Pengaturan/ZonaHR', [
+        return Inertia::render('Settings/HrZones', [
             'profile' => $user->hrProfile(),
             'hasCustomProfile' => $profile !== null,
             'source' => $profile !== null ? $profile->source : 'default',

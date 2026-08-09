@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
-import ZonaHR, { deriveZones } from './ZonaHR';
+import HrZones, { deriveZones } from './HrZones';
 
 const DEFAULT_PROFILE = {
     max_hr: 180,
@@ -34,9 +34,9 @@ describe('deriveZones', () => {
     });
 });
 
-describe('ZonaHR', () => {
+describe('HrZones', () => {
     it('renders the forward-only note', () => {
-        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
+        render(<HrZones profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
         expect(
             screen.getByText(/apply to every run from now on/i),
         ).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe('ZonaHR', () => {
             ...DEFAULT_PROFILE,
             hr_zones: { ...DEFAULT_PROFILE.hr_zones, Z2: { lo: 141, hi: 157 } },
         };
-        render(<ZonaHR profile={stored} hasCustomProfile source="manual" />);
+        render(<HrZones profile={stored} hasCustomProfile source="manual" />);
 
         // The input shows the saved value (141), not the Karvonen-derived 138.
         expect(
@@ -57,7 +57,7 @@ describe('ZonaHR', () => {
     });
 
     it('keeps Save zones disabled until something changes', () => {
-        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
+        render(<HrZones profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
 
         expect(
             screen.getByRole('button', { name: 'Save zones' }),
@@ -73,7 +73,7 @@ describe('ZonaHR', () => {
     });
 
     it('lets the user override a manual boundary', () => {
-        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
+        render(<HrZones profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
 
         const z2Lo = screen.getByTestId('zone-Z2-lo') as HTMLInputElement;
         expect(z2Lo.value).toBe('138');
@@ -87,7 +87,7 @@ describe('ZonaHR', () => {
 
     it('shows the default-zone status when no profile is stored', () => {
         render(
-            <ZonaHR
+            <HrZones
                 profile={DEFAULT_PROFILE}
                 hasCustomProfile={false}
                 source="default"
@@ -102,7 +102,7 @@ describe('ZonaHR', () => {
 
     it('shows the manual status when the user set zones themselves', () => {
         render(
-            <ZonaHR
+            <HrZones
                 profile={DEFAULT_PROFILE}
                 hasCustomProfile
                 source="manual"
@@ -115,7 +115,7 @@ describe('ZonaHR', () => {
 
     it('shows the strava source with its last-synced label', () => {
         render(
-            <ZonaHR
+            <HrZones
                 profile={DEFAULT_PROFILE}
                 hasCustomProfile
                 source="strava"
@@ -130,7 +130,7 @@ describe('ZonaHR', () => {
 
     it('shows neither escape action on the default source', () => {
         render(
-            <ZonaHR
+            <HrZones
                 profile={DEFAULT_PROFILE}
                 hasCustomProfile={false}
                 source="default"
@@ -148,7 +148,7 @@ describe('ZonaHR', () => {
 
     it('resets to default when the reset button is clicked', () => {
         render(
-            <ZonaHR
+            <HrZones
                 profile={DEFAULT_PROFILE}
                 hasCustomProfile
                 source="manual"
@@ -160,14 +160,14 @@ describe('ZonaHR', () => {
         );
 
         expect(router.delete).toHaveBeenCalledWith(
-            '/pengaturan/zona',
+            '/settings/zones',
             expect.objectContaining({ onSuccess: expect.any(Function) }),
         );
     });
 
     it('offers a Strava re-sync only on a manual source with the scope', () => {
         const { rerender } = render(
-            <ZonaHR
+            <HrZones
                 profile={DEFAULT_PROFILE}
                 hasCustomProfile
                 source="manual"
@@ -178,14 +178,14 @@ describe('ZonaHR', () => {
             screen.getByRole('button', { name: /Resync from Strava/i }),
         );
         expect(router.post).toHaveBeenCalledWith(
-            '/pengaturan/zona/sinkron-strava',
+            '/settings/zones/resync-strava',
             {},
             expect.objectContaining({ onSuccess: expect.any(Function) }),
         );
 
         // No scope → no re-sync affordance (reset still shows).
         rerender(
-            <ZonaHR
+            <HrZones
                 profile={DEFAULT_PROFILE}
                 hasCustomProfile
                 source="manual"
@@ -211,7 +211,7 @@ describe('ZonaHR', () => {
             stravaPaused: true,
         });
         render(
-            <ZonaHR
+            <HrZones
                 profile={DEFAULT_PROFILE}
                 hasCustomProfile
                 source="manual"
@@ -237,7 +237,7 @@ describe('ZonaHR', () => {
             demoLoginEnabled: false,
         });
 
-        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
+        render(<HrZones profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
         const maxHrInput = screen.getByLabelText('Max HR');
         const maxHrField = maxHrInput.closest('label');
         const errorEl = within(maxHrField as HTMLElement).getByText(
@@ -252,7 +252,7 @@ describe('ZonaHR', () => {
     });
 
     it('lets the user override a manual hi boundary', () => {
-        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
+        render(<HrZones profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
 
         const z2Hi = screen.getByTestId('zone-Z2-hi') as HTMLInputElement;
         expect(z2Hi.value).toBe('154');
@@ -265,7 +265,7 @@ describe('ZonaHR', () => {
     });
 
     it('recomputes manual zones from Max & Resting on demand', () => {
-        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
+        render(<HrZones profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
 
         fireEvent.change(screen.getByTestId('zone-Z2-lo'), {
             target: { value: '999' },
@@ -286,7 +286,7 @@ describe('ZonaHR', () => {
     });
 
     it('submits the current zones and toggles processing around the request', () => {
-        render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
+        render(<HrZones profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
 
         // Save is disabled until dirty; bump Max HR so the payload is sendable.
         fireEvent.change(screen.getByLabelText('Max HR'), {
@@ -295,7 +295,7 @@ describe('ZonaHR', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Save zones' }));
 
         expect(router.patch).toHaveBeenCalledWith(
-            '/pengaturan/zona',
+            '/settings/zones',
             {
                 max_hr: 185,
                 resting_hr: 55,

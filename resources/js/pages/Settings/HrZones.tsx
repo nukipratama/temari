@@ -72,7 +72,7 @@ interface HrProfile {
     optimal_cadence_spm: number;
 }
 
-interface ZonaHRProps {
+interface HrZonesProps {
     profile: HrProfile;
     hasCustomProfile: boolean;
     source?: ZoneSource;
@@ -103,12 +103,12 @@ export function deriveZones(maxHr: number, restingHr: number): HrZones {
     return zones;
 }
 
-export default function ZonaHR({
+export default function HrZones({
     profile,
     source = 'default',
     stravaSyncedLabel = null,
     canSyncFromStrava = false,
-}: Readonly<ZonaHRProps>) {
+}: Readonly<HrZonesProps>) {
     const [maxHr, setMaxHr] = useState<number>(profile.max_hr);
     const [restingHr, setRestingHr] = useState<number>(profile.resting_hr);
     const [zones, setZones] = useState<HrZones>(profile.hr_zones);
@@ -143,13 +143,13 @@ export default function ZonaHR({
     // to re-seed the whole form from the new profile — simpler and more robust
     // than reconciling this page's local state against the incoming props.
     const resetToDefault = () => {
-        router.delete('/pengaturan/zona', {
+        router.delete('/settings/zones', {
             onSuccess: () => window.location.reload(),
         });
     };
 
     const [resyncing, resyncFromStrava] = usePendingPost(
-        '/pengaturan/zona/sinkron-strava',
+        '/settings/zones/resync-strava',
         {
             onSuccess: () => window.location.reload(),
         },
@@ -159,7 +159,7 @@ export default function ZonaHR({
 
     const submit = () => {
         router.patch(
-            '/pengaturan/zona',
+            '/settings/zones',
             {
                 max_hr: maxHr,
                 resting_hr: restingHr,
@@ -185,7 +185,7 @@ export default function ZonaHR({
                         ("Aku · Pengaturan") while hrefing straight to /profil,
                         skipping the page it came from. */}
                     <BackLink
-                        href="/pengaturan"
+                        href="/settings"
                         className="mb-4 hidden lg:inline-flex"
                     >
                         Settings
@@ -490,4 +490,4 @@ function BoundaryInput({
     );
 }
 
-ZonaHR.layout = appLayout;
+HrZones.layout = appLayout;

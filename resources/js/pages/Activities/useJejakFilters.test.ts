@@ -77,12 +77,12 @@ describe('filterQuery', () => {
 
 describe('hrefWithFilters', () => {
     it('stays a clean /aktivitas when nothing is filtered', () => {
-        expect(hrefWithFilters(state())).toBe('/aktivitas');
+        expect(hrefWithFilters(state())).toBe('/activities');
     });
 
     it('builds a query string for an active filter', () => {
         expect(hrefWithFilters(state({ range: '1y', distance: '0-5' }))).toBe(
-            '/aktivitas?range=1y&dist=0-5',
+            '/activities?range=1y&dist=0-5',
         );
     });
 });
@@ -302,7 +302,7 @@ describe('useJejakFilters', () => {
             );
 
             expect(router.get).toHaveBeenCalledWith(
-                '/aktivitas',
+                '/activities',
                 expected,
                 expect.objectContaining({
                     preserveScroll: true,
@@ -329,7 +329,7 @@ describe('useJejakFilters', () => {
         act(() => result.current.resetFilters());
 
         expect(router.get).toHaveBeenCalledWith(
-            '/aktivitas',
+            '/activities',
             {},
             expect.anything(),
         );
@@ -342,7 +342,7 @@ describe('useJejakFilters', () => {
             );
 
             expect(result.current.sections.range.hrefFor('1y')).toBe(
-                '/aktivitas?range=1y&mood=nyala',
+                '/activities?range=1y&mood=nyala',
             );
         });
 
@@ -358,7 +358,7 @@ describe('useJejakFilters', () => {
 
             act(() => result.current.sections.mood.onToggle('enteng'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/aktivitas',
+                '/activities',
                 { mood: 'enteng' },
                 expect.anything(),
             );
@@ -366,7 +366,7 @@ describe('useJejakFilters', () => {
             rerender(hookProps({ moodFilter: ['enteng'] }));
             act(() => result.current.sections.mood.onToggle('enteng'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/aktivitas',
+                '/activities',
                 {},
                 expect.anything(),
             );
@@ -381,14 +381,14 @@ describe('useJejakFilters', () => {
 
             act(() => result.current.sections.distance.onSelect('21up'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/aktivitas',
+                '/activities',
                 {},
                 expect.anything(),
             );
 
             act(() => result.current.sections.distance.onSelect('0-5'));
             expect(router.get).toHaveBeenLastCalledWith(
-                '/aktivitas',
+                '/activities',
                 { dist: '0-5' },
                 expect.anything(),
             );
@@ -403,7 +403,7 @@ describe('useJejakFilters', () => {
             act(() => result.current.sections.sort.onSelect('newest'));
 
             expect(router.get).toHaveBeenCalledWith(
-                '/aktivitas',
+                '/activities',
                 {},
                 expect.anything(),
             );
@@ -447,7 +447,7 @@ describe('useJejakFilters', () => {
 
             act(() => result.current.resume!.apply());
             expect(router.get).toHaveBeenCalledWith(
-                '/aktivitas',
+                '/activities',
                 { mood: 'nyala' },
                 expect.anything(),
             );

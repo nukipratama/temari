@@ -44,7 +44,7 @@ describe('useNotificationPrefs', () => {
 
         expect(result.current.notificationsEnabled).toBe(true);
         expect(router.patch).toHaveBeenCalledWith(
-            '/profil/notifikasi',
+            '/profile/notifications',
             {
                 notifications_enabled: true,
                 telegram_enabled: true,
@@ -64,7 +64,7 @@ describe('useNotificationPrefs', () => {
         act(() => result.current.setPushEnabled(false));
 
         expect(router.patch).toHaveBeenLastCalledWith(
-            '/profil/notifikasi',
+            '/profile/notifications',
             {
                 notifications_enabled: false,
                 telegram_enabled: false,

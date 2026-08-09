@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
-import Kalender, {
+import Calendar, {
     dominantMoodOf,
     type CalendarCell,
     type MonthlyRecap,
-} from './Kalender';
+} from './Calendar';
 
 function makeRecap(overrides: Partial<MonthlyRecap> = {}): MonthlyRecap {
     return {
@@ -105,9 +105,9 @@ const BASE_PROPS = {
     todayMonth: '2026-05',
 };
 
-describe('Kalender', () => {
+describe('Calendar', () => {
     it('renders the month label and short weekday headers', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
@@ -116,7 +116,7 @@ describe('Kalender', () => {
     });
 
     it('renders all 7 weekday columns without a horizontal-scroll hint', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         // The compact 7-col grid fits every viewport, so the old "geser" scroll hint is gone.
         expect(
             screen.queryByText(/Geser buat lihat seminggu penuh/),
@@ -128,7 +128,7 @@ describe('Kalender', () => {
 
     it('renders the lifetime stats eyebrow when lifetime data is provided', () => {
         render(
-            <Kalender
+            <Calendar
                 {...BASE_PROPS}
                 cells={TWO_WEEK_CELLS}
                 lifetime={{
@@ -144,7 +144,7 @@ describe('Kalender', () => {
     });
 
     it('renders per-week km totals in the week summary column', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         // Week 2: 7.2 + 3.5 = 10.7 — distinct from any day-cell distance so the
         // regex won't collide with the per-day "X.XX km" rendering.
         expect(screen.getByText(/10\.7/)).toBeInTheDocument();
@@ -157,7 +157,7 @@ describe('Kalender', () => {
     // once in the header lets each row carry only the number, and leaves room
     // for a 100+ km week.
     it('names the unit once in the column header, not on every row', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
 
         expect(screen.getByText('KM')).toBeInTheDocument();
         expect(screen.getByText(/10\.7/).textContent).toBe('10.7');
@@ -166,39 +166,39 @@ describe('Kalender', () => {
     // The header cell is the week column's label, so it has to stay announced
     // even though the visible text is just the unit.
     it('keeps the week column labelled for screen readers', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(screen.getByText('Week, distance in kilometers')).toHaveClass(
             'sr-only',
         );
     });
 
     it('links the day cell with a single activity to its detail page', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         const cellLinks = screen.getAllByRole('link');
         const activityLinks = cellLinks
             .map((el) => el.getAttribute('href') ?? '')
-            .filter((href) => href.startsWith('/aktivitas/'));
-        expect(activityLinks).toContain('/aktivitas/100');
-        expect(activityLinks).toContain('/aktivitas/101');
-        expect(activityLinks).toContain('/aktivitas/102');
+            .filter((href) => href.startsWith('/activities/'));
+        expect(activityLinks).toContain('/activities/100');
+        expect(activityLinks).toContain('/activities/101');
+        expect(activityLinks).toContain('/activities/102');
     });
 
     it('renders the navy "Today" badge on today\'s cell', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(screen.getByText('Today')).toBeInTheDocument();
     });
 
     it('marks today with a persistent dot next to the day number, not color alone', () => {
         // The "Today" text is lg-only; below that breakpoint the navy fill
         // would otherwise be the sole signal that a cell is today.
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         const dayNumber = screen.getByText('7');
         expect(dayNumber.querySelector('[aria-hidden]')).not.toBeNull();
     });
 
     it("renders today's storyline quote in the today cell when provided", () => {
         render(
-            <Kalender
+            <Calendar
                 {...BASE_PROPS}
                 cells={TWO_WEEK_CELLS}
                 todayQuote="Good form — tempo session fits."
@@ -210,7 +210,7 @@ describe('Kalender', () => {
     });
 
     it('hides the "Today" jump-back when already on the current month', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.queryByRole('link', { name: 'Today' }),
         ).not.toBeInTheDocument();
@@ -218,7 +218,7 @@ describe('Kalender', () => {
 
     it('shows the "Today" jump-back when viewing a different month', () => {
         render(
-            <Kalender
+            <Calendar
                 {...BASE_PROPS}
                 cells={TWO_WEEK_CELLS}
                 month="2026-04"
@@ -227,22 +227,22 @@ describe('Kalender', () => {
         );
         expect(screen.getByRole('link', { name: 'Today' })).toHaveAttribute(
             'href',
-            '/kalender',
+            '/calendar',
         );
     });
 
     it('renders prev / next nav buttons with correct hrefs', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.getByRole('link', { name: 'Previous month' }),
-        ).toHaveAttribute('href', '/kalender?month=2026-04');
+        ).toHaveAttribute('href', '/calendar?month=2026-04');
         expect(
             screen.getByRole('link', { name: 'Next month' }),
-        ).toHaveAttribute('href', '/kalender?month=2026-06');
+        ).toHaveAttribute('href', '/calendar?month=2026-06');
     });
 
     it('renders all six mood swatches in the legend', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         ['Blazing', 'Easy', 'Wobbly', 'Gassed', 'Overloaded', 'Chill'].forEach(
             (label) => {
                 expect(screen.getByText(label)).toBeInTheDocument();
@@ -273,7 +273,7 @@ describe('Kalender', () => {
             { date: '2026-05-02', day: 2, is_current_month: true },
             { date: '2026-05-03', day: 3, is_current_month: true },
         ]);
-        render(<Kalender {...BASE_PROPS} cells={cells} />);
+        render(<Calendar {...BASE_PROPS} cells={cells} />);
         // The 10 prev-month value would yield a 15.0 sum if included — assert
         // the combined total never appears, proving the prev-month cell was skipped.
         expect(screen.queryByText(/15\.0/)).not.toBeInTheDocument();
@@ -281,7 +281,7 @@ describe('Kalender', () => {
     });
 
     it('renders a Filter button that opens a mood filter menu', () => {
-        render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         const filterButton = screen.getByRole('button', { name: /filter/i });
         expect(filterButton).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(filterButton);
@@ -293,13 +293,13 @@ describe('Kalender', () => {
 
     it('dims cells whose mood is not in the active filter set', () => {
         const { container } = render(
-            <Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />,
+            <Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />,
         );
         fireEvent.click(screen.getByRole('button', { name: /filter/i }));
         // Toggle only "Nyala" — cells with mood enteng/mumet should now be dimmed.
         fireEvent.click(screen.getByRole('button', { name: /Blazing/ }));
         // Find the May 1 cell (mood: enteng, activity_id: 100) — it should pick up the dim opacity class.
-        const link = container.querySelector('a[href="/aktivitas/100"]');
+        const link = container.querySelector('a[href="/activities/100"]');
         expect(link?.className).toContain('opacity-30');
     });
 
@@ -314,7 +314,7 @@ describe('Kalender', () => {
             { date: '2026-05-07', day: 7, is_current_month: true },
         ]);
         const { container } = render(
-            <Kalender {...BASE_PROPS} cells={cells} />,
+            <Calendar {...BASE_PROPS} cells={cells} />,
         );
         const dayNumbers = Array.from(
             container.querySelectorAll('.tabular-nums'),
@@ -340,17 +340,17 @@ describe('Kalender', () => {
             { date: '2026-05-06', day: 6, is_current_month: true },
             { date: '2026-05-07', day: 7, is_current_month: true },
         ]);
-        render(<Kalender {...BASE_PROPS} cells={cells} />);
+        render(<Calendar {...BASE_PROPS} cells={cells} />);
         const activityLinks = screen
             .getAllByRole('link')
             .filter((el) =>
-                (el.getAttribute('href') ?? '').startsWith('/aktivitas/'),
+                (el.getAttribute('href') ?? '').startsWith('/activities/'),
             );
         expect(activityLinks).toHaveLength(0);
     });
 
     it('renders the page chrome even with an empty cells array', () => {
-        render(<Kalender {...BASE_PROPS} cells={[]} />);
+        render(<Calendar {...BASE_PROPS} cells={[]} />);
         // No grid rows since chunkIntoWeeks returns []. Chrome (month label + legend) still shows.
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
@@ -361,7 +361,7 @@ describe('Kalender', () => {
     describe('monthly recap card', () => {
         it("renders Temari's narrative when the recap is done", () => {
             render(
-                <Kalender
+                <Calendar
                     {...BASE_PROPS}
                     cells={TWO_WEEK_CELLS}
                     monthlyRecap={makeRecap()}
@@ -376,7 +376,7 @@ describe('Kalender', () => {
         });
 
         it('is omitted entirely when no recap prop is passed', () => {
-            render(<Kalender {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+            render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
             expect(
                 screen.queryByText(/Temari's notes/),
             ).not.toBeInTheDocument();
@@ -384,7 +384,7 @@ describe('Kalender', () => {
 
         it('keeps the card heading but renders no narration/trigger when a past month is not yet narrated', () => {
             render(
-                <Kalender
+                <Calendar
                     {...BASE_PROPS}
                     month="2026-04"
                     cells={TWO_WEEK_CELLS}
@@ -406,7 +406,7 @@ describe('Kalender', () => {
 
         it('suppresses every trigger on the still-open current month and reads "belum tersedia"', () => {
             render(
-                <Kalender
+                <Calendar
                     {...BASE_PROPS}
                     cells={TWO_WEEK_CELLS}
                     monthlyRecap={makeRecap({
@@ -427,7 +427,7 @@ describe('Kalender', () => {
 
         it('shows a "Try again" resume action when a past month recap failed', () => {
             render(
-                <Kalender
+                <Calendar
                     {...BASE_PROPS}
                     month="2026-04"
                     cells={TWO_WEEK_CELLS}
@@ -444,7 +444,7 @@ describe('Kalender', () => {
 
         it('shows the "Reread" regenerate action only on the chain-head month', () => {
             render(
-                <Kalender
+                <Calendar
                     {...BASE_PROPS}
                     month="2026-04"
                     cells={TWO_WEEK_CELLS}
@@ -458,7 +458,7 @@ describe('Kalender', () => {
 
         it('hides the regenerate action on a historical (non-head) month', () => {
             render(
-                <Kalender
+                <Calendar
                     {...BASE_PROPS}
                     month="2026-04"
                     cells={TWO_WEEK_CELLS}
@@ -474,7 +474,7 @@ describe('Kalender', () => {
             // telegramConnected defaults to falsy in beforeEach.
             vi.mocked(router.post).mockReset();
             render(
-                <Kalender
+                <Calendar
                     {...BASE_PROPS}
                     month="2026-04"
                     cells={TWO_WEEK_CELLS}
@@ -494,7 +494,7 @@ describe('Kalender', () => {
                 telegramConnected: true,
             });
             render(
-                <Kalender
+                <Calendar
                     {...BASE_PROPS}
                     month="2026-04"
                     cells={TWO_WEEK_CELLS}
@@ -503,7 +503,7 @@ describe('Kalender', () => {
             );
             fireEvent.click(screen.getByText('Send notification'));
             expect(router.post).toHaveBeenCalledWith(
-                '/rekap-bulanan/2026-04/kirim',
+                '/recaps/monthly/2026-04/send',
                 {},
                 expect.objectContaining({ preserveScroll: true }),
             );

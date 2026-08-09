@@ -73,7 +73,7 @@ const SLOT_ORDER: Slot[] = [
     'aura',
 ];
 
-export default function KoleksiAksesori({
+export default function Accessories({
     items,
     equipped,
 }: Readonly<AksesoriProps>) {
@@ -102,7 +102,7 @@ export default function KoleksiAksesori({
 
     const equipItem = (key: string) => {
         router.post(
-            '/api/aksesori/equip',
+            '/api/accessories/equip',
             { unlock_key: key },
             { preserveScroll: true },
         );
@@ -359,4 +359,4 @@ function AksesoriCard({
     );
 }
 
-KoleksiAksesori.layout = appLayout;
+Accessories.layout = appLayout;

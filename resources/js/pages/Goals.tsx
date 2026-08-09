@@ -59,7 +59,7 @@ const SLOT_ICONS: Record<string, string> = {
     aura: 'mdi:blur',
 };
 
-export default function Target({
+export default function Goals({
     goals,
     completedCount,
     totalCount,
@@ -174,4 +174,4 @@ function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
     );
 }
 
-Target.layout = appLayout;
+Goals.layout = appLayout;

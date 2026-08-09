@@ -42,7 +42,7 @@ export function useNotificationPrefs({ prefs }: UseNotificationPrefsArgs) {
     const savePrefs = useCallback(() => {
         const current = latestRef.current;
         router.patch(
-            '/profil/notifikasi',
+            '/profile/notifications',
             {
                 notifications_enabled: current.notificationsEnabled,
                 telegram_enabled: current.telegramEnabled,

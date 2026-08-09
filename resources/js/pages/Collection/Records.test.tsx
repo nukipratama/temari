@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
-import KoleksiRekor from './Rekor';
+import Records from './Records';
 
 vi.mock('@/components/koleksi/MilestoneStrip', () => ({
     default: () => <div data-testid="milestone-strip" />,
@@ -55,9 +55,9 @@ beforeEach(() => {
     });
 });
 
-describe('Koleksi/Rekor', () => {
+describe('Collection/Records', () => {
     it('shows the empty state when no PRs exist, with a sync CTA', () => {
-        render(<KoleksiRekor personalRecords={[]} />);
+        render(<Records personalRecords={[]} />);
         expect(screen.getByText(/No PRs yet/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /Connect Strava/i }),
@@ -71,7 +71,7 @@ describe('Koleksi/Rekor', () => {
             demoLoginEnabled: false,
             stravaSync: { state: 'syncing', last_synced_at: null },
         });
-        render(<KoleksiRekor personalRecords={[]} />);
+        render(<Records personalRecords={[]} />);
         expect(screen.getByText(/No PRs yet/)).toBeInTheDocument();
         expect(
             screen.queryByRole('link', { name: /Connect Strava/i }),
@@ -83,7 +83,7 @@ describe('Koleksi/Rekor', () => {
 
     it('renders the hero scoreboard for the highest distance PR', () => {
         render(
-            <KoleksiRekor
+            <Records
                 personalRecords={[pr('5km', 1751)]}
                 featuredExtras={featuredExtras}
             />,
@@ -93,7 +93,7 @@ describe('Koleksi/Rekor', () => {
 
     it('renders the trophy wall for distance PRs', () => {
         render(
-            <KoleksiRekor
+            <Records
                 personalRecords={[
                     pr('5km', 1751, 1),
                     pr('10km', 3500, 2),
@@ -107,7 +107,7 @@ describe('Koleksi/Rekor', () => {
 
     it('renders the pace ticker for effort PRs', () => {
         render(
-            <KoleksiRekor
+            <Records
                 personalRecords={[
                     pr('best_5min', 320, 10, null),
                     pr('best_20min', 349, 11, null),
@@ -119,7 +119,7 @@ describe('Koleksi/Rekor', () => {
 
     it('renders pace-ticker effort PRs in ascending duration order, not data-arrival order', () => {
         render(
-            <KoleksiRekor
+            <Records
                 personalRecords={[
                     pr('best_60min', 3500, 10, null),
                     pr('best_5min', 320, 11, null),
@@ -156,7 +156,7 @@ describe('Koleksi/Rekor', () => {
             },
         };
         render(
-            <KoleksiRekor
+            <Records
                 personalRecords={[featuredPr]}
                 featuredExtras={featuredExtras}
             />,
@@ -168,7 +168,7 @@ describe('Koleksi/Rekor', () => {
 
     it('threads the trailing partial pace through to the sparkline', () => {
         render(
-            <KoleksiRekor
+            <Records
                 personalRecords={[pr('5km', 1751)]}
                 featuredExtras={{
                     ...featuredExtras,

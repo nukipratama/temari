@@ -95,7 +95,7 @@ class RunController extends Controller
 
         $currentWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
-        return Inertia::render('Riwayat/Jejak', [
+        return Inertia::render('Activities/Feed', [
             'runs' => fn (): Collection => $loadRuns(),
             'notes' => fn (): array => $loadNotes()['notes'],
             // Persisted post-run mood per run, so the list mascot matches the
@@ -373,7 +373,7 @@ class RunController extends Controller
             ...$cards->base($card),
             'flavor_analysis' => $cards->flavorAnalysis($card),
             'edition' => $cards->edition($card, $user->id),
-            'public_share_url' => route('aktivitas.show', ['activity' => $card->activity_id]),
+            'public_share_url' => route('activities.show', ['activity' => $card->activity_id]),
         ];
     }
 }

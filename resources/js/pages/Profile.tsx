@@ -70,7 +70,7 @@ interface AkuProps {
     fitness?: FitnessPayload | null;
 }
 
-export default function Aku({
+export default function Profile({
     identity,
     stats,
     personaMix = [],
@@ -398,4 +398,4 @@ function ProgressionSection({
     );
 }
 
-Aku.layout = appLayout;
+Profile.layout = appLayout;
