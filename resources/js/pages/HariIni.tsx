@@ -64,7 +64,7 @@ export default function HariIni({
 
     return (
         <>
-            <Head title="Hari Ini" />
+            <Head title="Today" />
             <PageContainer>
                 {/* HEADLINE */}
                 <header className="mb-8">
@@ -72,7 +72,7 @@ export default function HariIni({
                         {dateLine}
                     </Eyebrow>
                     <h1 className="font-display text-display-2xl text-ink">
-                        Halo, {firstName}
+                        Hey, {firstName}
                         <br />
                         <span className="italic text-horizon">
                             {vibeSubtitle}
@@ -93,7 +93,7 @@ export default function HariIni({
                     </>
                 ) : (
                     <>
-                        {/* HERO KARTU */}
+                        {/* HERO CARD */}
                         {featured && (
                             <FeaturedKartuPanel
                                 featured={featured}
@@ -127,7 +127,7 @@ export default function HariIni({
                             <KondisiCard load={load} snapshot={snapshot} />
                         </section>
 
-                        {/* TARGET TERDEKAT */}
+                        {/* NEAREST GOAL */}
                         <GoalsCard />
                     </>
                 )}

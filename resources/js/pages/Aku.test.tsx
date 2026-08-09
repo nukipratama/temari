@@ -30,11 +30,11 @@ beforeEach(() => {
 describe('Aku', () => {
     it('renders the editorial greeting with the first name', () => {
         render(<Aku identity={identity} stats={stats} />);
-        expect(screen.getByText(/berlari sejak/i)).toBeInTheDocument();
+        expect(screen.getByText(/running since/i)).toBeInTheDocument();
         expect(screen.getByText('Ada Runner,')).toBeInTheDocument();
     });
 
-    it('falls back to "Aku," when no first name is available', () => {
+    it('falls back to "Runner," when no first name is available', () => {
         setMockPage({
             auth: { user: null },
             flash: {},
@@ -42,14 +42,14 @@ describe('Aku', () => {
         });
         const noFirstName = { ...identity, name: '' };
         render(<Aku identity={noFirstName} stats={stats} />);
-        expect(screen.getByText('Aku,')).toBeInTheDocument();
+        expect(screen.getByText('Runner,')).toBeInTheDocument();
     });
 
     it('renders the three stat tiles', () => {
         render(<Aku identity={identity} stats={stats} />);
         expect(screen.getByText('Total km')).toBeInTheDocument();
-        expect(screen.getByText('Total lari')).toBeInTheDocument();
-        expect(screen.getByText('Lari terjauh')).toBeInTheDocument();
+        expect(screen.getByText('Total runs')).toBeInTheDocument();
+        expect(screen.getByText('Longest run')).toBeInTheDocument();
     });
 
     // Settings moved out of this page into the avatar menu, next to logout, so
@@ -83,9 +83,9 @@ describe('Aku', () => {
         expect(screen.getByText(/Persona/).closest('section')).toBeNull();
     });
 
-    it('shows the "Bareng Temari sejak" join date when member_since is present', () => {
+    it('shows the "With Temari since" join date when member_since is present', () => {
         render(<Aku identity={identity} stats={stats} />);
-        expect(screen.getByText('Bareng Temari sejak')).toBeInTheDocument();
+        expect(screen.getByText('With Temari since')).toBeInTheDocument();
         expect(screen.getByText('12 Agu 2024')).toBeInTheDocument();
     });
 
@@ -96,9 +96,7 @@ describe('Aku', () => {
                 stats={stats}
             />,
         );
-        expect(
-            screen.queryByText('Bareng Temari sejak'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('With Temari since')).not.toBeInTheDocument();
     });
 
     it('renders the progression section when progressionByCategory is provided', () => {
@@ -116,18 +114,18 @@ describe('Aku', () => {
                 }}
             />,
         );
-        expect(screen.getByText(/Perjalanan/)).toBeInTheDocument();
+        expect(screen.getByText(/Journey/)).toBeInTheDocument();
         expect(screen.getByTestId('progression-chart')).toBeInTheDocument();
     });
 
-    it('renders no VDOT, threshold pace or Latihan pace block when fitness is absent', () => {
+    it('renders no VDOT, threshold pace or Training pace block when fitness is absent', () => {
         render(<Aku identity={identity} stats={stats} />);
         expect(screen.queryByText('VDOT')).not.toBeInTheDocument();
         expect(screen.queryByText('Threshold pace')).not.toBeInTheDocument();
-        expect(screen.queryByText(/Latihan/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Training/)).not.toBeInTheDocument();
     });
 
-    it('renders VDOT, threshold pace and the Latihan pace-target block when fitness is provided', () => {
+    it('renders VDOT, threshold pace and the Training pace-target block when fitness is provided', () => {
         render(
             <Aku
                 identity={identity}
@@ -148,7 +146,7 @@ describe('Aku', () => {
         expect(screen.getByText('VDOT')).toBeInTheDocument();
         expect(screen.getByText('52.3')).toBeInTheDocument();
         expect(screen.getByText('Threshold pace')).toBeInTheDocument();
-        expect(screen.getByText(/Latihan/)).toBeInTheDocument();
+        expect(screen.getByText(/Training/)).toBeInTheDocument();
         expect(screen.getByText('Easy')).toBeInTheDocument();
         expect(screen.getByText('Marathon')).toBeInTheDocument();
         expect(screen.getByText('Tempo')).toBeInTheDocument();
@@ -172,7 +170,7 @@ describe('Aku', () => {
             },
         });
         render(<Aku identity={identity} stats={stats} />);
-        expect(screen.queryByText(/Sambungin lagi/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Reconnect/)).not.toBeInTheDocument();
     });
 
     it('shows a persistent reconnect CTA when the Strava connection is revoked', () => {
@@ -183,7 +181,7 @@ describe('Aku', () => {
             stravaSync: { state: 'revoked', last_synced_at: null },
         });
         render(<Aku identity={identity} stats={stats} />);
-        const link = screen.getByText('Sambungin lagi').closest('a');
+        const link = screen.getByText('Reconnect').closest('a');
         expect(link).toHaveAttribute(
             'href',
             '/auth/strava/redirect?from=/profil',
@@ -194,7 +192,7 @@ describe('Aku', () => {
         const profileVoice = {
             id: 3,
             status: 'done' as const,
-            content: 'Kamu makin konsisten tiap minggu.',
+            content: "You're getting more consistent every week.",
             type: 'aku_profile_voice' as const,
             subject_type: 'aku_profile_voice_user',
             subject_id: 1,
@@ -208,7 +206,7 @@ describe('Aku', () => {
             />,
         );
         expect(
-            screen.getByText(/Kamu makin konsisten tiap minggu/),
+            screen.getByText(/getting more consistent every week/),
         ).toBeInTheDocument();
     });
 });

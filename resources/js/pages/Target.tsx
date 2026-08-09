@@ -33,11 +33,11 @@ interface TargetProps {
 }
 
 const SLOT_LABEL: Record<string, string> = {
-    medal: 'Medali',
-    ikat_kepala: 'Ikat Kepala',
-    kaus: 'Kaus',
-    celana: 'Celana',
-    sepatu: 'Sepatu',
+    medal: 'Medal',
+    ikat_kepala: 'Headband',
+    kaus: 'Shirt',
+    celana: 'Shorts',
+    sepatu: 'Shoes',
     aura: 'Aura',
 };
 
@@ -64,7 +64,7 @@ export default function Target({
     completedCount,
     totalCount,
 }: Readonly<TargetProps>) {
-    const eyebrow = `Koleksi · ${completedCount} / ${totalCount} target tercapai`;
+    const eyebrow = `Collection · ${completedCount} / ${totalCount} goals reached`;
 
     const goalsBySlot: Record<string, Goal[]> = Object.fromEntries(
         SLOT_ORDER.map((s) => [s, []]),
@@ -77,13 +77,13 @@ export default function Target({
 
     return (
         <>
-            <Head title="Koleksi · Target" />
+            <Head title="Collection · Goals" />
             <PageContainer>
                 <CollectionHeader
                     active="target"
                     eyebrow={eyebrow}
-                    headline1="Target kamu"
-                    headline2="langkah demi langkah."
+                    headline1="Your goals,"
+                    headline2="step by step."
                     activeCount={`${completedCount} / ${totalCount}`}
                 />
 
@@ -114,7 +114,7 @@ export default function Target({
     );
 }
 
-/** Incomplete goals at or past this progress get a "hampir!" nudge so the grid also reads as a to-do. */
+/** Incomplete goals at or past this progress get an "almost!" nudge so the grid also reads as a to-do. */
 const ALMOST_THRESHOLD = 0.75;
 
 function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
@@ -146,7 +146,7 @@ function GoalCard({ goal }: Readonly<{ goal: Goal }>) {
                 )}
                 {almost && (
                     <span className="flex-none rounded-full bg-horizon/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-horizon-deep">
-                        Hampir!
+                        Almost!
                     </span>
                 )}
             </div>

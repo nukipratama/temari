@@ -12,7 +12,7 @@ const LINKS: ReadonlyArray<DevtoolsLink> = [
     {
         icon: 'mdi:currency-usd',
         label: 'AI Usage',
-        desc: 'Token spend, budget gauge, dan self-heal panel.',
+        desc: 'Token spend, budget gauge, and self-heal panel.',
         href: '/ai-usage',
     },
     {
@@ -24,7 +24,7 @@ const LINKS: ReadonlyArray<DevtoolsLink> = [
     {
         icon: 'mdi:pulse',
         label: 'Pulse',
-        desc: 'Server, request, dan exception metrics.',
+        desc: 'Server, request, and exception metrics.',
         href: '/pulse',
     },
 ];

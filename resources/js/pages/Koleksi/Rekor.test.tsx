@@ -32,7 +32,7 @@ function pr(
         value_sec: valueSec,
         activity_id: activityId as number,
         set_at: '2026-05-16T07:00:00',
-        activity: { detail: { name: 'Lari pagi' } },
+        activity: { detail: { name: 'Morning run' } },
     };
 }
 
@@ -58,7 +58,7 @@ beforeEach(() => {
 describe('Koleksi/Rekor', () => {
     it('shows the empty state when no PRs exist, with a sync CTA', () => {
         render(<KoleksiRekor personalRecords={[]} />);
-        expect(screen.getByText(/Belum ada PR/)).toBeInTheDocument();
+        expect(screen.getByText(/No PRs yet/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /Sambungin Strava/i }),
         ).toBeInTheDocument();
@@ -72,7 +72,7 @@ describe('Koleksi/Rekor', () => {
             stravaSync: { state: 'syncing', last_synced_at: null },
         });
         render(<KoleksiRekor personalRecords={[]} />);
-        expect(screen.getByText(/Belum ada PR/)).toBeInTheDocument();
+        expect(screen.getByText(/No PRs yet/)).toBeInTheDocument();
         expect(
             screen.queryByRole('link', { name: /Sambungin Strava/i }),
         ).not.toBeInTheDocument();
@@ -148,7 +148,7 @@ describe('Koleksi/Rekor', () => {
             context_analysis: {
                 id: 5,
                 status: 'done' as const,
-                content: 'Tempo terbaru kamu konsisten.',
+                content: 'Your recent pace has been steady.',
                 type: 'pr_context' as const,
                 subject_type: 'personal_record',
                 subject_id: 1,
@@ -162,7 +162,7 @@ describe('Koleksi/Rekor', () => {
             />,
         );
         expect(
-            screen.getByText(/Tempo terbaru kamu konsisten/),
+            screen.getByText(/Your recent pace has been steady/),
         ).toBeInTheDocument();
     });
 

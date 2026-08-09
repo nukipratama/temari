@@ -109,17 +109,17 @@ export default function KoleksiRekor({
         );
     const featured = distancePRs[0] ?? personalRecords[0] ?? null;
 
-    const eyebrow = `Koleksi · ${personalRecords.length} rekor · ${distancePRs.length} jarak · ${pacePRs.length} pace`;
+    const eyebrow = `Collection · ${personalRecords.length} PRs · ${distancePRs.length} distance · ${pacePRs.length} pace`;
 
     return (
         <>
-            <Head title="Koleksi · Rekor" />
+            <Head title="Collection · PRs" />
             <PageContainer>
                 <CollectionHeader
                     active="rekor"
                     eyebrow={eyebrow}
-                    headline1="Sejauh ini"
-                    headline2="yang terbaik dari kamu."
+                    headline1="So far,"
+                    headline2="your personal best."
                     activeCount={String(personalRecords.length)}
                 />
 
@@ -143,7 +143,7 @@ function HeroScoreboard({
 }: Readonly<{ pr: ExtendedPR; extras: FeaturedExtras | null }>) {
     const category = PR_CATEGORY_LABELS[pr.category] ?? pr.category;
     const time = formatPrValue(pr.category, pr.value_sec);
-    const runName = pr.activity?.detail?.name ?? 'Lari';
+    const runName = pr.activity?.detail?.name ?? 'Run';
     const splits = extras?.splits_pace_sec ?? [];
     const partialPace = extras?.splits_partial_pace_sec ?? null;
     const tempo = extras?.weather_temp_c;
@@ -156,7 +156,7 @@ function HeroScoreboard({
         <HeroPanel className="mt-8 lg:px-14 lg:py-12">
             {/* Two-row layout:
                 Row 1 — oversized time + Temari quote, balanced side-by-side.
-                Row 2 — captions (Tipe / Hari / Tempat / Cuaca), full width.
+                Row 2 — captions (Type / Date / Location / Weather), full width.
                 Row 3 — splits, full width.
                The previous 1.4fr_1fr split left the right column with just a
                180px mascot + a max-w-sm card, ringed by a sea of empty sky.  */}
@@ -197,13 +197,13 @@ function HeroScoreboard({
                 </div>
             </div>
             <div className="relative mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <Caption label="Tipe" value={runName} />
+                <Caption label="Type" value={runName} />
                 <Caption
-                    label="Hari"
+                    label="Date"
                     value={formatNaiveIdDate(pr.set_at, 'long')}
                 />
                 <Caption
-                    label="Tempat"
+                    label="Location"
                     value={
                         location ??
                         (pr.activity_id ? (
@@ -213,7 +213,7 @@ function HeroScoreboard({
                                 })}
                                 className="focus-ring-on-sky rounded text-cream underline-offset-2 hover:underline"
                             >
-                                Lihat detail lari
+                                View run details
                             </Link>
                         ) : (
                             '—'
@@ -222,8 +222,8 @@ function HeroScoreboard({
                 />
                 {tempo != null && (
                     <Caption
-                        label="Cuaca"
-                        value={`${Math.round(tempo)}°C${humidity != null ? ` · ${Math.round(humidity)}% lembab` : ''}`}
+                        label="Weather"
+                        value={`${Math.round(tempo)}°C${humidity != null ? ` · ${Math.round(humidity)}% humidity` : ''}`}
                     />
                 )}
             </div>
@@ -267,7 +267,7 @@ function TrophyWall({ records }: Readonly<{ records: ExtendedPR[] }>) {
                 <div className="flex items-baseline gap-3">
                     <h2 className="font-display text-headline-md text-ink">
                         Trophy wall ·{' '}
-                        <em className="italic text-horizon-deep">jarak</em>
+                        <em className="italic text-horizon-deep">distance</em>
                     </h2>
                     <Chip tone="horizon">{records.length} PR</Chip>
                 </div>
@@ -288,7 +288,7 @@ function Medallion({ pr }: Readonly<{ pr: ExtendedPR }>) {
             time={formatPrValue(pr.category, pr.value_sec)}
             setAt={formatNaiveIdDate(pr.set_at, 'short')}
             activityId={pr.activity_id}
-            runName={pr.activity?.detail?.name ?? 'Lari'}
+            runName={pr.activity?.detail?.name ?? 'Run'}
             size="lg"
         />
     );
@@ -346,7 +346,7 @@ function PaceTicker({ records }: Readonly<{ records: ExtendedPR[] }>) {
 function PaceCell({ pr }: Readonly<{ pr: ExtendedPR }>) {
     const category = PR_CATEGORY_LABELS[pr.category] ?? pr.category;
     const time = formatPrValue(pr.category, pr.value_sec);
-    const runName = pr.activity?.detail?.name ?? 'Lari';
+    const runName = pr.activity?.detail?.name ?? 'Run';
     return (
         <div className="flex flex-col gap-2 rounded-xl bg-sky/40 px-5 py-5">
             <SectionLabel
@@ -375,8 +375,8 @@ function EmptyState() {
 
     return (
         <EmptyPanel
-            title="Belum ada PR."
-            body="Sync Strava kamu, Temari otomatis nyatet rekor yang kepecahin."
+            title="No PRs yet."
+            body="Sync your Strava, Temari automatically logs every record you break."
             action={
                 state !== 'syncing' && (
                     <StravaSyncButton state={state} className="mt-4" />

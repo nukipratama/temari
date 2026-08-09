@@ -18,18 +18,18 @@ interface LoginProps {
 const PILLARS: ReadonlyArray<{ icon: string; label: string; desc: string }> = [
     {
         icon: 'mdi:link-variant',
-        label: 'Aku baca 📖',
-        desc: 'Strava-mu nyambung otomatis',
+        label: 'I read 📖',
+        desc: 'Your Strava connects automatically',
     },
     {
         icon: 'mdi:cards-outline',
-        label: 'Aku catat ✍️',
-        desc: 'Tiap lari dapet kartunya',
+        label: 'I record ✍️',
+        desc: 'Every run gets its own card',
     },
     {
         icon: 'mdi:hand-heart-outline',
-        label: 'Aku temenin 🫶',
-        desc: 'Konsisten, bukan kenceng',
+        label: "I'm here for you 🫶",
+        desc: 'Consistency, not speed',
     },
 ];
 
@@ -43,8 +43,6 @@ const FORM_CARD_SHADOW =
     '0 20px 50px rgba(31,39,71,0.06), 0 0 0 1px rgba(31,39,71,0.06)';
 
 // Strava button keeps #FC4C02 brand orange and the official Strava glyph per their guidelines.
-// Button label is localized ("Sambungkan dengan Strava") per explicit product decision; accept
-// the small risk that Strava brand review may flag it.
 export default function Login({
     authStravaUrl,
     from = null,
@@ -59,7 +57,7 @@ export default function Login({
 
     return (
         <>
-            <Head title="Masuk · Temari" />
+            <Head title="Log in · Temari" />
             <div className="grid grid-cols-1 min-h-screen lg:grid-cols-[1.05fr_1fr]">
                 <HeroSide />
                 <FormSide
@@ -157,7 +155,7 @@ function HeroSide() {
                         <button
                             type="button"
                             onClick={playIntro}
-                            aria-label="Putar video intro"
+                            aria-label="Play intro video"
                             className="focus-ring-on-sky group absolute inset-0 flex items-center justify-center bg-sky-deep/25 transition hover:bg-sky-deep/10"
                         >
                             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-cream/95 shadow-lg transition group-hover:scale-105">
@@ -173,13 +171,14 @@ function HeroSide() {
                     )}
                 </div>
                 <h1 className="mt-7 font-display italic text-display-lg text-cream sm:text-display-xl">
-                    <span className="block whitespace-nowrap">Lari Kamu,</span>
+                    <span className="block whitespace-nowrap">Your Run,</span>
                     <span className="block whitespace-nowrap text-horizon">
-                        Gak Sendirian.
+                        Never Alone.
                     </span>
                 </h1>
                 <p className="mt-4 font-sans text-base leading-relaxed text-cream sm:text-lg">
-                    “Halo, aku Temari. Mulai sekarang, lari kamu aku temenin.”
+                    “Hi, I'm Temari. From now on, I'll be with you on every
+                    run.”
                 </p>
             </div>
         </div>
@@ -247,7 +246,7 @@ function FormSide({
 
             <div className="flex w-full max-w-[480px] items-center gap-4 rounded-2xl border border-cream-deep bg-cream px-4 py-4 2xl:max-w-[560px]">
                 <KartuMini
-                    name="10K Subuh"
+                    name="10K Sunrise"
                     rarity="legendary"
                     mood="nyala"
                     date="12 Jun"
@@ -257,12 +256,12 @@ function FormSide({
                 />
                 <div>
                     <p className="font-sans text-sm font-semibold text-ink">
-                        Ini kartu beneran, bukan mockup
+                        This is a real card, not a mockup
                     </p>
                     <p className="mt-1 font-sans text-xs leading-relaxed text-ink-3">
-                        Tiap lari yang nyambung dari Strava-mu, Temari bikinin
-                        kartu koleksi kayak gini, lengkap sama rute dan mood
-                        hari itu.
+                        For every run that syncs from your Strava, Temari makes
+                        a collectible card just like this one, complete with the
+                        route and that day's mood.
                     </p>
                 </div>
             </div>
@@ -272,10 +271,10 @@ function FormSide({
                 style={{ boxShadow: FORM_CARD_SHADOW }}
             >
                 <h2 className="font-display italic text-display-xs text-ink">
-                    Selamat datang.
+                    Welcome.
                 </h2>
                 <p className="mt-2.5 font-sans text-sm leading-relaxed text-ink-2">
-                    Sambungin Strava-mu dulu. Temari udah nunggu di dalem.
+                    Connect your Strava first. Temari's waiting inside.
                 </p>
 
                 <a
@@ -291,7 +290,7 @@ function FormSide({
                         <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
                     </svg>
                     <span className="flex-1 px-12 text-center">
-                        Sambungkan dengan Strava
+                        Connect with Strava
                     </span>
                 </a>
 
@@ -310,7 +309,7 @@ function FormSide({
                             className="absolute left-5"
                         />
                         <span className="flex-1 px-12 text-center">
-                            Coba versi demo
+                            Try the demo
                         </span>
                     </PillButton>
                 )}
@@ -324,14 +323,13 @@ function FormSide({
                         className="mt-0.5 shrink-0 text-leaf-deep"
                     />
                     <span>
-                        Aku cuma pake Strava buat baca lari kamu doang, bukan
-                        yang lain.
+                        I only use Strava to read your runs, nothing else.
                     </span>
                 </p>
             </div>
 
             <p className="text-center text-label-micro text-ink-3">
-                Dibuat dengan ♥ oleh pelari, buat pelari
+                Made with ♥ by runners, for runners
             </p>
         </div>
     );

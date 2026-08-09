@@ -32,13 +32,13 @@ function emptyCards() {
 function cardWithRel(
     id: number,
     rarity: RunCard['rarity'],
-    move = 'Langkah Mantap',
+    move = 'Steady Stride',
 ) {
     const activity: Activity = { id, user_id: 1, analyzed_at: '2026-05-10' };
     const detail: ActivityDetail = {
         id,
         activity_id: id,
-        name: 'Lari pagi',
+        name: 'Morning run',
         start_date_local: '2026-05-10T06:30',
         distance: 5000,
         elapsed_time: 1800,
@@ -87,7 +87,7 @@ describe('Koleksi/Kartu', () => {
                 rarityCounts={rarityCounts}
             />,
         );
-        expect(screen.getByText(/Belum ada kartu di sini/)).toBeInTheDocument();
+        expect(screen.getByText(/No cards here yet/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /Sambungin Strava/i }),
         ).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe('Koleksi/Kartu', () => {
                 rarityCounts={rarityCounts}
             />,
         );
-        expect(screen.getByText(/Belum ada kartu di sini/)).toBeInTheDocument();
+        expect(screen.getByText(/No cards here yet/)).toBeInTheDocument();
         expect(
             screen.queryByRole('link', { name: /Sambungin Strava/i }),
         ).not.toBeInTheDocument();
@@ -134,7 +134,7 @@ describe('Koleksi/Kartu', () => {
             />,
         );
         expect(
-            screen.getByText(/Legendaris · belum kebuka/),
+            screen.getByText(/Legendary · not unlocked yet/),
         ).toBeInTheDocument();
     });
 
@@ -149,7 +149,7 @@ describe('Koleksi/Kartu', () => {
             />,
         );
         expect(
-            screen.queryByText(/Legendaris · belum kebuka/),
+            screen.queryByText(/Legendary · not unlocked yet/),
         ).not.toBeInTheDocument();
     });
 
@@ -172,7 +172,7 @@ describe('Koleksi/Kartu', () => {
             activity_id: 99,
             rarity: 'epic' as const,
             mood: 'nyala' as const,
-            special_move: 'Tancap di Akhir',
+            special_move: 'Strong Finish',
             badges: ['negative_split', 'hari_panas'],
             detail: {
                 id: 1,
@@ -187,7 +187,7 @@ describe('Koleksi/Kartu', () => {
             flavor_analysis: {
                 id: 1,
                 status: 'done' as const,
-                content: 'Lari yang menyegarkan.',
+                content: 'A refreshing run.',
                 type: 'card_flavor' as const,
                 subject_type: 'run_card',
                 subject_id: 7,
@@ -202,14 +202,14 @@ describe('Koleksi/Kartu', () => {
                 rarityCounts={rarityCounts}
             />,
         );
-        expect(screen.getByText(/Kartu terbaikmu/)).toBeInTheDocument();
-        expect(screen.getByText(/Lari yang menyegarkan/)).toBeInTheDocument();
+        expect(screen.getByText(/Your best card/)).toBeInTheDocument();
+        expect(screen.getByText(/A refreshing run/)).toBeInTheDocument();
     });
 
     it('triggers a confetti burst when an epic grid card is tapped', () => {
         const cards = {
             ...emptyCards(),
-            data: [cardWithRel(7, 'epic', 'Tancap di Akhir')],
+            data: [cardWithRel(7, 'epic', 'Strong Finish')],
         };
         const { container } = render(
             <KoleksiKartu
@@ -236,7 +236,7 @@ describe('Koleksi/Kartu', () => {
         const cards = {
             ...emptyCards(),
             data: [
-                cardWithRel(1, 'epic', 'Tendangan Epic'),
+                cardWithRel(1, 'epic', 'Epic Kick'),
                 cardWithRel(2, 'common'),
             ],
         };
@@ -248,7 +248,7 @@ describe('Koleksi/Kartu', () => {
                 rarityCounts={rarityCounts}
             />,
         );
-        expect(screen.getByText('Tendangan Epic')).toBeInTheDocument();
+        expect(screen.getByText('Epic Kick')).toBeInTheDocument();
 
         const confetti = container.querySelector<HTMLElement>(
             '[data-testid="confetti-burst"]',
@@ -268,7 +268,7 @@ describe('Koleksi/Kartu', () => {
             activity_id: 99,
             rarity: 'rare' as const,
             mood: 'adem' as const,
-            special_move: 'Adem Ayem',
+            special_move: 'Calm and Steady',
             badges: null,
             detail: null,
         };
@@ -281,7 +281,9 @@ describe('Koleksi/Kartu', () => {
             />,
         );
         // The banner heading renders the name in an <em> — the card also renders it, so use getAllByText.
-        expect(screen.getAllByText(/Adem Ayem/).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Calm and Steady/).length).toBeGreaterThan(
+            0,
+        );
     });
 
     it('labels the search input and sort select for assistive tech', () => {
@@ -293,8 +295,8 @@ describe('Koleksi/Kartu', () => {
                 rarityCounts={rarityCounts}
             />,
         );
-        expect(screen.getByLabelText('Cari kartu')).toBeInTheDocument();
-        expect(screen.getByLabelText('Urutkan')).toBeInTheDocument();
+        expect(screen.getByLabelText('Search cards')).toBeInTheDocument();
+        expect(screen.getByLabelText('Sort')).toBeInTheDocument();
     });
 
     it('skips grid cells whose card has no detail', () => {
@@ -303,7 +305,7 @@ describe('Koleksi/Kartu', () => {
             activity_id: 99,
             rarity: 'common' as const,
             mood: 'adem' as const,
-            special_move: 'Tanpa Detail',
+            special_move: 'No Detail',
             badges: null,
             share_image_path: null,
             activity: {
@@ -323,15 +325,15 @@ describe('Koleksi/Kartu', () => {
                 rarityCounts={rarityCounts}
             />,
         );
-        expect(screen.queryByText('Tanpa Detail')).not.toBeInTheDocument();
+        expect(screen.queryByText('No Detail')).not.toBeInTheDocument();
     });
 
     it('filters the grid by the search query', async () => {
         const cards = {
             ...emptyCards(),
             data: [
-                cardWithRel(1, 'epic', 'Tendangan Epic'),
-                cardWithRel(2, 'common', 'Langkah Mantap'),
+                cardWithRel(1, 'epic', 'Epic Kick'),
+                cardWithRel(2, 'common', 'Steady Stride'),
             ],
         };
         render(
@@ -343,15 +345,13 @@ describe('Koleksi/Kartu', () => {
             />,
         );
 
-        fireEvent.change(screen.getByLabelText('Cari kartu'), {
-            target: { value: 'Tendangan' },
+        fireEvent.change(screen.getByLabelText('Search cards'), {
+            target: { value: 'Epic Kick' },
         });
 
         await waitFor(() => {
-            expect(screen.getByText('Tendangan Epic')).toBeInTheDocument();
-            expect(
-                screen.queryByText('Langkah Mantap'),
-            ).not.toBeInTheDocument();
+            expect(screen.getByText('Epic Kick')).toBeInTheDocument();
+            expect(screen.queryByText('Steady Stride')).not.toBeInTheDocument();
         });
     });
 
@@ -359,8 +359,8 @@ describe('Koleksi/Kartu', () => {
         const cards = {
             ...emptyCards(),
             data: [
-                cardWithRel(1, 'common', 'Aduh Capek'),
-                cardWithRel(2, 'legendary', 'Zona Ambang'),
+                cardWithRel(1, 'common', 'So Tired'),
+                cardWithRel(2, 'legendary', 'Threshold Zone'),
             ],
         };
         render(
@@ -372,27 +372,27 @@ describe('Koleksi/Kartu', () => {
             />,
         );
 
-        fireEvent.change(screen.getByLabelText('Urutkan'), {
+        fireEvent.change(screen.getByLabelText('Sort'), {
             target: { value: 'rarity' },
         });
         await waitFor(() => {
             const names = screen
-                .getAllByText(/Aduh Capek|Zona Ambang/)
+                .getAllByText(/So Tired|Threshold Zone/)
                 .map((el) => el.textContent);
-            expect(names.indexOf('Zona Ambang')).toBeLessThan(
-                names.indexOf('Aduh Capek'),
+            expect(names.indexOf('Threshold Zone')).toBeLessThan(
+                names.indexOf('So Tired'),
             );
         });
 
-        fireEvent.change(screen.getByLabelText('Urutkan'), {
+        fireEvent.change(screen.getByLabelText('Sort'), {
             target: { value: 'name' },
         });
         await waitFor(() => {
             const names = screen
-                .getAllByText(/Aduh Capek|Zona Ambang/)
+                .getAllByText(/So Tired|Threshold Zone/)
                 .map((el) => el.textContent);
-            expect(names.indexOf('Aduh Capek')).toBeLessThan(
-                names.indexOf('Zona Ambang'),
+            expect(names.indexOf('So Tired')).toBeLessThan(
+                names.indexOf('Threshold Zone'),
             );
         });
     });

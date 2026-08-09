@@ -52,7 +52,7 @@ export default function AiUsage({
                                 AI Usage
                             </h1>
                             <p className="text-xs text-ink-3">
-                                Konsumsi token Azure OpenAI per rentang tanggal.
+                                Azure OpenAI token consumption per date range.
                             </p>
                         </div>
                     </div>
@@ -91,8 +91,8 @@ export default function AiUsage({
                     <section className="mt-10">
                         <SectionHeading
                             icon="mdi:chart-bar"
-                            title="Konsumsi Harian"
-                            subtitle="Token per hari dalam rentang yang dipilih."
+                            title="Daily Consumption"
+                            subtitle="Tokens per day within the selected range."
                             tone="accent"
                         />
 

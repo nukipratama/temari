@@ -61,25 +61,25 @@ export default function Pengaturan({
 }: Readonly<PengaturanProps>) {
     return (
         <>
-            <Head title="Pengaturan" />
+            <Head title="Settings" />
             <PageContainer>
                 {/* No back affordance: Pengaturan is one tap from the Aku tab
                     and from the avatar menu on every page, so a breadcrumb here
                     would be chrome without a job. */}
                 <header className="mb-8">
                     <PageHero
-                        eyebrow="Pengaturan"
-                        lead="Atur Temari,"
-                        emph="sesuai kamu."
+                        eyebrow="Settings"
+                        lead="Set up Temari,"
+                        emph="your way."
                     />
                 </header>
 
                 {/* One notification section, not three. The user holds a single
                     model with two questions — what gets sent, and where it goes —
-                    and splitting those across "Notifikasi", "Notifikasi HP" and
+                    and splitting those across "Notifications", "Push" and
                     "Telegram" made them look unrelated. */}
                 <section>
-                    <SectionLabel>Notifikasi</SectionLabel>
+                    <SectionLabel>Notifications</SectionLabel>
                     <div className="mt-3">
                         <Card padding="lg">
                             <NotificationPrefsPanel
@@ -92,13 +92,13 @@ export default function Pengaturan({
                 </section>
 
                 <section className="mt-10">
-                    <SectionLabel>Lari</SectionLabel>
+                    <SectionLabel>Running</SectionLabel>
                     <div className="mt-3">
                         <Card padding="lg">
                             <SettingsRow
                                 icon="mdi:heart-pulse"
-                                label="Zona HR"
-                                description="Atur sendiri batas Z1-Z5 biar Temari baca larimu lebih pas."
+                                label="HR zones"
+                                description="Set your own Z1-Z5 boundaries so Temari reads your runs more accurately."
                                 href="/pengaturan/zona"
                             />
                         </Card>
@@ -106,7 +106,7 @@ export default function Pengaturan({
                 </section>
 
                 <section className="mt-10">
-                    <SectionLabel>Akun</SectionLabel>
+                    <SectionLabel>Account</SectionLabel>
                     <div className="mt-3">
                         <Card padding="lg">
                             <DeleteAccountPanel />
@@ -125,23 +125,23 @@ function DeleteAccountPanel() {
         <>
             <SettingsRow
                 icon="mdi:account-remove-outline"
-                label="Hapus akun"
-                description="Hapus akun sekaligus lepasin sambungan Strava. Gak bisa dibalikin."
+                label="Delete account"
+                description="Deletes your account and disconnects Strava. Can't be undone."
                 tone="danger"
                 onClick={() => setConfirmOpen(true)}
             />
             <TemariNudgeModal
                 open={confirmOpen}
                 onClose={() => setConfirmOpen(false)}
-                title="Yakin mau hapus akun?"
+                title="Sure you want to delete your account?"
                 body={
                     <>
-                        Semua lari, kartu, sama sambungan Strava kamu bakal
-                        dilepas dan gak bisa dibalikin. Kalau cuma mau ganti
-                        akun Strava, ini juga caranya.
+                        All your runs, cards, and Strava connection will be
+                        removed and can't be undone. If you just want to switch
+                        Strava accounts, this is also how.
                     </>
                 }
-                primaryLabel="Ya, hapus akunku"
+                primaryLabel="Yes, delete my account"
                 primaryIcon="mdi:account-remove-outline"
                 primaryClassName="bg-ember-deep text-cream hover:opacity-90"
                 onPrimary={() => router.delete('/akun')}
@@ -174,20 +174,20 @@ function NotificationPrefsPanel({
     return (
         <div className="flex flex-col gap-6">
             <div>
-                <GroupLabel>Apa yang dikirim</GroupLabel>
+                <GroupLabel>What gets sent</GroupLabel>
                 {/* One switch, not three. Per-type toggles asked the user to
                     curate a list they never wanted to curate, and the streak
                     nudge had no toggle of its own at all, so it silently rode
-                    along on "Rekap mingguan". Naming everything here is what
+                    along on "weekly recap". Naming everything here is what
                     makes that coupling honest. */}
                 <div className="flex flex-col">
                     <SettingsRow
                         icon="mdi:bell-outline"
-                        label="Kabarin aku"
-                        description="Cerita abis lari, rekap mingguan sama bulanan, plus pengingat kalau streak kamu lagi di ujung."
+                        label="Keep me posted"
+                        description="Post-run recaps, weekly and monthly summaries, plus a nudge when your streak's about to end."
                         control={
                             <Toggle
-                                label="Kabarin aku"
+                                label="Keep me posted"
                                 checked={notificationsEnabled}
                                 onChange={setNotificationsEnabled}
                             />
@@ -197,15 +197,15 @@ function NotificationPrefsPanel({
             </div>
 
             <div className="border-t border-line/60 pt-5">
-                <GroupLabel>Ke mana</GroupLabel>
+                <GroupLabel>Where it goes</GroupLabel>
                 {/* Scoped on purpose: these switches govern the run notifications
                     above them, not everything the app can send. Maintainer alerts
                     (dead-lettered AI blocks, generation pauses) go straight to
                     admin Telegram chats without touching preferences, and the bot
                     still replies to /start and /stop. See MaintainerAlerter. */}
                 <p className="mb-2 px-2 font-sans text-[12px] text-ink-3">
-                    Buat notifikasi lari kamu. Balasan bot sama peringatan
-                    sistem tetap masuk.
+                    Controls your run notifications. Bot replies and system
+                    alerts still come through.
                 </p>
                 <div className="flex flex-col">
                     <TelegramPanel
@@ -254,11 +254,11 @@ function TestSendButton({
     const remaining = useCooldownCountdown(cooldownSeconds);
     const cooling = remaining > 0;
 
-    let label = 'Kirim notifikasi tes';
+    let label = 'Send test notification';
     if (cooling) {
         label = formatDurationHMS(remaining);
     } else if (sending) {
-        label = 'Lagi ngirim…';
+        label = 'Sending…';
     }
 
     return (
@@ -307,7 +307,7 @@ function TelegramPanel({
                 <SettingsRow
                     icon="mdi:telegram"
                     label="Telegram"
-                    description="Bot Telegram belum dikonfigurasi."
+                    description="The Telegram bot isn't configured yet."
                     control={<span aria-hidden />}
                 />
             );
@@ -320,7 +320,7 @@ function TelegramPanel({
                 <SettingsRow
                     icon="mdi:telegram"
                     label="Telegram"
-                    description="Sambungin biar Temari bisa kabarin kamu."
+                    description="Connect it so Temari can keep you posted."
                     onClick={() => setOpen(true)}
                 >
                     <DemoBlockedModal
@@ -335,7 +335,7 @@ function TelegramPanel({
             <SettingsRow
                 icon="mdi:telegram"
                 label="Telegram"
-                description="Sambungin biar Temari bisa kabarin kamu."
+                description="Connect it so Temari can keep you posted."
                 externalHref={telegram.connect_url}
             />
         );
@@ -344,12 +344,12 @@ function TelegramPanel({
     // Mute sits beside the connection it silences, and only exists once there is
     // a connection — a mute on an unwired channel would mean nothing.
     let description = telegram.username
-        ? `Aktif · @${telegram.username}`
-        : 'Aktif';
+        ? `Active · @${telegram.username}`
+        : 'Active';
     if (muted) {
         description = telegram.username
-            ? `Dibisukan · @${telegram.username}`
-            : 'Dibisukan';
+            ? `Muted · @${telegram.username}`
+            : 'Muted';
     }
 
     return (
@@ -360,7 +360,7 @@ function TelegramPanel({
                 description={description}
                 control={
                     <Toggle
-                        label="Kirim notifikasi lari ke Telegram"
+                        label="Send run notifications to Telegram"
                         checked={!muted}
                         onChange={(on) => onMuteChange(!on)}
                     />
@@ -384,7 +384,7 @@ function TelegramPanel({
                         height={13}
                         aria-hidden
                     />
-                    Putuskan
+                    Disconnect
                 </button>
             </div>
             <DemoBlockedModal open={open} onClose={() => setOpen(false)} />

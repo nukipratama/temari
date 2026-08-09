@@ -15,13 +15,13 @@ import HariIni from './HariIni';
 
 const briefing: BriefingResult = {
     vibeState: 'pumped',
-    vibeLabel: 'Membara',
+    vibeLabel: 'Pumped',
     vibeEmoji: '💥',
     mascotVoice: {
         id: 4,
         status: 'done',
         content:
-            'Tempo ringan, 35–45 menit.\n\nDua lari terakhirmu negatif-split, jadi hari ini boleh naik tipis.',
+            'Easy pace, 35–45 minutes.\n\nYour last two runs were negative-split, so today you can push a bit harder.',
         type: 'briefing_mascot_voice',
         subject_type: 'briefing_user_day',
         subject_id: 1,
@@ -30,18 +30,18 @@ const briefing: BriefingResult = {
     featuredKartuVoice: {
         id: 5,
         status: 'done',
-        content: 'Kartu ini bukti kamu bisa lebih jauh dari yang kamu kira.',
+        content: 'This card proves you can go further than you think.',
         type: 'briefing_featured_kartu_voice',
         subject_type: 'briefing_user_day',
         subject_id: 1,
         discriminator: '7',
     },
     featuredCardId: 7,
-    recoveryLabel: 'Pemulihan: 41j',
+    recoveryLabel: 'Recovery: 41h',
     recoveryTone: 'positive',
-    recoveryHoursLabel: '41j',
+    recoveryHoursLabel: '41h',
     recoveryHours: 41,
-    streakLabel: 'Lari hari ini',
+    streakLabel: 'Ran today',
     sigilPattern: 'orct',
     accessory: null,
     mood: 'nyala',
@@ -76,7 +76,7 @@ const snapshot: WeeklySnapshot = {
 const detailWithCard: ActivityDetail = {
     id: 1,
     activity_id: 99,
-    name: 'Pagi negatif-split',
+    name: 'Morning negative-split',
     start_date_local: '2026-05-20T07:00',
     distance: 5280,
     elapsed_time: 2400,
@@ -90,7 +90,7 @@ const detailWithCard: ActivityDetail = {
             id: 7,
             activity_id: 99,
             rarity: 'epic',
-            special_move: 'Pembalik Keadaan',
+            special_move: 'Game Changer',
             badges: ['negative_split', 'hari_panas'],
         },
     },
@@ -141,10 +141,10 @@ describe('HariIni', () => {
                 recentRuns={[]}
             />,
         );
-        expect(screen.getByText(/Halo, Ada/)).toBeInTheDocument();
-        // "membara" now appears both in the italic headline accent and as the
+        expect(screen.getByText(/Hey, Ada/)).toBeInTheDocument();
+        // "pumped" now appears both in the italic headline accent and as the
         // Vibe chip sub-label, so allow multiple matches.
-        expect(screen.getAllByText(/membara/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/pumped/i).length).toBeGreaterThan(0);
     });
 
     it('renders the three vital chips (Vibe / Kesiapan / Jeda)', () => {
@@ -170,7 +170,7 @@ describe('HariIni', () => {
                 recentRuns={[]}
             />,
         );
-        expect(screen.getAllByText(/negatif-split/).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/negative-split/).length).toBeGreaterThan(0);
     });
 
     it('renders the featured hero kartu when a recentRun has an attached runCard', () => {
@@ -182,9 +182,7 @@ describe('HariIni', () => {
                 recentRuns={[detailWithCard]}
             />,
         );
-        expect(screen.getAllByText('Pembalik Keadaan').length).toBeGreaterThan(
-            0,
-        );
+        expect(screen.getAllByText('Game Changer').length).toBeGreaterThan(0);
     });
 
     it('omits the hero panel when no recent run has a card', () => {
@@ -211,7 +209,7 @@ describe('HariIni', () => {
             />,
         );
         expect(
-            screen.getByText(/Tempo ringan, 35–45 menit\./),
+            screen.getByText(/Easy pace, 35–45 minutes\./),
         ).toBeInTheDocument();
     });
 
@@ -256,7 +254,7 @@ describe('HariIni', () => {
             />,
         );
         expect(
-            screen.getAllByText(/bukti kamu bisa lebih jauh/).length,
+            screen.getAllByText(/proves you can go further/).length,
         ).toBeGreaterThan(0);
     });
 
@@ -273,7 +271,7 @@ describe('HariIni', () => {
                 recentRuns={[]}
             />,
         );
-        expect(screen.getByText(/Halo, Ada/)).toBeInTheDocument();
+        expect(screen.getByText(/Hey, Ada/)).toBeInTheDocument();
     });
 
     it('renders the Temari voice block but emits no content when the text is whitespace-only', () => {
@@ -299,7 +297,7 @@ describe('HariIni', () => {
             ...briefing,
             mascotVoice: {
                 ...briefing.mascotVoice,
-                content: '“Lari santai aja hari ini.”',
+                content: '“Just an easy run today.”',
             },
         };
         render(
@@ -311,7 +309,7 @@ describe('HariIni', () => {
             />,
         );
         expect(
-            screen.getByText(/Lari santai aja hari ini\./),
+            screen.getByText(/Just an easy run today\./),
         ).toBeInTheDocument();
     });
 
@@ -343,7 +341,7 @@ describe('HariIni', () => {
                 // whole numbers -> integer display, full progress capped at 100%
                 {
                     id: 'g1',
-                    title: 'Lari 100 KM bulan ini',
+                    title: 'Run 100 KM this month',
                     current: 100,
                     target: 100,
                     unit: 'km',
@@ -359,10 +357,10 @@ describe('HariIni', () => {
                 // target 0 -> pct branch returns 0 (no divide-by-zero)
                 {
                     id: 'g3',
-                    title: 'Target kosong',
+                    title: 'Empty goal',
                     current: 0,
                     target: 0,
-                    unit: 'sesi',
+                    unit: 'sessions',
                 },
             ],
         };
@@ -381,9 +379,9 @@ describe('HariIni', () => {
             />,
         );
         expect(screen.getByText('Target terdekat')).toBeInTheDocument();
-        expect(screen.getByText('Lari 100 KM bulan ini')).toBeInTheDocument();
+        expect(screen.getByText('Run 100 KM this month')).toBeInTheDocument();
         expect(screen.getByText('Half marathon')).toBeInTheDocument();
-        expect(screen.getByText('Target kosong')).toBeInTheDocument();
+        expect(screen.getByText('Empty goal')).toBeInTheDocument();
         // current/target sit in one span split by a "/" node; match the combined
         // text to confirm both the integer (100/100) and decimal (12.5/21.1) paths.
         expect(
@@ -423,12 +421,12 @@ describe('HariIni', () => {
                 load={load}
                 snapshot={snapshot}
                 recentRuns={[richRun]}
-                lastRunNote={{ oneline: 'Sesi yang mantap.', mood: 'nyala' }}
+                lastRunNote={{ oneline: 'Solid session.', mood: 'nyala' }}
             />,
         );
-        expect(screen.getByText('Pagi negatif-split')).toBeInTheDocument();
+        expect(screen.getByText('Morning negative-split')).toBeInTheDocument();
         expect(screen.getByText(/Gelora Bung Karno/)).toBeInTheDocument();
-        expect(screen.getByText('Sesi yang mantap.')).toBeInTheDocument();
+        expect(screen.getByText('Solid session.')).toBeInTheDocument();
         // pace renders as a value (not the "—" fallback).
         expect(screen.getAllByText(/\/km$/).length).toBeGreaterThan(0);
     });
@@ -468,7 +466,7 @@ describe('HariIni', () => {
             />,
         );
         // greeting renders with no name, no crash on the missing pose mapping.
-        expect(screen.getByText(/Halo,/)).toBeInTheDocument();
+        expect(screen.getByText(/Hey,/)).toBeInTheDocument();
     });
 
     it('shows em-dash / empty vital chips and "belum cukup data" when load and snapshot are null', () => {
@@ -484,7 +482,7 @@ describe('HariIni', () => {
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
         expect(screen.getByText(/belum cukup data/)).toBeInTheDocument();
         // Vibe chip falls back to the qualitative label when there's no form score.
-        expect(screen.getAllByText(/membara/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/pumped/i).length).toBeGreaterThan(0);
     });
 
     it('falls back to streakLabel for the Recovery chip when recoveryHoursLabel is null', () => {
@@ -500,7 +498,7 @@ describe('HariIni', () => {
                 recentRuns={[detailWithCard]}
             />,
         );
-        expect(screen.getByText('Lari hari ini')).toBeInTheDocument();
+        expect(screen.getByText('Ran today')).toBeInTheDocument();
     });
 
     it('falls back to recoveryLabel for the Recovery chip when hours + streak are both null', () => {
@@ -517,7 +515,7 @@ describe('HariIni', () => {
                 recentRuns={[detailWithCard]}
             />,
         );
-        expect(screen.getByText('Pemulihan: 41j')).toBeInTheDocument();
+        expect(screen.getByText('Recovery: 41h')).toBeInTheDocument();
     });
 
     it('flips the "Saran lain" button to its pending label when triggered', async () => {
@@ -551,8 +549,7 @@ describe('HariIni', () => {
             ...briefing,
             mascotVoice: {
                 ...briefing.mascotVoice,
-                content:
-                    'Tempo ringan hari ini.\n\nJaga pace di zona 2 selama 40 menit.',
+                content: 'Easy pace today.\n\nHold zone 2 for 40 minutes.',
             },
         };
         render(
@@ -563,7 +560,7 @@ describe('HariIni', () => {
                 recentRuns={[detailWithCard]}
             />,
         );
-        expect(screen.getByText('Tempo ringan hari ini.')).toBeInTheDocument();
-        expect(screen.getByText(/Jaga pace di zona 2/)).toBeInTheDocument();
+        expect(screen.getByText('Easy pace today.')).toBeInTheDocument();
+        expect(screen.getByText(/Hold zone 2/)).toBeInTheDocument();
     });
 });

@@ -18,17 +18,17 @@ type ZoneKey = (typeof ZONE_KEYS)[number];
 
 /**
  * Karvonen %HRR breakpoints, mirrored from {@link UpdateHrZonesRequest} so the
- * "Hitung otomatis" result matches the server derivation byte for byte.
+ * "auto-calculate" result matches the server derivation byte for byte.
  */
 const ZONE_BREAKPOINTS = [0.488, 0.664, 0.792, 0.904, 0.968] as const;
 const Z5_SENTINEL_HI = 999;
 
 const ZONE_LABEL: Record<ZoneKey, string> = {
-    Z1: 'Z1 · Pemulihan',
-    Z2: 'Z2 · Ringan',
-    Z3: 'Z3 · Aerobik',
-    Z4: 'Z4 · Ambang',
-    Z5: 'Z5 · Maksimal',
+    Z1: 'Z1 · Recovery',
+    Z2: 'Z2 · Easy',
+    Z3: 'Z3 · Aerobic',
+    Z4: 'Z4 · Threshold',
+    Z5: 'Z5 · Max',
 };
 
 type ZoneSource = 'default' | 'strava' | 'manual';
@@ -40,22 +40,21 @@ const SOURCE_INFO: Record<
     default: {
         icon: 'mdi:tune-variant',
         iconClass: 'text-ink-3',
-        label: 'Zona standar',
-        description:
-            'Sekarang masih pakai zona standar. Bikin punyamu sendiri di bawah.',
+        label: 'Default zones',
+        description: "You're still on the default zones. Make your own below.",
     },
     strava: {
         icon: 'mdi:cloud-check-variant-outline',
         iconClass: 'text-leaf-deep',
-        label: 'Disinkron dari Strava',
+        label: 'Synced from Strava',
         description:
-            'Zona ini disinkron otomatis dari Strava. Ubah manual di bawah kalau mau atur sendiri.',
+            'These zones sync automatically from Strava. Edit them manually below if you want to set your own.',
     },
     manual: {
         icon: 'mdi:pencil-outline',
         iconClass: 'text-ink-2',
-        label: 'Diatur manual',
-        description: 'Kamu udah atur zona sendiri. Ubah kapan aja di bawah.',
+        label: 'Set manually',
+        description: "You've set your own zones. Change them anytime below.",
     },
 };
 
@@ -179,7 +178,7 @@ export default function ZonaHR({
 
     return (
         <>
-            <Head title="Pengaturan · Zona HR" />
+            <Head title="Settings · HR Zones" />
             <PageContainer>
                 <header>
                     {/* Now points at the real parent. It used to read as a trail
@@ -189,10 +188,10 @@ export default function ZonaHR({
                         href="/pengaturan"
                         className="mb-4 hidden lg:inline-flex"
                     >
-                        Pengaturan
+                        Settings
                     </BackLink>
                     <h1 className="font-display italic text-display-md text-ink">
-                        Zona Heart Rate kamu.
+                        Your heart rate zones.
                     </h1>
                     <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-ink-2">
                         {SOURCE_INFO[source].description}
@@ -213,7 +212,7 @@ export default function ZonaHR({
                         </span>
                         {source === 'strava' && stravaSyncedLabel && (
                             <span className="text-meta">
-                                · terakhir sinkron {stravaSyncedLabel}
+                                · last synced {stravaSyncedLabel}
                             </span>
                         )}
                     </div>
@@ -243,8 +242,8 @@ export default function ZonaHR({
                                             aria-hidden
                                         />
                                         {resyncing
-                                            ? 'Lagi narik…'
-                                            : 'Sinkron ulang dari Strava'}
+                                            ? 'Syncing…'
+                                            : 'Resync from Strava'}
                                     </PillButton>
                                 </StravaAction>
                             )}
@@ -259,7 +258,7 @@ export default function ZonaHR({
                                     height={14}
                                     aria-hidden
                                 />
-                                Balik ke zona standar
+                                Reset to default zones
                             </PillButton>
                         </div>
                     )}
@@ -296,22 +295,22 @@ export default function ZonaHR({
                                 height={14}
                                 aria-hidden
                             />
-                            Hitung otomatis dari Max & Resting
+                            Auto-calculate from Max & Resting
                         </PillButton>
                     </div>
                     <p className="mt-3 max-w-xl font-sans text-xs leading-relaxed text-ink-3">
-                        Aku pakai rumus %HRR (Karvonen) sebagai titik awal:
-                        ngitung zona dari detak jantung istirahat sama
-                        maksimalmu. Kalau kamu udah punya angka sendiri, tinggal
-                        ubah manual di bawah.
+                        I use the %HRR (Karvonen) formula as a starting point:
+                        it works out your zones from your resting and max heart
+                        rate. If you've already got your own numbers, just edit
+                        them manually below.
                     </p>
                 </Card>
 
                 <Card as="section" padding="lg" className="mt-6">
-                    <SectionLabel>Zona kamu</SectionLabel>
+                    <SectionLabel>Your zones</SectionLabel>
                     <p className="mb-4 font-sans text-xs text-ink-3">
-                        Tiap batas atas harus sama dengan batas bawah zona
-                        berikutnya, biar nggak ada celah.
+                        Each upper bound should match the next zone's lower
+                        bound, so there are no gaps.
                     </p>
                     <div className="grid gap-3">
                         {ZONE_KEYS.map((key) => (
@@ -328,7 +327,7 @@ export default function ZonaHR({
                                     {ZONE_LABEL[key]}
                                 </Eyebrow>
                                 <BoundaryInput
-                                    label={`${key} batas bawah`}
+                                    label={`${key} lower bound`}
                                     testId={`zone-${key}-lo`}
                                     value={zones[key].lo}
                                     invalid={hasZoneError}
@@ -340,15 +339,15 @@ export default function ZonaHR({
                                 {key === 'Z5' ? (
                                     <span
                                         data-testid="zone-Z5-hi"
-                                        aria-label="Z5 batas atas: tanpa batas"
-                                        title="Zona teratas tidak punya batas atas"
+                                        aria-label="Z5 upper bound: unbounded"
+                                        title="The top zone has no upper bound"
                                         className="flex h-[38px] w-20 items-center justify-center rounded-lg border border-cream-deep bg-surface-sunken font-mono text-sm text-ink-3"
                                     >
                                         ∞
                                     </span>
                                 ) : (
                                     <BoundaryInput
-                                        label={`${key} batas atas`}
+                                        label={`${key} upper bound`}
                                         testId={`zone-${key}-hi`}
                                         value={zones[key].hi}
                                         invalid={hasZoneError}
@@ -371,14 +370,14 @@ export default function ZonaHR({
                             role="alert"
                             className="mt-3 font-sans text-xs text-ember-deep"
                         >
-                            Ada zona yang belum nyambung. Cek lagi batas atas
-                            dan bawahnya.
+                            Some zones don't line up. Double-check the upper and
+                            lower bounds.
                         </p>
                     )}
                 </Card>
 
                 <p className="mt-5 font-sans text-sm text-ink-2">
-                    Zona ini dipakai ke semua lari berikutnya.
+                    These zones apply to every run from now on.
                 </p>
 
                 <div className="mt-5">
@@ -393,7 +392,7 @@ export default function ZonaHR({
                             height={16}
                             aria-hidden
                         />
-                        Simpan zona
+                        Save zones
                     </PillButton>
                 </div>
             </PageContainer>

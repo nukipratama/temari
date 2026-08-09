@@ -88,14 +88,14 @@ export default function Aku({
         : null;
     const monthsSinceFirstRun = monthsSinceId(identity.first_run_at);
 
-    const eyebrowParts: string[] = ['Aku'];
-    if (firstRunShort) eyebrowParts.push(`berlari sejak ${firstRunShort}`);
+    const eyebrowParts: string[] = ['Profile'];
+    if (firstRunShort) eyebrowParts.push(`running since ${firstRunShort}`);
     if (monthsSinceFirstRun !== null)
-        eyebrowParts.push(`${monthsSinceFirstRun} bulan`);
+        eyebrowParts.push(`${monthsSinceFirstRun} months`);
 
     return (
         <>
-            <Head title="Aku" />
+            <Head title="Profile" />
             <PageContainer>
                 <header className="mb-8">
                     <Eyebrow
@@ -106,9 +106,11 @@ export default function Aku({
                         {eyebrowParts.join(' · ')}
                     </Eyebrow>
                     <h1 className="font-display text-display-lg text-ink">
-                        {firstName ? `${firstName} Runner,` : 'Aku,'}
+                        {firstName ? `${firstName} Runner,` : 'Runner,'}
                         <br />
-                        <em className="italic text-horizon-deep">ceritanya.</em>
+                        <em className="italic text-horizon-deep">
+                            your story.
+                        </em>
                     </h1>
                 </header>
 
@@ -128,7 +130,7 @@ export default function Aku({
                                 tone="horizon"
                                 className="mb-3"
                             >
-                                ★ Kata Temari tentang kamu
+                                ★ What Temari says about you
                             </Eyebrow>
                             {profileVoice && (
                                 <AnalysisStatus
@@ -157,7 +159,7 @@ export default function Aku({
                                             height={12}
                                             aria-hidden
                                         />
-                                        Sambungin lagi
+                                        Reconnect
                                     </a>
                                 )}
                             </div>
@@ -171,7 +173,7 @@ export default function Aku({
                                     tone="ink-on-sky"
                                     className="text-right"
                                 >
-                                    Bareng Temari sejak
+                                    With Temari since
                                 </Eyebrow>
                                 <p className="mt-1 font-display text-headline-sm text-cream">
                                     {formatShortDateId(identity.member_since)}
@@ -181,7 +183,7 @@ export default function Aku({
                     </div>
                     <div className="mb-6">
                         <SectionLabel onSky size="micro">
-                            Persona · 12 minggu terakhir
+                            Persona · last 12 weeks
                         </SectionLabel>
                         <PersonaBar mix={personaMix} onSky />
                     </div>
@@ -198,15 +200,15 @@ export default function Aku({
                             tone="plainSky"
                             size="md"
                             align="center"
-                            label="Total lari"
+                            label="Total runs"
                             value={stats.total_runs.toString()}
-                            unit="lari"
+                            unit="runs"
                         />
                         <StatTile
                             tone="plainSky"
                             size="md"
                             align="center"
-                            label="Lari terjauh"
+                            label="Longest run"
                             value={stats.longest_run_km.toFixed(2)}
                             unit="km"
                         />
@@ -236,7 +238,7 @@ export default function Aku({
 
                 {fitness?.training_paces && (
                     <section className="mt-10">
-                        <SectionLabel>Latihan · pace target</SectionLabel>
+                        <SectionLabel>Training · pace targets</SectionLabel>
                         <Card className="mt-3">
                             <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
                                 <StatTile
@@ -327,7 +329,7 @@ function ProgressionSection({
                 <div
                     className="mb-6 flex flex-wrap items-center gap-2"
                     role="tablist"
-                    aria-label="Pilih jarak"
+                    aria-label="Choose distance"
                 >
                     <Eyebrow
                         as="span"
@@ -335,7 +337,7 @@ function ProgressionSection({
                         tone="ink-2"
                         className="mr-1"
                     >
-                        Jarak
+                        Distance
                     </Eyebrow>
                     {tabs.map((c) => (
                         <button
@@ -358,19 +360,19 @@ function ProgressionSection({
             )}
             <div className="grid grid-cols-1 items-start gap-7 lg:grid-cols-[1fr_1.4fr]">
                 <div>
-                    <SectionLabel>Perjalanan · {label}</SectionLabel>
+                    <SectionLabel>Journey · {label}</SectionLabel>
                     <p className="font-display text-headline-sm text-ink">
-                        Dulu{' '}
+                        Then{' '}
                         <em className="italic">{formatDurationHMS(worst)}</em>,
-                        sekarang{' '}
+                        now{' '}
                         <em className="italic text-horizon-deep">
                             {formatDurationHMS(best)}
                         </em>
                     </p>
                     {delta > 0 && (
                         <p className="mt-3 font-display text-sm italic leading-relaxed text-ink-2">
-                            &ldquo;{formatDurationHMS(delta)} lebih kencang
-                            dalam {series.weeks.length} minggu.&rdquo;
+                            &ldquo;{formatDurationHMS(delta)} faster over{' '}
+                            {series.weeks.length} weeks.&rdquo;
                         </p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-1.5">

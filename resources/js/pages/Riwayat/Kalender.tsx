@@ -63,13 +63,13 @@ interface KalenderProps {
 }
 
 const WEEKDAY_LABELS = [
-    'Sen',
-    'Sel',
-    'Rab',
-    'Kam',
-    'Jum',
-    'Sab',
-    'Min',
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
 ] as const;
 
 export default function Kalender({
@@ -94,15 +94,15 @@ export default function Kalender({
 
     return (
         <>
-            <Head title={`Riwayat · Kalender · ${monthLabel}`} />
+            <Head title={`History · Calendar · ${monthLabel}`} />
             <PageContainer>
                 <header className="mb-8 min-w-0">
                     <LifetimeEyebrow lifetime={lifetime} />
                     <h1 className="font-display text-display-lg text-ink">
-                        Setiap lari,
+                        Every run,
                         <br />
                         <em className="not-italic text-horizon-deep">
-                            ada ceritanya.
+                            has a story.
                         </em>
                     </h1>
                 </header>
@@ -162,16 +162,16 @@ function LifetimeEyebrow({ lifetime }: Readonly<{ lifetime?: LifetimeStats }>) {
     const stats: string[] = [];
     if (lifetime && lifetime.total_runs > 0) {
         stats.push(
-            `${lifetime.total_runs} lari`,
+            `${lifetime.total_runs} runs`,
             `${lifetime.total_km.toFixed(0)} km`,
         );
         if (lifetime.first_run_at) {
-            stats.push(`sejak ${formatShortDateId(lifetime.first_run_at)}`);
+            stats.push(`since ${formatShortDateId(lifetime.first_run_at)}`);
         }
     }
     return (
         <Eyebrow token="hero" tone="ink-2" className="mb-3.5 lg:text-xs">
-            {['Riwayat', ...stats].join(' · ')}
+            {['History', ...stats].join(' · ')}
         </Eyebrow>
     );
 }
@@ -204,10 +204,10 @@ function MonthlyRecapCard({
     return (
         <section
             className="mb-4 rounded-2xl border border-line bg-surface-warm p-4 shadow-sm sm:p-5"
-            aria-label={`Catatan Temari bulan ${monthLabel}`}
+            aria-label={`Temari's notes for ${monthLabel}`}
         >
             <div className="font-mono text-xs font-bold uppercase tracking-wider text-ink-2">
-                Catatan Temari · {monthLabel}
+                Temari's notes · {monthLabel}
             </div>
             <div className="mt-2 flex items-start gap-3.5">
                 <Temari
@@ -223,7 +223,7 @@ function MonthlyRecapCard({
                         chained
                         isChainHead={recap.is_chain_head}
                         awaitingSchedule={awaitingSchedule}
-                        awaitingScheduleLabel="Rekap bulan ini belum tersedia."
+                        awaitingScheduleLabel="This month's recap isn't ready yet."
                         size="md"
                         renderContent={(content) => (
                             <p className="text-sm leading-relaxed text-ink">
@@ -264,7 +264,7 @@ function MonthNav({
             <NavButton
                 href={`/kalender?month=${prevMonth}`}
                 icon="mdi:chevron-left"
-                label="Bulan sebelumnya"
+                label="Previous month"
             />
             <h2 className="min-w-[7rem] text-center text-base font-semibold tracking-tight text-ink lg:text-lg">
                 {label}
@@ -272,14 +272,14 @@ function MonthNav({
             <NavButton
                 href={`/kalender?month=${nextMonth}`}
                 icon="mdi:chevron-right"
-                label="Bulan berikutnya"
+                label="Next month"
             />
             {showTodayButton && (
                 <Link
                     href="/kalender"
                     className="focus-ring ml-1 rounded-full border border-leaf/40 bg-leaf/10 px-3 py-1 text-xs font-semibold text-leaf-deep transition hover:border-leaf hover:bg-leaf/15"
                 >
-                    Hari ini
+                    Today
                 </Link>
             )}
         </div>
@@ -311,7 +311,7 @@ function CalendarHeader() {
                 tone="ink-2"
                 className="px-1 py-2.5 text-center lg:px-3 lg:text-left lg:text-xs lg:tracking-[0.14em]"
             >
-                <span className="sr-only">Pekan, jarak dalam kilometer</span>
+                <span className="sr-only">Week, distance in kilometers</span>
                 <span aria-hidden>KM</span>
             </Eyebrow>
             {WEEKDAY_LABELS.map((label) => (
@@ -460,7 +460,7 @@ const DayCellView = memo(function DayCellView({
         hasRun && cell.mood ? `, mood ${MOOD_LABEL[cell.mood]}` : '';
     const ariaLabel = hasRun
         ? `${cell.date}: ${cell.distance_km} km${moodAriaPart}`
-        : `${cell.date}: tidak ada lari`;
+        : `${cell.date}: no run`;
 
     if (cell.activity_id !== null) {
         return (
@@ -514,7 +514,7 @@ function TodayCell({
             <div className="flex items-center justify-between gap-1 lg:items-start lg:gap-2">
                 <span className="inline-flex items-center gap-1 text-xs font-bold tabular-nums text-cream lg:text-lg">
                     {cell.day}
-                    {/* Below lg, "Hari ini" is hidden and the navy fill is the only
+                    {/* Below lg, "Today" is hidden and the navy fill is the only
                         chrome difference from a highlighted/selected cell — add a
                         small persistent marker so "today" isn't signaled by color
                         alone. */}
@@ -539,7 +539,7 @@ function TodayCell({
                     tone="horizon"
                     className="hidden lg:inline"
                 >
-                    Hari ini
+                    Today
                 </Eyebrow>
             </div>
             {body}
@@ -549,7 +549,7 @@ function TodayCell({
     const moodAriaPart =
         hasRun && cell.mood ? `, mood ${MOOD_LABEL[cell.mood]}` : '';
     const distancePart = hasRun ? `, ${cell.distance_km} km` : '';
-    const ariaLabel = `${cell.date}: hari ini${distancePart}${moodAriaPart}`;
+    const ariaLabel = `${cell.date}: today${distancePart}${moodAriaPart}`;
 
     if (cell.activity_id !== null) {
         return (

@@ -40,9 +40,9 @@ export const SORT_OPTIONS: ReadonlyArray<{
     label: string;
     hint: string;
 }> = [
-    { value: 'newest', label: 'Terbaru dulu', hint: 'per minggu' },
-    { value: 'longest', label: 'Paling jauh', hint: 'peringkat' },
-    { value: 'fastest', label: 'Paling ngebut', hint: 'peringkat' },
+    { value: 'newest', label: 'Newest first', hint: 'per week' },
+    { value: 'longest', label: 'Longest', hint: 'ranked' },
+    { value: 'fastest', label: 'Fastest', hint: 'ranked' },
 ];
 
 /** Cut at the distances runners think in, not at even numbers. */
@@ -51,10 +51,10 @@ export const DISTANCE_OPTIONS: ReadonlyArray<{
     label: string;
     hint: string;
 }> = [
-    { value: '0-5', label: 'Di bawah 5K', hint: '<5' },
-    { value: '5-10', label: '5K sampai 10K', hint: '5-10' },
-    { value: '10-21', label: '10K sampai half', hint: '10-21' },
-    { value: '21up', label: 'Half ke atas', hint: '21+' },
+    { value: '0-5', label: 'Under 5K', hint: '<5' },
+    { value: '5-10', label: '5K to 10K', hint: '5-10' },
+    { value: '10-21', label: '10K to half', hint: '10-21' },
+    { value: '21up', label: 'Half and up', hint: '21+' },
 ];
 
 /**
@@ -134,11 +134,11 @@ export function labelFor(
 export const RANGE_FILTER_OPTIONS: ReadonlyArray<
     RangeOption<RangeFilterValue>
 > = [
-    { value: '8w', label: '2 bulan terakhir', hint: '8w' },
-    { value: '12w', label: '3 bulan terakhir', hint: '12w' },
-    { value: '6m', label: 'Setengah tahun', hint: '6m' },
-    { value: '1y', label: 'Setahun penuh', hint: '1y' },
-    { value: 'all', label: 'Semua lari', hint: 'all' },
+    { value: '8w', label: 'Last 2 months', hint: '8w' },
+    { value: '12w', label: 'Last 3 months', hint: '12w' },
+    { value: '6m', label: 'Last 6 months', hint: '6m' },
+    { value: '1y', label: 'Full year', hint: '1y' },
+    { value: 'all', label: 'All runs', hint: 'all' },
 ];
 
 /**
@@ -148,7 +148,7 @@ export const RANGE_FILTER_OPTIONS: ReadonlyArray<
 export function summariseQuery(query: Record<string, string>): string | null {
     const parts: string[] = [];
 
-    if (query.week) parts.push('satu minggu');
+    if (query.week) parts.push('one week');
     if (query.range) {
         parts.push(labelFor(RANGE_FILTER_OPTIONS, query.range));
     }
@@ -178,7 +178,7 @@ function weekRangeLabel(monday: Date): string {
 
 /**
  * Bucket activities by ISO week (Monday-start). Activities without a
- * start_date_local fall into a single "Tanpa tanggal" bucket at the end.
+ * start_date_local fall into a single "No date" bucket at the end.
  */
 export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
     const byKey = new Map<string, WeekBucket>();
@@ -220,7 +220,7 @@ export function groupByWeek(rows: ReadonlyArray<RunWithDetail>): WeekBucket[] {
         buckets.push({
             weekStart: 'orphans',
             weekEnding: 'orphans',
-            label: 'Tanpa tanggal',
+            label: 'No date',
             runs: orphans,
             totalKm: orphans.reduce(
                 (acc, r) => acc + (r.detail.distance ?? 0) / 1000,
@@ -376,7 +376,7 @@ export function useJejakFilters({
         if (weekFilter !== null) {
             list.push({
                 key: `week:${weekFilter}`,
-                label: 'Satu minggu',
+                label: 'One week',
                 onRemove: () => visitWithFilters({ week: null }),
             });
         }

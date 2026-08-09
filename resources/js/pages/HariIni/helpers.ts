@@ -110,7 +110,7 @@ export function formatSignedForm(form: number): string {
 }
 
 export function vibeSubtitleFor(label: string): string {
-    return `kamu lagi ${label.toLowerCase()}.`;
+    return `you're feeling ${label.toLowerCase()}.`;
 }
 
 export const MOOD_UPPER: Record<Mood, string> = {
@@ -164,40 +164,40 @@ export function formatWeather(
     const bits: string[] = [];
     if (tempC !== null) bits.push(`${Math.round(tempC)}°C`);
     if (humidityPct !== null) bits.push(`${Math.round(humidityPct)}%`);
-    if (rain === true) bits.push('hujan');
+    if (rain === true) bits.push('rain');
     return bits.length > 0 ? bits.join(' · ') : null;
 }
 
-// Indonesian descriptors for Kondisi card subtitles. Thresholds are rough
+// Descriptors for Kondisi card subtitles. Thresholds are rough
 // runner-folklore numbers, not medical advice.
 export function ctlHint(ctl: number | null | undefined): string {
     if (ctl == null) return '';
-    if (ctl < 25) return 'lagi dibangun';
-    if (ctl < 50) return 'naik tipis';
-    if (ctl < 80) return 'stabil';
-    return 'tinggi';
+    if (ctl < 25) return 'still building';
+    if (ctl < 50) return 'trending up';
+    if (ctl < 80) return 'stable';
+    return 'high';
 }
 
 export function atlHint(atl: number | null | undefined): string {
     if (atl == null) return '';
     if (atl < 25) return 'fresh';
-    if (atl < 55) return 'wajar';
-    if (atl < 85) return 'lelah';
-    return 'berat';
+    if (atl < 55) return 'normal';
+    if (atl < 85) return 'tired';
+    return 'heavy';
 }
 
 export function strainHint(strain: number | null | undefined): string {
     if (strain == null) return '';
-    if (strain < 250) return 'ringan';
-    if (strain < 500) return 'sedang';
-    return 'berat';
+    if (strain < 250) return 'light';
+    if (strain < 500) return 'moderate';
+    return 'heavy';
 }
 
 export function monotonyHint(monotony: number | null | undefined): string {
     if (monotony == null) return '';
-    if (monotony < 1.5) return 'sehat';
-    if (monotony < 2) return 'tinggi';
-    return 'monoton';
+    if (monotony < 1.5) return 'healthy';
+    if (monotony < 2) return 'high';
+    return 'monotonous';
 }
 
 export type RiskTone = 'text-leaf' | 'text-citrus' | 'text-ember';

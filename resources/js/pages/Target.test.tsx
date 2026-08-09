@@ -12,8 +12,8 @@ function makeGoal(
 ) {
     return {
         id: 'accessory.medal_pertama',
-        title: 'Catat PR ke-1',
-        description: 'Catat 1 PR di kategori apapun.',
+        title: 'Log your 1st PR',
+        description: 'Log 1 PR in any category.',
         slot: 'medal',
         rarity: 'biasa' as Rarity,
         current: 0,
@@ -37,22 +37,22 @@ describe('Target', () => {
         render(
             <Target goals={[makeGoal()]} completedCount={2} totalCount={28} />,
         );
-        expect(screen.getByText(/2 \/ 28 target tercapai/)).toBeInTheDocument();
+        expect(screen.getByText(/2 \/ 28 goals reached/)).toBeInTheDocument();
     });
 
     it('groups goals into their slot sections and skips empty slots', () => {
         const goals = [
-            makeGoal({ id: 'm1', slot: 'medal', title: 'Medali pertama' }),
-            makeGoal({ id: 'a1', slot: 'aura', title: 'Aura pemanasan' }),
+            makeGoal({ id: 'm1', slot: 'medal', title: 'First medal' }),
+            makeGoal({ id: 'a1', slot: 'aura', title: 'Warmup aura' }),
         ];
         render(<Target goals={goals} completedCount={0} totalCount={2} />);
 
-        expect(screen.getByText('Medali')).toBeInTheDocument();
+        expect(screen.getByText('Medal')).toBeInTheDocument();
         expect(screen.getByText('Aura')).toBeInTheDocument();
-        expect(screen.getByText('Medali pertama')).toBeInTheDocument();
-        expect(screen.getByText('Aura pemanasan')).toBeInTheDocument();
+        expect(screen.getByText('First medal')).toBeInTheDocument();
+        expect(screen.getByText('Warmup aura')).toBeInTheDocument();
         // Slots with no goals get no section label.
-        expect(screen.queryByText('Sepatu')).not.toBeInTheDocument();
+        expect(screen.queryByText('Shoes')).not.toBeInTheDocument();
     });
 
     it('marks a completed goal with the check badge', () => {
@@ -99,7 +99,7 @@ describe('Target', () => {
         expect(bar).toBeInTheDocument();
     });
 
-    it('shows the "Hampir!" nudge once progress reaches 75% but isn\'t completed yet', () => {
+    it('shows the "Almost!" nudge once progress reaches 75% but isn\'t completed yet', () => {
         render(
             <Target
                 goals={[
@@ -109,10 +109,10 @@ describe('Target', () => {
                 totalCount={1}
             />,
         );
-        expect(screen.getByText('Hampir!')).toBeInTheDocument();
+        expect(screen.getByText('Almost!')).toBeInTheDocument();
     });
 
-    it('hides the "Hampir!" nudge below the 75% threshold', () => {
+    it('hides the "Almost!" nudge below the 75% threshold', () => {
         render(
             <Target
                 goals={[
@@ -122,7 +122,7 @@ describe('Target', () => {
                 totalCount={1}
             />,
         );
-        expect(screen.queryByText('Hampir!')).not.toBeInTheDocument();
+        expect(screen.queryByText('Almost!')).not.toBeInTheDocument();
     });
 
     it('gives each progress bar a meaningful accessible name', () => {
@@ -130,7 +130,7 @@ describe('Target', () => {
             <Target
                 goals={[
                     makeGoal({
-                        title: 'Catat PR ke-1',
+                        title: 'Log your 1st PR',
                         current: 0,
                         target: 1,
                         unit: 'PR',
@@ -141,7 +141,9 @@ describe('Target', () => {
             />,
         );
         expect(
-            screen.getByRole('progressbar', { name: 'Catat PR ke-1: 0/1 PR' }),
+            screen.getByRole('progressbar', {
+                name: 'Log your 1st PR: 0/1 PR',
+            }),
         ).toBeInTheDocument();
     });
 });

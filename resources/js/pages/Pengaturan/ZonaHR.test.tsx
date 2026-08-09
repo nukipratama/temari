@@ -38,7 +38,7 @@ describe('ZonaHR', () => {
     it('renders the forward-only note', () => {
         render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
         expect(
-            screen.getByText(/dipakai ke semua lari berikutnya/i),
+            screen.getByText(/apply to every run from now on/i),
         ).toBeInTheDocument();
     });
 
@@ -56,11 +56,11 @@ describe('ZonaHR', () => {
         expect(deriveZones(180, 55).Z2.lo).toBe(138);
     });
 
-    it('keeps Simpan zona disabled until something changes', () => {
+    it('keeps Save zones disabled until something changes', () => {
         render(<ZonaHR profile={DEFAULT_PROFILE} hasCustomProfile={false} />);
 
         expect(
-            screen.getByRole('button', { name: 'Simpan zona' }),
+            screen.getByRole('button', { name: 'Save zones' }),
         ).toBeDisabled();
 
         fireEvent.change(screen.getByLabelText('Max HR'), {
@@ -68,7 +68,7 @@ describe('ZonaHR', () => {
         });
 
         expect(
-            screen.getByRole('button', { name: 'Simpan zona' }),
+            screen.getByRole('button', { name: 'Save zones' }),
         ).toBeEnabled();
     });
 
@@ -94,9 +94,9 @@ describe('ZonaHR', () => {
                 stravaSyncedLabel={null}
             />,
         );
-        expect(screen.getByText('Zona standar')).toBeInTheDocument();
+        expect(screen.getByText('Default zones')).toBeInTheDocument();
         expect(
-            screen.getByText(/masih pakai zona standar/i),
+            screen.getByText(/still on the default zones/i),
         ).toBeInTheDocument();
     });
 
@@ -109,8 +109,8 @@ describe('ZonaHR', () => {
                 stravaSyncedLabel={null}
             />,
         );
-        expect(screen.getByText('Diatur manual')).toBeInTheDocument();
-        expect(screen.getByText(/atur zona sendiri/i)).toBeInTheDocument();
+        expect(screen.getByText('Set manually')).toBeInTheDocument();
+        expect(screen.getByText(/set your own zones/i)).toBeInTheDocument();
     });
 
     it('shows the strava source with its last-synced label', () => {
@@ -122,9 +122,9 @@ describe('ZonaHR', () => {
                 stravaSyncedLabel="10 Jul 2026, 10:18"
             />,
         );
-        expect(screen.getByText('Disinkron dari Strava')).toBeInTheDocument();
+        expect(screen.getByText('Synced from Strava')).toBeInTheDocument();
         expect(
-            screen.getByText(/terakhir sinkron 10 Jul 2026, 10:18/i),
+            screen.getByText(/last synced 10 Jul 2026, 10:18/i),
         ).toBeInTheDocument();
     });
 
@@ -137,11 +137,11 @@ describe('ZonaHR', () => {
             />,
         );
         expect(
-            screen.queryByRole('button', { name: /Balik ke zona standar/i }),
+            screen.queryByRole('button', { name: /Reset to default zones/i }),
         ).not.toBeInTheDocument();
         expect(
             screen.queryByRole('button', {
-                name: /Sinkron ulang dari Strava/i,
+                name: /Resync from Strava/i,
             }),
         ).not.toBeInTheDocument();
     });
@@ -156,7 +156,7 @@ describe('ZonaHR', () => {
         );
 
         fireEvent.click(
-            screen.getByRole('button', { name: /Balik ke zona standar/i }),
+            screen.getByRole('button', { name: /Reset to default zones/i }),
         );
 
         expect(router.delete).toHaveBeenCalledWith(
@@ -175,7 +175,7 @@ describe('ZonaHR', () => {
             />,
         );
         fireEvent.click(
-            screen.getByRole('button', { name: /Sinkron ulang dari Strava/i }),
+            screen.getByRole('button', { name: /Resync from Strava/i }),
         );
         expect(router.post).toHaveBeenCalledWith(
             '/pengaturan/zona/sinkron-strava',
@@ -194,11 +194,11 @@ describe('ZonaHR', () => {
         );
         expect(
             screen.queryByRole('button', {
-                name: /Sinkron ulang dari Strava/i,
+                name: /Resync from Strava/i,
             }),
         ).not.toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /Balik ke zona standar/i }),
+            screen.getByRole('button', { name: /Reset to default zones/i }),
         ).toBeInTheDocument();
     });
 
@@ -221,11 +221,11 @@ describe('ZonaHR', () => {
 
         expect(
             screen.queryByRole('button', {
-                name: /Sinkron ulang dari Strava/i,
+                name: /Resync from Strava/i,
             }),
         ).not.toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /Balik ke zona standar/i }),
+            screen.getByRole('button', { name: /Reset to default zones/i }),
         ).toBeInTheDocument();
     });
 
@@ -233,7 +233,7 @@ describe('ZonaHR', () => {
         setMockPage({
             auth: { user: makeUser() },
             flash: {},
-            errors: { max_hr: 'Max HR harus di antara 120 dan 220 bpm.' },
+            errors: { max_hr: 'Max HR must be between 120 and 220 bpm.' },
             demoLoginEnabled: false,
         });
 
@@ -241,7 +241,7 @@ describe('ZonaHR', () => {
         const maxHrInput = screen.getByLabelText('Max HR');
         const maxHrField = maxHrInput.closest('label');
         const errorEl = within(maxHrField as HTMLElement).getByText(
-            /di antara 120 dan 220/i,
+            /between 120 and 220/i,
         );
         expect(errorEl).toBeInTheDocument();
         // The input is programmatically associated with its error for screen readers.
@@ -276,7 +276,7 @@ describe('ZonaHR', () => {
 
         fireEvent.click(
             screen.getByRole('button', {
-                name: 'Hitung otomatis dari Max & Resting',
+                name: 'Auto-calculate from Max & Resting',
             }),
         );
 
@@ -292,7 +292,7 @@ describe('ZonaHR', () => {
         fireEvent.change(screen.getByLabelText('Max HR'), {
             target: { value: '185' },
         });
-        fireEvent.click(screen.getByRole('button', { name: 'Simpan zona' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save zones' }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/pengaturan/zona',
