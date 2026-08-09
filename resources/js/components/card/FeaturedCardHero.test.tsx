@@ -36,7 +36,7 @@ describe('FeaturedCardHero', () => {
 
     it('renders the rarity·km catch line', () => {
         render(<FeaturedCardHero {...baseProps} />);
-        expect(screen.getByText('★ Langka · 10.01 KM')).toBeInTheDocument();
+        expect(screen.getByText('★ Rare · 10.01 KM')).toBeInTheDocument();
     });
 
     it('renders the stat cells when stats and durasi are provided', () => {

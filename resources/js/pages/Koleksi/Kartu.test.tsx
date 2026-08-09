@@ -162,8 +162,8 @@ describe('Koleksi/Kartu', () => {
                 rarityCounts={rarityCounts}
             />,
         );
-        expect(screen.getByText(/Biasa · 5/)).toBeInTheDocument();
-        expect(screen.getByText(/Istimewa · 2/)).toBeInTheDocument();
+        expect(screen.getByText(/Common · 5/)).toBeInTheDocument();
+        expect(screen.getByText(/Epic · 2/)).toBeInTheDocument();
     });
 
     it('renders the slim banner with the featured flavor quote', () => {

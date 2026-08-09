@@ -139,9 +139,9 @@ describe('Kartu', () => {
 
         expect(screen.getByText('Negative Split')).toBeInTheDocument();
         // The rest are dropped; the detail view still shows every badge.
-        expect(screen.queryByText('Rajin')).not.toBeInTheDocument();
-        expect(screen.queryByText('Keras')).not.toBeInTheDocument();
-        expect(screen.queryByText('Berturut')).not.toBeInTheDocument();
+        expect(screen.queryByText('Habit Forming')).not.toBeInTheDocument();
+        expect(screen.queryByText('All Out')).not.toBeInTheDocument();
+        expect(screen.queryByText('Streak')).not.toBeInTheDocument();
     });
 
     it('shows every badge when not a compact thumbnail', () => {
@@ -156,7 +156,7 @@ describe('Kartu', () => {
             />,
         );
 
-        expect(screen.getByText('Berturut')).toBeInTheDocument();
+        expect(screen.getByText('Streak')).toBeInTheDocument();
     });
 
     it('renders badge pips at the compact (md) size too (same full block as the share card)', () => {
