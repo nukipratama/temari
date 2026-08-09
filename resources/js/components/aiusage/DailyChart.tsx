@@ -19,7 +19,7 @@ export default function DailyChart({
         <Card tone="cream" padding="md" className="mt-4 bg-surface-elev">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-label-small text-ink-3">
-                    {data.length} days
+                    {data.length} day{data.length === 1 ? '' : 's'}
                 </span>
                 <span className="text-sm text-ink-2">
                     Estimated cost:{' '}
@@ -48,7 +48,7 @@ export default function DailyChart({
                                     {fmt(d.total)} tokens
                                 </div>
                                 <div className="text-ink-3">
-                                    {d.calls} calls
+                                    {d.calls} call{d.calls === 1 ? '' : 's'}
                                 </div>
                                 <div className="text-ink-3">
                                     {formatCost(d.cost, currency)}

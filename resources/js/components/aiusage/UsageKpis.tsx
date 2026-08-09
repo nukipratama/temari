@@ -30,7 +30,7 @@ export default function UsageKpis({
                 value={fmt(totals.total)}
                 sub={
                     <>
-                        {totals.calls} calls
+                        {totals.calls} call{totals.calls === 1 ? '' : 's'}
                         <DeltaChip
                             current={totals.total}
                             previous={previousTotals?.total ?? null}
@@ -59,7 +59,7 @@ export default function UsageKpis({
             <KpiTile
                 label="Truncated"
                 value={`${truncatedShare}%`}
-                sub={`${totals.truncated_calls} of ${totals.calls} calls`}
+                sub={`${totals.truncated_calls} of ${totals.calls} call${totals.calls === 1 ? '' : 's'}`}
                 tone={truncatedShare > 1 ? 'alert' : 'neutral'}
             />
         </section>

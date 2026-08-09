@@ -124,7 +124,8 @@ const WeekSection = memo(function WeekSection({
                         className="shrink-0"
                         aria-hidden
                     />
-                    {hiddenCount} other runs this week don&apos;t match the
+                    {hiddenCount} other run{hiddenCount === 1 ? '' : 's'} this
+                    week {hiddenCount === 1 ? "doesn't" : "don't"} match the
                     filter.
                 </p>
             )}
