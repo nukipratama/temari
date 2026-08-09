@@ -18,13 +18,13 @@ code_refs:
 
 # Run detail (single activity)
 
-`/aktivitas/{activity}` is the deep view of one run. [Show.tsx](../../resources/js/pages/Runs/Show.tsx)
+`/activities/{activity}` is the deep view of one run. [Show.tsx](../../resources/js/pages/Runs/Show.tsx)
 (default export `RunsShow`) renders it from props assembled by
 `RunController::show` in [RunController.php](../../app/Http/Controllers/RunController.php),
 which 404s on a foreign or not-yet-analyzed activity and lazily kicks a
 location-resolve job when the run has GPS but no resolved place name.
 
-**Navigation:** `route('aktivitas.show', activity)` → `/aktivitas/{activity}`. Named route: `aktivitas.show`.
+**Navigation:** `route('activities.show', activity)` → `/activities/{activity}`. Named route: `activities.show`.
 
 ## System dependencies
 

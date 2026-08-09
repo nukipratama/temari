@@ -6,10 +6,10 @@ import { chromium } from 'playwright';
 import { VIEWPORT_DEFS, login, dismissReveal } from './lib.mjs';
 
 const TABS = [
-    { label: 'Koleksi', path: '/kartu' },
-    { label: 'Riwayat', path: '/aktivitas' },
-    { label: 'Aku', path: '/profil' },
-    { label: 'Hari Ini', path: '/' },
+    { label: 'Collection', path: '/cards' },
+    { label: 'History', path: '/activities' },
+    { label: 'Me', path: '/profile' },
+    { label: 'Today', path: '/' },
 ];
 
 const browser = await chromium.launch({
@@ -86,8 +86,8 @@ await page.evaluate(() => {
         true,
     );
 });
-await page.locator('nav[aria-label="Primary"].fixed a:has-text("Riwayat")').first().click();
-await page.waitForURL((u) => u.pathname === '/aktivitas', { timeout: 15000 });
+await page.locator('nav[aria-label="Primary"].fixed a:has-text("History")').first().click();
+await page.waitForURL((u) => u.pathname === '/activities', { timeout: 15000 });
 await page.waitForLoadState('networkidle');
 const afterNav = await page.evaluate(() => window.__enterAnimations);
 console.log(`ENTER_ANIMATIONS_AFTER_NAV=${afterNav}`);

@@ -22,10 +22,10 @@ page.on('pageerror', (e) => errors.push(e.message));
 await login(page);
 await dismissReveal(page).catch(() => {});
 
-const rows = () => page.locator('a[href^="/aktivitas/"]').count();
+const rows = () => page.locator('a[href^="/activities/"]').count();
 const moodButton = (name) => page.locator(`[aria-pressed]`, { hasText: name }).first();
 
-await page.goto(`${BASE}/aktivitas`, { waitUntil: 'networkidle' });
+await page.goto(`/activities`, { waitUntil: 'networkidle' });
 const unfiltered = await rows();
 console.log(`UNFILTERED rows=${unfiltered}`);
 
@@ -51,7 +51,7 @@ await page.getByLabel('Buka filter').click();
 console.log(`PRESSED_AFTER_RELOAD=${await moodButton('Nyala').getAttribute('aria-pressed')}`);
 
 // A mood the user has none of shows the no-match state, not the onboarding one.
-await page.goto(`${BASE}/aktivitas?mood=lemes`, { waitUntil: 'networkidle' });
+await page.goto(`/activities?mood=lemes`, { waitUntil: 'networkidle' });
 console.log(`NO_MATCH rows=${await rows()}`);
 console.log(`NO_MATCH_STATE=${await page.getByText('Gak ada lari yang cocok.').isVisible()}`);
 await page.getByRole('button', { name: /Reset filter/ }).click();

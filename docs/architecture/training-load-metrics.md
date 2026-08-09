@@ -54,6 +54,6 @@ CTL is **cumulative**: a run inserted into a past week changes the fitness basel
 
 - The dashboard's live read-out comes from [summary](app/Services/Run/Metrics/TrainingLoad.php#L45) (computed as-of today, not from a snapshot) — see [[dashboard]].
 - The weekly trend, streaks ([consecutiveWeekStreak](app/Models/WeeklySnapshot.php#L82)) and recap narration read [WeeklySnapshot](app/Models/WeeklySnapshot.php) rows — see [[run-history]], [[recaps]], and the records that hang off weekly bests in [[records]].
-- The **progression chart** (per-distance weekly-best time series on `/rekor`) is built by [ProgressionSeriesBuilder](app/Services/Run/ProgressionSeriesBuilder.php), which queries `ActivityDetail` for weekly-best km-scaled times across 5K/10K/HM/FM.
+- The **progression chart** (per-distance weekly-best time series on `/records`) is built by [ProgressionSeriesBuilder](app/Services/Run/ProgressionSeriesBuilder.php), which queries `ActivityDetail` for weekly-best km-scaled times across 5K/10K/HM/FM.
 - **Lifetime stats** (total km, runs, longest run on `/aku`) come from [LifetimeStats](app/Services/Run/LifetimeStats.php), which runs a single aggregate query over `ActivityDetail`.
 - TRIMP per run also feeds the run's own story and mood ([[vibe-and-mood]], [[run-detail]]).

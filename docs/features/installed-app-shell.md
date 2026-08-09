@@ -77,26 +77,26 @@ On a **pushed** screen the brand mark gives way to a back button — roots show
 identity, pushes show a way out. Which screens count is an explicit map in
 `MobileTopBar`, not something derived from `activeTabFromUrl`, for two reasons:
 
-- `/kalender`, `/rekor`, `/aksesori` and `/target` resolve to a tab too, but are
+- `/calendar`, `/records`, `/accessories` and `/goals` resolve to a tab too, but are
   reached through in-page tab strips, so they are siblings of their root rather
   than a stack, and keep the brand mark.
-- `/pengaturan` is deliberately absent from the map even though it is nested by
+- `/settings` is deliberately absent from the map even though it is nested by
   URL. It is one tap from the Aku tab and from the avatar menu on every page, so
-  it behaves as a root. Only `/pengaturan/zona`, reachable from nowhere else,
+  it behaves as a root. Only `/settings/zones`, reachable from nowhere else,
   gets a back button.
 
 Two details worth keeping:
 
 - **Back is a real `<Link href>`, never `history.back()`.** A notification deep
-  link opens `/aktivitas/{id}` cold with nothing behind it, and `history.back()`
+  link opens `/activities/{id}` cold with nothing behind it, and `history.back()`
   would strand the user or exit the app. [useSwipeBack](resources/js/hooks/useSwipeBack.ts)
   remains the gesture equivalent.
 - **Desktop keeps the in-page breadcrumb** where one exists. The bar is
   `lg:hidden`, so the [BackLink](resources/js/components/ui/BackLink.tsx) on the
   pushed pages is hidden below `lg` rather than deleted — each viewport gets
-  exactly one back affordance. `Pengaturan/ZonaHR`'s link also had its target
+  exactly one back affordance. `Settings/HrZones`'s link also had its target
   corrected: it read "Aku · Pengaturan" as a trail while hrefing past its actual
-  parent to `/profil`. Pengaturan itself has no breadcrumb on either viewport.
+  parent to `/profile`. Settings itself has no breadcrumb on either viewport.
 
 `TopNav` is a separate component and also a `<header>`, which is why tests
 select the mobile bar by `data-testid` rather than by tag.

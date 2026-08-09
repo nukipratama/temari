@@ -161,8 +161,8 @@ Pass the batch dir, the viewports you shot, and the parsed `AUDIT` lines as `arg
   "dir": "storage/app/browser-review/2026-06-19/143022",
   "viewports": ["mobile", "wide"],
   "pages": {
-    "mobile": [{ "name": "hari-ini", "overflow": false }, { "name": "aktivitas-detail", "overflow": true }],
-    "wide":   [{ "name": "hari-ini", "overflow": false }, { "name": "aktivitas-detail", "overflow": false }]
+    "mobile": [{ "name": "today", "overflow": false }, { "name": "activities-detail", "overflow": true }],
+    "wide":   [{ "name": "today", "overflow": false }, { "name": "activities-detail", "overflow": false }]
   }
 }
 ```
@@ -269,10 +269,10 @@ return results
   Add a page and it's covered automatically; nothing to maintain by hand.
 - **Auth:** clicks the demo button on `/login` (no Strava needed) — fresh per viewport context.
 - **`{param}` pages:** resolved at runtime by scraping the first matching link off the list page
-  (e.g. `/aktivitas/{activity}` → `/aktivitas/126`). If a detail page can't be sampled, the data is
+  (e.g. `/activities/{activity}` → `/activities/126`). If a detail page can't be sampled, the data is
   thin — **re-run `./vendor/bin/sail artisan demo:seed`** and try again.
 - **Redirect dedupe:** pages reached via a 301 alias are screenshotted once (keyed by the landed URL).
-- **Card-reveal modal:** the demo user can have a `pending_reveal_card_id` that pops a `Kartu baru`
+- **Card-reveal modal:** the demo user can have a `pending_reveal_card_id` that pops a `New card`
   dialog over every page; the script dismisses it once after login so the pages underneath are
   reviewable. (To inspect the reveal itself, set the user's `pending_reveal_card_id` and run a
   one-off with Playwright's `reducedMotion: 'reduce'` to jump straight to its opened state.)
