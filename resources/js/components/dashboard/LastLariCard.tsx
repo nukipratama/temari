@@ -17,12 +17,12 @@ import {
     paceSecPerKm,
 } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
-import { aktivitasUrl } from '@/lib/routes';
+import { activityUrl } from '@/lib/routes';
 import {
     formatIdDateUpper,
     formatWeather,
     shortenLocation,
-} from '@/pages/HariIni/helpers';
+} from '@/pages/Today/helpers';
 
 export interface LastRunNote {
     oneline: string;
@@ -55,7 +55,7 @@ export default function LastLariCard({
 
     return (
         <LinkCard
-            href={aktivitasUrl(run)}
+            href={activityUrl(run)}
             padding="md"
             className="flex h-full flex-col gap-3"
         >

@@ -5,10 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
     WeekBucket,
     RunWithDetail,
-} from '@/pages/Riwayat/useJejakFilters';
+} from '@/pages/Activities/useJejakFilters';
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
-import { run } from '@/pages/Riwayat/runFixture';
+import { run } from '@/pages/Activities/runFixture';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import WeekSection from './WeekSection';
@@ -335,7 +335,7 @@ describe('WeekSection', () => {
 
             fireEvent.click(screen.getByText('Send notification'));
             expect(router.post).toHaveBeenCalledWith(
-                '/rekap-mingguan/7/kirim',
+                '/recaps/weekly/7/send',
                 {},
                 expect.objectContaining({ preserveScroll: true }),
             );

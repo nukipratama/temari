@@ -16,13 +16,13 @@ describe('Login', () => {
         render(
             <Login
                 authStravaUrl="/auth/strava/redirect"
-                from="/aktivitas/5?tab=splits"
+                from="/activities/5?tab=splits"
             />,
         );
         const strava = screen.getByText(/Connect with Strava/).closest('a');
         expect(strava?.getAttribute('href')).toBe(
             '/auth/strava/redirect?from=' +
-                encodeURIComponent('/aktivitas/5?tab=splits'),
+                encodeURIComponent('/activities/5?tab=splits'),
         );
     });
 

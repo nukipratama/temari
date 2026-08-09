@@ -13,7 +13,7 @@ import {
     monotonyTone,
     strainHint,
     strainTone,
-} from '@/pages/HariIni/helpers';
+} from '@/pages/Today/helpers';
 
 export default function KondisiCard({
     load,
@@ -80,7 +80,7 @@ export default function KondisiCard({
                 </div>
             ))}
             <Link
-                href="/aktivitas"
+                href="/activities"
                 className="focus-ring mt-auto rounded pt-1 text-label-micro text-horizon-deep hover:text-ember-deep"
             >
                 Technical detail →

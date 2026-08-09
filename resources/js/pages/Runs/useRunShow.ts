@@ -28,7 +28,7 @@ import {
     kartuPropsFromDetail,
 } from '@/lib/runcard';
 import { MOOD_TO_POSE } from '@/lib/temariPose';
-import { districtFromLocation } from '@/pages/HariIni/helpers';
+import { districtFromLocation } from '@/pages/Today/helpers';
 
 /** The run's RunCard, enriched with the flavor/edition/share fields this page's
  *  card section needs (see RunController::cardPayload). */

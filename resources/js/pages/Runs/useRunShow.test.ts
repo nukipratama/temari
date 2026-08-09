@@ -43,7 +43,7 @@ const runCard: RunCardDetail = {
         subject_id: 1,
         discriminator: null,
     },
-    public_share_url: '/aktivitas/255',
+    public_share_url: '/activities/255',
 };
 
 const storyLine: StoryLine = {
@@ -187,7 +187,7 @@ describe('useRunShow', () => {
         expect(withCard.current.shareData).toMatchObject({
             id: 1,
             name: 'Iron Lungs',
-            shareUrl: '/aktivitas/255',
+            shareUrl: '/activities/255',
             mood: 'nyala',
         });
 

@@ -32,7 +32,7 @@ export default function EnableNotificationsModal({
             }
             primaryLabel="Go to Settings"
             primaryIcon="mdi:bell-outline"
-            onPrimary={() => router.visit('/pengaturan')}
+            onPrimary={() => router.visit('/settings')}
         />
     );
 }

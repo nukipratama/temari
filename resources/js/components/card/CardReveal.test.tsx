@@ -35,7 +35,7 @@ const epicReveal: PendingReveal = {
     distance_m: 10000,
     elapsed_time_sec: 3480,
     trimp_edwards: 161,
-    public_share_url: '/aktivitas/99',
+    public_share_url: '/activities/99',
     edition: { index: 3, total: 7 },
 };
 
@@ -50,7 +50,7 @@ const legendaryReveal: PendingReveal = {
     distance_m: 21000,
     elapsed_time_sec: 6300,
     trimp_edwards: 210,
-    public_share_url: '/aktivitas/99',
+    public_share_url: '/activities/99',
     edition: { index: 1, total: 2 },
 };
 
@@ -65,7 +65,7 @@ const commonReveal: PendingReveal = {
     distance_m: 5000,
     elapsed_time_sec: 1800,
     trimp_edwards: 42,
-    public_share_url: '/aktivitas/7',
+    public_share_url: '/activities/7',
     edition: { index: 1, total: 1 },
 };
 
@@ -124,7 +124,7 @@ describe('CardReveal', () => {
         ).toBeInTheDocument();
     });
 
-    it('"View collection" marks seen and navigates to /kartu after the reveal', async () => {
+    it('"View collection" marks seen and navigates to /cards after the reveal', async () => {
         const u = userEvent.setup();
         render(<CardReveal pending={commonReveal} />);
         // Tear the pack, then wait for the staggered action buttons to appear.
@@ -132,10 +132,10 @@ describe('CardReveal', () => {
         await u.click(await screen.findByText('View collection'));
 
         expect(fetchMock).toHaveBeenCalledWith(
-            '/api/kartu/7/seen',
+            '/api/cards/7/seen',
             expect.objectContaining({ method: 'POST' }),
         );
-        expect(visit).toHaveBeenCalledWith('/kartu', expect.anything());
+        expect(visit).toHaveBeenCalledWith('/cards', expect.anything());
     });
 
     it('"Close" marks seen and reloads the pendingReveal prop', async () => {
@@ -149,7 +149,7 @@ describe('CardReveal', () => {
         expect(screen.queryByRole('dialog')).toBeNull();
 
         expect(fetchMock).toHaveBeenCalledWith(
-            '/api/kartu/42/seen',
+            '/api/cards/42/seen',
             expect.objectContaining({ method: 'POST' }),
         );
         expect(reload).toHaveBeenCalledWith({ only: ['pendingReveal'] });
@@ -161,7 +161,7 @@ describe('CardReveal', () => {
         // Closed instantly, not gated on the seen-POST resolving.
         expect(screen.queryByRole('dialog')).toBeNull();
         expect(fetchMock).toHaveBeenCalledWith(
-            '/api/kartu/42/seen',
+            '/api/cards/42/seen',
             expect.objectContaining({ method: 'POST' }),
         );
     });
@@ -175,7 +175,7 @@ describe('CardReveal', () => {
         // Closed instantly, not gated on the seen-POST resolving.
         expect(screen.queryByRole('dialog')).toBeNull();
         expect(fetchMock).toHaveBeenCalledWith(
-            '/api/kartu/42/seen',
+            '/api/cards/42/seen',
             expect.objectContaining({ method: 'POST' }),
         );
     });
@@ -275,7 +275,7 @@ describe('CardReveal', () => {
         await u.keyboard('{Escape}');
         expect(screen.getByText(/★ Epic/)).toBeInTheDocument();
         expect(fetchMock).not.toHaveBeenCalledWith(
-            '/api/kartu/42/seen',
+            '/api/cards/42/seen',
             expect.anything(),
         );
     });

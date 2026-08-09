@@ -106,7 +106,7 @@ describe('subscribe', () => {
 
         expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/sw.js');
         expect(fetch).toHaveBeenCalledWith(
-            '/profil/push',
+            '/profile/push',
             expect.objectContaining({ method: 'POST' }),
         );
     });
@@ -130,7 +130,7 @@ describe('unsubscribe', () => {
 
         expect(fakeSubscription.unsubscribe).toHaveBeenCalled();
         expect(fetch).toHaveBeenCalledWith(
-            '/profil/push',
+            '/profile/push',
             expect.objectContaining({ method: 'DELETE' }),
         );
     });

@@ -28,7 +28,7 @@ describe('TopNav', () => {
     });
 
     it('highlights the active tab from the current URL', () => {
-        setMockPage(user(), '/aktivitas');
+        setMockPage(user(), '/activities');
         render(<TopNav />);
         expect(screen.getByText('History')).toHaveAttribute(
             'aria-current',
@@ -90,14 +90,14 @@ describe('TopNav', () => {
         expect(screen.queryByLabelText(/Open menu/)).not.toBeInTheDocument();
     });
 
-    it('highlights Me for the nested /pengaturan settings pages', () => {
-        setMockPage(user(), '/pengaturan/zona');
+    it('highlights Me for the nested /settings settings pages', () => {
+        setMockPage(user(), '/settings/zones');
         render(<TopNav />);
         expect(screen.getByText('Me')).toHaveAttribute('aria-current', 'page');
     });
 
     it('activeTabFromUrl returns null for paths that do not match any prefix', () => {
-        setMockPage(user(), '/settings');
+        setMockPage(user(), '/xyz');
         render(<TopNav />);
         // None of the four tabs should carry the active text-ink color.
         // (smoke check — the negative case for activeTabFromUrl loop returning null)

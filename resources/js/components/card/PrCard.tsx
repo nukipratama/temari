@@ -1,7 +1,7 @@
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import LinkCard from '@/components/ui/LinkCard';
-import { aktivitasUrl } from '@/lib/routes';
+import { activityUrl } from '@/lib/routes';
 
 interface PrCardProps {
     category: string;
@@ -48,7 +48,7 @@ export default function PrCard({
     if (activityId !== null) {
         return (
             <LinkCard
-                href={aktivitasUrl({ activity_id: activityId })}
+                href={activityUrl({ activity_id: activityId })}
                 padding={size === 'lg' ? 'lg' : 'md'}
                 className={GAP_CLASS[size]}
             >

@@ -28,7 +28,7 @@ export default function AksesoriUnlockModal({
 
     const handleEquip = () => {
         onClose();
-        router.visit('/aksesori', { preserveScroll: false });
+        router.visit('/accessories', { preserveScroll: false });
     };
 
     return (

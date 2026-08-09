@@ -82,7 +82,7 @@ describe('AksesoriUnlockModal', () => {
         render(<AksesoriUnlockModal unlock={epikUnlock} onClose={onClose} />);
         fireEvent.click(screen.getByText('Equip now'));
         expect(onClose).toHaveBeenCalledOnce();
-        expect(router.visit).toHaveBeenCalledWith('/aksesori', {
+        expect(router.visit).toHaveBeenCalledWith('/accessories', {
             preserveScroll: false,
         });
     });

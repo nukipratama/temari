@@ -29,15 +29,15 @@ const ITEMS: ReadonlyArray<NavItem> = [
         id: 'koleksi',
         label: 'Collection',
         icon: 'mdi:cards-outline',
-        href: '/kartu',
+        href: '/cards',
     },
     {
         id: 'riwayat',
         label: 'History',
         icon: 'mdi:history',
-        href: '/aktivitas',
+        href: '/activities',
     },
-    { id: 'aku', label: 'Me', icon: 'mdi:account-outline', href: '/profil' },
+    { id: 'aku', label: 'Me', icon: 'mdi:account-outline', href: '/profile' },
 ];
 
 /**

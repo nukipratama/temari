@@ -62,7 +62,7 @@ export default function UserMenu({ name, avatarUrl }: Readonly<UserMenuProps>) {
                         </div>
                     </div>
                     <Link
-                        href="/pengaturan"
+                        href="/settings"
                         onClick={close}
                         className={ITEM_CLASS}
                     >

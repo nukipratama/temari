@@ -26,7 +26,7 @@ describe('UserMenu', () => {
 
         expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
             'href',
-            '/pengaturan',
+            '/settings',
         );
     });
 

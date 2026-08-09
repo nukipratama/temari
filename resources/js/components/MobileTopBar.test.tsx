@@ -12,12 +12,12 @@ describe('MobileTopBar', () => {
     });
 
     // Roots show identity, pushed screens show a way out — the native split.
-    // Note the third case: /kalender, /rekor, /aksesori and /target resolve to a
+    // Note the third case: /calendar, /records, /accessories and /goals resolve to a
     // tab too, but are reached through in-page tab strips, so they are siblings
     // rather than pushes and must keep the brand mark.
     it.each([
-        ['Runs/Show', '/aktivitas', 'History'],
-        ['Pengaturan/ZonaHR', '/pengaturan', 'Settings'],
+        ['Runs/Show', '/activities', 'History'],
+        ['Settings/HrZones', '/settings', 'Settings'],
     ])(
         'replaces the brand mark with a back button on %s',
         (component, href, label) => {
@@ -33,13 +33,13 @@ describe('MobileTopBar', () => {
     // Settings sits in this list, not the pushed one: it is one tap from the
     // Me tab and from the avatar menu on every page, so it behaves as a root.
     it.each([
-        'HariIni',
-        'Koleksi/Kartu',
-        'Riwayat/Jejak',
-        'Aku',
-        'Riwayat/Kalender',
-        'Koleksi/Rekor',
-        'Pengaturan/Index',
+        'Today',
+        'Collection/Cards',
+        'Activities/Feed',
+        'Profile',
+        'Activities/Calendar',
+        'Collection/Records',
+        'Settings/Index',
     ])('keeps the brand mark and shows no back button on %s', (component) => {
         setMockPage({}, '/x', component);
         render(<MobileTopBar />);
@@ -51,11 +51,11 @@ describe('MobileTopBar', () => {
     // A notification deep link opens the run detail cold, with nothing behind
     // it, so back has to be a real href rather than history.back().
     it('points back at a real url rather than relying on history', () => {
-        setMockPage({}, '/aktivitas/123', 'Runs/Show');
+        setMockPage({}, '/activities/123', 'Runs/Show');
         render(<MobileTopBar />);
         expect(
             screen.getByLabelText('Back to History').getAttribute('href'),
-        ).toBe('/aktivitas');
+        ).toBe('/activities');
     });
 
     it('shows the user menu when a user is signed in', () => {

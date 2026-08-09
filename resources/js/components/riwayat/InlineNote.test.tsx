@@ -29,7 +29,7 @@ describe('InlineNote', () => {
         render(
             <InlineNote
                 icon="mdi:history"
-                action={<a href="/aktivitas">Exit</a>}
+                action={<a href="/activities">Exit</a>}
             >
                 Just one line.
             </InlineNote>,
@@ -78,6 +78,6 @@ describe('WeekFocusNote', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /View all runs/ }),
-        ).toHaveAttribute('href', '/aktivitas');
+        ).toHaveAttribute('href', '/activities');
     });
 });

@@ -48,7 +48,7 @@ describe('KondisiCard', () => {
         expect(screen.getByText(/7 days/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /Technical detail/ }),
-        ).toHaveAttribute('href', '/aktivitas');
+        ).toHaveAttribute('href', '/activities');
     });
 
     it('falls back to em-dash values and "not enough data yet" when load and snapshot are null', () => {

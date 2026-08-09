@@ -41,19 +41,19 @@ const ACTIONS = [
         icon: 'mdi:cards-outline',
         title: 'Check out the legendary collection',
         desc: 'See the cards you could unlock.',
-        href: '/kartu',
+        href: '/cards',
     },
     {
         icon: 'mdi:tshirt-crew-outline',
         title: 'Dress up Temari',
         desc: 'Pick an accessory combo for your profile.',
-        href: '/aksesori',
+        href: '/accessories',
     },
     {
         icon: 'mdi:chart-line',
         title: 'See your run recap',
         desc: 'Once your first run comes in, the recap shows up here.',
-        href: '/aktivitas',
+        href: '/activities',
     },
 ] as const;
 

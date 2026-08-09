@@ -18,7 +18,7 @@ const pointToPointPolyline = polylineCodec.encode([
 const kartu: ShareKartuData = {
     id: 1,
     name: 'Patient Hunter',
-    shareUrl: '/aktivitas/1',
+    shareUrl: '/activities/1',
     rarity: 'legendary',
     mood: 'nyala',
     subtitle: null,

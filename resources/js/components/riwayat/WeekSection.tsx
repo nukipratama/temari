@@ -18,7 +18,7 @@ import { cn } from '@/lib/cn';
 import { formStatusLabel } from '@/lib/formStatus';
 import { type MetricKey } from '@/lib/metricGlossary';
 import { poseForFormStatus } from '@/lib/temariPose';
-import { type WeekBucket } from '@/pages/Riwayat/useJejakFilters';
+import { type WeekBucket } from '@/pages/Activities/useJejakFilters';
 
 const FORM_CHIP_CLASS: Record<FormStatus, string> = {
     fresh: 'bg-leaf/15 text-leaf-deep',
@@ -148,7 +148,7 @@ const WeekSection = memo(function WeekSection({
                             {snapshot.recap_analysis.status === 'done' && (
                                 <div className="mt-3">
                                     <SendNotificationButton
-                                        url={`/rekap-mingguan/${snapshot.id}/kirim`}
+                                        url={`/recaps/weekly/${snapshot.id}/send`}
                                         retryAfterSeconds={
                                             snapshot.notification_retry_after_seconds
                                         }

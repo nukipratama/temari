@@ -62,7 +62,7 @@ describe('LastLariCard', () => {
     it('links to the activity detail page', () => {
         render(<LastLariCard run={richRun} pose="proud" note={null} />);
         const link = screen.getByRole('link');
-        expect(link).toHaveAttribute('href', '/aktivitas/99');
+        expect(link).toHaveAttribute('href', '/activities/99');
     });
 
     it('shows the run start time in the subline', () => {

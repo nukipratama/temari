@@ -11,7 +11,7 @@ import MetricExplainer from '@/components/MetricExplainer';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { cn } from '@/lib/cn';
 import { formStatusLabel } from '@/lib/formStatus';
-import { formatSignedForm } from '@/pages/HariIni/helpers';
+import { formatSignedForm } from '@/pages/Today/helpers';
 
 // Form (= ctl − atl) is unbounded, but formStatus() buckets fresh/optimal/fatigued/
 // overreaching within roughly ±40 at typical CTL, so that's the rail's clamp range.

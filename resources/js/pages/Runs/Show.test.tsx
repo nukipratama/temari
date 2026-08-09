@@ -77,7 +77,7 @@ const runCard: NonNullable<Parameters<typeof RunsShow>[0]['card']> = {
         subject_id: 1,
         discriminator: null,
     },
-    public_share_url: '/aktivitas/255',
+    public_share_url: '/activities/255',
 };
 
 const storyLine: StoryLine = {
@@ -455,7 +455,7 @@ describe('Runs/Show', () => {
         renderShow();
         fireEvent.click(screen.getByText('Resync from Strava'));
         expect(router.post).toHaveBeenCalledWith(
-            '/aktivitas/99/resync',
+            '/activities/99/resync',
             {},
             expect.objectContaining({
                 preserveScroll: true,
@@ -498,7 +498,7 @@ describe('Runs/Show', () => {
         renderShow({}, { telegramConnected: true });
         fireEvent.click(screen.getByText('Send notification'));
         expect(router.post).toHaveBeenCalledWith(
-            '/aktivitas/99/kirim',
+            '/activities/99/kirim',
             {},
             expect.objectContaining({
                 preserveScroll: true,

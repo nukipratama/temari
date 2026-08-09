@@ -20,7 +20,7 @@ const pendingCard: PendingReveal = {
     distance_m: 5000,
     elapsed_time_sec: 1800,
     trimp_edwards: 42,
-    public_share_url: '/aktivitas/1',
+    public_share_url: '/activities/1',
     edition: { index: 1, total: 1 },
 };
 
@@ -140,7 +140,7 @@ describe('AppShell', () => {
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
             '/',
-            'HariIni',
+            'Today',
         );
         const { rerender } = render(
             <AppShell>
@@ -151,8 +151,8 @@ describe('AppShell', () => {
 
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/kartu',
-            'Koleksi/Kartu',
+            '/cards',
+            'Collection/Cards',
         );
         rerender(
             <AppShell>
@@ -183,8 +183,8 @@ describe('AppShell', () => {
     it('keeps the content region mounted across a partial reload of the same page', () => {
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/aktivitas',
-            'Riwayat/Jejak',
+            '/activities',
+            'Activities/Feed',
         );
         const { rerender } = render(
             <AppShell>
@@ -196,8 +196,8 @@ describe('AppShell', () => {
         // Same component, new query string — a filter/`only:` refresh.
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
-            '/aktivitas?range=8w',
-            'Riwayat/Jejak',
+            '/activities?range=8w',
+            'Activities/Feed',
         );
         rerender(
             <AppShell>
@@ -209,7 +209,11 @@ describe('AppShell', () => {
     });
 
     it('shows the mobile top bar on every page', () => {
-        setMockPage({ auth: { user: makeUser() } }, '/kartu', 'Koleksi/Kartu');
+        setMockPage(
+            { auth: { user: makeUser() } },
+            '/cards',
+            'Collection/Cards',
+        );
         render(<AppShell>content</AppShell>);
         // Scoped by testid, not by tag: TopNav is also a <header> and stays in
         // the DOM on mobile, hidden by CSS alone.

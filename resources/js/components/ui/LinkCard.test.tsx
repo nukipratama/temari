@@ -5,9 +5,9 @@ import LinkCard from './LinkCard';
 
 describe('LinkCard', () => {
     it('renders an anchor with the given href', () => {
-        render(<LinkCard href="/aktivitas/42">hello</LinkCard>);
+        render(<LinkCard href="/activities/42">hello</LinkCard>);
         const link = screen.getByText('hello').closest('a');
-        expect(link?.getAttribute('href')).toBe('/aktivitas/42');
+        expect(link?.getAttribute('href')).toBe('/activities/42');
     });
 
     it('applies the tonal-surface + hover-lift chrome by default', () => {

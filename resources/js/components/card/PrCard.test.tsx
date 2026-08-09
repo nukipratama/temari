@@ -29,7 +29,7 @@ describe('PrCard', () => {
         );
         expect(screen.getByText('10K').closest('a')).toHaveAttribute(
             'href',
-            '/aktivitas/42',
+            '/activities/42',
         );
     });
 

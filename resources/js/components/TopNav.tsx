@@ -21,20 +21,20 @@ const ITEMS: ReadonlyArray<NavItem> = [
     {
         id: 'koleksi',
         label: 'Collection',
-        href: '/kartu',
-        prefixes: ['/koleksi', '/kartu', '/aksesori', '/rekor', '/target'],
+        href: '/cards',
+        prefixes: ['/cards', '/accessories', '/records', '/goals'],
     },
     {
         id: 'riwayat',
         label: 'History',
-        href: '/aktivitas',
-        prefixes: ['/riwayat', '/aktivitas', '/kalender'],
+        href: '/activities',
+        prefixes: ['/activities', '/calendar'],
     },
     {
         id: 'aku',
         label: 'Me',
-        href: '/profil',
-        prefixes: ['/aku', '/profil', '/pengaturan'],
+        href: '/profile',
+        prefixes: ['/profile', '/settings'],
     },
 ];
 
