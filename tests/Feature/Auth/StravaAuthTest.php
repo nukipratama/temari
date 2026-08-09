@@ -66,10 +66,10 @@ it('stashes a safe ?from path as the intended url before redirecting to strava',
         $driver->shouldReceive('redirect')->once()->andReturn(redirect('https://www.strava.com/oauth/authorize?fake'));
     });
 
-    $this->get(route('auth.strava.redirect', ['from' => '/aktivitas/7']))
+    $this->get(route('auth.strava.redirect', ['from' => '/activities/7']))
         ->assertRedirect('https://www.strava.com/oauth/authorize?fake');
 
-    expect(session('url.intended'))->toBe(url('/aktivitas/7'));
+    expect(session('url.intended'))->toBe(url('/activities/7'));
 });
 
 it('ignores a foreign ?from path on the strava redirect endpoint', function (): void {
@@ -88,9 +88,9 @@ it('exposes the stashed intended deep link as the login `from` prop', function (
     // A guest bounce stores the full URL as url.intended; the login page surfaces
     // it to the client as a relative path (array session driver in tests, so the
     // value is injected directly rather than via a cross-request redirect).
-    $this->withSession(['url.intended' => url('/aktivitas/9')])
+    $this->withSession(['url.intended' => url('/activities/9')])
         ->get(route('login'))
-        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('from', '/aktivitas/9'));
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('from', '/activities/9'));
 });
 
 it('drops a foreign intended url from the login `from` prop', function (): void {
@@ -116,9 +116,9 @@ it('returns to the intended deep link after a successful strava callback', funct
 
     mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
 
-    $this->withSession(['url.intended' => url('/aktivitas/42')])
+    $this->withSession(['url.intended' => url('/activities/42')])
         ->get(route('auth.strava.callback'))
-        ->assertRedirect(url('/aktivitas/42'));
+        ->assertRedirect(url('/activities/42'));
 
     $this->assertAuthenticated();
 });
@@ -432,6 +432,6 @@ it('shows the dashboard to authenticated users', function (): void {
         ->get(route('dashboard'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('HariIni')
+            ->component('Today')
             ->where('auth.user.name', 'Ada Lovelace'));
 });

@@ -23,7 +23,7 @@ readonly class GoalResolver
      * Goal progress only moves when an activity is ingested, so the whole
      * resolved catalog is cached per user for a short window. The TTL matches
      * the goals-summary share in HandleInertiaRequests, so the nav chip and
-     * `/target` can never be more than one window apart from each other.
+     * `/goals` can never be more than one window apart from each other.
      */
     private const int CACHE_TTL_SECONDS = 120;
 

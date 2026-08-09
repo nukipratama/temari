@@ -43,10 +43,10 @@ it('renders Profile with computed identity + hero stats', function (): void {
     $unanalyzed = Activity::factory()->for($user)->create(['analyzed_at' => null]);
     ActivityDetail::factory()->for($unanalyzed)->create(['distance' => 99000]);
 
-    $this->actingAs($user)->get('/profil')
+    $this->actingAs($user)->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Aku')
+            ->component('Profile')
             ->where('stats.total_runs', 2)
             ->where('stats.total_km', 13)
             ->where('stats.longest_run_km', 8)
@@ -56,17 +56,17 @@ it('renders Profile with computed identity + hero stats', function (): void {
 it('reports strava_connected as false when the user has no connection', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/profil')
+    $this->actingAs($user)->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Aku')
+            ->component('Profile')
             ->where('identity.strava_connected', false)
             ->where('stats.total_runs', 0)
             ->where('stats.longest_run_km', 0));
 });
 
 it('requires auth', function (): void {
-    $this->get('/profil')->assertRedirect('/login');
+    $this->get('/profile')->assertRedirect('/login');
 });
 
 it('includes training_paces derived from VDOT when the user has a qualifying PR', function (): void {
@@ -76,7 +76,7 @@ it('includes training_paces derived from VDOT when the user has a qualifying PR'
         'value_sec' => 1200.0,
     ]);
 
-    $this->actingAs($user)->get('/profil')
+    $this->actingAs($user)->get('/profile')
         ->assertInertia(fn (Assert $page) => $page
             ->has('fitness.training_paces.easy')
             ->has('fitness.training_paces.marathon')
@@ -87,7 +87,7 @@ it('includes training_paces derived from VDOT when the user has a qualifying PR'
 it('reports null training_paces when the user has no VDOT-eligible PR', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/profil')
+    $this->actingAs($user)->get('/profile')
         ->assertInertia(fn (Assert $page) => $page
             ->where('fitness', null));
 });
@@ -102,10 +102,10 @@ it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoic
         'mood' => 'nyala',
     ]);
 
-    $this->actingAs($user)->get('/profil')
+    $this->actingAs($user)->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('Aku')
+            ->component('Profile')
             ->missing('personaSummary')
             ->has('personaMix', 1)
             ->where('personaMix.0.mood', 'nyala')
@@ -140,7 +140,7 @@ it('resolves the row the weekly kickoff wrote for the current ISO week', functio
         ]);
     }
 
-    $this->actingAs($user)->get('/profil')
+    $this->actingAs($user)->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('profileVoice.status', 'done')
@@ -165,7 +165,7 @@ it('serves the hero stats from LifetimeStats, keeping 1dp total km and 2dp longe
 
     $lifetime = app(LifetimeStats::class)->forUser($user);
 
-    $this->actingAs($user)->get('/profil')
+    $this->actingAs($user)->get('/profile')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('stats.total_km', 17.9)
@@ -187,7 +187,7 @@ it('reuses the LifetimeStats cache instead of re-running the aggregate per /aku 
 
     Cache::forget(LifetimeStats::cacheKey($user->id));
 
-    $this->actingAs($user)->get('/profil')->assertSuccessful();
+    $this->actingAs($user)->get('/profile')->assertSuccessful();
 
     $aggregates = [];
     DB::listen(function (QueryExecuted $query) use (&$aggregates): void {
@@ -196,7 +196,7 @@ it('reuses the LifetimeStats cache instead of re-running the aggregate per /aku 
         }
     });
 
-    $this->actingAs($user)->get('/profil')->assertSuccessful();
+    $this->actingAs($user)->get('/profile')->assertSuccessful();
 
     expect($aggregates)->toBeEmpty();
 });

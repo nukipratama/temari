@@ -12,7 +12,7 @@ it('creates a preference row on the first write', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patch('/profil/notifikasi', [
+        ->patch('/profile/notifications', [
             'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
@@ -34,7 +34,7 @@ it('updates the existing preference row without creating a second', function ():
     ]);
 
     $this->actingAs($user)
-        ->patch('/profil/notifikasi', [
+        ->patch('/profile/notifications', [
             'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
@@ -49,12 +49,12 @@ it('validates that the flags are present and boolean', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patchJson('/profil/notifikasi', ['notifications_enabled' => 'maybe'])
+        ->patchJson('/profile/notifications', ['notifications_enabled' => 'maybe'])
         ->assertStatus(422);
 });
 
 it('requires authentication', function (): void {
-    $this->patch('/profil/notifikasi', ['notifications_enabled' => true, 'telegram_enabled' => true, 'push_enabled' => true])
+    $this->patch('/profile/notifications', ['notifications_enabled' => true, 'telegram_enabled' => true, 'push_enabled' => true])
         ->assertRedirect('/login');
 });
 
@@ -68,7 +68,7 @@ it('rejects a partial write that omits the channel mutes', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patch('/profil/notifikasi', ['notifications_enabled' => true])
+        ->patch('/profile/notifications', ['notifications_enabled' => true])
         ->assertSessionHasErrors(['telegram_enabled', 'push_enabled']);
 });
 
@@ -76,7 +76,7 @@ it('rejects a partial write that omits the master switch', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patch('/profil/notifikasi', ['telegram_enabled' => true, 'push_enabled' => true])
+        ->patch('/profile/notifications', ['telegram_enabled' => true, 'push_enabled' => true])
         ->assertSessionHasErrors(['notifications_enabled']);
 });
 
@@ -84,7 +84,7 @@ it('persists the channel mutes alongside the master switch', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->patch('/profil/notifikasi', [
+        ->patch('/profile/notifications', [
             'notifications_enabled' => true,
             'telegram_enabled' => false,
             'push_enabled' => true,

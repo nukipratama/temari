@@ -12,7 +12,7 @@ use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 
 /**
- * Generates the mascot voice for the Featured Kartu hero panel on HariIni.
+ * Generates the mascot voice for the Featured Kartu hero panel on Today.
  * Split from {@see BriefingMascotVoiceNarrator} so the two surfaces can be
  * triggered and re-triggered independently without sharing LLM cost.
  */

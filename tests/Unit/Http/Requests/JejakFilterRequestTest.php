@@ -6,7 +6,7 @@ use App\Http\Requests\JejakFilterRequest;
 
 function jejakRequest(string $query = ''): JejakFilterRequest
 {
-    return JejakFilterRequest::create('/aktivitas'.($query === '' ? '' : '?'.$query));
+    return JejakFilterRequest::create('/activities'.($query === '' ? '' : '?'.$query));
 }
 
 it('authorizes everyone and validates nothing', function (): void {

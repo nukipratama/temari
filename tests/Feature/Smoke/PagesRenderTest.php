@@ -20,12 +20,12 @@ it('renders every authenticated page for a fresh user', function (string $route,
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component($component));
 })->with([
-    'dashboard' => ['dashboard', 'HariIni'],
-    'aktivitas' => ['aktivitas.index', 'Riwayat/Jejak'],
-    'kalender' => ['kalender', 'Riwayat/Kalender'],
-    'kartu' => ['kartu.index', 'Koleksi/Kartu'],
-    'rekor' => ['rekor', 'Koleksi/Rekor'],
-    'aksesori' => ['aksesori', 'Koleksi/Aksesori'],
-    'profil' => ['profil', 'Aku'],
-    'pengaturan' => ['pengaturan', 'Pengaturan/Index'],
+    'dashboard' => ['dashboard', 'Today'],
+    'activities' => ['activities.index', 'Activities/Feed'],
+    'calendar' => ['calendar', 'Activities/Calendar'],
+    'cards' => ['cards.index', 'Collection/Cards'],
+    'records' => ['records', 'Collection/Records'],
+    'accessories' => ['accessories', 'Collection/Accessories'],
+    'profile' => ['profile', 'Profile'],
+    'settings' => ['settings', 'Settings/Index'],
 ]);

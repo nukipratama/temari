@@ -219,7 +219,7 @@ it('builds a web push message with the dynamic title, body, tap-through url, and
 
     expect($payload['title'])->toContain('run is in!')
         ->and($payload['body'])->toContain('Pace konsisten.')
-        ->and($payload['data'])->toBe(['url' => route('aktivitas.show', $analysis->subject_id)])
+        ->and($payload['data'])->toBe(['url' => route('activities.show', $analysis->subject_id)])
         ->and($message->getOptions())->toBe(['urgency' => 'high']);
 });
 

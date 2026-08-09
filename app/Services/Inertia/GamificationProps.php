@@ -139,7 +139,7 @@ final readonly class GamificationProps
             'average_heartrate' => $detail?->average_heartrate,
             'stream_summary' => $detail?->stream_summary,
             'summary_polyline' => $detail?->summary_polyline,
-            'public_share_url' => route('aktivitas.show', ['activity' => $card->activity_id]),
+            'public_share_url' => route('activities.show', ['activity' => $card->activity_id]),
             'edition' => $this->cards->edition($card, $user->id),
         ];
     }

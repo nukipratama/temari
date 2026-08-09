@@ -18,7 +18,7 @@ function jejakFiltersFor(User $user, string $query = ''): JejakFilters
 {
     return app(JejakQuery::class)->filtersFor(
         $user,
-        JejakFilterRequest::create('/aktivitas'.($query === '' ? '' : '?'.$query)),
+        JejakFilterRequest::create('/activities'.($query === '' ? '' : '?'.$query)),
     );
 }
 
