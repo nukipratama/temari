@@ -345,7 +345,7 @@ it('does not re-dispatch SyncZonesJob on a reconnect that grants no new scopes',
 it('redirects back to login when strava returns an error', function (): void {
     $this->get(route('auth.strava.callback', ['error' => 'access_denied']))
         ->assertRedirect(route('login'))
-        ->assertSessionHasErrors(['strava' => 'Sambungan ke Strava dibatalin. Coba lagi ya kalau mau lanjut.']);
+        ->assertSessionHasErrors(['strava' => 'The Strava connection was cancelled. Try again if you\'d like to continue.']);
 
     $this->assertGuest();
 });
@@ -355,7 +355,7 @@ it('redirects back to login when fetching the strava user fails', function (): v
 
     $this->get(route('auth.strava.callback'))
         ->assertRedirect(route('login'))
-        ->assertSessionHasErrors(['strava' => 'Gagal nyambungin Strava. Coba lagi sebentar ya.']);
+        ->assertSessionHasErrors(['strava' => 'Couldn\'t connect to Strava. Try again in a moment.']);
 
     $this->assertGuest();
 });
@@ -368,7 +368,7 @@ it('redirects back to login when the strava API errors out during the callback',
 
     $this->get(route('auth.strava.callback'))
         ->assertRedirect(route('login'))
-        ->assertSessionHasErrors(['strava' => 'Gagal nyambungin Strava. Coba lagi sebentar ya.']);
+        ->assertSessionHasErrors(['strava' => 'Couldn\'t connect to Strava. Try again in a moment.']);
 
     $this->assertGuest();
 });

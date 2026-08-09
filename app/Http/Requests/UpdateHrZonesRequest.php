@@ -45,19 +45,19 @@ class UpdateHrZonesRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'max_hr.required' => 'Max HR wajib diisi.',
-            'max_hr.integer' => 'Max HR harus berupa angka.',
-            'max_hr.between' => 'Max HR harus di antara 120 dan 220 bpm.',
-            'resting_hr.required' => 'Resting HR wajib diisi.',
-            'resting_hr.integer' => 'Resting HR harus berupa angka.',
-            'resting_hr.between' => 'Resting HR harus di antara 30 dan 90 bpm.',
-            'resting_hr.lt' => 'Resting HR harus lebih kecil dari Max HR.',
-            'zones.required' => 'Zona HR wajib diisi.',
-            'zones.size' => 'Zona HR harus tepat 5 (Z1 sampai Z5).',
-            'zones.*.lo.required' => 'Batas bawah zona wajib diisi.',
-            'zones.*.lo.integer' => 'Batas bawah zona harus berupa angka.',
-            'zones.*.hi.required' => 'Batas atas zona wajib diisi.',
-            'zones.*.hi.integer' => 'Batas atas zona harus berupa angka.',
+            'max_hr.required' => 'Max HR is required.',
+            'max_hr.integer' => 'Max HR must be a number.',
+            'max_hr.between' => 'Max HR must be between 120 and 220 bpm.',
+            'resting_hr.required' => 'Resting HR is required.',
+            'resting_hr.integer' => 'Resting HR must be a number.',
+            'resting_hr.between' => 'Resting HR must be between 30 and 90 bpm.',
+            'resting_hr.lt' => 'Resting HR must be lower than Max HR.',
+            'zones.required' => 'HR zones are required.',
+            'zones.size' => 'HR zones must be exactly 5 (Z1 through Z5).',
+            'zones.*.lo.required' => 'Zone lower bound is required.',
+            'zones.*.lo.integer' => 'Zone lower bound must be a number.',
+            'zones.*.hi.required' => 'Zone upper bound is required.',
+            'zones.*.hi.integer' => 'Zone upper bound must be a number.',
         ];
     }
 
@@ -102,7 +102,7 @@ class UpdateHrZonesRequest extends FormRequest
             if ($hi <= $lo) {
                 $validator->errors()->add(
                     "zones.{$index}.hi",
-                    'Batas atas zona harus lebih besar dari batas bawah.',
+                    'Zone upper bound must be greater than its lower bound.',
                 );
             }
 
@@ -110,7 +110,7 @@ class UpdateHrZonesRequest extends FormRequest
             if ($next !== null && $hi !== (int) $next['lo']) {
                 $validator->errors()->add(
                     "zones.{$index}.hi",
-                    'Zona harus nyambung tanpa celah: batas atas zona ini harus sama dengan batas bawah zona berikutnya.',
+                    'Zones must connect with no gap: this zone\'s upper bound must equal the next zone\'s lower bound.',
                 );
             }
         }
@@ -118,14 +118,14 @@ class UpdateHrZonesRequest extends FormRequest
         if ((int) $zones[0]['lo'] < $restingHr) {
             $validator->errors()->add(
                 'zones.0.lo',
-                'Batas bawah Z1 tidak boleh di bawah Resting HR.',
+                'Z1 lower bound cannot be below Resting HR.',
             );
         }
 
         if ((int) $zones[4]['hi'] <= $maxHr) {
             $validator->errors()->add(
                 'zones.4.hi',
-                'Batas atas Z5 harus lebih besar dari Max HR.',
+                'Z5 upper bound must be greater than Max HR.',
             );
         }
     }

@@ -1,5 +1,5 @@
 @extends('errors.layout')
 
 @section('code', '403')
-@section('title', 'Gak bisa ke sini')
-@section('message', 'Halaman ini bukan buat kamu akses. Kalau ngerasa ini salah, coba login lagi ya.')
+@section('title', 'You can\'t go here')
+@section('message', 'This page isn\'t open to you. If that seems wrong, try logging in again.')

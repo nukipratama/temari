@@ -61,7 +61,7 @@ it('does not link and replies with the expired copy on an expired token', functi
     runUpdate(startUpdate(555, $expired));
 
     $this->assertDatabaseMissing('telegram_connections', ['chat_id' => 555]);
-    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'gak berlaku'));
+    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'valid anymore'));
 });
 
 it('treats a token as single-use: a second /start with the same token does not re-link', function (): void {
@@ -77,14 +77,14 @@ it('treats a token as single-use: a second /start with the same token does not r
 
     expect($user->telegramConnection->fresh()->chat_id)->toBe(555);
     Http::assertSent(fn ($request): bool => $request['chat_id'] === 999
-        && str_contains((string) $request['text'], 'gak berlaku'));
+        && str_contains((string) $request['text'], 'valid anymore'));
 });
 
 it('does not link and replies generically on a garbage token', function (): void {
     runUpdate(startUpdate(555, 'garbage-token'));
 
     $this->assertDatabaseMissing('telegram_connections', ['chat_id' => 555]);
-    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Hubungkan Telegram'));
+    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Connect Telegram'));
 });
 
 it('revokes the connection and confirms on /stop', function (): void {
@@ -93,13 +93,13 @@ it('revokes the connection and confirms on /stop', function (): void {
     runUpdate(['message' => ['chat' => ['id' => 777], 'text' => '/stop']]);
 
     expect($connection->fresh()->isRevoked())->toBeTrue();
-    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'aku lepas'));
+    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'disconnected'));
 });
 
 it('replies generically to any other message', function (): void {
     runUpdate(['message' => ['chat' => ['id' => 777], 'text' => 'halo bot']]);
 
-    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Hubungkan Telegram'));
+    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Connect Telegram'));
 });
 
 it('ignores an update with no message', function (): void {
