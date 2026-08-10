@@ -16,6 +16,7 @@
         "format": "prettier --write resources/js",
         "format:check": "prettier --check resources/js",
         "check:chunks": "node scripts/check-entry-chunks.mjs",
+        "check:palette": "node scripts/check-raw-palette.mjs",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",

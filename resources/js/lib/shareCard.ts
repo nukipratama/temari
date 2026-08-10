@@ -1,6 +1,6 @@
 import type { CardEdition, Mood, Rarity, ZonePct } from '@/types/inertia';
 
-import { DAYBREAK, hrZone } from '@/lib/chartTokens';
+import { THREADWORK, hrZone } from '@/lib/chartTokens';
 import { moodSigilColor } from '@/lib/mood';
 import { projectPolyline } from '@/lib/route';
 import { RARITY_HEX, RARITY_LABELS, RARITY_SYMBOL } from '@/lib/runcard';
@@ -80,23 +80,23 @@ const DIMS: Record<Format, { w: number; h: number }> = {
 
 const PAD = 92;
 
-// Daybreak palette as literal hex (canvas can't read CSS vars). Brand hues
-// reference the shared DAYBREAK bridge so they can't drift; the rest are
+// Threadwork palette as literal hex (canvas can't read CSS vars). Brand hues
+// reference the shared THREADWORK bridge so they can't drift; the rest are
 // canvas-only shades that mirror the @theme block in app.css.
 const C = {
-    horizon: DAYBREAK.horizon,
-    horizonDeep: DAYBREAK.horizonDeep,
-    ink: DAYBREAK.ink,
+    horizon: THREADWORK.horizon,
+    horizonDeep: THREADWORK.horizonDeep,
+    ink: THREADWORK.ink,
     ink2: '#3d362a',
     ink3: '#6e6452',
-    cream: '#f6f1e8',
-    creamDeep: '#eee7d6',
-    sky: DAYBREAK.sky,
-    skyDeep: DAYBREAK.skyDeep,
-    surfaceCard: '#f6f1e8',
-    surfaceSunken: '#efe8da',
-    line: '#e3dccd',
-    inkOnSky: '#b8ad97',
+    cream: '#f5f0e4',
+    creamDeep: '#ece2ce',
+    sky: THREADWORK.sky,
+    skyDeep: THREADWORK.skyDeep,
+    surfaceCard: '#f5f0e4',
+    surfaceSunken: '#ece2ce',
+    line: '#ddd4bd',
+    inkOnSky: '#b0a3c9',
     rarity: RARITY_HEX,
     // Ember colorway's dark bg/surface: the app.css `--color-ember`/`-deep`
     // hue (#c4623f) carried down to canvas-background darkness, the same way

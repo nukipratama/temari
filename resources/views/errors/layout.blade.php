@@ -12,14 +12,14 @@
         href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,400;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap">
     <style>
         :root {
-            --sky: #1f2747;
-            --cream: #f6f1e8;
-            --cream-deep: #eee7d6;
+            --sky: #241c54;
+            --cream: #f5f0e4;
+            --cream-deep: #ece2ce;
             --ink: #1a1812;
             --ink-2: #3d362a;
-            --ink-3: #7a6f5c;
-            --horizon: #e8a076;
-            --horizon-deep: #d08a60;
+            --ink-3: #6e6452;
+            --horizon: #d9a53c;
+            --horizon-deep: #b98a2a;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {

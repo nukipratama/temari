@@ -21,10 +21,10 @@ interface CtlTrendChartProps {
     className?: string;
 }
 
-// Daybreak tokens resolved to hex — Chart.js paints to canvas and can't read
+// Threadwork tokens resolved to hex — Chart.js paints to canvas and can't read
 // CSS custom properties. Keep in sync with the @theme block in app.css.
 const CHART_TOKENS = {
-    horizon: '#e8a076', // --color-horizon (CTL / fitness — the slow line)
+    horizon: '#d9a53c', // --color-horizon (CTL / fitness — the slow line)
     ink2: '#3d362a', // --color-ink-2 (axis ticks)
     ink3: '#6e6452', // --color-ink-3 (grid line + ATL / fatigue line)
 } as const;

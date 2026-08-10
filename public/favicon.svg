@@ -5,12 +5,12 @@
       <circle cx="32" cy="36" r="19"/>
     </clipPath>
   </defs>
-  <rect x="0" y="0" width="64" height="64" rx="14" fill="#1F2747"/>
-  <ellipse cx="22" cy="11" rx="5" ry="10" transform="rotate(-12 22 11)" fill="#F6F1E8"/>
-  <ellipse cx="42" cy="11" rx="5" ry="10" transform="rotate(12 42 11)" fill="#F6F1E8"/>
-  <circle cx="32" cy="36" r="19" fill="#F6F1E8"/>
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="#241C54"/>
+  <ellipse cx="22" cy="11" rx="5" ry="10" transform="rotate(-12 22 11)" fill="#F5F0E4"/>
+  <ellipse cx="42" cy="11" rx="5" ry="10" transform="rotate(12 42 11)" fill="#F5F0E4"/>
+  <circle cx="32" cy="36" r="19" fill="#F5F0E4"/>
   <g clip-path="url(#head-clip)">
-    <rect x="12" y="26" width="40" height="7" fill="#E8A076"/>
+    <rect x="12" y="26" width="40" height="7" fill="#D9A53C"/>
   </g>
   <circle cx="26" cy="38" r="2.4" fill="#1A1812"/>
   <circle cx="38" cy="38" r="2.4" fill="#1A1812"/>

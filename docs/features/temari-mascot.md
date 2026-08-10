@@ -23,7 +23,7 @@ a dressed-up wrapper.
 
 - **Gamification** — the `equipped` accessories map is written by [[gamification]] during ingest.
 - **Vibe & mood** — pose is driven by the daily vibe (`VIBE_TO_POSE`) or run mood (`MOOD_TO_POSE`) from [[vibe-and-mood]].
-- **Design tokens** — all SVG fills are tuned to the Daybreak palette in [[design-tokens]].
+- **Design tokens** — all SVG fills are tuned to the Threadwork palette in [[design-tokens]].
 - **Voice** — Temari's speech copy follows [[voice-and-tone]].
 
 ## The two core components
@@ -69,6 +69,6 @@ pose-driven, or an explicit CSS animation string). Recap cards pass
 
 ## See also
 
-- [[design-tokens]] — the Daybreak palette these SVG fills are tuned to
+- [[design-tokens]] — the Threadwork palette these SVG fills are tuned to
 - [[voice-and-tone]] — what Temari actually *says* in the bubbles
 - [[targets-accessories]] — where the equipped gear is earned and chosen

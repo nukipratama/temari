@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 
 /**
- * Keeps the design-system docs honest. The Daybreak palette / type scale drifted
+ * Keeps the design-system docs honest. The Threadwork palette / type scale drifted
  * badly once (CLAUDE.md + README described a removed emerald/terracotta system);
  * these guards fail CI the moment the docs and `app.css @theme` diverge again.
  * In the `structure` group so they run in the fast pre-coverage gate.

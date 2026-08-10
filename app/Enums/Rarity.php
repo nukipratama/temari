@@ -39,7 +39,7 @@ enum Rarity: string
     }
 
     /**
-* Daybreak rarity tint, mirrored from the client's `RARITY_HEX`
+     * Threadwork rarity tint, mirrored from the client's `RARITY_HEX`
      * ({@see resources/js/lib/runcard.ts}). Single source of truth for the
      * server-rendered card surface ({@see \App\Services\Run\Story\RunCardImageRenderer}).
      */

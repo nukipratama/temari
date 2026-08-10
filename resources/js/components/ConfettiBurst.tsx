@@ -13,15 +13,15 @@ interface Particle {
     duration: number;
 }
 
-// Daybreak palette spread (leaf, ember, citrus, horizon, citrus-deep, overloaded).
+// Threadwork palette spread (leaf, ember, citrus, horizon, citrus-deep, overloaded).
 // Mirrors app.css @theme; Chart/SVG-style particle fills can't read CSS vars.
 const COLORS = [
     '#6B8E6F',
     '#C4623F',
     '#D9B23A',
-    '#E8A076',
+    '#D9A53C',
     '#B8941E',
-    '#7B5BB6',
+    '#6B3FA0',
 ];
 
 interface ConfettiBurstProps {

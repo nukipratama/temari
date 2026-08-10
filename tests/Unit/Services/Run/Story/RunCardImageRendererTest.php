@@ -204,7 +204,7 @@ it('paints a different card-body fill for each colorway', function (): void {
     $dawn = $svgFor('dawn');
     $ember = $svgFor('ember');
 
-    expect($navy)->toContain('#1f2747') // navy card body, unchanged
-        ->and($dawn)->toContain('#f6f1e8')->not->toContain('#1f2747')
-        ->and($ember)->toContain('#3a2015')->not->toContain('#1f2747');
+    expect($navy)->toContain('#241c54') // navy card body
+        ->and($dawn)->toContain('#f5f0e4')->not->toContain('#241c54')
+        ->and($ember)->toContain('#3a2015')->not->toContain('#241c54');
 });
