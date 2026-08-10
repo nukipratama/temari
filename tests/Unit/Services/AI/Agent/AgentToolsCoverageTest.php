@@ -418,6 +418,20 @@ it('reads intensity_label heavy when Z3-Z5 together cover at least half the sess
     expect(new HrZonesTool($a, $d->fresh())->handle([])['intensity_label'])->toBe('heavy');
 });
 
+it('reads hr_drift_bpm from the stream summary', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['hr_drift_bpm' => 7.5]]);
+
+    expect(new HrZonesTool($a, $d->fresh())->handle([])['hr_drift_bpm'])->toBe(7.5);
+});
+
+it('reads cadence_drop_spm from the stream summary via RunSummaryTool', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['cadence_drop_spm' => 4.0]]);
+
+    expect(new RunSummaryTool($a, $d->fresh())->handle([])['cadence_drop_spm'])->toBe(4.0);
+});
+
 // ── TerrainTool ───────────────────────────────────────────────────────
 
 it('reads Strava elevation gain alongside the steepest grade and the flat-adjusted pace', function (): void {

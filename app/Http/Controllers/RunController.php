@@ -33,9 +33,7 @@ class RunController extends Controller
 {
     private const array RUN_INSIGHT_TYPES = [
         AnalysisType::PostRunSpeech,
-        AnalysisType::RunInsightTechnical,
-        AnalysisType::RunInsightSplits,
-        AnalysisType::RunInsightZones,
+        AnalysisType::RunInsight,
     ];
 
     /**
@@ -309,7 +307,7 @@ class RunController extends Controller
         }
 
         // Same partial-reload deferral as index() above: memoized because the
-        // four insight props plus the notification cooldown all read it.
+        // insight props plus the notification cooldown all read it.
         /** @var Collection<string, Analysis>|null $loadedAnalyses */
         $loadedAnalyses = null;
         $loadAnalyses = function () use ($activity, &$loadedAnalyses): Collection {
@@ -352,9 +350,7 @@ class RunController extends Controller
             'notificationRetryAfterSeconds' => fn (): ?int => Analysis::notificationCooldownRemaining(
                 $payloadFor(AnalysisType::PostRunSpeech),
             ),
-            'insightTechnical' => fn (): array => $payloadFor(AnalysisType::RunInsightTechnical),
-            'insightSplits' => fn (): array => $payloadFor(AnalysisType::RunInsightSplits),
-            'insightZones' => fn (): array => $payloadFor(AnalysisType::RunInsightZones),
+            'runInsight' => fn (): array => $payloadFor(AnalysisType::RunInsight),
             'pastYou' => fn (): ?array => $matcher->findMatch($activity, $detail),
             'relativeEffort' => fn (): ?array => $relativeEffort->forRun($activity, $detail),
         ]);

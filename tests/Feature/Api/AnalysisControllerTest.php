@@ -624,7 +624,7 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
     $doneSibling = Analysis::factory()->done('zona sudah dibaca')->create([
         'subject_type' => Activity::class,
         'subject_id' => $earliest->id,
-        'analysis_type' => AnalysisType::RunInsightZones,
+        'analysis_type' => AnalysisType::RunInsight,
         'discriminator' => null,
         'generated_at' => Carbon::now()->subHour(),
     ]);
@@ -779,7 +779,7 @@ it('recomputes the stream summary when a zone-dependent run block is re-triggere
     app()->instance(SummaryRecomputer::class, $recomputer);
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/run_insight_zones/{$activity->id}/trigger")
+        ->postJson("/api/analyses/run_insight/{$activity->id}/trigger")
         ->assertSuccessful();
 });
 
@@ -793,7 +793,7 @@ it('skips the recompute when the user has no custom profile, since the stored su
     app()->instance(SummaryRecomputer::class, $recomputer);
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/run_insight_zones/{$activity->id}/trigger")
+        ->postJson("/api/analyses/run_insight/{$activity->id}/trigger")
         ->assertSuccessful();
 });
 
@@ -834,6 +834,6 @@ it('skips the recompute for a block whose narration does not depend on zones', f
     app()->instance(SummaryRecomputer::class, $recomputer);
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/run_insight_technical/{$activity->id}/trigger")
+        ->postJson("/api/analyses/post_run_speech/{$activity->id}/trigger")
         ->assertSuccessful();
 });

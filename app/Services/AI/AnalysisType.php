@@ -25,9 +25,7 @@ enum AnalysisType: string
     case BriefingMascotVoice = 'briefing_mascot_voice';
     case BriefingFeaturedKartuVoice = 'briefing_featured_kartu_voice';
     case PostRunSpeech = 'post_run_speech';
-    case RunInsightTechnical = 'run_insight_technical';
-    case RunInsightSplits = 'run_insight_splits';
-    case RunInsightZones = 'run_insight_zones';
+    case RunInsight = 'run_insight';
     case WeeklyRecap = 'weekly_recap';
     case PrContext = 'pr_context';
     case CardFlavor = 'card_flavor';
@@ -51,9 +49,7 @@ enum AnalysisType: string
     {
         return match ($this) {
             self::PostRunSpeech,
-            self::RunInsightTechnical,
-            self::RunInsightSplits,
-            self::RunInsightZones => AnalyzeActivityJob::class,
+            self::RunInsight => AnalyzeActivityJob::class,
             // The two briefing surfaces are intentionally NOT grouped — each
             // has its own row job so one of them retrying never re-bills the
             // other.
@@ -80,9 +76,7 @@ enum AnalysisType: string
     {
         return match ($this) {
             self::PostRunSpeech,
-            self::RunInsightTechnical,
-            self::RunInsightSplits,
-            self::RunInsightZones,
+            self::RunInsight,
             self::CardFlavor,
             self::PrContext => AnalysisCadence::PerActivity,
             self::BriefingMascotVoice,
@@ -100,9 +94,7 @@ enum AnalysisType: string
             self::BriefingMascotVoice => AnalyzeBriefingMascotVoiceJob::class,
             self::BriefingFeaturedKartuVoice => AnalyzeBriefingFeaturedKartuVoiceJob::class,
             self::PostRunSpeech,
-            self::RunInsightTechnical,
-            self::RunInsightSplits,
-            self::RunInsightZones => AnalyzeActivityJob::class,
+            self::RunInsight => AnalyzeActivityJob::class,
             self::WeeklyRecap => AnalyzeWeeklyRecapJob::class,
             self::PrContext => AnalyzePrContextJob::class,
             self::CardFlavor => AnalyzeCardFlavorJob::class,
@@ -119,7 +111,7 @@ enum AnalysisType: string
      * the chain head may regenerate. See AnalysisController::trigger.
      *
      * WeeklyRecap + MonthlyRecap + the per-activity group (PostRunSpeech +
-     * RunInsight*) are wired so far; a later slice flips BriefingMascotVoice on.
+     * RunInsight) are wired so far; a later slice flips BriefingMascotVoice on.
      */
     public function isChained(): bool
     {
@@ -127,9 +119,7 @@ enum AnalysisType: string
             self::WeeklyRecap,
             self::MonthlyRecap,
             self::PostRunSpeech,
-            self::RunInsightTechnical,
-            self::RunInsightSplits,
-            self::RunInsightZones => true,
+            self::RunInsight => true,
             default => false,
         };
     }
@@ -139,15 +129,17 @@ enum AnalysisType: string
      * zone change makes copies generated beforehand stale (the "dihitung dengan
      * zona lama" hint). Zone-agnostic types never carry it.
      *
-     * Only the zone breakdown ({@see self::RunInsightZones}) and the weekly
-     * recap (zone-weighted TRIMP / CTL) read the configured zones. The technical
-     * insight uses cadence, decoupling, the run's own peak HR, and elevation,
-     * none of which move when zones change, so it is excluded.
+     * RunInsight's claims are a variable mix (a `zone:<z>` claim reads the
+     * configured zones, a `split:<n>`/other `metric:*` claim does not), and the
+     * row carries no flag saying which shape it landed on, so it is treated as
+     * zone-dependent unconditionally: a false "stale" hint on a zone-free row
+     * costs nothing, a missed one on a zone-anchored row would silently show
+     * numbers computed under zones the user has since changed.
      */
     public function isZoneDependent(): bool
     {
         return match ($this) {
-            self::RunInsightZones,
+            self::RunInsight,
             self::WeeklyRecap,
             self::MonthlyRecap => true,
             default => false,
@@ -182,9 +174,7 @@ enum AnalysisType: string
             self::AkuProfileVoice => ['required', 'string', 'regex:/^\d{4}-W\d{2}$/'],
             self::MonthlyRecap => ['required', 'string', 'date_format:Y-m'],
             self::PostRunSpeech,
-            self::RunInsightTechnical,
-            self::RunInsightSplits,
-            self::RunInsightZones,
+            self::RunInsight,
             self::WeeklyRecap,
             self::PrContext,
             self::CardFlavor => ['prohibited'],
@@ -197,9 +187,7 @@ enum AnalysisType: string
             self::BriefingMascotVoice,
             self::BriefingFeaturedKartuVoice => self::BRIEFING_SUBJECT_TYPE,
             self::PostRunSpeech,
-            self::RunInsightTechnical,
-            self::RunInsightSplits,
-            self::RunInsightZones => Activity::class,
+            self::RunInsight => Activity::class,
             self::WeeklyRecap => WeeklySnapshot::class,
             self::PrContext => PersonalRecord::class,
             self::CardFlavor => RunCard::class,

@@ -132,9 +132,7 @@ it('rejects any discriminator on the types whose job ignores it', function (stri
         ->and(triggerAnalysisPasses($type, '2026-05-18'))->toBeFalse();
 })->with([
     'post_run_speech',
-    'run_insight_technical',
-    'run_insight_splits',
-    'run_insight_zones',
+    'run_insight',
     'weekly_recap',
     'pr_context',
     'card_flavor',

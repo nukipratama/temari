@@ -374,7 +374,7 @@ it('fills an activity older than the backfill depth cap rule-based (group + card
     Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
 
     $groupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->get();
-    expect($groupRows)->toHaveCount(4)
+    expect($groupRows)->toHaveCount(2)
         ->and($groupRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue();
 
     $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();

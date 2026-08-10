@@ -18,7 +18,8 @@ final class RunSummaryTool extends ActivityTool
     public function description(): string
     {
         return "This session's core numbers: when the run was, distance, duration, pace, average "
-            .'and max HR, cadence. Start here.';
+            .'and max HR, cadence, and cadence_drop_spm (how much step rate fell from the first half '
+            .'to the second). Start here.';
     }
 
     /** @return array<string, mixed> */
@@ -37,6 +38,7 @@ final class RunSummaryTool extends ActivityTool
             'avg_cadence_spm' => $this->detail->average_cadence !== null
                 ? (int) round((float) $this->detail->average_cadence * 2)
                 : null,
+            'cadence_drop_spm' => $this->summary()->cadenceDropSpm(),
         ];
     }
 }

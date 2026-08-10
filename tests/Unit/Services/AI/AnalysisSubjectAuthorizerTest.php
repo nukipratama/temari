@@ -24,9 +24,7 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
         AnalysisType::AkuProfileVoice,
         AnalysisType::MonthlyRecap => $owner->id,
         AnalysisType::PostRunSpeech,
-        AnalysisType::RunInsightTechnical,
-        AnalysisType::RunInsightSplits,
-        AnalysisType::RunInsightZones => Activity::factory()->for($owner)->create()->id,
+        AnalysisType::RunInsight => Activity::factory()->for($owner)->create()->id,
         AnalysisType::WeeklyRecap => WeeklySnapshot::factory()->for($owner)->create()->id,
         AnalysisType::PrContext => PersonalRecord::factory()->for($owner)->create()->id,
         AnalysisType::CardFlavor => RunCard::factory()

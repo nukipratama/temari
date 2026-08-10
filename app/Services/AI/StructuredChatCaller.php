@@ -44,6 +44,7 @@ final readonly class StructuredChatCaller
     /**
      * @param  list<string>  $requiredKeys
      * @param  array<string, mixed>  $context
+     * @param  array<string, array<string, mixed>>|null  $propertySchema  Per-key JSON-schema override for a required key whose value is not a plain string (e.g. a list of claim objects). A key absent here defaults to {"type": "string"}.
      * @return array<string, mixed>
      */
     public function call(
@@ -53,6 +54,7 @@ final readonly class StructuredChatCaller
         string $schemaName,
         array $requiredKeys,
         ?ChatCallOptions $options = null,
+        ?array $propertySchema = null,
     ): array {
         $options ??= new ChatCallOptions();
         $startedAt = microtime(true);
@@ -75,7 +77,7 @@ final readonly class StructuredChatCaller
             // rate worse, not better. Azure scopes its cache per deployment
             // already, so this must not encode a model either.
             'prompt_cache_key' => $kind,
-            'text' => ['format' => self::textFormat($schemaName, $requiredKeys)],
+            'text' => ['format' => self::textFormat($schemaName, $requiredKeys, $propertySchema)],
         ];
 
         if ($options->temperature !== null) {
@@ -136,7 +138,7 @@ final readonly class StructuredChatCaller
                 }
             }
 
-            $decoded = $this->decoded($response, $requiredKeys);
+            $decoded = $this->decoded($response, $requiredKeys, $propertySchema);
             $truncated = self::isTruncated($response);
 
             if ($truncated) {
@@ -173,9 +175,10 @@ final readonly class StructuredChatCaller
      * why it could not be read.
      *
      * @param  list<string>  $requiredKeys
+     * @param  array<string, array<string, mixed>>|null  $propertySchema
      * @return array<string, mixed>
      */
-    private function decoded(CreateResponse $response, array $requiredKeys): array
+    private function decoded(CreateResponse $response, array $requiredKeys, ?array $propertySchema): array
     {
         try {
             $decoded = json_decode((string) ($response->outputText ?? ''), true, 16, JSON_THROW_ON_ERROR);
@@ -187,7 +190,7 @@ final readonly class StructuredChatCaller
             throw new UnavailableException('Azure OpenAI structured output not an object');
         }
 
-        $missingLabel = $this->missingKeyLabel($decoded, $requiredKeys);
+        $missingLabel = $this->missingKeyLabel($decoded, $requiredKeys, $propertySchema);
         if ($missingLabel !== null) {
             throw new UnavailableException("Azure OpenAI structured output missing {$missingLabel}");
         }
@@ -235,12 +238,13 @@ final readonly class StructuredChatCaller
     /**
      * @param  array<string, mixed>  $decoded
      * @param  list<string>  $requiredKeys
+     * @param  array<string, array<string, mixed>>|null  $propertySchema
      */
-    private function missingKeyLabel(array $decoded, array $requiredKeys): ?string
+    private function missingKeyLabel(array $decoded, array $requiredKeys, ?array $propertySchema): ?string
     {
         $missing = [];
         foreach ($requiredKeys as $key) {
-            if (! isset($decoded[$key]) || ! is_string($decoded[$key])) {
+            if (! isset($decoded[$key]) || ! self::matchesPropertyType($decoded[$key], $propertySchema[$key] ?? null)) {
                 $missing[] = $key;
             }
         }
@@ -253,17 +257,30 @@ final readonly class StructuredChatCaller
     }
 
     /**
+     * Whether a decoded value matches the shape its schema override declares.
+     * Every required key defaults to a plain string; a key overridden to
+     * `type: array` (e.g. a claims list) is checked as an array instead.
+     *
+     * @param  array<string, mixed>|null  $schema
+     */
+    private static function matchesPropertyType(mixed $value, ?array $schema): bool
+    {
+        return ($schema['type'] ?? 'string') === 'array' ? is_array($value) : is_string($value);
+    }
+
+    /**
      * The Responses API structured-output format (text.format): json_schema with
      * the fields flattened, unlike chat completions' nested `json_schema` wrapper.
      *
      * @param  list<string>  $requiredKeys
+     * @param  array<string, array<string, mixed>>|null  $propertySchema
      * @return array{type: string, name: string, strict: bool, schema: array<string, mixed>}
      */
-    private static function textFormat(string $schemaName, array $requiredKeys): array
+    private static function textFormat(string $schemaName, array $requiredKeys, ?array $propertySchema): array
     {
         $properties = [];
         foreach ($requiredKeys as $key) {
-            $properties[$key] = ['type' => 'string'];
+            $properties[$key] = $propertySchema[$key] ?? ['type' => 'string'];
         }
 
         return [

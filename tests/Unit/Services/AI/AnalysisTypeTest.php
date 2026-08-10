@@ -14,9 +14,7 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
         'briefing_mascot_voice',
         'briefing_featured_kartu_voice',
         'post_run_speech',
-        'run_insight_technical',
-        'run_insight_splits',
-        'run_insight_zones',
+        'run_insight',
         'weekly_recap',
         'pr_context',
         'card_flavor',
@@ -45,11 +43,11 @@ it('maps MonthlyRecap to its job + subject type', function (): void {
 it('flags exactly the heart-rate-zone-derived types as zone-dependent', function (AnalysisType $type, bool $expected): void {
     expect($type->isZoneDependent())->toBe($expected);
 })->with([
-    'zones' => [AnalysisType::RunInsightZones, true],
+    // A claim's anchor can be zone-derived or not, and the row carries no flag
+    // for which shape it landed on, so the whole type is treated as zone-dependent.
+    'run insight' => [AnalysisType::RunInsight, true],
     'weekly recap' => [AnalysisType::WeeklyRecap, true],
     'monthly recap (reads zone-weighted CTL for its fitness arc)' => [AnalysisType::MonthlyRecap, true],
-    'technical (uses run-peak HR, not zones)' => [AnalysisType::RunInsightTechnical, false],
-    'splits' => [AnalysisType::RunInsightSplits, false],
     'post-run speech' => [AnalysisType::PostRunSpeech, false],
     'pr context' => [AnalysisType::PrContext, false],
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, false],
@@ -61,9 +59,7 @@ it('flags only the connected + chained kinds wired so far', function (AnalysisTy
     'weekly recap (pilot)' => [AnalysisType::WeeklyRecap, true],
     'monthly recap (wired)' => [AnalysisType::MonthlyRecap, true],
     'post-run speech (per-activity chain)' => [AnalysisType::PostRunSpeech, true],
-    'run insight technical (per-activity chain)' => [AnalysisType::RunInsightTechnical, true],
-    'run insight splits (per-activity chain)' => [AnalysisType::RunInsightSplits, true],
-    'run insight zones (per-activity chain)' => [AnalysisType::RunInsightZones, true],
+    'run insight (per-activity chain)' => [AnalysisType::RunInsight, true],
     'card flavor (standalone)' => [AnalysisType::CardFlavor, false],
     'briefing mascot voice (standalone)' => [AnalysisType::BriefingMascotVoice, false],
 ]);
@@ -87,9 +83,7 @@ it('maps representative types to the expected cadence', function (AnalysisType $
 it('is the single source of truth for group membership', function (): void {
     expect(AnalysisType::groupedBy(AnalyzeActivityJob::class))->toBe([
         AnalysisType::PostRunSpeech,
-        AnalysisType::RunInsightTechnical,
-        AnalysisType::RunInsightSplits,
-        AnalysisType::RunInsightZones,
+        AnalysisType::RunInsight,
     ])
         // The job class derives its grouped types from the enum.
         ->and(AnalyzeActivityJob::groupedTypes())->toBe(AnalysisType::groupedBy(AnalyzeActivityJob::class));
@@ -114,7 +108,7 @@ it('prohibits a discriminator on the types that key off subject_id alone', funct
     expect($type->discriminatorRules())->toBe(['prohibited']);
 })->with([
     'post run speech' => [AnalysisType::PostRunSpeech],
-    'run insight zones' => [AnalysisType::RunInsightZones],
+    'run insight' => [AnalysisType::RunInsight],
     'weekly recap' => [AnalysisType::WeeklyRecap],
     'pr context' => [AnalysisType::PrContext],
     'card flavor' => [AnalysisType::CardFlavor],

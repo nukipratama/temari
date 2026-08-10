@@ -143,8 +143,7 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
     expect($copy)->toBe($expected);
 })->with([
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, "Easy tempo, 35-45 minutes.\n\nYour rhythm's read steady these past few weeks and there hasn't been a quality session since last week, so today I think there's room for a tempo. 10-minute easy warmup, 15-20 minute tempo a bit faster than your average pace, then cooldown, cadence at 175+.\n\nWhat to watch: if HR climbs fast even at an easy pace, back off to a 15-25 minute run-walk or stop at the cooldown. If the weather's hot or you're still feeling wiped, resting isn't a loss either."],
-    'run insight splits (no detail)' => [AnalysisType::RunInsightSplits, "The splits aren't fully readable yet."],
-    'run insight zones (no detail)' => [AnalysisType::RunInsightZones, "The zone breakdown isn't fully readable yet."],
+    'run insight (no detail)' => [AnalysisType::RunInsight, '[]'],
     'weekly recap' => [AnalysisType::WeeklyRecap, 'Your rhythm was pretty steady this week. Volume was reasonable, recovery got taken care of too.'],
     'pr context' => [AnalysisType::PrContext, 'This PR is the result of consistency over the past few weeks, not luck.'],
     'aku profile voice' => [AnalysisType::AkuProfileVoice, "Your runs lean more **chill** than pushed, and it shows in how it adds up: slow, regular, never a big jump. The type who builds a base patiently. Keep the rhythm going, I'm tracking all of it here."],
@@ -181,40 +180,28 @@ it('falls back to a flat post-run speech when the activity detail is missing', f
     expect($speech)->toBe('Done. This is the kind of consistency I like to see.');
 });
 
-it('reads the run-insight types off the run itself, not a seeded variant', function (AnalysisType $type): void {
+it('reads the run-insight claims off the run itself, not a seeded variant', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->create([
         'activity_id' => $activity->id,
         'average_cadence' => 85.0,
         'average_heartrate' => 150.0,
         'distance' => 5000.0,
+        'stream_summary' => ['decoupling_pct' => 6.5],
     ]);
 
-    $insights = app(RuleBasedRunInsights::class);
-    $expected = match ($type) {
-        AnalysisType::RunInsightTechnical => $insights->technical($detail->fresh()),
-        AnalysisType::RunInsightSplits => $insights->splits($detail->fresh()),
-        AnalysisType::RunInsightZones => $insights->zones($detail->fresh()),
-    };
+    $expected = app(RuleBasedRunInsights::class)->claims($detail->fresh());
+    $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::RunInsight, $activity->id));
 
-    $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow($type, $activity->id));
+    expect($expected)->not->toBe([])
+        ->and(json_decode($insight, true))->toBe($expected);
+});
 
-    expect($insight)->toBe($expected);
-})->with([
-    'technical' => [AnalysisType::RunInsightTechnical],
-    'splits' => [AnalysisType::RunInsightSplits],
-    'zones' => [AnalysisType::RunInsightZones],
-]);
+it('falls back to an empty claims list when the insight detail is missing', function (): void {
+    $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::RunInsight, 999_999));
 
-it('falls back to a flat line when the insight detail is missing', function (AnalysisType $type, string $expected): void {
-    $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow($type, 999_999));
-
-    expect($insight)->toBe($expected);
-})->with([
-    'technical' => [AnalysisType::RunInsightTechnical, "The technical detail isn't fully readable yet."],
-    'splits' => [AnalysisType::RunInsightSplits, "The splits aren't fully readable yet."],
-    'zones' => [AnalysisType::RunInsightZones, "The zone breakdown isn't fully readable yet."],
-]);
+    expect($insight)->toBe('[]');
+});
 
 it('weaves the snapshot real numbers into the weekly recap', function (): void {
     $snapshot = WeeklySnapshot::factory()->create([
