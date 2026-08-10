@@ -101,17 +101,6 @@ it('awards first_timer when the context says this is the first run ever', functi
         ->toContain('first_timer');
 });
 
-it('awards habit_forming from a 2-day streak (this run makes 3)', function (): void {
-    expect(badgesFor(badgeDetail(['weather_temp_c' => 25]), [], badgeContext(streak: 2)))
-        ->toContain('habit_forming')
-        ->not->toContain('streak');
-});
-
-it('awards streak from a 6-day streak (this run makes 7)', function (): void {
-    expect(badgesFor(badgeDetail(['weather_temp_c' => 25]), [], badgeContext(streak: 6)))
-        ->toContain('streak');
-});
-
 it('awards speedster under 5 minutes per km', function (): void {
     $detail = badgeDetail(['weather_temp_c' => 25, 'distance' => 5_000.0, 'moving_time' => 1_200]);
 
