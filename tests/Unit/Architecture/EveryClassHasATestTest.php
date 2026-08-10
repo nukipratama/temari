@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\CardReplayController;
 use App\Http\Controllers\Api\CardSeenController;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\GoalController;
 use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\Notifications\Concerns\PushesAnalysisNotification;
 use App\Jobs\Telegram\Concerns\RevokesConnectionOnPermanentFailure;
@@ -56,7 +55,6 @@ it('has a test class for every concrete app class', function (): void {
         CardReplayController::class,  // CardSeenTest (replay cases)
         LoginController::class,       // auth feature tests
         StravaAuthController::class,  // StravaAuthTest
-        GoalController::class,        // goal feature tests
         HandleInertiaRequests::class, // framework wiring
         // Immutable value objects / DTOs (no behaviour to unit-test).
         ActivityIngested::class,         // event payload, asserted via DispatchPostRunAnalysisTest + ActivityPipelineCascadeTest

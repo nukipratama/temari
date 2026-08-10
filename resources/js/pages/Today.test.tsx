@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type {
     ActivityDetail,
     BriefingResult,
-    GoalsSummary,
     TrainingLoad,
     WeeklySnapshot,
 } from '@/types/inertia';
@@ -327,87 +326,6 @@ describe('Today', () => {
         expect(
             screen.queryByRole('button', { name: 'Baca selengkapnya' }),
         ).not.toBeInTheDocument();
-    });
-
-    it('renders the "Closest targets" goals when goalsSummary has closest goals', () => {
-        const goalsSummary: GoalsSummary = {
-            total: 3,
-            completed: 1,
-            closest: [
-                // whole numbers -> integer display, full progress capped at 100%
-                {
-                    id: 'g1',
-                    title: 'Run 100 KM this month',
-                    current: 100,
-                    target: 100,
-                    unit: 'km',
-                },
-                // decimals -> toFixed(1) on both current and target
-                {
-                    id: 'g2',
-                    title: 'Half marathon',
-                    current: 12.5,
-                    target: 21.1,
-                    unit: 'km',
-                },
-                // target 0 -> pct branch returns 0 (no divide-by-zero)
-                {
-                    id: 'g3',
-                    title: 'Empty goal',
-                    current: 0,
-                    target: 0,
-                    unit: 'sessions',
-                },
-            ],
-        };
-        setMockPage({
-            auth: { user: makeUser() },
-            flash: {},
-            demoLoginEnabled: false,
-            goalsSummary,
-        });
-        render(
-            <Today
-                briefing={briefing}
-                load={load}
-                snapshot={snapshot}
-                recentRuns={[detailWithCard]}
-            />,
-        );
-        expect(screen.getByText('Closest targets')).toBeInTheDocument();
-        expect(screen.getByText('Run 100 KM this month')).toBeInTheDocument();
-        expect(screen.getByText('Half marathon')).toBeInTheDocument();
-        expect(screen.getByText('Empty goal')).toBeInTheDocument();
-        // current/target sit in one span split by a "/" node; match the combined
-        // text to confirm both the integer (100/100) and decimal (12.5/21.1) paths.
-        expect(
-            screen.getByText((_, el) => el?.textContent === '100/100'),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByText((_, el) => el?.textContent === '12.5/21.1'),
-        ).toBeInTheDocument();
-        // target 0 -> "0/0", no NaN/Infinity from the divide-by-zero guard.
-        expect(
-            screen.getByText((_, el) => el?.textContent === '0/0'),
-        ).toBeInTheDocument();
-    });
-
-    it('omits the goals section when goalsSummary has no closest goals', () => {
-        setMockPage({
-            auth: { user: makeUser() },
-            flash: {},
-            demoLoginEnabled: false,
-            goalsSummary: { total: 0, completed: 0, closest: [] },
-        });
-        render(
-            <Today
-                briefing={briefing}
-                load={load}
-                snapshot={snapshot}
-                recentRuns={[detailWithCard]}
-            />,
-        );
-        expect(screen.queryByText('Closest targets')).not.toBeInTheDocument();
     });
 
     it('renders the last-run card with location, weather, pace, trimp, and a note', () => {

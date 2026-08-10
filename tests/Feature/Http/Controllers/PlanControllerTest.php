@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\PlannedSession;
+use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,6 +28,20 @@ it('renders an empty week list for a fresh user with no plan yet', function (): 
     $this->actingAs($user)->get('/plan')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component('Plan')->where('weeks', []));
+});
+
+it('creates a season and its 5 goals on a fresh user\'s first Plan view, before any regeneration', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/plan')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('season')
+            ->has('season.goals', 5)
+            ->where('season.week_index', 1)
+            ->where('season.is_race_oriented', false));
+
+    expect(Season::query()->where('user_id', $user->id)->count())->toBe(1);
 });
 
 it('regenerating populates the plan and redirects with a success flash', function (): void {

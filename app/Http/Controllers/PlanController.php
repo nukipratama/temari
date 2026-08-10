@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Gamification\GrantSeasonUnlocksAction;
 use App\Enums\DistanceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
@@ -12,7 +13,10 @@ use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\User;
+use App\Services\Gamification\SeasonGamificationContext;
+use App\Services\Gamification\SeasonGoalResolver;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -22,6 +26,7 @@ use App\Services\Run\Plan\DistanceBandKm;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\ReadinessClamp;
+use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\VolumeRedistributor;
 use App\Services\Run\Story\BriefingContext;
@@ -51,6 +56,9 @@ class PlanController extends Controller
         TrainingLoad $trainingLoad,
         VdotEstimator $vdotEstimator,
         TrainingPaceCalculator $paceCalculator,
+        SeasonService $seasonService,
+        SeasonGoalResolver $seasonGoalResolver,
+        GrantSeasonUnlocksAction $grantSeasonUnlocks,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -60,6 +68,11 @@ class PlanController extends Controller
         $rangeEnd = $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6);
 
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+
+        $season = $seasonService->ensureCurrent($user, $today);
+        $seasonCtx = SeasonGamificationContext::forSeason($user, $season, $today, $trainingLoad);
+        $grantSeasonUnlocks($user, $season, $seasonCtx);
+        $seasonPayload = $this->seasonPayload($season, $seasonGoalResolver->forSeason($user, $season, $seasonCtx), $today);
 
         $sessions = PlannedSession::query()
             ->where('user_id', $user->id)
@@ -72,6 +85,7 @@ class PlanController extends Controller
                 'race' => $this->racePayload($race),
                 'sessionsPerWeek' => $baseline->forUser($user, $today)['sessions_per_week'],
                 'weeks' => [],
+                'season' => $seasonPayload,
             ]);
         }
 
@@ -150,6 +164,7 @@ class PlanController extends Controller
             'race' => $this->racePayload($race),
             'sessionsPerWeek' => $baselineData['sessions_per_week'],
             'weeks' => $weeks,
+            'season' => $seasonPayload,
         ]);
     }
 
@@ -212,6 +227,30 @@ class PlanController extends Controller
     private function racePayload(?RaceGoal $race): ?array
     {
         return $race === null ? null : ['race_date' => $race->race_date->toDateString(), 'name' => $race->name];
+    }
+
+    /**
+     * The Plan tab's season summary: arc progress + the season's 5 goals +
+     * a link to the badge board. Season IS the training block (see the v2
+     * program's locked decisions) — this is the same arc at a higher zoom,
+     * not a separate page.
+     *
+     * @param  list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>  $goals
+     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}
+     */
+    private function seasonPayload(Season $season, array $goals, Carbon $today): array
+    {
+        $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
+        $weekIndex = max(1, min($totalWeeks, (int) $season->starts_at->diffInWeeks($today) + 1));
+
+        return [
+            'starts_at' => $season->starts_at->toDateString(),
+            'ends_at' => $season->ends_at->toDateString(),
+            'week_index' => $weekIndex,
+            'total_weeks' => $totalWeeks,
+            'is_race_oriented' => $season->race_goal_id !== null,
+            'goals' => $goals,
+        ];
     }
 
     /**

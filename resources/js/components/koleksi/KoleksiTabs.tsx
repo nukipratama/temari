@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 
 import { cn } from '@/lib/cn';
 
-export type KoleksiTab = 'kartu' | 'rekor' | 'aksesori' | 'target';
+export type KoleksiTab = 'kartu' | 'rekor' | 'aksesori' | 'badges';
 
 interface TabItem {
     id: KoleksiTab;
@@ -35,7 +35,12 @@ const TABS: ReadonlyArray<TabItem> = [
         href: '/accessories',
         icon: 'mdi:tshirt-crew-outline',
     },
-    { id: 'target', label: 'Target', href: '/goals', icon: 'mdi:target' },
+    {
+        id: 'badges',
+        label: 'Badges',
+        href: '/badges',
+        icon: 'mdi:seal-variant',
+    },
 ];
 
 export default function KoleksiTabs({

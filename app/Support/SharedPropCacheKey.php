@@ -18,7 +18,6 @@ enum SharedPropCacheKey: string
     case AiCatchingUp = 'ai-catching-up';
     case AiPaused = 'ai-paused';
     case EquippedAccessories = 'equipped-accessories';
-    case GoalsSummary = 'goals-summary';
     case HrZonesChangedAt = 'hr-zones-changed-at';
     case StravaPaused = 'strava-paused';
     case StravaSync = 'strava-sync';
@@ -33,13 +32,6 @@ enum SharedPropCacheKey: string
      * a tiny staleness window for far fewer per-request queries.
      */
     private const int STRAVA_SYNC_SECONDS = 120;
-
-    /**
-     * TTL for the goals summary share. Goals only change when an activity is
-     * ingested (minutes apart), so a short cache trades negligible staleness
-     * for eliminating ~10 DB queries per page load.
-     */
-    private const int GOALS_SUMMARY_SECONDS = 120;
 
     /**
      * TTL for the HR-zones-changed marker. It only moves when the user saves
@@ -111,7 +103,6 @@ enum SharedPropCacheKey: string
             self::AiCatchingUp => self::AI_CATCHING_UP_SECONDS,
             self::AiPaused => self::AI_PAUSED_SECONDS,
             self::StravaPaused => self::STRAVA_PAUSED_SECONDS,
-            self::GoalsSummary => self::GOALS_SUMMARY_SECONDS,
             self::HrZonesChangedAt => self::HR_ZONES_CHANGED_SECONDS,
             self::StravaSync => self::STRAVA_SYNC_SECONDS,
             self::EquippedAccessories,

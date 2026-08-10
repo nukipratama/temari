@@ -9,7 +9,7 @@ describe('KoleksiTabs', () => {
         expect(screen.getByText('Cards')).toBeInTheDocument();
         expect(screen.getByText('Records')).toBeInTheDocument();
         expect(screen.getByText('Accessories')).toBeInTheDocument();
-        expect(screen.getByText('Target')).toBeInTheDocument();
+        expect(screen.getByText('Badges')).toBeInTheDocument();
     });
 
     it('marks only the active tab with aria-current', () => {
@@ -24,9 +24,9 @@ describe('KoleksiTabs', () => {
     });
 
     it('shows the count chip only on the active tab when given', () => {
-        render(<KoleksiTabs active="target" activeCount="3" />);
+        render(<KoleksiTabs active="badges" activeCount="3" />);
         expect(screen.getByText('3')).toBeInTheDocument();
-        expect(screen.getByText('Target').closest('a')).toHaveTextContent('3');
+        expect(screen.getByText('Badges').closest('a')).toHaveTextContent('3');
         expect(screen.getByText('Cards').closest('a')).not.toHaveTextContent(
             '3',
         );

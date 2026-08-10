@@ -13,6 +13,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import HeroPanel from '@/components/ui/HeroPanel';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
+import ProgressBar from '@/components/ui/ProgressBar';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
@@ -25,6 +26,7 @@ import {
     mapAura,
     keyToPreviewEquipped,
 } from '@/lib/equippedAccessories';
+import { formatGoalNumber, goalProgressRatio } from '@/lib/goalProgress';
 import { RARITY_TEXT } from '@/lib/runcard';
 
 type Slot = EquippedSlot;
@@ -39,6 +41,9 @@ interface AccessoriesItem {
     criteria: string;
     unlocked: boolean;
     equipped: boolean;
+    current: number;
+    target: number;
+    unit: string;
 }
 
 interface EquippedPayload {
@@ -317,9 +322,31 @@ function AksesoriCard({
                 </p>
             </div>
             {locked && (
-                <p className="mt-auto font-display text-xs italic text-ink-3">
-                    {item.criteria}
-                </p>
+                <div className="mt-auto w-full">
+                    <p className="font-display text-xs italic text-ink-3">
+                        {item.criteria}
+                    </p>
+                    {item.target > 0 && (
+                        <div className="mt-2">
+                            <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-ink-3">
+                                <span>
+                                    {formatGoalNumber(item.current)}
+                                    <span className="text-ink-3">/</span>
+                                    {formatGoalNumber(item.target)}
+                                </span>
+                                <span>{item.unit}</span>
+                            </div>
+                            <ProgressBar
+                                value={goalProgressRatio(
+                                    item.current,
+                                    item.target,
+                                )}
+                                tone="sky"
+                                ariaLabel={`${item.name}: ${formatGoalNumber(item.current)}/${formatGoalNumber(item.target)} ${item.unit}`}
+                            />
+                        </div>
+                    )}
+                </div>
             )}
             {!locked && item.equipped && (
                 <PillButton

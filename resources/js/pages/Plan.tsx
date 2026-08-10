@@ -9,10 +9,30 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
+import ProgressBar from '@/components/ui/ProgressBar';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
+import { formatGoalNumber, goalProgressRatio } from '@/lib/goalProgress';
 import { formatNaiveIdDate, formatPace, todayLocalIso } from '@/lib/pace';
+
+interface SeasonGoal {
+    id: number;
+    title: string;
+    current: number;
+    target: number;
+    unit: string;
+    is_completed: boolean;
+}
+
+interface SeasonSummary {
+    starts_at: string;
+    ends_at: string;
+    week_index: number;
+    total_weeks: number;
+    is_race_oriented: boolean;
+    goals: SeasonGoal[];
+}
 
 interface PlanDay {
     id: number;
@@ -39,6 +59,7 @@ interface PlanProps {
     race: { race_date: string; name: string | null } | null;
     sessionsPerWeek: number;
     weeks: PlanWeek[];
+    season: SeasonSummary;
 }
 
 const SESSION_TYPE_LABEL: Record<string, string> = {
@@ -76,6 +97,7 @@ export default function Plan({
     race,
     sessionsPerWeek,
     weeks,
+    season,
 }: Readonly<PlanProps>) {
     const [regenerating, setRegenerating] = useState(false);
     const today = todayLocalIso();
@@ -164,6 +186,62 @@ export default function Plan({
                         {regenerating ? 'Replanning…' : 'Regenerate'}
                     </PillButton>
                 </header>
+
+                <section className="mt-8">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <SectionLabel>
+                            Season · Week {season.week_index} of{' '}
+                            {season.total_weeks}
+                        </SectionLabel>
+                        <Link
+                            href="/badges"
+                            className="text-xs text-ink-2 underline underline-offset-2 hover:text-ink"
+                        >
+                            Badge board
+                        </Link>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                        {season.goals.map((goal) => (
+                            <Card
+                                key={goal.id}
+                                padding="sm"
+                                className={cn(
+                                    'flex flex-col gap-2',
+                                    goal.is_completed &&
+                                        'border-horizon/30 bg-horizon/[0.06]',
+                                )}
+                            >
+                                <p className="text-sm font-semibold text-ink">
+                                    {goal.title}
+                                </p>
+                                <div className="mt-auto">
+                                    <div className="mb-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums text-ink-3">
+                                        <span>
+                                            {formatGoalNumber(goal.current)}
+                                            <span className="text-ink-3">
+                                                /
+                                            </span>
+                                            {formatGoalNumber(goal.target)}
+                                        </span>
+                                        <span>{goal.unit}</span>
+                                    </div>
+                                    <ProgressBar
+                                        value={goalProgressRatio(
+                                            goal.current,
+                                            goal.target,
+                                        )}
+                                        tone={
+                                            goal.is_completed
+                                                ? 'horizon'
+                                                : 'sky'
+                                        }
+                                        ariaLabel={`${goal.title}: ${formatGoalNumber(goal.current)}/${formatGoalNumber(goal.target)} ${goal.unit}`}
+                                    />
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                </section>
 
                 {weeks.length === 0 && (
                     <EmptyPanel
