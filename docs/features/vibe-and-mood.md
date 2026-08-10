@@ -36,20 +36,18 @@ Two distinct "feelings" drive how the app speaks. The **vibe** is a daily, *whol
 
 ### The eight vibes
 
-A fixed vocabulary — keys are internal, the Indonesian labels + emoji are the display surface ([Vibe.php:17](../../app/Services/Run/Story/Vibe.php#L17)):
+A fixed vocabulary — keys are internal, the labels + emoji are the display surface ([Vibe.php:17](../../app/Services/Run/Story/Vibe.php#L17)):
 
 | Vibe (key) | Label | Emoji | Roughly means |
 | --- | --- | --- | --- |
-| `bouncy` | Lincah | 🦘 | Aerobically sharp — pace held with HR *dropping* (negative decoupling) |
-| `steady` | Stabil | 🚶 | Nothing flagged; normal training rhythm |
-| `worn_down` | Loyo | 🥵 | `fatigued` form — tired but not over the edge |
-| `cooked` | Gosong | 🍳 | `overreaching` without the drift flag — dug a hole |
-| `fresh` | Segar | 🌧️ | Rested and primed (`fresh` form) |
-| `stretched_thin` | Tipis | 🧵 | `overreaching` *with* high decoupling — running on fumes |
-| `pumped` | Membara | 💥 | A recent PR (and not already fatigued/overreaching) |
-| `hibernating` | Hibernasi | 🐻 | No run for a long stretch (or none ever) |
-
-Indonesian-voice rule holds: the vibe *names* stay in Bahasa Indonesia; only the running-domain inputs (pace, HR, decoupling, form) are English.
+| `bouncy` | Bouncy | 🦘 | Aerobically sharp — pace held with HR *dropping* (negative decoupling) |
+| `steady` | Steady | 🚶 | Nothing flagged; normal training rhythm |
+| `worn_down` | Worn Down | 🥵 | `fatigued` form — tired but not over the edge |
+| `cooked` | Cooked | 🍳 | `overreaching` without the drift flag — dug a hole |
+| `fresh` | Fresh | 🌧️ | Rested and primed (`fresh` form) |
+| `stretched_thin` | Stretched Thin | 🧵 | `overreaching` *with* high decoupling — running on fumes |
+| `pumped` | Pumped | 💥 | A recent PR (and not already fatigued/overreaching) |
+| `hibernating` | Hibernating | 🐻 | No run for a long stretch (or none ever) |
 
 ## Run-level moods
 

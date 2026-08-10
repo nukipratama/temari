@@ -8,7 +8,7 @@ reviewed: 2026-06-28
 
 # Marketing
 
-Outward-facing assets that pitch the app, kept beside the knowledge base so their voice and claims stay consistent with the product (Indonesian-first, English only for running terms — see [[voice-and-tone]]).
+Outward-facing assets that pitch the app, kept beside the knowledge base so their voice and claims stay consistent with the product (one casual English voice, plain running terms — see [[voice-and-tone]]).
 
 ## Notes
 

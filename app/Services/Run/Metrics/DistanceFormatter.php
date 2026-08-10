@@ -12,9 +12,9 @@ namespace App\Services\Run\Metrics;
  * is left to the "longest run" record readings and to Inertia props the client
  * re-formats itself.
  *
- * {@see self::kmString()} is copy — it formats through {@see DecimalFormatter}
- * and carries a comma. Callers building a payload or a prompt argument want the
- * float from {@see self::km()} instead.
+ * {@see self::kmString()} is copy — it formats through {@see DecimalFormatter}.
+ * Callers building a payload or a prompt argument want the float from
+ * {@see self::km()} instead.
  */
 final class DistanceFormatter
 {
