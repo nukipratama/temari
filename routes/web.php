@@ -19,6 +19,7 @@ use App\Http\Controllers\GoalController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RekorController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
@@ -114,6 +115,8 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/records', RekorController::class)->name('records');
 
     Route::get('/goals', [GoalController::class, 'index'])->name('goals');
+    Route::get('/race', [RaceController::class, 'index'])->name('race');
+    Route::post('/race', [RaceController::class, 'store'])->name('race.store');
     Route::get('/accessories', [AksesoriController::class, 'index'])->name('accessories');
     Route::post('/api/accessories/equip', [AksesoriController::class, 'equip'])
         ->name('api.accessories.equip');

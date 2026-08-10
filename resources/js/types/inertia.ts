@@ -71,6 +71,19 @@ export interface UnlockFlash {
     is_major: boolean;
 }
 
+/**
+ * The race the user is currently training for, shared app-wide. "Race" is the
+ * user-facing name; the `/goals` route and `goalsSummary` prop are a separate,
+ * unrelated accessory-unlock progress catalog.
+ */
+export interface ActiveRace {
+    id: number;
+    race_date: string;
+    distance_m: number;
+    goal_time_sec: number;
+    name: string | null;
+}
+
 export interface SharedProps {
     auth: { user: AuthUser | null };
     flash: {
@@ -84,6 +97,7 @@ export interface SharedProps {
     equippedAccessories?: EquippedAccessories | null;
     stravaSync?: StravaSync | null;
     goalsSummary?: GoalsSummary | null;
+    activeRace?: ActiveRace | null;
     /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */
     hrZonesChangedAt?: string | null;
     /** Whether the auth user has a live (non-revoked) Telegram connection. */

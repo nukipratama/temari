@@ -20,6 +20,7 @@ _Pages_
 - [[settings]] — Pengaturan hub (Telegram toggles, HR-zone entry, account deletion)
 - [[settings-hr-zones]] — Zona HR (Karvonen zones)
 - [[ai-usage]] — token usage dashboard (ops-gated)
+- [[race-projection]] — Race, the goal race and fitted-Riegel finish-time projection, plus the 90-day fitness trend
 
 _Collection_
 - [[cards-collection]] — Collection/Cards, rarities, badges, special moves

@@ -135,6 +135,35 @@ class TrainingLoad
         Cache::forget("training-load:{$user->id}:{$today}");
     }
 
+    /**
+     * The last $days days of the daily ATL/CTL series, oldest first. Reuses
+     * the same EWMA roll {@see rollLoads} runs for the dashboard summary
+     * (which only returns the final day's pair) — this exposes every day the
+     * roll already computes along the way, not new computation.
+     *
+     * @return list<array{date: string, atl: float, ctl: float}>
+     */
+    public function ctlTrend(User $user, int $days = 90, ?Carbon $asOf = null): array
+    {
+        $today = ($asOf ?? Carbon::today())->copy()->startOfDay();
+        $dailyTrimp = $this->loadDailyTrimp($user, $today);
+        if ($dailyTrimp === []) {
+            return [];
+        }
+
+        $series = $this->rollDailySeries($dailyTrimp, $today);
+        $cutoff = $today->copy()->subDays($days - 1)->toDateString();
+
+        $trend = [];
+        foreach ($series as $date => [$atl, $ctl]) {
+            if ($date >= $cutoff) {
+                $trend[] = ['date' => $date, 'atl' => round($atl, 1), 'ctl' => round($ctl, 1)];
+            }
+        }
+
+        return $trend;
+    }
+
     public function formStatus(float $form, float $ctl): string
     {
         $threshold = match (true) {
@@ -153,20 +182,37 @@ class TrainingLoad
 
     /**
      * Rolls a continuous ATL/CTL EWMA from the first day of the supplied map
-     * through $today. Missing days contribute zero TRIMP so a rest day reduces
-     * fatigue but doesn't reduce fitness. Callers pass the full TRIMP history
-     * (from the first-ever activity), so the EWMA state converges and the
-     * result is independent of any window length.
+     * through $today and returns only the final day's pair. Missing days
+     * contribute zero TRIMP so a rest day reduces fatigue but doesn't reduce
+     * fitness. Callers pass the full TRIMP history (from the first-ever
+     * activity), so the EWMA state converges and the result is independent of
+     * any window length.
      *
      * @param  array<string, float>  $dailyTrimp
      * @return array{0: float, 1: float}
      */
     private function rollLoads(array $dailyTrimp, Carbon $today): array
     {
+        $series = $this->rollDailySeries($dailyTrimp, $today);
+        $lastDate = array_key_last($series);
+
+        return $lastDate === null ? [0.0, 0.0] : $series[$lastDate];
+    }
+
+    /**
+     * Same roll as {@see rollLoads}, but returns every day's pair along the
+     * way instead of discarding all but the last.
+     *
+     * @param  array<string, float>  $dailyTrimp
+     * @return array<string, array{0: float, 1: float}>
+     */
+    private function rollDailySeries(array $dailyTrimp, Carbon $today): array
+    {
         $decayAtl = exp(-1.0 / self::ATL_TAU);
         $decayCtl = exp(-1.0 / self::CTL_TAU);
         $atl = 0.0;
         $ctl = 0.0;
+        $series = [];
 
         $startDate = Carbon::parse((string) array_key_first($dailyTrimp));
         $cursor = $startDate->copy();
@@ -174,10 +220,11 @@ class TrainingLoad
             $trimp = $dailyTrimp[$cursor->toDateString()] ?? 0.0;
             $atl = $atl * $decayAtl + $trimp * (1 - $decayAtl);
             $ctl = $ctl * $decayCtl + $trimp * (1 - $decayCtl);
+            $series[$cursor->toDateString()] = [$atl, $ctl];
             $cursor->addDay();
         }
 
-        return [$atl, $ctl];
+        return $series;
     }
 
     /**

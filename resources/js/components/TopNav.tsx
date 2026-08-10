@@ -34,7 +34,7 @@ const ITEMS: ReadonlyArray<NavItem> = [
         id: 'aku',
         label: 'Me',
         href: '/profile',
-        prefixes: ['/profile', '/settings'],
+        prefixes: ['/profile', '/settings', '/race'],
     },
 ];
 
