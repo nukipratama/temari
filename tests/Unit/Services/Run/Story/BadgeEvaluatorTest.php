@@ -165,12 +165,6 @@ it('awards no effort badge when the context carries no athlete max HR', function
     expect(badgesFor($detail))->not->toContain('all_out')->not->toContain('easy_miles');
 });
 
-it('awards holiday_run on Indonesian Independence Day', function (): void {
-    $detail = badgeDetail(['weather_temp_c' => 25, 'start_date_local' => Carbon::parse('2026-08-17 10:00:00')]);
-
-    expect(badgesFor($detail))->toContain('holiday_run');
-});
-
 it('reads aerobic discipline off distance and hard-zone share', function (): void {
     $evaluator = app(BadgeEvaluator::class);
     $disciplined = StreamSummary::fromArray(['time_in_zone_pct' => ['Z3' => 5]]);

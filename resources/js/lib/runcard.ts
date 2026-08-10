@@ -48,7 +48,6 @@ export const BADGE_LABELS: Record<string, string> = {
     all_out: '😤 All Out',
     easy_miles: '☺️ Easy Miles',
     streak: '🔥 Streak',
-    holiday_run: '🎉 Holiday Run',
     headwind: '🌬️ Headwind',
 };
 
@@ -72,7 +71,6 @@ export const BADGE_ABILITY: Record<string, string> = {
     all_out: 'Average HR above 85% max, full effort.',
     easy_miles: 'Average HR below 70% max, genuinely easy.',
     streak: 'Ran 7 days in a row, no skips.',
-    holiday_run: 'Ran on a national holiday.',
     headwind: 'Pushed through strong wind, 20 km/h or more.',
 };
 

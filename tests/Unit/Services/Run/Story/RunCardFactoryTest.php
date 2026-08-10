@@ -886,30 +886,6 @@ it('awards streak badge on 7+ consecutive running days', function (): void {
     expect($card->badges)->toContain('streak');
 });
 
-it('awards holiday_run badge on Indonesian Independence Day', function (): void {
-    $user = User::factory()->create();
-    $prev = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($prev)->create([
-        'distance' => 3_000,
-        'start_date_local' => Carbon::parse('2026-04-20 10:00:00'),
-    ]);
-
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
-        'distance' => 5_000,
-        'start_date_local' => Carbon::parse('2026-08-17 10:00:00'),
-        'weather_temp_c' => 25,
-        'weather_rain_detected' => false,
-        'total_elevation_gain' => 0,
-        'average_heartrate' => 150,
-        'max_heartrate' => 190,
-    ]);
-
-    $card = app(RunCardFactory::class)->build($activity, $detail);
-
-    expect($card->badges)->toContain('holiday_run');
-});
-
 it('awards cold_runner on a cold run without also awarding early_bird', function (): void {
     // A cold midday run: cold_runner fires on temperature, early_bird does not
     // (hour is not before 06:00). The two badges now diverge.

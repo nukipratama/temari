@@ -96,6 +96,13 @@ describe('badgeEmblem / badgeName', () => {
         expect(badgeEmblem('unknown_slug')).toBe('');
         expect(badgeName('unknown_slug')).toBe('Unknown Slug');
     });
+
+    // holiday_run was retired (Slice 2g): an old card can still carry it in
+    // its stored badge array, and it must render as inert history, not crash.
+    it('renders the retired holiday_run slug without a map entry', () => {
+        expect(badgeEmblem('holiday_run')).toBe('');
+        expect(badgeName('holiday_run')).toBe('Holiday Run');
+    });
 });
 
 describe('avgCadenceFromDetail', () => {

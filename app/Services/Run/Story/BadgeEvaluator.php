@@ -38,22 +38,6 @@ final class BadgeEvaluator
     private const float EASY_HR_RATIO = 0.78;
 
     /**
-     * Indonesian national holidays (month-day). Covers fixed-date public
-     * holidays; Easter-based ones are excluded because they shift each year.
-     */
-    private const array INDONESIAN_HOLIDAYS_MD = [
-        '01-01', // Tahun Baru
-        '01-29', // Tahun Baru Imlek
-        '03-31', // Hari Nyepi
-        '05-01', // Hari Buruh
-        '05-20', // Hari Kebangkitan Nasional
-        '06-01', // Hari Lahir Pancasila
-        '08-17', // Hari Kemerdekaan
-        '10-01', // Hari Kesaktian Pancasila
-        '12-25', // Natal
-    ];
-
-    /**
      * Compute all badges for a run. Split into original + expanded badge groups
      * to keep cognitive complexity manageable.
      *
@@ -112,8 +96,8 @@ final class BadgeEvaluator
     }
 
     /**
-     * 12 expanded badges: night, elevation, first-run, streaks, pace,
-     * distance, zones, effort, holiday.
+     * 11 expanded badges: night, elevation, first-run, streaks, pace,
+     * distance, zones, effort.
      *
      * @return list<string>
      */
@@ -150,9 +134,6 @@ final class BadgeEvaluator
 
         if ($streak + 1 >= self::CONSECUTIVE_DAYS_BERTURUT) {
             $badges[] = Badge::Berturut->value;
-        }
-        if ($this->isIndonesianHoliday($detail)) {
-            $badges[] = Badge::HariSpesial->value;
         }
 
         return $badges;
@@ -207,22 +188,6 @@ final class BadgeEvaluator
         return $detail->start_date_local !== null
             ? (int) $detail->start_date_local->format('H')
             : null;
-    }
-
-    /**
-     * Whether the run's start_date_local falls on an Indonesian national holiday.
-     */
-    private function isIndonesianHoliday(ActivityDetail $detail): bool
-    {
-        $startDate = $detail->start_date_local;
-
-        if ($startDate === null) {
-            return false;
-        }
-
-        $md = $startDate->format('m-d');
-
-        return in_array($md, self::INDONESIAN_HOLIDAYS_MD, strict: true);
     }
 
     /**
