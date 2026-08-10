@@ -21,6 +21,7 @@ _Pages_
 - [[settings-hr-zones]] — Zona HR (Karvonen zones)
 - [[ai-usage]] — token usage dashboard (ops-gated)
 - [[race-projection]] — Race, the goal race and fitted-Riegel finish-time projection, plus the 90-day fitness trend
+- [[plan-periodizer]] — Plan, the deterministic periodizer, readiness clamp, and volume redistribution
 
 _Collection_
 - [[cards-collection]] — Collection/Cards, rarities, badges, special moves

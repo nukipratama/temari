@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Services\Run\Ingest\KmSplitBuilder;
+use App\Services\Run\Metrics\IntervalDetector;
 use App\Services\Run\Metrics\PaceCalculator;
 
 final class LapsTool extends ActivityTool
@@ -15,13 +16,6 @@ final class LapsTool extends ActivityTool
      * and handing the model a table that long is what invites reciting it.
      */
     private const int MAX_ROWS = 20;
-
-    /**
-     * How far apart (sec/km) the quickest and slowest lap must sit before the
-     * fast/slow alternation is read as deliberate. A rep sits a minute or more
-     * off its recovery; anything tighter is ordinary drift over manual laps.
-     */
-    private const float REP_PACE_GAP_SEC = 45.0;
 
     /** A lap under this fraction of the run's own median lap distance reads as a stop. */
     private const float PAUSE_DISTANCE_RATIO = 0.25;
@@ -161,33 +155,12 @@ final class LapsTool extends ActivityTool
     }
 
     /**
-     * Positions of the work laps, when the laps repeat a fast/slow structure at
-     * all: at least two quick laps, none of them back to back, and a spread wide
-     * enough that the split into quick and easy means something. An even set of
-     * manual laps comes back empty, which is the reading "no structure here".
-     *
      * @param  array<int, float>  $paces
      * @return list<int>
      */
     private static function reps(array $paces): array
     {
-        if (count($paces) < 3 || max($paces) - min($paces) < self::REP_PACE_GAP_SEC) {
-            return [];
-        }
-
-        $threshold = (min($paces) + max($paces)) / 2;
-        $work = array_keys(array_filter($paces, fn (float $pace): bool => $pace <= $threshold));
-        if (count($work) < 2) {
-            return [];
-        }
-
-        foreach ($work as $position) {
-            if (in_array($position + 1, $work, true)) {
-                return [];
-            }
-        }
-
-        return $work;
+        return IntervalDetector::detect($paces);
     }
 
     /**

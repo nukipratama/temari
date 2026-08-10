@@ -7,7 +7,7 @@ import StravaSyncBadge from '@/components/StravaSyncBadge';
 import UserMenu from '@/components/UserMenu';
 import { cn } from '@/lib/cn';
 
-type TabId = 'hari-ini' | 'koleksi' | 'riwayat' | 'aku';
+type TabId = 'hari-ini' | 'koleksi' | 'riwayat' | 'plan' | 'aku';
 
 interface NavItem {
     id: TabId;
@@ -29,6 +29,12 @@ const ITEMS: ReadonlyArray<NavItem> = [
         label: 'History',
         href: '/activities',
         prefixes: ['/activities', '/calendar'],
+    },
+    {
+        id: 'plan',
+        label: 'Plan',
+        href: '/plan',
+        prefixes: ['/plan'],
     },
     {
         id: 'aku',

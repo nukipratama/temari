@@ -17,11 +17,9 @@ Artisan::command('inspire', function () {
 // so a broken command surfaces as a push instead of silently taking down
 // background narration/recovery for days. Only fires for commands that actually
 // run — a scheduler that never runs anything is covered by the heartbeat below.
-$alertOnFailure = static function (Event $event, string $command): Event {
-    return $event->onFailure(static function () use ($command): void {
-        app(MaintainerAlerter::class)->schedulerFailed($command);
-    });
-};
+$alertOnFailure = static fn (Event $event, string $command): Event => $event->onFailure(static function () use ($command): void {
+    app(MaintainerAlerter::class)->schedulerFailed($command);
+});
 
 // Every minute: stamp a liveness timestamp on the durable Redis so the scheduler
 // container's healthcheck (`schedule:heartbeat --check`) can tell a live
@@ -53,6 +51,12 @@ $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01'), 'ai:
 // their only auto-refresh; persona self-throttles per ISO week and the voice is
 // invalidated weekly. Demo excluded. Mid-week freshness stays on "Baca ulang".
 Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05');
+
+// Monday 00:07: regenerate every user's plan today-forward against their
+// current fitness/race state. No LLM involved (deterministic periodizer);
+// past weeks and pinned rows are never touched. On-demand regeneration is
+// also available from the Plan page.
+$alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:07'), 'plan:regenerate');
 
 // 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough
 // (also piggybacks the per-connect SyncZonesJob dispatch). Skips manual-source

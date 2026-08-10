@@ -18,6 +18,7 @@ use App\Http\Controllers\DevtoolsIndexController;
 use App\Http\Controllers\GoalController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RekorController;
@@ -117,6 +118,11 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/goals', [GoalController::class, 'index'])->name('goals');
     Route::get('/race', [RaceController::class, 'index'])->name('race');
     Route::post('/race', [RaceController::class, 'store'])->name('race.store');
+
+    Route::get('/plan', [PlanController::class, 'index'])->name('plan');
+    Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
+    Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
+    Route::delete('/plan/sessions/{plannedSession}', [PlanController::class, 'destroy'])->name('plan.sessions.destroy');
     Route::get('/accessories', [AksesoriController::class, 'index'])->name('accessories');
     Route::post('/api/accessories/equip', [AksesoriController::class, 'equip'])
         ->name('api.accessories.equip');

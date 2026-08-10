@@ -19,12 +19,22 @@ beforeEach(() => {
 });
 
 describe('TopNav', () => {
-    it('renders the 4 primary tabs', () => {
+    it('renders the 5 primary tabs', () => {
         render(<TopNav />);
         expect(screen.getByText('Today')).toBeInTheDocument();
         expect(screen.getByText('Collection')).toBeInTheDocument();
         expect(screen.getByText('History')).toBeInTheDocument();
+        expect(screen.getByText('Plan')).toBeInTheDocument();
         expect(screen.getByText('Me')).toBeInTheDocument();
+    });
+
+    it('highlights Plan for the /plan page', () => {
+        setMockPage(user(), '/plan');
+        render(<TopNav />);
+        expect(screen.getByText('Plan')).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
     });
 
     it('highlights the active tab from the current URL', () => {
