@@ -11,6 +11,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import Temari from '@/components/temari/Temari';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
+import PageHero from '@/components/ui/PageHero';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
@@ -97,14 +98,13 @@ export default function Calendar({
             <Head title={`History · Calendar · ${monthLabel}`} />
             <PageContainer>
                 <header className="mb-8 min-w-0">
-                    <LifetimeEyebrow lifetime={lifetime} />
-                    <h1 className="font-display text-display-lg text-ink">
+                    <PageHero eyebrow={<LifetimeEyebrow lifetime={lifetime} />}>
                         Every run,
                         <br />
                         <em className="not-italic text-horizon-deep">
                             has a story.
                         </em>
-                    </h1>
+                    </PageHero>
                 </header>
 
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">

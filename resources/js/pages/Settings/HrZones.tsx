@@ -7,6 +7,7 @@ import BackLink from '@/components/ui/BackLink';
 import Card from '@/components/ui/Card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
+import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { usePendingPost } from '@/hooks/usePendingPost';
@@ -184,15 +185,20 @@ export default function HrZones({
                     {/* Now points at the real parent. It used to read as a trail
                         ("Aku · Pengaturan") while hrefing straight to /profil,
                         skipping the page it came from. */}
-                    <BackLink
-                        href="/settings"
-                        className="mb-4 hidden lg:inline-flex"
+                    <PageHero
+                        size="md"
+                        italic
+                        eyebrow={
+                            <BackLink
+                                href="/settings"
+                                className="mb-4 hidden lg:inline-flex"
+                            >
+                                Settings
+                            </BackLink>
+                        }
                     >
-                        Settings
-                    </BackLink>
-                    <h1 className="font-display italic text-display-md text-ink">
                         Your heart rate zones.
-                    </h1>
+                    </PageHero>
                     <p className="mt-2 max-w-xl font-sans text-sm leading-relaxed text-ink-2">
                         {SOURCE_INFO[source].description}
                     </p>

@@ -111,14 +111,22 @@ export default function RunsIndex({
                 <header className="flex flex-col gap-5">
                     <PageHero
                         eyebrow={
-                            anyFilterActive
-                                ? `History · ${runs.length} results`
-                                : `History · ${runs.length} activities`
+                            <Eyebrow
+                                token="hero"
+                                tone="ink-2"
+                                className="mb-3.5"
+                            >
+                                {anyFilterActive
+                                    ? `History · ${runs.length} results`
+                                    : `History · ${runs.length} activities`}
+                            </Eyebrow>
                         }
-                        lead="Every run"
-                        emph="has a story."
-                        noItalic
-                    />
+                    >
+                        Every run{' '}
+                        <em className="not-italic text-horizon-deep">
+                            has a story.
+                        </em>
+                    </PageHero>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <RiwayatTabs active="jejak" />
                         <RiwayatFilter {...sections} onReset={resetFilters} />
