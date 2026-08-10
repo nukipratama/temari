@@ -33,7 +33,22 @@ it('renders the catalog + equipped slots', function (): void {
             ->where('equipped.headband', 'accessory.headband_epic')
             ->where('equipped.medal', null)
             ->where('equipped.aura', null)
-            ->has('items', 25));
+            ->has('items', 25)
+            ->has('items.0.current')
+            ->has('items.0.target')
+            ->has('items.0.unit'));
+});
+
+it('reuses GoalResolver to show live progress on a locked item', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/accessories')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('items.0.unlock_key', 'accessory.medal_first')
+            ->where('items.0.target', 1)
+            ->where('items.0.unit', 'PR')
+            ->where('items.0.current', 0));
 });
 
 it('equips a headband + un-equips the previous sibling', function (): void {

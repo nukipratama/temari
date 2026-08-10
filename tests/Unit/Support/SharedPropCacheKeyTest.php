@@ -27,7 +27,6 @@ it('keeps the documented TTLs', function (): void {
     expect(SharedPropCacheKey::AiPaused->ttl())->toBe(60)
         ->and(SharedPropCacheKey::StravaPaused->ttl())->toBe(60)
         ->and(SharedPropCacheKey::StravaSync->ttl())->toBe(120)
-        ->and(SharedPropCacheKey::GoalsSummary->ttl())->toBe(120)
         ->and(SharedPropCacheKey::HrZonesChangedAt->ttl())->toBe(300)
         ->and(SharedPropCacheKey::EquippedAccessories->ttl())->toBe(300)
         ->and(SharedPropCacheKey::TelegramConnected->ttl())->toBe(300)

@@ -834,58 +834,6 @@ it('awards all_out when avg HR is near the athlete max HR', function (): void {
     expect($card->badges)->not->toContain('easy_miles');
 });
 
-it('awards habit_forming badge on 3+ consecutive running days', function (): void {
-    $user = User::factory()->create();
-    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create([
-        'distance' => 3_000,
-        'start_date_local' => Carbon::parse('2026-05-07 10:00:00'),
-    ]);
-    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create([
-        'distance' => 3_000,
-        'start_date_local' => Carbon::parse('2026-05-08 10:00:00'),
-    ]);
-
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
-        'distance' => 5_000,
-        'start_date_local' => Carbon::parse('2026-05-09 10:00:00'),
-        'weather_temp_c' => 25,
-        'weather_rain_detected' => false,
-        'total_elevation_gain' => 0,
-        'average_heartrate' => 150,
-        'max_heartrate' => 190,
-    ]);
-
-    $card = app(RunCardFactory::class)->build($activity, $detail);
-
-    expect($card->badges)->toContain('habit_forming');
-});
-
-it('awards streak badge on 7+ consecutive running days', function (): void {
-    $user = User::factory()->create();
-    for ($i = 0; $i < 6; $i++) {
-        ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create([
-            'distance' => 3_000,
-            'start_date_local' => Carbon::parse('2026-05-0' . ($i + 1) . ' 10:00:00'),
-        ]);
-    }
-
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create([
-        'distance' => 5_000,
-        'start_date_local' => Carbon::parse('2026-05-07 10:00:00'),
-        'weather_temp_c' => 25,
-        'weather_rain_detected' => false,
-        'total_elevation_gain' => 0,
-        'average_heartrate' => 150,
-        'max_heartrate' => 190,
-    ]);
-
-    $card = app(RunCardFactory::class)->build($activity, $detail);
-
-    expect($card->badges)->toContain('streak');
-});
-
 it('awards cold_runner on a cold run without also awarding early_bird', function (): void {
     // A cold midday run: cold_runner fires on temperature, early_bird does not
     // (hour is not before 06:00). The two badges now diverge.

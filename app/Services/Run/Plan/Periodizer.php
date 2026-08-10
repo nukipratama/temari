@@ -37,6 +37,7 @@ final readonly class Periodizer
         private TrainingBaseline $baseline,
         private PhaseSchedule $phaseSchedule,
         private WeekPlanBuilder $weekPlanBuilder,
+        private SeasonService $seasonService,
     ) {
     }
 
@@ -45,6 +46,11 @@ final readonly class Periodizer
         $today = ($today ?? Carbon::today())->copy()->startOfDay();
         $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
         $deleteHorizonEnd = $currentWeekStart->copy()->addWeeks(self::HORIZON_WEEKS - 1)->addDays(6);
+
+        // Keeps the season in lockstep with the plan's own mode: a race
+        // set/cleared since the last call, or a self-scaled season's 12-week
+        // expiry, both take effect here — see SeasonService's own docblock.
+        $this->seasonService->ensureCurrent($user, $today);
 
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
         $sessionsPerWeek = $this->baseline->forUser($user, $today)['sessions_per_week'];

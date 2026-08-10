@@ -12,7 +12,10 @@ code_refs:
   - app/Services/Run/Plan/DistanceBandKm.php
   - app/Services/Run/Plan/ReadinessClamp.php
   - app/Services/Run/Plan/VolumeRedistributor.php
+  - app/Services/Run/Plan/SeasonService.php
   - app/Models/PlannedSession.php
+  - app/Models/Season.php
+  - app/Models/SeasonGoal.php
   - app/Http/Controllers/PlanController.php
   - app/Console/Commands/Run/RegeneratePlanCommand.php
   - resources/js/pages/Plan.tsx
@@ -57,8 +60,14 @@ Rather than moving a specific day's volume to another specific day (which risks 
 
 [DistanceBandKm::kmFor()](app/Services/Run/Plan/DistanceBandKm.php) is the only place a `distance_band` becomes an actual kilometre figure, combining the athlete's *current* long-run baseline with a phase-derived volume multiplier. [PlanController::index()](app/Http/Controllers/PlanController.php) recomputes this fresh on every page load (never reading a stored km), so a week regenerated weeks ago still displays honestly against the athlete's fitness today.
 
+## Season — the arc this plan belongs to (Slice 7)
+
+The Plan tab's top-of-page summary section is the same periodized arc viewed at a higher zoom, not a separate page (`Season IS the training block` — see the v2 program's locked decisions). [SeasonService::ensureCurrent()](app/Services/Run/Plan/SeasonService.php) is called both from `PlanController::index()` (a fresh user's first page view already has a season) and from `Periodizer::regenerate()` (the weekly job and on-demand regeneration keep it in lockstep with the plan's own mode). A self-scaled `Season` runs a fixed 12 weeks (matching `HORIZON_WEEKS`) and auto-cycles into a fresh one on expiry; a race-oriented one ends on `race_date`. Setting or clearing a `RaceGoal` mid-season closes the current season early (`ends_at` moves to the day before) and opens the other mode at the next call — never a gap, never an overlap, since the mode check always compares the CURRENT active race against the latest season's `race_goal_id`.
+
+5 `SeasonGoal` rows generate once, at creation — see [[gamification]] for the full list and the rest-day reward mechanism that isn't a `Badge`.
+
 ## Extracted: interval detection
 
 [IntervalDetector::detect()](app/Services/Run/Metrics/IntervalDetector.php) is [LapsTool](app/Services/AI/Agent/Tools/LapsTool.php)'s original `reps()` heuristic (pace-spread threshold, midpoint split, non-adjacency rejection), pulled out as a pure function so the periodizer and other session-structure code can reuse it without going through the LLM tool layer. No behavior change from the original inline logic.
 
-See also [[race-projection]] (the `RaceGoal` this periodizer reads) and [[training-load-metrics]] (the CTL/ATL/monotony inputs `Readiness` clamps against).
+See also [[race-projection]] (the `RaceGoal` this periodizer reads), [[training-load-metrics]] (the CTL/ATL/monotony inputs `Readiness` clamps against, and the season's CTL-growth goal), and [[gamification]] (season goals, the rest-day reward, and the badge board).

@@ -7,6 +7,8 @@ use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -61,4 +63,55 @@ it('enforces one row per user per date', function (): void {
 
     expect(fn () => PlannedSession::factory()->for($user)->create(['date' => '2026-08-17']))
         ->toThrow(QueryException::class);
+});
+
+it('restHonoredCountForUser counts a past rest day with no logged activity', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->subDay()->toDateString()]);
+
+    expect(PlannedSession::restHonoredCountForUser($user->id, Carbon::today()))->toBe(1);
+
+    Carbon::setTestNow();
+});
+
+it('restHonoredCountForUser does not count a rest day an activity was logged on', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    $date = Carbon::today()->subDay();
+    PlannedSession::factory()->for($user)->rest()->create(['date' => $date->toDateString()]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $date]);
+
+    expect(PlannedSession::restHonoredCountForUser($user->id, Carbon::today()))->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('restHonoredCountForUser ignores today and future rest days', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->toDateString()]);
+    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->addDay()->toDateString()]);
+
+    expect(PlannedSession::restHonoredCountForUser($user->id, Carbon::today()))->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('restHonoredCountForUser scopes to a date range when given one', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->subDays(10)->toDateString()]);
+    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::today()->subDays(2)->toDateString()]);
+
+    $count = PlannedSession::restHonoredCountForUser(
+        $user->id,
+        Carbon::today(),
+        Carbon::today()->subDays(5),
+        Carbon::today(),
+    );
+
+    expect($count)->toBe(1);
+
+    Carbon::setTestNow();
 });

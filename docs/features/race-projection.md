@@ -21,7 +21,7 @@ The first genuinely user-authored object in the app: a race the user is training
 
 ## Naming: "Race", not "Goal"
 
-`/goals`, [GoalController](app/Http/Controllers/GoalController.php) and [GoalResolver](app/Services/Gamification/GoalResolver.php) already mean something else entirely: a config-driven, static accessory-unlock progress catalog with no DB table. Introducing a second "goal" concept here would collide in the UI. **The user-facing name for this feature is "Race"** — route, controller, page, nav copy. The DB/model layer still says "goal" ([RaceGoal](app/Models/RaceGoal.php), `race_goals` table) since that's an implementation detail invisible to users. The two features stay completely separate; [[gamification]]'s catalog is untouched by this note.
+[GoalResolver](app/Services/Gamification/GoalResolver.php) already means something else entirely: a config-driven, static accessory-unlock progress catalog with no DB table (surfaced on `/accessories` — the standalone `/goals` page that once fronted it retired in Slice 7). Introducing a second "goal" concept here would collide in the UI. **The user-facing name for this feature is "Race"** — route, controller, page, nav copy. The DB/model layer still says "goal" ([RaceGoal](app/Models/RaceGoal.php), `race_goals` table) since that's an implementation detail invisible to users. The two features stay completely separate; [[gamification]]'s catalog is untouched by this note.
 
 ## Schema: one active race, history retained
 

@@ -19,14 +19,12 @@ enum Badge: string
     case AnakMalam = 'night_owl';
     case Pendaki = 'climber';
     case PertamaKali = 'first_timer';
-    case Rajin = 'habit_forming';
     case Kilat = 'speedster';
     case Jauh = 'long_hauler';
     case Z2Master = 'z2_master';
     case AnakDingin = 'cold_runner';
     case Keras = 'all_out';
     case Santai = 'easy_miles';
-    case Berturut = 'streak';
     case LawanAngin = 'headwind';
 
     public function label(): string
@@ -41,14 +39,12 @@ enum Badge: string
             self::AnakMalam => '🌙 Night Owl',
             self::Pendaki => '⛰️ Climber',
             self::PertamaKali => '🏅 First Timer',
-            self::Rajin => '💪 Habit Forming',
             self::Kilat => '⚡ Speedster',
             self::Jauh => '🗺️ Long Hauler',
             self::Z2Master => '🫀 Z2 Master',
             self::AnakDingin => '❄️ Cold Runner',
             self::Keras => '😤 All Out',
             self::Santai => '☺️ Easy Miles',
-            self::Berturut => '🔥 Streak',
             self::LawanAngin => '🌬️ Headwind',
         };
     }

@@ -25,10 +25,6 @@ final class BadgeEvaluator
     /** A short punchy climb earns Pendaki even without big total gain. */
     private const float MAX_GRADE_PENDAKI_PCT = 8.0;
 
-    private const int CONSECUTIVE_DAYS_RAJIN = 3;
-
-    private const int CONSECUTIVE_DAYS_BERTURUT = 7;
-
     /** At or below this temperature (Celsius) a run counts as cold. */
     private const int COLD_TEMP_C = 20;
 
@@ -96,8 +92,8 @@ final class BadgeEvaluator
     }
 
     /**
-     * 11 expanded badges: night, elevation, first-run, streaks, pace,
-     * distance, zones, effort.
+     * 9 expanded badges: night, elevation, first-run, pace, distance, zones,
+     * effort.
      *
      * @return list<string>
      */
@@ -106,7 +102,6 @@ final class BadgeEvaluator
         $badges = [];
         $distance = (float) ($detail->distance ?? 0);
         $hour = $this->startHour($detail);
-        $streak = $context->consecutiveDaysBefore;
 
         if ($hour !== null && ($hour < 5 || $hour >= 21)) {
             $badges[] = Badge::AnakMalam->value;
@@ -118,9 +113,6 @@ final class BadgeEvaluator
         if ($context->isFirstRunEver) {
             $badges[] = Badge::PertamaKali->value;
         }
-        if ($streak + 1 >= self::CONSECUTIVE_DAYS_RAJIN) {
-            $badges[] = Badge::Rajin->value;
-        }
 
         $paceSec = $detail->paceSecPerKm();
         if ($paceSec !== null && $paceSec < self::PACE_KILAT_SEC_PER_KM) {
@@ -130,13 +122,7 @@ final class BadgeEvaluator
             $badges[] = Badge::Jauh->value;
         }
 
-        $badges = array_merge($badges, $this->zoneAndEffortBadges($detail, $summary, $context, $hour));
-
-        if ($streak + 1 >= self::CONSECUTIVE_DAYS_BERTURUT) {
-            $badges[] = Badge::Berturut->value;
-        }
-
-        return $badges;
+        return array_merge($badges, $this->zoneAndEffortBadges($detail, $summary, $context, $hour));
     }
 
     /**

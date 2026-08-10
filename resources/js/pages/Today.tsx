@@ -11,7 +11,6 @@ import type {
 } from '@/types/inertia';
 
 import FeaturedKartuPanel from '@/components/dashboard/FeaturedKartuPanel';
-import GoalsCard from '@/components/dashboard/GoalsCard';
 import KondisiCard from '@/components/dashboard/KondisiCard';
 import LastLariCard, {
     type LastRunNote,
@@ -126,9 +125,6 @@ export default function Today({
                             />
                             <KondisiCard load={load} snapshot={snapshot} />
                         </section>
-
-                        {/* NEAREST GOAL */}
-                        <GoalsCard />
                     </>
                 )}
             </PageContainer>

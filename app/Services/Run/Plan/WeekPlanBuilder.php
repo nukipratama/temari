@@ -162,6 +162,21 @@ final class WeekPlanBuilder
     }
 
     /**
+     * How many quality (Tempo/Interval) sessions a week of this phase carries
+     * — the same count {@see self::qualitySlots()} materializes into rows,
+     * exposed so season-goal generation can sum it across an arc without
+     * materializing rows that far ahead. Computes `isMarathonDistance` the
+     * same way {@see self::build()} does, so callers pass the raw race
+     * distance rather than duplicating the marathon-distance threshold.
+     */
+    public function qualitySlotCount(PlanPhase $phase, int $sessionsPerWeek, ?float $raceDistanceM, bool $selfScaled): int
+    {
+        $isMarathonDistance = $raceDistanceM !== null && $raceDistanceM >= self::MARATHON_DISTANCE_THRESHOLD_M;
+
+        return count($this->qualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled));
+    }
+
+    /**
      * @return list<array{session_type: SessionType, distance_band: DistanceBand, pace_band: PaceBand}>
      */
     private function qualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled): array

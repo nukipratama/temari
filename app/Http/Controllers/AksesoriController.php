@@ -8,6 +8,7 @@ use App\Http\Requests\EquipAksesoriRequest;
 use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\Gamification\EquippedAccessories;
+use App\Services\Gamification\GoalResolver;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,8 +18,10 @@ use Inertia\Response;
 
 class AksesoriController extends Controller
 {
-    public function __construct(private readonly EquippedAccessories $equipped)
-    {
+    public function __construct(
+        private readonly EquippedAccessories $equipped,
+        private readonly GoalResolver $goals,
+    ) {
     }
 
     public function index(Request $request): Response
@@ -32,6 +35,10 @@ class AksesoriController extends Controller
 
         $catalog = (array) config('temari_unlocks', []);
         $goalsCatalog = (array) config('temari_goals', []);
+        // Reuses GoalResolver's server-side current/target computation — the
+        // same one the retired Goals.tsx page used — as live progress on the
+        // locked-item cards here instead.
+        $progressByKey = collect($this->goals->forUser($user))->keyBy('id');
 
         $unlockedKeys = $unlocks->pluck('unlock_key')->all();
         $equippedByKey = $unlocks->keyBy('unlock_key');
@@ -43,6 +50,7 @@ class AksesoriController extends Controller
             }
             $slot = $this->equipped->slotFor((string) $key);
             $unlock = $equippedByKey->get((string) $key);
+            $progress = $progressByKey->get((string) $key);
             $items[] = [
                 'unlock_key' => (string) $key,
                 'slot' => $slot,
@@ -53,6 +61,9 @@ class AksesoriController extends Controller
                 'criteria' => (string) ($goalsCatalog[$key]['description'] ?? ''),
                 'unlocked' => \in_array((string) $key, $unlockedKeys, true),
                 'equipped' => $unlock !== null && (bool) $unlock->equipped,
+                'current' => $progress['current'] ?? 0,
+                'target' => $progress['target'] ?? 0,
+                'unit' => $progress['unit'] ?? '',
             ];
         }
 

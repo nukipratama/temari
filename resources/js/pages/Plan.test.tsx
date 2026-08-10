@@ -29,6 +29,15 @@ const WEEK = (overrides: Record<string, unknown> = {}) => ({
     ...overrides,
 });
 
+const SEASON = {
+    starts_at: TODAY,
+    ends_at: '2026-11-02',
+    week_index: 1,
+    total_weeks: 12,
+    is_race_oriented: false,
+    goals: [],
+};
+
 function lastPatchCall() {
     return vi.mocked(router.patch).mock.calls.at(-1);
 }
@@ -52,13 +61,22 @@ describe('Plan', () => {
     });
 
     it('shows an empty state with no weeks generated yet', () => {
-        render(<Plan race={null} sessionsPerWeek={3} weeks={[]} />);
+        render(
+            <Plan race={null} sessionsPerWeek={3} season={SEASON} weeks={[]} />,
+        );
 
         expect(screen.getByText('No plan yet.')).toBeInTheDocument();
     });
 
     it("renders a session's type, distance, and pace", () => {
-        render(<Plan race={null} sessionsPerWeek={4} weeks={[WEEK()]} />);
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={SEASON}
+                weeks={[WEEK()]}
+            />,
+        );
 
         expect(screen.getByText(/Easy/)).toBeInTheDocument();
         expect(screen.getByText(/8 km/)).toBeInTheDocument();
@@ -70,6 +88,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                season={SEASON}
                 weeks={[
                     WEEK({
                         days: [
@@ -91,6 +110,7 @@ describe('Plan', () => {
             <Plan
                 race={{ race_date: '2026-12-06', name: 'Jakarta 10K' }}
                 sessionsPerWeek={4}
+                season={SEASON}
                 weeks={[]}
             />,
         );
@@ -102,7 +122,9 @@ describe('Plan', () => {
     });
 
     it('offers to set a race when there is none', () => {
-        render(<Plan race={null} sessionsPerWeek={3} weeks={[]} />);
+        render(
+            <Plan race={null} sessionsPerWeek={3} season={SEASON} weeks={[]} />,
+        );
 
         expect(
             screen.getByRole('link', { name: 'Set a race' }),
@@ -110,7 +132,14 @@ describe('Plan', () => {
     });
 
     it('posts to /plan/regenerate on Regenerate', () => {
-        render(<Plan race={null} sessionsPerWeek={4} weeks={[WEEK()]} />);
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={SEASON}
+                weeks={[WEEK()]}
+            />,
+        );
 
         fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
 
@@ -118,7 +147,14 @@ describe('Plan', () => {
     });
 
     it('pins a day', () => {
-        render(<Plan race={null} sessionsPerWeek={4} weeks={[WEEK()]} />);
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={SEASON}
+                weeks={[WEEK()]}
+            />,
+        );
 
         fireEvent.click(screen.getByRole('button', { name: 'Pin' }));
 
@@ -131,6 +167,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                season={SEASON}
                 weeks={[WEEK({ days: [DAY({ pinned: true })] })]}
             />,
         );
@@ -141,7 +178,14 @@ describe('Plan', () => {
     });
 
     it('blocks a training day to rest', () => {
-        render(<Plan race={null} sessionsPerWeek={4} weeks={[WEEK()]} />);
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={SEASON}
+                weeks={[WEEK()]}
+            />,
+        );
 
         fireEvent.click(screen.getByRole('button', { name: 'Block' }));
 
@@ -153,6 +197,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                season={SEASON}
                 weeks={[
                     WEEK({
                         days: [
@@ -178,7 +223,14 @@ describe('Plan', () => {
     });
 
     it('cycles the distance band on Resize', () => {
-        render(<Plan race={null} sessionsPerWeek={4} weeks={[WEEK()]} />);
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={SEASON}
+                weeks={[WEEK()]}
+            />,
+        );
 
         fireEvent.click(screen.getByRole('button', { name: 'Resize' }));
 
@@ -190,6 +242,7 @@ describe('Plan', () => {
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                season={SEASON}
                 weeks={[WEEK({ days: [DAY({ session_type: 'rest' })] })]}
             />,
         );
@@ -200,7 +253,14 @@ describe('Plan', () => {
     });
 
     it('deletes a day', () => {
-        render(<Plan race={null} sessionsPerWeek={4} weeks={[WEEK()]} />);
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={SEASON}
+                weeks={[WEEK()]}
+            />,
+        );
 
         fireEvent.click(screen.getByRole('button', { name: /Delete/ }));
 
@@ -208,7 +268,14 @@ describe('Plan', () => {
     });
 
     it('moves a day to a new date', () => {
-        render(<Plan race={null} sessionsPerWeek={4} weeks={[WEEK()]} />);
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={SEASON}
+                weeks={[WEEK()]}
+            />,
+        );
 
         fireEvent.change(screen.getByLabelText(`Move ${TODAY}`), {
             target: { value: '2026-08-15' },
@@ -217,11 +284,62 @@ describe('Plan', () => {
         expect(lastPatchCall()?.[1]).toEqual({ date: '2026-08-15' });
     });
 
+    it('renders the season arc progress and a link to the badge board', () => {
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={{
+                    ...SEASON,
+                    week_index: 3,
+                    total_weeks: 12,
+                }}
+                weeks={[]}
+            />,
+        );
+
+        expect(screen.getByText(/Week 3 of 12/)).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: 'Badge board' }),
+        ).toHaveAttribute('href', '/badges');
+    });
+
+    it("renders each season goal's title and progress", () => {
+        render(
+            <Plan
+                race={null}
+                sessionsPerWeek={4}
+                season={{
+                    ...SEASON,
+                    goals: [
+                        {
+                            id: 1,
+                            title: 'Complete your planned sessions',
+                            current: 3,
+                            target: 10,
+                            unit: 'sessions',
+                            is_completed: false,
+                        },
+                    ],
+                }}
+                weeks={[]}
+            />,
+        );
+
+        expect(
+            screen.getByText('Complete your planned sessions'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText((_, el) => el?.textContent === '3/10'),
+        ).toBeInTheDocument();
+    });
+
     it('hides edit controls for history weeks', () => {
         render(
             <Plan
                 race={null}
                 sessionsPerWeek={4}
+                season={SEASON}
                 weeks={[WEEK({ type: 'history', week_start: '2026-07-27' })]}
             />,
         );

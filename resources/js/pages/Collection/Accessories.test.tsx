@@ -35,6 +35,9 @@ function item(
         criteria: 'criteria',
         unlocked,
         equipped,
+        current: 1,
+        target: 5,
+        unit: 'runs',
     };
 }
 
@@ -129,6 +132,22 @@ describe('Collection/Accessories', () => {
         const items = [item('accessory.shoes_basic', 'shoes', true, false)];
         render(<Accessories items={items} equipped={emptyEquipped} />);
         expect(screen.getByText('accessory.shoes_basic')).toBeInTheDocument();
+    });
+
+    it('shows live progress numbers on a locked item', () => {
+        const items = [
+            {
+                ...item('accessory.medal_gold', 'medal', false, false),
+                current: 2,
+                target: 5,
+                unit: 'PR',
+            },
+        ];
+        render(<Accessories items={items} equipped={emptyEquipped} />);
+        expect(
+            screen.getByText((_, el) => el?.textContent === '2/5'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('PR')).toBeInTheDocument();
     });
 
     it('toggles the locked items list when the "locked" button is clicked', () => {

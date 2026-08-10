@@ -10,12 +10,12 @@ use App\Http\Controllers\Api\CardSeenController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
+use App\Http\Controllers\BadgeBoardController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DevtoolsIndexController;
-use App\Http\Controllers\GoalController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\PlanController;
@@ -115,7 +115,6 @@ Route::middleware(['auth'])->group(function (): void {
 
     Route::get('/records', RekorController::class)->name('records');
 
-    Route::get('/goals', [GoalController::class, 'index'])->name('goals');
     Route::get('/race', [RaceController::class, 'index'])->name('race');
     Route::post('/race', [RaceController::class, 'store'])->name('race.store');
 
@@ -126,6 +125,7 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/accessories', [AksesoriController::class, 'index'])->name('accessories');
     Route::post('/api/accessories/equip', [AksesoriController::class, 'equip'])
         ->name('api.accessories.equip');
+    Route::get('/badges', [BadgeBoardController::class, 'index'])->name('badges');
 
     Route::get('/profile', ProfileController::class)->name('profile');
 
@@ -171,7 +171,11 @@ Route::middleware(['auth'])->group(function (): void {
     Route::permanentRedirect('/rekor', '/records');
     Route::permanentRedirect('/aksesori', '/accessories');
     Route::permanentRedirect('/akun', '/account');
-    Route::permanentRedirect('/target', '/goals');
+    // /goals (the old accessory-progress catalog page) retired in favor of
+    // live progress on /accessories — collapse the old /target -> /goals hop
+    // to go straight there, and keep /goals itself resolving for bookmarks.
+    Route::permanentRedirect('/target', '/accessories');
+    Route::permanentRedirect('/goals', '/accessories');
 
     Route::post('/api/cards/{card}/seen', CardSeenController::class)
         ->name('api.cards.seen');

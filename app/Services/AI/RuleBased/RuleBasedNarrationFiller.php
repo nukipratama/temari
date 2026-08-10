@@ -312,14 +312,12 @@ final readonly class RuleBasedNarrationFiller
             Badge::AnakMalam->value => 'The later it got, the more you kept going.',
             Badge::Pendaki->value => 'Big elevation, extra effort.',
             Badge::PertamaKali->value => "A first step you won't forget.",
-            Badge::Rajin->value => 'Three days straight, seriously disciplined.',
             Badge::Kilat->value => 'Sub-5 pace per km, fast.',
             Badge::Jauh->value => 'Half marathon and up, serious distance.',
             Badge::Z2Master->value => 'Mostly in Z2, seriously patient.',
             Badge::AnakDingin->value => 'Dead of early morning, but the energy was already on.',
             Badge::Keras->value => 'HR stayed high start to finish.',
             Badge::Santai->value => 'Genuinely easy, HR kept low.',
-            Badge::Berturut->value => 'A full week with no skips, impressive.',
             Badge::LawanAngin->value => "Strong wind didn't slow you down.",
         ];
 

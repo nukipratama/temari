@@ -14,9 +14,9 @@ function scorerDetail(array $attributes = []): ActivityDetail
     return new ActivityDetail($attributes + ['distance' => 3_000.0]);
 }
 
-function scorerContext(bool $firstBracket = false, bool $weekly = false): CardContext
+function scorerContext(bool $firstBracket = false, bool $weekly = false, bool $qualityMet = false): CardContext
 {
-    return new CardContext(false, $firstBracket, $weekly, 0, null);
+    return new CardContext(false, $firstBracket, $weekly, 0, null, $qualityMet);
 }
 
 function scorer(): RarityScorer
@@ -49,6 +49,10 @@ it('adds 2 points for a long run at or above 12km', function (): void {
     $summary = StreamSummary::fromArray(['time_in_zone_pct' => ['Z3' => 20]]);
 
     expect(scoreOf($detail, $summary, [], false, scorerContext()))->toBe(2);
+});
+
+it('adds 2 points for executing a planned quality session at or faster than its prescribed pace', function (): void {
+    expect(scoreOf(scorerDetail(), StreamSummary::fromArray([]), [], false, scorerContext(qualityMet: true)))->toBe(2);
 });
 
 it('adds 1 point for a first distance bracket', function (): void {
@@ -89,9 +93,9 @@ it('sums every point source', function (): void {
         'time_in_zone_pct' => ['Z2' => 95, 'Z3' => 5],
     ]);
 
-    $score = scoreOf($detail, $summary, ['a', 'b'], true, scorerContext(firstBracket: true, weekly: true));
+    $score = scoreOf($detail, $summary, ['a', 'b'], true, scorerContext(firstBracket: true, weekly: true, qualityMet: true));
 
-    expect($score)->toBe(3 + 2 + 2 + 1 + 2 + 1 + 1);
+    expect($score)->toBe(3 + 2 + 2 + 2 + 1 + 2 + 1 + 1);
 });
 
 it('maps score 0-4 to Common', function (): void {

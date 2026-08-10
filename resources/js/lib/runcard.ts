@@ -40,14 +40,12 @@ export const BADGE_LABELS: Record<string, string> = {
     night_owl: '🌙 Night Owl',
     climber: '⛰️ Climber',
     first_timer: '🏅 First Timer',
-    habit_forming: '💪 Habit Forming',
     speedster: '⚡ Speedster',
     long_hauler: '🗺️ Long Hauler',
     z2_master: '🫀 Z2 Master',
     cold_runner: '❄️ Cold Runner',
     all_out: '😤 All Out',
     easy_miles: '☺️ Easy Miles',
-    streak: '🔥 Streak',
     headwind: '🌬️ Headwind',
 };
 
@@ -63,14 +61,12 @@ export const BADGE_ABILITY: Record<string, string> = {
     night_owl: 'Ran at night, before dawn or after 9pm.',
     climber: '200m+ of elevation gain, basically a mountain.',
     first_timer: 'Your first logged run.',
-    habit_forming: 'Ran 3 days in a row.',
     speedster: 'Pace under 5:00/km, fast.',
     long_hauler: 'Half marathon distance or more, 21K+.',
     z2_master: 'More than 80% of the time in Z2.',
     cold_runner: 'Before 6am, still dark, still cold.',
     all_out: 'Average HR above 85% max, full effort.',
     easy_miles: 'Average HR below 70% max, genuinely easy.',
-    streak: 'Ran 7 days in a row, no skips.',
     headwind: 'Pushed through strong wind, 20 km/h or more.',
 };
 

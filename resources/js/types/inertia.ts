@@ -73,8 +73,8 @@ export interface UnlockFlash {
 
 /**
  * The race the user is currently training for, shared app-wide. "Race" is the
- * user-facing name; the `/goals` route and `goalsSummary` prop are a separate,
- * unrelated accessory-unlock progress catalog.
+ * user-facing name; live accessory-unlock progress lives on `/accessories`,
+ * see AccessoriesItem.
  */
 export interface ActiveRace {
     id: number;
@@ -96,7 +96,6 @@ export interface SharedProps {
     pendingReveal?: PendingReveal | null;
     equippedAccessories?: EquippedAccessories | null;
     stravaSync?: StravaSync | null;
-    goalsSummary?: GoalsSummary | null;
     activeRace?: ActiveRace | null;
     /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */
     hrZonesChangedAt?: string | null;
@@ -117,20 +116,6 @@ export interface SharedProps {
     /** Inertia's shared validation/error bag, keyed by field (e.g. `strava`). */
     errors?: Record<string, string>;
     [key: string]: unknown;
-}
-
-export interface GoalsSummaryItem {
-    id: string;
-    title: string;
-    current: number;
-    target: number;
-    unit: string;
-}
-
-export interface GoalsSummary {
-    total: number;
-    completed: number;
-    closest: GoalsSummaryItem[];
 }
 
 export interface AnalysisPayload {
