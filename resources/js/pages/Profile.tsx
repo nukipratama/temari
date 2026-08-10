@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
@@ -235,6 +235,26 @@ export default function Profile({
                         )}
                     </div>
                 </HeroPanel>
+
+                <section className="mt-6">
+                    <Link
+                        href="/race"
+                        className="focus-ring flex items-center justify-between gap-3 rounded-xl border border-line bg-cream px-4 py-3.5 transition hover:border-horizon/60"
+                    >
+                        <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                            <Icon
+                                icon="mdi:flag-checkered"
+                                width={16}
+                                height={16}
+                                aria-hidden
+                            />
+                            Got a race coming up?
+                        </span>
+                        <span className="text-label-micro text-ink-3">
+                            Set your race &rarr;
+                        </span>
+                    </Link>
+                </section>
 
                 {fitness?.training_paces && (
                     <section className="mt-10">

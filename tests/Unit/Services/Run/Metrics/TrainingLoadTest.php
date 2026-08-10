@@ -222,3 +222,40 @@ it('only counts the requested user', function (): void {
     expect($this->load->summary($userB))->toBeNull();
 
 });
+
+it('returns an empty ctlTrend for a user with no TRIMP-bearing activities', function (): void {
+    $user = User::factory()->create();
+
+    expect($this->load->ctlTrend($user))->toBe([]);
+});
+
+it('ctlTrend returns one entry per day for the last N days, matching the daily summary', function (): void {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 100; $i++) {
+        seedTrimpDay($user, 80.0, 99 - $i);
+    }
+
+    $trend = $this->load->ctlTrend($user, 90);
+
+    expect($trend)->toHaveCount(90)
+        ->and($trend[0]['date'])->toBe(Carbon::today()->subDays(89)->toDateString())
+        ->and($trend[89]['date'])->toBe(Carbon::today()->toDateString());
+
+    // The trend's last day must agree with the same EWMA roll the dashboard
+    // summary reads — this is exposing already-computed numbers, not a
+    // second, independent calculation.
+    $summary = $this->load->summary($user);
+    expect($trend[89]['atl'])->toEqualWithDelta($summary['atl_7d'], 0.05)
+        ->and($trend[89]['ctl'])->toEqualWithDelta($summary['ctl_42d'], 0.05);
+});
+
+it('ctlTrend never returns more than the available history, even when asked for more days', function (): void {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 10; $i++) {
+        seedTrimpDay($user, 80.0, 9 - $i);
+    }
+
+    expect($this->load->ctlTrend($user, 90))->toHaveCount(10);
+});

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
  */
 enum SharedPropCacheKey: string
 {
+    case ActiveRace = 'active-race';
     case AiCatchingUp = 'ai-catching-up';
     case AiPaused = 'ai-paused';
     case EquippedAccessories = 'equipped-accessories';
@@ -47,6 +48,13 @@ enum SharedPropCacheKey: string
      * lookup on every page load for the common case of no custom profile.
      */
     private const int HR_ZONES_CHANGED_SECONDS = 300;
+
+    /**
+     * TTL for the active-race share. It only moves on an explicit write
+     * ({@see \App\Models\RaceGoal}'s `saved`/`deleted` hooks bust it), so like
+     * the HR-zone marker the TTL is a safety net rather than the mechanism.
+     */
+    private const int ACTIVE_RACE_SECONDS = 300;
 
     /**
      * TTL for the global AI-pause signal. `generationPaused()` can run a handful
@@ -99,6 +107,7 @@ enum SharedPropCacheKey: string
     public function ttl(): int
     {
         return match ($this) {
+            self::ActiveRace => self::ACTIVE_RACE_SECONDS,
             self::AiCatchingUp => self::AI_CATCHING_UP_SECONDS,
             self::AiPaused => self::AI_PAUSED_SECONDS,
             self::StravaPaused => self::STRAVA_PAUSED_SECONDS,
