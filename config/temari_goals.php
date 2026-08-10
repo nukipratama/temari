@@ -7,11 +7,15 @@ declare(strict_types=1);
 | Temari Goal Catalogue
 |--------------------------------------------------------------------------
 |
-| Declarative map: unlock key → progress-bar metadata. Each goal carries a
-| title, a description, its slot, the GamificationContext metric it tracks
-| (plus a metric_key for the per-badge/per-rarity counters), a target, and
-| a unit. GoalResolver reads this to compute `current` for every goal, and
-| pulls `rarity` for the same key from config/temari_unlocks.php.
+| The single canonical source of unlock grant criteria. Declarative map:
+| unlock key → title, description (also shown as the locked-state
+| "criteria" text on Collection/Accessories), its slot, the
+| GamificationContext metric it tracks (plus a metric_key for the
+| per-badge/per-rarity counters), a target, and a unit. GoalResolver reads
+| this to compute `current` for every progress bar, and pulls `rarity` for
+| the same key from config/temari_unlocks.php. GrantEligibleUnlocksAction
+| reads the same metric/metric_key/target generically to decide grants
+| (current >= target) — a new unlock needs an entry here, not a PHP change.
 |
 | 25 items across 6 slots (4 per slot, aura has 5), same keys and order as
 | config/temari_unlocks.php.

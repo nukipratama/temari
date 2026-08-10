@@ -149,6 +149,48 @@ it('skips the flash when the unlock has no config entry', function (): void {
     expect(Session::get('unlock'))->toBeNull();
 });
 
+it('grants a key added purely via config, with no hardcoded PHP for it', function (): void {
+    // Proves the engine is genuinely config-driven: this key exists only in
+    // temari_goals for this test and was never in the old eligible*() methods.
+    config()->set('temari_goals', (array) config('temari_goals') + [
+        'accessory.__test_only' => [
+            'title' => 'Test only',
+            'description' => 'Log 3 runs.',
+            'slot' => 'medal',
+            'metric' => 'activity_count',
+            'target' => 3,
+            'unit' => 'runs',
+        ],
+    ]);
+
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->count(3)->create();
+
+    $granted = ($this->engine)($user);
+
+    expect($granted)->toContain('accessory.__test_only')
+        ->and(UserUnlock::query()->where('user_id', $user->id)->pluck('unlock_key')->all())
+        ->toContain('accessory.__test_only');
+});
+
+it('does not grant a config-only key below its target', function (): void {
+    config()->set('temari_goals', (array) config('temari_goals') + [
+        'accessory.__test_only_short' => [
+            'title' => 'Test only',
+            'description' => 'Log 3 runs.',
+            'slot' => 'medal',
+            'metric' => 'activity_count',
+            'target' => 3,
+            'unit' => 'runs',
+        ],
+    ]);
+
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->count(2)->create();
+
+    expect(($this->engine)($user))->not->toContain('accessory.__test_only_short');
+});
+
 it('falls back to the key + default icon when the config entry omits name and icon', function (): void {
     Session::start();
     config()->set('temari_unlocks', [

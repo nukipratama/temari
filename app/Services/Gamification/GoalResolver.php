@@ -84,7 +84,12 @@ readonly class GoalResolver
         return $goals;
     }
 
-    private function currentValue(GamificationContext $ctx, string $metric, string $metricKey): int|float
+    /**
+     * Resolves a `metric`/`metric_key` pair from the goal catalog against a
+     * context. Shared with {@see \App\Actions\Gamification\GrantEligibleUnlocksAction},
+     * which reads the same catalog to decide grant eligibility generically.
+     */
+    public function currentValue(GamificationContext $ctx, string $metric, string $metricKey): int|float
     {
         return match ($metric) {
             'pr_count' => $ctx->prCount,
