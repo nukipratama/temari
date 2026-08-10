@@ -91,6 +91,41 @@ it('returns the decoded payload when all required keys are present', function ()
     expect($payload)->toBe(['headline' => 'hi']);
 });
 
+// ── propertySchema: array-typed required keys (e.g. RunInsightNarrator's claims list) ──
+
+it('accepts an array value for a required key overridden to type array', function (): void {
+    $payload = structuredCaller(json_encode(['claims' => [['anchor' => 'metric:x']]], JSON_THROW_ON_ERROR))
+        ->call('kind', 'sys', [], 'schema', ['claims'], propertySchema: ['claims' => ['type' => 'array']]);
+
+    expect($payload)->toBe(['claims' => [['anchor' => 'metric:x']]]);
+});
+
+it('throws when a key overridden to type array comes back as a string instead', function (): void {
+    structuredCaller(json_encode(['claims' => 'not an array'], JSON_THROW_ON_ERROR))
+        ->call('kind', 'sys', [], 'schema', ['claims'], propertySchema: ['claims' => ['type' => 'array']]);
+})->throws(UnavailableException::class, 'missing claims');
+
+it('sends the array-typed schema override in the request, defaulting every other key to string', function (): void {
+    $client = new ClientFake([fakeAzureResponse(json_encode(['claims' => [], 'headline' => 'hi'], JSON_THROW_ON_ERROR))]);
+
+    fakeStructuredCaller($client)->call(
+        'kind',
+        'sys',
+        [],
+        'schema',
+        ['claims', 'headline'],
+        propertySchema: ['claims' => ['type' => 'array', 'items' => ['type' => 'object']]],
+    );
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $properties = $params['text']['format']['schema']['properties'];
+
+        return $method === 'create'
+            && $properties['claims']['type'] === 'array'
+            && $properties['headline'] === ['type' => 'string'];
+    });
+});
+
 it('sends the narrator-tuned temperature in every request', function (): void {
     $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR))]);
 

@@ -53,7 +53,7 @@ Recurring recap windows are modelled by [RecapPeriod](app/Services/AI/RecapPerio
 There are two job base classes, both extending [AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php):
 
 - **[AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php)** carries a single `analysisId`, generates one row's content, marks it `Done`. Most types use this.
-- **[AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php)** carries `(subjectId, discriminator)` and narrates several rows of one subject together in one LLM pass. [AnalyzeActivityJob](app/Jobs/AI/AnalyzeActivityJob.php) is the only group: it writes the post-run speech plus the three run-insight blocks for one activity at once. Which types belong to a group is the single source of truth `AnalysisType::groupJobClass()`; `AnalyzeGroupJob::groupedTypes()` derives from it. Grouping matters for cost: the speech reuses the already-Done insight rows verbatim, so a speech-only re-run never re-bills the insights (`AnalyzeActivityJob::resolveInsights()`).
+- **[AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php)** carries `(subjectId, discriminator)` and narrates several rows of one subject together in one LLM pass. [AnalyzeActivityJob](app/Jobs/AI/AnalyzeActivityJob.php) is the only group: it writes the post-run speech plus the run-insight claims block for one activity at once. Which types belong to a group is the single source of truth `AnalysisType::groupJobClass()`; `AnalyzeGroupJob::groupedTypes()` derives from it. Grouping matters for cost: the speech reuses the already-Done insight row verbatim, so a speech-only re-run never re-bills the insight (`AnalyzeActivityJob::resolveInsight()`).
 
 `AnalysisService::request()` routes to `dispatchGroup()` when the type has a group job, else `dispatchRow()`.
 

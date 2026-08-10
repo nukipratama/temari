@@ -175,59 +175,49 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             throw new UnavailableException("StoryLine for activity {$subject->id} missing");
         }
 
-        $insights = $this->resolveInsights($subject, $detail);
+        // Insight resolved first (on purpose): if the insight LLM is down, the
+        // group must fail before the speech LLM is ever billed, not after.
+        $insight = $this->resolveInsight($subject, $detail);
 
         $speech = app(PostRunSpeechNarrator::class)
             ->generate($subject, $detail, $storyLine->mood);
 
         return [
             AnalysisType::PostRunSpeech->value => $speech,
-            AnalysisType::RunInsightTechnical->value => $insights['technical'],
-            AnalysisType::RunInsightSplits->value => $insights['splits'],
-            AnalysisType::RunInsightZones->value => $insights['zones'],
+            AnalysisType::RunInsight->value => $insight,
         ];
     }
 
     /**
-     * The three run-insight analyses this group persists. Reused verbatim from
-     * already-Done insight rows when present (so a cerita-only re-dispatch does
-     * not re-bill the insight LLM); otherwise generated fresh.
-     *
-     * @return array{technical: string, splits: string, zones: string}
+     * The run-insight analysis this group persists: its content is a JSON-
+     * encoded claims list (possibly `[]` when nothing survived falsifiability
+     * checking — see {@see RunInsightNarrator}). Reused verbatim from an
+     * already-Done row when present (so a cerita-only re-dispatch does not
+     * re-bill the insight LLM); otherwise generated fresh.
      */
-    private function resolveInsights(Activity $activity, ActivityDetail $detail): array
+    private function resolveInsight(Activity $activity, ActivityDetail $detail): string
     {
-        return $this->doneInsights($activity)
-            ?? app(RunInsightNarrator::class)->generate($activity, $detail);
+        return $this->doneInsight($activity)
+            ?? json_encode(
+                app(RunInsightNarrator::class)->generate($activity, $detail)['claims'],
+                JSON_THROW_ON_ERROR,
+            );
     }
 
     /**
-     * The activity's three insight analyses if all of them are already Done with
-     * non-null content, else null (signalling a fresh generation is needed).
-     *
-     * @return array{technical: string, splits: string, zones: string}|null
+     * The activity's already-Done run-insight content, or null (signalling a
+     * fresh generation is needed).
      */
-    private function doneInsights(Activity $activity): ?array
+    private function doneInsight(Activity $activity): ?string
     {
-        $types = [
-            'technical' => AnalysisType::RunInsightTechnical,
-            'splits' => AnalysisType::RunInsightSplits,
-            'zones' => AnalysisType::RunInsightZones,
-        ];
+        $row = Analysis::query()
+            ->forSubject(Activity::class, $activity->id, AnalysisType::RunInsight)
+            ->first();
 
-        $resolved = [];
-        foreach ($types as $key => $type) {
-            $row = Analysis::query()
-                ->forSubject(Activity::class, $activity->id, $type)
-                ->first();
-            if ($row === null || $row->status !== AnalysisStatus::Done || $row->content === null) {
-                return null;
-            }
-
-            $resolved[$key] = $row->content;
+        if ($row === null || $row->status !== AnalysisStatus::Done || $row->content === null) {
+            return null;
         }
 
-        return $resolved;
+        return $row->content;
     }
-
 }

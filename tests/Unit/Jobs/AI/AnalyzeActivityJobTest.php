@@ -25,13 +25,19 @@ uses(RefreshDatabase::class);
  * Binds a stub RunInsightNarrator so the activity job's LLM insight call is
  * deterministic; without it the job would hit the real Azure client.
  *
- * @param  array{technical: string, splits: string, zones: string}  $insights
+ * @param  list<array{anchor: string, text: string, value: string|null, delta: string|null}>  $claims
  */
-function mockInsightNarrator(array $insights): void
+function mockInsightNarrator(array $claims): void
 {
     $mock = Mockery::mock(RunInsightNarrator::class);
-    $mock->shouldReceive('generate')->andReturn($insights);
+    $mock->shouldReceive('generate')->andReturn(['claims' => $claims]);
     app()->instance(RunInsightNarrator::class, $mock);
+}
+
+/** A single deterministic claim, so tests don't need to spell out the shape every time. */
+function sampleClaim(string $text = 'sample claim'): array
+{
+    return ['anchor' => 'metric:decoupling', 'text' => $text, 'value' => null, 'delta' => null];
 }
 
 function seedActivityForJob(): Activity
@@ -53,19 +59,17 @@ function seedActivityForJob(): Activity
     return $activity;
 }
 
-it('writes speech + 3 insight rows Done from one job run', function (): void {
+it('writes speech + insight rows Done from one job run', function (): void {
     $activity = seedActivityForJob();
-
-    $insights = ['technical' => 'tech text', 'splits' => 'splits text', 'zones' => 'zones text'];
 
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
     // The speech is told the mood and nothing else about the run: the insight
-    // triplet is the other three lenses' material, not its own.
+    // claims are the other lens' material, not its own.
     $speechMock->shouldReceive('generate')
         ->withArgs(fn ($a, $d, $mood): bool => $mood === 'blazing')
         ->andReturn('nice run');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
-    mockInsightNarrator($insights);
+    mockInsightNarrator([sampleClaim('tech text')]);
 
     new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
@@ -75,11 +79,10 @@ it('writes speech + 3 insight rows Done from one job run', function (): void {
         ->get()
         ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
 
-    expect($rows)->toHaveCount(4)
+    expect($rows)->toHaveCount(2)
         ->and($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('nice run')
-        ->and($rows[AnalysisType::RunInsightTechnical->value]->content)->toBe('tech text')
-        ->and($rows[AnalysisType::RunInsightSplits->value]->content)->toBe('splits text')
-        ->and($rows[AnalysisType::RunInsightZones->value]->content)->toBe('zones text');
+        ->and(json_decode((string) $rows[AnalysisType::RunInsight->value]->content, true))
+        ->toBe([sampleClaim('tech text')]);
 
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Done);
@@ -92,7 +95,7 @@ it('stamps every group row with the activity material fingerprint at generation'
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
     $speechMock->shouldReceive('generate')->andReturn('nice run');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
-    mockInsightNarrator(['technical' => 't', 'splits' => 's', 'zones' => 'z']);
+    mockInsightNarrator([sampleClaim()]);
 
     new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
@@ -102,7 +105,7 @@ it('stamps every group row with the activity material fingerprint at generation'
         ->where('subject_id', $activity->id)
         ->get();
 
-    expect($rows)->toHaveCount(4)
+    expect($rows)->toHaveCount(2)
         ->and($rows->pluck('content_fingerprint')->unique()->all())->toBe([$expected]);
 });
 
@@ -123,7 +126,7 @@ it('reverts group rows to Pending without billing when generation is paused', fu
     new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
-    expect($rows)->toHaveCount(4)
+    expect($rows)->toHaveCount(2)
         ->and($rows->pluck('status')->unique()->all())->toBe([AnalysisStatus::Pending])
         ->and($rows->pluck('attempts')->unique()->all())->toBe([0]);
 });
@@ -152,29 +155,22 @@ it('fails the whole group rather than templating run-insight when the LLM is una
     }
 });
 
-it('reuses Done insight rows instead of re-billing RunInsightNarrator on a cerita-only re-dispatch', function (): void {
+it('reuses the Done insight row instead of re-billing RunInsightNarrator on a cerita-only re-dispatch', function (): void {
     $activity = seedActivityForJob();
 
-    // The 3 insight rows are already Done with known content; only PostRunSpeech is Pending.
-    $doneContent = [
-        AnalysisType::RunInsightTechnical->value => 'stored tech',
-        AnalysisType::RunInsightSplits->value => 'stored splits',
-        AnalysisType::RunInsightZones->value => 'stored zones',
-    ];
-    foreach ($doneContent as $type => $content) {
-        Analysis::factory()->done($content)->create([
-            'subject_type' => Activity::class,
-            'subject_id' => $activity->id,
-            'analysis_type' => $type,
-            'discriminator' => null,
-        ]);
-    }
+    // The insight row is already Done with known content; only PostRunSpeech is Pending.
+    Analysis::factory()->done(json_encode([sampleClaim('stored claim')], JSON_THROW_ON_ERROR))->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+    ]);
 
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
     $speechMock->shouldReceive('generate')->andReturn('cerita baru');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
-    // The insight LLM must NOT be called: the Done rows are reused verbatim.
+    // The insight LLM must NOT be called: the Done row is reused verbatim.
     $insightMock = Mockery::mock(RunInsightNarrator::class);
     $insightMock->shouldNotReceive('generate');
     app()->instance(RunInsightNarrator::class, $insightMock);
@@ -187,16 +183,15 @@ it('reuses Done insight rows instead of re-billing RunInsightNarrator on a cerit
         ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
 
     expect($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('cerita baru')
-        ->and($rows[AnalysisType::RunInsightTechnical->value]->content)->toBe('stored tech')
-        ->and($rows[AnalysisType::RunInsightSplits->value]->content)->toBe('stored splits')
-        ->and($rows[AnalysisType::RunInsightZones->value]->content)->toBe('stored zones');
+        ->and(json_decode((string) $rows[AnalysisType::RunInsight->value]->content, true))
+        ->toBe([sampleClaim('stored claim')]);
 });
 
-it('marks all 4 rows failed when the activity is missing', function (): void {
+it('marks all 2 rows failed when the activity is missing', function (): void {
     new AnalyzeActivityJob(99999)->handle(app(AnalysisService::class));
 
     $rows = Analysis::query()->where('subject_id', 99999)->get();
-    expect($rows)->toHaveCount(4);
+    expect($rows)->toHaveCount(2);
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Failed);
     }
@@ -221,9 +216,7 @@ it('no-ops when all rows already Done (idempotent)', function (): void {
 
     foreach ([
         AnalysisType::PostRunSpeech,
-        AnalysisType::RunInsightTechnical,
-        AnalysisType::RunInsightSplits,
-        AnalysisType::RunInsightZones,
+        AnalysisType::RunInsight,
     ] as $type) {
         Analysis::factory()->done('preexisting')->create([
             'subject_type' => Activity::class,
@@ -249,9 +242,7 @@ it('rethrows non-UnavailableException so Laravel can retry the whole group', fun
     $activity = seedActivityForJob();
 
     $insightMock = Mockery::mock(RunInsightNarrator::class);
-    $insightMock->shouldReceive('generate')->andReturn([
-        'technical' => 'tech', 'splits' => 'splits', 'zones' => 'zones',
-    ]);
+    $insightMock->shouldReceive('generate')->andReturn(['claims' => [sampleClaim()]]);
     app()->instance(RunInsightNarrator::class, $insightMock);
 
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
@@ -316,7 +307,7 @@ it('advances the chain to the next chronological Pending activity group on compl
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
     $speechMock->shouldReceive('generate')->andReturn('nice run');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
-    mockInsightNarrator(['technical' => 't', 'splits' => 's', 'zones' => 'z']);
+    mockInsightNarrator([sampleClaim()]);
 
     Bus::fake();
     new AnalyzeActivityJob($first->id)->handle(app(AnalysisService::class));
@@ -338,7 +329,7 @@ it('does not advance the chain when no later activity group is Pending', functio
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
     $speechMock->shouldReceive('generate')->andReturn('nice run');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
-    mockInsightNarrator(['technical' => 't', 'splits' => 's', 'zones' => 'z']);
+    mockInsightNarrator([sampleClaim()]);
 
     Bus::fake();
     new AnalyzeActivityJob($only->id)->handle(app(AnalysisService::class));

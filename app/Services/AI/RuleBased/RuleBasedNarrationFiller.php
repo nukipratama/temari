@@ -20,7 +20,7 @@ use App\Services\Run\Metrics\StreamSummary;
  * - BriefingComposer when Azure OpenAI is unconfigured (empty env)
  *
  * Output is deterministic and Temari-voiced. Where the subject's real data is
- * available it drives the copy (run-insight types via {@see RuleBasedRunInsights}
+ * available it drives the copy (run insight via {@see RuleBasedRunInsights}
  * so a seeded demo shows the run's real numbers), falling back to seeded
  * variants only when the subject row is missing. Users with a configured Azure
  * can re-trigger via "Baca ulang" to get real LLM output.
@@ -40,9 +40,7 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::BriefingMascotVoice => $this->briefingMascotVoice($seed),
             AnalysisType::BriefingFeaturedKartuVoice => $this->briefingFeaturedKartuVoice($seed),
             AnalysisType::PostRunSpeech => $this->postRunSpeech($seed),
-            AnalysisType::RunInsightTechnical => $this->runInsightTechnical($seed),
-            AnalysisType::RunInsightSplits => $this->runInsightSplits($seed),
-            AnalysisType::RunInsightZones => $this->runInsightZones($seed),
+            AnalysisType::RunInsight => $this->runInsight($seed),
             AnalysisType::WeeklyRecap => $this->weeklyRecap($seed),
             AnalysisType::PrContext => $this->prContext($seed),
             AnalysisType::CardFlavor => $this->cardFlavor($seed),
@@ -149,34 +147,19 @@ final readonly class RuleBasedNarrationFiller
     }
 
 
-    private function runInsightTechnical(int $activityId): string
+    /**
+     * The run-insight block's content is a JSON-encoded claims list, matching
+     * exactly what {@see \App\Services\AI\Narrators\RunInsightNarrator} persists
+     * so the frontend reads one shape regardless of which path filled it. An
+     * activity with no readable detail yet renders no claims, same as a real
+     * run with nothing falsifiable to say.
+     */
+    private function runInsight(int $activityId): string
     {
         $detail = $this->detailFor($activityId);
-        if ($detail === null) {
-            return "The technical detail isn't fully readable yet.";
-        }
+        $claims = $detail === null ? [] : $this->runInsights->claims($detail);
 
-        return $this->runInsights->technical($detail);
-    }
-
-    private function runInsightSplits(int $activityId): string
-    {
-        $detail = $this->detailFor($activityId);
-        if ($detail === null) {
-            return "The splits aren't fully readable yet.";
-        }
-
-        return $this->runInsights->splits($detail);
-    }
-
-    private function runInsightZones(int $activityId): string
-    {
-        $detail = $this->detailFor($activityId);
-        if ($detail === null) {
-            return "The zone breakdown isn't fully readable yet.";
-        }
-
-        return $this->runInsights->zones($detail);
+        return (string) json_encode($claims, JSON_THROW_ON_ERROR);
     }
 
     private function weeklyRecap(int $snapshotId): string

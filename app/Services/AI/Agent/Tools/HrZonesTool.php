@@ -14,7 +14,8 @@ final class HrZonesTool extends ActivityTool
     public function description(): string
     {
         return 'Time spent per HR zone (percent and minutes), the intensity_label (light/moderate/heavy) '
-            ."derived from that spread, plus this session's TRIMP. Empty if this run didn't record heart rate.";
+            ."derived from that spread, this session's TRIMP, and hr_drift_bpm (how much HR climbed from "
+            .'the first half to the second at a similar effort). Empty if this run didn\'t record heart rate.';
     }
 
     /** @return array<string, mixed> */
@@ -28,6 +29,7 @@ final class HrZonesTool extends ActivityTool
             'zone_pct' => $zonePct,
             'time_in_zone_min' => $summary->zoneMinutes(),
             'trimp' => $this->detail->trimp_edwards,
+            'hr_drift_bpm' => $summary->hrDriftBpm(),
             'intensity_label' => $zonePct === [] ? null : match (true) {
                 $hardZoneShare >= 50.0 => 'heavy',
                 $hardZoneShare >= 20.0 => 'moderate',

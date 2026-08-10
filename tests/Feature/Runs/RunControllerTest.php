@@ -967,9 +967,9 @@ it('still returns every prop on a full page load', function (): void {
 });
 
 /**
- * The four run insights are the whole reload set of the detail page's poll
- * (`DEFAULT_RELOAD_PROPS` in resources/js/components/run/FourLensGrid.tsx), and
- * it ticks every 3-15s for up to 30 attempts while narration generates. Every
+ * The story + run-insight props are the whole reload set of the detail page's
+ * poll (`DEFAULT_RELOAD_PROPS` in resources/js/components/run/RunLenses.tsx),
+ * and it ticks every 3-15s for up to 30 attempts while narration generates. Every
  * prop used to be computed in the method body, so each tick re-ran the past-you
  * match, the relative-effort baseline, the card payload and the story-line
  * query for props it never asked for. Behind closures, Inertia skips them.
@@ -991,6 +991,7 @@ it('does not run the past-you match or the relative-effort baseline on an insigh
 
     $response->assertJsonPath('component', 'Runs/Show');
     $response->assertJsonPath('props.speechAnalysis.type', AnalysisType::PostRunSpeech->value);
+    $response->assertJsonPath('props.runInsight.type', AnalysisType::RunInsight->value);
     foreach (['pastYou', 'relativeEffort', 'card', 'storyLine', 'moodFallback', 'isChainHead'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
@@ -1075,7 +1076,7 @@ function snapshotOnlyHeaders(object $actingAs): array
 
 /**
  * Partial-reload headers mimicking the run-detail poller's
- * `router.reload({ only: [...the four insights] })`.
+ * `router.reload({ only: [...the insight props] })`.
  *
  * @param  object  $actingAs  The authenticated test case.
  * @return array<string, string>
@@ -1086,6 +1087,6 @@ function insightOnlyHeaders(object $actingAs, int $activityId): array
         'X-Inertia' => 'true',
         'X-Inertia-Version' => inertiaVersionFor($actingAs, "/activities/{$activityId}"),
         'X-Inertia-Partial-Component' => 'Runs/Show',
-        'X-Inertia-Partial-Data' => 'speechAnalysis,insightTechnical,insightSplits,insightZones',
+        'X-Inertia-Partial-Data' => 'speechAnalysis,runInsight',
     ];
 }

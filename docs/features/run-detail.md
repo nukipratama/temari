@@ -1,13 +1,13 @@
 ---
 title: Run detail (single activity)
-description: One run, fully unpacked — hero stats, route+weather, four AI lenses, splits, and a "Past You" match
+description: One run, fully unpacked — hero stats, route+weather, the story + adaptive claims lenses, splits, and a "Past You" match
 tags: [feature, runs]
 status: living
-reviewed: 2026-07-08
+reviewed: 2026-08-10
 code_refs:
   - resources/js/pages/Runs/Show.tsx
   - app/Http/Controllers/RunController.php
-  - resources/js/components/run/FourLensGrid.tsx
+  - resources/js/components/run/RunLenses.tsx
   - resources/js/components/run/MapWeatherPanel.tsx
   - resources/js/components/run/DetailTiles.tsx
   - resources/js/components/run/SplitsTable.tsx
@@ -28,7 +28,7 @@ location-resolve job when the run has GPS but no resolved place name.
 
 ## System dependencies
 
-- **AI narration** — the four-lens grid, card flavor, and Past You context are all `Analysis` rows from the [[ai-pipeline]].
+- **AI narration** — the story + adaptive-claims lenses, card flavor, and Past You context are all `Analysis` rows from the [[ai-pipeline]].
 - **Ingestion** — `detail` / `stream_summary` are populated by the [[run-ingest-pipeline]].
 - **Geo** — location name is resolved by [[geo-reverse-geocoding]].
 - **Weather** — conditions come from [[weather-integration]].
@@ -53,22 +53,35 @@ button — Leaflet's drag handler otherwise captures a touch-scroll swipe as a
 pan gesture, trapping the page mid-scroll on mobile; one tap dismisses the
 overlay and enables full drag/zoom, the same pattern Google Maps embeds use.
 
-## Kata Temari — the four AI lenses
+## What Temari says — story + adaptive claims
 
-The heart of the page is [FourLensGrid](../../resources/js/components/run/FourLensGrid.tsx),
-fed four separate `Analysis` payloads the controller resolves from
+The heart of the page is [RunLenses](../../resources/js/components/run/RunLenses.tsx),
+fed two `Analysis` payloads the controller resolves from
 `RunController::RUN_INSIGHT_TYPES`:
 
-- **Cerita lari ini** — the post-run speech (`PostRunSpeech`). Deliberately *not* a summary of the other three: it carries the run's context and its place in the athlete's history, and is told to leave pacing, cadence and zones to the lenses beside it.
-- **Terjemahan teknis** — `RunInsightTechnical`
-- **Split paling seru** — `RunInsightSplits`
-- **Zona HR** — `RunInsightZones`
+- **This run's story** — the post-run speech (`AnalysisType::PostRunSpeech`, [PostRunSpeechNarrator](../../app/Services/AI/Narrators/PostRunSpeechNarrator.php)). Unchanged by this consolidation: deliberately not a summary of the numbers, it carries the run's context and its place in the athlete's history, leaving pacing, cadence and zones to the block beside it.
+- **What stood out** — the adaptive claims block (`AnalysisType::RunInsight`, [RunInsightNarrator](../../app/Services/AI/Narrators/RunInsightNarrator.php)). Replaces the previous fixed three-slot layout (technical translation / best split / HR zones) with a single row whose `content` is a JSON-encoded list of 1-3 claims, shaped by what was actually notable about the run rather than by three always-present sections. Each claim is `{anchor, text, value?, delta?}`.
+
+**Falsifiability, not prompt trust.** Every claim's `anchor` names the exact
+real thing it describes — `split:<n>` (a 1-indexed km from the run's own
+splits), `zone:<z1..z5>` (an HR zone this run actually recorded), or
+`metric:<name>` (one of `decoupling` / `hr_drift` / `cadence_drop` /
+`pace_variability` / `grade` / `negative_split` / `gap_pace`). Before
+persisting, `RunInsightNarrator` checks each claim's anchor against the run's
+own `StreamSummary`/`ActivityDetail` and drops any claim that does not
+resolve — an LLM cannot narrate a split, zone, or metric the run does not
+actually have. If every claim is dropped (or the model returned none), the
+row's content decodes to `[]` and the frontend renders nothing for this
+block, the same "nothing to render" principle used elsewhere in the pipeline.
+The demo-seed/no-Azure fallback ([RuleBasedRunInsights](../../app/Services/AI/RuleBased/RuleBasedRunInsights.php))
+emits the same claims shape from deterministic thresholds, so it never needs
+the falsifiability check to begin with.
 
 Each lens renders through [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx),
 which owns the pending / processing / failed / done states and the per-block
 "Coba lagi" retry. These are **chained** analyses: only the chain head (the
 user's latest run, `isChainHead` from `Activity::latestIdForUser`) shows the
-single "Baca ulang semua" regenerate button; historical runs are resume-only.
+single "Reread all" regenerate button; historical runs are resume-only.
 See [[ai-pipeline]] for the narrator/job model behind these rows.
 
 ## Kartu — the card's full view
@@ -106,5 +119,5 @@ views instead; treat the siblings as separate widgets, not parts of this page.
 
 - [[run-ingest-pipeline]] — how `detail` / `stream_summary` get populated
 - [[data-model]] — `Activity`, `ActivityDetail`, `Analysis`, `StoryLine`
-- [[ai-pipeline]] — the four-lens narration pipeline
+- [[ai-pipeline]] — the run-detail narration pipeline
 - [[cards-collection]] — the Kartu in the sidebar

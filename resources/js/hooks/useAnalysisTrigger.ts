@@ -182,7 +182,7 @@ function subscribePoll(only: string[], onRetire: () => void): () => void {
 /**
  * POST the trigger endpoint to enqueue (or re-enqueue) one analysis. The caller
  * owns the response: {@link useAnalysisTrigger} runs its state machine off it,
- * the bulk control in FourLensGrid only awaits completion.
+ * the bulk control in RunLenses only awaits completion.
  */
 export function triggerAnalysis(
     analysis: Pick<AnalysisPayload, 'type' | 'subject_id' | 'discriminator'>,

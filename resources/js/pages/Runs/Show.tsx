@@ -13,9 +13,9 @@ import type {
 import Kartu from '@/components/card/Kartu';
 import KartuMount from '@/components/card/KartuMount';
 import DetailTiles from '@/components/run/DetailTiles';
-import FourLensGrid from '@/components/run/FourLensGrid';
 import LapsGraph from '@/components/run/LapsGraph';
 import MapWeatherPanel from '@/components/run/MapWeatherPanel';
+import RunLenses from '@/components/run/RunLenses';
 import SplitsTable from '@/components/run/SplitsTable';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import StravaAction from '@/components/StravaAction';
@@ -71,9 +71,7 @@ interface ShowProps {
     card: RunCardDetail | null;
     storyLine: StoryLine | null;
     speechAnalysis: AnalysisPayload;
-    insightTechnical: AnalysisPayload;
-    insightSplits: AnalysisPayload;
-    insightZones: AnalysisPayload;
+    runInsight: AnalysisPayload;
     /** Backend-computed mood used only until the post-run StoryLine is persisted. */
     moodFallback: Mood;
     /** This run is the head of the per-activity narration chain (latest run). */
@@ -91,9 +89,7 @@ export default function RunsShow({
     card,
     storyLine,
     speechAnalysis,
-    insightTechnical,
-    insightSplits,
-    insightZones,
+    runInsight,
     moodFallback,
     isChainHead,
     notificationRetryAfterSeconds,
@@ -506,15 +502,13 @@ export default function RunsShow({
                                 What Temari says
                             </h2>
                             <p className="mt-1 font-sans text-xs text-ink-3">
-                                Four ways to look at this run.
+                                The story of this run, and what stood out.
                             </p>
                         </div>
                     </header>
-                    <FourLensGrid
-                        cerita={speechAnalysis}
-                        terjemahan={insightTechnical}
-                        split={insightSplits}
-                        hr={insightZones}
+                    <RunLenses
+                        story={speechAnalysis}
+                        insight={runInsight}
                         isChainHead={isChainHead}
                     />
                 </section>

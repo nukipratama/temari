@@ -186,20 +186,18 @@ it('requestDeferred leaves an existing Done row untouched', function (): void {
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('requestActivityGroupRuleBased fills all 4 rows Done without dispatching', function (): void {
+it('requestActivityGroupRuleBased fills all rows Done without dispatching', function (): void {
     $activity = Activity::factory()->create();
 
     $this->service->requestActivityGroupRuleBased($activity);
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
-    expect($rows)->toHaveCount(4)
+    expect($rows)->toHaveCount(2)
         ->and($rows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue()
         ->and($rows->every(fn (Analysis $row): bool => is_string($row->content) && $row->content !== ''))->toBeTrue()
         ->and($rows->pluck('analysis_type')->all())->toEqualCanonicalizing([
             AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsightTechnical,
-            AnalysisType::RunInsightSplits,
-            AnalysisType::RunInsightZones,
+            AnalysisType::RunInsight,
         ]);
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });
@@ -218,18 +216,16 @@ it('requestActivityGroupRuleBased never overwrites an already-Done row with fill
     expect($realRow->fresh()->content)->toBe('narasi asli yang sudah dibayar');
 });
 
-it('requestActivityGroup creates 4 rows and dispatches one AnalyzeActivityJob', function (): void {
+it('requestActivityGroup creates its rows and dispatches one AnalyzeActivityJob', function (): void {
     $activity = Activity::factory()->create();
 
     $this->service->requestActivityGroup($activity);
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
-    expect($rows)->toHaveCount(4)
+    expect($rows)->toHaveCount(2)
         ->and($rows->pluck('analysis_type')->all())->toEqualCanonicalizing([
             AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsightTechnical,
-            AnalysisType::RunInsightSplits,
-            AnalysisType::RunInsightZones,
+            AnalysisType::RunInsight,
         ]);
     Bus::assertDispatched(
         AnalyzeActivityJob::class,
@@ -244,14 +240,14 @@ it('request() with any activity-group type routes to AnalyzeActivityJob (group)'
     $this->service->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
-        type: AnalysisType::RunInsightSplits,
+        type: AnalysisType::RunInsight,
     );
 
-    expect(Analysis::query()->where('subject_id', $activity->id)->count())->toBe(4);
+    expect(Analysis::query()->where('subject_id', $activity->id)->count())->toBe(2);
     Bus::assertDispatched(AnalyzeActivityJob::class);
 });
 
-it('activity group debounces — 3 sibling-type requests dispatch only one AnalyzeActivityJob', function (): void {
+it('activity group debounces — sibling-type requests dispatch only one AnalyzeActivityJob', function (): void {
     $activity = Activity::factory()->create();
 
     $this->service->request(
@@ -262,12 +258,7 @@ it('activity group debounces — 3 sibling-type requests dispatch only one Analy
     $this->service->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
-        type: AnalysisType::RunInsightTechnical,
-    );
-    $this->service->request(
-        subjectOrType: Activity::class,
-        subjectId: $activity->id,
-        type: AnalysisType::RunInsightSplits,
+        type: AnalysisType::RunInsight,
     );
 
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
@@ -301,7 +292,7 @@ it('withoutDispatching suppresses dispatch but still creates Pending rows', func
         $this->service->requestActivityGroup($activity);
     });
 
-    expect(Analysis::query()->where('subject_id', $activity->id)->count())->toBe(4)
+    expect(Analysis::query()->where('subject_id', $activity->id)->count())->toBe(2)
         ->and(Analysis::query()->where('subject_id', $activity->id)->first()->status)->toBe(AnalysisStatus::Pending);
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });
@@ -584,7 +575,7 @@ it('accepts a Model instance as the subject', function (): void {
     $this->service->request(
         subjectOrType: $detail->activity,
         subjectId: $detail->activity_id,
-        type: AnalysisType::RunInsightTechnical,
+        type: AnalysisType::RunInsight,
     );
 
     Bus::assertDispatched(AnalyzeActivityJob::class);
@@ -686,7 +677,7 @@ it('upsertGroupRows with NULL discriminators collapses repeat requests to one ro
         ->where('subject_type', Activity::class)
         ->where('subject_id', $activity->id)
         ->whereNull('discriminator')
-        ->count())->toBe(4);
+        ->count())->toBe(2);
 });
 
 it('upsertGroupRows flags rows it created as wasRecentlyCreated', function (): void {
@@ -699,7 +690,7 @@ it('upsertGroupRows flags rows it created as wasRecentlyCreated', function (): v
         AnalyzeActivityJob::groupedTypes(),
     );
 
-    expect($rows)->toHaveCount(4)
+    expect($rows)->toHaveCount(2)
         ->and($rows->every(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toBeTrue()
         ->and($rows->every(fn (Analysis $row): bool => $row->exists && $row->id > 0))->toBeTrue()
         ->and($rows->keys()->all())->toBe(
@@ -724,8 +715,8 @@ it('upsertGroupRows leaves pre-existing rows unflagged and flags only the newly 
     );
 
     expect($rows->get(AnalysisType::PostRunSpeech->value)->wasRecentlyCreated)->toBeFalse()
-        ->and($rows->get(AnalysisType::RunInsightZones->value)->wasRecentlyCreated)->toBeTrue()
-        ->and($rows->filter(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toHaveCount(3);
+        ->and($rows->get(AnalysisType::RunInsight->value)->wasRecentlyCreated)->toBeTrue()
+        ->and($rows->filter(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toHaveCount(1);
 });
 
 it('upsertGroupRows flags nothing when every row already exists', function (): void {

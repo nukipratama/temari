@@ -34,9 +34,7 @@ class ChainResolver
             AnalysisType::WeeklyRecap => $subjectId === $this->weeklyChainHeadId($user),
             AnalysisType::MonthlyRecap => $discriminator !== null && $discriminator === $this->monthlyChainHeadMonth($user),
             AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsightTechnical,
-            AnalysisType::RunInsightSplits,
-            AnalysisType::RunInsightZones => $subjectId === Activity::latestIdForUser($user->id),
+            AnalysisType::RunInsight => $subjectId === Activity::latestIdForUser($user->id),
             default => false,
         };
     }
@@ -55,9 +53,7 @@ class ChainResolver
             AnalysisType::WeeklyRecap => $this->earliestUnfilledWeeklyLink($user),
             AnalysisType::MonthlyRecap => $this->earliestUnfilledMonthlyLink($user),
             AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsightTechnical,
-            AnalysisType::RunInsightSplits,
-            AnalysisType::RunInsightZones => $this->earliestUnfilledActivityLink($user, $type),
+            AnalysisType::RunInsight => $this->earliestUnfilledActivityLink($user, $type),
             default => null,
         };
     }

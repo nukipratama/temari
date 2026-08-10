@@ -28,9 +28,7 @@ final class AnalysisSubjectAuthorizer
             AnalysisType::AkuProfileVoice,
             AnalysisType::MonthlyRecap => $subjectId === $user->id,
             AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsightTechnical,
-            AnalysisType::RunInsightSplits,
-            AnalysisType::RunInsightZones => self::userOwns(Activity::query(), $subjectId, $user->id),
+            AnalysisType::RunInsight => self::userOwns(Activity::query(), $subjectId, $user->id),
             AnalysisType::WeeklyRecap => self::userOwns(WeeklySnapshot::query(), $subjectId, $user->id),
             AnalysisType::PrContext => self::userOwns(PersonalRecord::query(), $subjectId, $user->id),
             AnalysisType::CardFlavor => RunCard::query()

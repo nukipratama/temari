@@ -106,26 +106,20 @@ function speechAnalysis(
     };
 }
 
-function insight(
-    type: AnalysisPayload['type'],
+function runInsight(
     status: AnalysisPayload['status'] = 'pending',
+    content: string | null = null,
 ): AnalysisPayload {
     return {
-        id: null,
+        id: status === 'pending' ? null : 1,
         status,
-        content: null,
-        type,
+        content,
+        type: 'run_insight',
         subject_type: String.raw`App\Models\Activity`,
         subject_id: 99,
         discriminator: null,
     };
 }
-
-const insightDefaults = {
-    insightTechnical: insight('run_insight_technical'),
-    insightSplits: insight('run_insight_splits'),
-    insightZones: insight('run_insight_zones'),
-} as const;
 
 function renderShow(
     overrides: Partial<Parameters<typeof RunsShow>[0]> = {},
@@ -149,7 +143,17 @@ function renderShow(
             card={runCard}
             storyLine={storyLine}
             speechAnalysis={speechAnalysis()}
-            {...insightDefaults}
+            runInsight={runInsight(
+                'done',
+                JSON.stringify([
+                    {
+                        anchor: 'metric:decoupling',
+                        text: 'Decoupling stayed tight all the way through.',
+                        value: '+3.2%',
+                        delta: null,
+                    },
+                ]),
+            )}
             moodFallback="chill"
             isChainHead
             notificationRetryAfterSeconds={null}
@@ -234,18 +238,24 @@ describe('Runs/Show', () => {
         expect(screen.getByText('9 Jun 2026 · 06.52')).toBeInTheDocument();
     });
 
-    it('renders the four-lens grid with the What Temari Says header', () => {
+    it('renders the run lenses with the What Temari Says header', () => {
         renderShow();
         expect(screen.getByText('What Temari says')).toBeInTheDocument();
         expect(screen.getByText("This run's story")).toBeInTheDocument();
-        expect(screen.getByText('Technical translation')).toBeInTheDocument();
-        expect(screen.getByText('Most interesting split')).toBeInTheDocument();
-        expect(screen.getByText('HR Zones')).toBeInTheDocument();
+        expect(screen.getByText('What stood out')).toBeInTheDocument();
     });
 
-    it('renders the speech analysis text inside the Cerita panel', () => {
+    it('renders the speech analysis text inside the story panel', () => {
         renderShow();
         expect(screen.getByText(/Solid run/)).toBeInTheDocument();
+    });
+
+    it('renders the run-insight claim inside the adaptive panel', () => {
+        renderShow();
+        expect(
+            screen.getByText('Decoupling stayed tight all the way through.'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('+3.2%')).toBeInTheDocument();
     });
 
     it('renders the kartu section with its own view (no link elsewhere) when a card exists', () => {
