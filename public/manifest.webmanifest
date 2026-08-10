@@ -1,8 +1,8 @@
 {
     "name": "Temari",
     "short_name": "Temari",
-    "description": "Temari, menemani larimu di setiap langkah.",
-    "lang": "id",
+    "description": "Temari, running alongside you every step.",
+    "lang": "en",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
@@ -16,21 +16,21 @@
     ],
     "shortcuts": [
         {
-            "name": "Hari Ini",
-            "short_name": "Hari Ini",
+            "name": "Today",
+            "short_name": "Today",
             "url": "/",
             "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
         },
         {
-            "name": "Riwayat",
-            "short_name": "Riwayat",
-            "url": "/aktivitas",
+            "name": "History",
+            "short_name": "History",
+            "url": "/activities",
             "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
         },
         {
-            "name": "Koleksi",
-            "short_name": "Koleksi",
-            "url": "/kartu",
+            "name": "Collection",
+            "short_name": "Collection",
+            "url": "/cards",
             "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
         }
     ]

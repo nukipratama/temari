@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     {{-- viewport-fit=cover is what makes env(safe-area-inset-*) resolve to real
@@ -11,15 +11,15 @@
 
     {{-- Default social preview for the app (e.g. a shared /login link). The
          public card page (public/kartu.blade.php) ships its own per-card tags. --}}
-    <meta name="description" content="Temari, menemani larimu di setiap langkah. Ubah lari dari Strava jadi kartu koleksi dan cerita ringan.">
+    <meta name="description" content="Temari, running alongside you every step. Turns your Strava runs into collectible cards and easygoing stories.">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Temari">
-    <meta property="og:description" content="Temari, menemani larimu di setiap langkah. Ubah lari dari Strava jadi kartu koleksi dan cerita ringan.">
+    <meta property="og:description" content="Temari, running alongside you every step. Turns your Strava runs into collectible cards and easygoing stories.">
     <meta property="og:image" content="{{ asset('og-default.png') }}">
     <meta property="og:site_name" content="Temari">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Temari">
-    <meta name="twitter:description" content="Temari, menemani larimu di setiap langkah.">
+    <meta name="twitter:description" content="Temari, running alongside you every step.">
     <meta name="twitter:image" content="{{ asset('og-default.png') }}">
 
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
