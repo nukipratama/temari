@@ -227,7 +227,7 @@ class BlueprintLibrary
                 weatherTempC: 32,
                 weatherHumidityPct: 88,
                 name: 'Midday tropical 10K',
-                tags: ['hari_panas'],
+                tags: ['heat_tamer'],
                 location: $this->loc(2),
             ),
             new RunBlueprint(
@@ -237,7 +237,7 @@ class BlueprintLibrary
                 hrProfile: HrProfile::Intervals,
                 cadenceSpm: 178,
                 name: 'Dawn 6×800m',
-                tags: ['anak_pagi', 'intervals'],
+                tags: ['early_bird', 'intervals'],
                 location: $this->loc(0),
                 // Warm-up, 6 × (800 m rep + 400 m recovery), then the remaining 800 m as a cool-down lap.
                 lapDistancesM: [1_000, 800, 400, 800, 400, 800, 400, 800, 400, 800, 400, 800, 400],
@@ -251,7 +251,7 @@ class BlueprintLibrary
                 weatherHumidityPct: 95,
                 weatherRainDetected: true,
                 name: 'Hujan deras 8K',
-                tags: ['pejuang_hujan'],
+                tags: ['rain_warrior'],
                 location: $this->loc(0),
             ),
             new RunBlueprint(
@@ -292,7 +292,7 @@ class BlueprintLibrary
                 weatherTempC: 32,
                 weatherHumidityPct: 88,
                 name: 'Midday tropical 10K',
-                tags: ['hari_panas'],
+                tags: ['heat_tamer'],
                 location: $this->loc(7),
             ),
             new RunBlueprint(
@@ -304,7 +304,7 @@ class BlueprintLibrary
                 weatherHumidityPct: 95,
                 weatherRainDetected: true,
                 name: 'Hujan deras 8K',
-                tags: ['pejuang_hujan'],
+                tags: ['rain_warrior'],
                 location: $this->loc(0),
             ),
             new RunBlueprint(
@@ -314,7 +314,7 @@ class BlueprintLibrary
                 hrProfile: HrProfile::Intervals,
                 cadenceSpm: 178,
                 name: 'Dawn 6×800m',
-                tags: ['anak_pagi', 'intervals'],
+                tags: ['early_bird', 'intervals'],
                 location: $this->loc(0),
                 // Warm-up, 6 × (800 m rep + 400 m recovery), then the remaining 800 m as a cool-down lap.
                 lapDistancesM: [1_000, 800, 400, 800, 400, 800, 400, 800, 400, 800, 400, 800, 400],

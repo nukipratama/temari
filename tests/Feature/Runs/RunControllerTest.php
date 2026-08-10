@@ -57,12 +57,12 @@ it('ships the persisted post-run mood per run so the list mascot matches the bac
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'mumet']);
+    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'overloaded']);
 
     $this->actingAs($user)->get('/activities')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where("moods.{$activity->id}", 'mumet'));
+            ->where("moods.{$activity->id}", 'overloaded'));
 });
 
 it('renders the empty state when the user has no analyzed runs yet', function (): void {
@@ -97,21 +97,21 @@ it('excludes runs outside the requested range', function (): void {
 });
 
 /**
- * Two runs a week apart, moods 'lemes' and 'nyala', both inside the default
+ * Two runs a week apart, moods 'gassed' and 'blazing', both inside the default
  * window. Returns [lemesActivity, nyalaActivity].
  *
  * @return array{0: Activity, 1: Activity}
  */
 function moodFixtures(User $user): array
 {
-    $lemes = Activity::factory()->for($user)->analyzed()->create();
-    $nyala = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($lemes)->create(['name' => 'Lemes run', 'start_date_local' => Carbon::now()->subDays(3)]);
-    ActivityDetail::factory()->for($nyala)->create(['name' => 'Nyala run', 'start_date_local' => Carbon::now()->subDays(10)]);
-    StoryLine::factory()->for($lemes)->create(['mood' => 'lemes']);
-    StoryLine::factory()->for($nyala)->create(['mood' => 'nyala']);
+    $gassed = Activity::factory()->for($user)->analyzed()->create();
+    $blazing = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($gassed)->create(['name' => 'Lemes run', 'start_date_local' => Carbon::now()->subDays(3)]);
+    ActivityDetail::factory()->for($blazing)->create(['name' => 'Nyala run', 'start_date_local' => Carbon::now()->subDays(10)]);
+    StoryLine::factory()->for($gassed)->create(['mood' => 'gassed']);
+    StoryLine::factory()->for($blazing)->create(['mood' => 'blazing']);
 
-    return [$lemes, $nyala];
+    return [$gassed, $blazing];
 }
 
 it('returns every run when no mood filter is applied', function (): void {
@@ -130,21 +130,21 @@ it('filters runs down to the selected mood', function (): void {
     $user = User::factory()->create();
     moodFixtures($user);
 
-    $this->actingAs($user)->get('/activities?mood=lemes')
+    $this->actingAs($user)->get('/activities?mood=gassed')
         ->assertInertia(fn (Assert $page) => $page
             ->has('runs', 1)
             ->where('runs.0.detail.name', 'Lemes run')
-            ->where('moodFilter', ['lemes']));
+            ->where('moodFilter', ['gassed']));
 });
 
 it('treats multiple moods as a union', function (): void {
     $user = User::factory()->create();
     moodFixtures($user);
 
-    $this->actingAs($user)->get('/activities?mood=lemes,nyala')
+    $this->actingAs($user)->get('/activities?mood=gassed,blazing')
         ->assertInertia(fn (Assert $page) => $page
             ->has('runs', 2)
-            ->where('moodFilter', ['lemes', 'nyala']));
+            ->where('moodFilter', ['gassed', 'blazing']));
 });
 
 it('excludes a run whose post-run story line has not been written yet', function (): void {
@@ -152,7 +152,7 @@ it('excludes a run whose post-run story line has not been written yet', function
     $unnarrated = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($unnarrated)->create(['start_date_local' => Carbon::now()->subDays(2)]);
 
-    $this->actingAs($user)->get('/activities?mood=lemes')
+    $this->actingAs($user)->get('/activities?mood=gassed')
         ->assertInertia(fn (Assert $page) => $page->has('runs', 0));
 });
 
@@ -161,7 +161,7 @@ it('never leaks another user runs through the mood filter', function (): void {
     $other = User::factory()->create();
     moodFixtures($other);
 
-    $this->actingAs($user)->get('/activities?mood=lemes,nyala')
+    $this->actingAs($user)->get('/activities?mood=gassed,blazing')
         ->assertInertia(fn (Assert $page) => $page->has('runs', 0));
 });
 
@@ -176,28 +176,28 @@ it('ignores unknown moods rather than erroring', function (): void {
             ->has('runs', 2)
             ->where('moodFilter', []));
 
-    $this->actingAs($user)->get('/activities?mood=bogus,lemes')
+    $this->actingAs($user)->get('/activities?mood=bogus,gassed')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->has('runs', 1)
-            ->where('moodFilter', ['lemes']));
+            ->where('moodFilter', ['gassed']));
 });
 
 it('combines the mood filter with the range window', function (): void {
     $user = User::factory()->create();
     $old = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($old)->create(['name' => 'Old lemes', 'start_date_local' => Carbon::now()->subDays(200)]);
-    StoryLine::factory()->for($old)->create(['mood' => 'lemes']);
+    ActivityDetail::factory()->for($old)->create(['name' => 'Old gassed', 'start_date_local' => Carbon::now()->subDays(200)]);
+    StoryLine::factory()->for($old)->create(['mood' => 'gassed']);
     moodFixtures($user);
 
-    // Default window excludes the 200-day-old lemes run.
-    $this->actingAs($user)->get('/activities?mood=lemes')
+    // Default window excludes the 200-day-old gassed run.
+    $this->actingAs($user)->get('/activities?mood=gassed')
         ->assertInertia(fn (Assert $page) => $page
             ->has('runs', 1)
             ->where('runs.0.detail.name', 'Lemes run'));
 
     // Widening the window brings it back.
-    $this->actingAs($user)->get('/activities?mood=lemes&range=1y')
+    $this->actingAs($user)->get('/activities?mood=gassed&range=1y')
         ->assertInertia(fn (Assert $page) => $page->has('runs', 2));
 });
 
@@ -251,7 +251,7 @@ it('combines distance, mood and range', function (): void {
         'distance' => 25_000,
         'start_date_local' => Carbon::now()->subDays(5),
     ]);
-    StoryLine::factory()->for($match)->create(['mood' => 'nyala']);
+    StoryLine::factory()->for($match)->create(['mood' => 'blazing']);
 
     // Same distance band, wrong mood.
     $wrongMood = Activity::factory()->for($user)->analyzed()->create();
@@ -260,9 +260,9 @@ it('combines distance, mood and range', function (): void {
         'distance' => 26_000,
         'start_date_local' => Carbon::now()->subDays(6),
     ]);
-    StoryLine::factory()->for($wrongMood)->create(['mood' => 'adem']);
+    StoryLine::factory()->for($wrongMood)->create(['mood' => 'chill']);
 
-    $this->actingAs($user)->get('/activities?dist=21up&mood=nyala')
+    $this->actingAs($user)->get('/activities?dist=21up&mood=blazing')
         ->assertInertia(fn (Assert $page) => $page
             ->has('runs', 1)
             ->where('runs.0.detail.name', 'Long tempo'));

@@ -90,21 +90,21 @@ it('PostRunSpeechNarrator returns speech on valid JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['speech' => 'Nice run today!'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
-    expect($narrator->generate($a, $d, 'nyala'))->toBe('Nice run today!');
+    expect($narrator->generate($a, $d, 'blazing'))->toBe('Nice run today!');
 });
 
 it('PostRunSpeechNarrator throws on non-JSON', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller('not json');
     $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
-    $narrator->generate($a, $d, 'nyala');
+    $narrator->generate($a, $d, 'blazing');
 })->throws(UnavailableException::class, 'non-JSON');
 
 it('PostRunSpeechNarrator throws on missing key', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
-    $narrator->generate($a, $d, 'nyala');
+    $narrator->generate($a, $d, 'blazing');
 })->throws(UnavailableException::class, 'missing speech');
 
 it('PostRunSpeechNarrator does not fatal when the stream summary is null', function (): void {
@@ -124,7 +124,7 @@ it('PostRunSpeechNarrator narrates a run with a populated stream summary', funct
     ]]);
     $caller = fakeCaller(json_encode(['speech' => 'Base solid'], JSON_THROW_ON_ERROR));
     $narrator = new PostRunSpeechNarrator($caller, app(PastYouMatcher::class));
-    expect($narrator->generate($a, $d->fresh(), 'nyala'))->toBe('Base solid');
+    expect($narrator->generate($a, $d->fresh(), 'blazing'))->toBe('Base solid');
 });
 
 // The speech used to be handed all three insight blocks as prose to synthesize.
@@ -136,7 +136,7 @@ it('PostRunSpeechNarrator is not handed the insight blocks it used to retell', f
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))
-        ->context($a, $d->fresh(), 'nyala');
+        ->context($a, $d->fresh(), 'blazing');
 
     expect($context)->not->toHaveKey('insights');
 });
@@ -165,13 +165,13 @@ function priorActivityWithDoneAnalysis(User $user, AnalysisType $kind, string $c
 
 it('PostRunSpeechNarrator feeds prev_narrative from the prior activity post-run when Done', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
-    priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'Lari kemarin enteng banget.');
+    priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'Lari kemarin easy banget.');
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala');
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'blazing');
 
-    expect($context['prev_narrative'])->toBe('Lari kemarin enteng banget.')
+    expect($context['prev_narrative'])->toBe('Lari kemarin easy banget.')
         // prev_opener is the first few words, so the model can steer away from it.
-        ->and($context['prev_opener'])->toBe('Lari kemarin enteng banget.');
+        ->and($context['prev_opener'])->toBe('Lari kemarin easy banget.');
 });
 
 it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done post-run', function (): void {
@@ -187,7 +187,7 @@ it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala');
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'blazing');
 
     expect($context['prev_narrative'])->toBeNull()
         ->and($context['prev_opener'])->toBeNull();
@@ -201,7 +201,7 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
         'Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup dan pace makin rapi di akhir.',
     );
 
-    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'nyala');
+    $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))->context($a, $d->fresh(), 'blazing');
 
     expect($context['prev_opener'])->toBe('Masih nyambung dari sesi kemarin, kali ini penutupmu lebih hidup')
         ->and(str_word_count((string) $context['prev_opener']))->toBeLessThanOrEqual(10);
@@ -211,7 +211,7 @@ it('PostRunSpeechNarrator keeps only what no tool can serve in the context', fun
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $context = new PostRunSpeechNarrator(fakeCaller('{"speech":"x"}'), app(PastYouMatcher::class))
-        ->context($a, $d->fresh(), 'nyala');
+        ->context($a, $d->fresh(), 'blazing');
 
     // mood is the call's own argument, so it is not readable from anywhere.
     expect(array_keys($context))
@@ -634,7 +634,7 @@ it('MonthTotalsTool reads month totals and the mood mix', function (): void {
     ]);
     StoryLine::factory()->for($user)->create([
         'activity_id' => $activity->id,
-        'mood' => 'nyala',
+        'mood' => 'blazing',
         'created_at' => Carbon::parse('2026-05-12T08:00'),
     ]);
 
@@ -643,12 +643,12 @@ it('MonthTotalsTool reads month totals and the mood mix', function (): void {
     expect($context['total_runs'])->toBe(1);
     expect($context['total_distance_km'])->toBe(8.0);
     expect($context['longest_run_km'])->toBe(8.0);
-    expect($context['mood_mix'][0]['mood'])->toBe('nyala');
+    expect($context['mood_mix'][0]['mood'])->toBe('blazing');
     expect($context['pr_count'])->toBe(0);
     expect($context['weekly_distance_km'])->toBeArray();
 
-    expect(new MonthlyRecapNarrator(fakeCaller('{"narrative":"Bulan ini mostly nyala."}'))->generate($user, $month))
-        ->toBe('Bulan ini mostly nyala.');
+    expect(new MonthlyRecapNarrator(fakeCaller('{"narrative":"Bulan ini mostly blazing."}'))->generate($user, $month))
+        ->toBe('Bulan ini mostly blazing.');
 });
 
 it('MonthTotalsTool counts PRs and buckets distance by week within the month', function (): void {
@@ -743,7 +743,7 @@ it('AkuProfileVoiceNarrator builds a mood-mix percent breakdown from story lines
     $user = User::factory()->create();
     $cutoff = Carbon::now()->subWeeks(11);
 
-    foreach (['nyala', 'nyala', 'nyala', 'adem', 'lemes'] as $mood) {
+    foreach (['blazing', 'blazing', 'blazing', 'chill', 'gassed'] as $mood) {
         $activity = Activity::factory()->for($user)->analyzed()->create();
         StoryLine::factory()->for($user)->create([
             'activity_id' => $activity->id,
@@ -752,15 +752,15 @@ it('AkuProfileVoiceNarrator builds a mood-mix percent breakdown from story lines
         ]);
     }
 
-    $caller = fakeCaller(json_encode(['profile_voice' => 'Larimu lebih sering nyala.'], JSON_THROW_ON_ERROR));
+    $caller = fakeCaller(json_encode(['profile_voice' => 'Larimu lebih sering blazing.'], JSON_THROW_ON_ERROR));
     $narrator = new AkuProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     $mix = $narrator->personaMix($user->fresh());
-    $nyala = collect($mix)->firstWhere('mood', 'nyala');
-    expect($nyala['mood'])->toBe('nyala');
-    expect($nyala['count'])->toBe(3);
-    expect($nyala['percent'])->toBe(60.0);
-    expect($narrator->generate($user->fresh()))->toBe('Larimu lebih sering nyala.');
+    $blazing = collect($mix)->firstWhere('mood', 'blazing');
+    expect($blazing['mood'])->toBe('blazing');
+    expect($blazing['count'])->toBe(3);
+    expect($blazing['percent'])->toBe(60.0);
+    expect($narrator->generate($user->fresh()))->toBe('Larimu lebih sering blazing.');
 });
 
 it('AkuProfileVoiceNarrator returns an empty mix for a user with no story lines', function (): void {

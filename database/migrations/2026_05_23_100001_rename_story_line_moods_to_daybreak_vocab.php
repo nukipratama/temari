@@ -9,22 +9,22 @@ use Illuminate\Support\Facades\DB;
  * Rename StoryLine.mood values to the Daybreak vocabulary.
  *
  * Old (legacy PHP enum) → New (Daybreak):
- *   glow      → nyala     (PR / hard win)
- *   bouncy    → enteng    (easy run)
- *   wobble    → lemes     (HR drift → brown-red color slot)
- *   squished  → oleng     (heat strain → amber color slot)
- *   spinning  → mumet     (overreaching / monotony spike)
- *   dim       → adem      (rest day / default)
+ *   glow      → blazing     (PR / hard win)
+ *   bouncy    → easy    (easy run)
+ *   wobble    → gassed     (HR drift → brown-red color slot)
+ *   squished  → wobbly     (heat strain → amber color slot)
+ *   spinning  → overloaded     (overreaching / monotony spike)
+ *   dim       → chill      (rest day / default)
  */
 return new class () extends Migration {
     /** @var array<string, string> */
     private const array MAP = [
-        'glow' => 'nyala',
-        'bouncy' => 'enteng',
-        'wobble' => 'lemes',
-        'squished' => 'oleng',
-        'spinning' => 'mumet',
-        'dim' => 'adem',
+        'glow' => 'blazing',
+        'bouncy' => 'easy',
+        'wobble' => 'gassed',
+        'squished' => 'wobbly',
+        'spinning' => 'overloaded',
+        'dim' => 'chill',
     ];
 
     public function up(): void

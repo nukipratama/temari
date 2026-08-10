@@ -79,7 +79,7 @@ it('appends a badge coda when the card carries a known badge', function (): void
     expect($flavor)->toContain('Second half');
 });
 
-it('appends the lawan_angin badge coda', function (): void {
+it('appends the headwind badge coda', function (): void {
     $card = seededCard(Rarity::Uncommon, 'Wind Breaker', [Badge::LawanAngin->value]);
 
     $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
@@ -147,7 +147,7 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
     'run insight zones (no detail)' => [AnalysisType::RunInsightZones, "The zone breakdown isn't fully readable yet."],
     'weekly recap' => [AnalysisType::WeeklyRecap, 'Your rhythm was pretty steady this week. Volume was reasonable, recovery got taken care of too.'],
     'pr context' => [AnalysisType::PrContext, 'This PR is the result of consistency over the past few weeks, not luck.'],
-    'aku profile voice' => [AnalysisType::AkuProfileVoice, "Your runs lean more **adem** than pushed, and it shows in how it adds up: slow, regular, never a big jump. The type who builds a base patiently. Keep the rhythm going, I'm tracking all of it here."],
+    'aku profile voice' => [AnalysisType::AkuProfileVoice, "Your runs lean more **chill** than pushed, and it shows in how it adds up: slow, regular, never a big jump. The type who builds a base patiently. Keep the rhythm going, I'm tracking all of it here."],
     'monthly recap' => [AnalysisType::MonthlyRecap, 'Your rhythm kept going this month. Not forcing it, not disappearing either. The kind of consistent I like to see.'],
 ]);
 

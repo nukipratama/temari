@@ -34,28 +34,28 @@ interface GoalsProps {
 
 const SLOT_LABEL: Record<string, string> = {
     medal: 'Medal',
-    ikat_kepala: 'Headband',
-    kaus: 'Shirt',
-    celana: 'Shorts',
-    sepatu: 'Shoes',
+    headband: 'Headband',
+    shirt: 'Shirt',
+    shorts: 'Shorts',
+    shoes: 'Shoes',
     aura: 'Aura',
 };
 
 const SLOT_ORDER = [
     'medal',
-    'ikat_kepala',
-    'kaus',
-    'celana',
-    'sepatu',
+    'headband',
+    'shirt',
+    'shorts',
+    'shoes',
     'aura',
 ] as const;
 
 const SLOT_ICONS: Record<string, string> = {
     medal: 'mdi:medal',
-    ikat_kepala: 'mdi:bandage',
-    kaus: 'mdi:tshirt-crew',
-    celana: 'mdi:lingerie',
-    sepatu: 'mdi:shoe-sneaker',
+    headband: 'mdi:bandage',
+    shirt: 'mdi:tshirt-crew',
+    shorts: 'mdi:lingerie',
+    shoes: 'mdi:shoe-sneaker',
     aura: 'mdi:blur',
 };
 

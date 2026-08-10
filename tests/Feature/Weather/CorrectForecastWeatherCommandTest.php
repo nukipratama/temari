@@ -110,13 +110,13 @@ it('does not touch RunCard badges when correcting weather', function (): void {
         'start_date_local' => now()->subDays(10),
         'weather_rain_detected' => true,
         'weather_rain_is_forecast' => true,
-        'vibe_state' => 'nyala',
+        'vibe_state' => 'blazing',
     ]);
 
     $this->artisan('weather:correct-forecast')->assertSuccessful();
 
     // The badge/vibe-derived state is untouched even though rainDetected flips.
-    expect($detail->fresh()->vibe_state)->toBe('nyala');
+    expect($detail->fresh()->vibe_state)->toBe('blazing');
 });
 
 it('does not let a permanently-uncorrectable old row starve fresher rows', function (): void {

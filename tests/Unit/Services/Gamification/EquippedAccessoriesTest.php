@@ -16,14 +16,14 @@ beforeEach(function (): void {
 it('maps unlock keys to slots via the catalog config', function (string $key, ?string $slot): void {
     expect($this->service->slotFor($key))->toBe($slot);
 })->with([
-    ['accessory.ikat_kepala_legendaris', 'ikat_kepala'],
-    ['accessory.ikat_kepala_epik', 'ikat_kepala'],
-    ['accessory.medal_emas', 'medal'],
-    ['accessory.medal_pertama', 'medal'],
-    ['accessory.kaus_pemula', 'kaus'],
-    ['accessory.celana_ringan', 'celana'],
-    ['accessory.sepatu_basic', 'sepatu'],
-    ['accessory.aura_pemanasan', 'aura'],
+    ['accessory.headband_legendary', 'headband'],
+    ['accessory.headband_epic', 'headband'],
+    ['accessory.medal_gold', 'medal'],
+    ['accessory.medal_first', 'medal'],
+    ['accessory.shirt_beginner', 'shirt'],
+    ['accessory.shorts_lightweight', 'shorts'],
+    ['accessory.shoes_basic', 'shoes'],
+    ['accessory.aura_warmup', 'aura'],
     ['accessory.unknown_thing', null],
 ]);
 
@@ -31,10 +31,10 @@ it('returns an empty equipped set for a null user', function (): void {
     $result = $this->service->forUser(null);
     expect($result)->toBe([
         'medal' => null,
-        'ikat_kepala' => null,
-        'kaus' => null,
-        'celana' => null,
-        'sepatu' => null,
+        'headband' => null,
+        'shirt' => null,
+        'shorts' => null,
+        'shoes' => null,
         'aura' => null,
     ]);
 });
@@ -42,17 +42,17 @@ it('returns an empty equipped set for a null user', function (): void {
 it('returns an empty equipped set when nothing is equipped', function (): void {
     $user = User::factory()->create();
     UserUnlock::factory()->for($user)->create([
-        'unlock_key' => 'accessory.ikat_kepala_legendaris',
+        'unlock_key' => 'accessory.headband_legendary',
         'equipped' => false,
     ]);
 
     $result = $this->service->forUser($user);
     expect($result)->toBe([
         'medal' => null,
-        'ikat_kepala' => null,
-        'kaus' => null,
-        'celana' => null,
-        'sepatu' => null,
+        'headband' => null,
+        'shirt' => null,
+        'shorts' => null,
+        'shoes' => null,
         'aura' => null,
     ]);
 });
@@ -60,29 +60,29 @@ it('returns an empty equipped set when nothing is equipped', function (): void {
 it('picks one equipped item when two items compete for the same slot', function (): void {
     $user = User::factory()->create();
     UserUnlock::factory()->for($user)->equipped()->create([
-        'unlock_key' => 'accessory.ikat_kepala_legendaris',
+        'unlock_key' => 'accessory.headband_legendary',
     ]);
     UserUnlock::factory()->for($user)->equipped()->create([
-        'unlock_key' => 'accessory.ikat_kepala_epik',
+        'unlock_key' => 'accessory.headband_epic',
     ]);
 
     $result = $this->service->forUser($user);
-    expect($result['ikat_kepala'])->not->toBeNull();
+    expect($result['headband'])->not->toBeNull();
 });
 
 it('resolves equipped accessories into unlock keys per slot', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.ikat_kepala_legendaris']);
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_emas']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.headband_legendary']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
     // An unlocked-but-unequipped medal must not leak into the result.
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_pertama', 'equipped' => false]);
+    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_first', 'equipped' => false]);
 
     expect($this->service->forUser($user))->toBe([
-        'medal' => 'accessory.medal_emas',
-        'ikat_kepala' => 'accessory.ikat_kepala_legendaris',
-        'kaus' => null,
-        'celana' => null,
-        'sepatu' => null,
+        'medal' => 'accessory.medal_gold',
+        'headband' => 'accessory.headband_legendary',
+        'shirt' => null,
+        'shorts' => null,
+        'shoes' => null,
         'aura' => null,
     ]);
 });

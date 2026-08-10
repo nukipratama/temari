@@ -16,9 +16,9 @@ interface KpiTileProps {
 }
 
 const TONE_CLASS: Record<Tone, string> = {
-    positive: 'text-mood-enteng',
-    warning: 'text-mood-nyala',
-    alert: 'text-mood-lemes',
+    positive: 'text-mood-easy',
+    warning: 'text-mood-blazing',
+    alert: 'text-mood-gassed',
     neutral: 'text-ink',
 };
 

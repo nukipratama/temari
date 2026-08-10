@@ -78,10 +78,10 @@ it('answers with safe guest defaults when nobody is signed in', function (): voi
         ->and(($props['pendingReveal'])())->toBeNull()
         ->and(($props['equippedAccessories'])())->toBe([
             'medal' => null,
-            'ikat_kepala' => null,
-            'kaus' => null,
-            'celana' => null,
-            'sepatu' => null,
+            'headband' => null,
+            'shirt' => null,
+            'shorts' => null,
+            'shoes' => null,
             'aura' => null,
         ]);
 });

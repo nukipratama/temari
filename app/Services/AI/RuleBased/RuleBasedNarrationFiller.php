@@ -362,12 +362,12 @@ final readonly class RuleBasedNarrationFiller
     private function akuProfileVoice(int $seed): string
     {
         return $this->select([
-            "Your runs lean more **adem** than pushed, and it shows in how it adds up: slow, regular, never a big jump. The type who builds a base patiently. Keep the rhythm going, I'm tracking all of it here.",
-            "Your mood spread leans **enteng** and the numbers back it up: you keep coming back without any drama, week after week. This kind of consistency is what makes progress last, so no need to rush the ramp-up.",
+            "Your runs lean more **chill** than pushed, and it shows in how it adds up: slow, regular, never a big jump. The type who builds a base patiently. Keep the rhythm going, I'm tracking all of it here.",
+            "Your mood spread leans **easy** and the numbers back it up: you keep coming back without any drama, week after week. This kind of consistency is what makes progress last, so no need to rush the ramp-up.",
             "You're the type who picks routine over flash, and your weekly streak proves it. Base first, speed follows. Whenever you want to slip in a bigger session, you've already got the foundation for it.",
-            "Lately **nyala** shows up more often than the quieter months before, and the records you've picked up follow that same direction. You're in a bold phase right now. Keep one easy run in the mix so it doesn't run away from you.",
-            "Your running mood mixes **nyala** and **oleng**, and your longest distance reads like it was born on the bold days. You like to push, that's a good thing. One relaxed session in between will make the hard ones feel lighter.",
-            "Your pattern reads disciplined: mostly **adem**, occasionally pushed, and your total km builds up from that, not from one heroic run. A healthy way to build. Just keep going steady.",
+            "Lately **blazing** shows up more often than the quieter months before, and the records you've picked up follow that same direction. You're in a bold phase right now. Keep one easy run in the mix so it doesn't run away from you.",
+            "Your running mood mixes **blazing** and **wobbly**, and your longest distance reads like it was born on the bold days. You like to push, that's a good thing. One relaxed session in between will make the hard ones feel lighter.",
+            "Your pattern reads disciplined: mostly **chill**, occasionally pushed, and your total km builds up from that, not from one heroic run. A healthy way to build. Just keep going steady.",
             "You're just getting started and the mix is still thin, but you've already come back again and again. To me, that's already a story. We'll build it slowly, so the persona reading actually has substance later.",
         ], $seed);
     }

@@ -202,10 +202,10 @@ describe('WeekSection', () => {
         );
 
         expect(screen.getByText('2.10').parentElement).toHaveClass(
-            'bg-mood-lemes/15',
+            'bg-mood-gassed/15',
         );
         expect(screen.getByText('9.4%').parentElement).toHaveClass(
-            'bg-mood-lemes/15',
+            'bg-mood-gassed/15',
         );
     });
 

@@ -64,7 +64,7 @@ const TWO_WEEK_CELLS: CalendarCell[] = cellsFor([
         trimp: 50,
         pace_sec_per_km: 360,
         avg_hr: 145,
-        mood: 'enteng',
+        mood: 'easy',
         activity_id: 100,
     },
     { date: '2026-05-02', day: 2, is_current_month: true },
@@ -78,7 +78,7 @@ const TWO_WEEK_CELLS: CalendarCell[] = cellsFor([
         trimp: 80,
         pace_sec_per_km: 380,
         avg_hr: 150,
-        mood: 'nyala',
+        mood: 'blazing',
         activity_id: 101,
     },
     { date: '2026-05-06', day: 6, is_current_month: true },
@@ -89,7 +89,7 @@ const TWO_WEEK_CELLS: CalendarCell[] = cellsFor([
         is_today: true,
         distance_km: 3.5,
         trimp: 25,
-        mood: 'mumet',
+        mood: 'overloaded',
         activity_id: 102,
     },
     { date: '2026-05-08', day: 8, is_current_month: true },
@@ -296,9 +296,9 @@ describe('Calendar', () => {
             <Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />,
         );
         fireEvent.click(screen.getByRole('button', { name: /filter/i }));
-        // Toggle only "Nyala" — cells with mood enteng/mumet should now be dimmed.
+        // Toggle only "Nyala" — cells with mood easy/overloaded should now be dimmed.
         fireEvent.click(screen.getByRole('button', { name: /Blazing/ }));
-        // Find the May 1 cell (mood: enteng, activity_id: 100) — it should pick up the dim opacity class.
+        // Find the May 1 cell (mood: easy, activity_id: 100) — it should pick up the dim opacity class.
         const link = container.querySelector('a[href="/activities/100"]');
         expect(link?.className).toContain('opacity-30');
     });
@@ -330,7 +330,7 @@ describe('Calendar', () => {
                 is_current_month: true,
                 distance_km: 10,
                 trimp: 100,
-                mood: 'lemes',
+                mood: 'gassed',
                 activity_id: null,
             },
             { date: '2026-05-02', day: 2, is_current_month: true },
@@ -514,21 +514,21 @@ describe('Calendar', () => {
 describe('dominantMoodOf', () => {
     it("picks the most frequent run mood among the month's own days", () => {
         const cells = cellsFor([
-            { date: '2026-05-01', day: 1, mood: 'nyala' },
-            { date: '2026-05-02', day: 2, mood: 'adem' },
-            { date: '2026-05-03', day: 3, mood: 'adem' },
+            { date: '2026-05-01', day: 1, mood: 'blazing' },
+            { date: '2026-05-02', day: 2, mood: 'chill' },
+            { date: '2026-05-03', day: 3, mood: 'chill' },
             { date: '2026-05-04', day: 4, mood: null },
         ]);
-        expect(dominantMoodOf(cells)).toBe('adem');
+        expect(dominantMoodOf(cells)).toBe('chill');
     });
 
     it('breaks ties by MOOD_ORDER so the pick is deterministic', () => {
-        // nyala and adem each appear once; nyala is earlier in MOOD_ORDER.
+        // blazing and chill each appear once; blazing is earlier in MOOD_ORDER.
         const cells = cellsFor([
-            { date: '2026-05-01', day: 1, mood: 'adem' },
-            { date: '2026-05-02', day: 2, mood: 'nyala' },
+            { date: '2026-05-01', day: 1, mood: 'chill' },
+            { date: '2026-05-02', day: 2, mood: 'blazing' },
         ]);
-        expect(dominantMoodOf(cells)).toBe('nyala');
+        expect(dominantMoodOf(cells)).toBe('blazing');
     });
 
     it('excludes padding days from adjacent months', () => {
@@ -537,22 +537,22 @@ describe('dominantMoodOf', () => {
                 date: '2026-04-30',
                 day: 30,
                 is_current_month: false,
-                mood: 'adem',
+                mood: 'chill',
             },
             {
                 date: '2026-04-29',
                 day: 29,
                 is_current_month: false,
-                mood: 'adem',
+                mood: 'chill',
             },
             {
                 date: '2026-05-01',
                 day: 1,
                 is_current_month: true,
-                mood: 'nyala',
+                mood: 'blazing',
             },
         ]);
-        expect(dominantMoodOf(cells)).toBe('nyala');
+        expect(dominantMoodOf(cells)).toBe('blazing');
     });
 
     it('returns null when the month has no runs', () => {

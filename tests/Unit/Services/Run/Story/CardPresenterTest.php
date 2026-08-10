@@ -116,10 +116,10 @@ it('prefers the post-run story line mood', function (): void {
         'user_id' => $user->id,
         'activity_id' => $card->activity_id,
         'kind' => StoryLine::KIND_POST_RUN,
-        'mood' => 'oleng',
+        'mood' => 'wobbly',
     ]);
 
-    expect(app(CardPresenter::class)->mood($card->fresh()))->toBe('oleng');
+    expect(app(CardPresenter::class)->mood($card->fresh()))->toBe('wobbly');
 });
 
 it('falls back to the derived mood when there is no post-run story line', function (): void {

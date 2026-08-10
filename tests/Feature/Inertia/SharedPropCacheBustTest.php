@@ -44,7 +44,7 @@ function warmSharedProps(User $user): void
 
 it('serves a cached prop without recomputing it on the next request', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_emas']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
 
     warmSharedProps($user);
 
@@ -58,25 +58,25 @@ it('serves a cached prop without recomputing it on the next request', function (
     visitAs($user)
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('equippedAccessories.medal', 'accessory.medal_emas'));
+            ->where('equippedAccessories.medal', 'accessory.medal_gold'));
 
     expect($queries)->toBe(0);
 });
 
 it('reflects an accessory swap on the very next request', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_emas']);
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_perak', 'equipped' => false]);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
+    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_silver', 'equipped' => false]);
 
     warmSharedProps($user);
 
     $this->actingAs($user)
-        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_perak'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_silver'])
         ->assertRedirect();
 
     visitAs($user)
         ->assertInertia(fn (Assert $page) => $page
-            ->where('equippedAccessories.medal', 'accessory.medal_perak'));
+            ->where('equippedAccessories.medal', 'accessory.medal_silver'));
 });
 
 it('reflects a Telegram connect on the very next request', function (): void {
@@ -223,14 +223,14 @@ it('reflects a first Strava connect in stravaSync on the very next request', fun
 it('busts only the acting user cache, never a bystander', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();
-    UserUnlock::factory()->for($other)->equipped()->create(['unlock_key' => 'accessory.medal_emas']);
+    UserUnlock::factory()->for($other)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
 
     warmSharedProps($other);
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_perak']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_silver']);
     warmSharedProps($user);
 
     $this->actingAs($user)
-        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_perak'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_silver'])
         ->assertRedirect();
 
     expect(Cache::has(SharedPropCacheKey::EquippedAccessories->key($other->id)))->toBeTrue()

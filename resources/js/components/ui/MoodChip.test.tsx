@@ -7,27 +7,27 @@ import MoodChip from './MoodChip';
 
 describe('MoodChip', () => {
     it.each([
-        'nyala',
-        'enteng',
-        'lemes',
-        'oleng',
-        'mumet',
-        'adem',
+        'blazing',
+        'easy',
+        'gassed',
+        'wobbly',
+        'overloaded',
+        'chill',
     ] satisfies Mood[])('renders default label for mood %s', (mood) => {
         const expected = {
-            nyala: 'Blazing',
-            enteng: 'Easy',
-            lemes: 'Gassed',
-            oleng: 'Wobbly',
-            mumet: 'Overloaded',
-            adem: 'Chill',
+            blazing: 'Blazing',
+            easy: 'Easy',
+            gassed: 'Gassed',
+            wobbly: 'Wobbly',
+            overloaded: 'Overloaded',
+            chill: 'Chill',
         }[mood];
         render(<MoodChip mood={mood} />);
         expect(screen.getByText(expected)).toBeInTheDocument();
     });
 
     it('honours an explicit label override', () => {
-        render(<MoodChip mood="nyala" label="Custom" />);
+        render(<MoodChip mood="blazing" label="Custom" />);
         expect(screen.getByText('Custom')).toBeInTheDocument();
     });
 });

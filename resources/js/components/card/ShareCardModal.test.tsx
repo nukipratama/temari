@@ -48,7 +48,7 @@ const kartu: ShareKartuData = {
     name: 'Counter Kick',
     shareUrl: '/activities/7',
     rarity: 'epic',
-    mood: 'enteng',
+    mood: 'easy',
     subtitle: 'Negative-split morning · 20 Mei 2026',
     date: '20 Mei 2026\n07:00',
     km: '5.28',

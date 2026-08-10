@@ -3,7 +3,7 @@
 //
 // NOTE: mood names also appear as chips on individual run rows, so the filter
 // buttons must be scoped by [aria-pressed] — only they carry it. A loose
-// getByRole('button', {name: /Nyala/}) matches 9 nodes and silently clicks the
+// getByRole('button', {name: /Blazing/}) matches 9 nodes and silently clicks the
 // wrong one.
 import { chromium } from 'playwright';
 import { BASE, VIEWPORT_DEFS, login, dismissReveal } from './lib.mjs';
@@ -30,7 +30,7 @@ const unfiltered = await rows();
 console.log(`UNFILTERED rows=${unfiltered}`);
 
 await page.getByLabel('Buka filter').click();
-await moodButton('Nyala').click();
+await moodButton('Blazing').click();
 await page.waitForTimeout(2000);
 
 const filtered = await rows();
@@ -48,10 +48,10 @@ console.log(`AFTER_RELOAD rows=${await rows()} SURVIVES=${(await rows()) === fil
 
 // Pressed state comes back from the server prop.
 await page.getByLabel('Buka filter').click();
-console.log(`PRESSED_AFTER_RELOAD=${await moodButton('Nyala').getAttribute('aria-pressed')}`);
+console.log(`PRESSED_AFTER_RELOAD=${await moodButton('Blazing').getAttribute('aria-pressed')}`);
 
 // A mood the user has none of shows the no-match state, not the onboarding one.
-await page.goto(`/activities?mood=lemes`, { waitUntil: 'networkidle' });
+await page.goto(`/activities?mood=gassed`, { waitUntil: 'networkidle' });
 console.log(`NO_MATCH rows=${await rows()}`);
 console.log(`NO_MATCH_STATE=${await page.getByText('Gak ada lari yang cocok.').isVisible()}`);
 await page.getByRole('button', { name: /Reset filter/ }).click();

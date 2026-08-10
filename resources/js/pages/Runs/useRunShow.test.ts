@@ -51,7 +51,7 @@ const storyLine: StoryLine = {
     user_id: 1,
     activity_id: 99,
     kind: 'post_run',
-    mood: 'nyala',
+    mood: 'blazing',
     speech: null,
     sigil_pattern: 'ssss',
     for_date: null,
@@ -62,7 +62,7 @@ function hookProps(overrides: Partial<Parameters<typeof useRunShow>[0]> = {}) {
         detail,
         card: runCard,
         storyLine,
-        moodFallback: 'adem' as const,
+        moodFallback: 'chill' as const,
         relativeEffort: null,
         ...overrides,
     };
@@ -71,14 +71,14 @@ function hookProps(overrides: Partial<Parameters<typeof useRunShow>[0]> = {}) {
 describe('useRunShow', () => {
     it('uses the story-line mood over the fallback when present', () => {
         const { result } = renderHook(() => useRunShow(hookProps()));
-        expect(result.current.mood).toBe('nyala');
+        expect(result.current.mood).toBe('blazing');
     });
 
     it('falls back to moodFallback when there is no story line', () => {
         const { result } = renderHook(() =>
-            useRunShow(hookProps({ storyLine: null, moodFallback: 'oleng' })),
+            useRunShow(hookProps({ storyLine: null, moodFallback: 'wobbly' })),
         );
-        expect(result.current.mood).toBe('oleng');
+        expect(result.current.mood).toBe('wobbly');
     });
 
     it('formats km, pace, hr, and trimp from the detail', () => {
@@ -188,7 +188,7 @@ describe('useRunShow', () => {
             id: 1,
             name: 'Iron Lungs',
             shareUrl: '/activities/255',
-            mood: 'nyala',
+            mood: 'blazing',
         });
 
         const { result: withoutCard } = renderHook(() =>

@@ -140,8 +140,8 @@ describe('formatIdDateUpper', () => {
 
 describe('MOOD_UPPER', () => {
     it('uppercases every mood value', () => {
-        expect(MOOD_UPPER.nyala).toBe('NYALA');
-        expect(MOOD_UPPER.adem).toBe('ADEM');
+        expect(MOOD_UPPER.blazing).toBe('NYALA');
+        expect(MOOD_UPPER.chill).toBe('ADEM');
     });
 });
 

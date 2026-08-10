@@ -20,7 +20,7 @@ const kartu: ShareKartuData = {
     name: 'Patient Hunter',
     shareUrl: '/activities/1',
     rarity: 'legendary',
-    mood: 'nyala',
+    mood: 'blazing',
     subtitle: null,
     date: '30 Mei 2026\n06:30',
     km: '42.61',

@@ -1,61 +1,61 @@
 import type { Mood } from '@/types/inertia';
 
 export const MOOD_FACE: Record<Mood, string> = {
-    nyala: '✨',
-    enteng: '🦘',
-    lemes: '🥵',
-    oleng: '🍳',
-    mumet: '💫',
-    adem: '🌧️',
+    blazing: '✨',
+    easy: '🦘',
+    gassed: '🥵',
+    wobbly: '🍳',
+    overloaded: '💫',
+    chill: '🌧️',
 };
 
 export const MOOD_LABEL: Record<Mood, string> = {
-    nyala: 'Blazing',
-    enteng: 'Easy',
-    lemes: 'Gassed',
-    oleng: 'Wobbly',
-    mumet: 'Overloaded',
-    adem: 'Chill',
+    blazing: 'Blazing',
+    easy: 'Easy',
+    gassed: 'Gassed',
+    wobbly: 'Wobbly',
+    overloaded: 'Overloaded',
+    chill: 'Chill',
 };
 
 // Solid mood fill (bg-mood-{key}); use for persona bar segments + sigil swatches.
 export const MOOD_FILL: Record<Mood, string> = {
-    nyala: 'bg-mood-nyala',
-    enteng: 'bg-mood-enteng',
-    lemes: 'bg-mood-lemes',
-    oleng: 'bg-mood-oleng',
-    mumet: 'bg-mood-mumet',
-    adem: 'bg-mood-adem',
+    blazing: 'bg-mood-blazing',
+    easy: 'bg-mood-easy',
+    gassed: 'bg-mood-gassed',
+    wobbly: 'bg-mood-wobbly',
+    overloaded: 'bg-mood-overloaded',
+    chill: 'bg-mood-chill',
 };
 
 // Soft tinted fill (bg-mood-{key}-bg); use for chip backgrounds where text sits on top.
 export const MOOD_SOFT_FILL: Record<Mood, string> = {
-    nyala: 'bg-mood-nyala-bg',
-    enteng: 'bg-mood-enteng-bg',
-    lemes: 'bg-mood-lemes-bg',
-    oleng: 'bg-mood-oleng-bg',
-    mumet: 'bg-mood-mumet-bg',
-    adem: 'bg-mood-adem-bg',
+    blazing: 'bg-mood-blazing-bg',
+    easy: 'bg-mood-easy-bg',
+    gassed: 'bg-mood-gassed-bg',
+    wobbly: 'bg-mood-wobbly-bg',
+    overloaded: 'bg-mood-overloaded-bg',
+    chill: 'bg-mood-chill-bg',
 };
 
 // Canonical mood ordering for legends + filter rows (best-day → rest-day).
 export const MOOD_ORDER: ReadonlyArray<Mood> = [
-    'nyala',
-    'enteng',
-    'oleng',
-    'lemes',
-    'mumet',
-    'adem',
+    'blazing',
+    'easy',
+    'wobbly',
+    'gassed',
+    'overloaded',
+    'chill',
 ];
 
 // Short cause hint per mood; pairs with MOOD_LABEL in filter/legend rows.
 export const MOOD_HINT: Record<Mood, string> = {
-    nyala: 'PR or win',
-    enteng: 'easy pace',
-    oleng: 'HR drift',
-    lemes: 'pushed too hard',
-    mumet: 'overdid it',
-    adem: 'rest day',
+    blazing: 'PR or win',
+    easy: 'easy pace',
+    wobbly: 'HR drift',
+    gassed: 'pushed too hard',
+    overloaded: 'overdid it',
+    chill: 'rest day',
 };
 
 export interface MoodOption {
@@ -81,17 +81,17 @@ export function moodToken(mood: Mood): Mood {
 
 export function moodSigilColor(mood: Mood): string {
     switch (mood) {
-        case 'nyala':
+        case 'blazing':
             return '#d99a1a';
-        case 'enteng':
+        case 'easy':
             return '#c83a76';
-        case 'lemes':
+        case 'gassed':
             return '#b8302f';
-        case 'oleng':
+        case 'wobbly':
             return '#c46f1c';
-        case 'mumet':
+        case 'overloaded':
             return '#6b4ea8';
-        case 'adem':
+        case 'chill':
         default:
             return '#6e7b72';
     }

@@ -6,7 +6,7 @@ describe('DAYBREAK chart token bridge', () => {
     it('mirrors the canonical Daybreak hex values from app.css @theme', () => {
         expect(DAYBREAK.leaf).toBe('#6b8e6f');
         expect(DAYBREAK.ember).toBe('#c4623f');
-        expect(DAYBREAK.mumet).toBe('#7b5bb6');
+        expect(DAYBREAK.overloaded).toBe('#7b5bb6');
         expect(DAYBREAK.horizon).toBe('#e8a076');
         expect(DAYBREAK.citrus).toBe('#d9b23a');
     });

@@ -35,7 +35,7 @@ const briefing: BriefingResult = {
     streakLabel: 'Ran today',
     sigilPattern: 'orct',
     accessory: null,
-    mood: 'nyala',
+    mood: 'blazing',
 };
 
 const load: TrainingLoad = {

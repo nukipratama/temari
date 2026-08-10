@@ -20,10 +20,10 @@ class GrantEligibleUnlocksAction
 {
     /** Keys that trigger the full-screen unlock takeover instead of the toast. */
     private const array MAJOR_KEYS = [
-        'accessory.ikat_kepala_legendaris',
-        'accessory.kaus_legendaris',
-        'accessory.sepatu_legendaris',
-        'accessory.aura_jagoan',
+        'accessory.headband_legendary',
+        'accessory.shirt_legendary',
+        'accessory.shoes_legendary',
+        'accessory.aura_champion',
     ];
 
     /** @var list<string>|null */
@@ -108,16 +108,16 @@ class GrantEligibleUnlocksAction
     {
         $keys = [];
         if ($ctx->prCount >= 1) {
-            $keys[] = 'accessory.medal_pertama';
+            $keys[] = 'accessory.medal_first';
         }
         if ($ctx->prCount >= 5) {
-            $keys[] = 'accessory.medal_emas';
+            $keys[] = 'accessory.medal_gold';
         }
         if ($ctx->prCount >= 10) {
-            $keys[] = 'accessory.medal_perak';
+            $keys[] = 'accessory.medal_silver';
         }
         if ($ctx->prCount >= 20) {
-            $keys[] = 'accessory.medal_platina';
+            $keys[] = 'accessory.medal_platinum';
         }
 
         return $keys;
@@ -130,16 +130,16 @@ class GrantEligibleUnlocksAction
         $rc = $ctx->rarityCounts;
 
         if (($rc[Rarity::Uncommon->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.ikat_kepala_berkesan';
+            $keys[] = 'accessory.headband_uncommon';
         }
         if (($rc[Rarity::Rare->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.ikat_kepala_langka';
+            $keys[] = 'accessory.headband_rare';
         }
         if (($rc[Rarity::Epic->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.ikat_kepala_epik';
+            $keys[] = 'accessory.headband_epic';
         }
         if (($rc[Rarity::Legendary->value] ?? 0) >= 1) {
-            $keys[] = 'accessory.ikat_kepala_legendaris';
+            $keys[] = 'accessory.headband_legendary';
         }
 
         return $keys;
@@ -151,16 +151,16 @@ class GrantEligibleUnlocksAction
         $keys = [];
 
         if ($ctx->activityCount >= 1) {
-            $keys[] = 'accessory.kaus_pemula';
+            $keys[] = 'accessory.shirt_beginner';
         }
         if (($ctx->badgeCounts[Badge::AnakPagi->value] ?? 0) >= 5) {
-            $keys[] = 'accessory.kaus_pagi';
+            $keys[] = 'accessory.shirt_early_bird';
         }
         if (($ctx->badgeCounts[Badge::PejuangHujan->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.kaus_hujan';
+            $keys[] = 'accessory.shirt_rain_warrior';
         }
         if ($ctx->activityCount >= 50) {
-            $keys[] = 'accessory.kaus_legendaris';
+            $keys[] = 'accessory.shirt_legendary';
         }
 
         return $keys;
@@ -172,16 +172,16 @@ class GrantEligibleUnlocksAction
         $keys = [];
 
         if ($ctx->fiveKPlus >= 1) {
-            $keys[] = 'accessory.celana_ringan';
+            $keys[] = 'accessory.shorts_lightweight';
         }
         if ($ctx->tenKPlus >= 1) {
-            $keys[] = 'accessory.celana_jarak';
+            $keys[] = 'accessory.shorts_explorer';
         }
         if (($ctx->badgeCounts[Badge::NegativeSplit->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.celana_split';
+            $keys[] = 'accessory.shorts_negative_split';
         }
         if ($ctx->halfMarathon >= 1) {
-            $keys[] = 'accessory.celana_maraton';
+            $keys[] = 'accessory.shorts_marathon';
         }
 
         return $keys;
@@ -193,18 +193,18 @@ class GrantEligibleUnlocksAction
         $keys = [];
 
         if ($ctx->activityCount >= 10) {
-            $keys[] = 'accessory.sepatu_basic';
+            $keys[] = 'accessory.shoes_basic';
         }
 
         if ($ctx->fastPace >= 1) {
-            $keys[] = 'accessory.sepatu_cepat';
+            $keys[] = 'accessory.shoes_speed';
         }
 
         if ($ctx->tenKPlus >= 5) {
-            $keys[] = 'accessory.sepatu_tahan';
+            $keys[] = 'accessory.shoes_rugged';
         }
         if ($ctx->totalDistanceM >= 1_000_000) {
-            $keys[] = 'accessory.sepatu_legendaris';
+            $keys[] = 'accessory.shoes_legendary';
         }
 
         return $keys;
@@ -216,19 +216,19 @@ class GrantEligibleUnlocksAction
         $keys = [];
 
         if ($ctx->twoWeekStreak >= 2) {
-            $keys[] = 'accessory.aura_pemanasan';
+            $keys[] = 'accessory.aura_warmup';
         }
         if (($ctx->badgeCounts[Badge::HariPanas->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.aura_gerah';
+            $keys[] = 'accessory.aura_heatwave';
         }
         if (($ctx->badgeCounts[Badge::Z2Master->value] ?? 0) >= 5) {
-            $keys[] = 'accessory.aura_tenang';
+            $keys[] = 'accessory.aura_calm';
         }
         if (($ctx->rarityCounts[Rarity::Legendary->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.aura_jagoan';
+            $keys[] = 'accessory.aura_champion';
         }
         if (($ctx->badgeCounts[Badge::LawanAngin->value] ?? 0) >= 3) {
-            $keys[] = 'accessory.aura_angin';
+            $keys[] = 'accessory.aura_windrunner';
         }
 
         return $keys;

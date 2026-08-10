@@ -114,12 +114,12 @@ export function vibeSubtitleFor(label: string): string {
 }
 
 export const MOOD_UPPER: Record<Mood, string> = {
-    nyala: 'NYALA',
-    enteng: 'ENTENG',
-    oleng: 'OLENG',
-    lemes: 'LEMES',
-    mumet: 'MUMET',
-    adem: 'ADEM',
+    blazing: 'NYALA',
+    easy: 'ENTENG',
+    wobbly: 'OLENG',
+    gassed: 'LEMES',
+    overloaded: 'MUMET',
+    chill: 'ADEM',
 };
 
 export function formatIdDateUpper(iso: string | null): string {

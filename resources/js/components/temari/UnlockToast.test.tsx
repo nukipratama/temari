@@ -33,7 +33,7 @@ describe('UnlockToast', () => {
     it('renders toast when flash.unlock is present', () => {
         setMockPage({
             flash: flashWithUnlock({
-                unlock_key: 'accessory.medal_emas',
+                unlock_key: 'accessory.medal_gold',
                 name: 'Medali Emas',
                 icon: 'mdi:medal',
             }),
@@ -46,7 +46,7 @@ describe('UnlockToast', () => {
     it('clears the mobile bottom nav with a safe-area-aware offset, resetting to bottom-6 on lg', () => {
         setMockPage({
             flash: flashWithUnlock({
-                unlock_key: 'accessory.medal_emas',
+                unlock_key: 'accessory.medal_gold',
                 name: 'Medali Emas',
                 icon: 'mdi:medal',
             }),

@@ -82,14 +82,14 @@ it('links a single-run day to its activity and attaches the mood', function (): 
     ]);
     StoryLine::factory()->for($activity)->create([
         'kind' => StoryLine::KIND_POST_RUN,
-        'mood' => 'nyala',
+        'mood' => 'blazing',
     ]);
 
     $cells = ($this->buildCells)($this->user);
     $cell = cellOn($cells, '2026-05-10');
 
     expect($cell['activity_id'])->toBe($activity->id)
-        ->and($cell['mood'])->toBe('nyala')
+        ->and($cell['mood'])->toBe('blazing')
         ->and($cell['pace_sec_per_km'])->toBe(300.0); // 1500s / 5km
 });
 

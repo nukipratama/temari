@@ -55,16 +55,16 @@ it('does not block a normal user from the same notification-preference write', f
 
 it('does not block a demo user from equipping an accessory (interactive sandbox)', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_pertama']);
+    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_first']);
 
     $this->actingAs($user)
-        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_pertama'])
+        ->post('/api/accessories/equip', ['unlock_key' => 'accessory.medal_first'])
         ->assertRedirect()
         ->assertSessionDoesntHaveErrors();
 
     expect(UserUnlock::query()
         ->where('user_id', $user->id)
-        ->where('unlock_key', 'accessory.medal_pertama')
+        ->where('unlock_key', 'accessory.medal_first')
         ->value('equipped'))->toBeTrue();
 });
 

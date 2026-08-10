@@ -609,7 +609,7 @@ it('reads the card identity with badge slugs humanised, so no raw code reaches t
         'activity_id' => $a->id,
         'rarity' => 'rare',
         'special_move' => 'Pembara Sabar',
-        'badges' => ['long_slow_distance', 'pejuang_hujan', 'not_a_real_badge'],
+        'badges' => ['long_slow_distance', 'rain_warrior', 'not_a_real_badge'],
     ]);
 
     $reading = new CardIdentityTool($card)->handle([]);
@@ -635,7 +635,7 @@ it('reads the featured card with badges humanised and capped at three tags', fun
         'activity_id' => $a->id,
         'rarity' => 'legendary',
         'special_move' => 'Langkah Sunyi',
-        'badges' => ['anak_pagi', 'negative_split', 'tahan_diri', 'hari_panas'],
+        'badges' => ['early_bird', 'negative_split', 'held_back', 'heat_tamer'],
     ]);
 
     $reading = new FeaturedCardTool($card->fresh()->load('activity.detail'))->handle([]);
@@ -804,19 +804,19 @@ it('folds the full mood mix from its two halves', function (): void {
         $line->save();
     };
 
-    $seed('nyala', $asOf->copy()->subWeeks(2));
-    $seed('nyala', $asOf->copy()->subWeeks(3));
-    $seed('adem', $asOf->copy()->subWeeks(8));
+    $seed('blazing', $asOf->copy()->subWeeks(2));
+    $seed('blazing', $asOf->copy()->subWeeks(3));
+    $seed('chill', $asOf->copy()->subWeeks(8));
 
     $reading = new PersonaMixTool($user, $asOf)->handle([]);
 
     expect($reading['total_runs'])->toBe(3)
         ->and($reading['persona_mix'])->toBe([
-            ['mood' => 'nyala', 'count' => 2, 'percent' => 66.7],
-            ['mood' => 'adem', 'count' => 1, 'percent' => 33.3],
+            ['mood' => 'blazing', 'count' => 2, 'percent' => 66.7],
+            ['mood' => 'chill', 'count' => 1, 'percent' => 33.3],
         ])
-        ->and($reading['persona_mix_recent'])->toBe([['mood' => 'nyala', 'count' => 2, 'percent' => 100.0]])
-        ->and($reading['persona_mix_earlier'])->toBe([['mood' => 'adem', 'count' => 1, 'percent' => 100.0]]);
+        ->and($reading['persona_mix_recent'])->toBe([['mood' => 'blazing', 'count' => 2, 'percent' => 100.0]])
+        ->and($reading['persona_mix_earlier'])->toBe([['mood' => 'chill', 'count' => 1, 'percent' => 100.0]]);
 });
 
 it('reads an empty mood mix when the runner has no story lines', function (): void {

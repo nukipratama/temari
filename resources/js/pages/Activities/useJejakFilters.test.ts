@@ -51,10 +51,10 @@ describe('filterQuery', () => {
     it('serialises moods in MOOD_ORDER so the same selection is always the same link', () => {
         expect(
             filterQuery(
-                state({ moods: new Set<Mood>(['adem', 'nyala', 'oleng']) }),
+                state({ moods: new Set<Mood>(['chill', 'blazing', 'wobbly']) }),
             ),
         ).toEqual({
-            mood: 'nyala,oleng,adem',
+            mood: 'blazing,wobbly,chill',
         });
     });
 
@@ -109,7 +109,7 @@ describe('summariseQuery', () => {
                 range: '1y',
                 sort: 'longest',
                 dist: '21up',
-                mood: 'nyala,adem',
+                mood: 'blazing,chill',
             }),
         ).toBe('one week · Full year · Longest · Half and up · Blazing, Chill');
     });
@@ -206,7 +206,7 @@ describe('useJejakFilters', () => {
     });
 
     it.each([
-        ['mood', { moodFilter: ['enteng' as Mood] }],
+        ['mood', { moodFilter: ['easy' as Mood] }],
         ['distance', { distanceFilter: '21up' as const }],
         ['week', { weekFilter: '2026-05-17' }],
     ])('counts a %s filter as active', (_axis, override) => {
@@ -241,7 +241,7 @@ describe('useJejakFilters', () => {
                     rangeFilter: '1y',
                     sortMode: 'longest',
                     distanceFilter: '21up',
-                    moodFilter: ['adem', 'nyala'],
+                    moodFilter: ['chill', 'blazing'],
                 }),
             ),
         );
@@ -251,8 +251,8 @@ describe('useJejakFilters', () => {
             'range:1y',
             'sort:longest',
             'dist:21up',
-            'mood:nyala',
-            'mood:adem',
+            'mood:blazing',
+            'mood:chill',
         ]);
         expect(result.current.chips.map((c) => c.label)).toEqual([
             'One week',
@@ -267,20 +267,20 @@ describe('useJejakFilters', () => {
     it.each([
         [
             'week:2026-05-17',
-            { range: '1y', mood: 'nyala', dist: '21up', sort: 'longest' },
+            { range: '1y', mood: 'blazing', dist: '21up', sort: 'longest' },
         ],
         [
             'range:1y',
             {
                 week: '2026-05-17',
-                mood: 'nyala',
+                mood: 'blazing',
                 dist: '21up',
                 sort: 'longest',
             },
         ],
-        ['sort:longest', { week: '2026-05-17', mood: 'nyala', dist: '21up' }],
-        ['dist:21up', { week: '2026-05-17', mood: 'nyala', sort: 'longest' }],
-        ['mood:nyala', { week: '2026-05-17', dist: '21up', sort: 'longest' }],
+        ['sort:longest', { week: '2026-05-17', mood: 'blazing', dist: '21up' }],
+        ['dist:21up', { week: '2026-05-17', mood: 'blazing', sort: 'longest' }],
+        ['mood:blazing', { week: '2026-05-17', dist: '21up', sort: 'longest' }],
     ])(
         'drops the %s chip and keeps every other axis in the url',
         (key, expected) => {
@@ -292,7 +292,7 @@ describe('useJejakFilters', () => {
                         rangeFilter: '1y',
                         sortMode: 'longest',
                         distanceFilter: '21up',
-                        moodFilter: ['nyala'],
+                        moodFilter: ['blazing'],
                     }),
                 ),
             );
@@ -318,7 +318,7 @@ describe('useJejakFilters', () => {
             useJejakFilters(
                 hookProps({
                     rangeFilter: '1y',
-                    moodFilter: ['nyala'],
+                    moodFilter: ['blazing'],
                     distanceFilter: '21up',
                     sortMode: 'fastest',
                     weekFilter: '2026-05-17',
@@ -338,11 +338,11 @@ describe('useJejakFilters', () => {
     describe('sections', () => {
         it('builds a shareable href per range option, carrying the other filters', () => {
             const { result } = renderHook(() =>
-                useJejakFilters(hookProps({ moodFilter: ['nyala'] })),
+                useJejakFilters(hookProps({ moodFilter: ['blazing'] })),
             );
 
             expect(result.current.sections.range.hrefFor('1y')).toBe(
-                '/activities?range=1y&mood=nyala',
+                '/activities?range=1y&mood=blazing',
             );
         });
 
@@ -356,15 +356,15 @@ describe('useJejakFilters', () => {
                 },
             );
 
-            act(() => result.current.sections.mood.onToggle('enteng'));
+            act(() => result.current.sections.mood.onToggle('easy'));
             expect(router.get).toHaveBeenLastCalledWith(
                 '/activities',
-                { mood: 'enteng' },
+                { mood: 'easy' },
                 expect.anything(),
             );
 
-            rerender(hookProps({ moodFilter: ['enteng'] }));
-            act(() => result.current.sections.mood.onToggle('enteng'));
+            rerender(hookProps({ moodFilter: ['easy'] }));
+            act(() => result.current.sections.mood.onToggle('easy'));
             expect(router.get).toHaveBeenLastCalledWith(
                 '/activities',
                 {},
@@ -422,7 +422,7 @@ describe('useJejakFilters', () => {
         it('names what resuming would apply', () => {
             window.localStorage.setItem(
                 KEY,
-                JSON.stringify({ mood: 'nyala', dist: '21up' }),
+                JSON.stringify({ mood: 'blazing', dist: '21up' }),
             );
             const { result } = renderHook(() => useJejakFilters(hookProps()));
 
@@ -440,7 +440,10 @@ describe('useJejakFilters', () => {
 
         it('applies the saved query only when asked', () => {
             vi.mocked(router.get).mockReset();
-            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+            window.localStorage.setItem(
+                KEY,
+                JSON.stringify({ mood: 'blazing' }),
+            );
             const { result } = renderHook(() => useJejakFilters(hookProps()));
 
             expect(router.get).not.toHaveBeenCalled();
@@ -448,13 +451,16 @@ describe('useJejakFilters', () => {
             act(() => result.current.resume!.apply());
             expect(router.get).toHaveBeenCalledWith(
                 '/activities',
-                { mood: 'nyala' },
+                { mood: 'blazing' },
                 expect.anything(),
             );
         });
 
         it('forgets the saved query when dismissed, so it cannot nag', () => {
-            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+            window.localStorage.setItem(
+                KEY,
+                JSON.stringify({ mood: 'blazing' }),
+            );
             const { result } = renderHook(() => useJejakFilters(hookProps()));
 
             act(() => result.current.resume!.dismiss());
@@ -464,9 +470,12 @@ describe('useJejakFilters', () => {
         });
 
         it('stays hidden while a filter is already active', () => {
-            window.localStorage.setItem(KEY, JSON.stringify({ mood: 'nyala' }));
+            window.localStorage.setItem(
+                KEY,
+                JSON.stringify({ mood: 'blazing' }),
+            );
             const { result } = renderHook(() =>
-                useJejakFilters(hookProps({ moodFilter: ['enteng'] })),
+                useJejakFilters(hookProps({ moodFilter: ['easy'] })),
             );
 
             expect(result.current.resume).toBeNull();

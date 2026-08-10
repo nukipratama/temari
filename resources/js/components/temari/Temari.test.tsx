@@ -31,12 +31,12 @@ describe('Temari', () => {
     it('maps the server-side equipped payload to TemariEquipped variants', () => {
         setMockPage({
             equippedAccessories: {
-                ikat_kepala: 'accessory.ikat_kepala_legendaris',
-                medal: 'accessory.medal_emas',
-                kaus: 'accessory.kaus_hujan',
-                celana: 'accessory.celana_split',
-                sepatu: 'accessory.sepatu_cepat',
-                aura: 'accessory.aura_jagoan',
+                headband: 'accessory.headband_legendary',
+                medal: 'accessory.medal_gold',
+                shirt: 'accessory.shirt_rain_warrior',
+                shorts: 'accessory.shorts_negative_split',
+                shoes: 'accessory.shoes_speed',
+                aura: 'accessory.aura_champion',
             },
         });
         render(<Temari pose="glow" size={180} />);
@@ -57,11 +57,11 @@ describe('Temari', () => {
     it("maps a null medal to 'none' so TemariProto reads it as bare", () => {
         setMockPage({
             equippedAccessories: {
-                ikat_kepala: 'accessory.ikat_kepala_epik',
+                headband: 'accessory.headband_epic',
                 medal: null,
-                kaus: null,
-                celana: null,
-                sepatu: null,
+                shirt: null,
+                shorts: null,
+                shoes: null,
                 aura: null,
             },
         });

@@ -49,12 +49,12 @@ it('ships the persisted post-run mood per recent run for the featured card + las
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create();
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'enteng']);
+    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'easy']);
 
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where("recentMoods.{$activity->id}", 'enteng'));
+            ->where("recentMoods.{$activity->id}", 'easy'));
 });
 
 it('renders KPIs + recent runs when the user has training-load history', function (): void {

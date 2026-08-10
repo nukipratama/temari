@@ -26,10 +26,10 @@ it('keeps every prop a closure so a partial reload can skip it', function (): vo
 
 it('reports what the mascot is wearing', function (): void {
     $user = User::factory()->create();
-    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_emas']);
+    UserUnlock::factory()->for($user)->equipped()->create(['unlock_key' => 'accessory.medal_gold']);
 
     expect((gamificationPropsFor($user)['equippedAccessories'])())
-        ->toMatchArray(['medal' => 'accessory.medal_emas']);
+        ->toMatchArray(['medal' => 'accessory.medal_gold']);
 });
 
 it('gives a guest the empty accessory set and no goals or reveal', function (): void {
@@ -39,10 +39,10 @@ it('gives a guest the empty accessory set and no goals or reveal', function (): 
         ->and(($props['pendingReveal'])())->toBeNull()
         ->and(($props['equippedAccessories'])())->toBe([
             'medal' => null,
-            'ikat_kepala' => null,
-            'kaus' => null,
-            'celana' => null,
-            'sepatu' => null,
+            'headband' => null,
+            'shirt' => null,
+            'shorts' => null,
+            'shoes' => null,
             'aura' => null,
         ]);
 });

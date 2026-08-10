@@ -99,7 +99,7 @@ it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoic
     $a = Activity::factory()->for($user)->analyzed()->create();
     StoryLine::factory()->for($user)->create([
         'activity_id' => $a->id,
-        'mood' => 'nyala',
+        'mood' => 'blazing',
     ]);
 
     $this->actingAs($user)->get('/profile')
@@ -108,7 +108,7 @@ it('exposes personaMix derived from StoryLine moods + the week-keyed profileVoic
             ->component('Profile')
             ->missing('personaSummary')
             ->has('personaMix', 1)
-            ->where('personaMix.0.mood', 'nyala')
+            ->where('personaMix.0.mood', 'blazing')
             ->where('personaMix.0.percent', 100)
             ->has('profileVoice')
             ->where('profileVoice.type', 'aku_profile_voice')

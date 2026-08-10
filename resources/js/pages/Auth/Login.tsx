@@ -248,7 +248,7 @@ function FormSide({
                 <KartuMini
                     name="10K Sunrise"
                     rarity="legendary"
-                    mood="nyala"
+                    mood="blazing"
                     date="12 Jun"
                     edition={{ index: 3, total: 12 }}
                     polyline="~s{d@ofekSoRaMcPdMg@b^zFtV?bN{FtVf@b^bPdMnRaMlIqTdHqFfQcAfQcP?g[gQcPgQcAeHqFmIqT"

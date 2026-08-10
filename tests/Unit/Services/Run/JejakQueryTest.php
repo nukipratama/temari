@@ -108,12 +108,12 @@ it('bounds a week deep link on both sides', function (): void {
 
 it('filters by mood through the post-run story line', function (): void {
     $user = User::factory()->create();
-    $lemes = jejakRun($user, 'Lemes run', Carbon::now()->subDays(3));
+    $gassed = jejakRun($user, 'Lemes run', Carbon::now()->subDays(3));
     jejakRun($user, 'No story line', Carbon::now()->subDays(4));
-    StoryLine::factory()->for($lemes)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'lemes']);
+    StoryLine::factory()->for($gassed)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'gassed']);
 
-    expect(jejakRunNames($user, 'mood=lemes'))->toBe(['Lemes run'])
-        ->and(jejakRunNames($user, 'mood=nyala'))->toBe([]);
+    expect(jejakRunNames($user, 'mood=gassed'))->toBe(['Lemes run'])
+        ->and(jejakRunNames($user, 'mood=blazing'))->toBe([]);
 });
 
 it('filters by distance band with an exclusive upper bound', function (): void {

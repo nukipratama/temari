@@ -20,7 +20,7 @@ declare(strict_types=1);
 
 return [
     // ── Medals (4) ──────────────────────────────────────────────────────
-    'accessory.medal_pertama' => [
+    'accessory.medal_first' => [
         'title' => 'Log your 1st PR',
         'description' => 'Log 1 PR in any category.',
         'slot' => 'medal',
@@ -28,7 +28,7 @@ return [
         'target' => 1,
         'unit' => 'PR',
     ],
-    'accessory.medal_emas' => [
+    'accessory.medal_gold' => [
         'title' => 'Log your 5th PR',
         'description' => 'Log 5 PRs total.',
         'slot' => 'medal',
@@ -36,7 +36,7 @@ return [
         'target' => 5,
         'unit' => 'PR',
     ],
-    'accessory.medal_perak' => [
+    'accessory.medal_silver' => [
         'title' => 'Log your 10th PR',
         'description' => 'Log 10 PRs total.',
         'slot' => 'medal',
@@ -44,7 +44,7 @@ return [
         'target' => 10,
         'unit' => 'PR',
     ],
-    'accessory.medal_platina' => [
+    'accessory.medal_platinum' => [
         'title' => 'Log your 20th PR',
         'description' => 'Log 20 PRs total.',
         'slot' => 'medal',
@@ -54,37 +54,37 @@ return [
     ],
 
     // ── Headband (4) ────────────────────────────────────────────────
-    'accessory.ikat_kepala_berkesan' => [
+    'accessory.headband_uncommon' => [
         'title' => 'Collect 3 Uncommon cards',
         'description' => 'Earn 3 Uncommon cards.',
-        'slot' => 'ikat_kepala',
+        'slot' => 'headband',
         'metric' => 'rarity_count',
         'metric_key' => 'uncommon',
         'target' => 3,
         'unit' => 'cards',
     ],
-    'accessory.ikat_kepala_langka' => [
+    'accessory.headband_rare' => [
         'title' => 'Collect 3 Rare cards',
         'description' => 'Earn 3 Rare cards.',
-        'slot' => 'ikat_kepala',
+        'slot' => 'headband',
         'metric' => 'rarity_count',
         'metric_key' => 'rare',
         'target' => 3,
         'unit' => 'cards',
     ],
-    'accessory.ikat_kepala_epik' => [
+    'accessory.headband_epic' => [
         'title' => 'Collect 3 Epic cards',
         'description' => 'Earn 3 Epic cards.',
-        'slot' => 'ikat_kepala',
+        'slot' => 'headband',
         'metric' => 'rarity_count',
         'metric_key' => 'epic',
         'target' => 3,
         'unit' => 'cards',
     ],
-    'accessory.ikat_kepala_legendaris' => [
+    'accessory.headband_legendary' => [
         'title' => 'Collect 1 Legendary card',
         'description' => 'Earn 1 Legendary card.',
-        'slot' => 'ikat_kepala',
+        'slot' => 'headband',
         'metric' => 'rarity_count',
         'metric_key' => 'legendary',
         'target' => 1,
@@ -92,112 +92,112 @@ return [
     ],
 
     // ── Shirt (4) ───────────────────────────────────────────────────────
-    'accessory.kaus_pemula' => [
+    'accessory.shirt_beginner' => [
         'title' => 'Log your first run',
         'description' => 'Log 1 run.',
-        'slot' => 'kaus',
+        'slot' => 'shirt',
         'metric' => 'activity_count',
         'target' => 1,
         'unit' => 'runs',
     ],
-    'accessory.kaus_pagi' => [
+    'accessory.shirt_early_bird' => [
         'title' => '5 morning runs',
         'description' => 'Complete 5 morning runs (before 6am).',
-        'slot' => 'kaus',
+        'slot' => 'shirt',
         'metric' => 'badge_count',
-        'metric_key' => 'anak_pagi',
+        'metric_key' => 'early_bird',
         'target' => 5,
         'unit' => 'runs',
     ],
-    'accessory.kaus_hujan' => [
+    'accessory.shirt_rain_warrior' => [
         'title' => '3 rainy runs',
         'description' => 'Complete 3 runs in the rain.',
-        'slot' => 'kaus',
+        'slot' => 'shirt',
         'metric' => 'badge_count',
-        'metric_key' => 'pejuang_hujan',
+        'metric_key' => 'rain_warrior',
         'target' => 3,
         'unit' => 'runs',
     ],
-    'accessory.kaus_legendaris' => [
+    'accessory.shirt_legendary' => [
         'title' => 'Log 50 runs',
         'description' => 'Log 50 runs.',
-        'slot' => 'kaus',
+        'slot' => 'shirt',
         'metric' => 'activity_count',
         'target' => 50,
         'unit' => 'runs',
     ],
 
     // ── Shorts (4) ─────────────────────────────────────────────────────
-    'accessory.celana_ringan' => [
+    'accessory.shorts_lightweight' => [
         'title' => 'Your first 5K',
         'description' => 'Log 1 run of 5 km or more.',
-        'slot' => 'celana',
+        'slot' => 'shorts',
         'metric' => 'five_k_plus',
         'target' => 1,
         'unit' => 'runs',
     ],
-    'accessory.celana_jarak' => [
+    'accessory.shorts_explorer' => [
         'title' => 'Your first 10K',
         'description' => 'Log 1 run of 10 km or more.',
-        'slot' => 'celana',
+        'slot' => 'shorts',
         'metric' => 'ten_k_plus',
         'target' => 1,
         'unit' => 'runs',
     ],
-    'accessory.celana_split' => [
+    'accessory.shorts_negative_split' => [
         'title' => '3 negative splits',
         'description' => 'Log 3 negative-split runs.',
-        'slot' => 'celana',
+        'slot' => 'shorts',
         'metric' => 'badge_count',
         'metric_key' => 'negative_split',
         'target' => 3,
         'unit' => 'runs',
     ],
-    'accessory.celana_maraton' => [
+    'accessory.shorts_marathon' => [
         'title' => 'Run 21K',
         'description' => 'Log 1 run of 21 km or more.',
-        'slot' => 'celana',
+        'slot' => 'shorts',
         'metric' => 'half_marathon',
         'target' => 1,
         'unit' => 'runs',
     ],
 
     // ── Shoes (4) ─────────────────────────────────────────────────────
-    'accessory.sepatu_basic' => [
+    'accessory.shoes_basic' => [
         'title' => 'Log 10 runs',
         'description' => 'Log 10 runs.',
-        'slot' => 'sepatu',
+        'slot' => 'shoes',
         'metric' => 'activity_count',
         'target' => 10,
         'unit' => 'runs',
     ],
-    'accessory.sepatu_cepat' => [
+    'accessory.shoes_speed' => [
         'title' => 'Pace under 5:30/km',
         'description' => 'Log 1 run with an average pace under 5:30/km.',
-        'slot' => 'sepatu',
+        'slot' => 'shoes',
         'metric' => 'fast_pace',
         'target' => 1,
         'unit' => 'runs',
     ],
-    'accessory.sepatu_tahan' => [
+    'accessory.shoes_rugged' => [
         'title' => '5 runs at 10K+',
         'description' => 'Log 5 runs of 10 km or more.',
-        'slot' => 'sepatu',
+        'slot' => 'shoes',
         'metric' => 'ten_k_plus',
         'target' => 5,
         'unit' => 'runs',
     ],
-    'accessory.sepatu_legendaris' => [
+    'accessory.shoes_legendary' => [
         'title' => '1,000 km total distance',
         'description' => 'Rack up 1,000 km total distance.',
-        'slot' => 'sepatu',
+        'slot' => 'shoes',
         'metric' => 'total_distance_km',
         'target' => 1000,
         'unit' => 'km',
     ],
 
     // ── Aura (5) ───────────────────────────────────────────────────────
-    'accessory.aura_pemanasan' => [
+    'accessory.aura_warmup' => [
         'title' => '2-week running streak',
         'description' => 'Run in 2 consecutive weeks.',
         'slot' => 'aura',
@@ -205,16 +205,16 @@ return [
         'target' => 2,
         'unit' => 'weeks',
     ],
-    'accessory.aura_gerah' => [
+    'accessory.aura_heatwave' => [
         'title' => '3 hot-weather runs',
         'description' => 'Complete 3 runs with temps above 31°C.',
         'slot' => 'aura',
         'metric' => 'badge_count',
-        'metric_key' => 'hari_panas',
+        'metric_key' => 'heat_tamer',
         'target' => 3,
         'unit' => 'runs',
     ],
-    'accessory.aura_tenang' => [
+    'accessory.aura_calm' => [
         'title' => '5 runs in HR Zone 2',
         'description' => 'Log 5 runs in HR Zone 2 (under 70% max HR).',
         'slot' => 'aura',
@@ -223,7 +223,7 @@ return [
         'target' => 5,
         'unit' => 'runs',
     ],
-    'accessory.aura_jagoan' => [
+    'accessory.aura_champion' => [
         'title' => '3 Legendary cards',
         'description' => 'Earn 3 Legendary cards.',
         'slot' => 'aura',
@@ -232,12 +232,12 @@ return [
         'target' => 3,
         'unit' => 'cards',
     ],
-    'accessory.aura_angin' => [
+    'accessory.aura_windrunner' => [
         'title' => '3 headwind runs',
         'description' => 'Complete 3 runs with wind above 20 km/h.',
         'slot' => 'aura',
         'metric' => 'badge_count',
-        'metric_key' => 'lawan_angin',
+        'metric_key' => 'headwind',
         'target' => 3,
         'unit' => 'runs',
     ],

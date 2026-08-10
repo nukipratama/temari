@@ -4,7 +4,8 @@ import type { AnalysisStatus, AnalysisType, Rarity } from './generated';
 
 export type { AnalysisStatus, AnalysisType, Rarity } from './generated';
 
-export type Mood = 'nyala' | 'enteng' | 'oleng' | 'lemes' | 'mumet' | 'adem';
+export type Mood =
+    'blazing' | 'easy' | 'wobbly' | 'gassed' | 'overloaded' | 'chill';
 
 export type Tone = 'neutral' | 'positive' | 'warning' | 'alert';
 
@@ -51,14 +52,14 @@ export interface StravaSync {
 
 /** Resolved server-side from the user's equipped UserUnlock rows. */
 export type EquippedSlot =
-    'medal' | 'ikat_kepala' | 'kaus' | 'celana' | 'sepatu' | 'aura';
+    'medal' | 'headband' | 'shirt' | 'shorts' | 'shoes' | 'aura';
 
 export interface EquippedAccessories {
     medal: string | null;
-    ikat_kepala: string | null;
-    kaus: string | null;
-    celana: string | null;
-    sepatu: string | null;
+    headband: string | null;
+    shirt: string | null;
+    shorts: string | null;
+    shoes: string | null;
     aura: string | null;
 }
 

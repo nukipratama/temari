@@ -64,8 +64,8 @@ describe('Profile', () => {
 
     it('renders the persona bar without a narration block of its own', () => {
         const mix = [
-            { mood: 'enteng' as const, count: 22, percent: 34.9 },
-            { mood: 'adem' as const, count: 21, percent: 33.3 },
+            { mood: 'easy' as const, count: 22, percent: 34.9 },
+            { mood: 'chill' as const, count: 21, percent: 33.3 },
         ];
         render(<Profile identity={identity} stats={stats} personaMix={mix} />);
         expect(screen.getByText(/Persona/)).toBeInTheDocument();
@@ -78,7 +78,7 @@ describe('Profile', () => {
     // Temari"'s read on you) instead of its own section below — a standalone
     // <section class="mt-10"> would mean it slipped back out of the hero.
     it('renders the persona bar inside the hero panel, not a separate section below it', () => {
-        const mix = [{ mood: 'nyala' as const, count: 3, percent: 100 }];
+        const mix = [{ mood: 'blazing' as const, count: 3, percent: 100 }];
         render(<Profile identity={identity} stats={stats} personaMix={mix} />);
         expect(screen.getByText(/Persona/).closest('section')).toBeNull();
     });

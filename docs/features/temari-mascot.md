@@ -54,8 +54,8 @@ celebration). See [[targets-accessories]].
 [temariPose.ts](../../resources/js/lib/temariPose.ts) holds the maps from app
 state to pose:
 
-- `MOOD_TO_POSE` — run `Mood` → pose (e.g. `nyala` → `proud`, `lemes` → `wobble`,
-  `adem` → `reading`). Used on the run detail and the recaps.
+- `MOOD_TO_POSE` — run `Mood` → pose (e.g. `blazing` → `proud`, `gassed` → `wobble`,
+  `chill` → `reading`). Used on the run detail and the recaps.
 - `VIBE_TO_POSE` — a persona/weekly `vibe` string → pose (e.g. `pumped` →
   `pumped`, `cooked` → `wobble`).
 - `poseForFormStatus` — weekly training-load `FormStatus` → pose, used on the

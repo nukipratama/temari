@@ -88,10 +88,10 @@ it('changes when a trailing partial split appears (so a resync re-narrates the f
 });
 
 it('changes when the mood flips', function (): void {
-    $activity = fingerprintActivity([], 'adem');
+    $activity = fingerprintActivity([], 'chill');
     $before = fingerprint($activity->id);
 
-    StoryLine::query()->where('activity_id', $activity->id)->update(['mood' => 'nyala']);
+    StoryLine::query()->where('activity_id', $activity->id)->update(['mood' => 'blazing']);
 
     expect(fingerprint($activity->id))->not->toBe($before);
 });

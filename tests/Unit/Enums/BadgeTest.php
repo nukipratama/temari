@@ -43,7 +43,7 @@ it('maps representative badges to their emoji-free prompt labels', function (): 
 });
 
 it('maps a list of slugs to prompt labels, dropping unknown slugs', function (): void {
-    expect(Badge::promptLabelsFor(['negative_split', 'not_a_badge', 'pejuang_hujan']))
+    expect(Badge::promptLabelsFor(['negative_split', 'not_a_badge', 'rain_warrior']))
         ->toBe(['Negative Split', 'Rain Warrior']);
 });
 

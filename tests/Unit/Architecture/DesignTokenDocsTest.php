@@ -15,7 +15,7 @@ it('documents every color/text token family from app.css', function (): void {
     $doc = File::get(base_path('docs/design-tokens.md'));
 
     // First segment after `--color-` / `--text-` is the token family
-    // (e.g. --color-mood-nyala -> "mood", --text-display-2xl -> "display").
+    // (e.g. --color-mood-blazing -> "mood", --text-display-2xl -> "display").
     preg_match_all('/--(?:color|text)-([a-z0-9]+)/', $css, $matches);
     $families = collect($matches[1])->unique()->sort()->values();
 

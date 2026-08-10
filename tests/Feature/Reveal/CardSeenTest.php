@@ -153,7 +153,7 @@ it('shares pendingReveal payload (incl. km/duration/trimp) when a card is flagge
             ->where('pendingReveal.elapsed_time_sec', 3480)
             ->where('pendingReveal.trimp_edwards', 161.4)
             // No post-run story line yet: mood is computed, not the sleepy default.
-            ->where('pendingReveal.mood', 'enteng'));
+            ->where('pendingReveal.mood', 'easy'));
 });
 
 it('reads weather_temp_c through the pendingReveal eager load so hot-weather mood computes correctly', function (): void {
@@ -173,5 +173,5 @@ it('reads weather_temp_c through the pendingReveal eager load so hot-weather moo
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('pendingReveal.mood', 'oleng'));
+            ->where('pendingReveal.mood', 'wobbly'));
 });

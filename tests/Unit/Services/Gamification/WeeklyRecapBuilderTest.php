@@ -211,12 +211,12 @@ it('carries the run mood onto the best card when a post-run story line exists', 
     StoryLine::factory()->for($user)->create([
         'activity_id' => $activity->id,
         'kind' => StoryLine::KIND_POST_RUN,
-        'mood' => 'nyala',
+        'mood' => 'blazing',
     ]);
 
     $recap = $this->builder->forUser($user);
 
-    expect($recap->bestCard['mood'])->toBe('nyala');
+    expect($recap->bestCard['mood'])->toBe('blazing');
 });
 
 it('surfaces the nearest incomplete goal with a remainder label', function (): void {
