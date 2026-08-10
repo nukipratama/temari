@@ -59,6 +59,52 @@ class PlannedSession extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Count PAST `Rest` rows with no `Activity` logged that date — "honored"
+     * per {@see \App\Actions\Gamification\GrantSeasonUnlocksAction}'s and
+     * the badge board's shared definition. `[$from, $to]` scopes to one
+     * season; omitted, it's the lifetime count across the user's whole plan
+     * history.
+     */
+    public static function restHonoredCountForUser(int $userId, Carbon $today, ?Carbon $from = null, ?Carbon $to = null): int
+    {
+        $rangeEnd = $today->copy()->subDay();
+        if ($to !== null && $to->lessThan($rangeEnd)) {
+            $rangeEnd = $to->copy();
+        }
+        if ($from !== null && $rangeEnd->lessThan($from)) {
+            return 0;
+        }
+
+        $query = self::query()
+            ->where('user_id', $userId)
+            ->where('session_type', SessionType::Rest)
+            ->where('date', '<=', $rangeEnd->toDateString());
+        if ($from !== null) {
+            $query->where('date', '>=', $from->toDateString());
+        }
+        $restDates = $query->pluck('date');
+
+        if ($restDates->isEmpty()) {
+            return 0;
+        }
+
+        $activityDates = ActivityDetail::query()
+            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+            ->where('activities.user_id', $userId)
+            ->whereNotNull('activity_details.start_date_local')
+            ->whereBetween('activity_details.start_date_local', [
+                $restDates->min()->copy()->startOfDay(),
+                $restDates->max()->copy()->endOfDay(),
+            ])
+            ->selectRaw('DISTINCT DATE(activity_details.start_date_local) as d')
+            ->pluck('d')
+            ->map(fn (string $d): string => Carbon::parse($d)->toDateString())
+            ->flip();
+
+        return $restDates->filter(fn (Carbon $date): bool => ! isset($activityDates[$date->toDateString()]))->count();
+    }
+
     /** @return array<string, string> */
     #[Override]
     protected function casts(): array

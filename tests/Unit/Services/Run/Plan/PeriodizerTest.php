@@ -6,6 +6,7 @@ use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\Periodizer;
@@ -122,6 +123,15 @@ it('cleans up stale far-future rows when the horizon shrinks after setting a nea
     $this->periodizer->regenerate($user, Carbon::today());
 
     expect(PlannedSession::query()->where('user_id', $user->id)->where('date', '>=', $farFutureDate)->exists())->toBeFalse();
+});
+
+it('also ensures a current season exists, in lockstep with the plan\'s own mode', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    expect(Season::query()->where('user_id', $user->id)->where('race_goal_id', null)->exists())->toBeTrue();
 });
 
 it('leaves a pinned far-future row alone even when the horizon shrinks', function (): void {
