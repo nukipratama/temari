@@ -27,7 +27,6 @@ enum Badge: string
     case Keras = 'all_out';
     case Santai = 'easy_miles';
     case Berturut = 'streak';
-    case HariSpesial = 'holiday_run';
     case LawanAngin = 'headwind';
 
     public function label(): string
@@ -50,7 +49,6 @@ enum Badge: string
             self::Keras => '😤 All Out',
             self::Santai => '☺️ Easy Miles',
             self::Berturut => '🔥 Streak',
-            self::HariSpesial => '🎉 Holiday Run',
             self::LawanAngin => '🌬️ Headwind',
         };
     }

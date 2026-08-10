@@ -129,7 +129,7 @@ describe('formatIdDate', () => {
 
     it('returns short format by default with weekday', () => {
         const result = formatIdDate('2026-05-11T08:00:00');
-        expect(result).toMatch(/^\w+,\s\d{2}\s\w+$/);
+        expect(result).toMatch(/^\w+,\s\w+\s\d{2}$/);
     });
 
     it('returns long format when requested', () => {
@@ -231,7 +231,7 @@ describe('formatRelativeId', () => {
         const iso = new Date(
             now.getTime() - 60 * 24 * 60 * 60 * 1000,
         ).toISOString();
-        expect(formatRelativeId(iso, now)).toMatch(/\w+,\s\d{2}\s\w+/);
+        expect(formatRelativeId(iso, now)).toMatch(/\w+,\s\w+\s\d{2}/);
     });
 
     it('returns "—" for null / invalid input', () => {
@@ -299,31 +299,31 @@ describe('date/time format variants', () => {
     const d = new Date(2026, 4, 11, 8, 30);
 
     it('formatWeekdayDateId: long weekday + day + long month', () => {
-        expect(formatWeekdayDateId(d)).toBe('Senin, 11 Mei');
+        expect(formatWeekdayDateId(d)).toBe('Monday, May 11');
     });
 
-    it('formatTimeId: zero-padded HH:MM', () => {
-        expect(formatTimeId(d)).toBe('08.30');
+    it('formatTimeId: zero-padded hour + minute', () => {
+        expect(formatTimeId(d)).toBe('08:30 AM');
     });
 
     it('formatShortWeekdayDateId: short weekday + day + short month', () => {
-        expect(formatShortWeekdayDateId(d)).toBe('Sen, 11 Mei');
+        expect(formatShortWeekdayDateId(d)).toBe('Mon, May 11');
     });
 
     it('formatMonthDayId: day + short month', () => {
-        expect(formatMonthDayId(d)).toBe('11 Mei');
+        expect(formatMonthDayId(d)).toBe('May 11');
     });
 
     it('formatWeekdayDayId: short weekday + day', () => {
-        expect(formatWeekdayDayId(d)).toBe('Sen, 11');
+        expect(formatWeekdayDayId(d)).toBe('11 Mon');
     });
 
     it('formatDayMonthYearId: day + long month + year', () => {
-        expect(formatDayMonthYearId(d)).toBe('11 Mei 2026');
+        expect(formatDayMonthYearId(d)).toBe('May 11, 2026');
     });
 
     it('formatPaddedDayMonthYearId: padded day + short month + year', () => {
-        expect(formatPaddedDayMonthYearId(d)).toBe('11 Mei 2026');
+        expect(formatPaddedDayMonthYearId(d)).toBe('May 11, 2026');
     });
 });
 

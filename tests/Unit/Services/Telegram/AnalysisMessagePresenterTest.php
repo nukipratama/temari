@@ -29,7 +29,7 @@ it('formats a post-run message with the title line, a blank line, the content, a
 it('includes a metrics line for a post-run notification', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create([
-        'distance' => 5200,        // 5,2 km
+        'distance' => 5200,        // 5.2 km
         'elapsed_time' => 2054,     // 34:14, pace 6:35/km
         'average_heartrate' => 159,
     ]);
@@ -41,7 +41,7 @@ it('includes a metrics line for a post-run notification', function (): void {
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toContain('5,2 km · 34:14 · 6:35/km · 159 bpm');
+    expect($message)->toContain('5.2 km · 34:14 · 6:35/km · 159 bpm');
 });
 
 it('omits HR from the metrics line on a strap-less run', function (): void {
@@ -59,7 +59,7 @@ it('omits HR from the metrics line on a strap-less run', function (): void {
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toContain('5,2 km · 34:14 · 6:35/km')
+    expect($message)->toContain('5.2 km · 34:14 · 6:35/km')
         ->and($message)->not->toContain('bpm');
 });
 
@@ -92,16 +92,16 @@ it('links a monthly recap to its month on the calendar', function (): void {
 
 it('builds a post-run title carrying the run distance', function (): void {
     $activity = Activity::factory()->create();
-    ActivityDetail::factory()->for($activity)->create(['distance' => 8230]); // 8.23 km → 8,2K
+    ActivityDetail::factory()->for($activity)->create(['distance' => 8230]); // 8.23 km → 8.2K
     $analysis = Analysis::factory()->make([
         'analysis_type' => AnalysisType::PostRunSpeech,
         'subject_id' => $activity->id,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Your 8,2K run is in! 🏁');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('🏃 Your 8.2K run is in! 🏁');
 });
 
-it('drops the ",0" so a whole-kilometre run reads as "5K"', function (): void {
+it('drops the ".0" so a whole-kilometre run reads as "5K"', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create(['distance' => 5000]);
     $analysis = Analysis::factory()->make([

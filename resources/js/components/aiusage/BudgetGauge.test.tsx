@@ -19,7 +19,7 @@ describe('BudgetGauge', () => {
         render(<BudgetGauge budget={budget()} />);
 
         expect(screen.getByText("Today's Budget")).toBeInTheDocument();
-        expect(screen.getByText('$0,02')).toBeInTheDocument();
+        expect(screen.getByText('$0.02')).toBeInTheDocument();
         expect(screen.getByText(/list price/i)).toBeInTheDocument();
     });
 
@@ -50,7 +50,7 @@ describe('BudgetGauge', () => {
         render(<BudgetGauge budget={budget({ todayCost: 0.15 })} />);
 
         expect(
-            screen.getByText('Over the daily limit by $0,05.'),
+            screen.getByText('Over the daily limit by $0.05.'),
         ).toBeInTheDocument();
     });
 
@@ -65,6 +65,6 @@ describe('BudgetGauge', () => {
             />,
         );
 
-        expect(screen.getByText('Rp 1.000,00')).toBeInTheDocument();
+        expect(screen.getByText('Rp 1,000.00')).toBeInTheDocument();
     });
 });

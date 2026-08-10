@@ -27,7 +27,7 @@ describe('DeploymentTable', () => {
             screen.getByText('Breakdown per Deployment'),
         ).toBeInTheDocument();
         expect(screen.getByText('nuki-mini')).toBeInTheDocument();
-        expect(screen.getByText('$0,05')).toBeInTheDocument();
+        expect(screen.getByText('$0.05')).toBeInTheDocument();
     });
 
     it('keeps a min-width floor so the 7-col table scrolls (not clips) on mobile', () => {
@@ -54,7 +54,7 @@ describe('DeploymentTable', () => {
             .getByText('nuki-5.2')
             .closest('tr')
             ?.querySelector('td:nth-child(2)');
-        expect(rateCell?.textContent).toBe('$1,75 / $14,00');
+        expect(rateCell?.textContent).toBe('$1.75 / $14.00');
     });
 
     it('shows an em dash for a deployment with no configured rate', () => {

@@ -10,7 +10,6 @@ it('returns a non-empty label for every case', function (Badge $badge): void {
 
 it('exposes a representative label', function (): void {
     expect(Badge::HariPanas->label())->toBe('🔥 Heat Tamer')
-        ->and(Badge::HariSpesial->label())->toBe('🎉 Holiday Run')
         ->and(Badge::LawanAngin->label())->toBe('🌬️ Headwind');
 });
 

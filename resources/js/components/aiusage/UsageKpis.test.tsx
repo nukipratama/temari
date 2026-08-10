@@ -41,7 +41,7 @@ describe('UsageKpis', () => {
         renderKpis();
 
         expect(screen.getByText('880')).toBeInTheDocument();
-        expect(screen.getByText('$0,05')).toBeInTheDocument();
+        expect(screen.getByText('$0.05')).toBeInTheDocument();
         expect(screen.getByText('68% of total')).toBeInTheDocument();
     });
 

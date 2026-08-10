@@ -337,7 +337,6 @@ final readonly class RuleBasedNarrationFiller
             Badge::Keras->value => 'HR stayed high start to finish.',
             Badge::Santai->value => 'Genuinely easy, HR kept low.',
             Badge::Berturut->value => 'A full week with no skips, impressive.',
-            Badge::HariSpesial->value => 'Ran on a national holiday.',
             Badge::LawanAngin->value => "Strong wind didn't slow you down.",
         ];
 

@@ -28,7 +28,7 @@ Turns a run's start coordinate into a display string like *"Kebayoran Baru, Jaka
 - **Miss sentinels.** `Cache::remember` can't memoize a `null`, so a miss is stored as the sentinel `false` and short-circuited on the next call — [the read/branch at the top of `__invoke`](app/Actions/Geo/ReverseGeocodeAction.php#L29). This stops a coord that genuinely has no address from re-hitting Nominatim every time.
 - **Zoom level.** The request asks Nominatim for a suburb-level result so the address carries kecamatan + kota rather than a street or a whole province — see the `zoom` query param in [`fetchUncached`](app/Actions/Geo/ReverseGeocodeAction.php#L55).
 - **Indonesian field preference.** Nominatim's address keys vary by country, so [`formatAddress`](app/Actions/Geo/ReverseGeocodeAction.php#L83) tries Indonesia-likely keys first and falls back to the global ones, taking the first hit per rank via [`firstFilled`](app/Actions/Geo/ReverseGeocodeAction.php#L112). The result is assembled coarse→fine into the comma-joined display name.
-- **No throw-out.** Any HTTP/JSON failure is swallowed to `null` and logged at info level, never re-raised — the `try/catch` in [`fetchUncached`](app/Actions/Geo/ReverseGeocodeAction.php#L69). A polite `User-Agent` and `Accept-Language: id,en` are sent per Nominatim TOS ([headers](app/Actions/Geo/ReverseGeocodeAction.php#L46)).
+- **No throw-out.** Any HTTP/JSON failure is swallowed to `null` and logged at info level, never re-raised — the `try/catch` in [`fetchUncached`](app/Actions/Geo/ReverseGeocodeAction.php#L69). A polite `User-Agent` and `Accept-Language: en` are sent per Nominatim TOS ([headers](app/Actions/Geo/ReverseGeocodeAction.php#L46)).
 
 Note the rate limit is **not** enforced here — see the job below.
 

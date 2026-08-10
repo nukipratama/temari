@@ -73,7 +73,7 @@ describe('WeekFocusNote', () => {
 
         expect(
             screen.getByText(
-                /Viewing the week of Senin, 11 Mei - Minggu, 17 Mei/,
+                /Viewing the week of Monday, May 11 - Sunday, May 17/,
             ),
         ).toBeInTheDocument();
         expect(

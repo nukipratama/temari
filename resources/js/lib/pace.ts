@@ -130,14 +130,14 @@ export function formatNaiveRelativeId(
 function idDateFromDate(d: Date, format: 'short' | 'long'): string {
     if (Number.isNaN(d.getTime())) return '—';
     if (format === 'long') {
-        return d.toLocaleDateString('id-ID', {
+        return d.toLocaleDateString('en-US', {
             weekday: 'long',
             day: '2-digit',
             month: 'long',
             year: 'numeric',
         });
     }
-    return d.toLocaleDateString('id-ID', {
+    return d.toLocaleDateString('en-US', {
         weekday: 'long',
         day: '2-digit',
         month: 'short',
@@ -166,57 +166,57 @@ export function formatNaiveIdDate(
     return idDateFromDate(d, format);
 }
 
-/** "Senin, 11 Mei" — long weekday + numeric day + long month, no year. */
+/** "Monday, May 11" — long weekday + numeric day + long month, no year. */
 export function formatWeekdayDateId(date: Date): string {
-    return date.toLocaleDateString('id-ID', {
+    return date.toLocaleDateString('en-US', {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
     });
 }
 
-/** "08:30" — 24-hour clock, zero-padded. */
+/** "08:30 AM" — zero-padded hour and minute. */
 export function formatTimeId(date: Date): string {
-    return date.toLocaleTimeString('id-ID', {
+    return date.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
     });
 }
 
-/** "Sen, 11 Mei" — short weekday + numeric day + short month. */
+/** "Mon, May 11" — short weekday + numeric day + short month. */
 export function formatShortWeekdayDateId(date: Date): string {
-    return date.toLocaleDateString('id-ID', {
+    return date.toLocaleDateString('en-US', {
         weekday: 'short',
         day: 'numeric',
         month: 'short',
     });
 }
 
-/** "11 Mei" — numeric day + short month, no weekday or year. */
+/** "May 11" — numeric day + short month, no weekday or year. */
 export function formatMonthDayId(date: Date): string {
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 }
 
-/** "Sen, 11" — short weekday + numeric day only. */
+/** "11 Mon" — numeric day + short weekday only. */
 export function formatWeekdayDayId(date: Date): string {
-    return date.toLocaleDateString('id-ID', {
+    return date.toLocaleDateString('en-US', {
         weekday: 'short',
         day: 'numeric',
     });
 }
 
-/** "11 Mei 2026" — numeric day + long month + year, no weekday. */
+/** "May 11, 2026" — numeric day + long month + year, no weekday. */
 export function formatDayMonthYearId(date: Date): string {
-    return date.toLocaleDateString('id-ID', {
+    return date.toLocaleDateString('en-US', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
     });
 }
 
-/** "11 Mei 2026" — zero-padded day + short month + year. */
+/** "May 11, 2026" — zero-padded day + short month + year. */
 export function formatPaddedDayMonthYearId(date: Date): string {
-    return date.toLocaleDateString('id-ID', {
+    return date.toLocaleDateString('en-US', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -228,14 +228,14 @@ const ID_MONTH_SHORT = [
     'Feb',
     'Mar',
     'Apr',
-    'Mei',
+    'May',
     'Jun',
     'Jul',
-    'Agu',
+    'Aug',
     'Sep',
-    'Okt',
+    'Oct',
     'Nov',
-    'Des',
+    'Dec',
 ] as const;
 
 // "19 Feb 2026" — parses YYYY-MM-DD from the front of the string so the wall-

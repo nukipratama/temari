@@ -239,7 +239,7 @@ describe('AiUsage page', () => {
             />,
         );
 
-        expect(screen.getByText('Rp 1.000,00')).toBeInTheDocument();
+        expect(screen.getByText('Rp 1,000.00')).toBeInTheDocument();
         expect(screen.getAllByText(/^Rp /).length).toBeGreaterThan(1);
     });
 });
